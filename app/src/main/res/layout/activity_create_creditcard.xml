@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    
+    <GridLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:columnCount="1"
+        android:useDefaultMargins="true">
+
+        <de.davis.passwordmanager.ui.views.InformationView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:contentEnabled="false"
+            app:title="@string/general_information"
+            app:print_required="true">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/textInputLayoutTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/title"
+                app:startIconDrawable="@drawable/ic_baseline_edit_24">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@android:color/transparent" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+        </de.davis.passwordmanager.ui.views.InformationView>
+
+        <de.davis.passwordmanager.ui.views.InformationView
+            android:id="@+id/nfc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:title="nfc_information"
+            app:information="@string/nfc_listening"
+            app:multiline="true"
+            android:icon="@drawable/ic_baseline_contactless_24">
+
+        </de.davis.passwordmanager.ui.views.InformationView>
+
+        <de.davis.passwordmanager.ui.views.InformationView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:contentEnabled="false"
+            app:title="@string/credit_card_information"
+            app:print_required="true">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/textInputLayoutUsername"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/credit_card_holder"
+                app:startIconDrawable="@drawable/ic_baseline_person_24">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@android:color/transparent" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/textInputLayoutCardNumber"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/credit_card_number_required"
+                app:passwordToggleEnabled="true"
+                app:startIconDrawable="@drawable/ic_baseline_credit_card_24">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@android:color/transparent"
+                    android:inputType="numberPassword"
+                    android:digits="0,1,2,3,4,5,6,7,8,9, " />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/textInputLayoutCardCVV"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/cvv"
+                app:passwordToggleEnabled="true"
+                app:startIconDrawable="@drawable/ic_baseline_check_circle_24">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="numberPassword"
+                    android:maxLength="3" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/textInputLayoutCardDate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/expiration_date"
+                app:placeholderText="@string/expiration_date_placeholder"
+                app:startIconDrawable="@drawable/ic_baseline_calendar_month_24">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:digits="0,1,2,3,4,5,6,7,8,9,/"
+                    android:inputType="number"
+                    android:maxLength="5"
+                    android:background="@android:color/transparent"/>
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+        </de.davis.passwordmanager.ui.views.InformationView>
+    </GridLayout>
+</ScrollView>

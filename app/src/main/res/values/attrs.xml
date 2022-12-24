@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="colorRidiculous" format="color" />
+    <attr name="colorWeak" format="color" />
+    <attr name="colorModerate" format="color" />
+    <attr name="colorStrong" format="color" />
+    <attr name="colorVeryStrong" format="color" />
+</resources>

@@ -1,0 +1,21 @@
+<resources>
+    <declare-styleable name="InformationView">
+        <attr name="title" format="string" />
+        <attr name="information" format="string" />
+        <attr name="informationTextColor" format="color" />
+        <attr name="android:icon" format="color|reference" />
+        <attr name="endButtonDrawable" format="color|reference" />
+        <attr name="secret" format="boolean" />
+        <attr name="changeable" format="boolean" />
+        <attr name="applyEmpties" format="boolean" />
+        <attr name="print_required" format="boolean" />
+        <attr name="copyable" format="boolean" />
+        <attr name="multiline" format="boolean" />
+        <attr name="contentEnabled" format="boolean" />
+        <attr name="contentLayout" format="reference" />
+        <attr name="dialogLayout" format="reference" />
+
+        <attr name="android:maxLength"/>
+        <attr name="android:inputType"/>
+    </declare-styleable>
+</resources>

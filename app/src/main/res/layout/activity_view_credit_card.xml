@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <include layout="@layout/app_bar_layout"/>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior">
+
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:columnCount="2"
+            android:useDefaultMargins="true">
+
+            <de.davis.passwordmanager.ui.views.InformationView
+                android:id="@+id/title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:icon="@drawable/ic_baseline_title_24"
+                app:title="@string/title"
+                app:changeable="true"
+                app:applyEmpties="false"/>
+
+            <de.davis.passwordmanager.ui.views.InformationView
+                android:id="@+id/cardHolder"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:icon="@drawable/ic_baseline_person_24"
+                app:title="@string/credit_card_holder"
+                app:changeable="true"
+                app:copyable="true"/>
+
+            <de.davis.passwordmanager.ui.views.InformationView
+                android:id="@+id/expirationDate"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:icon="@drawable/ic_baseline_calendar_month_24"
+                android:inputType="number"
+                android:maxLength="5"
+                app:title="@string/expiration_date"
+                app:changeable="true"/>
+
+            <de.davis.passwordmanager.ui.views.InformationView
+                android:id="@+id/cardCVV"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:icon="@drawable/ic_baseline_numbers_24"
+                android:maxLength="3"
+                android:inputType="numberPassword"
+                app:title="@string/cvv"
+                app:secret="true"
+                app:changeable="true" />
+
+
+            <de.davis.passwordmanager.ui.views.InformationView
+                android:id="@+id/cardNumber"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_columnSpan="2"
+                android:icon="@drawable/ic_baseline_credit_card_24"
+                android:inputType="numberPassword"
+                app:title="@string/credit_card_number"
+                app:secret="true"
+                app:changeable="true"
+                app:applyEmpties="false"
+                app:copyable="true"/>
+
+        </GridLayout>
+    </androidx.core.widget.NestedScrollView>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

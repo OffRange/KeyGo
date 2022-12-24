@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingVertical="16dp">
+
+    <ImageView
+        android:id="@+id/imageView"
+        android:layout_width="24dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="12dp"
+        android:visibility="gone"
+        android:contentDescription="@string/content_description_image"
+        app:tint="?attr/colorOnSurfaceVariant" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_weight="1"
+        android:paddingHorizontal="@dimen/default_margin">
+
+        <TextView
+            android:id="@android:id/title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/enable"
+            android:textAppearance="?attr/textAppearanceBodySmall" />
+
+        <LinearLayout
+            android:id="@+id/container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"/>
+
+
+        <TextView
+            android:id="@+id/required"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/star_required"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:layout_marginTop="8dp"/>
+
+    </LinearLayout>
+
+    <de.davis.passwordmanager.ui.views.CheckableImageButton
+        android:id="@+id/imageButton"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:background="?attr/actionBarItemBackground"
+        android:padding="8dp"
+        android:clickable="false"
+        android:layout_gravity="center_vertical|end"
+        android:layout_marginEnd="4dp"/>
+
+</LinearLayout>

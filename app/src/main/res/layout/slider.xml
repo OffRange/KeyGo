@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.slider.Slider
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/slider"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:valueFrom="8"
+    android:valueTo="100"
+    android:stepSize="1"/>

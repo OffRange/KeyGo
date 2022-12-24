@@ -1,0 +1,20 @@
+{
+  "version": 3,
+  "artifactType": {
+    "type": "APK",
+    "kind": "Directory"
+  },
+  "applicationId": "de.davis.passwordmanager",
+  "variantName": "alpha",
+  "elements": [
+    {
+      "type": "SINGLE",
+      "filters": [],
+      "attributes": [],
+      "versionCode": 1,
+      "versionName": "v1.0.0 2352[alpha1]",
+      "outputFile": "app-alpha.apk"
+    }
+  ],
+  "elementType": "File"
+}

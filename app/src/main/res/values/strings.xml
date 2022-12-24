@@ -1,0 +1,135 @@
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:locale="en">
+    <string name="app_name" translatable="false">Password Manager</string>
+
+    <string name="change_master_password">Change master password</string>
+    <string name="master_password_changed">Master password successful changed</string>
+    <string name="passphrase">Passphrase</string>
+    <string name="password">Password</string>
+    <string name="new_password">New password</string>
+    <string name="confirm_password">Confirm password</string>
+
+    <string name="credit_card">Credit Card</string>
+    <string name="credit_card_number">Credit Card number</string>
+    <string name="credit_card_number_required">Credit Card number*</string>
+    <string name="credit_card_holder">Credit Card holder</string>
+    <string name="expiration_date">Expiration date</string>
+    <string name="expiration_date_placeholder">MM/YY</string>
+    <string name="cvv" translatable="false">CVV</string>
+
+    <string name="authenticate">Authenticate</string>
+
+    <string name="enable_fingerprint_authentication">Enable fingerprint authentication</string>
+    <string name="authentication_title">Authentication</string>
+    <string name="authentication_description">Hold your finger against the fingerprint sensor.</string>
+    <string name="use_password">Use password</string>
+    <string name="no_elements_to_show">There are no elements</string>
+    <string name="add_password">Add password</string>
+
+    <string name="password_does_not_match">This password does not match</string>
+    <string name="is_not_filled_in">This must be filled in</string>
+    <string name="invalid_card_number_length">Card number bust have 16 numbers</string>
+    <string name="invalid_date">Invalid date</string>
+    <string name="invalid_url">Invalid url</string>
+
+    <string name="edit">Edit</string>
+    <string name="text_continue">Continue</string>
+
+    <string name="dashboard">Dashboard</string>
+    <string name="settings">Settings</string>
+    <string name="security">Security</string>
+    <string name="about">About</string>
+
+    <string name="add">Add</string>
+    <string name="delete">Delete</string>
+    <string name="sure_delete">Are you sure you want to delete?</string>
+    <string name="successful_deleted">Successful deleted</string>
+
+    <string name="copied_data">Data copied</string>
+
+    <string name="no">No</string>
+    <string name="yes">Yes</string>
+    <string name="cancel">Cancel</string>
+
+    <string name="build">Build</string>
+
+    <string name="strength">Strength</string>
+    <string name="ridiculous">Ridiculous</string>
+    <string name="weak">Weak</string>
+    <string name="moderate">Moderate</string>
+    <string name="strong">Strong</string>
+    <string name="very_strong">Very Strong</string>
+
+    <string name="loading">Loading</string>
+
+    <string name="general_information">General information</string>
+    <string name="user_information">User information</string>
+    <string name="password_information">Password information</string>
+    <string name="credit_card_information">Credit card information</string>
+    <string name="login_information">Login information</string>
+
+
+    <string name="optional">Optional</string>
+    <string name="required">required</string>
+    <string name="star_required">*required</string>
+
+    <string name="options">Options</string>
+
+    <string name="enable">Enable</string>
+
+    <string name="title">Title</string>
+    <string name="generate">Generate</string>
+
+    <string name="username">Username</string>
+    <string name="origin">Origin</string>
+
+    <string name="no_value_set">No value set</string>
+
+    <string name="more">More</string>
+
+    <string name="content_description_more">Show more</string>
+    <string name="content_description_image">Image</string>
+    <string name="content_description_add_password">Add password button</string>
+
+    <string name="third_party_dependencies">Third-Party Dependencies</string>
+
+    <string name="regenerate">Regenerate</string>
+    <string name="use">Use</string>
+
+    <string name="use_digits">Use digits</string>
+    <string name="use_uppercase_letters">Use uppercase letters</string>
+    <string name="use_lowercase_letters">Use lowercase letters</string>
+    <string name="use_punctuations">Use punctuations</string>
+
+    <string name="length_param">Length %1$d</string>
+    <string name="change_param">Change The %1$s</string>
+    <string name="type">Type</string>
+
+    <string name="nfc_listening">You can hold an NFC-enabled card to your phone</string>
+    <string name="nfc_moved_too_fast">Do not move your card so fast</string>
+    <string name="nfc_unknown_card">Your card is unknown</string>
+    <string name="nfc_locked">NFC is locked on this card</string>
+    <string name="nfc_enable">Enable NFC on your device</string>
+    <string name="nfc_success">Card details scanned successfully</string>
+
+    <string name="developer">Developer</string>
+    <string name="developer_name" translatable="false">OffRange</string>
+
+    <string name="features">Features</string>
+    <string name="autofill_service">Autofill Service (beta)</string>
+    <string name="instruction_activate_autofill">Go to <b>Settings</b> > <b>Search for "autofill service"</b> > <b>choose this app as the service</b></string>
+
+    <string name="authentication_required">Authentication Required</string>
+
+    <string name="filter">Filter</string>
+    <string-array name="filter_items">
+        <item>@string/title</item>
+        <item>@string/password</item>
+        <item>@string/credit_card</item>
+    </string-array>
+
+    <string name="path_password_eye" tools:override="true" translatable="false">M12,4.5C7,4.5 2.73,7.61 1,12c1.73,4.39 6,7.5 11,7.5s9.27,-3.11 11,-7.5c-1.73,-4.39 -6,-7.5 -11,-7.5zM12,17c-2.76,0 -5,-2.24 -5,-5s2.24,-5 5,-5 5,2.24 5,5 -2.24,5 -5,5zM12,9c-1.66,0 -3,1.34 -3,3s1.34,3 3,3 3,-1.34 3,-3 -1.34,-3 -3,-3z</string>
+    <string name="path_password_eye_mask_strike_through" tools:override="true" translatable="false">M2,4.27 L19.73,22 L22.27,19.46 L4.54,1.73 L4.54,1 L23,1 L23,23 L1,23 L1,4.27 Z</string>
+    <string name="path_password_eye_mask_visible" tools:override="true" translatable="false">M2,4.27 L2,4.27 L4.54,1.73 L4.54,1.73 L4.54,1 L23,1 L23,23 L1,23 L1,4.27 Z</string>
+    <string name="path_password_strike_through" tools:override="true" translatable="false">M3.27,4.27 L19.74,20.74</string>
+</resources>

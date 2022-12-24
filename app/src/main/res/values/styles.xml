@@ -1,0 +1,42 @@
+<resources>
+
+    <!-- Dialog style -->
+    <style name="MaterialAlertDialog_red" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="colorSurface">?attr/colorErrorContainer</item>
+        <item name="buttonBarNegativeButtonStyle">@style/Widget.App.Button</item>
+        <item name="buttonBarPositiveButtonStyle">@style/Widget.App.Button</item>
+        <item name="materialAlertDialogTitleTextStyle">@style/MaterialAlertDialog.App.Title.Text
+        </item>
+        <item name="materialAlertDialogBodyTextStyle">@style/MaterialAlertDialog.App.Body.Text
+        </item>
+    </style>
+
+    <style name="MaterialAlertDialog.App.Title.Text" parent="MaterialAlertDialog.MaterialComponents.Title.Text">
+        <item name="android:textColor">?attr/colorOnErrorContainer</item>
+    </style>
+
+    <style name="MaterialAlertDialog.App.Body.Text" parent="MaterialAlertDialog.MaterialComponents.Body.Text">
+        <item name="android:textColor">?attr/colorOnErrorContainer</item>
+    </style>
+
+    <style name="Widget.App.Button" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
+        <item name="materialThemeOverlay">@style/ThemeOverlay.App.Button</item>
+    </style>
+
+    <style name="ThemeOverlay.App.Button" parent="">
+        <item name="colorPrimary">?attr/colorOnErrorContainer</item>
+    </style>
+
+
+    <style name="Widget.App.TextInputLayout" parent="Widget.Material3.TextInputLayout.FilledBox">
+        <item name="materialThemeOverlay">@style/ThemeOverlay.App.TextInputEditText</item>
+    </style>
+
+    <style name="ThemeOverlay.App.TextInputEditText" parent="ThemeOverlay.Material3.TextInputEditText.FilledBox">
+        <item name="editTextStyle">@style/Widget.App.TextInputEditText</item>
+    </style>
+
+    <style name="Widget.App.TextInputEditText" parent="Widget.Material3.TextInputEditText.FilledBox">
+        <item name="android:background">@android:color/transparent</item>
+    </style>
+</resources>

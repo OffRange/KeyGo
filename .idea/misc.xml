@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DesignSurface">
+    <option name="filePathToZoomLevelMap">
+      <map>
+        <entry key="..\:/Users/Davis/.gradle/caches/transforms-3/0f1cf9641ff5bf337d16caafe04df846/transformed/material-1.6.1/res/layout/m3_auto_complete_simple_item.xml" value="0.23848238482384823" />
+        <entry key="..\:/Users/Davis/.gradle/caches/transforms-3/b6f52d92dea29c0a7f49d4078033a89a/transformed/material-1.6.1/res/layout/design_layout_tab_text.xml" value="0.2763888888888889" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/drawable-v24/ic_launcher_foreground.xml" value="0.1955" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/drawable/ic_baseline_build_24.xml" value="0.3415" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/drawable/ic_baseline_calendar_month_24.xml" value="0.1405" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/drawable/ic_baseline_check_24.xml" value="0.1955" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/drawable/ic_baseline_check_circle_24.xml" value="0.1405" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/drawable/ic_baseline_close_24.xml" value="0.172" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/drawable/ic_baseline_code_24.xml" value="0.172" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/drawable/ic_baseline_contactless_24.xml" value="0.1405" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/drawable/ic_baseline_credit_card_24.xml" value="0.169" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/drawable/ic_baseline_dashboard_24.xml" value="0.314" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/drawable/ic_baseline_edit_24.xml" value="0.314" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/drawable/ic_baseline_location_on_24.xml" value="0.172" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/drawable/ic_baseline_password_24.xml" value="0.1955" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/drawable/ic_baseline_person_24.xml" value="0.172" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/drawable/ic_baseline_settings_24.xml" value="0.314" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/drawable/ic_launcher_background.xml" value="0.1955" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/layout/activity_create_creditcard.xml" value="0.18886612021857924" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/layout/activity_create_password.xml" value="0.5" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/layout/activity_generate_password.xml" value="0.22780054644808742" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/layout/activity_main.xml" value="0.23848238482384823" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/layout/fragment_change_password.xml" value="0.3383152173913043" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/layout/fragment_enter_password.xml" value="0.2669706180344478" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/layout/fragment_settings.xml" value="0.45042735042735044" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/layout/fragment_view.xml" value="0.2674772036474164" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/layout/menu_toolbar.xml" value="0.2935897435897436" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/layout/modal_bottom_sheet_content.xml" value="0.27546296296296297" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/layout/sample_password_strength_bar.xml" value="0.12892603850050657" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/menu/bottom_nav_menu.xml" value="0.3109375" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/menu/menu_toolbar.xml" value="0.3578125" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/menu/toolbar_menu.xml" value="0.3109375" />
+        <entry key="..\:/Users/Davis/OneDrive/AndroidProjects/PasswortManagerFA/app/src/main/res/xml/root_preferences.xml" value="0.5008403361344538" />
+      </map>
+    </option>
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_11" default="true" project-jdk-name="Android Studio default JDK" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/build/classes" />
+  </component>
+  <component name="ProjectType">
+    <option name="id" value="Android" />
+  </component>
+  <component name="VisualizationToolProject">
+    <option name="state">
+      <ProjectState>
+        <option name="scale" value="0.5975865687303253" />
+      </ProjectState>
+    </option>
+  </component>
+</project>

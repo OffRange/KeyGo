@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="preference_authenticate_only" translatable="false">authenticate_only</string>
+    <string name="preference_master_password" translatable="false">master_password</string>
+    <string name="preference_fingerprint" translatable="false">authenticate_fingerprint</string>
+    <string name="preference_feature_autofill" translatable="false">feature_autofill</string>
+</resources>

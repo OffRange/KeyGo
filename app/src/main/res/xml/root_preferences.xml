@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context=".ui.settings.SettingsFragment">
+
+    <PreferenceCategory app:title="@string/security">
+        <de.davis.passwordmanager.ui.views.ChangePasswordPreference android:icon="@drawable/ic_baseline_password_24"/>
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="@string/preference_fingerprint"
+            android:title="@string/enable_fingerprint_authentication"
+            app:icon="?android:attr/fingerprintAuthDrawable"
+            android:widgetLayout="@layout/switch_layout" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/features">
+        <SwitchPreference
+            app:key="@string/preference_feature_autofill"
+            app:title="@string/autofill_service"
+            app:icon="@drawable/ic_baseline_edit_24"
+            android:widgetLayout="@layout/switch_layout"
+            android:summary="@string/instruction_activate_autofill"/>
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/about">
+
+        <Preference
+            app:title="@string/developer"
+            android:summary="@string/developer_name"
+            android:icon="@drawable/ic_baseline_person_24"/>
+
+        <Preference
+            app:title="@string/third_party_dependencies"
+            android:icon="@drawable/ic_baseline_code_24">
+            <intent android:action="android.intent.action.VIEW"
+                android:targetPackage="de.davis.passwordmanager"
+                android:targetClass="com.google.android.gms.oss.licenses.OssLicensesMenuActivity"/>
+        </Preference>
+
+        <Preference
+            android:key="@string/build"
+            android:title="@string/build"
+            android:icon="@drawable/ic_baseline_build_24"/>
+
+    </PreferenceCategory>
+</PreferenceScreen>
