@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="your_dashboard">Dein Dashboard</string>
     <string name="change_master_password">Master Passwort ändern</string>
     <string name="master_password_changed">Master Passwort erfolgreich geändert</string>
     <string name="passphrase">Passphrase</string>
@@ -87,4 +88,6 @@
     <string name="autofill_service">Automatisches Einfügen (beta)</string>
     <string name="features">Features</string>
     <string name="authentication_required">Authentifizierung erforderlich</string>
+    <string name="selected_items">%d ausgewählt</string>
+    <string name="no_results_found">Keine Ergebnisse gefunden</string>
 </resources>

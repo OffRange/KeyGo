@@ -2,6 +2,9 @@
     tools:locale="en">
     <string name="app_name" translatable="false">Password Manager</string>
 
+    <string name="your_dashboard">Your Dashboard</string>
+    <string name="selected_items">%d selected</string>
+
     <string name="change_master_password">Change master password</string>
     <string name="master_password_changed">Master password successful changed</string>
     <string name="passphrase">Passphrase</string>
@@ -132,4 +135,5 @@
     <string name="path_password_eye_mask_strike_through" tools:override="true" translatable="false">M2,4.27 L19.73,22 L22.27,19.46 L4.54,1.73 L4.54,1 L23,1 L23,23 L1,23 L1,4.27 Z</string>
     <string name="path_password_eye_mask_visible" tools:override="true" translatable="false">M2,4.27 L2,4.27 L4.54,1.73 L4.54,1.73 L4.54,1 L23,1 L23,23 L1,23 L1,4.27 Z</string>
     <string name="path_password_strike_through" tools:override="true" translatable="false">M3.27,4.27 L19.74,20.74</string>
+    <string name="no_results_found">No results found</string>
 </resources>
