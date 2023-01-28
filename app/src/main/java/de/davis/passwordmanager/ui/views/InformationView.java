@@ -96,7 +96,7 @@ public class InformationView extends MaterialCardView implements CopyView {
         View view = LayoutInflater.from(getContext()).inflate(R.layout.layout_information_view, this, true);
 
         endButton = view.findViewById(R.id.imageButton);
-        seOntEndButtonClickListener(v -> {
+        setOnEndButtonClickListener(v -> {
             secret = !secret;
             transformString();
         });
@@ -312,7 +312,7 @@ public class InformationView extends MaterialCardView implements CopyView {
         endButton.setImageDrawable(drawable);
     }
 
-    public void seOntEndButtonClickListener(OnClickListener listener){
+    public void setOnEndButtonClickListener(OnClickListener listener){
         endButton.setOnClickListener(listener);
     }
 

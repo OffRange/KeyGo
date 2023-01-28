@@ -45,6 +45,7 @@ public abstract class ViewSecureElementActivity extends SecureElementActivity {
         titleInformationView.setOnChangedListener(new OnInformationChangedListener<>(getElement(), (e, changes) -> {
             getElement().setTitle(changes);
             toolbar.setTitle(changes);
+            return null;
         }));
     }
 

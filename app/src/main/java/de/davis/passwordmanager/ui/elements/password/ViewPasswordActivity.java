@@ -36,11 +36,12 @@ public class ViewPasswordActivity extends ViewSecureElementActivity {
         binding.password.setOnChangedListener(new OnInformationChangedListener<>(password, (element, changes) -> {
             details.setPassword(changes);
             setStrengthValues(details);
+            return details;
         }));
         binding.password.setOnEditDialogViewCreatedListener(view -> {
             editText = ((TextInputLayout) view.findViewById(R.id.textInputLayout)).getEditText();
             PasswordStrengthBar passwordStrengthBar = view.findViewById(R.id.strengthBar);
-            passwordStrengthBar. update(editText.getText().toString(), false);
+            passwordStrengthBar.update(editText.getText().toString(), false);
             editText.addTextChangedListener(passwordStrengthBar);
 
             view.findViewById(R.id.generate).setOnClickListener(v -> activityResultManager.launchGeneratePassword(this));
@@ -53,7 +54,10 @@ public class ViewPasswordActivity extends ViewSecureElementActivity {
         }));
 
         binding.username.setInformation(details.getUsername());
-        binding.username.setOnChangedListener(new OnInformationChangedListener<>(password, (element, changes) -> ((PasswordDetails)element.getDetail()).setPassword(changes)));
+        binding.username.setOnChangedListener(new OnInformationChangedListener<>(password, (element, changes) -> {
+            details.setUsername(changes);
+            return details;
+        }));
 
         setStrengthValues(details);
         manageOrigin(details);
@@ -66,7 +70,7 @@ public class ViewPasswordActivity extends ViewSecureElementActivity {
 
     private void manageOrigin(PasswordDetails details){
         if(BrowserUtil.isValidURL(BrowserUtil.ensureProtocol(details.getOrigin()))) {
-            binding.origin.seOntEndButtonClickListener(v -> BrowserUtil.open(details.getOrigin(), this));
+            binding.origin.setOnEndButtonClickListener(v -> BrowserUtil.open(details.getOrigin(), this));
             binding.origin.setEndButtonDrawable(AppCompatResources.getDrawable(this, R.drawable.ic_baseline_open_in_new_24));
         }
     }
