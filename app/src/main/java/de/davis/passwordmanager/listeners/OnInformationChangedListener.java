@@ -3,6 +3,7 @@ package de.davis.passwordmanager.listeners;
 import androidx.annotation.NonNull;
 
 import de.davis.passwordmanager.dialog.EditDialog;
+import de.davis.passwordmanager.security.element.ElementDetail;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.security.element.SecureElementManager;
 
@@ -18,11 +19,16 @@ public class OnInformationChangedListener<E extends SecureElement> implements Ed
 
     @Override
     public void onInformationChanged(EditDialog dialog, String information) {
-        helper.applyChanges(element, information);
+        //TODO maybe automate apply Function --> e.g. methode in each Element that gives available
+        // tags and in this methode it checks the given tag and updates the element by itself
+        ElementDetail detail = helper.applyChanges(element, information);
+        if(detail != null)
+            element.encrypt(detail);
+
         SecureElementManager.getInstance().editElement(element);
     }
 
     public interface ApplyChangeToElementHelper<E> {
-        void applyChanges(E element, String changes);
+        ElementDetail applyChanges(E element, String changes);
     }
 }
