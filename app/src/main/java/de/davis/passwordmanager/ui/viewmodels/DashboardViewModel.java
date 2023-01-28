@@ -1,7 +1,7 @@
 package de.davis.passwordmanager.ui.viewmodels;
 
-import static androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY;
 import static androidx.lifecycle.SavedStateHandleSupport.createSavedStateHandle;
+import static androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY;
 
 import android.text.TextUtils;
 
