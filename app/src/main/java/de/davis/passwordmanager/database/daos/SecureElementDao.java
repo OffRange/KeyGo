@@ -8,13 +8,9 @@ import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 import androidx.room.Update;
 
-import org.reactivestreams.Publisher;
-
 import java.util.List;
 
 import de.davis.passwordmanager.security.element.SecureElement;
-import io.reactivex.rxjava3.core.Flowable;
-import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Single;
 
 @Dao
@@ -42,7 +38,7 @@ public abstract class SecureElementDao {
     public abstract Single<List<SecureElement>> getAllByType(@SecureElement.ElementType int type);
 
     @Query("SELECT * FROM SecureElement WHERE title LIKE :title ORDER BY ROWID ASC")
-    public abstract List<SecureElement> getByTitle(String title);
+    public abstract LiveData<List<SecureElement>> getByTitle(String title);
 
     @Query("SELECT count(*) FROM SecureElement")
     public abstract Single<Integer> count();
