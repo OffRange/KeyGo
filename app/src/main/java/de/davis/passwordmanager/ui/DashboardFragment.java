@@ -31,7 +31,7 @@ import de.davis.passwordmanager.security.element.SecureElementManager;
 import de.davis.passwordmanager.ui.views.AddBottomSheet;
 import de.davis.passwordmanager.ui.views.OptionBottomSheet;
 
-public class ViewFragment extends Fragment implements SearchView.OnQueryTextListener {
+public class DashboardFragment extends Fragment implements SearchView.OnQueryTextListener {
 
     private FragmentViewBinding binding;
 

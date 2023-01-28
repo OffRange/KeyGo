@@ -17,7 +17,7 @@ import de.davis.passwordmanager.databinding.MoreBottomSheetContentBinding;
 import de.davis.passwordmanager.dialog.DeleteDialog;
 import de.davis.passwordmanager.manager.ActivityResultManager;
 import de.davis.passwordmanager.security.element.SecureElement;
-import de.davis.passwordmanager.ui.ViewFragment;
+import de.davis.passwordmanager.ui.DashboardFragment;
 
 public class OptionBottomSheet extends BottomSheetDialog {
 
@@ -39,7 +39,7 @@ public class OptionBottomSheet extends BottomSheetDialog {
         binding.title.setText(element == null ? getContext().getString(R.string.options) : element.getTitle());
 
         binding.edit.setOnClickListener(v -> {
-            ActivityResultManager.getOrCreateManager(ViewFragment.class, null).launchEdit(element, getContext());
+            ActivityResultManager.getOrCreateManager(DashboardFragment.class, null).launchEdit(element, getContext());
             dismiss();
         });
 

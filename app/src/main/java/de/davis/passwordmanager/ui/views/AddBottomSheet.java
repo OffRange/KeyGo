@@ -13,7 +13,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import de.davis.passwordmanager.databinding.AddBottomSheetContentBinding;
 import de.davis.passwordmanager.manager.ActivityResultManager;
 import de.davis.passwordmanager.security.element.SecureElementDetail;
-import de.davis.passwordmanager.ui.ViewFragment;
+import de.davis.passwordmanager.ui.DashboardFragment;
 
 public class AddBottomSheet extends BottomSheetDialogFragment {
 
@@ -29,7 +29,7 @@ public class AddBottomSheet extends BottomSheetDialogFragment {
             btn.setText(detail.getTitle());
             btn.setIcon(detail.getIcon());
             btn.setOnClickListener(v -> {
-                ActivityResultManager.getOrCreateManager(ViewFragment.class, null).launchCreate(detail, requireContext());
+                ActivityResultManager.getOrCreateManager(DashboardFragment.class, null).launchCreate(detail, requireContext());
                 dismiss();
             });
 
