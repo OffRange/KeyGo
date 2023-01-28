@@ -11,9 +11,11 @@ import com.google.android.material.textfield.TextInputLayout;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.databinding.ActivityViewCreditCardBinding;
+import de.davis.passwordmanager.listeners.OnInformationChangedListener;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.security.element.creditcard.CreditCardDetails;
 import de.davis.passwordmanager.listeners.text.ExpiryDateTextWatcher;
+import de.davis.passwordmanager.security.element.creditcard.Name;
 import de.davis.passwordmanager.ui.elements.ViewSecureElementActivity;
 
 public class ViewCreditCardActivity extends ViewSecureElementActivity {
@@ -27,12 +29,25 @@ public class ViewCreditCardActivity extends ViewSecureElementActivity {
         CreditCardDetails details = (CreditCardDetails) creditCard.getDetail();
 
         binding.cardHolder.setInformation(details.getCardholder().getFullName());
+        binding.cardHolder.setOnChangedListener(new OnInformationChangedListener<>(creditCard, (element, changes) -> {
+            details.setCardholder(Name.fromFullName(changes));
+            return details;
+        }));
+
         binding.cardNumber.setInformation(details.getFormattedNumber());
         binding.cardNumber.setOnEditDialogViewCreatedListener(view ->
                 ((TextInputLayout)view.findViewById(R.id.textInputLayout)).getEditText()
                         .setFilters(new InputFilter[]{new InputFilter.LengthFilter(16)}));
+        binding.cardNumber.setOnChangedListener(new OnInformationChangedListener<>(creditCard, (element, changes) -> {
+            details.setCardNumber(changes);
+            return details;
+        }));
 
         binding.cardCVV.setInformation(details.getCvv());
+        binding.cardCVV.setOnChangedListener(new OnInformationChangedListener<>(creditCard, (element, changes) -> {
+            details.setCvv(changes);
+            return details;
+        }));
 
         binding.expirationDate.setInformation(details.getExpirationDate());
         binding.expirationDate.setOnEditDialogViewCreatedListener(view -> {
@@ -40,6 +55,10 @@ public class ViewCreditCardActivity extends ViewSecureElementActivity {
             et.addTextChangedListener(new ExpiryDateTextWatcher());
             et.setKeyListener(DigitsKeyListener.getInstance("0123456789/"));
         });
+        binding.expirationDate.setOnChangedListener(new OnInformationChangedListener<>(creditCard, (element, changes) -> {
+            details.setExpirationDate(changes);
+            return details;
+        }));
     }
 
     @Override

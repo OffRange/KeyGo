@@ -1,21 +1,17 @@
 package de.davis.passwordmanager.security.element.creditcard;
 
-import java.io.Serializable;
-import java.util.Base64;
-
-import de.davis.passwordmanager.security.Cryptography;
 import de.davis.passwordmanager.security.element.ElementDetail;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.utils.CreditCardUtil;
 
 public class CreditCardDetails implements ElementDetail {
 
-    private static final long serialVersionUID = 2239944147392047056L;
+    private static final long serialVersionUID = -6717857895639765586L;
 
-    private final Name cardholder;
+    private Name cardholder;
     private String expirationDate;
-    private final String cardNumber;
-    private final String cvv;
+    private String cardNumber;
+    private String cvv;
 
     public CreditCardDetails(Name cardholder, String expirationDate, String cardNumber, String cvv) {
         if(CreditCardUtil.isValidDateFormat(expirationDate))
@@ -30,8 +26,16 @@ public class CreditCardDetails implements ElementDetail {
         return cardholder;
     }
 
+    public void setCardholder(Name cardholder) {
+        this.cardholder = cardholder;
+    }
+
     public String getCardNumber() {
         return cardNumber;
+    }
+
+    public void setCardNumber(String cardNumber) {
+        this.cardNumber = cardNumber;
     }
 
     public String getSecretNumber(){
@@ -46,8 +50,16 @@ public class CreditCardDetails implements ElementDetail {
         return cvv;
     }
 
+    public void setCvv(String cvv) {
+        this.cvv = cvv;
+    }
+
     public String getExpirationDate() {
         return expirationDate;
+    }
+
+    public void setExpirationDate(String expirationDate) {
+        this.expirationDate = expirationDate;
     }
 
     @SecureElement.ElementType
