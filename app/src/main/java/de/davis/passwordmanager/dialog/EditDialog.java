@@ -1,11 +1,9 @@
 package de.davis.passwordmanager.dialog;
 
-import android.app.Dialog;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.TextWatcher;
-import android.text.method.PasswordTransformationMethod;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,55 +12,33 @@ import android.widget.LinearLayout;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.fragment.app.DialogFragment;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputLayout;
-
-import java.util.Map;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.ui.views.InformationView;
 
 public class EditDialog extends BasicDialog {
 
-    private InformationView.Details details;
-
-    @LayoutRes
-    private int additionalView;
-
-    private OnInformationChangeListener onInformationChangeListener;
-    private OnViewCreatedListener onViewCreatedListener;
+    private Configuration configuration = new Configuration();
 
 
-    public EditDialog(InformationView.Details details) {
-        this(details, 0);
-    }
-
-    public EditDialog(InformationView.Details details, @LayoutRes int additionalView) {
-        this.details = details;
-        this.additionalView = additionalView;
+    public EditDialog(Configuration configuration) {
+        this.configuration = configuration;
     }
 
     public EditDialog() {}
 
-    public void setOnChangeListener(OnInformationChangeListener onInformationChangeListener) {
-        this.onInformationChangeListener = onInformationChangeListener;
-    }
-
-    public void setOnViewCreatedListener(OnViewCreatedListener onViewCreatedListener) {
-        this.onViewCreatedListener = onViewCreatedListener;
-    }
-
     @Override
     public MaterialAlertDialogBuilder onCreateMaterialAlertDialogBuilder(Bundle savedInstanceState) {
         return super.onCreateMaterialAlertDialogBuilder(savedInstanceState)
-                .setTitle(getString(R.string.change_param, details.getTitle()))
+                .setTitle(getString(R.string.change_param, configuration.details.getTitle()))
                 .setPositiveButton(R.string.text_continue, (dialog, which) -> {
-                    if(onInformationChangeListener == null)
+                    if(configuration.onInformationChangeListener == null)
                         return;
 
-                    onInformationChangeListener.onInformationChanged(this, details.getInformation());
+                    configuration.onInformationChangeListener.onInformationChanged(this, configuration.details.getInformation());
                     dismiss();
                 });
     }
@@ -72,41 +48,42 @@ public class EditDialog extends BasicDialog {
         ViewGroup view = (LinearLayout) inflater.inflate(R.layout.dialog_edit_view, container, false);
 
         if(savedInstanceState != null)
-            details = savedInstanceState.getParcelable("details");
+            configuration.details = savedInstanceState.getParcelable("details");
 
-        if(details == null)
+        if(configuration.details == null)
             return view;
+
 
         TextInputLayout textInputLayout = view.findViewById(R.id.textInputLayout);
-        textInputLayout.getEditText().setTransformationMethod(details.isSecret() ? PasswordTransformationMethod.getInstance() : null);
-        textInputLayout.getEditText().setText(details.getInformation());
+        textInputLayout.getEditText().setText(configuration.initialTextPolicy.initialString(configuration.details.getInformation()));
         textInputLayout.getEditText().addTextChangedListener(new TextChangedListener());
-        textInputLayout.setStartIconDrawable(details.getDrawable());
-        textInputLayout.setHint(details.getTitle());
-        textInputLayout.setEndIconMode(details.isSecret() ? TextInputLayout.END_ICON_PASSWORD_TOGGLE : TextInputLayout.END_ICON_NONE);
-        if(details.getMaxLength() > 0)
-            textInputLayout.getEditText().setFilters(new InputFilter[]{new InputFilter.LengthFilter(details.getMaxLength())});
+        textInputLayout.setStartIconDrawable(configuration.details.getDrawable());
+        textInputLayout.setHint(configuration.details.getTitle());
 
-        textInputLayout.getEditText().setInputType(details.getInputType());
+        textInputLayout.getEditText().setInputType(configuration.details.getInputType());
+        textInputLayout.setEndIconMode(configuration.details.isSecret() ? TextInputLayout.END_ICON_PASSWORD_TOGGLE : TextInputLayout.END_ICON_NONE);
 
-        if(additionalView == 0)
+        if(configuration.details.getMaxLength() > 0)
+            textInputLayout.getEditText().setFilters(new InputFilter[]{new InputFilter.LengthFilter(configuration.details.getMaxLength())});
+
+        if(configuration.additionalView == 0)
             return view;
 
 
-        inflater.inflate(additionalView, view, true);
+        inflater.inflate(configuration.additionalView, view, true);
         return view;
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        if(onViewCreatedListener != null)
-            onViewCreatedListener.onViewCreated(view);
+        if(configuration.onEditDialogViewCreatedListener != null)
+            configuration.onEditDialogViewCreatedListener.onViewCreated(view);
     }
 
     @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putParcelable("details", details);
+        outState.putParcelable("details", configuration.details);
     }
 
     @Override
@@ -133,7 +110,64 @@ public class EditDialog extends BasicDialog {
 
         @Override
         public void afterTextChanged(Editable s) {
-            details.setInformation(s.toString());
+            configuration.details.setInformation(s.toString());
+        }
+    }
+
+    public interface InitialTextPolicy {
+        String initialString(String text);
+    }
+
+    public static class Configuration {
+
+        private EditDialog.OnInformationChangeListener onInformationChangeListener;
+        private EditDialog.OnViewCreatedListener onEditDialogViewCreatedListener;
+
+        private InitialTextPolicy initialTextPolicy = text -> text;
+
+        private InformationView.Details details;
+
+        @LayoutRes
+        private int additionalView;
+
+        public void setDetails(InformationView.Details details) {
+            this.details = details;
+        }
+
+        public OnInformationChangeListener getOnInformationChangeListener() {
+            return onInformationChangeListener;
+        }
+
+        public void setOnInformationChangeListener(OnInformationChangeListener onInformationChangeListener) {
+            this.onInformationChangeListener = onInformationChangeListener;
+        }
+
+        public void setAdditionalView(int additionalView) {
+            this.additionalView = additionalView;
+        }
+
+        public OnViewCreatedListener getOnEditDialogViewCreatedListener() {
+            return onEditDialogViewCreatedListener;
+        }
+
+        public void setOnEditDialogViewCreatedListener(OnViewCreatedListener onEditDialogViewCreatedListener) {
+            this.onEditDialogViewCreatedListener = onEditDialogViewCreatedListener;
+        }
+
+        public InitialTextPolicy getInitialTextPolicy() {
+            return initialTextPolicy;
+        }
+
+        public void setInitialTextPolicy(InitialTextPolicy initialTextPolicy) {
+            this.initialTextPolicy = initialTextPolicy;
+        }
+
+        public InformationView.Details getDetails() {
+            return details;
+        }
+
+        public int getAdditionalView() {
+            return additionalView;
         }
     }
 }

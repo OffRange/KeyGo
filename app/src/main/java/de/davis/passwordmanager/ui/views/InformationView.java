@@ -68,7 +68,8 @@ public class InformationView extends MaterialCardView implements CopyView {
     private boolean initiated;
 
     private EditDialog.OnInformationChangeListener onInformationChangeListener;
-    private EditDialog.OnViewCreatedListener onEditDialogViewCreatedListener;
+
+    private final EditDialog.Configuration configuration = new EditDialog.Configuration();
 
     public InformationView(Context context) {
         this(context, null, com.google.android.material.R.attr.materialCardViewElevatedStyle);
@@ -193,12 +194,16 @@ public class InformationView extends MaterialCardView implements CopyView {
         return super.onTouchEvent(event);
     }
 
+    public EditDialog.Configuration getConfiguration() {
+        return configuration;
+    }
+
     public void setOnChangedListener(EditDialog.OnInformationChangeListener onInformationChangeListener) {
         this.onInformationChangeListener = onInformationChangeListener;
     }
 
     public void setOnEditDialogViewCreatedListener(EditDialog.OnViewCreatedListener onEditDialogViewCreatedListener) {
-        this.onEditDialogViewCreatedListener = onEditDialogViewCreatedListener;
+        this.configuration.setOnEditDialogViewCreatedListener(onEditDialogViewCreatedListener);
     }
 
 
@@ -359,9 +364,11 @@ public class InformationView extends MaterialCardView implements CopyView {
         if(!(getContext() instanceof AppCompatActivity))
             return;
 
-        EditDialog editDialog = new EditDialog(getDetails(), layoutDialog);
-        editDialog.setOnChangeListener(new EditChangeListener());
-        editDialog.setOnViewCreatedListener(onEditDialogViewCreatedListener);
+        configuration.setDetails(getDetails());
+        configuration.setAdditionalView(layoutDialog);
+        configuration.setOnInformationChangeListener(new EditChangeListener());
+
+        EditDialog editDialog = new EditDialog(configuration);
         editDialog.show(((AppCompatActivity) getContext()).getSupportFragmentManager(), TAG);
     }
 
