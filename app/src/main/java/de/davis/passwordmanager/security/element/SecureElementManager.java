@@ -11,8 +11,8 @@ public class SecureElementManager {
 
     private static SecureElementManager instance;
 
-    private DashboardAdapter adapter;
-    private TriggerDataChanged triggerDataChanged;
+    private final DashboardAdapter adapter;
+    private final TriggerDataChanged triggerDataChanged;
 
     private SecureElementManager(TriggerDataChanged triggerDataChanged) {
         this.triggerDataChanged = triggerDataChanged;

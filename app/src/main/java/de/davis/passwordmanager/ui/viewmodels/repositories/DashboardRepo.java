@@ -12,7 +12,7 @@ public class DashboardRepo {
 
     private static volatile DashboardRepo instance;
 
-    private SecureElementDatabase database;
+    private final SecureElementDatabase database;
     private final MediatorLiveData<List<SecureElement>> elements;
 
     private DashboardRepo(SecureElementDatabase database) {
