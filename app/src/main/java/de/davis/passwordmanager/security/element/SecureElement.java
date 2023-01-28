@@ -5,7 +5,6 @@ import android.graphics.drawable.Drawable;
 import android.util.TypedValue;
 
 import androidx.annotation.IntDef;
-import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
 import androidx.room.Entity;
 import androidx.room.Ignore;
@@ -19,14 +18,12 @@ import net.greypanther.natsort.SimpleNaturalComparator;
 import java.io.IOException;
 import java.io.Serializable;
 import java.security.GeneralSecurityException;
-import java.util.UUID;
 
 import javax.crypto.Cipher;
 import javax.crypto.SealedObject;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.dashboard.Item;
-import de.davis.passwordmanager.security.element.creditcard.CreditCardDetails;
 import de.davis.passwordmanager.utils.KeyUtil;
 
 @Entity
@@ -77,7 +74,6 @@ public class SecureElement implements Serializable, Comparable<SecureElement>, I
     public SecureElement(ElementDetail detail, String title) {
         encrypt(detail);
         this.title = title;
-        this.type = detail.getType();
     }
 
     private SecureElement(){}
@@ -128,11 +124,14 @@ public class SecureElement implements Serializable, Comparable<SecureElement>, I
         }
     }
 
-    public void encrypt(ElementDetail e){
+    //TODO find better way to save the data in to the database, because it is Serializable and
+    // changes to the classes may cause errors and crashes
+    public void encrypt(ElementDetail detail){
+        type = detail.getType();
         Cipher c = KeyUtil.getCipher();
         try {
             c.init(Cipher.ENCRYPT_MODE, KeyUtil.getSecretKey());
-            setData(new SealedObject(e, c));
+            setData(new SealedObject(detail, c));
         } catch (GeneralSecurityException | IOException ex) {
             ex.printStackTrace();
         }
