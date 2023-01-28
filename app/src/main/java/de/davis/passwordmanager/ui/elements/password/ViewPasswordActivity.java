@@ -51,6 +51,7 @@ public class ViewPasswordActivity extends ViewSecureElementActivity {
         binding.origin.setOnChangedListener(new OnInformationChangedListener<>(password, (element, changes) -> {
             details.setOrigin(changes);
             manageOrigin(details);
+            return details;
         }));
 
         binding.username.setInformation(details.getUsername());
