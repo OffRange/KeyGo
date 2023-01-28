@@ -100,7 +100,7 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
         if(!(payload instanceof Boolean))
             return;
 
-        holder.onBindSelectablePayload((boolean) payload, ((boolean)payload) && tracker.isSelected(getItemId(position)));
+        handleSelectionUpdates(getItemId(position), holder);
     }
 
     @Override
@@ -272,7 +272,7 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
     }
 
     //If updateClass is null, all elements will be updated
-    public synchronized void update(List<? extends SecureElement> overrideElements, Class<? extends SecureElement> updateClass){
+    public void update(List<? extends SecureElement> overrideElements, Class<? extends SecureElement> updateClass){
         List<Item> oldEntries = getEntries();
 
         if(updateClass == null) items.clear();
@@ -288,6 +288,14 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
 
     public void setStateChangeHandler(StateChangeHandler stateChangeHandler){
         this.stateChangeHandler = stateChangeHandler;
+    }
+
+    private void handleSelectionUpdates(long id, BasicViewHolder<?> viewHolder){
+        int realPos = getRealPositionById(id);
+        if(isHeaderPosition(realPos)){
+            ((HeaderViewHolder)viewHolder).onChildSelected(getTracker().hasSelection(), getState(getHeaderByRealPosition(realPos)));
+        }else
+            viewHolder.onBindSelectablePayload(tracker.hasSelection(), tracker.isSelected(id));
     }
 
     private class SelectionStateHandler extends SelectionTracker.SelectionObserver<Long> implements RecyclerView.OnChildAttachStateChangeListener {
@@ -313,7 +321,7 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
             changing = false;
 
             if(stateChangeHandler != null)
-                stateChangeHandler.onStateChanged(key, selected);
+                stateChangeHandler.onStateChanged(getSelectedElements().size());
 
             // Update all items only if the selected item is the first or the last item that gets
             // selected
@@ -344,7 +352,7 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
             if(viewHolder == null)
                 return;
 
-            viewHolder.onBindSelectablePayload(tracker.hasSelection(), tracker.isSelected(id));
+            handleSelectionUpdates(id, viewHolder);
         }
 
         @Override
@@ -370,33 +378,34 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
 
             long headerKey = header.getId();
 
+            int state = getState(header);
 
-            boolean allSelected = getIdsInHeader(header)
-                    .stream()
-                    .allMatch(itemId -> tracker.getSelection().contains(itemId));
+            if(state == MaterialCheckBox.STATE_CHECKED) tracker.select(headerKey);
+            else tracker.deselect(headerKey);
 
-            if(allSelected)
-                tracker.select(headerKey);
-            else
-                tracker.deselect(headerKey);
-
-            List<Long> idsInHeader = getIdsInHeader(header);
-            int count = (int) idsInHeader
-                    .stream()
-                    .filter(itemId -> tracker.getSelection().contains(itemId)).count();
-
-            int state;
-            if(count == 0) state = MaterialCheckBox.STATE_UNCHECKED;
-            else if(count == idsInHeader.size()) state = MaterialCheckBox.STATE_CHECKED;
-            else state = MaterialCheckBox.STATE_INDETERMINATE;
-
-            ((HeaderViewHolder)recyclerView.findViewHolderForItemId(headerKey)).onChildSelected(getTracker().hasSelection(), state);
+            HeaderViewHolder headerViewHolder = ((HeaderViewHolder)recyclerView.findViewHolderForItemId(headerKey));
+            if(headerViewHolder != null)
+                headerViewHolder.onChildSelected(getTracker().hasSelection(), state);
 
             return headerKey;
         }
     }
 
+    private int getState(Header header){
+        List<Long> idsInHeader = getIdsInHeader(header);
+        int count = (int) idsInHeader
+                .stream()
+                .filter(itemId -> tracker.getSelection().contains(itemId)).count();
+
+        int state;
+        if(count == 0) state = MaterialCheckBox.STATE_UNCHECKED;
+        else if(count == idsInHeader.size()) state = MaterialCheckBox.STATE_CHECKED;
+        else state = MaterialCheckBox.STATE_INDETERMINATE;
+
+        return state;
+    }
+
     public interface StateChangeHandler{
-        void onStateChanged(long key, boolean selected);
+        void onStateChanged(int selectedItems);
     }
 }
