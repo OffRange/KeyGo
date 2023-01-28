@@ -6,7 +6,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.database.SecureElementDatabase;
@@ -14,8 +13,6 @@ import de.davis.passwordmanager.security.MasterPassword;
 import de.davis.passwordmanager.ui.MainActivity;
 
 public class LoginActivity extends AppCompatActivity {
-
-    public static final String EXTRA_AUTHENTICATION_HANDLER = "authentication_handler";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

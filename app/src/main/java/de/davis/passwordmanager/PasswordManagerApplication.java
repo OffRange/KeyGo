@@ -5,13 +5,14 @@ import android.app.Application;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
-import android.view.WindowManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
 import com.google.android.material.color.DynamicColors;
+
+import de.davis.passwordmanager.database.SecureElementDatabase;
 
 public class PasswordManagerApplication extends Application {
 
@@ -21,6 +22,7 @@ public class PasswordManagerApplication extends Application {
         DynamicColors.applyToActivitiesIfAvailable(this);
 
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
+
             @RequiresApi(api = Build.VERSION_CODES.O)
             @Override
             public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle savedInstanceState) {
@@ -28,34 +30,26 @@ public class PasswordManagerApplication extends Application {
             }
 
             @Override
-            public void onActivityStarted(@NonNull Activity activity) {
-
-            }
+            public void onActivityStarted(@NonNull Activity activity) {}
 
             @Override
-            public void onActivityResumed(@NonNull Activity activity) {
-
-            }
+            public void onActivityResumed(@NonNull Activity activity) {}
 
             @Override
-            public void onActivityPaused(@NonNull Activity activity) {
-
-            }
+            public void onActivityPaused(@NonNull Activity activity) {}
 
             @Override
-            public void onActivityStopped(@NonNull Activity activity) {
-
-            }
+            public void onActivityStopped(@NonNull Activity activity) {}
 
             @Override
-            public void onActivitySaveInstanceState(@NonNull Activity activity, @NonNull Bundle outState) {
-
-            }
+            public void onActivitySaveInstanceState(@NonNull Activity activity, @NonNull Bundle outState) {}
 
             @Override
-            public void onActivityDestroyed(@NonNull Activity activity) {
-
-            }
+            public void onActivityDestroyed(@NonNull Activity activity) {}
         });
+    }
+
+    public SecureElementDatabase getDatabase(){
+        return SecureElementDatabase.createAndGet(this);
     }
 }

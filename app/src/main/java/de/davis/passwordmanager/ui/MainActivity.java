@@ -9,7 +9,6 @@ import com.google.android.material.tabs.TabLayoutMediator;
 
 import de.davis.passwordmanager.MainFragmentStateAdapter;
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.database.SecureElementDatabase;
 import de.davis.passwordmanager.databinding.ActivityMainBinding;
 
 public class MainActivity extends AppCompatActivity {
@@ -36,9 +35,5 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
-        SecureElementDatabase database = SecureElementDatabase.getInstance();
-        if(database != null)
-            database.close();
     }
 }
