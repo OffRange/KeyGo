@@ -3,17 +3,12 @@ package de.davis.passwordmanager.security;
 import android.content.Context;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.StringRes;
 import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
-import javax.crypto.Cipher;
-
-import de.davis.passwordmanager.Keys;
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.utils.KeyUtil;
 
 public class Authentication {
 

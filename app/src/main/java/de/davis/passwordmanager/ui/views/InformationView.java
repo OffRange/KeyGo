@@ -462,11 +462,11 @@ public class InformationView extends MaterialCardView implements CopyView {
             dest.writeInt(inputType);
             dest.writeInt(secret ? 1 : 0);
             if(drawable instanceof BitmapDrawable)
-                dest.writeParcelable((Bitmap)((BitmapDrawable) drawable).getBitmap(), flags);
+                dest.writeParcelable(((BitmapDrawable) drawable).getBitmap(), flags);
         }
 
         public static final Parcelable.Creator<Details> CREATOR
-                = new Parcelable.Creator<Details>() {
+                = new Parcelable.Creator<>() {
             public Details createFromParcel(Parcel in) {
                 return new Details(in);
             }

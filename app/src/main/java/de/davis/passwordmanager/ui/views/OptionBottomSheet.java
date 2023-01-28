@@ -2,15 +2,9 @@ package de.davis.passwordmanager.ui.views;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import com.google.android.material.bottomsheet.BottomSheetDialog;
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.databinding.MoreBottomSheetContentBinding;

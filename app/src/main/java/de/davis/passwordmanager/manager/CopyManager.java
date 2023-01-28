@@ -4,11 +4,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.view.View;
-import android.widget.TextView;
 import android.widget.Toast;
-
-import java.util.Locale;
-import java.util.stream.Collectors;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.ui.views.copy.CopyView;

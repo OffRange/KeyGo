@@ -1,18 +1,15 @@
 package de.davis.passwordmanager.dashboard.viewholders;
 
 import android.view.View;
-import android.widget.CheckBox;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.recyclerview.selection.ItemDetailsLookup;
 
 import com.google.android.material.checkbox.MaterialCheckBox;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.dashboard.Header;
-import de.davis.passwordmanager.dashboard.viewholders.BasicViewHolder;
 
 public class HeaderViewHolder extends BasicViewHolder<Header> {
 

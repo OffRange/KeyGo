@@ -1,27 +1,19 @@
 package de.davis.passwordmanager.ui.elements;
 
 import android.os.Bundle;
-import android.view.View;
-import android.view.WindowManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.appbar.MaterialToolbar;
-
-import java.io.Serializable;
-import java.util.List;
 
 import de.davis.passwordmanager.Keys;
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.listeners.OnInformationChangedListener;
 import de.davis.passwordmanager.manager.ActivityResultManager;
-import de.davis.passwordmanager.manager.CopyManager;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.security.element.SecureElementDetail;
 import de.davis.passwordmanager.ui.views.InformationView;
-import de.davis.passwordmanager.ui.views.copy.CopyView;
 
 public abstract class ViewSecureElementActivity extends SecureElementActivity {
 

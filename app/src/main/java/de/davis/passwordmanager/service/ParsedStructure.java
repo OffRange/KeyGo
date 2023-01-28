@@ -3,7 +3,6 @@ package de.davis.passwordmanager.service;
 import android.app.assist.AssistStructure;
 import android.content.Context;
 import android.os.Build;
-import android.util.Log;
 import android.view.View;
 import android.view.autofill.AutofillId;
 
@@ -55,7 +54,6 @@ public class ParsedStructure {
         ParsedStructure parsedStructure = new ParsedStructure();
 
         viewNodes.forEach(viewNode -> {
-            Log.d("viewNode", viewNode.getClassName() +" - "+ viewNode.getText() +" - "+ viewNode.getIdEntry() +" - "+ viewNode.getHint() +" - "+ Arrays.toString(viewNode.getAutofillHints()));
             boolean domain = tryWebDomain(parsedStructure, viewNode);
             if (tryByAutoFillHints(parsedStructure, viewNode))
                 return;

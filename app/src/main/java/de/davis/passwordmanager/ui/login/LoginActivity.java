@@ -1,11 +1,11 @@
 package de.davis.passwordmanager.ui.login;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.database.SecureElementDatabase;

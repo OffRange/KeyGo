@@ -7,7 +7,6 @@ import androidx.room.Query;
 import de.davis.passwordmanager.security.MasterPassword;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
-import io.reactivex.rxjava3.core.Single;
 
 @Dao
 public interface MasterPasswordDao {

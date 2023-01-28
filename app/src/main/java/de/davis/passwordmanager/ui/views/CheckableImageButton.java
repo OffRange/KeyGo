@@ -1,16 +1,11 @@
 package de.davis.passwordmanager.ui.views;
 
 import android.content.Context;
-import android.content.res.ColorStateList;
-import android.content.res.Resources;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
-import android.util.Log;
-import android.util.TypedValue;
 import android.widget.Checkable;
 
-import androidx.annotation.AnyRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.content.res.AppCompatResources;
@@ -19,7 +14,6 @@ import androidx.appcompat.widget.AppCompatImageButton;
 import com.google.android.material.color.MaterialColors;
 
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.utils.ResUtil;
 
 public class CheckableImageButton extends AppCompatImageButton implements Checkable {
 

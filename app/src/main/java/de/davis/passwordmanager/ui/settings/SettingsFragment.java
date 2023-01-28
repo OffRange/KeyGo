@@ -6,8 +6,6 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.util.Log;
-import android.view.View;
 import android.view.autofill.AutofillManager;
 import android.widget.Toast;
 
@@ -20,12 +18,6 @@ import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.SwitchPreference;
 
-import com.google.android.gms.common.GoogleApiAvailability;
-import com.google.android.gms.oss.licenses.OssLicensesActivity;
-import com.google.android.gms.oss.licenses.OssLicensesMenuActivity;
-import com.google.android.material.button.MaterialButtonToggleGroup;
-
-import de.davis.passwordmanager.BuildConfig;
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.security.Authentication;
 
