@@ -11,6 +11,7 @@ import com.google.android.material.textfield.TextInputLayout;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.databinding.ActivityViewCreditCardBinding;
+import de.davis.passwordmanager.listeners.OnEndIconClickListener;
 import de.davis.passwordmanager.listeners.OnInformationChangedListener;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.security.element.creditcard.CreditCardDetails;
@@ -35,11 +36,17 @@ public class ViewCreditCardActivity extends ViewSecureElementActivity {
         }));
 
         binding.cardNumber.setInformation(details.getFormattedNumber());
-        binding.cardNumber.setOnEditDialogViewCreatedListener(view ->
-                ((TextInputLayout)view.findViewById(R.id.textInputLayout)).getEditText()
-                        .setFilters(new InputFilter[]{new InputFilter.LengthFilter(16)}));
+        binding.cardNumber.getConfiguration().setInitialTextPolicy(text -> text.replace(" ", ""));
+        binding.cardNumber.setOnEditDialogViewCreatedListener(view -> {
+            TextInputLayout til = view.findViewById(R.id.textInputLayout);
+            EditText et = til.getEditText();
+            et.setFilters(new InputFilter[]{new InputFilter.LengthFilter(16)});
+            et.setKeyListener(DigitsKeyListener.getInstance("0123456789 "));
+            til.setEndIconOnClickListener(new OnEndIconClickListener(til));
+        });
         binding.cardNumber.setOnChangedListener(new OnInformationChangedListener<>(creditCard, (element, changes) -> {
             details.setCardNumber(changes);
+            binding.cardNumber.setInformation(details.getFormattedNumber());
             return details;
         }));
 

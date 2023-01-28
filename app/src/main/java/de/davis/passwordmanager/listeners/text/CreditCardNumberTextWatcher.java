@@ -25,11 +25,6 @@ public class CreditCardNumberTextWatcher implements TextWatcher {
 
         changing = true;
 
-        if(deleting){
-            if(Character.isSpaceChar(s.charAt(s.length()-1)))
-                s.delete(s.length()-1, s.length());
-        }
-
         s.replace(0, s.length(), CreditCardUtil.formatNumber(s.toString()));
 
         changing = false;

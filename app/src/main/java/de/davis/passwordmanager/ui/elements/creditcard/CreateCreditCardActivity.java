@@ -64,7 +64,7 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
         Objects.requireNonNull(binding.textInputLayoutCardDate.getEditText()).addTextChangedListener(new ExpiryDateTextWatcher());
 
         Objects.requireNonNull(binding.textInputLayoutCardNumber.getEditText()).setFilters(new InputFilter[]{new InputFilter.LengthFilter(16)});
-        binding.textInputLayoutCardNumber.setEndIconOnClickListener(new OnEndIconClickListener());
+        binding.textInputLayoutCardNumber.setEndIconOnClickListener(new OnEndIconClickListener(binding.textInputLayoutCardNumber));
 
         nfcManager = new NfcManager(this) {
             @Override

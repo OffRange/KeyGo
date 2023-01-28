@@ -8,18 +8,27 @@ import android.widget.EditText;
 
 import com.google.android.material.textfield.TextInputLayout;
 
+import org.apache.commons.lang3.ArrayUtils;
+
 import de.davis.passwordmanager.listeners.text.CreditCardNumberTextWatcher;
+import de.davis.passwordmanager.ui.views.CheckableImageButton;
 
 public class OnEndIconClickListener implements View.OnClickListener {
 
     private final TextWatcher numberWatcher = new CreditCardNumberTextWatcher();
 
+    private final TextInputLayout textInputLayout;
+
+    public OnEndIconClickListener(TextInputLayout textInputLayout) {
+        this.textInputLayout = textInputLayout;
+    }
+
     @Override
     public void onClick(View v) {
-        if(!(v instanceof TextInputLayout))
+        if(!(v instanceof com.google.android.material.internal.CheckableImageButton)
+                && !(v instanceof CheckableImageButton))
             return;
 
-        TextInputLayout textInputLayout = (TextInputLayout) v;
         EditText editText = textInputLayout.getEditText();
         if(editText == null)
             return;
@@ -45,11 +54,17 @@ public class OnEndIconClickListener implements View.OnClickListener {
         InputFilter[] filters = editText.getFilters();
         InputFilter filter = new InputFilter.LengthFilter(max);
         if(filters != null){
+            boolean replaced = false;
             for (int i = 0; i < filters.length; i++) {
                 if(filters[i] instanceof InputFilter.LengthFilter){
                     filters[i] = filter;
+                    replaced = true;
+                    break;
                 }
             }
+
+            if(!replaced)
+                filters = ArrayUtils.add(filters, filter);
         }else
             filters = new InputFilter[]{filter};
 
