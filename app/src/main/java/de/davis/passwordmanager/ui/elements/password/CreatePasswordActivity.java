@@ -69,12 +69,13 @@ public class CreatePasswordActivity extends CreateSecureElementActivity {
 
 
         if(result.isSuccess())
-            result.setElement(toPassword());
+            result.setElement(toElement());
 
         return result;
     }
 
-    private SecureElement toPassword(){
+    @Override
+    protected SecureElement toElement(){
         String title = Objects.requireNonNull(binding.textInputLayoutTitle.getEditText()).getText().toString();
         String password = Objects.requireNonNull(binding.textInputLayoutPassword.getEditText()).getText().toString();
         String user = Objects.requireNonNull(binding.textInputLayoutUsername.getEditText()).getText().toString();

@@ -2,20 +2,19 @@ package de.davis.passwordmanager.ui.elements;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.WindowManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
 
 import de.davis.passwordmanager.Keys;
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.security.element.SecureElement;
 
 public abstract class CreateSecureElementActivity extends SecureElementActivity {
+
+    private static final String ELEMENT = "element";
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -46,7 +45,26 @@ public abstract class CreateSecureElementActivity extends SecureElementActivity 
         return true;
     }
 
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putSerializable(ELEMENT, toElement());
+    }
+
+    @Override
+    protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+
+        SecureElement element = savedInstanceState.getParcelable(ELEMENT, SecureElement.class);
+        if(element == null)
+            return;
+
+        fillInElement(element);
+    }
+
     public abstract Result check();
+
+    protected abstract SecureElement toElement();
 
     public static class Result {
 

@@ -187,6 +187,18 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
         if(!result.isSuccess())
             return result;
 
+
+        result.setElement(toElement());
+        return result;
+    }
+
+    @Override
+    protected SecureElement toElement() {
+        String title = Objects.requireNonNull(binding.textInputLayoutTitle.getEditText()).getText().toString().trim();
+        String creditCardNumber = Objects.requireNonNull(binding.textInputLayoutCardNumber.getEditText()).getText().toString().trim();
+        String expiryDate = Objects.requireNonNull(binding.textInputLayoutCardDate.getEditText()).getText().toString().trim();
+        String cvv = Objects.requireNonNull(binding.textInputLayoutCardCVV.getEditText()).getText().toString().trim();
+
         Name name = Name.fromFullName(Objects.requireNonNull(binding.textInputLayoutUsername.getEditText()).getText().toString());
 
         CreditCardDetails details = new CreditCardDetails(name, expiryDate, creditCardNumber, cvv);
@@ -196,8 +208,7 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
         card.setTitle(title);
         card.encrypt(details);
 
-        result.setElement(card);
-        return result;
+        return card;
     }
 
     private void insertCard(EmvCard card){
