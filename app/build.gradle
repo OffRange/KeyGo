@@ -1,0 +1,125 @@
+plugins {
+    id 'com.android.application'
+    id 'com.google.android.gms.oss-licenses-plugin'
+}
+
+android {
+    compileSdk 33
+
+    def versionPropsFile = file("version.properties")
+    def versionMayor, versionMinor, versionPatch, versionBuild, versionCodeProp, versionSuffix
+    def versionAlphaSuffix = "1"
+    Properties versionProps = new Properties()
+    if (!versionPropsFile.exists()) {
+        versionProps["VERSION_MAYOR"] = "1"
+        versionProps["VERSION_MINOR"] = "0"
+        versionProps["VERSION_PATCH"] = "0"
+        versionProps["VERSION_BUILD"] = "0"
+        versionProps["VERSION_CODE"] = "1"
+        versionProps["VERSION_SUFFIX"] = "release"
+
+        versionProps.store(versionPropsFile.newWriter(), null)
+    }
+
+    def runTasks = gradle.startParameter.taskNames
+    def value = 0
+    if (runTasks.stream().anyMatch(s -> s.contains("assembleRelease"))) {
+        value = 1
+    }
+
+    if (versionPropsFile.canRead()) {
+        if (true || runTasks.stream().anyMatch(s -> s.contains("assembleRelease") || s.contains("assembleDebug"))) {
+
+            versionProps.load(new FileInputStream(versionPropsFile))
+
+            versionMayor = versionProps['VERSION_MAYOR'].toInteger()
+            versionMinor = versionProps['VERSION_MINOR'].toInteger()
+            versionPatch = versionProps['VERSION_PATCH'].toInteger()
+            versionBuild = versionProps['VERSION_BUILD'].toInteger() + 1
+            versionCodeProp = versionProps['VERSION_CODE'].toInteger() + value
+            if(runTasks.stream().anyMatch(s -> s.contains("assembleRelease"))){
+                versionSuffix = "release"
+            }else
+                versionSuffix = "debug"
+
+            versionProps['VERSION_MAYOR'] = versionMayor.toString()
+            versionProps['VERSION_MINOR'] = versionMinor.toString()
+            versionProps['VERSION_PATCH'] = versionPatch.toString()
+            versionProps['VERSION_BUILD'] = versionBuild.toString()
+            versionProps['VERSION_CODE'] = versionCodeProp.toString()
+            versionProps['VERSION_SUFFIX'] = versionSuffix.toString()
+            versionProps.store(versionPropsFile.newWriter(), null)
+
+        }
+    } else {
+        throw new FileNotFoundException("Could not read version.properties!")
+    }
+
+    defaultConfig {
+        applicationId "de.davis.passwordmanager"
+        minSdk 23
+        targetSdk 33
+        versionCode versionCodeProp
+        versionName "v${versionMayor}.${versionMinor}.${versionPatch} ${versionBuild}"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            minifyEnabled true
+        }
+
+        debug{
+            minifyEnabled true
+        }
+
+        //TODO delete
+        alpha{
+            initWith release
+            versionNameSuffix "[alpha${versionAlphaSuffix}]"
+        }
+    }
+    compileOptions {
+        coreLibraryDesugaringEnabled true  //<-- did not work for SelectionTracker#getSelection()#spliterator() try with desugar_jdk_libs 2.0.0 again
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    buildFeatures {
+        viewBinding true
+    }
+    namespace 'de.davis.passwordmanager'
+}
+
+dependencies {
+
+    implementation 'androidx.appcompat:appcompat:1.6.0'
+    implementation 'com.google.android.material:material:1.7.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.0'
+
+    implementation 'com.google.android.gms:play-services-oss-licenses:17.0.0'
+    implementation 'com.google.code.gson:gson:2.10'
+    implementation 'androidx.recyclerview:recyclerview-selection:1.1.0'
+    implementation 'androidx.navigation:navigation-fragment:2.5.3'
+    implementation 'androidx.navigation:navigation-ui:2.5.3'
+    implementation 'androidx.preference:preference:1.2.0'
+    implementation 'androidx.biometric:biometric:1.1.0'
+    implementation 'androidx.browser:browser:1.4.0'
+    implementation 'me.gosimple:nbvcxz:1.5.0'
+    implementation 'at.favre.lib:bcrypt:0.9.0'
+    implementation 'com.github.alvinhkh:TextDrawable:558677ea31'
+    implementation 'com.github.devnied.emvnfccard:library:3.0.1'
+    implementation 'net.grey-panther:natural-comparator:1.1'
+
+    implementation "androidx.room:room-runtime:2.5.0"
+    annotationProcessor "androidx.room:room-compiler:2.5.0"
+    implementation "androidx.room:room-rxjava3:2.5.0"
+
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+}
