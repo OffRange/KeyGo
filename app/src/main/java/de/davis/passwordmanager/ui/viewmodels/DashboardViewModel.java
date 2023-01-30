@@ -23,13 +23,12 @@ public class DashboardViewModel extends ViewModel {
     private static final String QUERY = "query";
 
     private final LiveData<List<SecureElement>> elements;
-    private final MutableLiveData<String> query = new MutableLiveData<>();
     private final SavedStateHandle savedStateHandle;
 
     public DashboardViewModel(DashboardRepo dashboardRepo, SavedStateHandle savedStateHandle) {
         this.savedStateHandle = savedStateHandle;
 
-        this.elements = Transformations.switchMap(query, input -> {
+        this.elements = Transformations.switchMap(savedStateHandle.getLiveData(QUERY, ""), input -> {
             if(TextUtils.isEmpty(input))
                 return dashboardRepo.getElements();
 
@@ -42,7 +41,6 @@ public class DashboardViewModel extends ViewModel {
     }
 
     public void filter(String query){
-        this.query.setValue(query);
         savedStateHandle.set(QUERY, query);
     }
 
