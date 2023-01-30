@@ -56,7 +56,6 @@ public class GeneratePasswordActivity extends AppCompatActivity implements Slide
         super.onCreate(savedInstanceState);
         binding = ActivityGeneratePasswordBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
 
         try {
             words = AssetsUtil.open("30k.txt", this);

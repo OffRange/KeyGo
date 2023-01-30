@@ -27,6 +27,7 @@ public class PasswordManagerApplication extends Application {
             @Override
             public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle savedInstanceState) {
                 activity.getWindow().getDecorView().setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
+                activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
             }
 
             @Override

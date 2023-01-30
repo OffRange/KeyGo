@@ -19,7 +19,6 @@ public abstract class SecureElementActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(getContentView());
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
 
         Bundle extras = getIntent().getExtras();
         if(extras == null || !extras.containsKey(Keys.KEY_OLD))

@@ -21,7 +21,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         ActivityMainBinding binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
 
         MainFragmentStateAdapter adapter = new MainFragmentStateAdapter(this);
         binding.viewPager2.setAdapter(adapter);
