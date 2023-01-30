@@ -5,6 +5,7 @@ import android.app.Application;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.view.WindowManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -13,6 +14,9 @@ import androidx.annotation.RequiresApi;
 import com.google.android.material.color.DynamicColors;
 
 import de.davis.passwordmanager.database.SecureElementDatabase;
+import de.davis.passwordmanager.ui.login.LoginActivity;
+import de.davis.passwordmanager.utils.PreferenceUtil;
+import de.davis.passwordmanager.utils.TimeoutUtil;
 
 public class PasswordManagerApplication extends Application {
 
@@ -22,6 +26,9 @@ public class PasswordManagerApplication extends Application {
         DynamicColors.applyToActivitiesIfAvailable(this);
 
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
+
+            final TimeoutUtil timeoutUtil = new TimeoutUtil();
+            Activity lastPaused;
 
             @RequiresApi(api = Build.VERSION_CODES.O)
             @Override
@@ -34,10 +41,30 @@ public class PasswordManagerApplication extends Application {
             public void onActivityStarted(@NonNull Activity activity) {}
 
             @Override
-            public void onActivityResumed(@NonNull Activity activity) {}
+            public void onActivityResumed(@NonNull Activity activity) {
+                if(lastPaused == null){
+                    timeoutUtil.initiateDelay();
+                    return;
+                }
+
+                if(lastPaused != activity)
+                    return;
+
+                timeoutUtil.initiateDelay();
+                long time = PreferenceUtil.getTimeForNewAuthentication(activity);
+                if(time < 0)
+                    return;
+
+                if(time == Long.MAX_VALUE || timeoutUtil.delayMet(time * 60000)) {
+                    activity.startActivity(LoginActivity.getIntentForAuthentication(activity, activity.getIntent()));
+                    activity.finish();
+                }
+            }
 
             @Override
-            public void onActivityPaused(@NonNull Activity activity) {}
+            public void onActivityPaused(@NonNull Activity activity) {
+                lastPaused = activity;
+            }
 
             @Override
             public void onActivityStopped(@NonNull Activity activity) {}

@@ -22,6 +22,15 @@
 
     <string name="authenticate">Authenticate</string>
 
+    <string name="time_for_reauthentication">Reauthentication</string>
+    <string name="time_disabled">" Never force re-authentication"</string>
+    <string name="time_every_time">Require re-authentication each time</string>
+
+    <plurals name="time_x_minute">
+        <item quantity="one">Force a new authentication after %d minute</item>
+        <item quantity="other">Force a new authentication after %d minutes</item>
+    </plurals>
+
     <string name="enable_fingerprint_authentication">Enable fingerprint authentication</string>
     <string name="authentication_title">Authentication</string>
     <string name="authentication_description">Hold your finger against the fingerprint sensor.</string>

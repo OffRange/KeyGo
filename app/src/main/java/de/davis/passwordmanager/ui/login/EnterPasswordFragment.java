@@ -51,6 +51,13 @@ public class EnterPasswordFragment extends Fragment {
                         return new Intent().putExtra(EXTRA_AUTHENTICATION_RESULT, new Response(getContext(), ParsedStructure.parse(structure, requireContext())).createRealResponse());
 
                 }
+
+                Intent intent = requireActivity().getIntent().getParcelableExtra(getString(R.string.authentication_destination));
+                if(intent != null){
+                    startActivity(intent);
+                    return null;
+                }
+
                 startActivity(new Intent(getContext(), MainActivity.class));
                 return null;
             }

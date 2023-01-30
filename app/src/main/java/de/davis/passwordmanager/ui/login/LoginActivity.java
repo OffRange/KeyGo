@@ -41,8 +41,15 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     public static Intent getIntentForAuthentication(@NonNull Context context){
+        return getIntentForAuthentication(context, null);
+    }
+
+    public static Intent getIntentForAuthentication(@NonNull Context context, Intent destActivity){
         Intent intent = new Intent(context, LoginActivity.class);
         intent.putExtra(context.getString(R.string.preference_authenticate_only), true);
+
+        if(destActivity != null)
+            intent.putExtra(context.getString(R.string.authentication_destination), destActivity);
 
         return intent;
     }

@@ -16,6 +16,7 @@ import androidx.annotation.RequiresApi;
 import androidx.biometric.BiometricPrompt;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.SeekBarPreference;
 import androidx.preference.SwitchPreference;
 
 import de.davis.passwordmanager.R;
@@ -58,6 +59,37 @@ public class SettingsFragment extends PreferenceFragmentCompat {
             findPreference(getString(R.string.build)).setSummary(packageInfo.versionName);
         } catch (PackageManager.NameNotFoundException e) {
             e.printStackTrace();
+        }
+
+        SeekBarPreference seekBarPreference = findPreference(getString(R.string.preference_reauthenticate));
+        seekBarPreference.setOnPreferenceChangeListener((preference, newValue) -> {
+            setSummaryForNewAuthentication(preference, (int) newValue);
+            return true;
+        });
+        setSummaryForNewAuthentication(seekBarPreference, seekBarPreference.getValue());
+    }
+
+    private void setSummaryForNewAuthentication(Preference preference, int newValue){
+        switch (newValue){
+            case 0:
+                preference.setSummary(R.string.time_disabled);
+                break;
+            case 5:
+                preference.setSummary(R.string.time_every_time);
+                break;
+            default:
+                preference.setSummary(getResources().getQuantityString(R.plurals.time_x_minute, (int) Math.pow(2, newValue), (int)Math.pow(2, newValue)));
+        }
+    }
+
+    public static long getTime(int index){
+        switch (index){
+            case 0:
+                return -1;
+            case 5:
+                return Long.MAX_VALUE;
+            default:
+                return (long) Math.pow(2, index);
         }
     }
 

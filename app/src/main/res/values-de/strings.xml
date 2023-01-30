@@ -14,6 +14,9 @@
     <string name="expiration_date">Ablaufdatum</string>
     <string name="expiration_date_placeholder">MM/JJ</string>
     <string name="authenticate">Authentifizieren</string>
+    <string name="time_for_reauthentication">Erneute Authentifizierung</string>
+    <string name="time_disabled">Niemals eine erneute Authentifizierung erzwingen</string>
+    <string name="time_every_time">Jedes Mal eine erneute Authentifizierung erzwingen</string>
     <string name="enable_fingerprint_authentication">Authentifizierung per Fingerabdruck</string>
     <string name="authentication_title">Authentifikation</string>
     <string name="authentication_description">Halte deinen Finger gegen den Sensor.</string>
