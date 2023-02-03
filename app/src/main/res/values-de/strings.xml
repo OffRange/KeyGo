@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="your_dashboard">Dein Dashboard</string>
     <string name="change_master_password">Master Passwort ändern</string>
     <string name="master_password_changed">Master Passwort erfolgreich geändert</string>
     <string name="passphrase">Passphrase</string>
@@ -55,8 +54,6 @@
     <string name="password_information">Passwort informationen</string>
     <string name="credit_card_information">Kreditkarten informationen</string>
     <string name="login_information">Login information</string>
-    <string name="optional">Optional</string>
-    <string name="required">erforderlich</string>
     <string name="star_required">*erforderlich</string>
     <string name="options">Optionen</string>
     <string name="enable">Aktivieren</string>
@@ -71,7 +68,6 @@
     <string name="content_description_add_password">Passwort hinzufügen button</string>
     <string name="third_party_dependencies">"Drittanbieter Software "</string>
     <string name="regenerate">Regenerieren</string>
-    <string name="use">Benutzen</string>
     <string name="use_digits">Zahlen verwenden</string>
     <string name="use_uppercase_letters">Großbuchstaben verwenden</string>
     <string name="use_lowercase_letters">Kleinbuchstaben verwenden</string>
@@ -86,7 +82,6 @@
     <string name="nfc_enable">Aktivieren Sie NFC an Ihrem Gerät</string>
     <string name="nfc_success">Karteninformationen erfolgreich gescannt</string>
     <string name="developer">Entwickler</string>
-    <string name="filter">Filter</string>
     <string name="instruction_activate_autofill">Gehen Sie zu den <b>Einstellungen</b> > suchen Sie nach <b>\"Automatisches Ausfillen\"</b> > <b>wählen Sie einen Service aus</b></string>
     <string name="autofill_service">Automatisches Einfügen (beta)</string>
     <string name="features">Features</string>

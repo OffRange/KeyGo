@@ -2,7 +2,6 @@
     tools:locale="en">
     <string name="app_name" translatable="false">Password Manager</string>
 
-    <string name="your_dashboard">Your Dashboard</string>
     <string name="selected_items">%d selected</string>
 
     <string name="change_master_password">Change master password</string>
@@ -81,8 +80,6 @@
     <string name="login_information">Login information</string>
 
 
-    <string name="optional">Optional</string>
-    <string name="required">required</string>
     <string name="star_required">*required</string>
 
     <string name="options">Options</string>
@@ -106,7 +103,6 @@
     <string name="third_party_dependencies">Third-Party Dependencies</string>
 
     <string name="regenerate">Regenerate</string>
-    <string name="use">Use</string>
 
     <string name="use_digits">Use digits</string>
     <string name="use_uppercase_letters">Use uppercase letters</string>
@@ -132,13 +128,6 @@
     <string name="instruction_activate_autofill">Go to <b>Settings</b> > Search for <b>\"autofill service\"</b> > <b>choose this app as the service</b></string>
 
     <string name="authentication_required">Authentication Required</string>
-
-    <string name="filter">Filter</string>
-    <string-array name="filter_items">
-        <item>@string/title</item>
-        <item>@string/password</item>
-        <item>@string/credit_card</item>
-    </string-array>
 
     <string name="path_password_eye" tools:override="true" translatable="false">M12,4.5C7,4.5 2.73,7.61 1,12c1.73,4.39 6,7.5 11,7.5s9.27,-3.11 11,-7.5c-1.73,-4.39 -6,-7.5 -11,-7.5zM12,17c-2.76,0 -5,-2.24 -5,-5s2.24,-5 5,-5 5,2.24 5,5 -2.24,5 -5,5zM12,9c-1.66,0 -3,1.34 -3,3s1.34,3 3,3 3,-1.34 3,-3 -1.34,-3 -3,-3z</string>
     <string name="path_password_eye_mask_strike_through" tools:override="true" translatable="false">M2,4.27 L19.73,22 L22.27,19.46 L4.54,1.73 L4.54,1 L23,1 L23,23 L1,23 L1,4.27 Z</string>
