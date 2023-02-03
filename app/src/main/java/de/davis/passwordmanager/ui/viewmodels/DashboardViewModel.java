@@ -6,7 +6,6 @@ import static androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.APPLI
 import android.text.TextUtils;
 
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.SavedStateHandle;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
@@ -22,13 +21,16 @@ public class DashboardViewModel extends ViewModel {
 
     private static final String QUERY = "query";
 
-    private final LiveData<List<SecureElement>> elements;
+    private final LiveData<List<SecureElement>> filteredList;
     private final SavedStateHandle savedStateHandle;
+
+    private final DashboardRepo dashboardRepo;
 
     public DashboardViewModel(DashboardRepo dashboardRepo, SavedStateHandle savedStateHandle) {
         this.savedStateHandle = savedStateHandle;
+        this.dashboardRepo = dashboardRepo;
 
-        this.elements = Transformations.switchMap(savedStateHandle.getLiveData(QUERY, ""), input -> {
+        this.filteredList = Transformations.switchMap(savedStateHandle.getLiveData(QUERY, ""), input -> {
             if(TextUtils.isEmpty(input))
                 return dashboardRepo.getElements();
 
@@ -37,11 +39,15 @@ public class DashboardViewModel extends ViewModel {
     }
 
     public LiveData<List<SecureElement>> getElements() {
-        return elements;
+        return dashboardRepo.getElements();
     }
 
     public void filter(String query){
         savedStateHandle.set(QUERY, query);
+    }
+
+    public LiveData<List<SecureElement>> getFiltered(){
+        return filteredList;
     }
 
     public String getQuery(){

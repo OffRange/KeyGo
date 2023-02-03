@@ -3,13 +3,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
-        android:id="@+id/menu_search"
-        android:icon="@drawable/ic_baseline_search_24"
-        android:title="@android:string/search_go"
-        app:actionViewClass="androidx.appcompat.widget.SearchView"
-        app:showAsAction="ifRoom" />
-
-    <item
         android:id="@+id/more"
         android:icon="@drawable/ic_baseline_more_vert_24"
         android:title="@string/more"

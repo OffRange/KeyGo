@@ -1,7 +1,6 @@
 package de.davis.passwordmanager.ui;
 
 import android.os.Bundle;
-import android.view.WindowManager;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -15,6 +14,8 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int[] TAB_NAMES = {R.string.dashboard, R.string.settings};
     private static final int[] TAB_ICONS = {R.drawable.ic_baseline_dashboard_24, R.drawable.ic_baseline_settings_24};
+
+    private OnBackPressedListener onBackPressedListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,7 +33,23 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    public void onBackPressed() {
+        if(onBackPressedListener == null || !onBackPressedListener.onBackPressed()) {
+            super.onBackPressed();
+        }
+    }
+
+    public void setOnBackPressedListener(OnBackPressedListener onBackPressedListener) {
+        this.onBackPressedListener = onBackPressedListener;
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
+    }
+
+
+    public interface OnBackPressedListener {
+        boolean onBackPressed();
     }
 }
