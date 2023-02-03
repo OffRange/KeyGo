@@ -13,5 +13,5 @@ An secure Android password manager that stors passwords and credit card details 
 ## Available On
 |Platform|Status|
 |--------|------|
-|GitHub|Available|
+|GitHub|In development|
 |Google Play Store|Planned|
