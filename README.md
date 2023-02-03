@@ -1,6 +1,6 @@
 # Password Manager
 ![repository-open-graph-template (1)](https://user-images.githubusercontent.com/42292083/216689148-2b5269a9-5cf5-401b-b34a-a4a24e8aa860.png)
-An secure Android password manager that stors passwords and credit card details encrypted on a local android device.
+A secure, open-source Android password manager that stores passwords and credit card information encrypted on a local device
 
 ## Features
 + Store passwords and credit card information
@@ -13,5 +13,5 @@ An secure Android password manager that stors passwords and credit card details 
 ## Available On
 |Platform|Status|
 |--------|------|
-|GitHub|Available|
+|GitHub|In development|
 |Google Play Store|Planned|
