@@ -13,6 +13,15 @@
             app:icon="?android:attr/fingerprintAuthDrawable"
             android:widgetLayout="@layout/switch_layout" />
 
+        <SeekBarPreference
+            android:key="@string/preference_reauthenticate"
+            android:title="@string/time_for_reauthentication"
+            android:max="5"
+            app:min="0"
+            app:defaultValue="5"
+            android:defaultValue="2"
+            app:updatesContinuously="true"/>
+
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/features">
