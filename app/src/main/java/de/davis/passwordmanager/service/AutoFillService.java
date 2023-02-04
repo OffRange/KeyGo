@@ -29,6 +29,11 @@ public class AutoFillService extends AutofillService {
     public void onFillRequest(@NonNull FillRequest request, @NonNull CancellationSignal cancellationSignal, @NonNull FillCallback callback) {
         List<FillContext> contexts = request.getFillContexts();
         AssistStructure structure = contexts.get(contexts.size() -1).getStructure();
+        if(structure.getActivityComponent().getPackageName().equals(getPackageName())) {
+            callback.onFailure("own package");
+            return;
+        }
+
         ParsedStructure parsedStructure = ParsedStructure.parse(structure, this);
 
         if(parsedStructure.isEmpty()){
