@@ -1,7 +1,6 @@
 package de.davis.passwordmanager.ui;
 
 import android.content.Context;
-import android.os.Build;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextUtils;
@@ -111,7 +110,7 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
     }
 
     public boolean onBackPressed(){
-        return binding.searchBar.collapse(binding.searchView, binding.appbarLayout);
+        return binding.searchView.isShowing() && binding.searchBar.collapse(binding.searchView, binding.appbarLayout);
     }
 
     public static class ScrollingViewBehavior extends AppBarLayout.ScrollingViewBehavior {
@@ -131,12 +130,12 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
             if (!initialized && dependency instanceof AppBarLayout) {
                 initialized = true;
                 AppBarLayout appBarLayout = (AppBarLayout) dependency;
-                setAppBarLayoutTransparent(appBarLayout);
+                setAppBarLayoutColor(appBarLayout);
             }
             return changed;
         }
 
-        private void setAppBarLayoutTransparent(AppBarLayout appBarLayout) {
+        private void setAppBarLayoutColor(AppBarLayout appBarLayout) {
             appBarLayout.setBackgroundColor(MaterialColors.getColor(appBarLayout, com.google.android.material.R.attr.colorSurface));
 
             // Remove AppBarLayout elevation shadow
