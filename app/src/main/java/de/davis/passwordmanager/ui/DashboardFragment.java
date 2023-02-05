@@ -28,7 +28,7 @@ import com.google.android.material.color.MaterialColors;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.dashboard.DashboardAdapter;
-import de.davis.passwordmanager.databinding.FragmentViewBinding;
+import de.davis.passwordmanager.databinding.FragmentDashboardBinding;
 import de.davis.passwordmanager.manager.ActivityResultManager;
 import de.davis.passwordmanager.security.element.SecureElementManager;
 import de.davis.passwordmanager.ui.viewmodels.DashboardViewModel;
@@ -37,7 +37,7 @@ import de.davis.passwordmanager.ui.views.OptionBottomSheet;
 
 public class DashboardFragment extends Fragment implements SearchView.OnQueryTextListener {
 
-    private FragmentViewBinding binding;
+    private FragmentDashboardBinding binding;
 
     private DashboardViewModel viewModel;
 
@@ -46,7 +46,7 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        binding = FragmentViewBinding.inflate(inflater, container, false);
+        binding = FragmentDashboardBinding.inflate(inflater, container, false);
         binding.recyclerView.setHasFixedSize(true);
 
         SecureElementManager manager = SecureElementManager.createNew(m -> {
