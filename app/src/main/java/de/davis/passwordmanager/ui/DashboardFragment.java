@@ -92,7 +92,7 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
                 menuInflater.inflate(R.menu.view_menu, menu);
                 manager.getAdapter().setStateChangeHandler(selectedItems -> {
                     menu.findItem(R.id.more).setVisible(selectedItems > 0);
-                    binding.searchBar.setText(selectedItems > 0 ? getString(R.string.selected_items, selectedItems) : getString(android.R.string.search_go));
+                    binding.searchBar.setHint(selectedItems > 0 ? getString(R.string.selected_items, selectedItems) : getString(android.R.string.search_go));
                 });
             }
 
