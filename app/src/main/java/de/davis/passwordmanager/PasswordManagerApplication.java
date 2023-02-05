@@ -30,11 +30,12 @@ public class PasswordManagerApplication extends Application {
             final TimeoutUtil timeoutUtil = new TimeoutUtil();
             Activity lastPaused;
 
-            @RequiresApi(api = Build.VERSION_CODES.O)
             @Override
             public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle savedInstanceState) {
-                activity.getWindow().getDecorView().setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
                 activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    activity.getWindow().getDecorView().setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
+                }
             }
 
             @Override
