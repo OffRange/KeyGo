@@ -110,7 +110,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                 return true;
             });
         }
-        else autofill.setEnabled(false);
+        else autofill.getParent().setVisible(false);
     }
 
     @ChecksSdkIntAtLeast(api = 26)
