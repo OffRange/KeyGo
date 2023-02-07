@@ -3,6 +3,7 @@ package de.davis.passwordmanager.ui.settings;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -14,6 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.biometric.BiometricPrompt;
+import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.SeekBarPreference;
@@ -23,6 +25,8 @@ import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.security.Authentication;
 
 public class SettingsFragment extends PreferenceFragmentCompat {
+
+    private static final Uri URI = Uri.parse("https://github.com/OffRange/PasswordManager/issues/new/choose");
 
     @SuppressWarnings("ConstantConditions")
     @Override
@@ -67,6 +71,11 @@ public class SettingsFragment extends PreferenceFragmentCompat {
             return true;
         });
         setSummaryForNewAuthentication(seekBarPreference, seekBarPreference.getValue());
+
+        Preference report = findPreference(getString(R.string.report));
+        CustomTabsIntent intent = new CustomTabsIntent.Builder().setShowTitle(true).build();
+        intent.intent.setData(URI);
+        report.setIntent(intent.intent);
     }
 
     private void setSummaryForNewAuthentication(Preference preference, int newValue){

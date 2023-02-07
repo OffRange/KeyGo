@@ -135,4 +135,6 @@
     <string name="path_password_strike_through" tools:override="true" translatable="false">M3.27,4.27 L19.74,20.74</string>
     <string name="no_results_found">No results found</string>
     <string name="nfc_information">NFC information</string>
+    <string name="report">Report an issue</string>
+    <string name="report_summary">Report a bug or request a feature on GitHub</string>
 </resources>
