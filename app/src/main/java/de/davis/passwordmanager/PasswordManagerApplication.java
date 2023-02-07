@@ -47,6 +47,8 @@ public class PasswordManagerApplication extends Application {
                     return;
                 }
 
+                // If activities are the same, the app was paused and a re-authentication check is
+                // performed
                 if(lastPaused != activity)
                     return;
 
