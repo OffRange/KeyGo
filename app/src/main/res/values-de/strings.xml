@@ -88,6 +88,7 @@
     <string name="authentication_required">Authentifizierung erforderlich</string>
     <string name="selected_items">%d ausgewählt</string>
     <string name="no_results_found">Keine Ergebnisse gefunden</string>
+    <string name="nfc_information">NFC Information</string>
 
     <plurals name="time_x_minute">
         <item quantity="one">Nach einer Minute wird eine erneute Authentifizierung erzwungen</item>

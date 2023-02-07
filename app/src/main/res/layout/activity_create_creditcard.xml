@@ -36,7 +36,7 @@
             android:id="@+id/nfc"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:title="nfc_information"
+            app:title="@string/nfc_information"
             app:information="@string/nfc_listening"
             app:multiline="true"
             android:icon="@drawable/ic_baseline_contactless_24">
