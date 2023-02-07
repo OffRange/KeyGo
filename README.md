@@ -3,12 +3,12 @@
 A secure, open-source Android password manager that stores passwords and credit card information encrypted on a local device
 
 ## Features
-+ Store passwords and credit card information
++ Store Passwords and Credit Card information
 + Generate secure Passwords and Passphrases
 + Estimate the Password Strength with [nbvcxz](https://github.com/GoSimpleLLC/nbvcxz)
 + AES-Encryption on your local device
 + Autofill feature for easy input
-+ Support for Material 3 and Dynamic Color (Android 12+ required)
++ Supports Material 3 and Dynamic Color (Android 12+ required)
 
 ## Available On
 |Platform|Status|
