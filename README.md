@@ -14,4 +14,4 @@ A secure, open-source Android password manager that stores passwords and credit 
 |Platform|Status|
 |--------|------|
 |GitHub|In development|
-|Google Play Store|Planned|
+|Google Play Store|Planned for July/August 2023|
