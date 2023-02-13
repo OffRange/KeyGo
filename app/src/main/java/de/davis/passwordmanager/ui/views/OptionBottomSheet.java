@@ -15,8 +15,6 @@ import de.davis.passwordmanager.ui.DashboardFragment;
 
 public class OptionBottomSheet extends BottomSheetDialog {
 
-    private MoreBottomSheetContentBinding binding;
-
     private final SecureElement element;
 
     public OptionBottomSheet(Context context, SecureElement element) {
@@ -27,7 +25,7 @@ public class OptionBottomSheet extends BottomSheetDialog {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        binding = MoreBottomSheetContentBinding.inflate(getLayoutInflater());
+        MoreBottomSheetContentBinding binding = MoreBottomSheetContentBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
         binding.title.setText(element == null ? getContext().getString(R.string.options) : element.getTitle());

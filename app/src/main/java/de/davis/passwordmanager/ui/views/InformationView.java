@@ -1,5 +1,6 @@
 package de.davis.passwordmanager.ui.views;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
@@ -186,6 +187,7 @@ public class InformationView extends MaterialCardView implements CopyView {
         return findViewById(R.id.container);
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if(isMoving)

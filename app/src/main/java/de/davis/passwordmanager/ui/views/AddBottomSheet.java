@@ -17,12 +17,10 @@ import de.davis.passwordmanager.ui.DashboardFragment;
 
 public class AddBottomSheet extends BottomSheetDialogFragment {
 
-    private AddBottomSheetContentBinding binding;
-
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        binding = AddBottomSheetContentBinding.inflate(inflater, container, false);
+        AddBottomSheetContentBinding binding = AddBottomSheetContentBinding.inflate(inflater, container, false);
 
         for (SecureElementDetail detail : SecureElementDetail.getRegisteredDetails().values()){
             AddButton btn = new AddButton(requireContext());

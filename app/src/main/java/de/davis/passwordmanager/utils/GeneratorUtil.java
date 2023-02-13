@@ -35,7 +35,7 @@ public class GeneratorUtil {
     @Retention(RetentionPolicy.SOURCE)
     public @interface Types{}
 
-    static SparseArray<List<Character>> replacements = new SparseArray<>();
+    static final SparseArray<List<Character>> replacements = new SparseArray<>();
 
     static {
         replacements.put('a', List.of('4'));
