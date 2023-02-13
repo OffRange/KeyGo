@@ -95,7 +95,7 @@ android {
 
 dependencies {
 
-    implementation 'androidx.appcompat:appcompat:1.6.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.8.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 
@@ -108,7 +108,7 @@ dependencies {
     implementation 'androidx.navigation:navigation-ui:2.5.3'
     implementation 'androidx.preference:preference:1.2.0'
     implementation 'androidx.biometric:biometric:1.1.0'
-    implementation 'androidx.browser:browser:1.4.0'
+    implementation 'androidx.browser:browser:1.5.0'
     implementation 'me.gosimple:nbvcxz:1.5.1'
     implementation 'at.favre.lib:bcrypt:0.9.0'
     implementation 'com.github.alvinhkh:TextDrawable:558677ea31'
