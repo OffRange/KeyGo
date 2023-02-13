@@ -8,7 +8,6 @@ android {
 
     def versionPropsFile = file("version.properties")
     def versionMayor, versionMinor, versionPatch, versionBuild, versionCodeProp, versionSuffix
-    def versionAlphaSuffix = "1"
     Properties versionProps = new Properties()
     if (!versionPropsFile.exists()) {
         versionProps["VERSION_MAYOR"] = "1"
@@ -69,16 +68,18 @@ android {
         release {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             minifyEnabled true
+            versionNameSuffix "r"
         }
 
         debug{
             minifyEnabled true
+            versionNameSuffix "d"
         }
 
         //TODO delete
         alpha{
             initWith release
-            versionNameSuffix "[alpha${versionAlphaSuffix}]"
+            versionNameSuffix "[a]"
         }
     }
     compileOptions {
