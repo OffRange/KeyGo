@@ -7,13 +7,10 @@ import de.davis.passwordmanager.utils.CreditCardUtil;
 
 public class CreditCardNumberTextWatcher implements TextWatcher {
 
-    private boolean deleting;
     private boolean changing;
 
     @Override
-    public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-        deleting = count > after;
-    }
+    public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
     @Override
     public void onTextChanged(CharSequence s, int start, int before, int count) {}

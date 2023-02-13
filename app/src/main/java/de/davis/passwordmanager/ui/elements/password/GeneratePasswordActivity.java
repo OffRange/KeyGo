@@ -6,7 +6,6 @@ import android.os.Handler;
 import android.text.method.ScrollingMovementMethod;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.WindowManager;
 import android.widget.Checkable;
 import android.widget.CompoundButton;
 import android.widget.RadioGroup;

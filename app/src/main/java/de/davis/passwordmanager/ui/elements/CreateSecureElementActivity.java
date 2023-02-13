@@ -55,7 +55,7 @@ public abstract class CreateSecureElementActivity extends SecureElementActivity 
     protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
 
-        SecureElement element = savedInstanceState.getParcelable(ELEMENT, SecureElement.class);
+        SecureElement element = savedInstanceState.getParcelable(ELEMENT);
         if(element == null)
             return;
 
