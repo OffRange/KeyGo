@@ -124,7 +124,7 @@
     <string name="developer_name" translatable="false">OffRange</string>
 
     <string name="features">Features</string>
-    <string name="autofill_service">Autofill Service (beta)</string>
+    <string name="autofill_service">Autofill Service</string>
     <string name="instruction_activate_autofill">Go to <b>Settings</b> > Search for <b>\"autofill service\"</b> > <b>choose this app as the service</b></string>
 
     <string name="authentication_required">Authentication Required</string>

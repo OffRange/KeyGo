@@ -83,7 +83,7 @@
     <string name="nfc_success">Karteninformationen erfolgreich gescannt</string>
     <string name="developer">Entwickler</string>
     <string name="instruction_activate_autofill">Gehen Sie zu den <b>Einstellungen</b> > suchen Sie nach <b>\"Automatisches Ausfillen\"</b> > <b>wählen Sie einen Service aus</b></string>
-    <string name="autofill_service">Automatisches Einfügen (beta)</string>
+    <string name="autofill_service">Automatisches Einfügen</string>
     <string name="features">Features</string>
     <string name="authentication_required">Authentifizierung erforderlich</string>
     <string name="selected_items">%d ausgewählt</string>
