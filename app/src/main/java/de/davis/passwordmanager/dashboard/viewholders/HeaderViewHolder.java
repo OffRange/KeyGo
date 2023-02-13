@@ -40,7 +40,7 @@ public class HeaderViewHolder extends BasicViewHolder<Header> {
 
     @Override
     public ItemDetailsLookup.ItemDetails<Long> getItemDetails() {
-        return new ItemDetailsLookup.ItemDetails<Long>() {
+        return new ItemDetailsLookup.ItemDetails<>() {
             @Override
             public int getPosition() {
                 return getAdapterPosition();
