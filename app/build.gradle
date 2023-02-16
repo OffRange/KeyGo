@@ -111,7 +111,7 @@ dependencies {
     implementation 'androidx.biometric:biometric:1.1.0'
     implementation 'androidx.browser:browser:1.5.0'
     implementation 'me.gosimple:nbvcxz:1.5.1'
-    implementation 'at.favre.lib:bcrypt:0.9.0'
+    implementation 'at.favre.lib:bcrypt:0.10.2'
     implementation 'com.github.alvinhkh:TextDrawable:558677ea31'
     implementation 'com.github.devnied.emvnfccard:library:3.0.1'
     implementation 'net.grey-panther:natural-comparator:1.1'
