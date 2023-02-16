@@ -144,6 +144,7 @@ public class Response {
                                     .setInlinePresentation(inlinePresentation)
                                     .build())
                             .build());
+                    continue;
                 }
 
                 datasetBuilder.setValue(autofillId, AutofillValue.forText(autofillId == parsedStructure.getPasswordView().getAutofillId() ? details.getPassword() : details.getUsername()), remoteViews, inlinePresentation);
@@ -182,7 +183,7 @@ public class Response {
             saveInfoBuilder.setTriggerId(parsedStructure.getPasswordView().getAutofillId());
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            saveInfoBuilder.setValidator(new RegexValidator(parsedStructure.getPasswordView().getAutofillId(), Pattern.compile("^[A-Za-z0-9].*")));
+            saveInfoBuilder.setValidator(new RegexValidator(parsedStructure.getPasswordView().getAutofillId(), Pattern.compile("^[A-Za-z\\d].*")));
         }
 
         return builder.setSaveInfo(saveInfoBuilder.build());
