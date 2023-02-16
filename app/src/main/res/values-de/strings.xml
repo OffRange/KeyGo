@@ -73,7 +73,7 @@
     <string name="use_lowercase_letters">Kleinbuchstaben verwenden</string>
     <string name="use_punctuations">Sonderzeichen verwenden</string>
     <string name="length_param">Länge %1$d</string>
-    <string name="change_param">Ändere %1$s</string>
+    <string name="change_param">%1$s ändern</string>
     <string name="type">Typ</string>
     <string name="nfc_listening">Sie können eine Kreditkarte mit aktiviertem NFC-Chip an ihr Handy halten</string>
     <string name="nfc_moved_too_fast">Bewegen Sie Ihre Karte nicht so schnell</string>
