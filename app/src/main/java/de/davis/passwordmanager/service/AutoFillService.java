@@ -41,7 +41,7 @@ public class AutoFillService extends AutofillService {
             return;
         }
 
-        FillResponse fillResponse = new Response(this, parsedStructure).createAuthenticationResponse();
+        FillResponse fillResponse = new Response(this, parsedStructure, request).createAuthenticationResponse();
 
         callback.onSuccess(fillResponse);
     }
@@ -57,15 +57,27 @@ public class AutoFillService extends AutofillService {
             return;
         }
 
-        String username = parsedStructure.getUsernameView().getText().toString();
         String password = parsedStructure.getPasswordView().getText().toString();
-        String webDomain = parsedStructure.getWebDomain();
-        String webDomainShort = parsedStructure.getWebDomainView().getWebDomain();
 
+        String username = null;
+        if(parsedStructure.getUsernameView() != null)
+            username = parsedStructure.getUsernameView().getText().toString();
+
+        String webDomain = null;
+        String webDomainShort = parsedStructure.getPasswordView().getIdPackage();
+
+        if(parsedStructure.getWebDomainView() != null){
+            webDomain = parsedStructure.getWebDomain();
+            webDomainShort = parsedStructure.getWebDomainView().getWebDomain();
+        }
+
+        String finalUsername = username;
+        String finalWebDomain = webDomain;
+        String finalWebDomainShort = webDomainShort;
         doInBackground(() -> SecureElementDatabase.createAndGet(this)
                 .getSecureElementDao()
                 .insert(new SecureElement(
-                        new PasswordDetails(password, webDomain, username), webDomainShort)));
+                        new PasswordDetails(password, finalWebDomain, finalUsername), finalWebDomainShort)));
         callback.onSuccess();
     }
 }

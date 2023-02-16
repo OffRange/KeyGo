@@ -85,7 +85,6 @@
     <string name="instruction_activate_autofill">Gehen Sie zu den <b>Einstellungen</b> > suchen Sie nach <b>\"Automatisches Ausfillen\"</b> > <b>wählen Sie einen Service aus</b></string>
     <string name="autofill_service">Automatisches Einfügen</string>
     <string name="features">Features</string>
-    <string name="authentication_required">Authentifizierung erforderlich</string>
     <string name="selected_items">%d ausgewählt</string>
     <string name="no_results_found">Keine Ergebnisse gefunden</string>
     <string name="nfc_information">NFC Information</string>

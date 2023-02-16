@@ -3,10 +3,13 @@ package de.davis.passwordmanager.ui.login;
 import static android.view.autofill.AutofillManager.EXTRA_ASSIST_STRUCTURE;
 import static android.view.autofill.AutofillManager.EXTRA_AUTHENTICATION_RESULT;
 
+import static de.davis.passwordmanager.service.Response.EXTRA_FILL_REQUEST;
+
 import android.app.Activity;
 import android.app.assist.AssistStructure;
 import android.content.Intent;
 import android.os.Bundle;
+import android.service.autofill.FillRequest;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -46,9 +49,10 @@ public class EnterPasswordFragment extends Fragment {
             public Intent onSuccess() {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                     AssistStructure structure = requireActivity().getIntent().getParcelableExtra(EXTRA_ASSIST_STRUCTURE);
+                    FillRequest request = requireActivity().getIntent().getParcelableExtra(EXTRA_FILL_REQUEST);
 
                     if(structure != null)
-                        return new Intent().putExtra(EXTRA_AUTHENTICATION_RESULT, new Response(getContext(), ParsedStructure.parse(structure, requireContext())).createRealResponse());
+                        return new Intent().putExtra(EXTRA_AUTHENTICATION_RESULT, new Response(getContext(), ParsedStructure.parse(structure, requireContext()), request).createRealResponse());
 
                 }
 
