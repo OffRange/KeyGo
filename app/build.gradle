@@ -78,7 +78,7 @@ android {
         }
     }
     compileOptions {
-        coreLibraryDesugaringEnabled true  //<-- did not work for SelectionTracker#getSelection()#spliterator() try with desugar_jdk_libs 2.0.0 again
+        coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
     }
