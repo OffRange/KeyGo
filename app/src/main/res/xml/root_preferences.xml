@@ -42,11 +42,8 @@
 
         <Preference
             app:title="@string/third_party_dependencies"
-            android:icon="@drawable/ic_baseline_code_24">
-            <intent android:action="android.intent.action.VIEW"
-                android:targetPackage="de.davis.passwordmanager"
-                android:targetClass="com.google.android.gms.oss.licenses.OssLicensesMenuActivity"/>
-        </Preference>
+            android:key="@string/preference_license"
+            android:icon="@drawable/ic_baseline_code_24"/>
 
         <Preference
             android:key="@string/report"

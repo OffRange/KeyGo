@@ -21,6 +21,8 @@ import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.SeekBarPreference;
 import androidx.preference.SwitchPreference;
 
+import com.google.android.gms.oss.licenses.OssLicensesMenuActivity;
+
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.security.Authentication;
 
@@ -76,6 +78,9 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         CustomTabsIntent intent = new CustomTabsIntent.Builder().setShowTitle(true).build();
         intent.intent.setData(URI);
         report.setIntent(intent.intent);
+
+        OssLicensesMenuActivity.setActivityTitle(getString(R.string.third_party_dependencies));
+        findPreference(getString(R.string.preference_license)).setIntent(new Intent(getContext(), OssLicensesMenuActivity.class));
     }
 
     private void setSummaryForNewAuthentication(Preference preference, int newValue){
