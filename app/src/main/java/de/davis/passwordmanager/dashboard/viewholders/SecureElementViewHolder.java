@@ -3,6 +3,10 @@ package de.davis.passwordmanager.dashboard.viewholders;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.style.BackgroundColorSpan;
+import android.text.style.ForegroundColorSpan;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -41,10 +45,21 @@ public class SecureElementViewHolder extends BasicViewHolder<SecureElement> {
     }
 
     @Override
-    public void bind(@NonNull SecureElement item) {
+    public void bind(@NonNull SecureElement item, String filter) {
         Context context = itemView.getContext();
 
-        title.setText(item.getTitle());
+        String text = item.getTitle();
+        Spannable spannable = new SpannableString(text);
+        if(filter != null && !filter.isEmpty()){
+            int index = -1;
+            while ((index = text.toLowerCase().indexOf(filter.toLowerCase(), index + 1)) != -1) {
+                int endIndex = index + filter.length();
+                spannable.setSpan(new BackgroundColorSpan(MaterialColors.getColor(title, com.google.android.material.R.attr.colorPrimary)), index, endIndex, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                spannable.setSpan(new ForegroundColorSpan(MaterialColors.getColor(title, com.google.android.material.R.attr.colorOnPrimary)), index, endIndex, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        }
+        title.setText(spannable);
+
         type.setText(item.getTypeName());
 
         typeIcon.setImageResource(SecureElementDetail.getFor(item).getIcon());

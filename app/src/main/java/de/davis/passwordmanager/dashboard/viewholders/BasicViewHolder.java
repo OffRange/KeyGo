@@ -13,6 +13,7 @@ public abstract class BasicViewHolder<T> extends RecyclerView.ViewHolder impleme
         super(itemView);
     }
 
-    public abstract void bind(@NonNull T item);
+    public abstract void bind(@NonNull T item, String filter);
+
     public abstract void onBindSelectablePayload(boolean selectable, boolean selected);
 }

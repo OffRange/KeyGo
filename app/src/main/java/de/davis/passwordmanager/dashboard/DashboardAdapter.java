@@ -34,6 +34,8 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
     private static final int HEADER_TYPE = 0;
     private static final int ITEM_TYPE = 1;
 
+    private String filter;
+
     private final SparseArray<Header> headers;
     private final ArrayList<SecureElement> items;
     private SelectionTracker<Long> tracker;
@@ -70,11 +72,15 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
                 : onCreateItemViewHolder(parent);
     }
 
+    public void setFilter(String filter) {
+        this.filter = filter;
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     public void onBindViewHolder(@NonNull BasicViewHolder<?> holder, int position) {
         if(isHeaderPosition(position)){
-            ((BasicViewHolder<Item>)holder).bind(headers.get(position));
+            ((BasicViewHolder<Item>)holder).bind(headers.get(position), filter);
             return;
         }
 
@@ -82,7 +88,7 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
         if(data == null)
             return;
 
-        ((BasicViewHolder<SecureElement>)holder).bind(data);
+        ((BasicViewHolder<SecureElement>)holder).bind(data, filter);
     }
 
     @Override

@@ -156,6 +156,7 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
         viewModel.getElements().observe(getViewLifecycleOwner(), secureElements -> SecureElementManager.getInstance().update(secureElements, null));
         viewModel.getFiltered().observe(getViewLifecycleOwner(), secureElements -> {
             searchResultsAdapter.update(secureElements, null);
+            searchResultsAdapter.setFilter(viewModel.getQuery());
             if(!TextUtils.isEmpty(viewModel.getQuery()) && secureElements.isEmpty()){
                 binding.noResults.setVisibility(View.VISIBLE);
                 return;
