@@ -74,6 +74,7 @@ android {
         debug{
             minifyEnabled true
             versionNameSuffix "d"
+            applicationIdSuffix ".debug"
         }
 
         //TODO delete
