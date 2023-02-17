@@ -80,7 +80,7 @@ android {
         //TODO delete
         alpha{
             initWith release
-            versionNameSuffix "[a]"
+            versionNameSuffix "a"
         }
     }
     compileOptions {
