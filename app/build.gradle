@@ -7,7 +7,7 @@ android {
     compileSdk 33
 
     def versionPropsFile = file("version.properties")
-    def versionMayor, versionMinor, versionPatch, versionBuild, versionCodeProp, versionSuffix
+    def versionMayor, versionMinor, versionPatch, versionBuild, versionCodeProp
     Properties versionProps = new Properties()
     if (!versionPropsFile.exists()) {
         versionProps["VERSION_MAYOR"] = "1"
@@ -15,7 +15,6 @@ android {
         versionProps["VERSION_PATCH"] = "0"
         versionProps["VERSION_BUILD"] = "0"
         versionProps["VERSION_CODE"] = "1"
-        versionProps["VERSION_SUFFIX"] = "release"
 
         versionProps.store(versionPropsFile.newWriter(), null)
     }
@@ -36,17 +35,12 @@ android {
             versionPatch = versionProps['VERSION_PATCH'].toInteger()
             versionBuild = versionProps['VERSION_BUILD'].toInteger() + 1
             versionCodeProp = versionProps['VERSION_CODE'].toInteger() + value
-            if(runTasks.stream().anyMatch(s -> s.contains("assembleRelease"))){
-                versionSuffix = "release"
-            }else
-                versionSuffix = "debug"
 
             versionProps['VERSION_MAYOR'] = versionMayor.toString()
             versionProps['VERSION_MINOR'] = versionMinor.toString()
             versionProps['VERSION_PATCH'] = versionPatch.toString()
             versionProps['VERSION_BUILD'] = versionBuild.toString()
             versionProps['VERSION_CODE'] = versionCodeProp.toString()
-            versionProps['VERSION_SUFFIX'] = versionSuffix.toString()
             versionProps.store(versionPropsFile.newWriter(), null)
 
         }
