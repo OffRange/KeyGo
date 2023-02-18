@@ -71,7 +71,11 @@ android {
             applicationIdSuffix ".debug"
         }
 
-        //TODO delete
+        beta{
+            initWith release
+            versionNameSuffix "b"
+        }
+
         alpha{
             initWith release
             versionNameSuffix "a"
