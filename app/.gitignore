@@ -7,6 +7,7 @@
 
 alpha/
 release/
+debug/
 
 
 # Files for the ART/Dalvik VM
