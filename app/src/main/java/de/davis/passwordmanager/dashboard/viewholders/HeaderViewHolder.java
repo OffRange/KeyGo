@@ -23,7 +23,7 @@ public class HeaderViewHolder extends BasicViewHolder<Header> {
     }
 
     @Override
-    public void bind(@NonNull Header item, String filter, OnItemClickedListener onItemClickedListener) {
+    public void bind(@NonNull Header item, String filter) {
         header.setText(String.valueOf(item.getHeader()));
     }
 
