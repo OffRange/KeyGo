@@ -57,7 +57,7 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
     }
 
     private Header createHeader(@NonNull SecureElement item){
-        return new Header(String.valueOf(item.getLetter()));
+        return new Header(item.getLetter());
     }
 
     private SecureElementViewHolder onCreateItemViewHolder(@NonNull ViewGroup parent){
@@ -261,9 +261,9 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
 
             Header header = createHeader(items.get(i));
             Header finalHeader = header;
-            boolean headerExists = headersList.stream().anyMatch(h -> h.getHeader().equals(finalHeader.getHeader()));
+            boolean headerExists = headersList.stream().anyMatch(h -> h.getHeader() == finalHeader.getHeader());
             if(headerExists)
-                header = headersList.stream().filter(h -> h.getHeader().equals(finalHeader.getHeader())).findFirst().orElseThrow(NullPointerException::new);
+                header = headersList.stream().filter(h -> h.getHeader() == finalHeader.getHeader()).findFirst().orElseThrow(NullPointerException::new);
 
             headers.put(headers.size() + i, header);
         }

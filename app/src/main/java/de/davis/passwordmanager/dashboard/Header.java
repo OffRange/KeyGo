@@ -1,25 +1,19 @@
 package de.davis.passwordmanager.dashboard;
 
-import java.util.UUID;
-
 public class Header implements Item{
 
-    private final String header;
-    private final int id;
+    private final char header;
 
-    public Header(String header) {
-        int id = (int) (UUID.randomUUID().getMostSignificantBits() % Long.MAX_VALUE);
-        this.id = Math.min(id, -id);
-
+    public Header(char header) {
         this.header = header;
     }
 
-    public String getHeader() {
+    public char getHeader() {
         return header;
     }
 
     @Override
-    public int getId() {
-        return id;
+    public long getId() {
+        return -header;
     }
 }

@@ -45,7 +45,7 @@ public class SecureElement implements Serializable, Comparable<SecureElement>, I
     private int type;
 
     @PrimaryKey(autoGenerate = true)
-    private int id;
+    private long id;
 
     @Ignore
     private ElementDetail detail;
@@ -63,7 +63,7 @@ public class SecureElement implements Serializable, Comparable<SecureElement>, I
     }
 
 
-    public SecureElement(SealedObject data, String title, int id, @ElementType int type) {
+    public SecureElement(SealedObject data, String title, long id, @ElementType int type) {
         this.data = data;
         this.title = title;
         this.id = id;
@@ -104,7 +104,7 @@ public class SecureElement implements Serializable, Comparable<SecureElement>, I
     }
 
     @Override
-    public int getId() {
+    public long getId() {
         return id;
     }
 
