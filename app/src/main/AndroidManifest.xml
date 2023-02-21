@@ -47,7 +47,7 @@
             </intent-filter>
             <meta-data
                 android:name="android.autofill"
-                android:resource="@xml/service_configuration" />
+                android:resource="@xml/autofill_configuration" />
         </service>
     </application>
 
