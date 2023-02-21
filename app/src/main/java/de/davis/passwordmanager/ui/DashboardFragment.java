@@ -31,6 +31,7 @@ import de.davis.passwordmanager.dashboard.DashboardAdapter;
 import de.davis.passwordmanager.databinding.FragmentDashboardBinding;
 import de.davis.passwordmanager.manager.ActivityResultManager;
 import de.davis.passwordmanager.security.element.SecureElementManager;
+import de.davis.passwordmanager.ui.callbacks.SearchViewBackPressedHandler;
 import de.davis.passwordmanager.ui.viewmodels.DashboardViewModel;
 import de.davis.passwordmanager.ui.views.AddBottomSheet;
 import de.davis.passwordmanager.ui.views.OptionBottomSheet;
@@ -84,7 +85,7 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
 
         binding.viewAddFirst.setOnClickListener(v -> showBottomSheet());
 
-        ((MainActivity)requireActivity()).setOnBackPressedListener(this::onBackPressed);
+        requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), new SearchViewBackPressedHandler(binding.searchView));
 
         requireActivity().addMenuProvider(new MenuProvider() {
             @Override
@@ -107,10 +108,6 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
         }, getViewLifecycleOwner(), Lifecycle.State.RESUMED);
 
         return binding.getRoot();
-    }
-
-    public boolean onBackPressed(){
-        return binding.searchView.isShowing() && binding.searchBar.collapse(binding.searchView, binding.appbarLayout);
     }
 
     public static class ScrollingViewBehavior extends AppBarLayout.ScrollingViewBehavior {

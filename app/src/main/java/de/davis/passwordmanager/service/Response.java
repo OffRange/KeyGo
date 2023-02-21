@@ -186,6 +186,10 @@ public class Response {
             saveInfoBuilder.setValidator(new RegexValidator(parsedStructure.getPasswordView().getAutofillId(), Pattern.compile("^[A-Za-z\\d].*")));
         }
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            saveInfoBuilder.setFlags(SaveInfo.FLAG_DELAY_SAVE);
+        }
+        
         return builder.setSaveInfo(saveInfoBuilder.build());
     }
 
