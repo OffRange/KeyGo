@@ -5,9 +5,8 @@
 *.ap_
 *.aab
 
-alpha/
-release/
-beta/
+*
+!src
 
 
 # Files for the ART/Dalvik VM
