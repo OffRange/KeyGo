@@ -3,6 +3,8 @@ package de.davis.passwordmanager.ui.views;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
@@ -11,8 +13,10 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.os.HandlerCompat;
+import androidx.customview.view.AbsSavedState;
 
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 
@@ -132,6 +136,66 @@ public class PasswordStrengthBar extends LinearLayout implements TextWatcher {
             });
         });
         executorService.shutdown();
+    }
+
+    @Nullable
+    @Override
+    protected Parcelable onSaveInstanceState() {
+        SavedState ss = new SavedState(super.onSaveInstanceState());
+        ss.strength = strength;
+        return ss;
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Parcelable state) {
+        SavedState ss = (SavedState) state;
+        super.onRestoreInstanceState(ss.getSuperState());
+        strength = ss.strength;
+        progressIndicator.setIndicatorColor(strength.getColor(getContext()));
+
+        strengthText.setVisibility(progressIndicator.getProgress() == 0 ? GONE : VISIBLE);
+        strengthWarning.setVisibility(progressIndicator.getProgress() == 0 || strength.getWarning() == null ? GONE : VISIBLE);
+    }
+
+
+    static class SavedState extends AbsSavedState {
+        Strength strength;
+
+        SavedState(Parcelable superState) {
+            super(superState);
+        }
+
+        SavedState(@NonNull Parcel source, ClassLoader loader) {
+            super(source, loader);
+            strength = (Strength) source.readSerializable();
+        }
+
+        @Override
+        public void writeToParcel(@NonNull Parcel dest, int flags) {
+            super.writeToParcel(dest, flags);
+            dest.writeSerializable(strength);
+        }
+
+        public static final Creator<SavedState> CREATOR =
+                new ClassLoaderCreator<>() {
+                    @NonNull
+                    @Override
+                    public SavedState createFromParcel(@NonNull Parcel in, ClassLoader loader) {
+                        return new SavedState(in, loader);
+                    }
+
+                    @Nullable
+                    @Override
+                    public SavedState createFromParcel(@NonNull Parcel in) {
+                        return new SavedState(in, null);
+                    }
+
+                    @NonNull
+                    @Override
+                    public SavedState[] newArray(int size) {
+                        return new SavedState[size];
+                    }
+                };
     }
 
     private class EstimationRunnable implements Runnable {

@@ -30,7 +30,11 @@ public class ChangePasswordFragment extends Fragment {
 
     private FragmentChangePasswordBinding binding;
 
-    private final boolean shouldShowFingerprintSwitch;
+    private boolean shouldShowFingerprintSwitch;
+
+    public ChangePasswordFragment() {
+        this(false);
+    }
 
     public ChangePasswordFragment(boolean shouldShowFingerprintSwitch) {
         super();
@@ -41,6 +45,9 @@ public class ChangePasswordFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         requireActivity().setTitle(R.string.change_master_password);
+
+        if(savedInstanceState != null)
+            shouldShowFingerprintSwitch = savedInstanceState.getBoolean("shouldShowFingerprintSwitch");
 
         requireActivity().addMenuProvider(new MenuProvider() {
             @Override
@@ -97,6 +104,12 @@ public class ChangePasswordFragment extends Fragment {
                 return true;
             }
         }, this, Lifecycle.State.STARTED);
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean("shouldShowFingerprintSwitch", shouldShowFingerprintSwitch);
     }
 
     @Nullable
