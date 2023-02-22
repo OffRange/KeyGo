@@ -29,13 +29,10 @@ public class LoginActivity extends AppCompatActivity {
         boolean masterPasswordAvailable = MasterPassword.getOne().blockingGet() != null;
         if(getIntent().getBooleanExtra(getString(R.string.preference_master_password), false)){
             // Executed if the user wants to change the master password
-            getSupportFragmentManager().beginTransaction().replace(R.id.container, new ChangePasswordFragment(this::finish, false)).commitNow();
+            getSupportFragmentManager().beginTransaction().replace(R.id.container, new ChangePasswordFragment(false)).commitNow();
         }else if(!masterPasswordAvailable){
             // Executed if the app is opened the first time
-            getSupportFragmentManager().beginTransaction().replace(R.id.container, new ChangePasswordFragment(() -> {
-                startActivity(new Intent(this, MainActivity.class));
-                finish();
-            }, true)).commitNow();
+            getSupportFragmentManager().beginTransaction().replace(R.id.container, new ChangePasswordFragment(true)).commitNow();
         }else
             getSupportFragmentManager().beginTransaction().replace(R.id.container, new EnterPasswordFragment()).commitNow();
     }

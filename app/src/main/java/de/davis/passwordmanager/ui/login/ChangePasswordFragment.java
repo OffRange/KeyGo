@@ -1,5 +1,6 @@
 package de.davis.passwordmanager.ui.login;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -22,6 +23,7 @@ import de.davis.passwordmanager.databinding.FragmentChangePasswordBinding;
 import de.davis.passwordmanager.security.Authentication;
 import de.davis.passwordmanager.security.Cryptography;
 import de.davis.passwordmanager.security.MasterPassword;
+import de.davis.passwordmanager.ui.MainActivity;
 import de.davis.passwordmanager.utils.PreferenceUtil;
 
 public class ChangePasswordFragment extends Fragment {
@@ -29,10 +31,9 @@ public class ChangePasswordFragment extends Fragment {
     private FragmentChangePasswordBinding binding;
 
     private final boolean shouldShowFingerprintSwitch;
-    private final Runnable runnable;
 
-    public ChangePasswordFragment(Runnable runnable, boolean shouldShowFingerprintSwitch) {
-        this.runnable = runnable;
+    public ChangePasswordFragment(boolean shouldShowFingerprintSwitch) {
+        super();
         this.shouldShowFingerprintSwitch = shouldShowFingerprintSwitch;
     }
 
@@ -88,8 +89,9 @@ public class ChangePasswordFragment extends Fragment {
                 if(MasterPassword.changeMasterPassword(password, newPassword)){
                     PreferenceUtil.putBoolean(getContext(), R.string.preference_fingerprint, binding.fingerprint.isChecked());
                     Toast.makeText(getContext(), R.string.master_password_changed, Toast.LENGTH_LONG).show();
-                    if(runnable != null)
-                        runnable.run();
+
+                    if(requireActivity().getIntent().getExtras() == null)
+                        startActivity(new Intent(requireContext(), MainActivity.class));
                 }
 
                 return true;
@@ -101,7 +103,11 @@ public class ChangePasswordFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         binding = FragmentChangePasswordBinding.inflate(inflater, container, false);
+        return binding.getRoot();
+    }
 
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         Objects.requireNonNull(binding.textInputLayoutNewPassword.getEditText()).addTextChangedListener(binding.strengthBar);
         binding.textInputLayoutPassword.setVisibility(MasterPassword.getOne().isEmpty().blockingGet() ? View.GONE : View.VISIBLE);
 
@@ -109,7 +115,5 @@ public class ChangePasswordFragment extends Fragment {
 
         binding.fingerprint.setVisibility(shouldShowFingerprintSwitch && Authentication.isAvailable(getContext()) ? View.VISIBLE : View.GONE);
         binding.fingerprint.setChecked(PreferenceUtil.getBoolean(getContext(), R.string.preference_fingerprint, false));
-
-        return binding.getRoot();
     }
 }

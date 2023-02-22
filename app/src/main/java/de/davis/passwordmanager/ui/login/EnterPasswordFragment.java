@@ -2,7 +2,6 @@ package de.davis.passwordmanager.ui.login;
 
 import static android.view.autofill.AutofillManager.EXTRA_ASSIST_STRUCTURE;
 import static android.view.autofill.AutofillManager.EXTRA_AUTHENTICATION_RESULT;
-
 import static de.davis.passwordmanager.service.Response.EXTRA_FILL_REQUEST;
 
 import android.app.Activity;
@@ -37,8 +36,6 @@ public class EnterPasswordFragment extends Fragment {
 
     private AuthenticationHandler authenticationHandler;
 
-    public EnterPasswordFragment() {}
-
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -68,7 +65,6 @@ public class EnterPasswordFragment extends Fragment {
         };
     }
 
-
     private abstract static class AuthenticationHandler {
 
         public AuthenticationHandler() {}
@@ -80,12 +76,14 @@ public class EnterPasswordFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         binding = FragmentEnterPasswordBinding.inflate(inflater, container, false);
+        return binding.getRoot();
+    }
 
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         binding.btnFingerprint.setVisibility(Authentication.isAvailable(getContext()) && PreferenceUtil.getBoolean(requireContext(), R.string.preference_fingerprint, false) ? View.VISIBLE : View.GONE);
         binding.btnFingerprint.setOnClickListener(v -> authenticate());
-        binding.btnFingerprint.setCheckable(false);
 
-        binding.btnConfirm.setCheckable(false);
         binding.btnConfirm.setOnClickListener(v -> {
             byte[] hash = MasterPassword.getOne().blockingGet().getHash();
 
@@ -105,13 +103,11 @@ public class EnterPasswordFragment extends Fragment {
 
 
         binding.materialButtonToggleGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> group.clearChecked());
-
-        return binding.getRoot();
     }
 
     @Override
-    public void onStart() {
-        super.onStart();
+    public void onResume() {
+        super.onResume();
         authenticate();
     }
 
