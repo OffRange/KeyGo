@@ -248,9 +248,10 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
     private void prepareHeaderDataSet(){
         items.sort(Comparable::compareTo);
 
-        List<Header> headersList = new ArrayList<>();
+        SparseArray<Header> headersList = new SparseArray<>();
         for (int i = 0; i < headers.size(); i++) {
-            headersList.add(headers.valueAt(i));
+            Header header = headers.valueAt(i);
+            headersList.put((int) header.getId(), header);
         }
 
         headers.clear();
@@ -259,11 +260,10 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
             if (!shouldCreateHeader(i))
                 continue;
 
-            Header header = createHeader(items.get(i));
-            Header finalHeader = header;
-            boolean headerExists = headersList.stream().anyMatch(h -> h.getHeader() == finalHeader.getHeader());
-            if(headerExists)
-                header = headersList.stream().filter(h -> h.getHeader() == finalHeader.getHeader()).findFirst().orElseThrow(NullPointerException::new);
+            SecureElement item = items.get(i);
+            Header header = headersList.get(item.getLetter());
+            if(header == null)
+                header = createHeader(item);
 
             headers.put(headers.size() + i, header);
         }
