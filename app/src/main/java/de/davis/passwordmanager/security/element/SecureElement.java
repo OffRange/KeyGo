@@ -163,7 +163,7 @@ public class SecureElement implements Serializable, Comparable<SecureElement>, I
 
     @Override
     public int compareTo(SecureElement o) {
-        return SimpleNaturalComparator.getInstance().compare(getTitle(), o.getTitle());
+        return SimpleNaturalComparator.getInstance().compare(getTitle().toLowerCase(), o.getTitle().toLowerCase());
     }
 
     public static SecureElement createEmpty(){
