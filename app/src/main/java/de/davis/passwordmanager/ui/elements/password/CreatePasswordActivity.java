@@ -87,7 +87,7 @@ public class CreatePasswordActivity extends CreateSecureElementActivity {
             return new SecureElement(details, title);
 
         getElement().setTitle(title);
-        getElement().encrypt(details);
+        getElement().setDetail(details);
         return getElement();
     }
 }

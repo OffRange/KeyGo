@@ -3,7 +3,6 @@ package de.davis.passwordmanager.database;
 import android.content.Context;
 
 import androidx.room.Database;
-import androidx.room.Fts4;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
@@ -14,7 +13,6 @@ import de.davis.passwordmanager.database.daos.SecureElementDao;
 import de.davis.passwordmanager.security.MasterPassword;
 import de.davis.passwordmanager.security.element.SecureElement;
 
-@Fts4
 @TypeConverters({Converters.class})
 @Database(version = 1, entities = {SecureElement.class, MasterPassword.class}, exportSchema = false)
 public abstract class SecureElementDatabase extends RoomDatabase {

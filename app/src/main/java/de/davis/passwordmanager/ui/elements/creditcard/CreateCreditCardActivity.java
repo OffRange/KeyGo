@@ -206,7 +206,7 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
                 SecureElement.createEmpty() :
                 getElement();
         card.setTitle(title);
-        card.encrypt(details);
+        card.setDetail(details);
 
         return card;
     }

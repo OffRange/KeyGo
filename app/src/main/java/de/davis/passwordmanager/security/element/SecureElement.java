@@ -6,6 +6,7 @@ import android.util.TypedValue;
 
 import androidx.annotation.IntDef;
 import androidx.annotation.StringRes;
+import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
@@ -15,21 +16,15 @@ import com.amulyakhare.textdrawable.util.ColorGenerator;
 
 import net.greypanther.natsort.SimpleNaturalComparator;
 
-import java.io.IOException;
 import java.io.Serializable;
-import java.security.GeneralSecurityException;
-
-import javax.crypto.Cipher;
-import javax.crypto.SealedObject;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.dashboard.Item;
-import de.davis.passwordmanager.utils.KeyUtil;
 
 @Entity
 public class SecureElement implements Serializable, Comparable<SecureElement>, Item {
 
-    private static final long serialVersionUID = -1504637576007791735L;
+    private static final long serialVersionUID = 4927550289788049498L;
 
     public static final int TYPE_PASSWORD = 0x1;
     public static final int TYPE_CREDIT_CARD = 0x11;
@@ -38,7 +33,8 @@ public class SecureElement implements Serializable, Comparable<SecureElement>, I
     public @interface ElementType{}
 
 
-    private SealedObject data;
+    @ColumnInfo(name = "data")
+    private ElementDetail detail;
     private String title;
 
     @ElementType
@@ -46,9 +42,6 @@ public class SecureElement implements Serializable, Comparable<SecureElement>, I
 
     @PrimaryKey(autoGenerate = true)
     private long id;
-
-    @Ignore
-    private ElementDetail detail;
 
     public Drawable getIcon(Context context) {
         int px = (int) TypedValue.applyDimension(
@@ -63,8 +56,8 @@ public class SecureElement implements Serializable, Comparable<SecureElement>, I
     }
 
 
-    public SecureElement(SealedObject data, String title, long id, @ElementType int type) {
-        this.data = data;
+    public SecureElement(ElementDetail detail, String title, long id, @ElementType int type) {
+        this.detail = detail;
         this.title = title;
         this.id = id;
         this.type = type;
@@ -72,7 +65,7 @@ public class SecureElement implements Serializable, Comparable<SecureElement>, I
 
     @Ignore
     public SecureElement(ElementDetail detail, String title) {
-        encrypt(detail);
+        setDetail(detail);
         this.title = title;
     }
 
@@ -90,17 +83,17 @@ public class SecureElement implements Serializable, Comparable<SecureElement>, I
         this.title = title;
     }
 
-    public SealedObject getData() {
-        return data;
+    public ElementDetail getDetail() {
+        return detail;
     }
 
-    protected void setData(SealedObject data) {
-        this.data = data;
-        detail = null;
+    public void setDetail(ElementDetail detail) {
+        this.detail = detail;
+        this.type = detail.getType();
     }
 
     public String getUniqueString(){
-        return getId() + title + data;
+        return getId() + title + detail;
     }
 
     @Override
@@ -122,43 +115,6 @@ public class SecureElement implements Serializable, Comparable<SecureElement>, I
             default:
                 return R.string.credit_card;
         }
-    }
-
-    //TODO find better way to save the data in to the database, because it is Serializable and
-    // changes to the classes may cause errors and crashes
-    public void encrypt(ElementDetail detail){
-        type = detail.getType();
-        Cipher c = KeyUtil.getCipher();
-        try {
-            c.init(Cipher.ENCRYPT_MODE, KeyUtil.getSecretKey());
-            setData(new SealedObject(detail, c));
-        } catch (GeneralSecurityException | IOException ex) {
-            ex.printStackTrace();
-        }
-    }
-
-    public ElementDetail decrypt(){
-        try {
-            return detail = (ElementDetail) getData().getObject(KeyUtil.getSecretKey());
-        } catch (ClassNotFoundException | GeneralSecurityException | IOException e) {
-            e.printStackTrace();
-        }
-
-        return null;
-    }
-
-    public ElementDetail getDetail() {
-        if(detail == null)
-            return decrypt();
-
-        return detail;
-    }
-
-    public void prepareForDB(){
-        if(detail == null)
-            return;
-
-        encrypt(detail);
     }
 
     @Override

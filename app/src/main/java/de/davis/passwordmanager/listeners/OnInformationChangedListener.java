@@ -22,8 +22,7 @@ public class OnInformationChangedListener<E extends SecureElement> implements Ed
         //TODO maybe automate apply Function --> e.g. methode in each Element that gives available
         // tags and in this methode it checks the given tag and updates the element by itself
         ElementDetail detail = helper.applyChanges(element, information);
-        if(detail != null)
-            element.encrypt(detail);
+        element.setDetail(detail);
 
         SecureElementManager.getInstance().editElement(element);
     }
