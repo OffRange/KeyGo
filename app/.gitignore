@@ -5,8 +5,8 @@
 *.ap_
 *.aab
 
-*
-!src
+/*
+!src/
 
 
 # Files for the ART/Dalvik VM
