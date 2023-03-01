@@ -21,7 +21,7 @@
 
     <string name="authenticate">Authenticate</string>
 
-    <string name="time_for_reauthentication">Reauthentication</string>
+    <string name="time_for_reauthentication">Re-authentication</string>
     <string name="time_disabled">Never force re-authentication</string>
     <string name="time_every_time">Require re-authentication each time</string>
 
