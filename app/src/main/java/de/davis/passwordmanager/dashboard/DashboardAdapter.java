@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.checkbox.MaterialCheckBox;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -246,7 +247,7 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
     }
 
     private void prepareHeaderDataSet(){
-        items.sort(Comparable::compareTo);
+        Collections.sort(items);
 
         SparseArray<Header> headersList = new SparseArray<>();
         for (int i = 0; i < headers.size(); i++) {
