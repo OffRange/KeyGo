@@ -16,7 +16,8 @@
         android:supportsRtl="false"
         android:theme="@style/AppTheme"
         android:name=".PasswordManagerApplication"
-        tools:targetApi="33">
+        tools:targetApi="33"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <activity
             android:name="de.davis.passwordmanager.ui.MainActivity"
             android:exported="false"
