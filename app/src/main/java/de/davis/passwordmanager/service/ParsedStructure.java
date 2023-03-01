@@ -12,8 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.utils.LanguageUtils;
+import de.davis.passwordmanager.utils.AutofillSynonyms;
 
 @RequiresApi(api = Build.VERSION_CODES.O)
 public class ParsedStructure {
@@ -139,13 +138,15 @@ public class ParsedStructure {
 
         foundByHint = false;
 
-        LanguageUtils.iterateLocales(context, ctx -> {
-            if(viewNode.getHint().toLowerCase().contains(ctx.getString(R.string.username).toLowerCase()) && parsedStructure.usernameView == null){
+        String hint = viewNode.getHint().toLowerCase().replace("-", "");
+
+        AutofillSynonyms.getSynonyms(context).iterateLanguages(language -> {
+            if(language.getUsernames().stream().anyMatch(hint::contains) && parsedStructure.usernameView == null){
                 parsedStructure.usernameView = viewNode;
                 foundByHint = true;
             }
 
-            if(viewNode.getHint().toLowerCase().contains(ctx.getString(R.string.password).toLowerCase()) && parsedStructure.passwordView == null){
+            if(language.getPasswords().stream().anyMatch(hint::contains) && parsedStructure.passwordView == null){
                 parsedStructure.passwordView = viewNode;
                 foundByHint = true;
             }

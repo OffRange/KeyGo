@@ -1,0 +1,10 @@
+{
+  "german": {
+    "usernames": ["benutzername", "email", "account", "nutzername", "anmeldename", "nickname"],
+    "passwords": ["passwort", "kennwort"]
+  },
+  "english": {
+    "usernames": ["username", "login", "email", "account", "nickname"],
+    "passwords": ["password"]
+  }
+}
