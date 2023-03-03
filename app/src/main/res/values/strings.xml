@@ -39,7 +39,7 @@
 
     <string name="password_does_not_match">This password does not match</string>
     <string name="is_not_filled_in">This must be filled in</string>
-    <string name="invalid_card_number_length">Card number bust have 16 numbers</string>
+    <string name="invalid_card_number_length">Card number must have 16 numbers</string>
     <string name="invalid_date">Invalid date</string>
     <string name="invalid_url">Invalid url</string>
 
