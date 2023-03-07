@@ -167,12 +167,17 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
         SecureElementManager.getInstance().getAdapter().getTracker().onSaveInstanceState(outState);
+        outState.putCharSequence("searchbar_hint", binding.searchBar.getHint());
     }
 
     @Override
     public void onViewStateRestored(@Nullable Bundle savedInstanceState) {
         super.onViewStateRestored(savedInstanceState);
         SecureElementManager.getInstance().getAdapter().getTracker().onRestoreInstanceState(savedInstanceState);
+        if(savedInstanceState == null)
+            return;
+
+        binding.searchBar.setHint(savedInstanceState.getCharSequence("searchbar_hint", getString(android.R.string.search_go)));
     }
 
     private void showBottomSheet(){
