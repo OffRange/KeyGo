@@ -40,6 +40,7 @@ import io.reactivex.rxjava3.schedulers.Schedulers;
 @RequiresApi(api = Build.VERSION_CODES.O)
 public class Response {
 
+    protected static final Pattern VALIDATION_PATTERN = Pattern.compile("^[A-Za-z\\d].*");
     public static final String EXTRA_FILL_REQUEST = "fill_request";
 
     private final Context context;
@@ -179,15 +180,13 @@ public class Response {
         if(optionals != null && optionals.length > 0)
             saveInfoBuilder.setOptionalIds(optionals);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-            saveInfoBuilder.setTriggerId(parsedStructure.getPasswordView().getAutofillId());
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            saveInfoBuilder.setValidator(new RegexValidator(parsedStructure.getPasswordView().getAutofillId(), Pattern.compile("^[A-Za-z\\d].*")));
+            saveInfoBuilder.setValidator(new RegexValidator(parsedStructure.getPasswordView().getAutofillId(), VALIDATION_PATTERN));
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            saveInfoBuilder.setFlags(SaveInfo.FLAG_DELAY_SAVE);
+            if(parsedStructure.getPasswordView() == null)
+                saveInfoBuilder.setFlags(SaveInfo.FLAG_DELAY_SAVE);
         }
         
         return builder.setSaveInfo(saveInfoBuilder.build());

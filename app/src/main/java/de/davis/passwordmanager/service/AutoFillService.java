@@ -49,35 +49,66 @@ public class AutoFillService extends AutofillService {
     @Override
     public void onSaveRequest(@NonNull SaveRequest request, @NonNull SaveCallback callback) {
         List<FillContext> contexts = request.getFillContexts();
-        AssistStructure structure = contexts.get(contexts.size() - 1).getStructure();
-        ParsedStructure parsedStructure = ParsedStructure.parse(structure, this);
 
-        if(parsedStructure.isEmpty()){
-            callback.onFailure("No Fields Found");
+        String password = null;
+        String username = null;
+        String webDomain = null;
+        String webDomainShort = null;
+
+        for (FillContext context : contexts) {
+            AssistStructure structure = context.getStructure();
+            ParsedStructure parsedStructure = ParsedStructure.parse(structure, this);
+
+            if(parsedStructure.isEmpty()){
+                callback.onFailure("No Fields Found");
+                return;
+            }
+
+            if(webDomainShort == null)
+                webDomainShort = parsedStructure.getPasswordView().getIdPackage();
+
+            String pwd = extractText(parsedStructure.getPasswordView());
+            String user = extractText(parsedStructure.getUsernameView());
+
+            String domain = null;
+            String domainShort = parsedStructure.getPasswordView().getIdPackage();
+            if(parsedStructure.getWebDomainView() != null){
+                domain = parsedStructure.getWebDomain();
+                domainShort = parsedStructure.getWebDomainView().getWebDomain();
+            }
+
+            if(pwd != null)
+                password = pwd;
+
+            if(user != null)
+                username = user;
+
+            if(domain != null) {
+                webDomain = domain;
+                webDomainShort = domainShort;
+            }
+        }
+
+        if(!Response.VALIDATION_PATTERN.matcher(password +"").matches()) {
+            callback.onFailure("Password does not matches");
             return;
         }
 
-        String password = parsedStructure.getPasswordView().getText().toString();
-
-        String username = null;
-        if(parsedStructure.getUsernameView() != null)
-            username = parsedStructure.getUsernameView().getText().toString();
-
-        String webDomain = null;
-        String webDomainShort = parsedStructure.getPasswordView().getIdPackage();
-
-        if(parsedStructure.getWebDomainView() != null){
-            webDomain = parsedStructure.getWebDomain();
-            webDomainShort = parsedStructure.getWebDomainView().getWebDomain();
-        }
-
+        String finalPassword = password;
         String finalUsername = username;
         String finalWebDomain = webDomain;
         String finalWebDomainShort = webDomainShort;
         doInBackground(() -> SecureElementDatabase.createAndGet(this)
                 .getSecureElementDao()
                 .insert(new SecureElement(
-                        new PasswordDetails(password, finalWebDomain, finalUsername), finalWebDomainShort)));
+                        new PasswordDetails(finalPassword, finalWebDomain, finalUsername), finalWebDomainShort)));
         callback.onSuccess();
+    }
+
+    private String extractText(AssistStructure.ViewNode viewNode){
+        if(viewNode == null)
+            return null;
+
+        return viewNode.getText().toString();
     }
 }
