@@ -40,7 +40,7 @@ import io.reactivex.rxjava3.schedulers.Schedulers;
 @RequiresApi(api = Build.VERSION_CODES.O)
 public class Response {
 
-    protected static final Pattern VALIDATION_PATTERN = Pattern.compile("^[A-Za-z\\d].*");
+    protected static final Pattern VALIDATION_PATTERN = Pattern.compile("^[\\p{all}&&[^\\u2022]].*");
     public static final String EXTRA_FILL_REQUEST = "fill_request";
 
     private final Context context;
