@@ -19,6 +19,9 @@ public class AssetsUtil {
             if (line == null)
                 break;
 
+            if(line.startsWith("#"))
+                continue;
+
             result.add(line);
         }
         return result;
