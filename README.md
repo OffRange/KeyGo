@@ -15,3 +15,11 @@ A secure, open-source Android password manager that stores passwords and credit 
 |--------|------|
 |GitHub|In development|
 |Google Play Store|Planned for July/August 2023|
+
+## Installation Guide
+1. Download the latest [APK file](https://github.com/OffRange/PasswordManager/releases/latest) under "Assets"
+2. Open the **"Downloads"** folder on your device and tap the APK file to begin the installation process.
+4. A pop-up message will appear asking for your permission to install the app. Tap **"Settings"** on the pop-up message.
+5. On the settings page, toggle the switch next to **"Allow from this source"** to grant permission to install apps from GitHub releases.
+6. Go back to the installation screen and **tap "Install"** to continue with the installation process.
+7. Installation completed
