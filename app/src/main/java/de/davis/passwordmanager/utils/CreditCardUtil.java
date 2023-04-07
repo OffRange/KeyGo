@@ -25,8 +25,6 @@ public class CreditCardUtil {
             return false;
 
         String formatted = cardNumber.replaceAll("\\s", "");
-        if(formatted.isEmpty())
-            return false;
 
         return formatted.length() == 16;
     }

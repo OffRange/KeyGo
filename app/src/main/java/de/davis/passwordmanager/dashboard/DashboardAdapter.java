@@ -275,15 +275,13 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
     }
 
     public void showOnly(List<SecureElement> elements){
-        update(elements, null);
+        update(elements);
     }
 
-    //If updateClass is null, all elements will be updated
-    public void update(List<? extends SecureElement> overrideElements, Class<? extends SecureElement> updateClass){
+    public void update(List<? extends SecureElement> overrideElements){
         List<Item> oldEntries = getEntries();
 
-        if(updateClass == null) items.clear();
-        else items.removeIf(updateClass::isInstance);
+        items.clear();
 
         items.addAll(overrideElements);
         prepareHeaderDataSet();
@@ -324,7 +322,6 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
 
             changing = true;
             long headerId = handleSelection(key, selected);
-
             changing = false;
 
             if(stateChangeHandler != null)

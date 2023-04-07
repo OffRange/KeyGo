@@ -45,8 +45,8 @@ public class SecureElementManager {
         triggerDataChanged();
     }
 
-    public <E extends SecureElement> void update(List<E> overrideElements, Class<E> updateClass){
-        adapter.update(overrideElements, updateClass);
+    public <E extends SecureElement> void update(List<E> overrideElements){
+        adapter.update(overrideElements);
         triggerDataChanged();
     }
 
