@@ -1,30 +1,36 @@
 package de.davis.passwordmanager.ui.elements.creditcard;
 
+import android.os.Bundle;
 import android.text.InputFilter;
 import android.text.method.DigitsKeyListener;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.EditText;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.google.android.material.textfield.TextInputLayout;
 
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.databinding.ActivityViewCreditCardBinding;
+import de.davis.passwordmanager.databinding.FragmentViewCreditCardBinding;
 import de.davis.passwordmanager.listeners.OnEndIconClickListener;
 import de.davis.passwordmanager.listeners.OnInformationChangedListener;
 import de.davis.passwordmanager.listeners.text.ExpiryDateTextWatcher;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.security.element.creditcard.CreditCardDetails;
 import de.davis.passwordmanager.security.element.creditcard.Name;
-import de.davis.passwordmanager.ui.elements.ViewSecureElementActivity;
+import de.davis.passwordmanager.ui.elements.ViewSecureElementFragment;
 
-public class ViewCreditCardActivity extends ViewSecureElementActivity {
+public class ViewCreditCardFragment extends ViewSecureElementFragment {
 
-    private ActivityViewCreditCardBinding binding;
+    public static final int ID = R.id.viewCreditcardFragment;
+
+    private FragmentViewCreditCardBinding binding;
 
     @Override
-    protected void fillInElement(@NonNull SecureElement creditCard) {
+    public void fillInElement(@NonNull SecureElement creditCard) {
         super.fillInElement(creditCard);
 
         CreditCardDetails details = (CreditCardDetails) creditCard.getDetail();
@@ -69,9 +75,9 @@ public class ViewCreditCardActivity extends ViewSecureElementActivity {
     }
 
     @Override
-    public View getContentView() {
+    public View getContentView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         if(binding == null)
-            binding = ActivityViewCreditCardBinding.inflate(getLayoutInflater());
+            binding = FragmentViewCreditCardBinding.inflate(inflater, container, false);
 
         return binding.getRoot();
     }

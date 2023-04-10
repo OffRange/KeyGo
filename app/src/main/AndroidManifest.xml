@@ -24,10 +24,8 @@
             android:windowSoftInputMode="adjustNothing"
             android:theme="@style/AppTheme.NoActionBar"/>
         <activity android:name=".ui.elements.password.CreatePasswordActivity"/>
-        <activity android:name=".ui.elements.password.ViewPasswordActivity" android:theme="@style/AppTheme.NoActionBar"/>
         <activity android:name=".ui.elements.password.GeneratePasswordActivity" android:theme="@style/AppTheme.NoActionBar"/>
         <activity android:name=".ui.elements.creditcard.CreateCreditCardActivity"/>
-        <activity android:name=".ui.elements.creditcard.ViewCreditCardActivity" android:theme="@style/AppTheme.NoActionBar"/>
         <activity
             android:name="de.davis.passwordmanager.ui.login.LoginActivity"
             android:exported="true">
