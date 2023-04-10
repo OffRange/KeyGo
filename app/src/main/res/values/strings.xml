@@ -35,7 +35,7 @@
     <string name="authentication_description">Hold your finger against the fingerprint sensor.</string>
     <string name="use_password">Use password</string>
     <string name="no_elements_to_show">There are no elements</string>
-    <string name="add_password">Add password</string>
+    <string name="add_element">Add element</string>
 
     <string name="password_does_not_match">This password does not match</string>
     <string name="is_not_filled_in">This must be filled in</string>

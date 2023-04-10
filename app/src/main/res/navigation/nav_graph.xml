@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/app_navigation"
+    app:startDestination="@id/dashboardFragment">
+
+    <fragment
+        android:id="@+id/dashboardFragment"
+        android:name="de.davis.passwordmanager.ui.dashboard.DashboardFragment"
+        android:label="@string/dashboard" >
+        <action
+            android:id="@+id/action_dashboardFragment_to_settingsFragment"
+            app:destination="@id/settingsFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="de.davis.passwordmanager.ui.settings.SettingsFragment"
+        android:label="@string/settings" >
+        <action
+            android:id="@+id/action_settingsFragment_to_dashboardFragment"
+            app:destination="@id/dashboardFragment"
+            app:popUpToInclusive="true"/>
+    </fragment>
+</navigation>

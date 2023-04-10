@@ -1,25 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".ui.MainActivity">
 
-    <androidx.viewpager2.widget.ViewPager2
-        android:id="@+id/viewPager2"
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/nav_host_fragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_above="@id/tab_layout" />
+        android:name="androidx.navigation.fragment.NavHostFragment"
+        app:defaultNavHost="true"
+        app:navGraph="@navigation/nav_graph" />
 
-    <com.google.android.material.tabs.TabLayout
-        android:id="@+id/tab_layout"
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/navigationView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        app:tabMode="fixed"
-        android:elevation="3dp"
-        android:background="?attr/colorSurfaceVariant"
-        android:backgroundTint="?attr/colorSurface">
-    </com.google.android.material.tabs.TabLayout>
-</RelativeLayout>
+        android:layout_gravity="bottom"
+        app:menu="@menu/bottom_navigation_menu"
+        app:layout_behavior="com.google.android.material.behavior.HideBottomViewOnScrollBehavior"/>
+
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:id="@+id/add"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:layout_marginEnd="@dimen/default_margin"
+        android:translationY="-16dp"
+        android:contentDescription="@string/content_description_add_password"
+        android:text="@string/add_element"
+        app:icon="@android:drawable/ic_input_add"
+        app:layout_anchor="@+id/navigationView"
+        app:layout_anchorGravity="end|top"
+        app:srcCompat="@android:drawable/ic_input_add" />
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

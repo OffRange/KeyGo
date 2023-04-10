@@ -1,11 +1,15 @@
-package de.davis.passwordmanager.ui;
+package de.davis.passwordmanager.ui.dashboard;
+
+import static androidx.recyclerview.widget.LinearLayoutManager.VERTICAL;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -19,9 +23,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.view.MenuProvider;
+import androidx.core.view.ViewCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.color.MaterialColors;
@@ -33,6 +39,7 @@ import de.davis.passwordmanager.manager.ActivityResultManager;
 import de.davis.passwordmanager.security.element.SecureElementManager;
 import de.davis.passwordmanager.ui.callbacks.SearchViewBackPressedHandler;
 import de.davis.passwordmanager.ui.viewmodels.DashboardViewModel;
+import de.davis.passwordmanager.ui.viewmodels.ScrollingViewModel;
 import de.davis.passwordmanager.ui.views.AddBottomSheet;
 import de.davis.passwordmanager.ui.views.OptionBottomSheet;
 
@@ -41,6 +48,7 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
     private FragmentDashboardBinding binding;
 
     private DashboardViewModel viewModel;
+    private ScrollingViewModel scrollingViewModel;
 
     private DashboardAdapter searchResultsAdapter;
 
@@ -49,6 +57,16 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         binding = FragmentDashboardBinding.inflate(inflater, container, false);
         binding.recyclerView.setHasFixedSize(true);
+
+        binding.recyclerView.setLayoutManager(new LinearLayoutManager(getContext(), VERTICAL, false) {
+            @Override
+            public int getPaddingBottom() {
+                float dip = 56+16*2;
+                Resources r = getResources();
+                float px = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dip, r.getDisplayMetrics());
+                return (int) px;
+            }
+        });
 
         SecureElementManager manager = SecureElementManager.createNew(m -> {
             boolean hasElements = m.hasElements();
@@ -62,8 +80,6 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
         ActivityResultManager handler = ActivityResultManager.getOrCreateManager(getClass(), this);
         handler.registerCreate();
         handler.registerEdit(null);
-
-        binding.add.setOnClickListener(v -> showBottomSheet());
 
         ((AppCompatActivity)requireActivity()).setSupportActionBar(binding.searchBar);
 
@@ -114,10 +130,16 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
 
         private boolean initialized = false;
 
+        private ScrollingViewModel scrollingViewModel;
+
         public ScrollingViewBehavior() {}
 
         public ScrollingViewBehavior(@NonNull Context context, @Nullable AttributeSet attrs) {
             super(context, attrs);
+        }
+
+        public void setScrollingViewModel(ScrollingViewModel scrollingViewModel) {
+            this.scrollingViewModel = scrollingViewModel;
         }
 
         @Override
@@ -137,6 +159,22 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
 
             // Remove AppBarLayout elevation shadow
             appBarLayout.setElevation(0);
+        }
+
+        @Override
+        public boolean onStartNestedScroll(
+                @NonNull CoordinatorLayout coordinatorLayout,
+                @NonNull View child,
+                @NonNull View directTargetChild,
+                @NonNull View target,
+                int nestedScrollAxes,
+                int type) {
+            return nestedScrollAxes == ViewCompat.SCROLL_AXIS_VERTICAL;
+        }
+
+        @Override
+        public void onNestedScroll(@NonNull CoordinatorLayout coordinatorLayout, @NonNull View child, @NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int type, @NonNull int[] consumed) {
+            scrollingViewModel.setConsumedY(dyConsumed);
         }
 
         @Override
@@ -161,6 +199,14 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
 
             binding.noResults.setVisibility(View.GONE);
         });
+
+        scrollingViewModel = new ViewModelProvider(requireActivity()).get(ScrollingViewModel.class);
+        CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) binding.recyclerView.getLayoutParams();
+        ScrollingViewBehavior behavior = (ScrollingViewBehavior) params.getBehavior();
+        if(behavior == null)
+            return;
+
+        behavior.setScrollingViewModel(scrollingViewModel);
     }
 
     @Override
