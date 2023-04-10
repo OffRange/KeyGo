@@ -1,15 +1,11 @@
 package de.davis.passwordmanager.ui.dashboard;
 
-import static androidx.recyclerview.widget.LinearLayoutManager.VERTICAL;
-
 import android.content.Context;
-import android.content.res.Resources;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
-import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -27,17 +23,21 @@ import androidx.core.view.ViewCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.navigation.NavController;
+import androidx.navigation.fragment.NavHostFragment;
+import androidx.slidingpanelayout.widget.SlidingPaneLayout;
 
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.color.MaterialColors;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.dashboard.DashboardAdapter;
+import de.davis.passwordmanager.dashboard.viewholders.BasicViewHolder;
 import de.davis.passwordmanager.databinding.FragmentDashboardBinding;
 import de.davis.passwordmanager.manager.ActivityResultManager;
+import de.davis.passwordmanager.security.element.SecureElementDetail;
 import de.davis.passwordmanager.security.element.SecureElementManager;
-import de.davis.passwordmanager.ui.callbacks.SearchViewBackPressedHandler;
+import de.davis.passwordmanager.ui.callbacks.SlidingBackPaneManager;
 import de.davis.passwordmanager.ui.viewmodels.DashboardViewModel;
 import de.davis.passwordmanager.ui.viewmodels.ScrollingViewModel;
 import de.davis.passwordmanager.ui.views.AddBottomSheet;
@@ -50,43 +50,68 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
     private DashboardViewModel viewModel;
     private ScrollingViewModel scrollingViewModel;
 
-    private DashboardAdapter searchResultsAdapter;
+    private boolean oldState = true;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         binding = FragmentDashboardBinding.inflate(inflater, container, false);
-        binding.recyclerView.setHasFixedSize(true);
+        return binding.getRoot();
+    }
 
-        binding.recyclerView.setLayoutManager(new LinearLayoutManager(getContext(), VERTICAL, false) {
-            @Override
-            public int getPaddingBottom() {
-                float dip = 56+16*2;
-                Resources r = getResources();
-                float px = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dip, r.getDisplayMetrics());
-                return (int) px;
-            }
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        binding.listPane.recyclerView.setHasFixedSize(true);
+
+        NavHostFragment navHostFragment = (NavHostFragment) getChildFragmentManager().findFragmentById(R.id.elementContainer);
+        if(navHostFragment == null)
+            return;
+
+        NavController navController = navHostFragment.getNavController();
+        binding.getRoot().setLockMode(SlidingPaneLayout.LOCK_MODE_LOCKED);
+
+        ((AppCompatActivity)requireActivity()).setSupportActionBar(binding.listPane.searchBar);
+
+        binding.listPane.viewAddFirst.setOnClickListener(v -> showBottomSheet());
+
+        ActivityResultManager arm = ActivityResultManager.getOrCreateManager(getClass(), this);
+        arm.registerCreate();
+        arm.registerEdit(null);
+
+        SecureElementManager manager = SecureElementManager.createNew(sem -> {
+            boolean hasElements = sem.hasElements();
+            binding.listPane.progress.setVisibility(View.GONE);
+
+            binding.listPane.recyclerView.setVisibility(hasElements ? View.VISIBLE : View.GONE);
+            binding.listPane.viewToShow.setVisibility(hasElements ? View.GONE : View.VISIBLE);
         });
 
-        SecureElementManager manager = SecureElementManager.createNew(m -> {
-            boolean hasElements = m.hasElements();
-            binding.progress.setVisibility(View.GONE);
+        DashboardAdapter dashboardAdapter = manager.getAdapter();
+        dashboardAdapter.applyWithTracker(binding.listPane.recyclerView);
 
-            binding.recyclerView.setVisibility(hasElements ? View.VISIBLE : View.GONE);
-            binding.viewToShow.setVisibility(hasElements ? View.GONE : View.VISIBLE);
-        });
-        manager.getAdapter().applyWithTracker(binding.recyclerView);
+        BasicViewHolder.OnItemClickedListener onItemClickedListener = element -> {
+            scrollingViewModel.setVisibility(false);
+            binding.listPane.searchView.hide();
+            Bundle bundle = new Bundle();
+            bundle.putSerializable("element", element);
+            navController.popBackStack();
+            navController.navigate(SecureElementDetail.getFor(element).getViewFragmentId(), bundle);
 
-        ActivityResultManager handler = ActivityResultManager.getOrCreateManager(getClass(), this);
-        handler.registerCreate();
-        handler.registerEdit(null);
+            binding.getRoot().open();
+        };
 
-        ((AppCompatActivity)requireActivity()).setSupportActionBar(binding.searchBar);
+        dashboardAdapter.setOnItemClickedListener(onItemClickedListener);
 
-        searchResultsAdapter = new DashboardAdapter();
-        binding.recyclerViewResults.setAdapter(searchResultsAdapter);
+        DashboardAdapter searchResultAdapter = new DashboardAdapter();
+        searchResultAdapter.setOnItemClickedListener(onItemClickedListener);
+        binding.listPane.recyclerViewResults.setAdapter(searchResultAdapter);
 
-        binding.searchView.getEditText().addTextChangedListener(new TextWatcher() {
+
+        addMenu(dashboardAdapter);
+
+
+        binding.listPane.searchView.getEditText().addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
@@ -99,17 +124,58 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
             }
         });
 
-        binding.viewAddFirst.setOnClickListener(v -> showBottomSheet());
 
-        requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), new SearchViewBackPressedHandler(binding.searchView));
 
+        viewModel = new ViewModelProvider(this, ViewModelProvider.Factory.from(DashboardViewModel.initializer)).get(DashboardViewModel.class);
+        viewModel.getElements().observe(getViewLifecycleOwner(), secureElements -> SecureElementManager.getInstance().update(secureElements));
+        viewModel.getFiltered().observe(getViewLifecycleOwner(), secureElements -> {
+            searchResultAdapter.update(secureElements);
+            searchResultAdapter.setFilter(viewModel.getQuery());
+            if(!TextUtils.isEmpty(viewModel.getQuery()) && secureElements.isEmpty()){
+                binding.listPane.noResults.setVisibility(View.VISIBLE);
+                return;
+            }
+
+            binding.listPane.noResults.setVisibility(View.GONE);
+        });
+
+
+        scrollingViewModel = new ViewModelProvider(requireActivity()).get(ScrollingViewModel.class);
+
+        SlidingBackPaneManager slidingBackPaneManager = new SlidingBackPaneManager(binding.slidingPaneLayout, scrollingViewModel);
+        requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), slidingBackPaneManager);
+
+
+        //Animation for fab and bottom nav bar
+        CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) binding.listPane.recyclerView.getLayoutParams();
+        ScrollingViewBehavior behavior = (ScrollingViewBehavior) params.getBehavior();
+        if(behavior == null)
+            return;
+
+        behavior.setScrollingViewModel(scrollingViewModel);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        oldState = Boolean.TRUE.equals(scrollingViewModel.getVisibility().getValue());
+        scrollingViewModel.setVisibility(false);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        scrollingViewModel.setVisibility(oldState);
+    }
+
+    private void addMenu(DashboardAdapter dashboardAdapter){
         requireActivity().addMenuProvider(new MenuProvider() {
             @Override
             public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater menuInflater) {
                 menuInflater.inflate(R.menu.view_menu, menu);
-                manager.getAdapter().setStateChangeHandler(selectedItems -> {
+                dashboardAdapter.setStateChangeHandler(selectedItems -> {
                     menu.findItem(R.id.more).setVisible(selectedItems > 0);
-                    binding.searchBar.setHint(selectedItems > 0 ? getString(R.string.selected_items, selectedItems) : getString(android.R.string.search_go));
+                    binding.listPane.searchBar.setHint(selectedItems > 0 ? getString(R.string.selected_items, selectedItems) : getString(android.R.string.search_go));
                 });
             }
 
@@ -122,8 +188,38 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
                 return true;
             }
         }, getViewLifecycleOwner(), Lifecycle.State.RESUMED);
+    }
 
-        return binding.getRoot();
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        SecureElementManager.getInstance().getAdapter().getTracker().onSaveInstanceState(outState);
+        outState.putCharSequence("searchbar_hint", binding.listPane.searchBar.getHint());
+    }
+
+    @Override
+    public void onViewStateRestored(@Nullable Bundle savedInstanceState) {
+        super.onViewStateRestored(savedInstanceState);
+        SecureElementManager.getInstance().getAdapter().getTracker().onRestoreInstanceState(savedInstanceState);
+        if(savedInstanceState == null)
+            return;
+
+        binding.listPane.searchBar.setHint(savedInstanceState.getCharSequence("searchbar_hint", getString(android.R.string.search_go)));
+    }
+
+    private void showBottomSheet(){
+        new AddBottomSheet().show(getParentFragmentManager(), "add-bottom-sheet");
+    }
+
+    @Override
+    public boolean onQueryTextSubmit(String query) {
+        return true;
+    }
+
+    @Override
+    public boolean onQueryTextChange(String newText) {
+        viewModel.filter(newText);
+        return true;
     }
 
     public static class ScrollingViewBehavior extends AppBarLayout.ScrollingViewBehavior {
@@ -181,63 +277,5 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
         protected boolean shouldHeaderOverlapScrollingChild() {
             return false;
         }
-    }
-
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-
-        viewModel = new ViewModelProvider(this, ViewModelProvider.Factory.from(DashboardViewModel.initializer)).get(DashboardViewModel.class);
-        viewModel.getElements().observe(getViewLifecycleOwner(), secureElements -> SecureElementManager.getInstance().update(secureElements));
-        viewModel.getFiltered().observe(getViewLifecycleOwner(), secureElements -> {
-            searchResultsAdapter.update(secureElements);
-            searchResultsAdapter.setFilter(viewModel.getQuery());
-            if(!TextUtils.isEmpty(viewModel.getQuery()) && secureElements.isEmpty()){
-                binding.noResults.setVisibility(View.VISIBLE);
-                return;
-            }
-
-            binding.noResults.setVisibility(View.GONE);
-        });
-
-        scrollingViewModel = new ViewModelProvider(requireActivity()).get(ScrollingViewModel.class);
-        CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) binding.recyclerView.getLayoutParams();
-        ScrollingViewBehavior behavior = (ScrollingViewBehavior) params.getBehavior();
-        if(behavior == null)
-            return;
-
-        behavior.setScrollingViewModel(scrollingViewModel);
-    }
-
-    @Override
-    public void onSaveInstanceState(@NonNull Bundle outState) {
-        super.onSaveInstanceState(outState);
-        SecureElementManager.getInstance().getAdapter().getTracker().onSaveInstanceState(outState);
-        outState.putCharSequence("searchbar_hint", binding.searchBar.getHint());
-    }
-
-    @Override
-    public void onViewStateRestored(@Nullable Bundle savedInstanceState) {
-        super.onViewStateRestored(savedInstanceState);
-        SecureElementManager.getInstance().getAdapter().getTracker().onRestoreInstanceState(savedInstanceState);
-        if(savedInstanceState == null)
-            return;
-
-        binding.searchBar.setHint(savedInstanceState.getCharSequence("searchbar_hint", getString(android.R.string.search_go)));
-    }
-
-    private void showBottomSheet(){
-        new AddBottomSheet().show(getParentFragmentManager(), "add-bottom-sheet");
-    }
-
-    @Override
-    public boolean onQueryTextSubmit(String query) {
-        return true;
-    }
-
-    @Override
-    public boolean onQueryTextChange(String newText) {
-        viewModel.filter(newText);
-        return true;
     }
 }

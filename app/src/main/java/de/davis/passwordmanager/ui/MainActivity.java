@@ -60,6 +60,8 @@ public class MainActivity extends AppCompatActivity {
                 behavior.slideDown(bottomNavigationView);
             }
         });
+
+        scrollingViewModel.getVisibility().observe(this, visible -> getFAB().setVisibility(visible ? View.VISIBLE : View.GONE));
     }
 
     private View getFAB(){
