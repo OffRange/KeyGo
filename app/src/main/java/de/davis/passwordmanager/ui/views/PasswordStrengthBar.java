@@ -151,6 +151,9 @@ public class PasswordStrengthBar extends LinearLayout implements TextWatcher {
         SavedState ss = (SavedState) state;
         super.onRestoreInstanceState(ss.getSuperState());
         strength = ss.strength;
+        if(strength == null)
+            return;
+
         progressIndicator.setIndicatorColor(strength.getColor(getContext()));
 
         strengthText.setVisibility(progressIndicator.getProgress() == 0 ? GONE : VISIBLE);
