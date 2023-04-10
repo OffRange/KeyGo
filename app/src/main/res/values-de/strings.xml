@@ -95,4 +95,5 @@
         <item quantity="one">Nach einer Minute wird eine erneute Authentifizierung erzwungen</item>
         <item quantity="other">Nach %d Minuten wird eine erneute Authentifizierung erzwungen</item>
     </plurals>
+    <string name="no_element_selected">Kein Element ausgewählt</string>
 </resources>
