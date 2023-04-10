@@ -1,6 +1,7 @@
 package de.davis.passwordmanager.listeners;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import de.davis.passwordmanager.dialog.EditDialog;
 import de.davis.passwordmanager.security.element.ElementDetail;
@@ -20,12 +21,14 @@ public class OnInformationChangedListener<E extends SecureElement> implements Ed
     @Override
     public void onInformationChanged(EditDialog dialog, String information) {
         ElementDetail detail = helper.applyChanges(element, information);
-        element.setDetail(detail);
+        if(detail != null)
+            element.setDetail(detail);
 
         SecureElementManager.getInstance().editElement(element);
     }
 
     public interface ApplyChangeToElementHelper<E> {
+        @Nullable
         ElementDetail applyChanges(E element, String changes);
     }
 }
