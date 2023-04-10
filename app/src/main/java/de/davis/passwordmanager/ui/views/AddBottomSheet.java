@@ -13,7 +13,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import de.davis.passwordmanager.databinding.AddBottomSheetContentBinding;
 import de.davis.passwordmanager.manager.ActivityResultManager;
 import de.davis.passwordmanager.security.element.SecureElementDetail;
-import de.davis.passwordmanager.ui.DashboardFragment;
+import de.davis.passwordmanager.ui.dashboard.DashboardFragment;
 
 public class AddBottomSheet extends BottomSheetDialogFragment {
 

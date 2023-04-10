@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/element_nav_graph"
+    app:startDestination="@id/noElementFragment">
+
+    <fragment
+        android:id="@+id/viewPasswordFragment"
+        android:label="@string/password"
+        android:name="de.davis.passwordmanager.ui.elements.password.ViewPasswordFragment">
+
+        <argument
+            android:name="element"
+            app:argType="de.davis.passwordmanager.security.element.SecureElement"/>
+    </fragment>
+
+    <fragment
+        android:id="@+id/viewCreditcardFragment"
+        android:label="@string/password"
+        android:name="de.davis.passwordmanager.ui.elements.creditcard.ViewCreditCardFragment">
+
+        <argument
+            android:name="element"
+            app:argType="de.davis.passwordmanager.security.element.SecureElement"/>
+    </fragment>
+    <fragment android:id="@+id/noElementFragment"
+        android:name="de.davis.passwordmanager.ui.elements.NoElementFragment">
+        <action
+            android:id="@+id/action_placeholder_to_viewPasswordFragment"
+            app:destination="@id/viewPasswordFragment" />
+        <action
+            android:id="@+id/action_placeholder_to_viewCreditcardFragment"
+            app:destination="@id/viewCreditcardFragment" />
+    </fragment>
+</navigation>

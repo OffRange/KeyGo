@@ -1,30 +1,36 @@
 package de.davis.passwordmanager.ui.elements.password;
 
+import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.EditText;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.content.res.AppCompatResources;
 
 import com.google.android.material.textfield.TextInputLayout;
 
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.databinding.ActivityViewPasswordBinding;
+import de.davis.passwordmanager.databinding.FragmentViewPasswordBinding;
 import de.davis.passwordmanager.listeners.OnInformationChangedListener;
 import de.davis.passwordmanager.manager.ActivityResultManager;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.security.element.password.PasswordDetails;
-import de.davis.passwordmanager.ui.elements.ViewSecureElementActivity;
+import de.davis.passwordmanager.ui.elements.ViewSecureElementFragment;
 import de.davis.passwordmanager.ui.views.PasswordStrengthBar;
 import de.davis.passwordmanager.utils.BrowserUtil;
 
-public class ViewPasswordActivity extends ViewSecureElementActivity {
+public class ViewPasswordFragment extends ViewSecureElementFragment {
 
-    private ActivityViewPasswordBinding binding;
+    public static final int ID = R.id.viewPasswordFragment;
+
+    private FragmentViewPasswordBinding binding;
     private EditText editText;
 
     @Override
-    protected void fillInElement(@NonNull SecureElement password) {
+    public void fillInElement(@NonNull SecureElement password) {
         super.fillInElement(password);
 
         ActivityResultManager activityResultManager = ActivityResultManager.getOrCreateManager(getClass(), this);
@@ -44,7 +50,7 @@ public class ViewPasswordActivity extends ViewSecureElementActivity {
             passwordStrengthBar.update(editText.getText().toString(), false);
             editText.addTextChangedListener(passwordStrengthBar);
 
-            view.findViewById(R.id.generate).setOnClickListener(v -> activityResultManager.launchGeneratePassword(this));
+            view.findViewById(R.id.generate).setOnClickListener(v -> activityResultManager.launchGeneratePassword(getContext()));
         });
 
         binding.origin.setInformation(details.getOrigin());
@@ -64,23 +70,23 @@ public class ViewPasswordActivity extends ViewSecureElementActivity {
         manageOrigin(details);
     }
 
+    @Override
+    public View getContentView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        if(binding == null)
+            binding = FragmentViewPasswordBinding.inflate(inflater, container, false);
+
+        return binding.getRoot();
+    }
+
     private void setStrengthValues(PasswordDetails details){
         binding.strength.setInformation(details.getStrength().getString());
-        binding.strength.setInformationTextColor(details.getStrength().getColor(this));
+        binding.strength.setInformationTextColor(details.getStrength().getColor(requireContext()));
     }
 
     private void manageOrigin(PasswordDetails details){
         if(BrowserUtil.isValidURL(BrowserUtil.ensureProtocol(details.getOrigin()))) {
-            binding.origin.setOnEndButtonClickListener(v -> BrowserUtil.open(details.getOrigin(), this));
-            binding.origin.setEndButtonDrawable(AppCompatResources.getDrawable(this, R.drawable.ic_baseline_open_in_new_24));
+            binding.origin.setOnEndButtonClickListener(v -> BrowserUtil.open(details.getOrigin(), requireContext()));
+            binding.origin.setEndButtonDrawable(AppCompatResources.getDrawable(requireContext(), R.drawable.ic_baseline_open_in_new_24));
         }
-    }
-
-    @Override
-    public View getContentView() {
-        if(binding == null)
-            binding = ActivityViewPasswordBinding.inflate(getLayoutInflater());
-
-        return binding.getRoot();
     }
 }

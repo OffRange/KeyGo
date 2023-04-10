@@ -21,7 +21,7 @@
     <string name="authentication_description">Halte deinen Finger gegen den Sensor.</string>
     <string name="use_password">Passwort benutzen</string>
     <string name="no_elements_to_show">Keine Elemente vorhanden</string>
-    <string name="add_password">Passwort hinzufügen</string>
+    <string name="add_element">Element hinzufügen</string>
     <string name="password_does_not_match">Dieses Passwort ist inkorrekt</string>
     <string name="is_not_filled_in">Dieses Feld muss ausgefüllt sein</string>
     <string name="invalid_card_number_length">Kreditkartennummer muss 16 Zahlen beinhalten</string>
@@ -95,4 +95,5 @@
         <item quantity="one">Nach einer Minute wird eine erneute Authentifizierung erzwungen</item>
         <item quantity="other">Nach %d Minuten wird eine erneute Authentifizierung erzwungen</item>
     </plurals>
+    <string name="no_element_selected">Kein Element ausgewählt</string>
 </resources>

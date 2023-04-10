@@ -11,7 +11,7 @@ import de.davis.passwordmanager.databinding.MoreBottomSheetContentBinding;
 import de.davis.passwordmanager.dialog.DeleteDialog;
 import de.davis.passwordmanager.manager.ActivityResultManager;
 import de.davis.passwordmanager.security.element.SecureElement;
-import de.davis.passwordmanager.ui.DashboardFragment;
+import de.davis.passwordmanager.ui.dashboard.DashboardFragment;
 
 public class OptionBottomSheet extends BottomSheetDialog {
 

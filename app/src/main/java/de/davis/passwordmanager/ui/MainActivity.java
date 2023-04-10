@@ -1,37 +1,71 @@
 package de.davis.passwordmanager.ui;
 
 import android.os.Bundle;
+import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.NavController;
+import androidx.navigation.fragment.NavHostFragment;
+import androidx.navigation.ui.NavigationUI;
 
-import com.google.android.material.tabs.TabLayoutMediator;
+import com.google.android.material.behavior.HideBottomViewOnScrollBehavior;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
+import com.google.android.material.navigation.NavigationBarView;
 
-import de.davis.passwordmanager.MainFragmentStateAdapter;
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.databinding.ActivityMainBinding;
+import de.davis.passwordmanager.ui.viewmodels.ScrollingViewModel;
+import de.davis.passwordmanager.ui.views.AddBottomSheet;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final int[] TAB_NAMES = {R.string.dashboard, R.string.settings};
-    private static final int[] TAB_ICONS = {R.drawable.ic_baseline_dashboard_24, R.drawable.ic_baseline_settings_24};
-
     @Override
+    @SuppressWarnings("unchecked")
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        ActivityMainBinding binding = ActivityMainBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
+        setContentView(R.layout.activity_main);
 
-        MainFragmentStateAdapter adapter = new MainFragmentStateAdapter(this);
-        binding.viewPager2.setAdapter(adapter);
-        binding.viewPager2.setUserInputEnabled(false);
-        new TabLayoutMediator(binding.tabLayout, binding.viewPager2, (tab, position) -> {
-            tab.setText(TAB_NAMES[position]);
-            tab.setIcon(TAB_ICONS[position]);
-        }).attach();
+        NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment);
+        if(navHostFragment == null)
+            return;
+
+        NavController navController = navHostFragment.getNavController();
+        NavigationUI.setupWithNavController((NavigationBarView) findViewById(R.id.navigationView), navController);
+
+
+        getFAB().setOnClickListener(v -> new AddBottomSheet().show(getSupportFragmentManager(), "add-bottom-sheet"));
+
+
+        float screenWidthDp = getResources().getConfiguration().smallestScreenWidthDp;
+        if(screenWidthDp >= 600)
+            return;
+
+        ScrollingViewModel scrollingViewModel = new ViewModelProvider(this).get(ScrollingViewModel.class);
+        scrollingViewModel.getConsumedY().observe(this, consumed -> {
+            BottomNavigationView bottomNavigationView = findViewById(R.id.navigationView);
+            CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) bottomNavigationView.getLayoutParams();
+            HideBottomViewOnScrollBehavior<BottomNavigationView> behavior = (HideBottomViewOnScrollBehavior<BottomNavigationView>) params.getBehavior();
+            if (behavior == null)
+                return;
+
+            ExtendedFloatingActionButton floatingActionButton = (ExtendedFloatingActionButton) getFAB();
+            if(consumed < 0 && !floatingActionButton.isExtended()) {
+                floatingActionButton.extend();
+                behavior.slideUp(bottomNavigationView);
+
+            }else if(consumed > 0 && floatingActionButton.isExtended()) {
+                floatingActionButton.shrink();
+                behavior.slideDown(bottomNavigationView);
+            }
+        });
+
+        scrollingViewModel.getVisibility().observe(this, visible -> getFAB().setVisibility(visible ? View.VISIBLE : View.GONE));
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
+    private View getFAB(){
+        float screenWidthDp = getResources().getConfiguration().smallestScreenWidthDp;
+        return screenWidthDp >= 600 ? findViewById(R.id.add_rail) : findViewById(R.id.add);
     }
 }

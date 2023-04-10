@@ -41,6 +41,8 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
     private final ArrayList<SecureElement> items;
     private SelectionTracker<Long> tracker;
 
+    private BasicViewHolder.OnItemClickedListener onItemClickedListener;
+
     private StateChangeHandler stateChangeHandler;
 
     public DashboardAdapter(){
@@ -51,6 +53,10 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
 
     public SelectionTracker<Long> getTracker() {
         return tracker;
+    }
+
+    public void setOnItemClickedListener(BasicViewHolder.OnItemClickedListener onItemClickedListener) {
+        this.onItemClickedListener = onItemClickedListener;
     }
 
     public boolean isHeaderPosition(int realPosition){
@@ -81,7 +87,7 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
     @Override
     public void onBindViewHolder(@NonNull BasicViewHolder<?> holder, int position) {
         if(isHeaderPosition(position)){
-            ((BasicViewHolder<Item>)holder).bind(headers.get(position), filter);
+            ((BasicViewHolder<Item>)holder).bind(headers.get(position), filter, onItemClickedListener);
             return;
         }
 
@@ -89,7 +95,7 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
         if(data == null)
             return;
 
-        ((BasicViewHolder<SecureElement>)holder).bind(data, filter);
+        ((BasicViewHolder<SecureElement>)holder).bind(data, filter, onItemClickedListener);
     }
 
     @Override
