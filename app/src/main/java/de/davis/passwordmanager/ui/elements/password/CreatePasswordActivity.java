@@ -1,7 +1,9 @@
 package de.davis.passwordmanager.ui.elements.password;
 
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -33,15 +35,15 @@ public class CreatePasswordActivity extends CreateSecureElementActivity {
     }
 
     @Override
-    public View getContentView() {
+    public View getContentView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         if(binding == null)
-            binding = ActivityCreatePasswordBinding.inflate(getLayoutInflater());
+            binding = ActivityCreatePasswordBinding.inflate(inflater, container, false);
 
         return binding.getRoot();
     }
 
     @Override
-    protected void fillInElement(@NonNull SecureElement element) {
+    public void fillInElement(@NonNull SecureElement element) {
         binding.textInputLayoutTitle.getEditText().setText(element.getTitle());
         binding.textInputLayoutPassword.getEditText().setText(((PasswordDetails)element.getDetail()).getPassword());
         binding.textInputLayoutUsername.getEditText().setText(((PasswordDetails)element.getDetail()).getUsername());

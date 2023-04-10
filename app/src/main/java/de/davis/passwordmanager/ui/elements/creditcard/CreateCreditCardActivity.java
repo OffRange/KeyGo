@@ -5,8 +5,9 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.InputFilter;
-import android.text.TextWatcher;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
@@ -26,7 +27,6 @@ import java.util.TimerTask;
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.databinding.ActivityCreateCreditcardBinding;
 import de.davis.passwordmanager.listeners.OnEndIconClickListener;
-import de.davis.passwordmanager.listeners.text.CreditCardNumberTextWatcher;
 import de.davis.passwordmanager.listeners.text.ExpiryDateTextWatcher;
 import de.davis.passwordmanager.nfc.NfcManager;
 import de.davis.passwordmanager.security.element.SecureElement;
@@ -36,8 +36,6 @@ import de.davis.passwordmanager.ui.elements.CreateSecureElementActivity;
 import de.davis.passwordmanager.utils.CreditCardUtil;
 
 public class CreateCreditCardActivity extends CreateSecureElementActivity {
-
-    private final TextWatcher numberWatcher = new CreditCardNumberTextWatcher();
 
     private ActivityCreateCreditcardBinding binding;
     private NfcManager nfcManager;
@@ -98,7 +96,7 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
     }
 
     @Override
-    protected void fillInElement(@NonNull SecureElement element) {
+    public void fillInElement(@NonNull SecureElement element) {
         binding.textInputLayoutTitle.getEditText().setText(element.getTitle());
 
         CreditCardDetails details = (CreditCardDetails) element.getDetail();
@@ -109,9 +107,9 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
     }
 
     @Override
-    public View getContentView() {
+    public View getContentView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         if(binding == null)
-            binding = ActivityCreateCreditcardBinding.inflate(getLayoutInflater());
+            binding = ActivityCreateCreditcardBinding.inflate(inflater, container, false);
 
         return binding.getRoot();
     }

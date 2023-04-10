@@ -12,7 +12,7 @@ import de.davis.passwordmanager.Keys;
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.security.element.SecureElement;
 
-public abstract class CreateSecureElementActivity extends SecureElementActivity {
+public abstract class CreateSecureElementActivity extends SEViewActivity {
 
     private static final String ELEMENT = "element";
 
