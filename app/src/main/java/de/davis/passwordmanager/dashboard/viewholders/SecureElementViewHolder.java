@@ -1,7 +1,6 @@
 package de.davis.passwordmanager.dashboard.viewholders;
 
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.Color;
 import android.text.Spannable;
 import android.text.SpannableString;
@@ -18,7 +17,6 @@ import androidx.recyclerview.selection.ItemDetailsLookup;
 import com.google.android.material.checkbox.MaterialCheckBox;
 import com.google.android.material.color.MaterialColors;
 
-import de.davis.passwordmanager.Keys;
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.security.element.SecureElementDetail;
@@ -45,7 +43,7 @@ public class SecureElementViewHolder extends BasicViewHolder<SecureElement> {
     }
 
     @Override
-    public void bind(@NonNull SecureElement item, String filter) {
+    public void bind(@NonNull SecureElement item, String filter, OnItemClickedListener onItemClickedListener) {
         Context context = itemView.getContext();
 
         String text = item.getTitle();
@@ -74,7 +72,10 @@ public class SecureElementViewHolder extends BasicViewHolder<SecureElement> {
             info.setTextColor(MaterialColors.getColor(itemView.getContext(), com.google.android.material.R.attr.colorOnSurface, Color.BLACK));
         }
 
-        itemView.setOnClickListener(v -> context.startActivity(new Intent(itemView.getContext(), SecureElementDetail.getFor(item).getViewActivityClass()).putExtra(Keys.KEY_OLD, item)));
+        itemView.setOnClickListener(v -> {
+            if(onItemClickedListener != null)
+                onItemClickedListener.onClicked(item);
+        });
 
         more.setOnClickListener(v -> new OptionBottomSheet(itemView.getContext(), item).show());
     }

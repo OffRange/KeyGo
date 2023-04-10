@@ -6,6 +6,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import de.davis.passwordmanager.dashboard.selection.SecureElementDetailsLookup;
+import de.davis.passwordmanager.security.element.SecureElement;
 
 public abstract class BasicViewHolder<T> extends RecyclerView.ViewHolder implements SecureElementDetailsLookup.ItemDetailsLookup {
 
@@ -13,7 +14,11 @@ public abstract class BasicViewHolder<T> extends RecyclerView.ViewHolder impleme
         super(itemView);
     }
 
-    public abstract void bind(@NonNull T item, String filter);
+    public abstract void bind(@NonNull T item, String filter, OnItemClickedListener onItemClickedListener);
 
     public abstract void onBindSelectablePayload(boolean selectable, boolean selected);
+
+    public interface OnItemClickedListener {
+        void onClicked(SecureElement element);
+    }
 }
