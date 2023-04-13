@@ -4,25 +4,19 @@ import android.os.Bundle;
 import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.coordinatorlayout.widget.CoordinatorLayout;
-import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
 import androidx.navigation.ui.NavigationUI;
 
-import com.google.android.material.behavior.HideBottomViewOnScrollBehavior;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.navigation.NavigationBarView;
 
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.ui.viewmodels.ScrollingViewModel;
 import de.davis.passwordmanager.ui.views.AddBottomSheet;
 
 public class MainActivity extends AppCompatActivity {
 
     @Override
-    @SuppressWarnings("unchecked")
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -31,8 +25,9 @@ public class MainActivity extends AppCompatActivity {
         if(navHostFragment == null)
             return;
 
+        NavigationBarView navigationBarView = findViewById(R.id.navigationView);
         NavController navController = navHostFragment.getNavController();
-        NavigationUI.setupWithNavController((NavigationBarView) findViewById(R.id.navigationView), navController);
+        NavigationUI.setupWithNavController(navigationBarView, navController);
 
 
         getFAB().setOnClickListener(v -> new AddBottomSheet().show(getSupportFragmentManager(), "add-bottom-sheet"));
@@ -42,26 +37,8 @@ public class MainActivity extends AppCompatActivity {
         if(screenWidthDp >= 600)
             return;
 
-        ScrollingViewModel scrollingViewModel = new ViewModelProvider(this).get(ScrollingViewModel.class);
-        scrollingViewModel.getConsumedY().observe(this, consumed -> {
-            BottomNavigationView bottomNavigationView = findViewById(R.id.navigationView);
-            CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) bottomNavigationView.getLayoutParams();
-            HideBottomViewOnScrollBehavior<BottomNavigationView> behavior = (HideBottomViewOnScrollBehavior<BottomNavigationView>) params.getBehavior();
-            if (behavior == null)
-                return;
-
-            ExtendedFloatingActionButton floatingActionButton = (ExtendedFloatingActionButton) getFAB();
-            if(consumed < 0 && !floatingActionButton.isExtended()) {
-                floatingActionButton.extend();
-                behavior.slideUp(bottomNavigationView);
-
-            }else if(consumed > 0 && floatingActionButton.isExtended()) {
-                floatingActionButton.shrink();
-                behavior.slideDown(bottomNavigationView);
-            }
-        });
-
-        scrollingViewModel.getVisibility().observe(this, visible -> getFAB().setVisibility(visible ? View.VISIBLE : View.GONE));
+        var bottomSectionHandler = new BottomSectionHandler(navigationBarView, (ExtendedFloatingActionButton) getFAB(), this);
+        bottomSectionHandler.handle();
     }
 
     private View getFAB(){

@@ -19,12 +19,12 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.view.MenuProvider;
-import androidx.core.view.ViewCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.slidingpanelayout.widget.SlidingPaneLayout;
 
 import com.google.android.material.appbar.AppBarLayout;
@@ -149,12 +149,18 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
 
 
         //Animation for fab and bottom nav bar
-        CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) binding.listPane.recyclerView.getLayoutParams();
-        ScrollingViewBehavior behavior = (ScrollingViewBehavior) params.getBehavior();
-        if(behavior == null)
-            return;
+        binding.listPane.recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+            }
 
-        behavior.setScrollingViewModel(scrollingViewModel);
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                scrollingViewModel.setConsumedY(dy);
+            }
+        });
     }
 
     @Override
@@ -228,16 +234,10 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
 
         private boolean initialized = false;
 
-        private ScrollingViewModel scrollingViewModel;
-
         public ScrollingViewBehavior() {}
 
         public ScrollingViewBehavior(@NonNull Context context, @Nullable AttributeSet attrs) {
             super(context, attrs);
-        }
-
-        public void setScrollingViewModel(ScrollingViewModel scrollingViewModel) {
-            this.scrollingViewModel = scrollingViewModel;
         }
 
         @Override
@@ -257,22 +257,6 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
 
             // Remove AppBarLayout elevation shadow
             appBarLayout.setElevation(0);
-        }
-
-        @Override
-        public boolean onStartNestedScroll(
-                @NonNull CoordinatorLayout coordinatorLayout,
-                @NonNull View child,
-                @NonNull View directTargetChild,
-                @NonNull View target,
-                int nestedScrollAxes,
-                int type) {
-            return nestedScrollAxes == ViewCompat.SCROLL_AXIS_VERTICAL;
-        }
-
-        @Override
-        public void onNestedScroll(@NonNull CoordinatorLayout coordinatorLayout, @NonNull View child, @NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int type, @NonNull int[] consumed) {
-            scrollingViewModel.setConsumedY(dyConsumed);
         }
 
         @Override

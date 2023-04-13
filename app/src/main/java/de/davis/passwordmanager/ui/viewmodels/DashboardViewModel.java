@@ -6,6 +6,7 @@ import static androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.APPLI
 import android.text.TextUtils;
 
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.SavedStateHandle;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
@@ -14,6 +15,7 @@ import androidx.lifecycle.viewmodel.ViewModelInitializer;
 import java.util.List;
 
 import de.davis.passwordmanager.PasswordManagerApplication;
+import de.davis.passwordmanager.filter.Filter;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.ui.viewmodels.repositories.DashboardRepo;
 
@@ -24,11 +26,11 @@ public class DashboardViewModel extends ViewModel {
     private final LiveData<List<SecureElement>> searchResults;
     private final SavedStateHandle savedStateHandle;
 
-    private final DashboardRepo dashboardRepo;
+    private final MutableLiveData<List<SecureElement>> elements;
+
 
     public DashboardViewModel(DashboardRepo dashboardRepo, SavedStateHandle savedStateHandle) {
         this.savedStateHandle = savedStateHandle;
-        this.dashboardRepo = dashboardRepo;
 
         this.searchResults = Transformations.switchMap(savedStateHandle.getLiveData(QUERY, ""), input -> {
             if(TextUtils.isEmpty(input))
@@ -36,10 +38,13 @@ public class DashboardViewModel extends ViewModel {
 
             return dashboardRepo.search("%"+ input +"%");
         });
+
+        elements = (MutableLiveData<List<SecureElement>>) Transformations.map(dashboardRepo.getElements(), Filter.FILTER::filter);
+        Filter.FILTER.setUpdater(() -> elements.setValue(Filter.FILTER.filter(dashboardRepo.getElements().getValue())));
     }
 
     public LiveData<List<SecureElement>> getElements() {
-        return dashboardRepo.getElements();
+        return elements;
     }
 
     public void search(String query){
