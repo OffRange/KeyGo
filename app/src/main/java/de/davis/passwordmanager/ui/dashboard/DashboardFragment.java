@@ -121,7 +121,7 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
 
             @Override
             public void afterTextChanged(Editable s) {
-                viewModel.filter(s.toString());
+                viewModel.search(s.toString());
             }
         });
 
@@ -129,10 +129,10 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
 
         viewModel = new ViewModelProvider(this, ViewModelProvider.Factory.from(DashboardViewModel.initializer)).get(DashboardViewModel.class);
         viewModel.getElements().observe(getViewLifecycleOwner(), secureElements -> SecureElementManager.getInstance().update(secureElements));
-        viewModel.getFiltered().observe(getViewLifecycleOwner(), secureElements -> {
+        viewModel.getSearchResults().observe(getViewLifecycleOwner(), secureElements -> {
             searchResultAdapter.update(secureElements);
-            searchResultAdapter.setFilter(viewModel.getQuery());
-            if(!TextUtils.isEmpty(viewModel.getQuery()) && secureElements.isEmpty()){
+            searchResultAdapter.setFilter(viewModel.getSearchQuery());
+            if(!TextUtils.isEmpty(viewModel.getSearchQuery()) && secureElements.isEmpty()){
                 binding.listPane.noResults.setVisibility(View.VISIBLE);
                 return;
             }
@@ -220,7 +220,7 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
 
     @Override
     public boolean onQueryTextChange(String newText) {
-        viewModel.filter(newText);
+        viewModel.search(newText);
         return true;
     }
 

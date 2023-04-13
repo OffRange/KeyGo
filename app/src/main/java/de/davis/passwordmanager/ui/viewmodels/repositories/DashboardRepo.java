@@ -26,7 +26,7 @@ public class DashboardRepo {
         return elements;
     }
 
-    public LiveData<List<SecureElement>> filter(String query){
+    public LiveData<List<SecureElement>> search(String query){
         return database.getSecureElementDao().getByTitle(query);
     }
 

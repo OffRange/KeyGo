@@ -21,7 +21,7 @@ public class DashboardViewModel extends ViewModel {
 
     private static final String QUERY = "query";
 
-    private final LiveData<List<SecureElement>> filteredList;
+    private final LiveData<List<SecureElement>> searchResults;
     private final SavedStateHandle savedStateHandle;
 
     private final DashboardRepo dashboardRepo;
@@ -30,11 +30,11 @@ public class DashboardViewModel extends ViewModel {
         this.savedStateHandle = savedStateHandle;
         this.dashboardRepo = dashboardRepo;
 
-        this.filteredList = Transformations.switchMap(savedStateHandle.getLiveData(QUERY, ""), input -> {
+        this.searchResults = Transformations.switchMap(savedStateHandle.getLiveData(QUERY, ""), input -> {
             if(TextUtils.isEmpty(input))
                 return dashboardRepo.getElements();
 
-            return dashboardRepo.filter("%"+ input +"%");
+            return dashboardRepo.search("%"+ input +"%");
         });
     }
 
@@ -42,15 +42,15 @@ public class DashboardViewModel extends ViewModel {
         return dashboardRepo.getElements();
     }
 
-    public void filter(String query){
+    public void search(String query){
         savedStateHandle.set(QUERY, query);
     }
 
-    public LiveData<List<SecureElement>> getFiltered(){
-        return filteredList;
+    public LiveData<List<SecureElement>> getSearchResults(){
+        return searchResults;
     }
 
-    public String getQuery(){
+    public String getSearchQuery(){
         return savedStateHandle.get(QUERY);
     }
 
