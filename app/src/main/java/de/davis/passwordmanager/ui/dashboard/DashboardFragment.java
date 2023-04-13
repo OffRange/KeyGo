@@ -37,6 +37,7 @@ import de.davis.passwordmanager.databinding.FragmentDashboardBinding;
 import de.davis.passwordmanager.manager.ActivityResultManager;
 import de.davis.passwordmanager.security.element.SecureElementDetail;
 import de.davis.passwordmanager.security.element.SecureElementManager;
+import de.davis.passwordmanager.ui.callbacks.SearchViewBackPressedHandler;
 import de.davis.passwordmanager.ui.callbacks.SlidingBackPaneManager;
 import de.davis.passwordmanager.ui.viewmodels.DashboardViewModel;
 import de.davis.passwordmanager.ui.viewmodels.ScrollingViewModel;
@@ -144,6 +145,7 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
 
         SlidingBackPaneManager slidingBackPaneManager = new SlidingBackPaneManager(binding.slidingPaneLayout, scrollingViewModel);
         requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), slidingBackPaneManager);
+        requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), new SearchViewBackPressedHandler(binding.listPane.searchView));
 
 
         //Animation for fab and bottom nav bar
