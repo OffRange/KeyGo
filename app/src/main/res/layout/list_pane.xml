@@ -17,12 +17,14 @@
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appbarLayout"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:fitsSystemWindows="true">
         <com.google.android.material.search.SearchBar
             android:id="@+id/search_bar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="@android:string/search_go" />
+            android:hint="@android:string/search_go"
+            app:forceDefaultNavigationOnClickListener="true"/>
     </com.google.android.material.appbar.AppBarLayout>
 
     <com.google.android.material.search.SearchView
