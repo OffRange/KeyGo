@@ -81,7 +81,7 @@ public class Strength implements Serializable {
     }
 
     @AttrRes
-    public int getColor() {
+    private int getColor() {
         switch (type) {
             case RIDICULOUS:
                 return R.attr.colorRidiculous;
