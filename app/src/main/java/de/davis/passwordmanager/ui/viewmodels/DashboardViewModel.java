@@ -39,8 +39,8 @@ public class DashboardViewModel extends ViewModel {
             return dashboardRepo.search("%"+ input +"%");
         });
 
-        elements = (MutableLiveData<List<SecureElement>>) Transformations.map(dashboardRepo.getElements(), Filter.FILTER::filter);
-        Filter.FILTER.setUpdater(() -> elements.setValue(Filter.FILTER.filter(dashboardRepo.getElements().getValue())));
+        elements = (MutableLiveData<List<SecureElement>>) Transformations.map(dashboardRepo.getElements(), Filter.DEFAULT::filter);
+        Filter.DEFAULT.setUpdater(() -> elements.setValue(Filter.DEFAULT.filter(dashboardRepo.getElements().getValue())));
     }
 
     public LiveData<List<SecureElement>> getElements() {

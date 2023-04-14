@@ -42,6 +42,7 @@ import de.davis.passwordmanager.ui.callbacks.SlidingBackPaneManager;
 import de.davis.passwordmanager.ui.viewmodels.DashboardViewModel;
 import de.davis.passwordmanager.ui.viewmodels.ScrollingViewModel;
 import de.davis.passwordmanager.ui.views.AddBottomSheet;
+import de.davis.passwordmanager.ui.views.FilterBottomSheet;
 import de.davis.passwordmanager.ui.views.OptionBottomSheet;
 
 public class DashboardFragment extends Fragment implements SearchView.OnQueryTextListener {
@@ -111,7 +112,6 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
 
         addMenu(dashboardAdapter);
 
-
         binding.listPane.searchView.getEditText().addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -124,7 +124,6 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
                 viewModel.search(s.toString());
             }
         });
-
 
 
         viewModel = new ViewModelProvider(this, ViewModelProvider.Factory.from(DashboardViewModel.initializer)).get(DashboardViewModel.class);
@@ -179,12 +178,18 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
     private void addMenu(DashboardAdapter dashboardAdapter){
         requireActivity().addMenuProvider(new MenuProvider() {
             @Override
-            public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater menuInflater) {
+            public void  onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater menuInflater) {
                 menuInflater.inflate(R.menu.view_menu, menu);
                 dashboardAdapter.setStateChangeHandler(selectedItems -> {
-                    menu.findItem(R.id.more).setVisible(selectedItems > 0);
+                    requireActivity().invalidateMenu();
                     binding.listPane.searchBar.setHint(selectedItems > 0 ? getString(R.string.selected_items, selectedItems) : getString(android.R.string.search_go));
                 });
+            }
+
+            @Override
+            public void onPrepareMenu(@NonNull Menu menu) {
+                MenuProvider.super.onPrepareMenu(menu);
+                menu.findItem(R.id.more).setVisible(dashboardAdapter.getTracker().hasSelection());
             }
 
             @Override
@@ -192,6 +197,8 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
                 if(menuItem.getItemId() == R.id.more){
                     OptionBottomSheet optionBottomSheet = new OptionBottomSheet(requireContext(), null);
                     optionBottomSheet.show();
+                }else if(menuItem.getItemId() == R.id.filter){
+                    new FilterBottomSheet().show(getParentFragmentManager(), "FilterDialog");
                 }
                 return true;
             }

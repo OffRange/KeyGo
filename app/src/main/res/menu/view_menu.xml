@@ -8,4 +8,10 @@
         android:title="@string/more"
         app:showAsAction="ifRoom"
         android:visible="false"/>
+
+    <item
+        android:id="@+id/filter"
+        android:icon="@drawable/baseline_filter_list_24"
+        android:title="@string/filter"
+        app:showAsAction="always"/>
 </menu>

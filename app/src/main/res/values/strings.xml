@@ -136,4 +136,7 @@
     <string name="nfc_information">NFC information</string>
     <string name="report">Report an issue</string>
     <string name="report_summary">Report a bug or request a feature on GitHub</string>
+
+    <string name="filter">Filter</string>
+    <string name="filter_msg">Choose what to display</string>
 </resources>

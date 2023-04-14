@@ -96,4 +96,6 @@
         <item quantity="other">Nach %d Minuten wird eine erneute Authentifizierung erzwungen</item>
     </plurals>
     <string name="no_element_selected">Kein Element ausgewählt</string>
+    <string name="filter">Filter</string>
+    <string name="filter_msg">Wähle aus, was angezeigt werden soll</string>
 </resources>

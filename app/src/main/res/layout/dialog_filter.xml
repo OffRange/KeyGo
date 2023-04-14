@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.google.android.material.bottomsheet.BottomSheetDragHandleView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <GridLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:columnCount="1"
+        android:useDefaultMargins="true">
+
+        <de.davis.passwordmanager.ui.views.InformationView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:title="@string/filter"
+            app:information="@string/filter_msg" />
+
+        <de.davis.passwordmanager.ui.views.InformationView
+            android:id="@+id/type"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:title="@string/type"
+            app:contentEnabled="false">
+
+            <com.google.android.material.chip.ChipGroup
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:selectionRequired="true">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/password"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/password"
+                    android:checked="true"/>
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/creditCard"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/credit_card"
+                    android:checked="true"/>
+            </com.google.android.material.chip.ChipGroup>
+        </de.davis.passwordmanager.ui.views.InformationView>
+
+        <de.davis.passwordmanager.ui.views.InformationView
+            android:id="@+id/strength"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:title="@string/strength"
+            app:contentEnabled="false">
+            <com.google.android.material.chip.ChipGroup
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:selectionRequired="true">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/veryStrong"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/very_strong"
+                    android:checked="true"
+                    android:textColor="?colorVeryStrong"
+                    app:checkedIconTint="?colorVeryStrong"/>
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/strong"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/strong"
+                    android:checked="true"
+                    android:textColor="?colorStrong"
+                    app:checkedIconTint="?colorStrong"/>
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/moderate"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/moderate"
+                    android:checked="true"
+                    android:textColor="?colorModerate"
+                    app:checkedIconTint="?colorModerate"/>
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/weak"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/weak"
+                    android:checked="true"
+                    android:textColor="?colorWeak"
+                    app:checkedIconTint="?colorWeak"/>
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/ridiculous"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ridiculous"
+                    android:checked="true"
+                    android:textColor="?colorRidiculous"
+                    app:checkedIconTint="?colorRidiculous"/>
+            </com.google.android.material.chip.ChipGroup>
+        </de.davis.passwordmanager.ui.views.InformationView>
+    </GridLayout>
+</LinearLayout>
