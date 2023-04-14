@@ -187,6 +187,22 @@ public class InformationView extends MaterialCardView implements CopyView {
         return findViewById(R.id.container);
     }
 
+    @Override
+    public void setEnabled(boolean enabled) {
+        super.setEnabled(enabled);
+
+        setContentEnabled((ViewGroup) getContent(), enabled);
+    }
+
+    private void setContentEnabled(ViewGroup viewGroup, boolean enabled){
+        for (int i = 0; i < viewGroup.getChildCount(); i++) {
+            View child = viewGroup.getChildAt(i);
+            child.setEnabled(enabled);
+            if(child instanceof ViewGroup)
+                setContentEnabled((ViewGroup) child, enabled);
+        }
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
