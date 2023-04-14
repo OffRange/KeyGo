@@ -1,6 +1,13 @@
 # Password Manager
 ![repository-logo](https://user-images.githubusercontent.com/42292083/219877763-f1f6b699-5f22-465d-aaf4-6f81c970ef94.png)
+
 A secure, open-source Android password manager that stores passwords and credit card information encrypted on a local device
+
+## Get a first impression
+<div align="center"/>
+<img src="https://user-images.githubusercontent.com/42292083/232009269-ad9e913c-55eb-48a7-986e-daa1b7e53ebd.png" alt="Dashboardside" width="300"/>
+<img src="https://user-images.githubusercontent.com/42292083/232009273-d393a1a8-8698-481b-956d-9c454a003c9a.png" alt="Viewingside" width="300"/>
+</div>
 
 ## Features
 + Store Passwords and Credit Card information
@@ -13,7 +20,7 @@ A secure, open-source Android password manager that stores passwords and credit 
 ## Available On
 |Platform|Status|
 |--------|------|
-|GitHub|In development|
+|GitHub|[![GitHub tag](https://img.shields.io/github/release/OffRange/PasswordManager?include_prereleases=&sort=semver)](https://github.com/OffRange/PasswordManager/releases/)|
 |Google Play Store|Planned for July/August 2023|
 
 ## Installation Guide
