@@ -64,9 +64,6 @@ public class AutoFillService extends AutofillService {
                 return;
             }
 
-            if(webDomainShort == null)
-                webDomainShort = parsedStructure.getPasswordView().getIdPackage();
-
             String pwd = extractText(parsedStructure.getPasswordView());
             String user = extractText(parsedStructure.getUsernameView());
 
@@ -87,6 +84,9 @@ public class AutoFillService extends AutofillService {
                 webDomain = domain;
                 webDomainShort = domainShort;
             }
+
+            if(webDomainShort == null)
+                webDomainShort = parsedStructure.getPasswordView().getIdPackage();
         }
 
         if(!Response.VALIDATION_PATTERN.matcher(password +"").matches()) {
@@ -98,6 +98,12 @@ public class AutoFillService extends AutofillService {
         String finalUsername = username;
         String finalWebDomain = webDomain;
         String finalWebDomainShort = webDomainShort;
+
+        if(finalPassword == null || finalWebDomainShort == null){
+            callback.onFailure("Password or short web domain was null");
+            return;
+        }
+
         doInBackground(() -> SecureElementDatabase.createAndGet(this)
                 .getSecureElementDao()
                 .insert(new SecureElement(
