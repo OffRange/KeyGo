@@ -53,4 +53,4 @@
 
 ##---------------End: proguard configuration for Gson  ----------
 
--keepclassmembernames class de.davis.passwordmanager.utils.AutofillSynonyms$Synonyms* {<fields>;}
+-keep class de.davis.passwordmanager.utils.AutofillSynonyms$* { *;}
