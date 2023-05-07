@@ -251,9 +251,8 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
         public boolean onDependentViewChanged(
                 @NonNull CoordinatorLayout parent, @NonNull View child, @NonNull View dependency) {
             boolean changed = super.onDependentViewChanged(parent, child, dependency);
-            if (!initialized && dependency instanceof AppBarLayout) {
+            if (!initialized && dependency instanceof AppBarLayout appBarLayout) {
                 initialized = true;
-                AppBarLayout appBarLayout = (AppBarLayout) dependency;
                 setAppBarLayoutColor(appBarLayout);
             }
             return changed;
