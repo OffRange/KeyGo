@@ -20,5 +20,18 @@
             android:id="@+id/action_settingsFragment_to_dashboardFragment"
             app:destination="@id/dashboardFragment"
             app:popUpToInclusive="true"/>
+        <action
+            android:id="@+id/action_settingsFragment_to_updaterFragment"
+            app:destination="@id/updaterFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/updaterFragment"
+        android:name="de.davis.passwordmanager.ui.settings.UpdaterFragment"
+        android:label="@string/updater" >
+
+        <action
+            android:id="@+id/action_updaterFragment_to_dashboardFragment"
+            app:destination="@id/dashboardFragment" />
     </fragment>
 </navigation>

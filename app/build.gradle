@@ -133,4 +133,5 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 
     implementation "org.slf4j:slf4j-simple:1.7.9"
+    implementation 'org.kohsuke:github-api:1.314'
 }

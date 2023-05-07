@@ -139,4 +139,26 @@
 
     <string name="filter">Filter</string>
     <string name="filter_msg">Choose what to display</string>
+
+    <string name="updater">Updater</string>
+
+    <string name="update_channel">Update Channel</string>
+    <string name="stable">Stable</string>
+    <string name="rc">RC</string>
+    <string name="beta">Beta</string>
+    <string name="alpha">Alpha</string>
+    <array name="update_channels" translatable="false">
+        <item>@string/stable</item>
+        <item>@string/rc</item>
+        <item>@string/beta</item>
+        <item>@string/alpha</item>
+    </array>
+    <string name="scan">Scan</string>
+    <string name="download">Download</string>
+    <string name="install">Install</string>
+
+    <string name="up_to_date">You are up to date</string>
+    <string name="scanning_for_updates">Scanning for newer versions</string>
+    <string name="newer_version_available">An newer version is available: %1$s</string>
+    <string name="updater_error_occured">An unexpected error occurred. Please try again later</string>
 </resources>

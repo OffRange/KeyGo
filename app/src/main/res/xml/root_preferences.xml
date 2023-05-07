@@ -51,10 +51,11 @@
             android:summary="@string/report_summary"
             android:icon="@drawable/baseline_bug_report_24"/>
 
-        <Preference
-            android:key="@string/build"
-            android:title="@string/build"
-            android:icon="@drawable/ic_baseline_build_24"/>
+        <de.davis.passwordmanager.ui.views.UpdaterPreference
+            android:key="@string/updater"
+            android:title="@string/updater"
+            android:icon="@drawable/baseline_update_24"
+            android:fragment="de.davis.passwordmanager.ui.settings.UpdaterFragment"/>
 
     </PreferenceCategory>
 </PreferenceScreen>

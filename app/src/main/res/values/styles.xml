@@ -39,4 +39,16 @@
     <style name="Widget.App.TextInputEditText" parent="Widget.Material3.TextInputEditText.FilledBox">
         <item name="android:background">@android:color/transparent</item>
     </style>
+
+
+    <style name="Widget.App.AutoCompleteTextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+        <item name="materialThemeOverlay">@style/ThemeOverlay.App.AutoCompleteTextView</item>
+    </style>
+
+    <style name="ThemeOverlay.App.AutoCompleteTextView" parent="ThemeOverlay.Material3.AutoCompleteTextView.OutlinedBox">
+        <item name="autoCompleteTextViewStyle">@style/Widget.App.AutoCompleteTextView.FilledBox</item>
+    </style>
+
+    <style name="Widget.App.AutoCompleteTextView.FilledBox" parent="Widget.Material3.AutoCompleteTextView.OutlinedBox">
+    </style>
 </resources>

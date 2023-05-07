@@ -1,8 +1,6 @@
 package de.davis.passwordmanager.ui.settings;
 
 import android.content.Intent;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -16,6 +14,9 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.biometric.BiometricPrompt;
 import androidx.browser.customtabs.CustomTabsIntent;
+import androidx.fragment.app.Fragment;
+import androidx.navigation.NavController;
+import androidx.navigation.fragment.NavHostFragment;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.SeekBarPreference;
@@ -25,8 +26,11 @@ import com.google.android.gms.oss.licenses.OssLicensesMenuActivity;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.security.Authentication;
+import de.davis.passwordmanager.ui.views.UpdaterPreference;
+import de.davis.passwordmanager.updater.Updater;
+import de.davis.passwordmanager.utils.Version;
 
-public class SettingsFragment extends PreferenceFragmentCompat {
+public class SettingsFragment extends PreferenceFragmentCompat implements PreferenceFragmentCompat.OnPreferenceStartFragmentCallback {
 
     private static final Uri URI = Uri.parse("https://github.com/OffRange/PasswordManager/issues/new/choose");
 
@@ -59,13 +63,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         });
 
 
-        try {
-            PackageInfo packageInfo = requireContext().getPackageManager().getPackageInfo(getContext().getPackageName(), 0);
-
-            findPreference(getString(R.string.build)).setSummary(packageInfo.versionName);
-        } catch (PackageManager.NameNotFoundException e) {
-            e.printStackTrace();
-        }
+        findPreference(getString(R.string.updater)).setSummary(Version.getVersion(requireContext()).getVersionName());
 
         SeekBarPreference seekBarPreference = findPreference(getString(R.string.preference_reauthenticate));
         seekBarPreference.setOnPreferenceChangeListener((preference, newValue) -> {
@@ -125,6 +123,8 @@ public class SettingsFragment extends PreferenceFragmentCompat {
             });
         }
         else autofill.getParent().setVisible(false);
+
+        ((UpdaterPreference)findPreference(getString(R.string.updater))).setHighlighted(Updater.getInstance().getUpdate().isNewer());
     }
 
     @ChecksSdkIntAtLeast(api = 26)
@@ -141,5 +141,17 @@ public class SettingsFragment extends PreferenceFragmentCompat {
     public boolean isAutofillActive(){
         AutofillManager afm = requireContext().getSystemService(AutofillManager.class);
         return afm.hasEnabledAutofillServices();
+    }
+
+    @Override
+    public boolean onPreferenceStartFragment(@NonNull PreferenceFragmentCompat caller, @NonNull Preference pref) {
+        Fragment fragment = getParentFragmentManager().findFragmentById(R.id.nav_host_fragment);
+        if(fragment == null)
+            return false;
+
+        NavController navController = NavHostFragment.findNavController(fragment);
+        navController.navigate(R.id.updaterFragment);
+
+        return true;
     }
 }

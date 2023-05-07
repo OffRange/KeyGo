@@ -98,4 +98,17 @@
     <string name="no_element_selected">Kein Element ausgewählt</string>
     <string name="filter">Filter</string>
     <string name="filter_msg">Wähle aus, was angezeigt werden soll</string>
+    <string name="updater">Updater</string>
+    <string name="update_channel">Update Kanal</string>
+    <string name="stable">Stable</string>
+    <string name="rc">RC</string>
+    <string name="beta">Beta</string>
+    <string name="alpha">Alpha</string>
+    <string name="scan">Suchen</string>
+    <string name="download">Herunterladen</string>
+    <string name="install">Installieren</string>
+    <string name="up_to_date">Diese Anwendung ist auf dem neuesten Stand</string>
+    <string name="scanning_for_updates">Neuere Versionen werden gesucht</string>
+    <string name="newer_version_available">Neuere version verfügbar: %1$s</string>
+    <string name="updater_error_occured">Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später noch einmal</string>
 </resources>
