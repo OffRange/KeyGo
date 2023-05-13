@@ -209,6 +209,8 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
         SecureElementManager.getInstance().getAdapter().getTracker().onSaveInstanceState(outState);
+        if(binding == null)
+            return;
         outState.putCharSequence("searchbar_hint", binding.listPane.searchBar.getHint());
     }
 

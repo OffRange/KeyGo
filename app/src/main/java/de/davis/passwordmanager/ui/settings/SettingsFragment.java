@@ -62,9 +62,6 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Prefer
             return true;
         });
 
-
-        findPreference(getString(R.string.updater)).setSummary(Version.getVersion(requireContext()).getVersionName());
-
         SeekBarPreference seekBarPreference = findPreference(getString(R.string.preference_reauthenticate));
         seekBarPreference.setOnPreferenceChangeListener((preference, newValue) -> {
             setSummaryForNewAuthentication(preference, (int) newValue);
@@ -79,6 +76,12 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Prefer
 
         OssLicensesMenuActivity.setActivityTitle(getString(R.string.third_party_dependencies));
         findPreference(getString(R.string.preference_license)).setIntent(new Intent(getContext(), OssLicensesMenuActivity.class));
+
+        boolean newer = Updater.getInstance().getUpdate().isNewer();
+        ((UpdaterPreference)findPreference(getString(R.string.updater))).setHighlighted(newer);
+        findPreference(getString(R.string.updater)).setSummary(newer
+                ? getString(R.string.newer_version_available, Updater.getInstance().getUpdate().getRelease().getTagName())
+                : Version.getVersion(requireContext()).getVersionName());
     }
 
     private void setSummaryForNewAuthentication(Preference preference, int newValue){
@@ -123,8 +126,6 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Prefer
             });
         }
         else autofill.getParent().setVisible(false);
-
-        ((UpdaterPreference)findPreference(getString(R.string.updater))).setHighlighted(Updater.getInstance().getUpdate().isNewer());
     }
 
     @ChecksSdkIntAtLeast(api = 26)
