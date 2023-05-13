@@ -68,23 +68,23 @@ android {
         }
 
         debug{
-            versionNameSuffix "d"
+            versionNameSuffix "-debug"
             applicationIdSuffix ".debug"
         }
 
         rc{
             initWith release
-            versionNameSuffix "rc"
+            versionNameSuffix "-rc"
         }
 
         beta{
             initWith release
-            versionNameSuffix "b"
+            versionNameSuffix "-beta"
         }
 
         alpha{
             initWith release
-            versionNameSuffix "a"
+            versionNameSuffix "-alpha"
         }
     }
     compileOptions {

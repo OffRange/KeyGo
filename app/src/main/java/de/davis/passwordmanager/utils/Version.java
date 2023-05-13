@@ -64,11 +64,11 @@ public class Version {
     }
 
     @VersionChannel
-    public static int getChannelTypeByVersionName(String tagName){
-        if(!tagName.contains("-"))
+    public static int getChannelTypeByVersionName(String versionName){
+        if(!versionName.contains("-"))
             return CHANNEL_STABLE;
 
-        Matcher matcher = Pattern.compile("(?<=-)[a-zA-Z]+(?=[0-9]*$)").matcher(tagName);
+        Matcher matcher = Pattern.compile("(?<=-)[a-zA-Z]+(?=[0-9]*$)").matcher(versionName);
         if(!matcher.find())
             return CHANNEL_STABLE;
 
@@ -87,6 +87,9 @@ public class Version {
     }
 
     public static String channelTypeToString(@VersionChannel int channelType, Context context){
+        if(channelType == CHANNEL_UNKNOWN)
+            return "unknown";
+
         String[] array = context.getResources().getStringArray(R.array.update_channels);
         return array[ArrayUtils.indexOf(CHANNELS, channelType)];
     }
