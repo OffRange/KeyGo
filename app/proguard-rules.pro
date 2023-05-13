@@ -54,3 +54,6 @@
 ##---------------End: proguard configuration for Gson  ----------
 
 -keep class de.davis.passwordmanager.utils.AutofillSynonyms$* { *;}
+
+-keep class org.kohsuke.github.** {*;}
+-dontwarn org.kohsuke.github.**
