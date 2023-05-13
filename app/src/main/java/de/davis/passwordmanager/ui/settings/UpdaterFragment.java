@@ -93,11 +93,11 @@ public class UpdaterFragment extends Fragment {
 
         binding.scan.setEnabled(true);
         if(!update.isNewer()) {
-            binding.update.setInformation("This application is up to date");
+            binding.update.setInformation(getString(R.string.up_to_date));
             return;
         }
 
-        binding.update.setInformation("Downloading newer version");
+        binding.update.setInformation(getString(R.string.downloading_newer_version));
         doInBackground(() -> {
             try {
                 Updater.downloadRelease(release, requireContext());
