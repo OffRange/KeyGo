@@ -136,7 +136,7 @@ public class Updater {
         if(versionName == null)
             return false;
 
-        Pattern pattern = Pattern.compile("(?<=\\s)\\d+(?=r$)");
+        Pattern pattern = Pattern.compile("(?<=\\s)\\d+(?=-.+$)");
         Matcher currentMatcher = pattern.matcher(Version.getVersion(context).getVersionName());
         Matcher releaseMatcher = pattern.matcher(versionName);
         if(!releaseMatcher.find() || !currentMatcher.find())
