@@ -21,11 +21,13 @@ import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.SeekBarPreference;
 import androidx.preference.SwitchPreference;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.gms.oss.licenses.OssLicensesMenuActivity;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.security.Authentication;
+import de.davis.passwordmanager.ui.LinearLayoutManager;
 import de.davis.passwordmanager.ui.views.UpdaterPreference;
 import de.davis.passwordmanager.updater.Updater;
 import de.davis.passwordmanager.utils.Version;
@@ -82,6 +84,12 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Prefer
         findPreference(getString(R.string.updater)).setSummary(newer
                 ? getString(R.string.newer_version_available, Updater.getInstance().getUpdate().getRelease().getTagName())
                 : Version.getVersion(requireContext()).getVersionName());
+    }
+
+    @NonNull
+    @Override
+    public RecyclerView.LayoutManager onCreateLayoutManager() {
+        return new LinearLayoutManager(requireContext());
     }
 
     private void setSummaryForNewAuthentication(Preference preference, int newValue){
