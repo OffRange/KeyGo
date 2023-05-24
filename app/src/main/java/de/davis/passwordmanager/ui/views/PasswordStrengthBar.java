@@ -132,7 +132,7 @@ public class PasswordStrengthBar extends LinearLayout implements TextWatcher {
 
                 strengthWarning.setText(strength.getWarning());
                 strengthWarning.setTextColor(strength.getColor(getContext()));
-                strengthWarning.setVisibility(password.length() <= 0 || strength.getWarning() == null ? GONE : VISIBLE);
+                strengthWarning.setVisibility(password.length() == 0 || strength.getWarning() == null ? GONE : VISIBLE);
             });
         });
         executorService.shutdown();

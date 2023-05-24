@@ -77,19 +77,15 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
                     return;
                 }
 
-                switch (card.getState()){
-                    case UNKNOWN:
-                        setNfcMessageError(R.string.nfc_unknown_card);
-                        break;
-                    case LOCKED:
-                        setNfcMessageError(R.string.nfc_locked);
-                        break;
-                    case ACTIVE:
+                switch (card.getState()) {
+                    case UNKNOWN -> setNfcMessageError(R.string.nfc_unknown_card);
+                    case LOCKED -> setNfcMessageError(R.string.nfc_locked);
+                    case ACTIVE -> {
                         insertCard(card);
                         setNfcMessageSuccess(R.string.nfc_success);
-                        break;
-                    default:
-                        break;
+                    }
+                    default -> {
+                    }
                 }
             }
         };

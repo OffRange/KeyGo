@@ -93,27 +93,20 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Prefer
     }
 
     private void setSummaryForNewAuthentication(Preference preference, int newValue){
-        switch (newValue){
-            case 0:
-                preference.setSummary(R.string.time_disabled);
-                break;
-            case 5:
-                preference.setSummary(R.string.time_every_time);
-                break;
-            default:
-                preference.setSummary(getResources().getQuantityString(R.plurals.time_x_minute, (int) Math.pow(2, newValue), (int)Math.pow(2, newValue)));
+        switch (newValue) {
+            case 0 -> preference.setSummary(R.string.time_disabled);
+            case 5 -> preference.setSummary(R.string.time_every_time);
+            default ->
+                    preference.setSummary(getResources().getQuantityString(R.plurals.time_x_minute, (int) Math.pow(2, newValue), (int) Math.pow(2, newValue)));
         }
     }
 
     public static long getTime(int index){
-        switch (index){
-            case 0:
-                return -1;
-            case 5:
-                return Long.MAX_VALUE;
-            default:
-                return (long) Math.pow(2, index);
-        }
+        return switch (index) {
+            case 0 -> -1;
+            case 5 -> Long.MAX_VALUE;
+            default -> (long) Math.pow(2, index);
+        };
     }
 
     @Override

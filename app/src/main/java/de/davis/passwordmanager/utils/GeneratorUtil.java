@@ -59,19 +59,10 @@ public class GeneratorUtil {
         StringBuilder builder = new StringBuilder(initialValue);
         for (int i = 0; i < length; i++) {
             switch (typesList.get(random.nextInt(typesList.size()))) {
-                case USE_DIGITS:
-                    generationPolicy.generateDigits(builder, i, random);
-                    break;
-
-                case USE_UPPERCASE:
-                    generationPolicy.generateUppercase(builder, i, random);
-                    break;
-                case USE_LOWERCASE:
-                    generationPolicy.generateLowercase(builder, i, random);
-                    break;
-                case USE_PUNCTUATION:
-                    generationPolicy.generatePunctuation(builder, i, random);
-                    break;
+                case USE_DIGITS -> generationPolicy.generateDigits(builder, i, random);
+                case USE_UPPERCASE -> generationPolicy.generateUppercase(builder, i, random);
+                case USE_LOWERCASE -> generationPolicy.generateLowercase(builder, i, random);
+                case USE_PUNCTUATION -> generationPolicy.generatePunctuation(builder, i, random);
             }
         }
 

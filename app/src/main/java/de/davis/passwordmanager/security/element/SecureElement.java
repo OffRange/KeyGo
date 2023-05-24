@@ -121,13 +121,11 @@ public class SecureElement implements Serializable, Comparable<SecureElement>, I
 
     @StringRes
     public int getTypeName(){
-        switch (getType()) {
-            case TYPE_PASSWORD:
-                return R.string.password;
-            case TYPE_CREDIT_CARD:
-            default:
-                return R.string.credit_card;
-        }
+        return switch (getType()) {
+            case TYPE_PASSWORD -> R.string.password;
+            case TYPE_CREDIT_CARD -> R.string.credit_card;
+            default -> throw new IllegalStateException("Unexpected value: " + getType());
+        };
     }
 
     public boolean isFavorite() {

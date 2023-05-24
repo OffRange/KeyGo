@@ -66,34 +66,24 @@ public class Strength implements Serializable {
 
     @StringRes
     public int getString() {
-        switch (type) {
-            case RIDICULOUS:
-                return R.string.ridiculous;
-            case WEAK:
-                return R.string.weak;
-            case MODERATE:
-                return R.string.moderate;
-            case STRONG:
-                return R.string.strong;
-            default:
-                return R.string.very_strong;
-        }
+        return switch (type) {
+            case RIDICULOUS -> R.string.ridiculous;
+            case WEAK -> R.string.weak;
+            case MODERATE -> R.string.moderate;
+            case STRONG -> R.string.strong;
+            default -> R.string.very_strong;
+        };
     }
 
     @AttrRes
     private int getColor() {
-        switch (type) {
-            case RIDICULOUS:
-                return R.attr.colorRidiculous;
-            case WEAK:
-                return R.attr.colorWeak;
-            case MODERATE:
-                return R.attr.colorModerate;
-            case STRONG:
-                return R.attr.colorStrong;
-            default:
-                return R.attr.colorVeryStrong;
-        }
+        return switch (type) {
+            case RIDICULOUS -> R.attr.colorRidiculous;
+            case WEAK -> R.attr.colorWeak;
+            case MODERATE -> R.attr.colorModerate;
+            case STRONG -> R.attr.colorStrong;
+            default -> R.attr.colorVeryStrong;
+        };
     }
 
     @ColorInt

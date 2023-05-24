@@ -55,17 +55,15 @@ public class HighlightsFragment extends Fragment {
 
         binding.materialButtonToggleGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> viewModel.setState(group.getCheckedButtonId() == binding.lastAdded.getId()));
 
-        viewModel.getFavorites().observe(getViewLifecycleOwner(), secureElements -> {
-            secureElements.forEach(secureElement -> {
-                View fav_view = getLayoutInflater().inflate(R.layout.fav_layout, null, false);
-                ((TextView)fav_view.findViewById(R.id.title)).setText(secureElement.getTitle());
-                ((ImageView)fav_view.findViewById(R.id.image)).setImageDrawable(secureElement.getIcon(requireContext()));
+        viewModel.getFavorites().observe(getViewLifecycleOwner(), secureElements -> secureElements.forEach(secureElement -> {
+            View fav_view = getLayoutInflater().inflate(R.layout.fav_layout, null, false);
+            ((TextView)fav_view.findViewById(R.id.title)).setText(secureElement.getTitle());
+            ((ImageView)fav_view.findViewById(R.id.image)).setImageDrawable(secureElement.getIcon(requireContext()));
 
-                fav_view.setOnClickListener(v -> launchElement(secureElement));
+            fav_view.setOnClickListener(v -> launchElement(secureElement));
 
-                ((ViewGroup)view.findViewById(R.id.favorite_container)).addView(fav_view);
-            });
-        });
+            ((ViewGroup)view.findViewById(R.id.favorite_container)).addView(fav_view);
+        }));
     }
 
     private void launchElement(SecureElement element){

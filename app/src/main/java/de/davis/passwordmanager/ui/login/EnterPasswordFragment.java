@@ -135,10 +135,5 @@ public class EnterPasswordFragment extends Fragment {
         public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
             super.onAuthenticationError(errorCode, errString);
         }
-
-        @Override
-        public void onAuthenticationFailed() {
-            super.onAuthenticationFailed();
-        }
     }
 }
