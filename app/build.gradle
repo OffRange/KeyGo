@@ -58,6 +58,14 @@ android {
         versionName "v${versionMayor}.${versionMinor}.${versionPatch} ${versionBuild}"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        javaCompileOptions {
+            annotationProcessorOptions {
+                compilerArgumentProviders(
+                        new RoomSchemaArgProvider(new File(projectDir, "schemas"))
+                )
+            }
+        }
     }
 
     buildTypes {
@@ -133,4 +141,23 @@ dependencies {
 
     implementation "org.slf4j:slf4j-simple:1.7.9"
     implementation 'org.kohsuke:github-api:1.314'
+}
+
+class RoomSchemaArgProvider implements CommandLineArgumentProvider {
+
+    @InputDirectory
+    @PathSensitive(PathSensitivity.RELATIVE)
+    File schemaDir
+
+    RoomSchemaArgProvider(File schemaDir) {
+        this.schemaDir = schemaDir
+        schemaDir.mkdirs()
+    }
+
+    @Override
+    Iterable<String> asArguments() {
+        // Note: If you're using KSP, change the line below to return
+        // ["room.schemaLocation=${schemaDir.path}"].
+        return ["-Aroom.schemaLocation=${schemaDir.path}"]
+    }
 }

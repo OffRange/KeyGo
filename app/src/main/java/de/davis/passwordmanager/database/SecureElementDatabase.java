@@ -14,7 +14,7 @@ import de.davis.passwordmanager.security.MasterPassword;
 import de.davis.passwordmanager.security.element.SecureElement;
 
 @TypeConverters({Converters.class})
-@Database(version = 1, entities = {SecureElement.class, MasterPassword.class}, exportSchema = false)
+@Database(version = 1, entities = {SecureElement.class, MasterPassword.class})
 public abstract class SecureElementDatabase extends RoomDatabase {
 
     public static final String DB_NAME = "secure_element_database";
