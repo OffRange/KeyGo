@@ -18,18 +18,18 @@ A secure, open-source Android password manager that stores passwords and credit 
 + Supports Material 3 and Dynamic Color (Android 12+ required)
 
 ## Available On
-|Platform|Status|
-|--------|------|
-|GitHub|[![GitHub tag](https://img.shields.io/github/release/OffRange/PasswordManager?include_prereleases=&sort=semver)](https://github.com/OffRange/PasswordManager/releases/)|
-|Google Play Store|Planned for July/August 2023|
+| Platform          | Status                                                                                                                                                                  |
+|-------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| GitHub            | [![GitHub tag](https://img.shields.io/github/release/OffRange/PasswordManager?include_prereleases=&sort=semver)](https://github.com/OffRange/PasswordManager/releases/) |
+| Google Play Store | Planned for July/August 2023                                                                                                                                            |
 
 ## Installation Guide
 1. Download the latest [APK file](https://github.com/OffRange/PasswordManager/releases/latest) under "Assets"
 2. Open the **"Downloads"** folder on your device and tap the APK file to begin the installation process.
-4. A pop-up message will appear asking for your permission to install the app. Tap **"Settings"** on the pop-up message.
-5. On the settings page, toggle the switch next to **"Allow from this source"** to grant permission to install apps from GitHub releases.
-6. Go back to the installation screen and **tap "Install"** to continue with the installation process.
-7. Installation completed
+3. A pop-up message will appear asking for your permission to install the app. Tap **"Settings"** on the pop-up message.
+4. On the settings page, toggle the switch next to **"Allow from this source"** to grant permission to install apps from GitHub releases.
+5. Go back to the installation screen and **tap "Install"** to continue with the installation process.
+6. Installation completed
 
 ## Build it yourself
 1. Clone the repository by running `git clone https://github.com/OffRange/Passwordmanager.git` in your terminal.
