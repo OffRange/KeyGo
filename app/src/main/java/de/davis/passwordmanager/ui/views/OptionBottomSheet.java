@@ -11,6 +11,7 @@ import de.davis.passwordmanager.databinding.MoreBottomSheetContentBinding;
 import de.davis.passwordmanager.dialog.DeleteDialog;
 import de.davis.passwordmanager.manager.ActivityResultManager;
 import de.davis.passwordmanager.security.element.SecureElement;
+import de.davis.passwordmanager.security.element.SecureElementManager;
 import de.davis.passwordmanager.ui.dashboard.DashboardFragment;
 
 public class OptionBottomSheet extends BottomSheetDialog {
@@ -35,8 +36,30 @@ public class OptionBottomSheet extends BottomSheetDialog {
             dismiss();
         });
 
-        if(element == null)
+
+        binding.favorite.setOnClickListener(v -> {
+            if(element == null)
+                return;
+
+            element.setFavorite(!element.isFavorite());
+
+            SecureElementManager.getInstance().editElement(element);
+            dismiss();
+        });
+
+        if(element == null) {
             binding.edit.setVisibility(View.GONE);
+            binding.favorite.setVisibility(View.GONE);
+        }else {
+            binding.favorite.setCompoundDrawablesRelativeWithIntrinsicBounds(
+                    element.isFavorite() ?
+                            R.drawable.baseline_star_24
+                            : R.drawable.baseline_star_outline_24,
+                    0, 0, 0);
+
+            binding.favorite.setText(element.isFavorite() ? R.string.remove_from_favorite : R.string.mark_as_favorite);
+        }
+
 
         binding.delete.setOnClickListener(v -> {
             new DeleteDialog(getContext()).show(null, element);

@@ -112,4 +112,10 @@
     <string name="newer_version_available">Neuere version verfügbar: %1$s</string>
     <string name="updater_error_occured">Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später noch einmal</string>
     <string name="downloading_newer_version">Neuere Version wird heruntergeladen</string>
+    <string name="favorites">Favoriten</string>
+    <string name="last_viewed">Zuletzt angesehen</string>
+    <string name="last_added">Zuletzt hinzugefügt</string>
+    <string name="mark_as_favorite">Als Favorit markieren</string>
+    <string name="remove_from_favorite">Von Favoriten entfernen</string>
+    <string name="highlights">Highlights</string>
 </resources>

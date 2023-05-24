@@ -6,6 +6,10 @@
         android:icon="@drawable/ic_baseline_dashboard_24"
         android:title="@string/dashboard" />
     <item
+        android:id="@+id/highlightsFragment"
+        android:icon="@drawable/baseline_star_24"
+        android:title="@string/highlights" />
+    <item
         android:id="@+id/settingsFragment"
         android:icon="@drawable/ic_baseline_settings_24"
         android:title="@string/settings" />

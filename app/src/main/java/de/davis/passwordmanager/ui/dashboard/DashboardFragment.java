@@ -35,6 +35,7 @@ import de.davis.passwordmanager.dashboard.DashboardAdapter;
 import de.davis.passwordmanager.dashboard.viewholders.BasicViewHolder;
 import de.davis.passwordmanager.databinding.FragmentDashboardBinding;
 import de.davis.passwordmanager.manager.ActivityResultManager;
+import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.security.element.SecureElementDetail;
 import de.davis.passwordmanager.security.element.SecureElementManager;
 import de.davis.passwordmanager.ui.callbacks.SearchViewBackPressedHandler;
@@ -160,6 +161,16 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
                 scrollingViewModel.setConsumedY(dy);
             }
         });
+
+        if(getArguments() == null)
+            return;
+
+        SecureElement element = (SecureElement) getArguments().getSerializable("element");
+        if(element == null)
+            return;
+
+        onItemClickedListener.onClicked(element);
+        oldState = false;
     }
 
     @Override

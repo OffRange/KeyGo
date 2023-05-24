@@ -1,5 +1,7 @@
 package de.davis.passwordmanager.ui.elements.password;
 
+import static de.davis.passwordmanager.utils.BackgroundUtil.doInBackground;
+
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,6 +15,7 @@ import androidx.appcompat.content.res.AppCompatResources;
 import com.google.android.material.textfield.TextInputLayout;
 
 import de.davis.passwordmanager.R;
+import de.davis.passwordmanager.database.SecureElementDatabase;
 import de.davis.passwordmanager.databinding.FragmentViewPasswordBinding;
 import de.davis.passwordmanager.listeners.OnInformationChangedListener;
 import de.davis.passwordmanager.manager.ActivityResultManager;
@@ -68,6 +71,8 @@ public class ViewPasswordFragment extends ViewSecureElementFragment {
 
         setStrengthValues(details);
         manageOrigin(details);
+
+        doInBackground(() -> SecureElementDatabase.getInstance().getSecureElementDao().update(password));
     }
 
     @Override

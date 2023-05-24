@@ -161,4 +161,11 @@
     <string name="newer_version_available">An newer version is available: %1$s</string>
     <string name="updater_error_occured">An unexpected error occurred. Please try again later</string>
     <string name="downloading_newer_version">Downloading newer version</string>
+
+    <string name="highlights">Highlights</string>
+    <string name="favorites">Favorites</string>
+    <string name="mark_as_favorite">Mark as favorite</string>
+    <string name="remove_from_favorite">Remove from favorites</string>
+    <string name="last_viewed">Last viewed</string>
+    <string name="last_added">Last added</string>
 </resources>
