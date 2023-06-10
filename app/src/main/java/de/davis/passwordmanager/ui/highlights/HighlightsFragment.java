@@ -44,7 +44,8 @@ public class HighlightsFragment extends Fragment {
                 requireContext().getResources().getDisplayMetrics());
 
         viewModel.getElements().observe(getViewLifecycleOwner(), elements -> {
-            binding.lastUsed.removeViews(1, binding.lastUsed.getChildCount()-1);
+            binding.viewToShow.setVisibility(elements.size() > 0 ? View.GONE : View.VISIBLE);
+            binding.lastUsed.removeViews(2, binding.lastUsed.getChildCount()-2);
             elements.forEach(element -> {
                 SecureElementViewHolder viewHolder = new SecureElementViewHolder(getLayoutInflater().inflate(R.layout.item_element, null, false));
                 viewHolder.bind(element, null, this::launchElement);
@@ -55,15 +56,19 @@ public class HighlightsFragment extends Fragment {
 
         binding.materialButtonToggleGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> viewModel.setState(group.getCheckedButtonId() == binding.lastAdded.getId()));
 
-        viewModel.getFavorites().observe(getViewLifecycleOwner(), secureElements -> secureElements.forEach(secureElement -> {
-            View fav_view = getLayoutInflater().inflate(R.layout.fav_layout, null, false);
-            ((TextView)fav_view.findViewById(R.id.title)).setText(secureElement.getTitle());
-            ((ImageView)fav_view.findViewById(R.id.image)).setImageDrawable(secureElement.getIcon(requireContext()));
+        viewModel.getFavorites().observe(getViewLifecycleOwner(), secureElements -> {
+            binding.noFavorites.setVisibility(secureElements.size() > 0 ? View.GONE : View.VISIBLE);
+            binding.favoriteContainer.removeViews(1, binding.favoriteContainer.getChildCount()-1);
+            secureElements.forEach(secureElement -> {
+                View fav_view = getLayoutInflater().inflate(R.layout.fav_layout, null, false);
+                ((TextView)fav_view.findViewById(R.id.title)).setText(secureElement.getTitle());
+                ((ImageView)fav_view.findViewById(R.id.image)).setImageDrawable(secureElement.getIcon(requireContext()));
 
-            fav_view.setOnClickListener(v -> launchElement(secureElement));
+                fav_view.setOnClickListener(v -> launchElement(secureElement));
 
-            ((ViewGroup)view.findViewById(R.id.favorite_container)).addView(fav_view);
-        }));
+                ((ViewGroup)view.findViewById(R.id.favorite_container)).addView(fav_view);
+            });
+        });
     }
 
     private void launchElement(SecureElement element){
