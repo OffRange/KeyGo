@@ -7,26 +7,34 @@ assignees: OffRange
 
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+**Description:**
+A clear and concise description of the bug you encountered.
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+**Steps to Reproduce:**
+1. Provide a step-by-step guide to reproduce the bug.
+2. Be as detailed as possible, including any specific actions or inputs needed to trigger the bug.
+3. Mention any relevant information about the environment (e.g., device, Android version, etc.).
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+**Expected Behavior:**
+Describe what you expected to happen when performing the steps mentioned above.
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+**Actual Behavior:**
+Explain what actually happened when performing the steps mentioned above.
 
-**Smartphone/App information (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - App Version [e.g. 1.0.0 3213] (Go to settings and below you will see the application version)
+**Screenshots/Code Snippets:**
+If applicable, provide any relevant screenshots or code snippets that can help identify and understand the issue.
 
-**Additional context**
-Add any other context about the problem here.
+**Additional Context:**
+Add any additional information that might be helpful for understanding the bug, such as error messages, logs, or related issues.
+
+**System Information:**
+- Device: [e.g., Google Pixel 3]
+- Android Version: [e.g., Android 10]
+- App Version: [e.g., 1.2.3]
+
+**Possible Solution (optional):**
+If you have any ideas or suggestions on how to fix the bug, please share them here.
+
+**Related Issues (optional):**
+If you know of any related issues or previously reported bugs, please list them here.
+
