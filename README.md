@@ -33,11 +33,10 @@ A secure, open-source Android password manager that stores passwords and credit 
 
 ## Build it yourself
 1. Clone the repository by running `git clone https://github.com/OffRange/Passwordmanager.git` in your terminal.
-2. Open the `build.gradle` file in the app module and remove the `com.google.firebase:firebase-analytics:<version>` and `com.google.firebase:firebase-crashlytics:<version>` dependencies.
-3. Remove the `com.google.gms.google-services` and `com.google.firebase.crashlytics` plugins from the `build.gradle` file in the app module.
-4. Open the root level `build.gradle` file and remove the following dependencies:
-    - `com.android.tools.build:gradle:<version>`
-    - `com.google.gms:google-services:<version>`
-    - `com.google.firebase:firebase-crashlytics-gradle:<version>`
-5. Run `.gradlew assembleRelease`. APKs can be found under `PasswordmManager/app/build/outputs/apk/`
-6. (Optional but highly recommended) [Sign the apk](https://developer.android.com/build/building-cmdline#sign_manually)
+2. Run `.gradlew assembleRelease`. APKs can be found under `PasswordmManager/app/build/outputs/apk/`
+3. (Optional but highly recommended) [Sign the apk](https://developer.android.com/build/building-cmdline#sign_manually)
+
+### Install the apk
+1. Connect your phone using a USB cable to your computer.
+2. [Enable USB debugging on your device](https://developer.android.com/studio/debug/dev-options#Enable-debugging)
+3. Install the apk using adb by running `adb install <path to apk file>`
