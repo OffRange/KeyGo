@@ -3,6 +3,14 @@
     xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
+        android:id="@+id/menu_fav"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:icon="@drawable/baseline_star_24"
+        android:title="@string/mark_as_favorite"
+        app:showAsAction="ifRoom"/>
+
+    <item
         android:id="@+id/menu_edit"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

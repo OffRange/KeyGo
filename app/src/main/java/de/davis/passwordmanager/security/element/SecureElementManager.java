@@ -35,6 +35,11 @@ public class SecureElementManager {
         return adapter;
     }
 
+    public <E extends SecureElement> void switchFavoriteState(E element){
+        element.setFavorite(!element.isFavorite());
+        editElement(element);
+    }
+
     public <E extends SecureElement> void editElement(E editedElement){
         doInBackground(() -> SecureElementDatabase.getInstance().getSecureElementDao().update(editedElement));
     }

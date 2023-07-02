@@ -15,6 +15,7 @@ import de.davis.passwordmanager.listeners.OnInformationChangedListener;
 import de.davis.passwordmanager.manager.ActivityResultManager;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.security.element.SecureElementDetail;
+import de.davis.passwordmanager.security.element.SecureElementManager;
 import de.davis.passwordmanager.ui.views.InformationView;
 
 public abstract class ViewSecureElementFragment extends SEViewFragment {
@@ -46,9 +47,18 @@ public abstract class ViewSecureElementFragment extends SEViewFragment {
     @Override
     public void fillInElement(@NonNull SecureElement e){
         toolbar = requireView().findViewById(R.id.toolbar);
+
+        handleFavIcon(e.isFavorite());
+
         toolbar.setTitle(e.getTitle());
         toolbar.setSubtitle(SecureElementDetail.getFor(e).getTitle());
         toolbar.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == R.id.menu_fav){
+                SecureElementManager.getInstance().switchFavoriteState(e);
+                handleFavIcon(e.isFavorite());
+                return false;
+            }
+
             ActivityResultManager.getOrCreateManager(getClass(), null).launchEdit(e, requireContext());
             return false;
         });
@@ -65,5 +75,11 @@ public abstract class ViewSecureElementFragment extends SEViewFragment {
     private void handleNavIcon(){
         float screenWidthDp = requireActivity().getResources().getConfiguration().screenWidthDp;
         toolbar.setNavigationIcon(screenWidthDp-80 >=600 ? null : AppCompatResources.getDrawable(requireContext(), R.drawable.ic_baseline_close_24));
+    }
+
+    private void handleFavIcon(boolean isFavorite){
+        toolbar.getMenu().findItem(R.id.menu_fav).setIcon(isFavorite ?
+                R.drawable.baseline_star_24
+                : R.drawable.baseline_star_outline_24);
     }
 }

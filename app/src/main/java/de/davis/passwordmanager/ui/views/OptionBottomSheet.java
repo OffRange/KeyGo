@@ -41,9 +41,7 @@ public class OptionBottomSheet extends BottomSheetDialog {
             if(element == null)
                 return;
 
-            element.setFavorite(!element.isFavorite());
-
-            SecureElementManager.getInstance().editElement(element);
+            SecureElementManager.getInstance().switchFavoriteState(element);
             dismiss();
         });
 
