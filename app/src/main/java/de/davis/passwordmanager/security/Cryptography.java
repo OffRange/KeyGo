@@ -1,5 +1,7 @@
 package de.davis.passwordmanager.security;
 
+import static at.favre.lib.crypto.bcrypt.BCrypt.Version.VERSION_2A;
+
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
@@ -14,14 +16,14 @@ import de.davis.passwordmanager.utils.KeyUtil;
 public class Cryptography {
 
     private static final int IV_SIZE = 12;
-    private static final BCrypt.Hasher BCRYPT_HASHER = BCrypt.with(LongPasswordStrategies.hashSha512(BCrypt.Version.VERSION_2A));
+    private static final BCrypt.Hasher BCRYPT_HASHER = BCrypt.with(LongPasswordStrategies.hashSha512(VERSION_2A));
 
     public static byte[] bcrypt(String data){
         return BCRYPT_HASHER.hash(12, data.getBytes());
     }
 
     public static boolean checkBcryptHash(String plaintext, byte[] hash){
-        return BCrypt.verifyer().verify(plaintext.getBytes(), hash).verified;
+        return BCrypt.verifyer(VERSION_2A, LongPasswordStrategies.hashSha512(VERSION_2A)).verify(plaintext.getBytes(), hash).verified;
     }
 
     public static byte[] encryptAES(byte[] data) {
