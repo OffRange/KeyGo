@@ -100,9 +100,6 @@ public class EnterPasswordFragment extends Fragment {
 
             handleSuccess();
         });
-
-
-        binding.materialButtonToggleGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> group.clearChecked());
     }
 
     @Override
