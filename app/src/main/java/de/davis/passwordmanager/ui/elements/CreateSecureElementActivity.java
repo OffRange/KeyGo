@@ -22,6 +22,7 @@ public abstract class CreateSecureElementActivity extends SEViewActivity {
 
         getSupportActionBar().setHomeAsUpIndicator(R.drawable.ic_baseline_close_24);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        setTitle(SecureElement.getTypeName(getSecureElementType()));
     }
 
     @Override
@@ -61,6 +62,14 @@ public abstract class CreateSecureElementActivity extends SEViewActivity {
 
         fillInElement(element);
     }
+
+    @Override
+    public void fillInElement(@NonNull SecureElement secureElement) {
+        setTitle(secureElement.getTypeName());
+    }
+
+    @SecureElement.ElementType
+    public abstract int getSecureElementType();
 
     public abstract Result check();
 

@@ -93,6 +93,7 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
 
     @Override
     public void fillInElement(@NonNull SecureElement element) {
+        super.fillInElement(element);
         binding.textInputLayoutTitle.getEditText().setText(element.getTitle());
 
         CreditCardDetails details = (CreditCardDetails) element.getDetail();
@@ -203,6 +204,11 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
         card.setDetail(details);
 
         return card;
+    }
+
+    @Override
+    public int getSecureElementType() {
+        return SecureElement.TYPE_CREDIT_CARD;
     }
 
     private void insertCard(EmvCard card){

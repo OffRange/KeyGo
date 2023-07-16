@@ -44,6 +44,7 @@ public class CreatePasswordActivity extends CreateSecureElementActivity {
 
     @Override
     public void fillInElement(@NonNull SecureElement element) {
+        super.fillInElement(element);
         binding.textInputLayoutTitle.getEditText().setText(element.getTitle());
         binding.textInputLayoutPassword.getEditText().setText(((PasswordDetails)element.getDetail()).getPassword());
         binding.textInputLayoutUsername.getEditText().setText(((PasswordDetails)element.getDetail()).getUsername());
@@ -91,5 +92,10 @@ public class CreatePasswordActivity extends CreateSecureElementActivity {
         getElement().setTitle(title);
         getElement().setDetail(details);
         return getElement();
+    }
+
+    @Override
+    public int getSecureElementType() {
+        return SecureElement.TYPE_PASSWORD;
     }
 }
