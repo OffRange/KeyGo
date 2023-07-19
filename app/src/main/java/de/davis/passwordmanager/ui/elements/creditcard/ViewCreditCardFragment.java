@@ -1,7 +1,6 @@
 package de.davis.passwordmanager.ui.elements.creditcard;
 
 import android.os.Bundle;
-import android.text.InputFilter;
 import android.text.method.DigitsKeyListener;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,12 +14,14 @@ import com.google.android.material.textfield.TextInputLayout;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.databinding.FragmentViewCreditCardBinding;
-import de.davis.passwordmanager.listeners.OnEndIconClickListener;
+import de.davis.passwordmanager.listeners.OnCreditCardEndIconClickListener;
 import de.davis.passwordmanager.listeners.OnInformationChangedListener;
+import de.davis.passwordmanager.listeners.text.CreditCardNumberTextWatcher;
 import de.davis.passwordmanager.listeners.text.ExpiryDateTextWatcher;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.security.element.creditcard.CreditCardDetails;
 import de.davis.passwordmanager.security.element.creditcard.Name;
+import de.davis.passwordmanager.text.method.CreditCardNumberTransformationMethod;
 import de.davis.passwordmanager.ui.elements.ViewSecureElementFragment;
 
 public class ViewCreditCardFragment extends ViewSecureElementFragment {
@@ -45,10 +46,11 @@ public class ViewCreditCardFragment extends ViewSecureElementFragment {
         binding.cardNumber.setOnViewCreatedListener(view -> {
             TextInputLayout til = view.findViewById(R.id.textInputLayout);
             EditText et = til.getEditText();
-            et.setFilters(new InputFilter[]{new InputFilter.LengthFilter(16)});
             et.setKeyListener(DigitsKeyListener.getInstance("0123456789 "));
-            til.setEndIconOnClickListener(new OnEndIconClickListener(til));
+            et.addTextChangedListener(new CreditCardNumberTextWatcher());
+            til.setEndIconOnClickListener(new OnCreditCardEndIconClickListener(til));
         });
+        binding.cardNumber.setTransformationMethod(CreditCardNumberTransformationMethod.getInstance());
         binding.cardNumber.setOnChangedListener(new OnInformationChangedListener<>(creditCard, (element, changes) -> {
             details.setCardNumber(changes);
             binding.cardNumber.setInformationText(details.getFormattedNumber());

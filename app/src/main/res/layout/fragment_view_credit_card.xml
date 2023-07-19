@@ -73,7 +73,8 @@
                 app:secret="true"
                 app:changeable="true"
                 app:applyEmpties="false"
-                app:copyable="true"/>
+                app:copyable="true"
+                android:maxLength="19"/>
 
         </GridLayout>
     </androidx.core.widget.NestedScrollView>

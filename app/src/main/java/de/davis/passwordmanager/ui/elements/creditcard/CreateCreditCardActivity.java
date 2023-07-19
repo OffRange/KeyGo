@@ -4,7 +4,6 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.text.InputFilter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,12 +25,14 @@ import java.util.TimerTask;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.databinding.ActivityCreateCreditcardBinding;
-import de.davis.passwordmanager.listeners.OnEndIconClickListener;
+import de.davis.passwordmanager.listeners.OnCreditCardEndIconClickListener;
+import de.davis.passwordmanager.listeners.text.CreditCardNumberTextWatcher;
 import de.davis.passwordmanager.listeners.text.ExpiryDateTextWatcher;
 import de.davis.passwordmanager.nfc.NfcManager;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.security.element.creditcard.CreditCardDetails;
 import de.davis.passwordmanager.security.element.creditcard.Name;
+import de.davis.passwordmanager.text.method.CreditCardNumberTransformationMethod;
 import de.davis.passwordmanager.ui.elements.CreateSecureElementActivity;
 import de.davis.passwordmanager.utils.CreditCardUtil;
 
@@ -61,8 +62,9 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
 
         Objects.requireNonNull(binding.textInputLayoutCardDate.getEditText()).addTextChangedListener(new ExpiryDateTextWatcher());
 
-        Objects.requireNonNull(binding.textInputLayoutCardNumber.getEditText()).setFilters(new InputFilter[]{new InputFilter.LengthFilter(16)});
-        binding.textInputLayoutCardNumber.setEndIconOnClickListener(new OnEndIconClickListener(binding.textInputLayoutCardNumber));
+        Objects.requireNonNull(binding.textInputLayoutCardNumber.getEditText()).addTextChangedListener(new CreditCardNumberTextWatcher());
+        binding.textInputLayoutCardNumber.getEditText().setTransformationMethod(CreditCardNumberTransformationMethod.getInstance());
+        binding.textInputLayoutCardNumber.setEndIconOnClickListener(new OnCreditCardEndIconClickListener(binding.textInputLayoutCardNumber));
 
         nfcManager = new NfcManager(this) {
             @Override
