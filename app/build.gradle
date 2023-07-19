@@ -9,43 +9,38 @@ android {
     def versionPropsFile = file("version.properties")
     def versionMayor, versionMinor, versionPatch, versionBuild, versionCodeProp
     Properties versionProps = new Properties()
+
     if (!versionPropsFile.exists()) {
         versionProps["VERSION_MAYOR"] = "1"
         versionProps["VERSION_MINOR"] = "0"
         versionProps["VERSION_PATCH"] = "0"
         versionProps["VERSION_BUILD"] = "0"
         versionProps["VERSION_CODE"] = "1"
-
         versionProps.store(versionPropsFile.newWriter(), null)
     }
 
     def runTasks = gradle.startParameter.taskNames
-    def value = 0
-    if (runTasks.stream().anyMatch(s -> s.contains("assembleRelease"))) {
-        value = 1
-    }
 
-    if (versionPropsFile.canRead()) {
-        if (true || runTasks.stream().anyMatch(s -> s.contains("assembleRelease") || s.contains("assembleDebug"))) {
+    def isBuild = runTasks.any { it.startsWith(":app:assemble")}
+    def isDebugBuild = runTasks.any { taskName -> taskName.contains("assembleDebug") }
 
-            versionProps.load(new FileInputStream(versionPropsFile))
+    if (versionPropsFile.canRead() && (isBuild || isDebugBuild)) {
+        versionProps.load(versionPropsFile.newDataInputStream())
+        versionMayor = versionProps['VERSION_MAYOR'].toInteger()
+        versionMinor = versionProps['VERSION_MINOR'].toInteger()
+        versionPatch = versionProps['VERSION_PATCH'].toInteger()
+        versionBuild = versionProps['VERSION_BUILD'].toInteger()
+        versionCodeProp = versionProps['VERSION_CODE'].toInteger()
 
-            versionMayor = versionProps['VERSION_MAYOR'].toInteger()
-            versionMinor = versionProps['VERSION_MINOR'].toInteger()
-            versionPatch = versionProps['VERSION_PATCH'].toInteger()
-            versionBuild = versionProps['VERSION_BUILD'].toInteger() + 1
-            versionCodeProp = versionProps['VERSION_CODE'].toInteger() + value
-
-            versionProps['VERSION_MAYOR'] = versionMayor.toString()
-            versionProps['VERSION_MINOR'] = versionMinor.toString()
-            versionProps['VERSION_PATCH'] = versionPatch.toString()
-            versionProps['VERSION_BUILD'] = versionBuild.toString()
-            versionProps['VERSION_CODE'] = versionCodeProp.toString()
-            versionProps.store(versionPropsFile.newWriter(), null)
-
+        if (isDebugBuild) {
+           versionBuild += 1
+        } else {
+            versionCodeProp += 1
         }
-    } else {
-        throw new FileNotFoundException("Could not read version.properties!")
+
+        versionProps['VERSION_BUILD'] = versionBuild.toString()
+        versionProps['VERSION_CODE'] = versionCodeProp.toString()
+        versionProps.store(versionPropsFile.newWriter(), null)
     }
 
     defaultConfig {
