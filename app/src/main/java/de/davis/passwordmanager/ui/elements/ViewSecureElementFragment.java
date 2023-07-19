@@ -36,7 +36,7 @@ public abstract class ViewSecureElementFragment extends SEViewFragment {
         if(getElement() == null)
             return;
 
-        titleInformationView.setInformation(getElement().getTitle());
+        titleInformationView.setInformationText(getElement().getTitle());
         titleInformationView.setOnChangedListener(new OnInformationChangedListener<>(getElement(), (e, changes) -> {
             getElement().setTitle(changes);
             toolbar.setTitle(changes);

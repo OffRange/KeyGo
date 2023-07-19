@@ -2,20 +2,18 @@ package de.davis.passwordmanager.ui.views;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.res.Resources;
 import android.content.res.TypedArray;
-import android.graphics.Bitmap;
 import android.graphics.Color;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.os.Parcel;
-import android.os.Parcelable;
 import android.text.InputType;
+import android.text.method.PasswordTransformationMethod;
+import android.text.method.TransformationMethod;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -23,20 +21,19 @@ import androidx.annotation.ColorInt;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
 
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.dialog.EditDialog;
+import de.davis.passwordmanager.dialog.BaseDialogBuilder;
+import de.davis.passwordmanager.dialog.EditDialogBuilder;
 import de.davis.passwordmanager.manager.CopyManager;
 import de.davis.passwordmanager.ui.views.copy.CopyView;
 
 public class InformationView extends MaterialCardView implements CopyView {
-
-    private static final char DOT = '\u2022';
-    private static final String TAG = "edit_dialog";
 
     private TextView titleView;
     private TextView informationView;
@@ -49,14 +46,9 @@ public class InformationView extends MaterialCardView implements CopyView {
     private CheckableImageButton endButton;
 
     private String title;
-    private String information;
-
-    private int maxLength;
-    private int inputType;
 
     private boolean applyEmpties;
     private boolean printRequired;
-    private boolean secret;
     private boolean changeable;
     private boolean copyable;
 
@@ -68,9 +60,11 @@ public class InformationView extends MaterialCardView implements CopyView {
 
     private boolean initiated;
 
-    private EditDialog.OnInformationChangeListener onInformationChangeListener;
+    private OnInformationChangedListener onInformationChangedListener;
+    private BaseDialogBuilder.OnViewCreatedListener onViewCreatedListener;
 
-    private final EditDialog.Configuration configuration = new EditDialog.Configuration();
+
+    private Information information;
 
     public InformationView(Context context) {
         this(context, null, com.google.android.material.R.attr.materialCardViewElevatedStyle);
@@ -89,7 +83,11 @@ public class InformationView extends MaterialCardView implements CopyView {
         final TypedArray a = getContext().obtainStyledAttributes(
                 attrs, R.styleable.InformationView, defStyle, 0);
 
-        information = a.getString(R.styleable.InformationView_information);
+        information = new Information();
+        information.setText(a.getString(R.styleable.InformationView_information));
+        information.setInputType(a.getInteger(R.styleable.InformationView_android_inputType, InputType.TYPE_CLASS_TEXT));
+        information.setMaxLength(a.getInteger(R.styleable.InformationView_android_maxLength, -1));
+
         layoutDialog = a.getResourceId(R.styleable.InformationView_dialogLayout, 0);
 
         setFocusable(false);
@@ -98,7 +96,7 @@ public class InformationView extends MaterialCardView implements CopyView {
 
         endButton = view.findViewById(R.id.imageButton);
         setOnEndButtonClickListener(v -> {
-            secret = !secret;
+            information.setMasked(!information.isMasked());
             transformString();
         });
 
@@ -116,9 +114,6 @@ public class InformationView extends MaterialCardView implements CopyView {
                 defaultContentLayout(content);
         }else
             disableFeatures();
-
-        maxLength = a.getInteger(R.styleable.InformationView_android_maxLength, -1);
-        inputType = a.getInteger(R.styleable.InformationView_android_inputType, InputType.TYPE_CLASS_TEXT);
 
         iconView = view.findViewById(R.id.imageView);
 
@@ -212,18 +207,13 @@ public class InformationView extends MaterialCardView implements CopyView {
         return super.onTouchEvent(event);
     }
 
-    public EditDialog.Configuration getConfiguration() {
-        return configuration;
+    public void setOnChangedListener(OnInformationChangedListener onInformationChangedListener) {
+        this.onInformationChangedListener = onInformationChangedListener;
     }
 
-    public void setOnChangedListener(EditDialog.OnInformationChangeListener onInformationChangeListener) {
-        this.onInformationChangeListener = onInformationChangeListener;
+    public void setOnViewCreatedListener(BaseDialogBuilder.OnViewCreatedListener onViewCreatedListener) {
+        this.onViewCreatedListener = onViewCreatedListener;
     }
-
-    public void setOnEditDialogViewCreatedListener(EditDialog.OnViewCreatedListener onEditDialogViewCreatedListener) {
-        this.configuration.setOnEditDialogViewCreatedListener(onEditDialogViewCreatedListener);
-    }
-
 
     public void setIconDrawable(Drawable drawable){
         iconView.setImageDrawable(drawable);
@@ -238,31 +228,34 @@ public class InformationView extends MaterialCardView implements CopyView {
         if(information == null)
             return null;
 
-        StringBuilder s = new StringBuilder();
-        for (int i = 0; i < information.length(); i++) {
-            s.append(DOT);
+        CharSequence transformation = information.getTransformationMethod().getTransformation(information.text, informationView);
+
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < transformation.length(); i++){
+            builder.append(transformation.charAt(i));
         }
 
-        return s.toString();
+        return builder.toString();
     }
 
     public void setTitle(String title){
         this.title = title;
         String modifiedTitle = title +(printRequired ? "*" : "");
         titleView.setText(modifiedTitle);
+        information.setHint(title);
     }
 
-    public void setInformation(String information){
-        this.information = information;
+    public void setInformationText(String text){
+        this.information.setText(text);
         handleEndIconVisibility();
         transformString();
     }
 
-    public void setInformation(@StringRes int stringRes){
-        setInformation(getContext().getString(stringRes));
+    public void setInformationText(@StringRes int stringRes){
+        setInformationText(getContext().getString(stringRes));
     }
 
-    public String getInformation() {
+    public Information getInformation() {
         return information;
     }
 
@@ -271,17 +264,13 @@ public class InformationView extends MaterialCardView implements CopyView {
     }
 
     private void handleEndIconVisibility(){
-        endButton.setVisibility(secret && isInformationSet() ? VISIBLE : GONE);
+        endButton.setVisibility(information.isSecret() && isInformationSet() ? VISIBLE : GONE);
     }
 
     public void setSecret(boolean secret) {
         handleEndIconVisibility();
-        this.secret = secret;
+        this.information.setSecret(secret);
         transformString();
-    }
-
-    public boolean isSecret() {
-        return secret;
     }
 
     public void setChangeable(boolean changeable){
@@ -317,12 +306,12 @@ public class InformationView extends MaterialCardView implements CopyView {
         if(featureDisabled)
             return;
 
-        if(secret && isInformationSet()) informationView.setText(getDotString());
-        else informationView.setText(!isInformationSet() ? getContext().getString(R.string.no_value_set) : information);
+        if(information.isMasked() && isInformationSet()) informationView.setText(getDotString());
+        else informationView.setText(!isInformationSet() ? getContext().getString(R.string.no_value_set) : information.getText());
     }
 
     private boolean isInformationSet(){
-        return !(information == null || information.trim().isEmpty());
+        return !(information.getText() == null || information.getText().trim().isEmpty());
     }
 
     public void setEndButtonDrawable(Drawable drawable){
@@ -334,8 +323,9 @@ public class InformationView extends MaterialCardView implements CopyView {
         endButton.setOnClickListener(listener);
     }
 
-    public Details getDetails(){
-        return new Details(titleView.getText().toString(), information, maxLength, isSecret(), iconView.getDrawable(), inputType);
+    public void setTransformationMethod(TransformationMethod transformationMethod) {
+        this.information.setTransformationMethod(transformationMethod);
+        transformString();
     }
 
     @Override
@@ -382,116 +372,106 @@ public class InformationView extends MaterialCardView implements CopyView {
         if(!(getContext() instanceof AppCompatActivity))
             return;
 
-        configuration.setDetails(getDetails());
-        configuration.setAdditionalView(layoutDialog);
-        configuration.setOnInformationChangeListener(new EditChangeListener());
+        new EditDialogBuilder(getContext())
+                .setTitle(getContext().getString(R.string.change_param, titleView.getText().toString()))
+                .setPositiveButton(R.string.text_continue, (dialogInterface, i) -> {
+                    dialogInterface.dismiss();
+                    String information = ((EditText)((AlertDialog)dialogInterface).findViewById(R.id.textInputEditText)).getText().toString();
+                    if(!applyEmpties && information.trim().isEmpty())
+                        return;
 
-        EditDialog editDialog = new EditDialog(configuration);
-        editDialog.show(((AppCompatActivity) getContext()).getSupportFragmentManager(), TAG);
+                    setInformationText(information);
+                    if(onInformationChangedListener != null)
+                        onInformationChangedListener.onInformationChanged(information);
+                })
+                .withInformation(information)
+                .withStartIcon(iconView.getDrawable())
+                .withAdditionalCustomLayout(layoutDialog)
+                .withOnViewCreatedListener(onViewCreatedListener).show();
     }
 
     @Override
     public String getCopyString() {
-        return getInformation();
+        return information.getText();
     }
 
-    private class EditChangeListener implements EditDialog.OnInformationChangeListener {
+    public static class Information{
 
-        @Override
-        public void onInformationChanged(EditDialog dialog, String information) {
-            if(!applyEmpties && information != null && information.trim().isEmpty())
-                return;
+        private String hint;
+        private String text;
+        private boolean secret;
+        private boolean masked;
 
-            setInformation(information);
-            if(onInformationChangeListener != null)
-                onInformationChangeListener.onInformationChanged(dialog, information);
+        private int maxLength = -1;
+
+        private int inputType;
+
+        private TransformationMethod transformationMethod = PasswordTransformationMethod.getInstance();
+
+        public int getInputType() {
+            return inputType;
         }
-    }
 
-    public static class Details implements Parcelable {
-
-        private final String title;
-        private String information;
-
-        private final int maxLength;
-        private final int inputType;
-        private final boolean secret;
-        private final Drawable drawable;
-
-        public Details(String title, String information, int maxLength, boolean secret, Drawable drawable, int inputType) {
-            this.title = title;
-            this.information = information;
-            this.maxLength = maxLength;
-            this.secret = secret;
-            this.drawable = drawable;
+        public void setInputType(int inputType) {
             this.inputType = inputType;
         }
 
-        public Details(Parcel in){
-            title = in.readString();
-            information = in.readString();
-            maxLength = in.readInt();
-            inputType = in.readInt();
-            secret = in.readInt() == 1;
-
-            if(in.dataSize()-1 == in.dataPosition())
-                drawable = new BitmapDrawable(Resources.getSystem(), (Bitmap) in.readParcelable(getClass().getClassLoader()));
-            else drawable = null;
+        public TransformationMethod getTransformationMethod() {
+            return transformationMethod;
         }
 
-        public String getTitle() {
-            return title;
-        }
-
-        public String getInformation() {
-            return information;
+        public void setTransformationMethod(TransformationMethod transformationMethod) {
+            this.transformationMethod = transformationMethod;
         }
 
         public int getMaxLength() {
             return maxLength;
         }
 
-        public int getInputType() {
-            return inputType;
+        public void setMaxLength(int maxLength) {
+            this.maxLength = maxLength;
+        }
+
+        @Nullable
+        public String getHint() {
+            return hint;
+        }
+
+        public void setHint(@Nullable String hint) {
+            this.hint = hint;
+        }
+
+        @Nullable
+        public String getText() {
+            return text;
+        }
+
+        public void setText(@Nullable String text) {
+            this.text = text;
         }
 
         public boolean isSecret() {
             return secret;
         }
 
-        public Drawable getDrawable() {
-            return drawable;
+        public void setSecret(boolean secret) {
+            this.secret = secret;
+            this.masked = true;
         }
 
-        public void setInformation(String information) {
-            this.information = information;
+        public boolean isMasked() {
+            return secret && masked;
         }
 
-        @Override
-        public int describeContents() {
-            return 0;
+        public void setMasked(boolean masked) {
+            this.masked = masked;
+
+            if(masked && !secret)
+                this.secret = true;
         }
+    }
 
-        @Override
-        public void writeToParcel(Parcel dest, int flags) {
-            dest.writeString(title);
-            dest.writeString(information);
-            dest.writeInt(maxLength);
-            dest.writeInt(inputType);
-            dest.writeInt(secret ? 1 : 0);
-            if(drawable instanceof BitmapDrawable)
-                dest.writeParcelable(((BitmapDrawable) drawable).getBitmap(), flags);
-        }
-
-        public static final Parcelable.Creator<Details> CREATOR
-                = new Parcelable.Creator<>() {
-            public Details createFromParcel(Parcel in) {
-                return new Details(in);
-            }
-
-            public Details[] newArray(int size) {
-                return new Details[size];
-            }
-        };
+    public interface OnInformationChangedListener {
+        void onInformationChanged(String informationText);
     }
 }

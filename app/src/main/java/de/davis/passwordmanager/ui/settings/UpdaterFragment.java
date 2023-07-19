@@ -44,8 +44,8 @@ public class UpdaterFragment extends Fragment {
         binding.autoComplete.setOnItemClickListener((parent, view1, position, id) ->
                 PreferenceUtil.getPreferences(requireContext()).edit().putString(UPDATER_PREF_KEY, (String) parent.getItemAtPosition(position)).commit());
 
-        binding.build.setInformation(Version.getVersion(requireContext()).getVersionName());
-        binding.channel.setInformation(Version.getVersion(requireContext()).getChannel());
+        binding.build.setInformationText(Version.getVersion(requireContext()).getVersionName());
+        binding.channel.setInformationText(Version.getVersion(requireContext()).getChannel());
 
         Updater updater = Updater.getInstance();
         binding.scan.setOnClickListener(v -> {
@@ -65,7 +65,7 @@ public class UpdaterFragment extends Fragment {
         updater.setListener(new Updater.Listener() {
             @Override
             public void onError(Throwable throwable) {
-                binding.update.setInformation(R.string.updater_error_occured);
+                binding.update.setInformationText(R.string.updater_error_occured);
                 binding.scan.setEnabled(true);
             }
 
@@ -77,13 +77,13 @@ public class UpdaterFragment extends Fragment {
             @Override
             public void onRunningChanged(boolean running) {
                 if(running)
-                    binding.update.setInformation(R.string.scanning_for_updates);
+                    binding.update.setInformationText(R.string.scanning_for_updates);
             }
         });
 
         boolean isFile = Updater.getVersionApkFile().isFile();
         binding.scan.setText(isFile ? R.string.install : (Updater.getInstance().getUpdate().isNewer() ? R.string.download : R.string.scan));
-        binding.update.setInformation(isFile || Updater.getInstance().getUpdate().isNewer() ? getString(R.string.newer_version_available, Updater.getInstance().getUpdate().getRelease().getTagName()) : getString(R.string.up_to_date));
+        binding.update.setInformationText(isFile || Updater.getInstance().getUpdate().isNewer() ? getString(R.string.newer_version_available, Updater.getInstance().getUpdate().getRelease().getTagName()) : getString(R.string.up_to_date));
     }
 
     private void handleRelease(Updater.Update update){
@@ -93,11 +93,11 @@ public class UpdaterFragment extends Fragment {
 
         binding.scan.setEnabled(true);
         if(!update.isNewer()) {
-            binding.update.setInformation(getString(R.string.up_to_date));
+            binding.update.setInformationText(getString(R.string.up_to_date));
             return;
         }
 
-        binding.update.setInformation(getString(R.string.downloading_newer_version));
+        binding.update.setInformationText(getString(R.string.downloading_newer_version));
         doInBackground(() -> {
             try {
                 Updater.downloadRelease(release, requireContext());

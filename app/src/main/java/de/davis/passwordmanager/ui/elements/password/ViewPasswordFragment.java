@@ -41,13 +41,13 @@ public class ViewPasswordFragment extends ViewSecureElementFragment {
 
         PasswordDetails details = (PasswordDetails) password.getDetail();
 
-        binding.password.setInformation(details.getPassword());
+        binding.password.setInformationText(details.getPassword());
         binding.password.setOnChangedListener(new OnInformationChangedListener<>(password, (element, changes) -> {
             details.setPassword(changes);
             setStrengthValues(details);
             return details;
         }));
-        binding.password.setOnEditDialogViewCreatedListener(view -> {
+        binding.password.setOnViewCreatedListener(view -> {
             editText = ((TextInputLayout) view.findViewById(R.id.textInputLayout)).getEditText();
             PasswordStrengthBar passwordStrengthBar = view.findViewById(R.id.strengthBar);
             passwordStrengthBar.update(editText.getText().toString(), false);
@@ -56,14 +56,14 @@ public class ViewPasswordFragment extends ViewSecureElementFragment {
             view.findViewById(R.id.generate).setOnClickListener(v -> activityResultManager.launchGeneratePassword(getContext()));
         });
 
-        binding.origin.setInformation(details.getOrigin());
+        binding.origin.setInformationText(details.getOrigin());
         binding.origin.setOnChangedListener(new OnInformationChangedListener<>(password, (element, changes) -> {
             details.setOrigin(changes);
             manageOrigin(details);
             return details;
         }));
 
-        binding.username.setInformation(details.getUsername());
+        binding.username.setInformationText(details.getUsername());
         binding.username.setOnChangedListener(new OnInformationChangedListener<>(password, (element, changes) -> {
             details.setUsername(changes);
             return details;
@@ -84,7 +84,7 @@ public class ViewPasswordFragment extends ViewSecureElementFragment {
     }
 
     private void setStrengthValues(PasswordDetails details){
-        binding.strength.setInformation(details.getStrength().getString());
+        binding.strength.setInformationText(details.getStrength().getString());
         binding.strength.setInformationTextColor(details.getStrength().getColor(requireContext()));
     }
 

@@ -120,7 +120,7 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
         }
 
         if (nfcManager.isEnabled()) {
-            binding.nfc.setInformation(R.string.nfc_listening);
+            binding.nfc.setInformationText(R.string.nfc_listening);
             binding.nfc.setInformationTextColor(dColor);
             binding.nfc.getIconDrawable().setTint(dColor);
             nfcManager.enable();
@@ -134,7 +134,7 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
                 })
                 .show();
 
-        binding.nfc.setInformation(R.string.nfc_enable);
+        binding.nfc.setInformationText(R.string.nfc_enable);
         binding.nfc.setInformationTextColor(colorYellow);
         binding.nfc.getIconDrawable().setTint(colorYellow);
     }
@@ -230,7 +230,7 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
     }
 
     private void setNfcMessage(@StringRes int stringRes, @ColorInt int colorInt){
-        binding.nfc.setInformation(stringRes);
+        binding.nfc.setInformationText(stringRes);
         binding.nfc.setInformationTextColor(colorInt);
         DrawableCompat.setTint(binding.nfc.getIconDrawable(), colorInt);
         startResetNfcMessage();
@@ -246,7 +246,7 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
             @Override
             public void run() {
                 runOnUiThread(() -> {
-                    binding.nfc.setInformation(R.string.nfc_listening);
+                    binding.nfc.setInformationText(R.string.nfc_listening);
                     binding.nfc.setInformationTextColor(dColor);
                     binding.nfc.getIconDrawable().setTint(dColor);
                 });

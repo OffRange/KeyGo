@@ -35,15 +35,14 @@ public class ViewCreditCardFragment extends ViewSecureElementFragment {
 
         CreditCardDetails details = (CreditCardDetails) creditCard.getDetail();
 
-        binding.cardHolder.setInformation(details.getCardholder().getFullName());
+        binding.cardHolder.setInformationText(details.getCardholder().getFullName());
         binding.cardHolder.setOnChangedListener(new OnInformationChangedListener<>(creditCard, (element, changes) -> {
             details.setCardholder(Name.fromFullName(changes));
             return details;
         }));
 
-        binding.cardNumber.setInformation(details.getFormattedNumber());
-        binding.cardNumber.getConfiguration().setInitialTextPolicy(text -> text.replace(" ", ""));
-        binding.cardNumber.setOnEditDialogViewCreatedListener(view -> {
+        binding.cardNumber.setInformationText(details.getFormattedNumber());
+        binding.cardNumber.setOnViewCreatedListener(view -> {
             TextInputLayout til = view.findViewById(R.id.textInputLayout);
             EditText et = til.getEditText();
             et.setFilters(new InputFilter[]{new InputFilter.LengthFilter(16)});
@@ -52,18 +51,18 @@ public class ViewCreditCardFragment extends ViewSecureElementFragment {
         });
         binding.cardNumber.setOnChangedListener(new OnInformationChangedListener<>(creditCard, (element, changes) -> {
             details.setCardNumber(changes);
-            binding.cardNumber.setInformation(details.getFormattedNumber());
+            binding.cardNumber.setInformationText(details.getFormattedNumber());
             return details;
         }));
 
-        binding.cardCVV.setInformation(details.getCvv());
+        binding.cardCVV.setInformationText(details.getCvv());
         binding.cardCVV.setOnChangedListener(new OnInformationChangedListener<>(creditCard, (element, changes) -> {
             details.setCvv(changes);
             return details;
         }));
 
-        binding.expirationDate.setInformation(details.getExpirationDate());
-        binding.expirationDate.setOnEditDialogViewCreatedListener(view -> {
+        binding.expirationDate.setInformationText(details.getExpirationDate());
+        binding.expirationDate.setOnViewCreatedListener(view -> {
             EditText et = ((TextInputLayout) view.findViewById(R.id.textInputLayout)).getEditText();
             et.addTextChangedListener(new ExpiryDateTextWatcher());
             et.setKeyListener(DigitsKeyListener.getInstance("0123456789/"));

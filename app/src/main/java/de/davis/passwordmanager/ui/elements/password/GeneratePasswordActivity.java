@@ -127,7 +127,7 @@ public class GeneratePasswordActivity extends AppCompatActivity implements Slide
             estimationExecutor.shutdownNow();
 
         if(password.length() > LENGTH_THRESHOLD){
-            binding.strength.setInformation(R.string.loading);
+            binding.strength.setInformationText(R.string.loading);
             binding.strength.setInformationTextColor(getColor(android.R.color.darker_gray));
         }
 
@@ -135,7 +135,7 @@ public class GeneratePasswordActivity extends AppCompatActivity implements Slide
         estimationExecutor.execute(()->{
             Strength strength = Strength.estimateStrength(password);
             handler.post(()->{
-                binding.strength.setInformation(strength.getString());
+                binding.strength.setInformationText(strength.getString());
                 binding.strength.setInformationTextColor(strength.getColor(this));
             });
         });
