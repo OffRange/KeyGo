@@ -36,6 +36,9 @@
         <item name="colorVeryStrong">#7aff7b</item>
 
         <item name="textInputStyle">@style/Widget.App.TextInputLayout</item>
+
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
     </style>
 
 </resources>

@@ -36,6 +36,10 @@
         <item name="colorVeryStrong">#007302</item>
 
         <item name="textInputStyle">@style/Widget.App.TextInputLayout</item>
+
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 
     <style name="AppTheme.NoActionBar">
