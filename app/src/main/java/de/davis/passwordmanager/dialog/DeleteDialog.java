@@ -14,8 +14,8 @@ public class DeleteDialog {
     private final MaterialAlertDialogBuilder builder;
 
     public DeleteDialog(Context context) {
-        this.builder = new MaterialAlertDialogBuilder(context, R.style.MaterialAlertDialog_red)
-                .setTitle(R.string.delete)
+        this.builder = new MaterialAlertDialogBuilder(context)
+                .setTitle(R.string.permanently_delete)
                 .setMessage(R.string.sure_delete);
     }
 

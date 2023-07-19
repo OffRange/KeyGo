@@ -35,6 +35,7 @@
     <string name="about">Über</string>
     <string name="add">Hinzufügen</string>
     <string name="delete">Löschen</string>
+    <string name="permanently_delete">Permanent löschen?</string>
     <string name="sure_delete">Möchten Sie wirklich dieses Element löschen?</string>
     <string name="successful_deleted">Erfolgreich gelöscht</string>
     <string name="copied_data">Daten kopiert</string>
