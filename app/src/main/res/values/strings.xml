@@ -1,5 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
-    <string name="app_name" translatable="false">Password Manager</string>
+    <string name="app_name" translatable="false">KeyGo</string>
 
     <string name="selected_items">%d selected</string>
 

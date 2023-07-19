@@ -1,4 +1,4 @@
-# Password Manager
+# KeyGo - Digital Vault
 ![repository-logo](https://user-images.githubusercontent.com/42292083/219877763-f1f6b699-5f22-465d-aaf4-6f81c970ef94.png)
 
 A secure, open-source Android password manager that stores passwords and credit card information encrypted on a local device
