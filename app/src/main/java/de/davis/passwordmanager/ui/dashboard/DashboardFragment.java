@@ -28,7 +28,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.slidingpanelayout.widget.SlidingPaneLayout;
 
 import com.google.android.material.appbar.AppBarLayout;
-import com.google.android.material.color.MaterialColors;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.dashboard.DashboardAdapter;
@@ -272,7 +271,7 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
         }
 
         private void setAppBarLayoutColor(AppBarLayout appBarLayout) {
-            appBarLayout.setBackgroundColor(MaterialColors.getColor(appBarLayout, com.google.android.material.R.attr.colorSurface));
+            appBarLayout.setBackgroundColor(appBarLayout.getContext().getColor(android.R.color.transparent));
 
             // Remove AppBarLayout elevation shadow
             appBarLayout.setElevation(0);
