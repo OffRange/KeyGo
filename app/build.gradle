@@ -7,48 +7,49 @@ android {
     compileSdk 33
 
     def versionPropsFile = file("version.properties")
-    def versionMayor, versionMinor, versionPatch, versionBuild, versionCodeProp
-    Properties versionProps = new Properties()
+    def build, major, minor, patch, vCode, vName
+    Properties properties = new Properties()
 
-    if (!versionPropsFile.exists()) {
-        versionProps["VERSION_MAYOR"] = "1"
-        versionProps["VERSION_MINOR"] = "0"
-        versionProps["VERSION_PATCH"] = "0"
-        versionProps["VERSION_BUILD"] = "0"
-        versionProps["VERSION_CODE"] = "1"
-        versionProps.store(versionPropsFile.newWriter(), null)
+    if(!versionPropsFile.exists()){
+        properties.setProperty("build", "0") // alpha 0-31 | beta 32-63 | rc 64-95 | stable 96-99
+        properties.setProperty("major", "1")
+        properties.setProperty("minor", "0")
+        properties.setProperty("patch", "0")
+        properties.store(versionPropsFile.newWriter(), "build: alpha 0-31 | beta 32-63 | rc 64-95 | stable 96-99")
     }
 
-    def runTasks = gradle.startParameter.taskNames
+    properties.load(versionPropsFile.newInputStream())
+    build = properties.getProperty("build").toInteger()
+    major = properties.getProperty("major").toInteger()
+    minor = properties.getProperty("minor").toInteger()
+    patch = properties.getProperty("patch").toInteger()
 
-    def isBuild = runTasks.any { it.startsWith(":app:assemble")}
-    def isDebugBuild = runTasks.any { taskName -> taskName.contains("assembleDebug") }
+    vName = "${major}.${minor}.${patch}"
 
-    if (versionPropsFile.canRead() && (isBuild || isDebugBuild)) {
-        versionProps.load(versionPropsFile.newDataInputStream())
-        versionMayor = versionProps['VERSION_MAYOR'].toInteger()
-        versionMinor = versionProps['VERSION_MINOR'].toInteger()
-        versionPatch = versionProps['VERSION_PATCH'].toInteger()
-        versionBuild = versionProps['VERSION_BUILD'].toInteger()
-        versionCodeProp = versionProps['VERSION_CODE'].toInteger()
+    def suffixBuild = String.format("%02d", (build % 32) + 1)
 
-        if (isDebugBuild) {
-           versionBuild += 1
-        } else {
-            versionCodeProp += 1
-        }
-
-        versionProps['VERSION_BUILD'] = versionBuild.toString()
-        versionProps['VERSION_CODE'] = versionCodeProp.toString()
-        versionProps.store(versionPropsFile.newWriter(), null)
+    switch (build / 32) {
+        case 3: // build >= 96
+            break // No suffix for release versions
+        case 2: // build >= 64
+            vName += "-rc${suffixBuild}"
+            break
+        case 1: // build >= 32
+            vName += "-beta${suffixBuild}"
+            break
+        default:
+            vName += "-alpha${suffixBuild}"
+            break
     }
+    // xxyyyzzbb
+    vCode = major * 10_000_000 + minor * 10_000 + patch * 100 + build
 
     defaultConfig {
         applicationId "de.davis.passwordmanager"
         minSdk 23
         targetSdk 33
-        versionCode versionCodeProp
-        versionName "v${versionMayor}.${versionMinor}.${versionPatch} ${versionBuild}"
+        versionCode vCode
+        versionName vName
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -70,6 +71,7 @@ android {
         debug{
             versionNameSuffix "-debug"
             applicationIdSuffix ".debug"
+            defaultConfig.versionCode 10
         }
 
         rc{
