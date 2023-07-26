@@ -73,21 +73,6 @@ android {
             applicationIdSuffix ".debug"
             defaultConfig.versionCode 10
         }
-
-        rc{
-            initWith release
-            versionNameSuffix "-rc"
-        }
-
-        beta{
-            initWith release
-            versionNameSuffix "-beta"
-        }
-
-        alpha{
-            initWith release
-            versionNameSuffix "-alpha"
-        }
     }
     compileOptions {
         coreLibraryDesugaringEnabled true
