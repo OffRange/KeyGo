@@ -2,9 +2,9 @@ package de.davis.passwordmanager.utils;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.preference.PreferenceManager;
 
 import androidx.annotation.StringRes;
+import androidx.preference.PreferenceManager;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.ui.settings.SettingsFragment;
