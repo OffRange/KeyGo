@@ -111,7 +111,7 @@
     <string name="up_to_date">Diese Anwendung ist auf dem neuesten Stand</string>
     <string name="scanning_for_updates">Neuere Versionen werden gesucht</string>
     <string name="newer_version_available">Neuere version verfügbar: %1$s</string>
-    <string name="updater_error_occured">Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später noch einmal</string>
+    <string name="updater_error_occurred">Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später noch einmal</string>
     <string name="downloading_newer_version">Neuere Version wird heruntergeladen</string>
     <string name="favorites">Favoriten</string>
     <string name="last_viewed">Zuletzt angesehen</string>
