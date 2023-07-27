@@ -57,3 +57,5 @@
 
 -keep class org.kohsuke.github.** {*;}
 -dontwarn org.kohsuke.github.**
+
+-dontwarn org.slf4j.impl.StaticLoggerBinder
