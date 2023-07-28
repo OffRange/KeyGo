@@ -22,14 +22,14 @@ public class UpdaterViewModel extends AndroidViewModel {
 
     public UpdaterViewModel(@NonNull Application application) {
         super(application);
-        fetchGitHubReleases(PreferenceUtil.getUpdateChannel(getApplication()));
+        fetchGitHubReleases(PreferenceUtil.getUpdateChannel(getApplication()), true);
     }
 
-    public void fetchGitHubReleases(@Version.Channel int channel) {
+    public void fetchGitHubReleases(@Version.Channel int channel, boolean useCached) {
         doInBackground(() -> {
             try {
                 releaseLiveData.postValue(((PasswordManagerApplication)getApplication())
-                        .getUpdater().fetchByChannel(channel));
+                        .getUpdater().fetchByChannel(channel, useCached));
             } catch (IOException e) {
                 errorLiveData.postValue(e);
             }

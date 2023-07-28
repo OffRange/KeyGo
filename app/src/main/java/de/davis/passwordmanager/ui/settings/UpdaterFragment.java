@@ -149,9 +149,11 @@ public class UpdaterFragment extends Fragment {
         scanDownload = getString(R.string.download);
 
         binding.autoComplete.setText(VersionUtil.getChannelName(PreferenceUtil.getUpdateChannel(requireContext()), requireContext()), false);
-        binding.autoComplete.setOnItemClickListener((parent, view1, position, id) ->
-                    PreferenceUtil.putUpdateChannel(requireContext(),
-                            VersionUtil.getChannelByName((String) parent.getItemAtPosition(position), requireContext())));
+        binding.autoComplete.setOnItemClickListener((parent, view1, position, id) -> {
+            PreferenceUtil.putUpdateChannel(requireContext(),
+                    VersionUtil.getChannelByName((String) parent.getItemAtPosition(position), requireContext()));
+            fetch(false);
+        });
 
         binding.build.setInformationText(CurrentVersion.getInstance().getVersionTag());
         binding.channel.setInformationText(VersionUtil.getChannelName(CurrentVersion.getInstance().getChannel(), requireContext()));
@@ -252,7 +254,7 @@ public class UpdaterFragment extends Fragment {
 
     private void startFetchingIfNeeded(){
         if(!updater.hasFetched()) {
-            forceFetch(); //TODO maybe once a day
+            fetch(true); //TODO maybe once a day
         }
 
 
@@ -264,7 +266,7 @@ public class UpdaterFragment extends Fragment {
             if(!release.isNewer()) {
                 binding.update.setInformationText(R.string.up_to_date);
                 binding.scan.setEnabled(true);
-                binding.scan.setOnClickListener(v -> forceFetch());
+                binding.scan.setOnClickListener(v -> fetch(true));
                 binding.scan.setText(R.string.scan);
                 return;
             }
@@ -278,11 +280,11 @@ public class UpdaterFragment extends Fragment {
         });
     }
 
-    private void forceFetch(){
+    private void fetch(boolean useCached){
         binding.progressBar.setIndeterminate(true);
         binding.progressBar.setVisibility(View.VISIBLE);
         binding.update.setInformationText(R.string.scanning_for_updates);
         binding.scan.setEnabled(false);
-        viewModel.fetchGitHubReleases(PreferenceUtil.getUpdateChannel(requireContext()));
+        viewModel.fetchGitHubReleases(PreferenceUtil.getUpdateChannel(requireContext()), useCached);
     }
 }

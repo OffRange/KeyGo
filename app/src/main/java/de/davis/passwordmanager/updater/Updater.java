@@ -62,8 +62,14 @@ public class Updater {
 
     @WorkerThread
     @NonNull
-    public synchronized Release fetchByChannel(@Version.Channel int updateChannel) throws IOException {
-        if (!fetched) {
+    public Release fetchByChannel(@Version.Channel int updateChannel) throws IOException {
+        return fetchByChannel(updateChannel, false);
+    }
+
+    @WorkerThread
+    @NonNull
+    public synchronized Release fetchByChannel(@Version.Channel int updateChannel, boolean useCached) throws IOException {
+        if (!fetched || !useCached) {
             cachedRelease = fetchReleaseByChannel(updateChannel);
             fetched = true;
         }
