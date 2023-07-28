@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.NFC"/>
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -50,15 +52,15 @@
                 android:name="android.autofill"
                 android:resource="@xml/autofill_configuration" />
         </service>
-
-        <service android:name="de.davis.passwordmanager.updater.AppInstallerClass"/>
         
-        <receiver android:name="de.davis.passwordmanager.updater.DownloadReceiver"
-            android:exported="true">
+        <receiver android:name=".updater.installer.InstallBroadcastReceiver"
+            android:exported="false">
             <intent-filter>
-                <action android:name="android.intent.action.DOWNLOAD_COMPLETE"/>
+                <action android:name="de.davis.passwordmanager.action.INSTALL"/>
             </intent-filter>
         </receiver>
+
+        <service android:name=".updater.downloader.DownloadService"/>
     </application>
 
 </manifest>

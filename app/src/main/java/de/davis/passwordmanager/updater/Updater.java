@@ -1,22 +1,22 @@
 package de.davis.passwordmanager.updater;
 
-import static de.davis.passwordmanager.utils.BackgroundUtil.doInBackground;
-import static de.davis.passwordmanager.utils.Version.CHANNEL_STABLE;
+import static android.content.pm.PackageInstaller.PACKAGE_SOURCE_OTHER;
+import static android.content.pm.PackageInstaller.SessionParams.MODE_FULL_INSTALL;
+import static android.content.pm.PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED;
+import static android.content.pm.PackageManager.INSTALL_REASON_USER;
+import static de.davis.passwordmanager.updater.installer.InstallBroadcastReceiver.EXTRA_FILE;
+import static de.davis.passwordmanager.updater.version.Version.CHANNEL_STABLE;
 
-import android.app.DownloadManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageInstaller;
 import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.os.Build;
-import android.os.Environment;
-import android.os.Handler;
-import android.os.Looper;
 
 import androidx.annotation.NonNull;
-import androidx.core.os.HandlerCompat;
+import androidx.annotation.WorkerThread;
 
 import org.kohsuke.github.GHAsset;
 import org.kohsuke.github.GHRelease;
@@ -31,211 +31,175 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.utils.Version;
+import de.davis.passwordmanager.PasswordManagerApplication;
+import de.davis.passwordmanager.updater.downloader.DownloadService;
+import de.davis.passwordmanager.updater.exception.RateLimitException;
+import de.davis.passwordmanager.updater.installer.InstallBroadcastReceiver;
+import de.davis.passwordmanager.updater.version.Release;
+import de.davis.passwordmanager.updater.version.Version;
 
 public class Updater {
 
     private static final int REPOSITORY_ID = 581862172;
 
-    private final Handler handler = HandlerCompat.createAsync(Looper.getMainLooper());
+    private final Context context;
 
-    private Update update = Update.EMPTY;
-    private static Updater instance;
+    private boolean fetched;
 
-    private boolean running;
+    private Release cachedRelease;
 
-    private Listener listener;
-
-    private Updater() {}
-
-    public static Updater getInstance() {
-        if(instance == null)
-            instance = new Updater();
-
-        return instance;
+    public Updater(Context context){
+        this.context = context;
     }
 
-    public void setListener(Listener listener) {
-        this.listener = listener;
+    public boolean hasFetched() {
+        return fetched;
     }
 
-    private void notifyListener(GHRelease release, Context context){
-        setRunningStatus(false);
-        update = new Update(release, context);
-        handler.post(() -> listener.onSuccess(this, update));
+
+    @WorkerThread
+    @NonNull
+    public synchronized Release fetchByChannel(@Version.Channel int updateChannel) throws IOException {
+        if (!fetched) {
+            cachedRelease = fetchReleaseByChannel(updateChannel);
+            fetched = true;
+        }
+
+        deleteUnusedDownloads(cachedRelease.getDownloadedFile((PasswordManagerApplication) context.getApplicationContext()));
+        return cachedRelease;
     }
 
-    public boolean isRunning() {
-        return running;
-    }
-
-    public Update getUpdate() {
-        return update;
-    }
-
-    public static File getVersionApkFile() {
-        return new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "password_manager.apk");
-    }
-
-    public void checkForGitHubRelease(@Version.VersionChannel int versionChannel, Context context) {
-        if(isRunning())
-            return;
-
-        doInBackground(() -> {
-            try{
-                setRunningStatus(true);
-                GitHub gitHub = new GitHubBuilder().withRateLimitHandler(new GitHubRateLimitHandler() {
-                    @Override
-                    public void onError(@NonNull GitHubConnectorResponse connectorResponse) throws IOException {
-                        throw new IOException("Rate limit reached");
-                    }
-                }).build();
-                GHRepository repository = gitHub.getRepositoryById(REPOSITORY_ID);
-
-                GHRelease latest = repository.getLatestRelease();
-                if(versionChannel == CHANNEL_STABLE) {
-                    notifyListener(latest, context);
-                    return;
-                }
-
-                ArrayList<GHRelease> releases = new ArrayList<>(repository.listReleases().toList());
-
-                GHRelease r = releases.stream().filter(release -> Version.getChannelTypeByVersionName(release.getTagName()) >= versionChannel).findFirst().orElse(null);
-                if(r == null) {
-                    notifyListener(latest, context);
-                    return;
-                }
-
-                if(latest.getPublished_at().after(r.getPublished_at())) {
-                    notifyListener(latest, context);
-                    return;
-                }
-
-                notifyListener(r, context);
-            }catch (IOException e){
-                setRunningStatus(false);
-                handler.post(() -> listener.onError(e));
+    @WorkerThread
+    @NonNull
+    private Release fetchReleaseByChannel(@Version.Channel int updateChannel) throws IOException {
+        GitHub gitHub = new GitHubBuilder().withRateLimitHandler(new GitHubRateLimitHandler() {
+            @Override
+            public void onError(@NonNull GitHubConnectorResponse connectorResponse) throws IOException {
+                throw new RateLimitException(connectorResponse);
             }
-        });
+        }).build();
+        GHRepository repository = gitHub.getRepositoryById(REPOSITORY_ID);
+        GHRelease stableGhReleases = repository.getLatestRelease();
+        Release stableRelease = createRelease(stableGhReleases);
+        if (updateChannel == CHANNEL_STABLE)
+            return stableRelease;
 
+        List<GHRelease> ghReleases = repository.listReleases().toList();
+        GHRelease unstableGhRelease = ghReleases.stream()
+                .filter(r -> Version.getChannelByVersionName(r.getTagName()) >= updateChannel)
+                .findFirst().orElse(null);
+        if (unstableGhRelease == null)
+            return stableRelease;
+
+        Release unstableRelease = createRelease(unstableGhRelease);
+
+        if (stableRelease.getVersionCode() > unstableRelease.getVersionCode())
+            return stableRelease;
+
+        return unstableRelease;
     }
 
-    private void setRunningStatus(boolean running){
-        this.running = running;
-        handler.post(() -> listener.onRunningChanged(running));
-    }
-
-    public static boolean isNewer(GHRelease release, Context context) {
-        String versionName = extractVersionName(release.getBody());
-        if(versionName == null)
-            return false;
-
-        Pattern pattern = Pattern.compile("(?<=\\s)\\d+(?=-.+$)");
-        Matcher currentMatcher = pattern.matcher(Version.getVersion(context).getVersionName());
-        Matcher releaseMatcher = pattern.matcher(versionName);
-        if(!releaseMatcher.find() || !currentMatcher.find())
-            return false;
-
-        int currentBuildNumber = Integer.parseInt(currentMatcher.group());
-        int releaseBuildNumber = Integer.parseInt(releaseMatcher.group());
-
-        return currentBuildNumber < releaseBuildNumber;
-    }
-
-    public static void downloadRelease(GHRelease release, Context context) throws IOException {
-        List<GHAsset> assets = release.listAssets().toList();
-        if(assets.size() == 0)
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    private void deleteUnusedDownloads(File actual){
+        File[] files = ((PasswordManagerApplication)context.getApplicationContext()).getDownloadDir().listFiles();
+        if(files == null)
             return;
 
-        String downloadUrl = assets.get(0).getBrowserDownloadUrl();
+        Arrays.stream(files)
+                .filter(file -> !file.equals(actual))
+                .forEach(File::delete);
+    }
 
-        if(getVersionApkFile().exists()){
-            installRelease(context);
-            return;
+    private Release createRelease(GHRelease ghRelease) throws IOException {
+        List<GHAsset> assets = ghRelease.listAssets().toList();
+        if (assets.size() == 0)
+            return new Release(null, ghRelease.getTagName());
+
+        GHAsset asset = assets.stream()
+                .filter(ghAsset -> ghAsset.getContentType().equals("application/vnd.android.package-archive"))
+                .findFirst().orElse(null);
+
+        return new Release(asset == null ? null : asset.getName(), ghRelease.getTagName());
+    }
+
+    private boolean isApkVerified(File file, long vCode){
+        PackageInfo info;
+        try{
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                info = context.getPackageManager().getPackageArchiveInfo(file.getPath(), PackageManager.PackageInfoFlags.of(0));
+            }else
+                info = context.getPackageManager().getPackageArchiveInfo(file.getPath(), 0);
+        }catch (Exception e){
+            return false;
         }
 
-        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(downloadUrl));
-        request.setTitle(context.getString(R.string.app_name));
-        request.setDescription("Updating to "+ release.getTagName());
+        if(info == null)
+            return false;
 
-        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "password_manager.apk");
+        long apkCode;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            apkCode = info.getLongVersionCode();
+        }else
+            apkCode = info.versionCode;
 
-        DownloadManager downloadManager = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
-        long downloadId = downloadManager.enqueue(request);
+        return file.isFile() && file.getName().equals(vCode + ".apk") && apkCode == vCode;
     }
 
-    public static void installRelease(Context context) throws IOException {
-        PackageInstaller packageInstaller = context.getPackageManager().getPackageInstaller();
-        PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+    @WorkerThread
+    public void install(Release release){
+        File apk = release.getDownloadedFile((PasswordManagerApplication) context.getApplicationContext());
+        if(!isApkVerified(apk, release.getVersionCode()))
+            return;
+
+        long size = apk.length();
+
+        PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(MODE_FULL_INSTALL);
+        //params.setAppPackageName(context.getPackageName());
+        params.setSize(size);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            params.setInstallReason(PackageManager.INSTALL_REASON_USER);
+            params.setInstallReason(INSTALL_REASON_USER);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            params.setRequireUserAction(USER_ACTION_NOT_REQUIRED);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            params.setPackageSource(PACKAGE_SOURCE_OTHER);
         }
 
-        PackageInstaller.Session session = packageInstaller.openSession(packageInstaller.createSession(params));
+        PackageInstaller installer = context.getPackageManager().getPackageInstaller();
+        try {
+            int sessionId = installer.createSession(params);
+            PackageInstaller.Session session = installer.openSession(sessionId);
+            try(OutputStream outputStream = session.openWrite(context.getPackageName(), 0, size);
+                InputStream inputStream = new FileInputStream(apk)){
 
-        InputStream in = new FileInputStream(getVersionApkFile());
-        OutputStream os = session.openWrite("passwordmanager.apk", 0, getVersionApkFile().length());
-        byte[] buffer = new byte[1024*1024];
-        int bytesRead;
-        while ((bytesRead = in.read(buffer)) != -1) {
-            os.write(buffer, 0, bytesRead);
-        }
+                byte[] buffer = new byte[1024*1024];
+                int bytesRead;
+                while ((bytesRead = inputStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, bytesRead);
+                }
 
-        session.fsync(os);
-        in.close();
-        os.close();
-        session.commit(PendingIntent.getService(
-                context,
-                0,
-                new Intent(context, AppInstallerClass.class), PendingIntent.FLAG_MUTABLE).getIntentSender());
-        session.close();
+                session.fsync(outputStream);
+            }
+
+
+            session.close();
+
+            Intent intent = new Intent(InstallBroadcastReceiver.ACTION_INSTALL);
+            intent.setPackage(context.getPackageName());
+            intent.putExtra(EXTRA_FILE, apk);
+            intent.putExtra(DownloadService.EXTRA_RELEASE, release);
+            session.commit(PendingIntent.getBroadcast(context, sessionId, intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE)
+                    .getIntentSender());
+            session.close();
+        } catch (IOException ignored) {}
     }
 
-    private static String extractVersionName(String body){
-        String[] lines = body.split("\r\n");
-
-        for(int i = 0; i < lines.length; i++){
-            if(lines[i].startsWith("## Version Tag"))
-                return lines[i+1];
-        }
-
-        return null;
-    }
-
-    public interface Listener {
-        void onError(Throwable throwable);
-        void onSuccess(Updater updater, Update update);
-        void onRunningChanged(boolean running);
-    }
-
-    public static class Update{
-        private static final Update EMPTY = new Update();
-
-        private final GHRelease release;
-        private final boolean newer;
-
-        private Update(){
-            release = null;
-            newer = false;
-        }
-
-        private Update(GHRelease release, Context context){
-            this.release = release;
-            newer = Updater.isNewer(release, context);
-        }
-
-        public GHRelease getRelease() {
-            return release;
-        }
-
-        public boolean isNewer() {
-            return newer;
-        }
+    public void download(Release release){
+        DownloadService.start(release, context);
     }
 }

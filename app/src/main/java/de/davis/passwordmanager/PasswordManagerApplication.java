@@ -12,16 +12,26 @@ import androidx.annotation.Nullable;
 
 import com.google.android.material.color.DynamicColors;
 
+import java.io.File;
+
 import de.davis.passwordmanager.database.SecureElementDatabase;
 import de.davis.passwordmanager.ui.login.LoginActivity;
+import de.davis.passwordmanager.updater.Updater;
 import de.davis.passwordmanager.utils.PreferenceUtil;
 import de.davis.passwordmanager.utils.TimeoutUtil;
 
 public class PasswordManagerApplication extends Application {
 
+    private Updater updater;
+
+    private boolean shouldAuthenticate;
+
     @Override
     public void onCreate() {
         super.onCreate();
+
+        updater = new Updater(this);
+
         DynamicColors.applyToActivitiesIfAvailable(this);
 
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
@@ -52,6 +62,9 @@ public class PasswordManagerApplication extends Application {
                 if(lastPaused != activity)
                     return;
 
+                if(!shouldAuthenticate)
+                    return;
+
                 timeoutUtil.initiateDelay();
                 long time = PreferenceUtil.getTimeForNewAuthentication(activity);
                 if(time < 0)
@@ -79,7 +92,19 @@ public class PasswordManagerApplication extends Application {
         });
     }
 
+    public void setShouldAuthenticate(boolean shouldAuthenticate) {
+        this.shouldAuthenticate = shouldAuthenticate;
+    }
+
     public SecureElementDatabase getDatabase(){
         return SecureElementDatabase.createAndGet(this);
+    }
+
+    public File getDownloadDir(){
+        return new File(getCacheDir(), "apks/");
+    }
+
+    public Updater getUpdater() {
+        return updater;
     }
 }
