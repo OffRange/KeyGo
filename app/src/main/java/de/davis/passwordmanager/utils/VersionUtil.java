@@ -1,17 +1,17 @@
 package de.davis.passwordmanager.utils;
 
-import static de.davis.passwordmanager.updater.version.Version.CHANNEL_ALPHA;
-import static de.davis.passwordmanager.updater.version.Version.CHANNEL_BETA;
-import static de.davis.passwordmanager.updater.version.Version.CHANNEL_RC;
-import static de.davis.passwordmanager.updater.version.Version.CHANNEL_STABLE;
-import static de.davis.passwordmanager.updater.version.Version.CHANNEL_UNKNOWN;
+import static de.davis.passwordmanager.version.Version.CHANNEL_ALPHA;
+import static de.davis.passwordmanager.version.Version.CHANNEL_BETA;
+import static de.davis.passwordmanager.version.Version.CHANNEL_RC;
+import static de.davis.passwordmanager.version.Version.CHANNEL_STABLE;
+import static de.davis.passwordmanager.version.Version.CHANNEL_UNKNOWN;
 
 import android.content.Context;
 
 import org.apache.commons.lang3.ArrayUtils;
 
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.updater.version.Version;
+import de.davis.passwordmanager.version.Version;
 
 public class VersionUtil {
 

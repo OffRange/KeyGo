@@ -133,7 +133,8 @@ dependencies {
     implementation 'com.github.devnied.emvnfccard:library:3.0.1'
     implementation 'net.grey-panther:natural-comparator:1.1'
 
-    implementation "com.squareup.retrofit2:retrofit:2.9.0"
+    githubImplementation "com.squareup.retrofit2:retrofit:2.9.0"
+    githubImplementation 'org.kohsuke:github-api:1.314'
 
     implementation "androidx.room:room-runtime:2.5.1"
     annotationProcessor "androidx.room:room-compiler:2.5.1"
@@ -144,7 +145,6 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 
     implementation "org.slf4j:slf4j-simple:2.0.7"
-    implementation 'org.kohsuke:github-api:1.314'
 }
 
 class RoomSchemaArgProvider implements CommandLineArgumentProvider {

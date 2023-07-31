@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="version">Updater</string>
+
+    <string name="update_channel">Update Channel</string>
+
+    <string name="scan">Scan</string>
+    <string name="download">Download</string>
+    <string name="install">Install</string>
+
+    <string name="up_to_date">You are up to date</string>
+    <string name="scanning_for_updates">Scanning for newer versions</string>
+    <string name="newer_version_available">An newer version is available: %1$s</string>
+    <string name="updater_error_occurred">An unexpected error occurred. Please try again later</string>
+    <string name="downloading_newer_version">Downloading newer version %1$s</string>
+    <string name="installing_newer_version">Installing newer version %1$s</string>
+    <string name="init_download">Initiating download</string>
+    <string name="downloading_progress_text">Downloading: %1$s%%</string>
+
+    <string name="gh_api_limit_exceeded">GitHub API rate limit exceeded</string>
+    <string name="try_in_x_seconds">Try again in %1$d seconds</string>
+</resources>

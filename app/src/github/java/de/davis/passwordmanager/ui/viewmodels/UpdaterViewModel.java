@@ -10,9 +10,9 @@ import androidx.lifecycle.MutableLiveData;
 
 import java.io.IOException;
 
-import de.davis.passwordmanager.PasswordManagerApplication;
+import de.davis.passwordmanager.App;
 import de.davis.passwordmanager.updater.version.Release;
-import de.davis.passwordmanager.updater.version.Version;
+import de.davis.passwordmanager.version.Version;
 import de.davis.passwordmanager.utils.PreferenceUtil;
 
 public class UpdaterViewModel extends AndroidViewModel {
@@ -28,7 +28,7 @@ public class UpdaterViewModel extends AndroidViewModel {
     public void fetchGitHubReleases(@Version.Channel int channel, boolean useCached) {
         doInBackground(() -> {
             try {
-                releaseLiveData.postValue(((PasswordManagerApplication)getApplication())
+                releaseLiveData.postValue(((App)getApplication())
                         .getUpdater().fetchByChannel(channel, useCached));
             } catch (IOException e) {
                 errorLiveData.postValue(e);

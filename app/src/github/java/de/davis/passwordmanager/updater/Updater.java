@@ -5,7 +5,7 @@ import static android.content.pm.PackageInstaller.SessionParams.MODE_FULL_INSTAL
 import static android.content.pm.PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED;
 import static android.content.pm.PackageManager.INSTALL_REASON_USER;
 import static de.davis.passwordmanager.updater.installer.InstallBroadcastReceiver.EXTRA_FILE;
-import static de.davis.passwordmanager.updater.version.Version.CHANNEL_STABLE;
+import static de.davis.passwordmanager.version.Version.CHANNEL_STABLE;
 
 import android.app.PendingIntent;
 import android.content.Context;
@@ -34,12 +34,12 @@ import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.List;
 
-import de.davis.passwordmanager.PasswordManagerApplication;
+import de.davis.passwordmanager.App;
 import de.davis.passwordmanager.updater.downloader.DownloadService;
 import de.davis.passwordmanager.updater.exception.RateLimitException;
 import de.davis.passwordmanager.updater.installer.InstallBroadcastReceiver;
 import de.davis.passwordmanager.updater.version.Release;
-import de.davis.passwordmanager.updater.version.Version;
+import de.davis.passwordmanager.version.Version;
 
 public class Updater {
 
@@ -74,7 +74,7 @@ public class Updater {
             fetched = true;
         }
 
-        deleteUnusedDownloads(cachedRelease.getDownloadedFile((PasswordManagerApplication) context.getApplicationContext()));
+        deleteUnusedDownloads(cachedRelease.getDownloadedFile((App) context.getApplicationContext()));
         return cachedRelease;
     }
 
@@ -87,7 +87,7 @@ public class Updater {
                 throw new RateLimitException(connectorResponse);
             }
         }).build();
-        GHRepository repository = gitHub.getRepositoryById(REPOSITORY_ID);
+        GHRepository repository = gitHub.getRepository("OffRange/Test");
         GHRelease stableGhReleases = repository.getLatestRelease();
         Release stableRelease = createRelease(stableGhReleases);
         if (updateChannel == CHANNEL_STABLE)
@@ -110,7 +110,7 @@ public class Updater {
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
     private void deleteUnusedDownloads(File actual){
-        File[] files = ((PasswordManagerApplication)context.getApplicationContext()).getDownloadDir().listFiles();
+        File[] files = ((App)context.getApplicationContext()).getDownloadDir().listFiles();
         if(files == null)
             return;
 
@@ -156,7 +156,7 @@ public class Updater {
 
     @WorkerThread
     public void install(Release release){
-        File apk = release.getDownloadedFile((PasswordManagerApplication) context.getApplicationContext());
+        File apk = release.getDownloadedFile((App) context.getApplicationContext());
         if(!isApkVerified(apk, release.getVersionCode()))
             return;
 

@@ -1,12 +1,9 @@
 package de.davis.passwordmanager.ui.settings;
 
-import static de.davis.passwordmanager.utils.BackgroundUtil.doInBackground;
-
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Looper;
 import android.provider.Settings;
 import android.view.autofill.AutofillManager;
 import android.widget.Toast;
@@ -17,7 +14,6 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.biometric.BiometricPrompt;
 import androidx.browser.customtabs.CustomTabsIntent;
-import androidx.core.os.HandlerCompat;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
@@ -29,19 +25,30 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.gms.oss.licenses.OssLicensesMenuActivity;
 
-import java.io.IOException;
+import java.util.Objects;
 
-import de.davis.passwordmanager.PasswordManagerApplication;
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.security.Authentication;
 import de.davis.passwordmanager.ui.LinearLayoutManager;
-import de.davis.passwordmanager.ui.views.UpdaterPreference;
-import de.davis.passwordmanager.updater.Updater;
-import de.davis.passwordmanager.updater.version.CurrentVersion;
-import de.davis.passwordmanager.updater.version.Release;
-import de.davis.passwordmanager.utils.PreferenceUtil;
+import de.davis.passwordmanager.version.CurrentVersion;
 
-public class SettingsFragment extends PreferenceFragmentCompat implements PreferenceFragmentCompat.OnPreferenceStartFragmentCallback {
+/**
+ * A base settings fragment that displays preferences for the Android app.
+ * This class is intended to be subclassed by any product flavor with the dimension "market"
+ * in a class called SettingsFragment under the package de.davis.passwordmanager.ui.settings.
+ *
+ * <p>The BaseSettingsFragment extends PreferenceFragmentCompat and implements the
+ * PreferenceFragmentCompat.OnPreferenceStartFragmentCallback interface to handle preference
+ * interactions. Subclasses should override onCreatePreferences() to customize the preferences
+ * displayed and onPreferenceStartFragment() to handle preference fragment navigation.
+ *
+ * <p>The class sets up various preferences related to authentication, autofill, and third-party dependencies.
+ * It also provides methods to check for the availability and status of autofill functionality.
+ *
+ * <p>Subclasses can further customize the behavior and appearance of the settings fragment by
+ * overriding methods such as onResume().
+ */
+public class BaseSettingsFragment extends PreferenceFragmentCompat implements PreferenceFragmentCompat.OnPreferenceStartFragmentCallback {
 
     private static final Uri URI = Uri.parse("https://github.com/OffRange/PasswordManager/issues/new/choose");
 
@@ -88,19 +95,8 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Prefer
         OssLicensesMenuActivity.setActivityTitle(getString(R.string.third_party_dependencies));
         findPreference(getString(R.string.preference_license)).setIntent(new Intent(getContext(), OssLicensesMenuActivity.class));
 
-        Updater updater = ((PasswordManagerApplication)requireActivity().getApplication()).getUpdater();
-        doInBackground(() -> {
-            try {
-                Release cached = updater.fetchByChannel(PreferenceUtil.getUpdateChannel(requireContext()));
-                boolean newer = cached.isNewer();
-                ((UpdaterPreference)findPreference(getString(R.string.updater))).setHighlighted(newer);
-                HandlerCompat.createAsync(Looper.getMainLooper())
-                        .post(() -> findPreference(getString(R.string.updater))
-                                .setSummary(newer
-                                        ? getString(R.string.newer_version_available, cached.getVersionTag())
-                                        : CurrentVersion.getInstance().getVersionTag()));
-            } catch (IOException ignored) {}
-        });
+        Objects.requireNonNull((Preference) findPreference(getString(R.string.version)))
+                .setSummary(CurrentVersion.getInstance().getVersionTag());
     }
 
     @NonNull

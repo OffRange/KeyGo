@@ -1,4 +1,4 @@
-package de.davis.passwordmanager.updater.version;
+package de.davis.passwordmanager.version;
 
 import androidx.annotation.IntDef;
 
@@ -124,7 +124,7 @@ public class Version implements Serializable {
         Matcher matcher = pattern.matcher(tag);
 
         if (!matcher.find())
-            return new Version(-1, -1, -1, -1, CHANNEL_UNKNOWN);
+            return new Version(0, 0, 0, 0, CHANNEL_UNKNOWN);
 
         // Group 1: Major version
         int majorVersion = Integer.parseInt(matcher.group(1));

@@ -7,8 +7,8 @@ import androidx.annotation.StringRes;
 import androidx.preference.PreferenceManager;
 
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.ui.settings.SettingsFragment;
-import de.davis.passwordmanager.updater.version.Version;
+import de.davis.passwordmanager.ui.settings.BaseSettingsFragment;
+import de.davis.passwordmanager.version.Version;
 
 public class PreferenceUtil {
 
@@ -25,7 +25,7 @@ public class PreferenceUtil {
     }
 
     public static long getTimeForNewAuthentication(Context context){
-        return SettingsFragment.getTime(getPreferences(context).getInt(context.getString(R.string.preference_reauthenticate), 5));
+        return BaseSettingsFragment.getTime(getPreferences(context).getInt(context.getString(R.string.preference_reauthenticate), 5));
     }
 
     @Version.Channel

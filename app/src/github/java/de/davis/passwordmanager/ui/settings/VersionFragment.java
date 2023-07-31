@@ -11,16 +11,15 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
-import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
@@ -28,22 +27,20 @@ import org.apache.commons.io.FileUtils;
 
 import java.io.IOException;
 
+import de.davis.passwordmanager.App;
 import de.davis.passwordmanager.PasswordManagerApplication;
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.databinding.FragmentUpdaterBinding;
 import de.davis.passwordmanager.ui.viewmodels.UpdaterViewModel;
 import de.davis.passwordmanager.updater.Updater;
 import de.davis.passwordmanager.updater.downloader.DownloadService;
 import de.davis.passwordmanager.updater.exception.RateLimitException;
 import de.davis.passwordmanager.updater.installer.InstallBroadcastReceiver;
-import de.davis.passwordmanager.updater.version.CurrentVersion;
 import de.davis.passwordmanager.updater.version.Release;
 import de.davis.passwordmanager.utils.PreferenceUtil;
 import de.davis.passwordmanager.utils.VersionUtil;
 
-public class UpdaterFragment extends Fragment {
+public class VersionFragment extends BaseVersionFragment {
 
-    private FragmentUpdaterBinding binding;
     private UpdaterViewModel viewModel;
 
     private String scanDownload;
@@ -89,7 +86,7 @@ public class UpdaterFragment extends Fragment {
                             release.getVersionTag()));
 
                     try {
-                        FileUtils.deleteDirectory(((PasswordManagerApplication)requireActivity()
+                        FileUtils.deleteDirectory(((App)requireActivity()
                                 .getApplication()).getDownloadDir());
                     } catch (IOException ignore) {}
                 }
@@ -125,74 +122,9 @@ public class UpdaterFragment extends Fragment {
         }
     };
 
-    private final ActivityResultLauncher<String> requestPermissionLauncher =
+    private ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(),
                     isGranted -> permissionsRequested());
-
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        binding = FragmentUpdaterBinding.inflate(inflater, container, false);
-        return binding.getRoot();
-    }
-
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-
-        updater = ((PasswordManagerApplication)requireActivity().getApplication()).getUpdater();
-        viewModel = new ViewModelProvider(requireActivity()).get(UpdaterViewModel.class);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            askForNotificationPermission();
-        }
-
-        scanDownload = getString(R.string.download);
-
-        binding.autoComplete.setText(VersionUtil.getChannelName(PreferenceUtil.getUpdateChannel(requireContext()), requireContext()), false);
-        binding.autoComplete.setOnItemClickListener((parent, view1, position, id) -> {
-            PreferenceUtil.putUpdateChannel(requireContext(),
-                    VersionUtil.getChannelByName((String) parent.getItemAtPosition(position), requireContext()));
-            fetch(false);
-        });
-
-        binding.build.setInformationText(CurrentVersion.getInstance().getVersionTag());
-        binding.channel.setInformationText(VersionUtil.getChannelName(CurrentVersion.getInstance().getChannel(), requireContext()));
-
-        viewModel.getErrorLiveData().observe(getViewLifecycleOwner(), e -> {
-            binding.progressBar.setVisibility(View.GONE);
-            if(e instanceof RateLimitException){
-                binding.scan.setEnabled(false);
-                binding.scan.setText(getString(R.string.try_in_x_seconds,
-                        (((RateLimitException) e).getReset() - System.currentTimeMillis() / 1000)));
-                binding.update.setInformationText(R.string.gh_api_limit_exceeded);
-                return;
-            }
-
-            binding.update.setInformationText(e.getMessage());
-        });
-
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(DownloadService.ACTION_START);
-        filter.addAction(DownloadService.ACTION_DESTROY);
-        filter.addAction(DownloadService.ACTION_PROGRESS);
-        filter.addAction(InstallBroadcastReceiver.ACTION_INSTALL);
-
-        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(broadcastReceiver, filter);
-    }
-
-    @Override
-    public void onStart() {
-        super.onStart();
-
-        ((PasswordManagerApplication)requireActivity().getApplication())
-                .setShouldAuthenticate(true);
-    }
-
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(broadcastReceiver);
-    }
 
     @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     private void askForNotificationPermission(){
@@ -202,6 +134,7 @@ public class UpdaterFragment extends Fragment {
             return;
         }
 
+        ((PasswordManagerApplication)requireActivity().getApplication()).setShouldAuthenticate(false);
         requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
     }
 
@@ -271,7 +204,7 @@ public class UpdaterFragment extends Fragment {
                 return;
             }
 
-            if(release.getDownloadedFile((PasswordManagerApplication) requireActivity().getApplication()).isFile()){
+            if(release.getDownloadedFile((App) requireActivity().getApplication()).isFile()){
                 prepareUiForInstallation(release);
                 return;
             }
@@ -286,5 +219,59 @@ public class UpdaterFragment extends Fragment {
         binding.update.setInformationText(R.string.scanning_for_updates);
         binding.scan.setEnabled(false);
         viewModel.fetchGitHubReleases(PreferenceUtil.getUpdateChannel(requireContext()), useCached);
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(broadcastReceiver);
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        ((PasswordManagerApplication) requireActivity().getApplication()).setShouldAuthenticate(true);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        updater = ((App)requireActivity().getApplication()).getUpdater();
+        viewModel = new ViewModelProvider(requireActivity()).get(UpdaterViewModel.class);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            askForNotificationPermission();
+        }
+
+        scanDownload = getString(R.string.download);
+
+        binding.autoComplete.setText(VersionUtil.getChannelName(PreferenceUtil.getUpdateChannel(requireContext()), requireContext()), false);
+        binding.autoComplete.setOnItemClickListener((parent, view1, position, id) -> {
+            PreferenceUtil.putUpdateChannel(requireContext(),
+                    VersionUtil.getChannelByName((String) parent.getItemAtPosition(position), requireContext()));
+            fetch(false);
+        });
+
+        viewModel.getErrorLiveData().observe(getViewLifecycleOwner(), e -> {
+            binding.progressBar.setVisibility(View.GONE);
+            if(e instanceof RateLimitException){
+                binding.scan.setEnabled(false);
+                binding.scan.setText(getString(R.string.try_in_x_seconds,
+                        (((RateLimitException) e).getReset() - System.currentTimeMillis() / 1000)));
+                binding.update.setInformationText(R.string.gh_api_limit_exceeded);
+                return;
+            }
+
+            binding.update.setInformationText(e.getMessage());
+        });
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(DownloadService.ACTION_START);
+        filter.addAction(DownloadService.ACTION_DESTROY);
+        filter.addAction(DownloadService.ACTION_PROGRESS);
+        filter.addAction(InstallBroadcastReceiver.ACTION_INSTALL);
+
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(broadcastReceiver, filter);
     }
 }

@@ -10,27 +10,21 @@ import android.view.WindowManager;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.amulyakhare.textdrawable.BuildConfig;
 import com.google.android.material.color.DynamicColors;
-
-import java.io.File;
 
 import de.davis.passwordmanager.database.SecureElementDatabase;
 import de.davis.passwordmanager.ui.login.LoginActivity;
-import de.davis.passwordmanager.updater.Updater;
 import de.davis.passwordmanager.utils.PreferenceUtil;
 import de.davis.passwordmanager.utils.TimeoutUtil;
 
 public class PasswordManagerApplication extends Application {
-
-    private Updater updater;
 
     private boolean shouldAuthenticate;
 
     @Override
     public void onCreate() {
         super.onCreate();
-
-        updater = new Updater(this);
 
         DynamicColors.applyToActivitiesIfAvailable(this);
 
@@ -41,7 +35,9 @@ public class PasswordManagerApplication extends Application {
 
             @Override
             public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle savedInstanceState) {
-                activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+                if(!BuildConfig.DEBUG)
+                    activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     activity.getWindow().getDecorView().setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
                 }
@@ -98,13 +94,5 @@ public class PasswordManagerApplication extends Application {
 
     public SecureElementDatabase getDatabase(){
         return SecureElementDatabase.createAndGet(this);
-    }
-
-    public File getDownloadDir(){
-        return new File(getCacheDir(), "apks/");
-    }
-
-    public Updater getUpdater() {
-        return updater;
     }
 }

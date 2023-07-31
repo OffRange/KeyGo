@@ -2,8 +2,9 @@ package de.davis.passwordmanager.updater.version;
 
 import java.io.File;
 
+import de.davis.passwordmanager.App;
 import de.davis.passwordmanager.BuildConfig;
-import de.davis.passwordmanager.PasswordManagerApplication;
+import de.davis.passwordmanager.version.Version;
 
 public class Release extends Version {
 
@@ -11,7 +12,7 @@ public class Release extends Version {
     private final String assetName;
 
     public Release(String assetName, String tagName) {
-        super(Version.fromVersionTag(tagName));
+        super(fromVersionTag(tagName));
         this.assetName = assetName;
     }
 
@@ -19,7 +20,7 @@ public class Release extends Version {
         return getVersionCode() > BuildConfig.VERSION_CODE;
     }
 
-    public File getDownloadedFile(PasswordManagerApplication application) {
+    public File getDownloadedFile(App application) {
         return new File(application.getDownloadDir(), getVersionCode() + ".apk");
     }
 

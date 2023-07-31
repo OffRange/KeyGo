@@ -26,7 +26,7 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
 import java.text.DecimalFormat;
 
-import de.davis.passwordmanager.PasswordManagerApplication;
+import de.davis.passwordmanager.App;
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.updater.version.Release;
 import okhttp3.OkHttpClient;
@@ -131,12 +131,12 @@ public class DownloadService extends Service {
     @SuppressWarnings("ResultOfMethodCallIgnored")
     private void download(){
         try {
-            File dir = ((PasswordManagerApplication)getApplication()).getDownloadDir();
+            File dir = ((App)getApplication()).getDownloadDir();
             if(!dir.isDirectory())
                 dir.mkdir();
 
             Retrofit retrofit = new Retrofit.Builder()
-                    .baseUrl("https://github.com/OffRange/PasswordManager/releases/download/")
+                    .baseUrl("https://github.com/OffRange/Test/releases/download/")
                     .client(new OkHttpClient.Builder().build()).build();
 
             WebDownloadService webDownloadService = retrofit.create(WebDownloadService.class);
@@ -154,7 +154,7 @@ public class DownloadService extends Service {
             long size = body.contentLength();
 
             try(ReadableByteChannel readableByteChannel = Channels.newChannel(body.byteStream());
-                FileOutputStream outputStream = new FileOutputStream(release.getDownloadedFile((PasswordManagerApplication) getApplication()))){
+                FileOutputStream outputStream = new FileOutputStream(release.getDownloadedFile((App) getApplication()))){
                 FileChannel fileChannel = outputStream.getChannel();
 
                 try{
@@ -256,7 +256,7 @@ public class DownloadService extends Service {
     private void createNotificationChannel(){
         NotificationChannel channel = new NotificationChannel(
                 getPackageName(),
-                getString(R.string.updater),
+                getString(R.string.version),
                 NotificationManager.IMPORTANCE_DEFAULT);
         notificationManager.createNotificationChannel(channel);
     }

@@ -99,29 +99,19 @@
     <string name="no_element_selected">Kein Element ausgewählt</string>
     <string name="filter">Filter</string>
     <string name="filter_msg">Wähle aus, was angezeigt werden soll</string>
-    <string name="updater">Updater</string>
-    <string name="update_channel">Update Kanal</string>
-    <string name="stable">Stable</string>
-    <string name="rc">RC</string>
-    <string name="beta">Beta</string>
-    <string name="alpha">Alpha</string>
-    <string name="scan">Suchen</string>
-    <string name="download">Herunterladen</string>
-    <string name="install">Installieren</string>
-    <string name="up_to_date">Diese Anwendung ist auf dem neuesten Stand</string>
-    <string name="scanning_for_updates">Neuere Versionen werden gesucht</string>
-    <string name="newer_version_available">Neuere version verfügbar: %1$s</string>
-    <string name="updater_error_occurred">Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später noch einmal</string>
-    <string name="downloading_newer_version">Neuere Version %1$s wird heruntergeladen</string>
+
     <string name="favorites">Favoriten</string>
     <string name="last_viewed">Zuletzt angesehen</string>
     <string name="last_added">Zuletzt hinzugefügt</string>
     <string name="mark_as_favorite">Als Favorit markieren</string>
     <string name="remove_from_favorite">Von Favoriten entfernen</string>
-    <string name="init_download">Download initiieren</string>
+
     <string name="highlights">Highlights</string>
-    <string name="gh_api_limit_exceeded">GitHub-API-Limit überschritten</string>
-    <string name="installing_newer_version">Neue Version %1$s wird installiert</string>
-    <string name="try_in_x_seconds">Versuchen Sie in %1$d Sekunden erneut</string>
-    <string name="downloading_progress_text">Herrunterladen: %1$s%%</string>
+
+    <string name="stable">Stable</string>
+    <string name="rc">RC</string>
+    <string name="beta">Beta</string>
+    <string name="alpha">Alpha</string>
+
+    <string name="version">Version</string>
 </resources>
