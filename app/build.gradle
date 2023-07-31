@@ -74,6 +74,20 @@ android {
             defaultConfig.versionCode 10
         }
     }
+
+    flavorDimensions = ["market"]
+    productFlavors{
+        playstore{
+            dimension "market"
+
+        }
+
+        github{
+            dimension "market"
+            versionNameSuffix "-github"
+        }
+    }
+
     compileOptions {
         coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_17
