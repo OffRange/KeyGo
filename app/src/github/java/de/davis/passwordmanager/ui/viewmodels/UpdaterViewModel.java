@@ -12,11 +12,12 @@ import java.io.IOException;
 
 import de.davis.passwordmanager.App;
 import de.davis.passwordmanager.updater.version.Release;
-import de.davis.passwordmanager.version.Version;
 import de.davis.passwordmanager.utils.PreferenceUtil;
+import de.davis.passwordmanager.version.Version;
 
 public class UpdaterViewModel extends AndroidViewModel {
 
+    private boolean isAskingForPermission;
     private final MutableLiveData<Release> releaseLiveData = new MutableLiveData<>();
     private final MutableLiveData<Exception> errorLiveData = new MutableLiveData<>();
 
@@ -42,5 +43,13 @@ public class UpdaterViewModel extends AndroidViewModel {
 
     public MutableLiveData<Exception> getErrorLiveData() {
         return errorLiveData;
+    }
+
+    public void setAskingForPermission(boolean askingForPermission) {
+        isAskingForPermission = askingForPermission;
+    }
+
+    public boolean isAskingForPermission() {
+        return isAskingForPermission;
     }
 }

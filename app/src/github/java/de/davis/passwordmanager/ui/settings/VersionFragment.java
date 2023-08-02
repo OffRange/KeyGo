@@ -142,7 +142,7 @@ public class VersionFragment extends BaseVersionFragment {
         }
     };
 
-    private ActivityResultLauncher<String> requestPermissionLauncher =
+    private final ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(),
                     isGranted -> permissionsRequested());
 
@@ -154,11 +154,12 @@ public class VersionFragment extends BaseVersionFragment {
             return;
         }
 
-        ((PasswordManagerApplication)requireActivity().getApplication()).setShouldAuthenticate(false);
+        viewModel.setAskingForPermission(true);
         requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
     }
 
     private void permissionsRequested(){
+        viewModel.setAskingForPermission(false);
         if(!isDownloadServiceRunning())
             startFetchingIfNeeded();
     }
@@ -250,7 +251,8 @@ public class VersionFragment extends BaseVersionFragment {
     @Override
     public void onStart() {
         super.onStart();
-        ((PasswordManagerApplication) requireActivity().getApplication()).setShouldAuthenticate(true);
+        ((PasswordManagerApplication) requireActivity().getApplication())
+                .setShouldAuthenticate(!viewModel.isAskingForPermission());
     }
 
     @Override
