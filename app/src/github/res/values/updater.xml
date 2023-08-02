@@ -20,4 +20,6 @@
 
     <string name="gh_api_limit_exceeded">GitHub API rate limit exceeded</string>
     <string name="try_in_x_seconds">Try again in %1$d seconds</string>
+
+    <string name="invalid_apk">Invalid APK. Version code or package mismatch</string>
 </resources>

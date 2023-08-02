@@ -17,6 +17,7 @@ import android.os.Build;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.WorkerThread;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import org.kohsuke.github.GHAsset;
 import org.kohsuke.github.GHRelease;
@@ -42,6 +43,8 @@ import de.davis.passwordmanager.updater.version.Release;
 import de.davis.passwordmanager.version.Version;
 
 public class Updater {
+
+    public static final String ACTION_INVALID_APK = "de.davis.passwordmanager.action.ACTION_INVALID_APK";
 
     private static final int REPOSITORY_ID = 581862172;
 
@@ -87,7 +90,7 @@ public class Updater {
                 throw new RateLimitException(connectorResponse);
             }
         }).build();
-        GHRepository repository = gitHub.getRepository("OffRange/Test");
+        GHRepository repository = gitHub.getRepositoryById(REPOSITORY_ID);
         GHRelease stableGhReleases = repository.getLatestRelease();
         Release stableRelease = createRelease(stableGhReleases);
         if (updateChannel == CHANNEL_STABLE)
@@ -151,19 +154,22 @@ public class Updater {
         }else
             apkCode = info.versionCode;
 
-        return file.isFile() && file.getName().equals(vCode + ".apk") && apkCode == vCode;
+        return file.isFile() && info.packageName.equals(context.getPackageName()) && apkCode == vCode;
     }
 
     @WorkerThread
     public void install(Release release){
         File apk = release.getDownloadedFile((App) context.getApplicationContext());
-        if(!isApkVerified(apk, release.getVersionCode()))
+        if(!isApkVerified(apk, release.getVersionCode())) {
+            LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ACTION_INVALID_APK)
+                    .putExtra(DownloadService.EXTRA_RELEASE, release));
             return;
+        }
 
         long size = apk.length();
 
         PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(MODE_FULL_INSTALL);
-        //params.setAppPackageName(context.getPackageName());
+        params.setAppPackageName(context.getPackageName());
         params.setSize(size);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             params.setInstallReason(INSTALL_REASON_USER);

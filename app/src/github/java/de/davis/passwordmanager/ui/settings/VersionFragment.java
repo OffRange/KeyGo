@@ -18,10 +18,10 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
-import androidx.lifecycle.Lifecycle;
-import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import org.apache.commons.io.FileUtils;
 
@@ -73,6 +73,7 @@ public class VersionFragment extends BaseVersionFragment {
 
                     boolean success = intent.getBooleanExtra(DownloadService.EXTRA_SUCCESS, false);
                     if(success){
+                        prepareUiForInstallation(release);
                         install(release);
                         break;
                     }
@@ -112,6 +113,25 @@ public class VersionFragment extends BaseVersionFragment {
 
                     ((PasswordManagerApplication)requireActivity().getApplication())
                             .setShouldAuthenticate(false);
+
+                    if(release == null)
+                        return;
+
+                    binding.update.setInformationText(getString(R.string.newer_version_available, release.getVersionTag()));
+                }
+                case Updater.ACTION_INVALID_APK -> {
+                    ((PasswordManagerApplication)requireActivity().getApplication())
+                            .setShouldAuthenticate(true);
+
+                    binding.progressBar.setVisibility(View.GONE);
+                    binding.scan.setEnabled(true);
+
+                    new MaterialAlertDialogBuilder(requireContext())
+                            .setTitle(R.string.error_title)
+                            .setMessage(R.string.invalid_apk)
+                            .setPositiveButton(R.string.ok,
+                                    (dialog, which) -> dialog.dismiss())
+                            .show();
 
                     if(release == null)
                         return;
@@ -271,6 +291,7 @@ public class VersionFragment extends BaseVersionFragment {
         filter.addAction(DownloadService.ACTION_DESTROY);
         filter.addAction(DownloadService.ACTION_PROGRESS);
         filter.addAction(InstallBroadcastReceiver.ACTION_INSTALL);
+        filter.addAction(Updater.ACTION_INVALID_APK);
 
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(broadcastReceiver, filter);
     }

@@ -59,6 +59,7 @@
 
     <string name="copied_data">Data copied</string>
 
+    <string name="ok">OK</string>
     <string name="no">No</string>
     <string name="yes">Yes</string>
     <string name="cancel">Cancel</string>
@@ -159,4 +160,6 @@
     </array>
 
     <string name="version">Version</string>
+
+    <string name="error_title">Error occurred</string>
 </resources>

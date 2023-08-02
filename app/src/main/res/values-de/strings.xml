@@ -39,6 +39,7 @@
     <string name="sure_delete">Möchten Sie wirklich dieses Element löschen?</string>
     <string name="successful_deleted">Erfolgreich gelöscht</string>
     <string name="copied_data">Daten kopiert</string>
+    <string name="ok">OK</string>
     <string name="no">Nein</string>
     <string name="yes">Ja</string>
     <string name="cancel">Abbrechen</string>
@@ -114,4 +115,5 @@
     <string name="alpha">Alpha</string>
 
     <string name="version">Version</string>
+    <string name="error_title">Fehler aufgetreten</string>
 </resources>
