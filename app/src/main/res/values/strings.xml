@@ -59,6 +59,7 @@
 
     <string name="copied_data">Data copied</string>
 
+    <string name="ok">OK</string>
     <string name="no">No</string>
     <string name="yes">Yes</string>
     <string name="cancel">Cancel</string>
@@ -140,9 +141,13 @@
     <string name="filter">Filter</string>
     <string name="filter_msg">Choose what to display</string>
 
-    <string name="updater">Updater</string>
+    <string name="highlights">Highlights</string>
+    <string name="favorites">Favorites</string>
+    <string name="mark_as_favorite">Mark as favorite</string>
+    <string name="remove_from_favorite">Remove from favorites</string>
+    <string name="last_viewed">Last viewed</string>
+    <string name="last_added">Last added</string>
 
-    <string name="update_channel">Update Channel</string>
     <string name="stable">Stable</string>
     <string name="rc">RC</string>
     <string name="beta">Beta</string>
@@ -153,20 +158,8 @@
         <item>@string/beta</item>
         <item>@string/alpha</item>
     </array>
-    <string name="scan">Scan</string>
-    <string name="download">Download</string>
-    <string name="install">Install</string>
 
-    <string name="up_to_date">You are up to date</string>
-    <string name="scanning_for_updates">Scanning for newer versions</string>
-    <string name="newer_version_available">An newer version is available: %1$s</string>
-    <string name="updater_error_occured">An unexpected error occurred. Please try again later</string>
-    <string name="downloading_newer_version">Downloading newer version</string>
+    <string name="version">Version</string>
 
-    <string name="highlights">Highlights</string>
-    <string name="favorites">Favorites</string>
-    <string name="mark_as_favorite">Mark as favorite</string>
-    <string name="remove_from_favorite">Remove from favorites</string>
-    <string name="last_viewed">Last viewed</string>
-    <string name="last_added">Last added</string>
+    <string name="error_title">Error occurred</string>
 </resources>

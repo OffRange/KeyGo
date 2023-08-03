@@ -41,8 +41,8 @@
 
     <fragment
         android:id="@+id/updaterFragment"
-        android:name="de.davis.passwordmanager.ui.settings.UpdaterFragment"
-        android:label="@string/updater" >
+        android:name="de.davis.passwordmanager.ui.settings.VersionFragment"
+        android:label="@string/version" >
 
         <action
             android:id="@+id/action_updaterFragment_to_dashboardFragment"

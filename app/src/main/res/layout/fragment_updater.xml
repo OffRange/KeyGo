@@ -4,7 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ui.settings.UpdaterFragment"
+    tools:context="de.davis.passwordmanager.ui.settings.VersionFragment"
     android:useDefaultMargins="true"
     android:columnCount="2">
 
@@ -25,35 +25,4 @@
         app:title="@string/type"
         app:information="debug"/>
 
-    <de.davis.passwordmanager.ui.views.InformationView
-        android:id="@+id/update"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_columnWeight="1"
-        android:layout_columnSpan="2"
-        app:title="@string/updater">
-
-        <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.App.AutoCompleteTextInputLayout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/update_channel"
-            android:layout_marginTop="8dp">
-
-            <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                android:id="@+id/autoComplete"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="none"
-                app:simpleItems="@array/update_channels" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/scan"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/scan"
-            android:layout_marginTop="8dp"/>
-
-    </de.davis.passwordmanager.ui.views.InformationView>
 </GridLayout>

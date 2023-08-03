@@ -10,6 +10,7 @@ import android.view.WindowManager;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.amulyakhare.textdrawable.BuildConfig;
 import com.google.android.material.color.DynamicColors;
 
 import de.davis.passwordmanager.database.SecureElementDatabase;
@@ -19,9 +20,12 @@ import de.davis.passwordmanager.utils.TimeoutUtil;
 
 public class PasswordManagerApplication extends Application {
 
+    private boolean shouldAuthenticate;
+
     @Override
     public void onCreate() {
         super.onCreate();
+
         DynamicColors.applyToActivitiesIfAvailable(this);
 
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
@@ -31,7 +35,9 @@ public class PasswordManagerApplication extends Application {
 
             @Override
             public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle savedInstanceState) {
-                activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+                if(!BuildConfig.DEBUG)
+                    activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     activity.getWindow().getDecorView().setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
                 }
@@ -50,6 +56,9 @@ public class PasswordManagerApplication extends Application {
                 // If activities are the same, the app was paused and a re-authentication check is
                 // performed
                 if(lastPaused != activity)
+                    return;
+
+                if(!shouldAuthenticate)
                     return;
 
                 timeoutUtil.initiateDelay();
@@ -77,6 +86,10 @@ public class PasswordManagerApplication extends Application {
             @Override
             public void onActivityDestroyed(@NonNull Activity activity) {}
         });
+    }
+
+    public void setShouldAuthenticate(boolean shouldAuthenticate) {
+        this.shouldAuthenticate = shouldAuthenticate;
     }
 
     public SecureElementDatabase getDatabase(){

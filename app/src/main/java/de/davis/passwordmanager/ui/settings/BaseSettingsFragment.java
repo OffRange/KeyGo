@@ -25,14 +25,30 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.gms.oss.licenses.OssLicensesMenuActivity;
 
+import java.util.Objects;
+
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.security.Authentication;
 import de.davis.passwordmanager.ui.LinearLayoutManager;
-import de.davis.passwordmanager.ui.views.UpdaterPreference;
-import de.davis.passwordmanager.updater.Updater;
-import de.davis.passwordmanager.utils.Version;
+import de.davis.passwordmanager.version.CurrentVersion;
 
-public class SettingsFragment extends PreferenceFragmentCompat implements PreferenceFragmentCompat.OnPreferenceStartFragmentCallback {
+/**
+ * A base settings fragment that displays preferences for the Android app.
+ * This class is intended to be subclassed by any product flavor with the dimension "market"
+ * in a class called SettingsFragment under the package de.davis.passwordmanager.ui.settings.
+ *
+ * <p>The BaseSettingsFragment extends PreferenceFragmentCompat and implements the
+ * PreferenceFragmentCompat.OnPreferenceStartFragmentCallback interface to handle preference
+ * interactions. Subclasses should override onCreatePreferences() to customize the preferences
+ * displayed and onPreferenceStartFragment() to handle preference fragment navigation.
+ *
+ * <p>The class sets up various preferences related to authentication, autofill, and third-party dependencies.
+ * It also provides methods to check for the availability and status of autofill functionality.
+ *
+ * <p>Subclasses can further customize the behavior and appearance of the settings fragment by
+ * overriding methods such as onResume().
+ */
+public class BaseSettingsFragment extends PreferenceFragmentCompat implements PreferenceFragmentCompat.OnPreferenceStartFragmentCallback {
 
     private static final Uri URI = Uri.parse("https://github.com/OffRange/PasswordManager/issues/new/choose");
 
@@ -79,11 +95,8 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Prefer
         OssLicensesMenuActivity.setActivityTitle(getString(R.string.third_party_dependencies));
         findPreference(getString(R.string.preference_license)).setIntent(new Intent(getContext(), OssLicensesMenuActivity.class));
 
-        boolean newer = Updater.getInstance().getUpdate().isNewer();
-        ((UpdaterPreference)findPreference(getString(R.string.updater))).setHighlighted(newer);
-        findPreference(getString(R.string.updater)).setSummary(newer
-                ? getString(R.string.newer_version_available, Updater.getInstance().getUpdate().getRelease().getTagName())
-                : Version.getVersion(requireContext()).getVersionName());
+        Objects.requireNonNull((Preference) findPreference(getString(R.string.version)))
+                .setSummary(CurrentVersion.getInstance().getVersionTag());
     }
 
     @NonNull

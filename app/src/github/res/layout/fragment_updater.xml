@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GridLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="de.davis.passwordmanager.ui.settings.VersionFragment"
+    android:useDefaultMargins="true"
+    android:columnCount="2">
+
+    <de.davis.passwordmanager.ui.views.InformationView
+        android:id="@+id/build"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_columnWeight="1"
+        android:icon="@drawable/ic_baseline_build_24"
+        app:title="@string/build"
+        app:information="v1.2.0 3540r"/>
+
+    <de.davis.passwordmanager.ui.views.InformationView
+        android:id="@+id/channel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_columnWeight="1"
+        app:title="@string/type"
+        app:information="debug"/>
+
+    <de.davis.passwordmanager.ui.views.InformationView
+        android:id="@+id/update"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_columnWeight="1"
+        android:layout_columnSpan="2"
+        app:title="@string/version"
+        app:information="@string/scanning_for_updates">
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.App.AutoCompleteTextInputLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/update_channel"
+            android:layout_marginTop="8dp">
+
+            <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                android:id="@+id/autoComplete"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="none"
+                app:simpleItems="@array/update_channels" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/scan"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/scan"
+            android:layout_marginTop="8dp"
+            android:enabled="false"/>
+
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/progressBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100"
+            android:indeterminate="false"
+            android:layout_marginTop="8dp"
+            android:visibility="gone"/>
+
+    </de.davis.passwordmanager.ui.views.InformationView>
+</GridLayout>
