@@ -1,18 +1,19 @@
 # KeyGo - Digital Vault
 
-![KeyGo Banner](https://github.com/OffRange/PasswordManager/assets/42292083/41b29728-b68c-457f-bea4-1cf4c90e9c52)
+![KeyGo Banner](https://github.com/OffRange/PasswordManager/assets/42292083/c8366557-e24e-413d-be17-d6f02b2de740)
 
 KeyGo is a secure, open-source Android password manager that allows you to store passwords and credit card information encrypted on your local device.
 
 ## Modern, Innovative Design
 
 <p align="center">
-  <img src="https://github.com/OffRange/PasswordManager/assets/42292083/19362d0a-8c60-4b12-9602-261d376f318c" width="334" alt="Screenshot 1"/>
-  <img src="https://github.com/OffRange/PasswordManager/assets/42292083/7e2bbad5-558f-4fe8-b247-38d0c0b163e6" width="334" alt="Screenshot 2"/>
-  <img src="https://github.com/OffRange/PasswordManager/assets/42292083/d69f7321-c4b2-455c-80c7-b8a297ae2d05" width="334" alt="Screenshot 3"/>
+  <img src="https://github.com/OffRange/PasswordManager/assets/42292083/424f0602-ede6-4501-bec7-90fb52396e83" width="32.5%" alt="Screenshot 1"/>
+  <img src="https://github.com/OffRange/PasswordManager/assets/42292083/4e26e4c6-7167-4e66-9b9b-676a7470ba7a" width="32.5%" alt="Screenshot 2"/>
+  <img src="https://github.com/OffRange/PasswordManager/assets/42292083/badae815-6c0a-4758-8d88-ca8aa5fb5688" width="32.5%" alt="Screenshot 3"/>
 </p>
 
 ## Features
+
 
 - Store Passwords and Credit Card information securely
 - Generate secure Passwords and Passphrases
