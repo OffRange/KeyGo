@@ -104,10 +104,10 @@ dependencies {
 
     //https://stackoverflow.com/a/75298544/14152955
     constraints {
-        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.0") {
+        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.0") {
             because("kotlin-stdlib-jdk7 is now a part of kotlin-stdlib")
         }
-        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.0") {
+        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.0") {
             because("kotlin-stdlib-jdk8 is now a part of kotlin-stdlib")
         }
     }
@@ -124,7 +124,7 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview-selection:1.1.0'
     implementation 'androidx.navigation:navigation-fragment:2.6.0'
     implementation 'androidx.navigation:navigation-ui:2.6.0'
-    implementation 'androidx.preference:preference:1.2.0'
+    implementation 'androidx.preference:preference:1.2.1'
     implementation 'androidx.biometric:biometric:1.1.0'
     implementation 'androidx.browser:browser:1.5.0'
     implementation 'me.gosimple:nbvcxz:1.5.1'
@@ -136,9 +136,9 @@ dependencies {
     githubImplementation "com.squareup.retrofit2:retrofit:2.9.0"
     githubImplementation 'org.kohsuke:github-api:1.314'
 
-    implementation "androidx.room:room-runtime:2.5.1"
-    annotationProcessor "androidx.room:room-compiler:2.5.1"
-    implementation "androidx.room:room-rxjava3:2.5.1"
+    implementation "androidx.room:room-runtime:2.5.2"
+    annotationProcessor "androidx.room:room-compiler:2.5.2"
+    implementation "androidx.room:room-rxjava3:2.5.2"
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
