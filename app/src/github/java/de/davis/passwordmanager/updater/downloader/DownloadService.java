@@ -136,7 +136,7 @@ public class DownloadService extends Service {
                 dir.mkdir();
 
             Retrofit retrofit = new Retrofit.Builder()
-                    .baseUrl("https://github.com/OffRange/PasswordManager/releases/download/")
+                    .baseUrl("https://github.com/OffRange/KeyGo/releases/download/")
                     .client(new OkHttpClient.Builder().build()).build();
 
             WebDownloadService webDownloadService = retrofit.create(WebDownloadService.class);

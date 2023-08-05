@@ -50,7 +50,7 @@ import de.davis.passwordmanager.version.CurrentVersion;
  */
 public class BaseSettingsFragment extends PreferenceFragmentCompat implements PreferenceFragmentCompat.OnPreferenceStartFragmentCallback {
 
-    private static final Uri URI = Uri.parse("https://github.com/OffRange/PasswordManager/issues/new/choose");
+    private static final Uri URI = Uri.parse("https://github.com/OffRange/KeyGo/issues/new/choose");
 
     @SuppressWarnings("ConstantConditions")
     @Override
