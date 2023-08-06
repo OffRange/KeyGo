@@ -27,7 +27,7 @@ KeyGo is a secure, open-source Android password manager that allows you to store
 | Platform          | Status                                                                                                                                              |
 |-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
 | GitHub            | [![GitHub tag](https://img.shields.io/github/release/OffRange/KeyGo?include_prereleases=&sort=semver)](https://github.com/OffRange/KeyGo/releases/) |
-| Google Play Store | Planned for July/August 2023                                                                                                                        |
+| Google Play Store | [Available](https://play.google.com/store/apps/details?id=de.davis.passwordmanager)                                                                 |
 
 ## Installation Guide
 
