@@ -40,7 +40,7 @@ KeyGo is a secure, open-source Android password manager that allows you to store
 
 ## Build it yourself
 
-1. Clone the repository by running `git clone https://github.com/OffRange/Passwordmanager.git` in your terminal.
+1. Clone the repository by running `git clone https://github.com/OffRange/KeyGo.git` in your terminal.
 2. Run `.gradlew assembleGithubRelease`. APKs can be found under `KeyGo/app/github/release`.
 3. (Optional but highly recommended) [Sign the apk](https://developer.android.com/build/building-cmdline#sign_manually).
 
