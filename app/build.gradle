@@ -41,8 +41,10 @@ android {
             vName += "-alpha${suffixBuild}"
             break
     }
+    def runTasks = gradle.startParameter.taskNames
+    def isDebugBuild = runTasks.any { taskName -> taskName.contains("assembleDebug") }
     // xxyyyzzbb
-    vCode = major * 10_000_000 + minor * 10_000 + patch * 100 + build
+    vCode = isDebugBuild ? 10 : major * 10_000_000 + minor * 10_000 + patch * 100 + build
 
     defaultConfig {
         applicationId "de.davis.passwordmanager"
@@ -71,7 +73,6 @@ android {
         debug{
             versionNameSuffix "-debug"
             applicationIdSuffix ".debug"
-            defaultConfig.versionCode 10
         }
     }
 
