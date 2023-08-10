@@ -19,12 +19,12 @@ import io.reactivex.rxjava3.core.Single;
 public abstract class SecureElementDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    protected abstract void insertNew(SecureElement element);
+    protected abstract long insertNew(SecureElement element);
 
-    public void insert(SecureElement element){
+    public long insert(SecureElement element){
         Date date = Date.from(Instant.now());
         element.setCreatedAt(date);
-        insertNew(element);
+        return insertNew(element);
     }
 
     @Update
@@ -50,6 +50,9 @@ public abstract class SecureElementDao {
 
     @Query("SELECT * FROM SecureElement WHERE title LIKE :title ORDER BY ROWID ASC")
     public abstract LiveData<List<SecureElement>> getByTitle(String title);
+
+    @Query("SELECT * FROM SecureElement WHERE id IS :id")
+    public abstract SecureElement getById(long id);
 
     @Query("SELECT count(*) FROM SecureElement")
     public abstract Single<Integer> count();

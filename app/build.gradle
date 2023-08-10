@@ -98,6 +98,12 @@ android {
     buildFeatures {
         viewBinding true
     }
+
+    sourceSets {
+        // Adds exported schema location as test app assets.
+        androidTest.assets.srcDirs += files("$projectDir/schemas".toString())
+    }
+
     namespace 'de.davis.passwordmanager'
 }
 
@@ -140,6 +146,7 @@ dependencies {
     implementation "androidx.room:room-runtime:2.5.2"
     annotationProcessor "androidx.room:room-compiler:2.5.2"
     implementation "androidx.room:room-rxjava3:2.5.2"
+    androidTestImplementation "androidx.room:room-testing:2.5.2"
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
