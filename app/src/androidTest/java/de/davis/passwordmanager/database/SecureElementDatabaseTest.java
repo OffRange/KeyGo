@@ -44,31 +44,48 @@ public class SecureElementDatabaseTest {
     }
 
     @Test
-    public void testInsertAndRetrievePasswordElement() throws NoSuchFieldException, IllegalAccessException {
+    public void testInsertAndRetrievePasswordElement() {
+        String title = "Password Element";
+        String password = generateTestPassword();
+        String origin = "origin";
+        String username = "username";
+
+
         SecureElement passwordElement = new SecureElement(
-        new PasswordDetails("password", "origin", "username"),
-                "Password Element");
+        new PasswordDetails(password, origin, username), title);
 
+        SecureElement element = writeAndRead(passwordElement);
+        PasswordDetails details = (PasswordDetails) element.getDetail();
 
-        testWriteRead(passwordElement);
+        assertEquals(title, element.getTitle());
+        assertEquals(password, details.getPassword());
+        assertEquals(origin, details.getOrigin());
+        assertEquals(username, details.getUsername());
     }
 
     @Test
-    public void testInsertAndRetrieveCreditCardElement() throws NoSuchFieldException, IllegalAccessException {
-        SecureElement passwordElement = new SecureElement(
-                new CreditCardDetails(Name.fromFullName("cardholder"), "05/12", "0000000000000000", "222"),
-                "Credit Card Element");
+    public void testInsertAndRetrieveCreditCardElement() {
+        String title = "Credit Card Element";
+        String expirationDate = "05/12";
+        String cardNumber = "0000000000000000";
+        String cvv = "222";
+        Name name = Name.fromFullName("cardholder");
 
+        SecureElement passwordElement = new SecureElement(new CreditCardDetails(name, expirationDate, cardNumber, cvv), title);
 
-        testWriteRead(passwordElement);
+        SecureElement element = writeAndRead(passwordElement);
+        CreditCardDetails details = (CreditCardDetails) element.getDetail();
+
+        assertEquals(title, element.getTitle());
+        assertEquals(name, details.getCardholder());
+        assertEquals(expirationDate, details.getExpirationDate());
+        assertEquals(cardNumber, details.getCardNumber());
+        assertEquals(cvv, details.getCvv());
     }
 
     @Test
     public void testMasterPasswordOperations(){
-        String password = GeneratorUtil.generatePassword(15_000, GeneratorUtil.USE_DIGITS |
-                GeneratorUtil.USE_LOWERCASE |
-                GeneratorUtil.USE_PUNCTUATION |
-                GeneratorUtil.USE_UPPERCASE);
+        String password = generateTestPassword();
 
         masterPasswordDao.getOne().test().assertNoValues().dispose();
 
@@ -84,16 +101,17 @@ public class SecureElementDatabaseTest {
                 .dispose();
     }
 
-    private void testWriteRead(SecureElement element) throws NoSuchFieldException, IllegalAccessException {
+    private SecureElement writeAndRead(SecureElement element) {
         long id = secureElementDao.insert(element);
 
-        SecureElement storedElement = secureElementDao.getById(id);
+        return secureElementDao.getById(id);
+    }
 
-        Field field = element.getClass().getDeclaredField("id");
-        field.setAccessible(true);
-        field.setLong(element, id);
-
-        assertEquals(new Gson().toJson(element), new Gson().toJson(storedElement));
+    private String generateTestPassword(){
+        return GeneratorUtil.generatePassword(15_000, GeneratorUtil.USE_DIGITS |
+                GeneratorUtil.USE_LOWERCASE |
+                GeneratorUtil.USE_PUNCTUATION |
+                GeneratorUtil.USE_UPPERCASE);
     }
 
     @After
