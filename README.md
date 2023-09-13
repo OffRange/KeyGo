@@ -1,4 +1,5 @@
 # KeyGo - Digital Vault
+[<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Download from Google Play" height="80">](https://play.google.com/store/apps/details?id=de.davis.passwordmanager)
 
 ![KeyGo Banner](https://github.com/OffRange/KeyGo/assets/42292083/c8366557-e24e-413d-be17-d6f02b2de740)
 
@@ -24,10 +25,10 @@ KeyGo is a secure, open-source Android password manager that allows you to store
 
 ## Available On
 
-| Platform          | Status                                                                                                                                              |
-|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
-| GitHub            | [![GitHub tag](https://img.shields.io/github/release/OffRange/KeyGo?include_prereleases=&sort=semver)](https://github.com/OffRange/KeyGo/releases/) |
-| Google Play Store | [Available](https://play.google.com/store/apps/details?id=de.davis.passwordmanager)                                                                 |
+| Platform          | Status                                                                                                                                                                                                                    |
+|:-----------------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
+| GitHub            | [![GitHub tag](https://img.shields.io/github/release/OffRange/KeyGo?include_prereleases=&sort=semver)](https://github.com/OffRange/KeyGo/releases/)                                                                       |
+| Google Play Store | [<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Download from Google Play" height="80">](https://play.google.com/store/apps/details?id=de.davis.passwordmanager) |
 
 ## Installation Guide
 
