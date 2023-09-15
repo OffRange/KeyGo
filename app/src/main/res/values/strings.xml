@@ -162,4 +162,20 @@
     <string name="version">Version</string>
 
     <string name="error_title">Error occurred</string>
+
+    <string name="warning">Attention!</string>
+    <string name="backup">Backup</string>
+    <string name="import_str">Import</string>
+    <string name="export">Export</string>
+    <string name="csv_file">CSV File</string>
+    <string name="csv_summary_import">Import passwords from your browser. Search for <b>Passwordmanager</b> in your browser\'s <b>Settings</b> and export your passwords as a csv file.</string>
+    <string name="csv_summary_export">Export passwords in a csv format to import them in your browser\'s password manager</string>
+    <string name="csv_export_warning">Please note that this export process does not provide encryption, and if unauthorized third parties gain access to this file, they will have visibility into your passwords. Furthermore, please be aware that this option allows the export of passwords exclusively.</string>
+    <string name="csv_row_number_error">CSV file must have 5 rows.</string>
+    <string name="backup_restored">Backup successfully restored</string>
+    <string name="backup_stored">Backup successfully stored</string>
+    <plurals name="csv_item_title_existed">
+        <item quantity="one">%d item already existed with the same title</item>
+        <item quantity="other">%d items already existed with the same title</item>
+    </plurals>
 </resources>

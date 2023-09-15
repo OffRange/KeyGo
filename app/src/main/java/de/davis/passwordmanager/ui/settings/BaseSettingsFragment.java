@@ -165,7 +165,17 @@ public class BaseSettingsFragment extends PreferenceFragmentCompat implements Pr
             return false;
 
         NavController navController = NavHostFragment.findNavController(fragment);
-        navController.navigate(R.id.updaterFragment);
+
+        int id = -1;
+        switch (Objects.requireNonNull(pref.getFragment())){
+            case "de.davis.passwordmanager.ui.settings.VersionFragment" -> id = R.id.updaterFragment;
+            case "de.davis.passwordmanager.ui.backup.BackupFragment" -> id = R.id.backupFragment;
+        }
+
+        if(id == -1)
+            return false;
+
+        navController.navigate(id);
 
         return true;
     }

@@ -22,6 +22,11 @@
             android:defaultValue="2"
             app:updatesContinuously="true"/>
 
+        <Preference
+            app:title="@string/backup"
+            android:icon="@drawable/baseline_settings_backup_restore_24"
+            app:fragment="de.davis.passwordmanager.ui.backup.BackupFragment"/>
+
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/features">
