@@ -1,5 +1,6 @@
 package de.davis.passwordmanager.ui;
 
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 
@@ -12,6 +13,8 @@ import com.google.android.material.floatingactionbutton.ExtendedFloatingActionBu
 import com.google.android.material.navigation.NavigationBarView;
 
 import de.davis.passwordmanager.R;
+import de.davis.passwordmanager.sync.DataTransfer;
+import de.davis.passwordmanager.sync.keygo.KeyGoTransfer;
 import de.davis.passwordmanager.ui.views.AddBottomSheet;
 
 public class BaseMainActivity extends AppCompatActivity {
@@ -20,6 +23,12 @@ public class BaseMainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        Uri data = getIntent().getData();
+        if(data != null){
+            KeyGoTransfer transfer = new KeyGoTransfer(this);
+            transfer.start(DataTransfer.TYPE_IMPORT, data);
+        }
 
         NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment);
         if(navHostFragment == null)

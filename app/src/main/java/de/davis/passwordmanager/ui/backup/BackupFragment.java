@@ -1,27 +1,21 @@
 package de.davis.passwordmanager.ui.backup;
 
-import static de.davis.passwordmanager.utils.BackgroundUtil.doInBackground;
-
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Looper;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
-import androidx.core.os.HandlerCompat;
 import androidx.preference.PreferenceFragmentCompat;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
-import java.io.InputStream;
-import java.io.OutputStream;
-
 import de.davis.passwordmanager.R;
+import de.davis.passwordmanager.sync.DataTransfer;
 import de.davis.passwordmanager.sync.Result;
-import de.davis.passwordmanager.sync.csv.CsvExporter;
-import de.davis.passwordmanager.sync.csv.CsvImporter;
+import de.davis.passwordmanager.sync.csv.CsvTransfer;
+import de.davis.passwordmanager.sync.keygo.KeyGoTransfer;
 
 public class BackupFragment extends PreferenceFragmentCompat {
 
@@ -29,45 +23,37 @@ public class BackupFragment extends PreferenceFragmentCompat {
     public void onCreatePreferences(@Nullable Bundle savedInstanceState, @Nullable String rootKey) {
         addPreferencesFromResource(R.xml.backup_preferences);
 
-        ActivityResultLauncher<String[]> launcher = registerForActivityResult(new ActivityResultContracts.OpenDocument(), result -> {
-            Handler handler = HandlerCompat.createAsync(Looper.getMainLooper());
-            doInBackground(() -> {
-                try {
-                    try(InputStream in = requireContext().getContentResolver().openInputStream(result)){
-                        CsvImporter csvImporter = new CsvImporter(in, requireContext());
-                        Result r = csvImporter.importElements();
-
-                        handleResult(handler, r);
-
-                    }
-                } catch (Exception e) {
-                    error(handler, e);
-                }
-            });
+        ActivityResultLauncher<String[]> csvImportLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(), result -> {
+            CsvTransfer transfer = new CsvTransfer(requireContext());
+            transfer.start(DataTransfer.TYPE_IMPORT, result);
         });
 
-        ActivityResultLauncher<String> launcherChooseDir = registerForActivityResult(new ActivityResultContracts.CreateDocument("text/comma-separated-values"), result -> {
+        ActivityResultLauncher<String> csvExportLauncher = registerForActivityResult(new ActivityResultContracts.CreateDocument("text/comma-separated-values"), result -> {
             if(result == null)
                 return;
 
-            Handler handler = HandlerCompat.createAsync(Looper.getMainLooper());
-            doInBackground(() -> {
-                try {
-                    try(OutputStream in = requireContext().getContentResolver().openOutputStream(result)){
-                        CsvExporter csvImporter = new CsvExporter(in);
-                        Result r = csvImporter.exportElements();
+            CsvTransfer transfer = new CsvTransfer(requireContext());
+            transfer.start(DataTransfer.TYPE_EXPORT, result);
+        });
 
-                        handleResult(handler, r);
+        ActivityResultLauncher<String> keygoExportLauncher = registerForActivityResult(new ActivityResultContracts.CreateDocument("application/octet-stream"), result -> {
+            if(result == null)
+                return;
 
-                    }
-                } catch (Exception e) {
-                    error(handler, e);
-                }
-            });
+            KeyGoTransfer transfer = new KeyGoTransfer(requireContext());
+            transfer.start(DataTransfer.TYPE_EXPORT, result);
+        });
+
+        ActivityResultLauncher<String[]> keygoImportLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(), result -> {
+            if(result == null)
+                return;
+
+            KeyGoTransfer transfer = new KeyGoTransfer(requireContext());
+            transfer.start(DataTransfer.TYPE_IMPORT, result);
         });
 
         findPreference(getString(R.string.preference_import_csv)).setOnPreferenceClickListener(preference -> {
-            launcher.launch(new String[]{"text/comma-separated-values"});
+            csvImportLauncher.launch(new String[]{"text/comma-separated-values"});
             return true;
         });
 
@@ -77,11 +63,21 @@ public class BackupFragment extends PreferenceFragmentCompat {
                     .setMessage(R.string.csv_export_warning)
                     .setPositiveButton(R.string.ok,
                             (dialog, which) -> {
-                                launcherChooseDir.launch("keygo-passwords.csv");
+                                csvExportLauncher.launch("keygo-passwords.csv");
                                 dialog.dismiss();
                             })
                     .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss())
                     .show();
+            return true;
+        });
+
+        findPreference(getString(R.string.preference_export_keygo)).setOnPreferenceClickListener(preference -> {
+            keygoExportLauncher.launch("elements.keygo");
+            return true;
+        });
+
+        findPreference(getString(R.string.preference_import_keygo)).setOnPreferenceClickListener(preference -> {
+            keygoImportLauncher.launch(new String[]{"application/octet-stream"});
             return true;
         });
     }

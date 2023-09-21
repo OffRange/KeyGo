@@ -18,6 +18,7 @@ import androidx.lifecycle.Lifecycle;
 
 import java.util.Objects;
 
+import de.davis.passwordmanager.PasswordManagerApplication;
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.databinding.FragmentChangePasswordBinding;
 import de.davis.passwordmanager.security.Authentication;
@@ -97,8 +98,10 @@ public class ChangePasswordFragment extends Fragment {
                     PreferenceUtil.putBoolean(getContext(), R.string.preference_fingerprint, binding.fingerprint.isChecked());
                     Toast.makeText(getContext(), R.string.master_password_changed, Toast.LENGTH_LONG).show();
 
-                    if(requireActivity().getIntent().getExtras() == null)
-                        startActivity(new Intent(requireContext(), MainActivity.class));
+                    //if(requireActivity().getIntent().getExtras() == null)
+                    ((PasswordManagerApplication)requireActivity().getApplication()).setShouldAuthenticate(false);
+                    startActivity(new Intent(requireContext(), MainActivity.class).setData(requireActivity().getIntent().getData()));
+                    ((PasswordManagerApplication)requireActivity().getApplication()).setShouldAuthenticate(true);
                 }
 
                 return true;

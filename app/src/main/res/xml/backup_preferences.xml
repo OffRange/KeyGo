@@ -5,6 +5,11 @@
         android:title="@string/import_str">
 
         <Preference
+            android:key="@string/preference_import_keygo"
+            android:title="@string/keygo_file"
+            android:summary="@string/keygo_summary_import"/>
+
+        <Preference
             android:key="@string/preference_import_csv"
             android:title="@string/csv_file"
             android:summary="@string/csv_summary_import">
@@ -13,6 +18,12 @@
 
     <PreferenceCategory
         android:title="@string/export">
+
+        <Preference
+            android:key="@string/preference_export_keygo"
+            android:title="@string/keygo_file"
+            android:summary="@string/keygo_summary_export">
+        </Preference>
 
         <Preference
             android:key="@string/preference_export_csv"

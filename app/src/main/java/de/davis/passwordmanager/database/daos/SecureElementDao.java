@@ -45,6 +45,9 @@ public abstract class SecureElementDao {
     @Query("SELECT * FROM SecureElement ORDER BY ROWID ASC")
     public abstract LiveData<List<SecureElement>> getAll();
 
+    @Query("SELECT * FROM SecureElement ORDER BY ROWID ASC")
+    public abstract Single<List<SecureElement>> getAllOnce();
+
     @Query("SELECT * FROM SecureElement WHERE type = :type ORDER BY ROWID ASC")
     public abstract Single<List<SecureElement>> getAllByType(@SecureElement.ElementType int type);
 

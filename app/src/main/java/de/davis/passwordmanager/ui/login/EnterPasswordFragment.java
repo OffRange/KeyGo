@@ -9,6 +9,7 @@ import android.app.assist.AssistStructure;
 import android.content.Intent;
 import android.os.Bundle;
 import android.service.autofill.FillRequest;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -59,7 +60,8 @@ public class EnterPasswordFragment extends Fragment {
                     return null;
                 }
 
-                startActivity(new Intent(getContext(), MainActivity.class));
+                startActivity(new Intent(getContext(), MainActivity.class)
+                        .setData(requireActivity().getIntent().getData()));
                 return null;
             }
         };
