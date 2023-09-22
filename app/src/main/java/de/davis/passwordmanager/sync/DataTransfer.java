@@ -97,6 +97,9 @@ public abstract class DataTransfer {
 
                 handleResult(handler, result);
             }catch (Exception e){
+                if(e instanceof NullPointerException)
+                    return;
+
                 error(handler, e);
             }
         });

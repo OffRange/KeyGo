@@ -1,8 +1,7 @@
 package de.davis.passwordmanager.ui.backup;
 
+import android.content.Intent;
 import android.os.Bundle;
-import android.os.Handler;
-import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -13,11 +12,13 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.sync.DataTransfer;
-import de.davis.passwordmanager.sync.Result;
 import de.davis.passwordmanager.sync.csv.CsvTransfer;
 import de.davis.passwordmanager.sync.keygo.KeyGoTransfer;
+import de.davis.passwordmanager.ui.login.LoginActivity;
 
 public class BackupFragment extends PreferenceFragmentCompat {
+
+    ActivityResultLauncher<Intent> auth;
 
     @Override
     public void onCreatePreferences(@Nullable Bundle savedInstanceState, @Nullable String rootKey) {
@@ -52,57 +53,72 @@ public class BackupFragment extends PreferenceFragmentCompat {
             transfer.start(DataTransfer.TYPE_IMPORT, result);
         });
 
+        auth = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+            if(result == null || result.getData() == null)
+                return;
+
+            Bundle data = result.getData().getExtras();
+            if(data == null)
+                return;
+
+            String formatType = data.getString("format_type");
+            if(formatType == null)
+                return;
+
+            switch (data.getInt("type")){
+                case DataTransfer.TYPE_EXPORT -> {
+                    if(formatType.equals("csv")){
+                        new MaterialAlertDialogBuilder(requireContext())
+                                .setTitle(R.string.warning)
+                                .setMessage(R.string.csv_export_warning)
+                                .setPositiveButton(R.string.ok,
+                                        (dialog, which) -> {
+                                            csvExportLauncher.launch("keygo-passwords.csv");
+                                            dialog.dismiss();
+                                        })
+                                .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss())
+                                .show();
+                    }else if(formatType.equals("keygo")){
+                        keygoExportLauncher.launch("elements.keygo");
+                    }
+                }
+                case DataTransfer.TYPE_IMPORT -> {
+                    if(formatType.equals("csv")){
+                        csvImportLauncher.launch(new String[]{"text/comma-separated-values"});
+                    }else if(formatType.equals("keygo")){
+                        keygoImportLauncher.launch(new String[]{"application/octet-stream"});
+                    }
+                }
+            }
+
+
+        });
+
         findPreference(getString(R.string.preference_import_csv)).setOnPreferenceClickListener(preference -> {
-            csvImportLauncher.launch(new String[]{"text/comma-separated-values"});
+            launchAuth(DataTransfer.TYPE_IMPORT, "csv");
             return true;
         });
 
         findPreference(getString(R.string.preference_export_csv)).setOnPreferenceClickListener(preference -> {
-            new MaterialAlertDialogBuilder(requireContext())
-                    .setTitle(R.string.warning)
-                    .setMessage(R.string.csv_export_warning)
-                    .setPositiveButton(R.string.ok,
-                            (dialog, which) -> {
-                                csvExportLauncher.launch("keygo-passwords.csv");
-                                dialog.dismiss();
-                            })
-                    .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss())
-                    .show();
+            launchAuth(DataTransfer.TYPE_EXPORT, "csv");
             return true;
         });
 
         findPreference(getString(R.string.preference_export_keygo)).setOnPreferenceClickListener(preference -> {
-            keygoExportLauncher.launch("elements.keygo");
+            launchAuth(DataTransfer.TYPE_EXPORT, "keygo");
             return true;
         });
 
         findPreference(getString(R.string.preference_import_keygo)).setOnPreferenceClickListener(preference -> {
-            keygoImportLauncher.launch(new String[]{"application/octet-stream"});
+            launchAuth(DataTransfer.TYPE_IMPORT, "keygo");
             return true;
         });
     }
 
-    private void error(Handler handler, Exception e){
-        handler.post(() -> new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.error_title)
-                .setMessage(e.getMessage())
-                .setPositiveButton(R.string.ok,
-                        (dialog, which) -> dialog.dismiss())
-                .show());
-    }
-
-    private void handleResult(Handler handler, Result result){
-        handler.post(() -> {
-            if(result instanceof Result.Error error)
-                new MaterialAlertDialogBuilder(requireContext())
-                        .setTitle(R.string.error_title)
-                        .setMessage(error.getMessage())
-                        .setPositiveButton(R.string.ok,
-                                (dialog, which) -> dialog.dismiss())
-                        .show();
-
-            else
-                Toast.makeText(requireContext(), R.string.backup_stored, Toast.LENGTH_LONG).show();
-        });
+    public void launchAuth(@DataTransfer.Type int type, String format){
+        Bundle bundle = new Bundle();
+        bundle.putInt("type", type);
+        bundle.putString("format_type", format);
+        auth.launch(LoginActivity.getIntentForAuthentication(requireContext()).putExtra("data", bundle));
     }
 }
