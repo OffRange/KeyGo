@@ -28,7 +28,7 @@ android {
 
     def suffixBuild = String.format("%02d", (build % 32) + 1)
 
-    switch (build / 32) {
+    switch ((int) (build / 32)) {
         case 3: // build >= 96
             break // No suffix for release versions
         case 2: // build >= 64
