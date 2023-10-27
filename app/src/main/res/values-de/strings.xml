@@ -119,7 +119,7 @@
 
     <string name="warning">Achtung!</string>
     <string name="backup">Backup</string>
-    <string name="backup_summary">Exportiere und importiere ein Backup</string>
+    <string name="backup_summary">Exportiere oder importiere ein Backup</string>
     <string name="export">Export</string>
     <string name="csv_file">CSV Datei</string>
     <string name="keygo_file">KeyGo Datei</string>

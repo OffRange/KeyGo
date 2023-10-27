@@ -165,7 +165,7 @@
 
     <string name="warning">Attention!</string>
     <string name="backup">Backup</string>
-    <string name="backup_summary">Export and Import a backup</string>
+    <string name="backup_summary">Export or Import a backup</string>
     <string name="import_str">Import</string>
     <string name="export">Export</string>
     <string name="csv_file">CSV File</string>
