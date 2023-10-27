@@ -15,7 +15,6 @@ import androidx.core.os.HandlerCompat;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
-import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
@@ -66,8 +65,8 @@ public abstract class DataTransfer {
                                 (dialog, which) -> dialog.dismiss())
                         .show();
 
-            else
-                Toast.makeText(getContext(), R.string.backup_stored, Toast.LENGTH_LONG).show();
+            else if (result instanceof Result.Success success)
+                Toast.makeText(getContext(), success.getType() == TYPE_EXPORT ? R.string.backup_stored : R.string.backup_restored, Toast.LENGTH_LONG).show();
         });
     }
 

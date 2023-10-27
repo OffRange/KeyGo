@@ -65,7 +65,7 @@ public class CsvTransfer extends DataTransfer {
         if(existed != 0)
             return new Result.Error(getContext().getResources().getQuantityString(R.plurals.item_title_existed, existed, existed));
 
-        return new Result.Success();
+        return new Result.Success(TYPE_IMPORT);
     }
 
     @Override
@@ -90,6 +90,6 @@ public class CsvTransfer extends DataTransfer {
         csvWriter.flush();
         csvWriter.close();
 
-        return new Result.Success();
+        return new Result.Success(TYPE_EXPORT);
     }
 }
