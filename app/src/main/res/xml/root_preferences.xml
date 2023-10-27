@@ -24,6 +24,7 @@
 
         <Preference
             app:title="@string/backup"
+            android:summary="@string/backup_summary"
             android:icon="@drawable/baseline_settings_backup_restore_24"
             app:fragment="de.davis.passwordmanager.ui.backup.BackupFragment"/>
 
