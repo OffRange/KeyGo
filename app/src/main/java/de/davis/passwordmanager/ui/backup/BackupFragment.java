@@ -98,14 +98,17 @@ public class BackupFragment extends PreferenceFragmentCompat {
         });
 
         findPreference(getString(R.string.preference_export_csv)).setOnPreferenceClickListener(preference -> {
-            new MaterialAlertDialogBuilder(requireContext())
+            new MaterialAlertDialogBuilder(requireContext(), com.google.android.material.R.style.ThemeOverlay_Material3_MaterialAlertDialog_Centered)
                     .setTitle(R.string.warning)
                     .setMessage(R.string.csv_export_warning)
                     .setPositiveButton(R.string.ok,
                             (dialog, which) -> {
                                 launchAuth(DataTransfer.TYPE_EXPORT, TYPE_CSV);
                             })
-                    .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss())
+                    .setNegativeButton(R.string.use_keygo, (dialog, which) -> {
+                        launchAuth(DataTransfer.TYPE_EXPORT, TYPE_KEYGO);
+                    })
+                    .setNeutralButton(R.string.cancel, (dialog, which) -> dialog.dismiss())
                     .show();
             return true;
         });
