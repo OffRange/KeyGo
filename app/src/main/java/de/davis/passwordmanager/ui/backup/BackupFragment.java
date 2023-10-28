@@ -101,7 +101,7 @@ public class BackupFragment extends PreferenceFragmentCompat {
             new MaterialAlertDialogBuilder(requireContext(), com.google.android.material.R.style.ThemeOverlay_Material3_MaterialAlertDialog_Centered)
                     .setTitle(R.string.warning)
                     .setMessage(R.string.csv_export_warning)
-                    .setPositiveButton(R.string.ok,
+                    .setPositiveButton(R.string.text_continue,
                             (dialog, which) -> {
                                 launchAuth(DataTransfer.TYPE_EXPORT, TYPE_CSV);
                             })
