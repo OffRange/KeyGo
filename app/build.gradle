@@ -144,7 +144,7 @@ dependencies {
     githubImplementation 'org.kohsuke:github-api:1.314'
 
     implementation 'com.opencsv:opencsv:5.8'
-
+    
     implementation "androidx.room:room-runtime:2.6.0"
     annotationProcessor "androidx.room:room-compiler:2.6.0"
     implementation "androidx.room:room-rxjava3:2.6.0"
