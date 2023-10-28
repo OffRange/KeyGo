@@ -1,5 +1,7 @@
 package de.davis.passwordmanager.sync;
 
+import static de.davis.passwordmanager.sync.DataTransfer.TYPE_IMPORT;
+
 public class Result {
     public static class Success extends Result {
 
@@ -25,6 +27,20 @@ public class Result {
 
         public String getMessage() {
             return message;
+        }
+    }
+
+    public static class Duplicate extends Success {
+
+        private final int count;
+
+        public Duplicate(int count) {
+            super(TYPE_IMPORT);
+            this.count = count;
+        }
+
+        public int getCount() {
+            return count;
         }
     }
 }

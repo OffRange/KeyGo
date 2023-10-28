@@ -137,9 +137,9 @@
     <string name="csv_row_number_error">CSV Datei muss 5 Spalten haben.</string>
     <string name="csv_export_warning">Bitte beachten Sie, dass dieser Exportprozess keine Verschlüsselung bietet. Wenn nicht autorisierte Dritte Zugriff auf diese Datei erhalten, können sie Ihre Passwörter einsehen. Darüber hinaus ermöglicht diese Option ausschließlich die Exportierung von Passwörtern.\n\n<b>Es wird empfohlen, das KEYGO Dateiformat zu wählen!</b></string>
 
-    <plurals name="item_title_existed">
-        <item quantity="one">%d Element existiert bereits mit dem Titel</item>
-        <item quantity="other">%d Elemente existieren bereits mit dem Titel</item>
+    <plurals name="item_existed">
+        <item quantity="one">%d Element wurde ignoriert, da es bereits existiert</item>
+        <item quantity="other">%d Elemente wurden ignoriert, da diese bereits existieren</item>
     </plurals>
     <string name="invalid_file_length">Ungültige Datei Länge</string>
     <string name="invalid_file">Ungültige Datei</string>

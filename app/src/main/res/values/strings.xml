@@ -180,9 +180,9 @@
     <string name="csv_row_number_error">CSV file must have 5 rows.</string>
     <string name="backup_restored">Backup successfully restored</string>
     <string name="backup_stored">Backup successfully stored</string>
-    <plurals name="item_title_existed">
-        <item quantity="one">%d item already existed with the same title</item>
-        <item quantity="other">%d items already existed with the same title</item>
+    <plurals name="item_existed">
+        <item quantity="one">%d item was skipped as it already existed</item>
+        <item quantity="other">%d items were skipped as they already existed</item>
     </plurals>
     <string name="invalid_file_length">Invalid file length</string>
     <string name="invalid_file">Invalid file</string>

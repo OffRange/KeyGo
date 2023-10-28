@@ -70,6 +70,13 @@ public abstract class DataTransfer {
                         .setPositiveButton(R.string.ok, (dialog, which) -> {})
                         .show();
 
+            else if (result instanceof Result.Duplicate duplicate)
+                new MaterialAlertDialogBuilder(getContext())
+                        .setTitle(R.string.warning)
+                        .setMessage(getContext().getResources().getQuantityString(R.plurals.item_existed, duplicate.getCount(), duplicate.getCount()))
+                        .setPositiveButton(R.string.ok, (dialog, which) -> {})
+                        .show();
+
             else if (result instanceof Result.Success success)
                 Toast.makeText(getContext(), success.getType() == TYPE_EXPORT ? R.string.backup_stored : R.string.backup_restored, Toast.LENGTH_LONG).show();
         });

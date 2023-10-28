@@ -116,7 +116,7 @@ public class KeyGoTransfer extends DataTransfer {
         }
 
         if(existed != 0)
-            return new Result.Error(getContext().getResources().getQuantityString(R.plurals.item_title_existed, existed, existed));
+            return new Result.Duplicate(existed);
 
         return new Result.Success(TYPE_IMPORT);
     }
