@@ -1,7 +1,6 @@
 package de.davis.passwordmanager.sync.keygo;
 
 import android.content.Context;
-import android.content.DialogInterface;
 import android.net.Uri;
 import android.text.InputType;
 import android.widget.EditText;
@@ -143,25 +142,22 @@ public class KeyGoTransfer extends DataTransfer {
         i.setInputType(InputType.TYPE_TEXT_VARIATION_PASSWORD);
         i.setSecret(true);
 
-        AlertDialog alertDialog = new EditDialogBuilder(getContext())
+        new EditDialogBuilder(getContext())
                 .setTitle(R.string.password)
-                .setPositiveButton(R.string.yes, (dialog, which) -> {})
+                .setPositiveButton(R.string.yes, (dialog, which) -> {
+                    String password = ((EditText)((AlertDialog)dialog).findViewById(R.id.textInputEditText)).getText().toString();
+
+                    if(password.isEmpty()){
+                        ((TextInputLayout)((AlertDialog)dialog).findViewById(R.id.textInputLayout))
+                                .setError(getContext().getString(R.string.is_not_filled_in));
+                        return;
+                    }
+
+                    start(type, uri, password);
+                })
                 .withInformation(i)
                 .withStartIcon(AppCompatResources.getDrawable(getContext(), R.drawable.ic_baseline_password_24))
                 .setCancelable(type == TYPE_IMPORT)
                 .show();
-
-        alertDialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
-            alertDialog.dismiss();
-            String password = ((EditText)alertDialog.findViewById(R.id.textInputEditText)).getText().toString();
-
-            if(password.isEmpty()){
-                ((TextInputLayout)alertDialog.findViewById(R.id.textInputLayout))
-                        .setError(getContext().getString(R.string.is_not_filled_in));
-                return;
-            }
-
-            start(type, uri, password);
-        });
     }
 }
