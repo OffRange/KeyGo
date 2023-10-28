@@ -100,14 +100,19 @@ public class KeyGoTransfer extends DataTransfer {
                 .blockingGet();
 
         int existed = 0;
-        for (SecureElement element : list) {
+        int length = list.size();
+        for (int i = 0; i < length; i++) {
+            SecureElement element = list.get(i);
             if(elements.stream().anyMatch(e -> e.getTitle().equals(element.getTitle())
                     && e.getDetail().equals(element.getDetail()))) {
                 existed++;
+
+                notifyUpdate(i+1, length);
                 continue;
             }
 
             SecureElementManager.getInstance().createElement(element);
+            notifyUpdate(i+1, length);
         }
 
         if(existed != 0)

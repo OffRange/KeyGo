@@ -11,6 +11,7 @@ import android.widget.Toast;
 
 import androidx.annotation.IntDef;
 import androidx.annotation.WorkerThread;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.os.HandlerCompat;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -21,6 +22,7 @@ import java.io.OutputStream;
 import javax.crypto.AEADBadTagException;
 
 import de.davis.passwordmanager.R;
+import de.davis.passwordmanager.dialog.LoadingDialog;
 
 public abstract class DataTransfer {
 
@@ -32,6 +34,10 @@ public abstract class DataTransfer {
     @IntDef({TYPE_EXPORT, TYPE_IMPORT})
     public @interface Type{}
 
+    private LoadingDialog loadingDialog;
+
+    private final Handler handler = HandlerCompat.createAsync(Looper.getMainLooper());
+
     public DataTransfer(Context context) {
         this.context = context;
     }
@@ -40,7 +46,7 @@ public abstract class DataTransfer {
         return context;
     }
 
-    protected void error(Handler handler, Exception exception){
+    protected void error(Exception exception){
         handler.post(() -> {
             String msg = exception.getMessage();
             if(exception instanceof AEADBadTagException)
@@ -55,7 +61,7 @@ public abstract class DataTransfer {
         });
     }
 
-    protected void handleResult(Handler handler, Result result){
+    protected void handleResult(Result result){
         handler.post(() -> {
             if(result instanceof Result.Error error)
                 new MaterialAlertDialogBuilder(getContext())
@@ -79,9 +85,18 @@ public abstract class DataTransfer {
         start(type, uri, null);
     }
 
+    protected void notifyUpdate(int current, int max){
+        handler.post(() -> loadingDialog.updateProgress(current, max));
+    }
+
     protected void start(@Type int type, Uri uri, String password) {
         ContentResolver resolver = getContext().getContentResolver();
-        Handler handler = HandlerCompat.createAsync(Looper.getMainLooper());
+
+        loadingDialog = new LoadingDialog(getContext())
+                .setTitle(type == TYPE_EXPORT ? R.string.export : R.string.import_str)
+                .setMessage(R.string.wait_text);
+        AlertDialog alertDialog = loadingDialog.show();
+
         doInBackground(() -> {
             Result result = null;
             try{
@@ -93,12 +108,14 @@ public abstract class DataTransfer {
                 if(result == null)
                     return;
 
-                handleResult(handler, result);
+                handleResult(result);
             }catch (Exception e){
                 if(e instanceof NullPointerException)
                     return;
 
-                error(handler, e);
+                error(e);
+            }finally {
+                alertDialog.dismiss();
             }
         });
     }

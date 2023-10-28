@@ -186,4 +186,6 @@
     </plurals>
     <string name="invalid_file_length">Invalid file length</string>
     <string name="invalid_file">Invalid file</string>
+
+    <string name="wait_text">This might take a little time. Please be patient</string>
 </resources>

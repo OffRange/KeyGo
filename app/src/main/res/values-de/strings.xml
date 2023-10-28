@@ -143,4 +143,6 @@
     </plurals>
     <string name="invalid_file_length">Ungültige Datei Länge</string>
     <string name="invalid_file">Ungültige Datei</string>
+
+    <string name="wait_text">Das könnte ein wenig Zeit in Anspruch nehmen. Bitte haben Sie Geduld</string>
 </resources>
