@@ -51,12 +51,18 @@ public class CsvTransfer extends DataTransfer {
                 continue;
 
             String title = line[0];
-            if(elements.stream().anyMatch(element -> element.getTitle().equals(title))) {
+            String origin = line[1];
+            String username = line[2];
+            String pwd = line[3];
+            if(elements.stream().anyMatch(element -> element.getTitle().equals(title)
+                    && ((PasswordDetails)element.getDetail()).getPassword().equals(pwd)
+                    && ((PasswordDetails)element.getDetail()).getUsername().equals(username)
+                    && ((PasswordDetails)element.getDetail()).getOrigin().equals(origin))) {
                 existed++;
                 continue;
             }
 
-            PasswordDetails details = new PasswordDetails(line[3], line[1], line[2]);
+            PasswordDetails details = new PasswordDetails(pwd, origin, username);
             SecureElementManager.getInstance().createElement(new SecureElement(details, title));
         }
 
