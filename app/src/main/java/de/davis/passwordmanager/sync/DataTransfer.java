@@ -61,8 +61,7 @@ public abstract class DataTransfer {
                 new MaterialAlertDialogBuilder(getContext())
                         .setTitle(R.string.error_title)
                         .setMessage(error.getMessage())
-                        .setPositiveButton(R.string.ok,
-                                (dialog, which) -> dialog.dismiss())
+                        .setPositiveButton(R.string.ok, (dialog, which) -> {})
                         .show();
 
             else if (result instanceof Result.Success success)

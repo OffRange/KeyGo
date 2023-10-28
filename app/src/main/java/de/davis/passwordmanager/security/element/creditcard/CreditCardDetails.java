@@ -1,5 +1,7 @@
 package de.davis.passwordmanager.security.element.creditcard;
 
+import java.util.Objects;
+
 import de.davis.passwordmanager.security.element.ElementDetail;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.utils.CreditCardUtil;
@@ -66,5 +68,29 @@ public class CreditCardDetails implements ElementDetail {
     @Override
     public int getType() {
         return SecureElement.TYPE_CREDIT_CARD;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        CreditCardDetails that = (CreditCardDetails) o;
+
+        if (!Objects.equals(cardholder, that.cardholder))
+            return false;
+        if (!Objects.equals(expirationDate, that.expirationDate))
+            return false;
+        if (!cardNumber.equals(that.cardNumber)) return false;
+        return Objects.equals(cvv, that.cvv);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = cardholder != null ? cardholder.hashCode() : 0;
+        result = 31 * result + (expirationDate != null ? expirationDate.hashCode() : 0);
+        result = 31 * result + cardNumber.hashCode();
+        result = 31 * result + (cvv != null ? cvv.hashCode() : 0);
+        return result;
     }
 }

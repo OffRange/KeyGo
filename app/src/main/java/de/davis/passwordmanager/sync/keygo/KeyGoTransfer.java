@@ -31,6 +31,7 @@ import java.util.List;
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.database.SecureElementDatabase;
 import de.davis.passwordmanager.dialog.EditDialogBuilder;
+import de.davis.passwordmanager.gson.strategies.ExcludeAnnotationStrategy;
 import de.davis.passwordmanager.security.Cryptography;
 import de.davis.passwordmanager.security.element.ElementDetail;
 import de.davis.passwordmanager.security.element.SecureElement;
@@ -73,7 +74,10 @@ public class KeyGoTransfer extends DataTransfer {
 
     public KeyGoTransfer(Context context) {
         super(context);
-        this.gson = new GsonBuilder().registerTypeAdapter(ElementDetail.class, new ElementDetailTypeAdapter()).create();
+        this.gson = new GsonBuilder()
+                .registerTypeAdapter(ElementDetail.class, new ElementDetailTypeAdapter())
+                .setExclusionStrategies(new ExcludeAnnotationStrategy())
+                .create();
     }
 
     @Override
@@ -97,7 +101,8 @@ public class KeyGoTransfer extends DataTransfer {
 
         int existed = 0;
         for (SecureElement element : list) {
-            if(elements.stream().anyMatch(e -> e.getTitle().equals(element.getTitle()))) {
+            if(elements.stream().anyMatch(e -> e.getTitle().equals(element.getTitle())
+                    && e.getDetail().equals(element.getDetail()))) {
                 existed++;
                 continue;
             }
@@ -142,6 +147,7 @@ public class KeyGoTransfer extends DataTransfer {
                 .show();
 
         alertDialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
+            alertDialog.dismiss();
             String password = ((EditText)alertDialog.findViewById(R.id.textInputEditText)).getText().toString();
 
             if(password.isEmpty()){
@@ -151,7 +157,6 @@ public class KeyGoTransfer extends DataTransfer {
             }
 
             start(type, uri, password);
-            alertDialog.dismiss();
         });
     }
 }

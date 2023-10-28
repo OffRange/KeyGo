@@ -1,5 +1,7 @@
 package de.davis.passwordmanager.security.element.password;
 
+import java.util.Objects;
+
 import de.davis.passwordmanager.security.Cryptography;
 import de.davis.passwordmanager.security.element.ElementDetail;
 import de.davis.passwordmanager.security.element.SecureElement;
@@ -56,5 +58,18 @@ public class PasswordDetails implements ElementDetail {
     @Override
     public int getType() {
         return SecureElement.TYPE_PASSWORD;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        PasswordDetails that = (PasswordDetails) o;
+        return getPassword().equals(that.getPassword()) && Objects.equals(origin, that.origin) && Objects.equals(username, that.username);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(origin, username, getPassword());
     }
 }
