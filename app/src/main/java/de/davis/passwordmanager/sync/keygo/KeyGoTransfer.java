@@ -148,7 +148,7 @@ public class KeyGoTransfer extends DataTransfer {
                 .setPositiveButton(R.string.yes, (dialog, which) -> {})
                 .withInformation(i)
                 .withStartIcon(AppCompatResources.getDrawable(getContext(), R.drawable.ic_baseline_password_24))
-                .setCancelable(false)
+                .setCancelable(type == TYPE_IMPORT)
                 .show();
 
         alertDialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
