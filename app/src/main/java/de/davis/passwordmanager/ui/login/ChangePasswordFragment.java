@@ -1,5 +1,6 @@
 package de.davis.passwordmanager.ui.login;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -100,7 +101,13 @@ public class ChangePasswordFragment extends Fragment {
 
                     //if(requireActivity().getIntent().getExtras() == null)
                     ((PasswordManagerApplication)requireActivity().getApplication()).setShouldAuthenticate(false);
-                    startActivity(new Intent(requireContext(), MainActivity.class).setData(requireActivity().getIntent().getData()));
+
+                    boolean intentAuthOnly = requireActivity().getIntent().getBooleanExtra(getString(R.string.preference_authenticate_only), false);
+                    if(intentAuthOnly){
+                        requireActivity().setResult(Activity.RESULT_OK);
+                    }else
+                        startActivity(new Intent(requireContext(), MainActivity.class));
+                    requireActivity().finish();
                     ((PasswordManagerApplication)requireActivity().getApplication()).setShouldAuthenticate(true);
                 }
 

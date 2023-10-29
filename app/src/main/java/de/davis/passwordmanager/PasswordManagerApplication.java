@@ -25,6 +25,7 @@ public class PasswordManagerApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        SecureElementDatabase.createAndGet(this);
 
         DynamicColors.applyToActivitiesIfAvailable(this);
 

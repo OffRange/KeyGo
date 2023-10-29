@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    tools:context=".ui.sync.ImportActivity">
+
+    <de.davis.passwordmanager.ui.views.InformationView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:information="@string/authenticate_to_import"
+        app:multiline="true"
+        app:title="@string/import_str">
+
+        <Button
+            android:id="@+id/button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/authenticate" />
+    </de.davis.passwordmanager.ui.views.InformationView>
+
+</LinearLayout>

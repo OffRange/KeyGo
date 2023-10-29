@@ -145,4 +145,5 @@
     <string name="invalid_file">Ungültige Datei</string>
 
     <string name="wait_text">Das könnte ein wenig Zeit in Anspruch nehmen. Bitte haben Sie Geduld</string>
+    <string name="authenticate_to_import">Um ein Backup laden zu können, ist eine Authentifizierung erforderlich</string>
 </resources>
