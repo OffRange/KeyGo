@@ -1,6 +1,8 @@
-package de.davis.passwordmanager.sync.csv;
+package de.davis.passwordmanager.backup.csv;
 
 import android.content.Context;
+
+import androidx.annotation.NonNull;
 
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
@@ -16,22 +18,23 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import de.davis.passwordmanager.R;
+import de.davis.passwordmanager.backup.DataBackup;
+import de.davis.passwordmanager.backup.Result;
 import de.davis.passwordmanager.database.SecureElementDatabase;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.security.element.SecureElementManager;
 import de.davis.passwordmanager.security.element.password.PasswordDetails;
-import de.davis.passwordmanager.sync.DataTransfer;
-import de.davis.passwordmanager.sync.Result;
 
-public class CsvTransfer extends DataTransfer {
+public class CsvBackup extends DataBackup {
 
 
-    public CsvTransfer(Context context) {
+    public CsvBackup(Context context) {
         super(context);
     }
 
+    @NonNull
     @Override
-    protected Result importElements(InputStream inputStream, String password) throws Exception {
+    protected Result runImport(InputStream inputStream) throws Exception {
         CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(inputStream))
                 .withSkipLines(1)
                 .withRowValidator(new RowFunctionValidator(s -> s.length == 5, getContext().getString(R.string.csv_row_number_error)))
@@ -74,8 +77,9 @@ public class CsvTransfer extends DataTransfer {
         return new Result.Success(TYPE_IMPORT);
     }
 
+    @NonNull
     @Override
-    protected Result exportElements(OutputStream outputStream, String password) throws Exception {
+    protected Result runExport(OutputStream outputStream) throws Exception {
         CSVWriter csvWriter = (CSVWriter) new CSVWriterBuilder(new OutputStreamWriter(outputStream))
                 .build();
 

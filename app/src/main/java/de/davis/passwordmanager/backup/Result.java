@@ -1,11 +1,11 @@
-package de.davis.passwordmanager.sync;
+package de.davis.passwordmanager.backup;
 
-import static de.davis.passwordmanager.sync.DataTransfer.TYPE_IMPORT;
+import static de.davis.passwordmanager.backup.DataBackup.TYPE_IMPORT;
 
 public class Result {
     public static class Success extends Result {
 
-        @DataTransfer.Type
+        @DataBackup.Type
         private int type;
 
         public Success(int type) {

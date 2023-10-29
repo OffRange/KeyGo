@@ -12,9 +12,9 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import de.davis.passwordmanager.PasswordManagerApplication;
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.sync.DataTransfer;
-import de.davis.passwordmanager.sync.csv.CsvTransfer;
-import de.davis.passwordmanager.sync.keygo.KeyGoTransfer;
+import de.davis.passwordmanager.backup.DataBackup;
+import de.davis.passwordmanager.backup.csv.CsvBackup;
+import de.davis.passwordmanager.backup.keygo.KeyGoBackup;
 import de.davis.passwordmanager.ui.login.LoginActivity;
 
 public class BackupFragment extends PreferenceFragmentCompat {
@@ -29,8 +29,8 @@ public class BackupFragment extends PreferenceFragmentCompat {
         addPreferencesFromResource(R.xml.backup_preferences);
 
         ActivityResultLauncher<String[]> csvImportLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(), result -> {
-            CsvTransfer transfer = new CsvTransfer(requireContext());
-            transfer.start(DataTransfer.TYPE_IMPORT, result);
+            CsvBackup backup = new CsvBackup(requireContext());
+            backup.execute(DataBackup.TYPE_IMPORT, result);
         });
 
         ActivityResultLauncher<String> csvExportLauncher = registerForActivityResult(new ActivityResultContracts.CreateDocument("text/comma-separated-values"), result -> {
@@ -38,24 +38,24 @@ public class BackupFragment extends PreferenceFragmentCompat {
                 return;
 
 
-            CsvTransfer transfer = new CsvTransfer(requireContext());
-            transfer.start(DataTransfer.TYPE_EXPORT, result);
+            CsvBackup backup = new CsvBackup(requireContext());
+            backup.execute(DataBackup.TYPE_EXPORT, result);
         });
 
         ActivityResultLauncher<String> keygoExportLauncher = registerForActivityResult(new ActivityResultContracts.CreateDocument("application/octet-stream"), result -> {
             if(result == null)
                 return;
 
-            KeyGoTransfer transfer = new KeyGoTransfer(requireContext());
-            transfer.start(DataTransfer.TYPE_EXPORT, result);
+            KeyGoBackup backup = new KeyGoBackup(requireContext());
+            backup.execute(DataBackup.TYPE_EXPORT, result);
         });
 
         ActivityResultLauncher<String[]> keygoImportLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(), result -> {
             if(result == null)
                 return;
 
-            KeyGoTransfer transfer = new KeyGoTransfer(requireContext());
-            transfer.start(DataTransfer.TYPE_IMPORT, result);
+            KeyGoBackup backup = new KeyGoBackup(requireContext());
+            backup.execute(DataBackup.TYPE_IMPORT, result);
         });
 
         auth = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -71,14 +71,16 @@ public class BackupFragment extends PreferenceFragmentCompat {
                 return;
 
             switch (data.getInt("type")){
-                case DataTransfer.TYPE_EXPORT -> {
+                case DataBackup.TYPE_EXPORT -> {
                     if(formatType.equals(TYPE_CSV)){
+                        ((PasswordManagerApplication)requireActivity().getApplication()).setShouldAuthenticate(false);
                         csvExportLauncher.launch("keygo-passwords.csv");
                     }else if(formatType.equals(TYPE_KEYGO)){
+                        ((PasswordManagerApplication)requireActivity().getApplication()).setShouldAuthenticate(false);
                         keygoExportLauncher.launch("elements.keygo");
                     }
                 }
-                case DataTransfer.TYPE_IMPORT -> {
+                case DataBackup.TYPE_IMPORT -> {
                     if(formatType.equals(TYPE_CSV)){
                         ((PasswordManagerApplication)requireActivity().getApplication()).setShouldAuthenticate(false);
                         csvImportLauncher.launch(new String[]{"text/comma-separated-values"});
@@ -93,7 +95,7 @@ public class BackupFragment extends PreferenceFragmentCompat {
         });
 
         findPreference(getString(R.string.preference_import_csv)).setOnPreferenceClickListener(preference -> {
-            launchAuth(DataTransfer.TYPE_IMPORT, TYPE_CSV);
+            launchAuth(DataBackup.TYPE_IMPORT, TYPE_CSV);
             return true;
         });
 
@@ -103,10 +105,10 @@ public class BackupFragment extends PreferenceFragmentCompat {
                     .setMessage(R.string.csv_export_warning)
                     .setPositiveButton(R.string.text_continue,
                             (dialog, which) -> {
-                                launchAuth(DataTransfer.TYPE_EXPORT, TYPE_CSV);
+                                launchAuth(DataBackup.TYPE_EXPORT, TYPE_CSV);
                             })
                     .setNegativeButton(R.string.use_keygo, (dialog, which) -> {
-                        launchAuth(DataTransfer.TYPE_EXPORT, TYPE_KEYGO);
+                        launchAuth(DataBackup.TYPE_EXPORT, TYPE_KEYGO);
                     })
                     .setNeutralButton(R.string.cancel, (dialog, which) -> dialog.dismiss())
                     .show();
@@ -114,17 +116,17 @@ public class BackupFragment extends PreferenceFragmentCompat {
         });
 
         findPreference(getString(R.string.preference_export_keygo)).setOnPreferenceClickListener(preference -> {
-            launchAuth(DataTransfer.TYPE_EXPORT, TYPE_KEYGO);
+            launchAuth(DataBackup.TYPE_EXPORT, TYPE_KEYGO);
             return true;
         });
 
         findPreference(getString(R.string.preference_import_keygo)).setOnPreferenceClickListener(preference -> {
-            launchAuth(DataTransfer.TYPE_IMPORT, TYPE_KEYGO);
+            launchAuth(DataBackup.TYPE_IMPORT, TYPE_KEYGO);
             return true;
         });
     }
 
-    public void launchAuth(@DataTransfer.Type int type, String format){
+    public void launchAuth(@DataBackup.Type int type, String format){
         Bundle bundle = new Bundle();
         bundle.putInt("type", type);
         bundle.putString("format_type", format);
