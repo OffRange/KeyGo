@@ -20,7 +20,7 @@ import de.davis.passwordmanager.utils.TimeoutUtil;
 
 public class PasswordManagerApplication extends Application {
 
-    private boolean shouldAuthenticate;
+    private boolean shouldAuthenticate = true;
 
     @Override
     public void onCreate() {
@@ -59,8 +59,10 @@ public class PasswordManagerApplication extends Application {
                 if(lastPaused != activity)
                     return;
 
-                if(!shouldAuthenticate)
+                if(!shouldAuthenticate) {
+                    shouldAuthenticate = true;
                     return;
+                }
 
                 timeoutUtil.initiateDelay();
                 long time = PreferenceUtil.getTimeForNewAuthentication(activity);
@@ -89,8 +91,8 @@ public class PasswordManagerApplication extends Application {
         });
     }
 
-    public void setShouldAuthenticate(boolean shouldAuthenticate) {
-        this.shouldAuthenticate = shouldAuthenticate;
+    public void disableReAuthentication() {
+        this.shouldAuthenticate = false;
     }
 
     public SecureElementDatabase getDatabase(){

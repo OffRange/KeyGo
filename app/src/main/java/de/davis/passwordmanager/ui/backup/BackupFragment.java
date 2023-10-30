@@ -73,19 +73,19 @@ public class BackupFragment extends PreferenceFragmentCompat {
             switch (data.getInt("type")){
                 case DataBackup.TYPE_EXPORT -> {
                     if(formatType.equals(TYPE_CSV)){
-                        ((PasswordManagerApplication)requireActivity().getApplication()).setShouldAuthenticate(false);
+                        ((PasswordManagerApplication)requireActivity().getApplication()).disableReAuthentication();
                         csvExportLauncher.launch("keygo-passwords.csv");
                     }else if(formatType.equals(TYPE_KEYGO)){
-                        ((PasswordManagerApplication)requireActivity().getApplication()).setShouldAuthenticate(false);
+                        ((PasswordManagerApplication)requireActivity().getApplication()).disableReAuthentication();
                         keygoExportLauncher.launch("elements.keygo");
                     }
                 }
                 case DataBackup.TYPE_IMPORT -> {
                     if(formatType.equals(TYPE_CSV)){
-                        ((PasswordManagerApplication)requireActivity().getApplication()).setShouldAuthenticate(false);
+                        ((PasswordManagerApplication)requireActivity().getApplication()).disableReAuthentication();
                         csvImportLauncher.launch(new String[]{"text/comma-separated-values"});
                     }else if(formatType.equals(TYPE_KEYGO)){
-                        ((PasswordManagerApplication)requireActivity().getApplication()).setShouldAuthenticate(false);
+                        ((PasswordManagerApplication)requireActivity().getApplication()).disableReAuthentication();
                         keygoImportLauncher.launch(new String[]{"application/octet-stream"});
                     }
                 }

@@ -100,7 +100,7 @@ public class ChangePasswordFragment extends Fragment {
                     Toast.makeText(getContext(), R.string.master_password_changed, Toast.LENGTH_LONG).show();
 
                     //if(requireActivity().getIntent().getExtras() == null)
-                    ((PasswordManagerApplication)requireActivity().getApplication()).setShouldAuthenticate(false);
+                    ((PasswordManagerApplication)requireActivity().getApplication()).disableReAuthentication();
 
                     boolean intentAuthOnly = requireActivity().getIntent().getBooleanExtra(getString(R.string.preference_authenticate_only), false);
                     if(intentAuthOnly){
@@ -108,7 +108,6 @@ public class ChangePasswordFragment extends Fragment {
                     }else
                         startActivity(new Intent(requireContext(), MainActivity.class));
                     requireActivity().finish();
-                    ((PasswordManagerApplication)requireActivity().getApplication()).setShouldAuthenticate(true);
                 }
 
                 return true;
