@@ -1,5 +1,6 @@
 package de.davis.passwordmanager.ui.login;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -18,6 +19,7 @@ import androidx.lifecycle.Lifecycle;
 
 import java.util.Objects;
 
+import de.davis.passwordmanager.PasswordManagerApplication;
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.databinding.FragmentChangePasswordBinding;
 import de.davis.passwordmanager.security.Authentication;
@@ -97,8 +99,16 @@ public class ChangePasswordFragment extends Fragment {
                     PreferenceUtil.putBoolean(getContext(), R.string.preference_fingerprint, binding.fingerprint.isChecked());
                     Toast.makeText(getContext(), R.string.master_password_changed, Toast.LENGTH_LONG).show();
 
-                    if(requireActivity().getIntent().getExtras() == null)
+                    //if(requireActivity().getIntent().getExtras() == null)
+                    ((PasswordManagerApplication)requireActivity().getApplication()).setShouldAuthenticate(false);
+
+                    boolean intentAuthOnly = requireActivity().getIntent().getBooleanExtra(getString(R.string.preference_authenticate_only), false);
+                    if(intentAuthOnly){
+                        requireActivity().setResult(Activity.RESULT_OK);
+                    }else
                         startActivity(new Intent(requireContext(), MainActivity.class));
+                    requireActivity().finish();
+                    ((PasswordManagerApplication)requireActivity().getApplication()).setShouldAuthenticate(true);
                 }
 
                 return true;

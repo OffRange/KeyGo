@@ -12,23 +12,21 @@ public class SecureElementManager {
     private static SecureElementManager instance;
 
     private final DashboardAdapter adapter;
-    private final TriggerDataChanged triggerDataChanged;
+    private TriggerDataChanged triggerDataChanged;
 
-    private SecureElementManager(TriggerDataChanged triggerDataChanged) {
-        this.triggerDataChanged = triggerDataChanged;
+    private SecureElementManager() {
         adapter = new DashboardAdapter();
-    }
-
-    public static SecureElementManager createNew(TriggerDataChanged triggerDataChanged){
-        instance = new SecureElementManager(triggerDataChanged);
-        return instance;
     }
 
     public static SecureElementManager getInstance(){
         if(instance == null)
-            throw new NullPointerException("call createNew first");
+            instance = new SecureElementManager();
 
         return instance;
+    }
+
+    public void setTriggerDataChanged(TriggerDataChanged triggerDataChanged) {
+        this.triggerDataChanged = triggerDataChanged;
     }
 
     public DashboardAdapter getAdapter() {

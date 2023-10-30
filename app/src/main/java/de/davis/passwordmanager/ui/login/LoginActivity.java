@@ -8,7 +8,6 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.database.SecureElementDatabase;
 import de.davis.passwordmanager.security.MasterPassword;
 
 public class LoginActivity extends AppCompatActivity {
@@ -21,12 +20,7 @@ public class LoginActivity extends AppCompatActivity {
         if(savedInstanceState != null)
             return;
 
-        SecureElementDatabase.createAndGet(this);
 
-        if(getIntent().getBooleanExtra(getString(R.string.preference_authenticate_only), false)){
-            getSupportFragmentManager().beginTransaction().replace(R.id.container, new EnterPasswordFragment()).commit();
-            return;
-        }
 
         boolean masterPasswordAvailable = MasterPassword.getOne().blockingGet() != null;
         if(getIntent().getBooleanExtra(getString(R.string.preference_master_password), false)){
@@ -45,7 +39,7 @@ public class LoginActivity extends AppCompatActivity {
 
     public static Intent getIntentForAuthentication(@NonNull Context context, Intent destActivity){
         Intent intent = new Intent(context, LoginActivity.class);
-        intent.putExtra(context.getString(R.string.preference_authenticate_only), MasterPassword.getOne().blockingGet() != null);
+        intent.putExtra(context.getString(R.string.preference_authenticate_only), true);
 
         if(destActivity != null)
             intent.putExtra(context.getString(R.string.authentication_destination), destActivity);

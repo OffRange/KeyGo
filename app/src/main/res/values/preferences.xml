@@ -7,4 +7,8 @@
     <string name="preference_feature_autofill" translatable="false">feature_autofill</string>
     <string name="preference_reauthenticate" translatable="false">feature_reauthenticate</string>
     <string name="preference_license" translatable="false">license</string>
+    <string name="preference_import_csv" translatable="false">import_csv</string>
+    <string name="preference_export_csv" translatable="false">export_csv</string>
+    <string name="preference_import_keygo" translatable="false">import_keygo</string>
+    <string name="preference_export_keygo" translatable="false">export_keygo</string>
 </resources>

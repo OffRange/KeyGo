@@ -59,6 +59,16 @@ public class EnterPasswordFragment extends Fragment {
                     return null;
                 }
 
+                boolean intentAuthOnly = requireActivity().getIntent().getBooleanExtra(getString(R.string.preference_authenticate_only), false);
+                if(intentAuthOnly){
+                    Intent i = new Intent();
+                    Bundle bundle = requireActivity().getIntent().getBundleExtra("data");
+                    if(bundle != null)
+                        i.putExtras(bundle);
+
+                    return i;
+                }
+
                 startActivity(new Intent(getContext(), MainActivity.class));
                 return null;
             }

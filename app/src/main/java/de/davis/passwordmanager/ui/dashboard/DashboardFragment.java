@@ -81,7 +81,8 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
         arm.registerCreate();
         arm.registerEdit(null);
 
-        SecureElementManager manager = SecureElementManager.createNew(sem -> {
+        SecureElementManager manager = SecureElementManager.getInstance();
+        manager.setTriggerDataChanged(sem -> {
             boolean hasElements = sem.hasElements();
             binding.listPane.progress.setVisibility(View.GONE);
 

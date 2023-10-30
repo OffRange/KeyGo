@@ -21,6 +21,7 @@ import java.util.Date;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.dashboard.Item;
+import de.davis.passwordmanager.gson.annotations.Exclude;
 
 @Entity
 public class SecureElement implements Serializable, Comparable<SecureElement>, Item {
@@ -45,6 +46,7 @@ public class SecureElement implements Serializable, Comparable<SecureElement>, I
     private boolean favorite;
 
     @PrimaryKey(autoGenerate = true)
+    @Exclude
     private long id;
 
     @ColumnInfo(name = "created_at")
