@@ -112,7 +112,7 @@ public class VersionFragment extends BaseVersionFragment {
                     binding.scan.setEnabled(true);
 
                     ((PasswordManagerApplication)requireActivity().getApplication())
-                            .setShouldAuthenticate(false);
+                            .disableReAuthentication();
 
                     if(release == null)
                         return;
@@ -120,8 +120,6 @@ public class VersionFragment extends BaseVersionFragment {
                     binding.update.setInformationText(getString(R.string.newer_version_available, release.getVersionTag()));
                 }
                 case Updater.ACTION_INVALID_APK -> {
-                    ((PasswordManagerApplication)requireActivity().getApplication())
-                            .setShouldAuthenticate(true);
 
                     binding.progressBar.setVisibility(View.GONE);
                     binding.scan.setEnabled(true);
@@ -251,8 +249,10 @@ public class VersionFragment extends BaseVersionFragment {
     @Override
     public void onStart() {
         super.onStart();
+        if (!viewModel.isAskingForPermission())
+            return;
         ((PasswordManagerApplication) requireActivity().getApplication())
-                .setShouldAuthenticate(!viewModel.isAskingForPermission());
+                .disableReAuthentication();
     }
 
     @Override
