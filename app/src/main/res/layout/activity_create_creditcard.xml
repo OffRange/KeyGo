@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
-    
+
     <GridLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -27,8 +27,7 @@
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/title"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="@android:color/transparent" />
+                    android:layout_height="wrap_content" />
             </com.google.android.material.textfield.TextInputLayout>
 
         </de.davis.passwordmanager.ui.views.InformationView>
@@ -61,8 +60,7 @@
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/card"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="@android:color/transparent" />
+                    android:layout_height="wrap_content" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
@@ -78,10 +76,9 @@
                     android:id="@+id/cardNumber"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="@android:color/transparent"
                     android:inputType="numberPassword"
                     android:digits="0,1,2,3,4,5,6,7,8,9, "
-                    android:maxLength="19"/>
+                    android:maxLength="19" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
@@ -116,8 +113,7 @@
                     android:layout_height="wrap_content"
                     android:digits="0,1,2,3,4,5,6,7,8,9,/"
                     android:inputType="number"
-                    android:maxLength="5"
-                    android:background="@android:color/transparent"/>
+                    android:maxLength="5" />
 
             </com.google.android.material.textfield.TextInputLayout>
 
