@@ -1,12 +1,12 @@
 package de.davis.passwordmanager.security.element.creditcard;
 
-import androidx.annotation.Nullable;
-
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 
 public class Name implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 7569988556632962328L;
 
     private String lastName;

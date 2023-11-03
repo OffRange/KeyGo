@@ -2,6 +2,7 @@ package de.davis.passwordmanager.version;
 
 import androidx.annotation.IntDef;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Locale;
 import java.util.regex.Matcher;
@@ -9,6 +10,7 @@ import java.util.regex.Pattern;
 
 public class Version implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = -6002602362950205567L;
 
     public static final int CHANNEL_UNKNOWN = 0x1111;

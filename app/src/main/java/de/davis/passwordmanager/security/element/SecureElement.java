@@ -16,6 +16,7 @@ import com.amulyakhare.textdrawable.util.ColorGenerator;
 
 import net.greypanther.natsort.SimpleNaturalComparator;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Date;
 
@@ -26,6 +27,7 @@ import de.davis.passwordmanager.gson.annotations.Exclude;
 @Entity
 public class SecureElement implements Serializable, Comparable<SecureElement>, Item {
 
+    @Serial
     private static final long serialVersionUID = 4927550289788049498L;
 
     public static final int TYPE_PASSWORD = 0x1;

@@ -1,5 +1,6 @@
 package de.davis.passwordmanager.version;
 
+import java.io.Serial;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -7,6 +8,7 @@ import de.davis.passwordmanager.BuildConfig;
 
 public class CurrentVersion extends Version{
 
+    @Serial
     private static final long serialVersionUID = -4800867108941482255L;
     private static CurrentVersion instance;
 

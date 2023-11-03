@@ -1,5 +1,6 @@
 package de.davis.passwordmanager.security.element.password;
 
+import java.io.Serial;
 import java.util.Objects;
 
 import de.davis.passwordmanager.security.Cryptography;
@@ -8,6 +9,7 @@ import de.davis.passwordmanager.security.element.SecureElement;
 
 public class PasswordDetails implements ElementDetail {
 
+    @Serial
     private static final long serialVersionUID = 4938873580704485021L;
 
     private byte[] password;

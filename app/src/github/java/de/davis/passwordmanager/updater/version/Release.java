@@ -1,6 +1,7 @@
 package de.davis.passwordmanager.updater.version;
 
 import java.io.File;
+import java.io.Serial;
 
 import de.davis.passwordmanager.App;
 import de.davis.passwordmanager.BuildConfig;
@@ -8,6 +9,7 @@ import de.davis.passwordmanager.version.Version;
 
 public class Release extends Version {
 
+    @Serial
     private static final long serialVersionUID = -8619273636106428792L;
     private final String assetName;
 

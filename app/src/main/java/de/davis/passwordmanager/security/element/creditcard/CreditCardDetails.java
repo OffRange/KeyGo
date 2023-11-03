@@ -1,5 +1,6 @@
 package de.davis.passwordmanager.security.element.creditcard;
 
+import java.io.Serial;
 import java.util.Objects;
 
 import de.davis.passwordmanager.security.element.ElementDetail;
@@ -8,6 +9,7 @@ import de.davis.passwordmanager.utils.CreditCardUtil;
 
 public class CreditCardDetails implements ElementDetail {
 
+    @Serial
     private static final long serialVersionUID = -6717857895639765586L;
 
     private Name cardholder;
