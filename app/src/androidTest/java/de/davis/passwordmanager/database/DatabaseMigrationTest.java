@@ -30,7 +30,7 @@ import de.davis.passwordmanager.security.element.password.PasswordDetails;
 public class DatabaseMigrationTest {
 
     @Rule
-    public MigrationTestHelper helper;
+    public final MigrationTestHelper helper;
     private static final String TITLE = "passwordElement";
     private static final String PASSWORD = "password";
     private static final String ORIGIN = "origin";

@@ -7,7 +7,7 @@ import androidx.annotation.NonNull;
 
 public class CreditCardNumberTransformationMethod extends PasswordTransformationMethod {
 
-    private static char DOT = '•';
+    private static final char DOT = '•';
 
     @Override
     public CharSequence getTransformation(CharSequence source, View view) {

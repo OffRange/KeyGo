@@ -6,7 +6,7 @@ public class Result {
     public static class Success extends Result {
 
         @DataBackup.Type
-        private int type;
+        private final int type;
 
         public Success(int type) {
             this.type = type;
