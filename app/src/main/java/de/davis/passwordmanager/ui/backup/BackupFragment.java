@@ -104,12 +104,8 @@ public class BackupFragment extends PreferenceFragmentCompat {
                     .setTitle(R.string.warning)
                     .setMessage(R.string.csv_export_warning)
                     .setPositiveButton(R.string.text_continue,
-                            (dialog, which) -> {
-                                launchAuth(DataBackup.TYPE_EXPORT, TYPE_CSV);
-                            })
-                    .setNegativeButton(R.string.use_keygo, (dialog, which) -> {
-                        launchAuth(DataBackup.TYPE_EXPORT, TYPE_KEYGO);
-                    })
+                            (dialog, which) -> launchAuth(DataBackup.TYPE_EXPORT, TYPE_CSV))
+                    .setNegativeButton(R.string.use_keygo, (dialog, which) -> launchAuth(DataBackup.TYPE_EXPORT, TYPE_KEYGO))
                     .setNeutralButton(R.string.cancel, (dialog, which) -> dialog.dismiss())
                     .show();
             return true;

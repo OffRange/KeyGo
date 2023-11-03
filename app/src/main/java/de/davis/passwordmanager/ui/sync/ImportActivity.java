@@ -38,9 +38,7 @@ public class ImportActivity extends AppCompatActivity {
                 return;
 
             KeyGoBackup backup = new KeyGoBackup(this);
-            backup.execute(DataBackup.TYPE_IMPORT, fileUri, r -> {
-                startActivity(new Intent(this, MainActivity.class));
-            });
+            backup.execute(DataBackup.TYPE_IMPORT, fileUri, r -> startActivity(new Intent(this, MainActivity.class)));
         });
 
         auth.launch(LoginActivity.getIntentForAuthentication(this));
