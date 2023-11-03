@@ -84,11 +84,11 @@ public class Filter {
             if(element.getType() != SecureElement.TYPE_PASSWORD)
                 return false;
 
-            return !strengthIds.contains(ID_VERY_STRONG) && ((PasswordDetails)element.getDetail()).getStrength().getType() == Strength.VERY_STRONG
-                    || !strengthIds.contains(ID_STRONG) && ((PasswordDetails)element.getDetail()).getStrength().getType() == Strength.STRONG
-                    || !strengthIds.contains(ID_MODERATE) && ((PasswordDetails)element.getDetail()).getStrength().getType() == Strength.MODERATE
-                    || !strengthIds.contains(ID_WEAK) && ((PasswordDetails)element.getDetail()).getStrength().getType() == Strength.WEAK
-                    || !strengthIds.contains(ID_RIDICULOUS) && ((PasswordDetails)element.getDetail()).getStrength().getType() == Strength.RIDICULOUS;
+            return !strengthIds.contains(ID_VERY_STRONG) && ((PasswordDetails)element.getDetail()).getStrength().type() == Strength.VERY_STRONG
+                    || !strengthIds.contains(ID_STRONG) && ((PasswordDetails)element.getDetail()).getStrength().type() == Strength.STRONG
+                    || !strengthIds.contains(ID_MODERATE) && ((PasswordDetails)element.getDetail()).getStrength().type() == Strength.MODERATE
+                    || !strengthIds.contains(ID_WEAK) && ((PasswordDetails)element.getDetail()).getStrength().type() == Strength.WEAK
+                    || !strengthIds.contains(ID_RIDICULOUS) && ((PasswordDetails)element.getDetail()).getStrength().type() == Strength.RIDICULOUS;
         });
 
         return toFilter;

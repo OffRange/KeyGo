@@ -124,15 +124,15 @@ public class PasswordStrengthBar extends LinearLayout implements TextWatcher {
             handler.post(() -> {
                 progressIndicator.setIndeterminate(false);
                 progressIndicator.setIndicatorColor(strength.getColor(getContext()));
-                progressIndicator.setProgress(password.length() > 0 ? strength.getType() + 1 : 0);
+                progressIndicator.setProgress(password.length() > 0 ? strength.type() + 1 : 0);
 
                 strengthText.setText(strength.getString());
                 strengthText.setTextColor(strength.getColor(getContext()));
                 strengthText.setVisibility(password.length() > 0 ? View.VISIBLE : View.GONE);
 
-                strengthWarning.setText(strength.getWarning());
+                strengthWarning.setText(strength.warning());
                 strengthWarning.setTextColor(strength.getColor(getContext()));
-                strengthWarning.setVisibility(password.length() == 0 || strength.getWarning() == null ? GONE : VISIBLE);
+                strengthWarning.setVisibility(password.length() == 0 || strength.warning() == null ? GONE : VISIBLE);
             });
         });
         executorService.shutdown();
@@ -157,7 +157,7 @@ public class PasswordStrengthBar extends LinearLayout implements TextWatcher {
         progressIndicator.setIndicatorColor(strength.getColor(getContext()));
 
         strengthText.setVisibility(progressIndicator.getProgress() == 0 ? GONE : VISIBLE);
-        strengthWarning.setVisibility(progressIndicator.getProgress() == 0 || strength.getWarning() == null ? GONE : VISIBLE);
+        strengthWarning.setVisibility(progressIndicator.getProgress() == 0 || strength.warning() == null ? GONE : VISIBLE);
     }
 
 

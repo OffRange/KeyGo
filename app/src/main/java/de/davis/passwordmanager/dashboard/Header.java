@@ -1,16 +1,6 @@
 package de.davis.passwordmanager.dashboard;
 
-public class Header implements Item{
-
-    private final char header;
-
-    public Header(char header) {
-        this.header = header;
-    }
-
-    public char getHeader() {
-        return header;
-    }
+public record Header(char header) implements Item {
 
     @Override
     public long getId() {

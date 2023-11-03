@@ -14,33 +14,28 @@ public class CreditCardNumberTransformationMethod extends PasswordTransformation
         return new CreditCardCharSequence(source);
     }
 
-    private static class CreditCardCharSequence implements CharSequence {
-        private final CharSequence source;
-
-        public CreditCardCharSequence(CharSequence source) {
-            this.source = source;
-        }
+    private record CreditCardCharSequence(CharSequence source) implements CharSequence {
 
         @Override
-        public int length() {
-            return source.length();
-        }
-
-        @Override
-        public char charAt(int index) {
-            char c = source.charAt(index);
-            if (!Character.isWhitespace(c)) {
-                return DOT;
+            public int length() {
+                return source.length();
             }
-            return c;
-        }
 
-        @NonNull
-        @Override
-        public CharSequence subSequence(int start, int end) {
-            return source.subSequence(start, end);
+            @Override
+            public char charAt(int index) {
+                char c = source.charAt(index);
+                if (!Character.isWhitespace(c)) {
+                    return DOT;
+                }
+                return c;
+            }
+
+            @NonNull
+            @Override
+            public CharSequence subSequence(int start, int end) {
+                return source.subSequence(start, end);
+            }
         }
-    }
 
     public static PasswordTransformationMethod getInstance() {
         if (sInstance != null)

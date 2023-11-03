@@ -18,7 +18,7 @@ import me.gosimple.nbvcxz.Nbvcxz;
 import me.gosimple.nbvcxz.resources.Feedback;
 import me.gosimple.nbvcxz.scoring.Result;
 
-public class Strength implements Serializable {
+public record Strength(@StrengthType int type, String warning, List<String> suggestions) implements Serializable {
 
     private static final long serialVersionUID = 3096723233113390206L;
     private static final Nbvcxz nbvcxz = new Nbvcxz();
@@ -36,33 +36,7 @@ public class Strength implements Serializable {
             STRONG,
             VERY_STRONG
     })
-    @interface StrengthType {
-    }
-
-    private final int type;
-
-    private final String warning;
-
-    private final List<String> suggestions;
-
-    public Strength(@StrengthType int type, String warning, List<String> suggestions) {
-        this.type = type;
-        this.warning = warning;
-        this.suggestions = suggestions;
-    }
-
-    @StrengthType
-    public int getType() {
-        return type;
-    }
-
-    public String getWarning() {
-        return warning;
-    }
-
-    public List<String> getSuggestions() {
-        return suggestions;
-    }
+    @interface StrengthType {}
 
     @StringRes
     public int getString() {
