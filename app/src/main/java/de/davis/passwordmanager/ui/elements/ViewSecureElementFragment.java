@@ -62,7 +62,7 @@ public abstract class ViewSecureElementFragment extends SEViewFragment {
             ActivityResultManager.getOrCreateManager(getClass(), null).launchEdit(e, requireContext());
             return false;
         });
-        toolbar.setNavigationOnClickListener(v -> requireActivity().onBackPressed());
+        toolbar.setNavigationOnClickListener(v -> requireActivity().getOnBackPressedDispatcher().onBackPressed());
         handleNavIcon();
     }
 

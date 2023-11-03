@@ -40,7 +40,7 @@ public abstract class CreateSecureElementActivity extends SEViewActivity {
                 finish();
             }
         }else if(item.getItemId() == android.R.id.home){
-            onBackPressed();
+            getOnBackPressedDispatcher().onBackPressed();
         }
 
         return true;

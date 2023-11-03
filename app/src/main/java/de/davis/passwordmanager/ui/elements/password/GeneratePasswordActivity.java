@@ -87,7 +87,7 @@ public class GeneratePasswordActivity extends AppCompatActivity implements Slide
         binding.useUppercase.setOnCheckedChangeListener(this);
         binding.usePunctuations.setOnCheckedChangeListener(this);
 
-        binding.toolbar.setNavigationOnClickListener(v -> onBackPressed());
+        binding.toolbar.setNavigationOnClickListener(v -> getOnBackPressedDispatcher().onBackPressed());
         binding.toolbar.setOnMenuItemClickListener(this::onOptionsItemSelected);
 
         estimationTimeout = new TimeoutUtil();
