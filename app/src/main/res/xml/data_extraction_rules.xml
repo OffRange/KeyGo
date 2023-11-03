@@ -9,9 +9,7 @@
             domain="sharedpref"
             path="." />
         <exclude domain="database" />
-        <exclude
-            domain="file"
-            path="datastore" />
+        <exclude domain="file" />
         <!--
         TODO: Use <include> and <exclude> to control what is backed up.
         The domain can be file, database, sharedpref, external or root.
