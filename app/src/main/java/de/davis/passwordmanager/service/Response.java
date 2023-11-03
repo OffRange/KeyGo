@@ -96,10 +96,8 @@ public class Response {
 
         if(iconId > 0){
             Icon icon = Icon.createWithResource(context, iconId);
-            if(icon != null){
-                icon.setTintBlendMode(BlendMode.DST);
-                contentBuilder.setStartIcon(icon);
-            }
+            icon.setTintBlendMode(BlendMode.DST);
+            contentBuilder.setStartIcon(icon);
         }
 
 

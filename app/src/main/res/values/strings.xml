@@ -79,7 +79,6 @@
     <string name="user_information">User information</string>
     <string name="password_information">Password information</string>
     <string name="credit_card_information">Credit card information</string>
-    <string name="login_information">Login information</string>
 
 
     <string name="star_required">*required</string>

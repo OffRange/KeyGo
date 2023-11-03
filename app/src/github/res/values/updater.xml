@@ -12,7 +12,6 @@
     <string name="up_to_date">You are up to date</string>
     <string name="scanning_for_updates">Scanning for newer versions</string>
     <string name="newer_version_available">An newer version is available: %1$s</string>
-    <string name="updater_error_occurred">An unexpected error occurred. Please try again later</string>
     <string name="downloading_newer_version">Downloading newer version %1$s</string>
     <string name="installing_newer_version">Installing newer version %1$s</string>
     <string name="init_download">Initiating download</string>

@@ -55,7 +55,6 @@
     <string name="user_information">Benutzer inforamtionen</string>
     <string name="password_information">Passwort informationen</string>
     <string name="credit_card_information">Kreditkarten informationen</string>
-    <string name="login_information">Login information</string>
     <string name="star_required">*erforderlich</string>
     <string name="options">Optionen</string>
     <string name="enable">Aktivieren</string>
