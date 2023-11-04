@@ -8,7 +8,7 @@
         <de.davis.passwordmanager.ui.views.ChangePasswordPreference android:icon="@drawable/ic_baseline_password_24"/>
         <SwitchPreference
             android:defaultValue="false"
-            android:key="@string/preference_fingerprint"
+            android:key="@string/preference_biometrics"
             android:title="@string/enable_fingerprint_authentication"
             app:icon="?android:attr/fingerprintAuthDrawable"
             android:widgetLayout="@layout/switch_layout" />

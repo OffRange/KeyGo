@@ -56,7 +56,7 @@ public class BaseSettingsFragment extends PreferenceFragmentCompat implements Pr
     @Override
     public void onCreatePreferences(@Nullable Bundle savedInstanceState, @Nullable String rootKey) {
         setPreferencesFromResource(R.xml.root_preferences, rootKey);
-        Preference fingerprint = findPreference(getString(R.string.preference_fingerprint));
+        Preference fingerprint = findPreference(getString(R.string.preference_biometrics));
         fingerprint.setVisible(Authentication.isAvailable(getContext()));
         fingerprint.setOnPreferenceChangeListener((preference, newValue) -> {
             if(!(boolean)newValue)
