@@ -3,6 +3,8 @@ plugins {
     id("com.google.android.gms.oss-licenses-plugin")
     kotlin("android") // org.jetbrains.kotlin.android
     kotlin("plugin.parcelize")
+    id("com.google.devtools.ksp") version "1.9.20-1.0.14"
+    id("androidx.room") version "2.6.0"
 }
 
 android {
@@ -36,15 +38,6 @@ android {
         versionName = vName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        javaCompileOptions {
-            annotationProcessorOptions {
-                arguments += mapOf(
-                    "room.schemaLocation" to "$projectDir/schemas",
-                    "room.incremental" to "true"
-                )
-            }
-        }
     }
 
     buildTypes {
@@ -121,19 +114,21 @@ dependencies {
 
     implementation("androidx.datastore:datastore:1.0.0")
 
-
-
     "githubImplementation"("com.squareup.retrofit2:retrofit:2.9.0")
     "githubImplementation"("org.kohsuke:github-api:1.314")
 
     implementation("com.opencsv:opencsv:5.8")
 
     implementation("androidx.room:room-runtime:2.6.0")
-    annotationProcessor("androidx.room:room-compiler:2.6.0")
+    ksp("androidx.room:room-compiler:2.6.0")
     implementation("androidx.room:room-rxjava3:2.6.0")
     androidTestImplementation("androidx.room:room-testing:2.6.0")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
 }
