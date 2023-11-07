@@ -12,6 +12,7 @@ import androidx.lifecycle.viewmodel.ViewModelInitializer;
 import java.util.List;
 
 import de.davis.passwordmanager.PasswordManagerApplication;
+import de.davis.passwordmanager.database.KeyGoDatabase;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.ui.viewmodels.repositories.HighlightsRepo;
 
@@ -54,6 +55,6 @@ public class HighlightsViewModel extends ViewModel {
         if(app == null)
             throw new RuntimeException("app is null");
 
-        return new HighlightsViewModel(HighlightsRepo.getInstance(app.getDatabase()), createSavedStateHandle(creationExtras));
+        return new HighlightsViewModel(HighlightsRepo.getInstance(KeyGoDatabase.getInstance()), createSavedStateHandle(creationExtras));
     });
 }

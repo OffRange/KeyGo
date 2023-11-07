@@ -15,6 +15,7 @@ import androidx.lifecycle.viewmodel.ViewModelInitializer;
 import java.util.List;
 
 import de.davis.passwordmanager.PasswordManagerApplication;
+import de.davis.passwordmanager.database.KeyGoDatabase;
 import de.davis.passwordmanager.filter.Filter;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.ui.viewmodels.repositories.DashboardRepo;
@@ -65,6 +66,6 @@ public class DashboardViewModel extends ViewModel {
         if(app == null)
             throw new RuntimeException("app is null");
 
-        return new DashboardViewModel(DashboardRepo.getInstance(app.getDatabase()), createSavedStateHandle(creationExtras));
+        return new DashboardViewModel(DashboardRepo.getInstance(KeyGoDatabase.getInstance()), createSavedStateHandle(creationExtras));
     });
 }

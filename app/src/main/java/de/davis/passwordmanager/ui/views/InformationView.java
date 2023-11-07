@@ -238,6 +238,10 @@ public class InformationView extends MaterialCardView implements CopyView {
         return builder.toString();
     }
 
+    public void setTitle(@StringRes int titleId) {
+        setTitle(getContext().getString(titleId));
+    }
+
     public void setTitle(String title){
         this.title = title;
         String modifiedTitle = title +(printRequired ? "*" : "");

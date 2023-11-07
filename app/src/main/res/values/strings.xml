@@ -3,8 +3,6 @@
 
     <string name="selected_items">%d selected</string>
 
-    <string name="change_master_password">Change master password</string>
-    <string name="master_password_changed">Master password successful changed</string>
     <string name="passphrase">Passphrase</string>
     <string name="password">Password</string>
     <string name="new_password">New password</string>
@@ -37,11 +35,17 @@
     <string name="no_element_selected">No element selected</string>
     <string name="add_element">Add element</string>
 
-    <string name="password_does_not_match">This password does not match</string>
+    <string name="password_incorrect">Incorrect password</string>
+    <string name="password_does_not_match">Password does not match</string>
     <string name="is_not_filled_in">This must be filled in</string>
     <string name="invalid_card_number_length">Card number must have 16 numbers</string>
     <string name="invalid_date">Invalid date</string>
     <string name="invalid_url">Invalid url</string>
+
+    <string name="set_up_main_password">Set up main password</string>
+    <string name="first_steps">First Steps</string>
+    <string name="set_main_password_info">Set a main password</string>
+    <string name="update_main_password_info">Update your main password</string>
 
     <string name="edit">Edit</string>
     <string name="text_continue">Continue</string>
@@ -188,4 +192,5 @@
 
     <string name="wait_text">This might take a little time. Please be patient</string>
     <string name="authenticate_to_import">To load a backup, authentication is required</string>
+    <string name="authenticate_to_proceed">Authenticate to proceed</string>
 </resources>

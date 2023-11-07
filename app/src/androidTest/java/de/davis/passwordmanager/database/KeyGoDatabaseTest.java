@@ -1,5 +1,7 @@
 package de.davis.passwordmanager.database;
 
+import static org.junit.Assert.assertEquals;
+
 import android.content.Context;
 
 import androidx.room.Room;
@@ -11,36 +13,25 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.lang.reflect.Field;
-
-import de.davis.passwordmanager.database.daos.MasterPasswordDao;
 import de.davis.passwordmanager.database.daos.SecureElementDao;
-import de.davis.passwordmanager.security.Cryptography;
-import de.davis.passwordmanager.security.MasterPassword;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.security.element.creditcard.CreditCardDetails;
 import de.davis.passwordmanager.security.element.creditcard.Name;
 import de.davis.passwordmanager.security.element.password.PasswordDetails;
 import de.davis.passwordmanager.utils.GeneratorUtil;
 
-import static org.junit.Assert.*;
-
-import com.google.gson.Gson;
-
 @RunWith(AndroidJUnit4.class)
-public class SecureElementDatabaseTest {
+public class KeyGoDatabaseTest {
 
-    private SecureElementDatabase db;
+    private KeyGoDatabase db;
 
-    private MasterPasswordDao masterPasswordDao;
     private SecureElementDao secureElementDao;
 
     @Before
     public void createDB() {
         Context context = ApplicationProvider.getApplicationContext();
-        db = Room.inMemoryDatabaseBuilder(context, SecureElementDatabase.class).build();
-        masterPasswordDao = db.getMasterPasswordDao();
-        secureElementDao = db.getSecureElementDao();
+        db = Room.inMemoryDatabaseBuilder(context, KeyGoDatabase.class).build();
+        secureElementDao = db.secureElementDao();
     }
 
     @Test
@@ -81,24 +72,6 @@ public class SecureElementDatabaseTest {
         assertEquals(expirationDate, details.getExpirationDate());
         assertEquals(cardNumber, details.getCardNumber());
         assertEquals(cvv, details.getCvv());
-    }
-
-    @Test
-    public void testMasterPasswordOperations(){
-        String password = generateTestPassword();
-
-        masterPasswordDao.getOne().test().assertNoValues().dispose();
-
-        masterPasswordDao.insert(new MasterPassword(Cryptography.bcrypt(password))).test()
-                .assertComplete()
-                .assertNoErrors()
-                .dispose();
-
-        masterPasswordDao.getOne().test()
-                .assertComplete()
-                .assertNoErrors()
-                .assertValue(pwd -> Cryptography.checkBcryptHash(password, pwd.getHash()))
-                .dispose();
     }
 
     private SecureElement writeAndRead(SecureElement element) {

@@ -5,7 +5,7 @@ import static de.davis.passwordmanager.utils.BackgroundUtil.doInBackground;
 import java.util.List;
 
 import de.davis.passwordmanager.dashboard.DashboardAdapter;
-import de.davis.passwordmanager.database.SecureElementDatabase;
+import de.davis.passwordmanager.database.KeyGoDatabase;
 
 public class SecureElementManager {
 
@@ -39,11 +39,11 @@ public class SecureElementManager {
     }
 
     public <E extends SecureElement> void editElement(E editedElement){
-        doInBackground(() -> SecureElementDatabase.getInstance().getSecureElementDao().update(editedElement));
+        doInBackground(() -> KeyGoDatabase.getInstance().secureElementDao().update(editedElement));
     }
 
     public <E extends SecureElement> void createElement(E element){
-        doInBackground(() -> SecureElementDatabase.getInstance().getSecureElementDao().insert(element));
+        doInBackground(() -> KeyGoDatabase.getInstance().secureElementDao().insert(element));
 
         triggerDataChanged();
     }
@@ -56,13 +56,13 @@ public class SecureElementManager {
     @SuppressWarnings("unchecked")
     public <E extends SecureElement> void deleteSelected(){
         List<E> selectedElements = (List<E>) adapter.getSelectedElements();
-        doInBackground(() -> selectedElements.forEach(element -> SecureElementDatabase.getInstance().getSecureElementDao().delete(element)));
+        doInBackground(() -> selectedElements.forEach(element -> KeyGoDatabase.getInstance().secureElementDao().delete(element)));
 
         adapter.removeSelectedElements();
     }
 
     public <E extends SecureElement> void delete(E element){
-        doInBackground(() -> SecureElementDatabase.getInstance().getSecureElementDao().delete(element));
+        doInBackground(() -> KeyGoDatabase.getInstance().secureElementDao().delete(element));
 
         triggerDataChanged();
     }

@@ -15,7 +15,8 @@ import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.backup.DataBackup;
 import de.davis.passwordmanager.backup.csv.CsvBackup;
 import de.davis.passwordmanager.backup.keygo.KeyGoBackup;
-import de.davis.passwordmanager.ui.login.LoginActivity;
+import de.davis.passwordmanager.ui.auth.AuthenticationActivityKt;
+import de.davis.passwordmanager.ui.auth.AuthenticationRequest;
 
 public class BackupFragment extends PreferenceFragmentCompat {
 
@@ -126,6 +127,11 @@ public class BackupFragment extends PreferenceFragmentCompat {
         Bundle bundle = new Bundle();
         bundle.putInt("type", type);
         bundle.putString("format_type", format);
-        auth.launch(LoginActivity.getIntentForAuthentication(requireContext()).putExtra("data", bundle));
+        auth.launch(AuthenticationActivityKt.createRequestAuthenticationIntent(requireContext(),
+                new AuthenticationRequest.Builder()
+                        .withMessage(R.string.authenticate_to_proceed)
+                        .withAdditionalExtras(bundle)
+                        .build()
+        ));
     }
 }

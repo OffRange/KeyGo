@@ -5,10 +5,10 @@
     tools:context=".ui.settings.SettingsFragment">
 
     <PreferenceCategory app:title="@string/security">
-        <de.davis.passwordmanager.ui.views.ChangePasswordPreference android:icon="@drawable/ic_baseline_password_24"/>
+        <de.davis.passwordmanager.ui.views.ChangePasswordPreference android:icon="@drawable/ic_baseline_password_24" />
         <SwitchPreference
             android:defaultValue="false"
-            android:key="@string/preference_fingerprint"
+            android:key="@string/preference_biometrics"
             android:title="@string/enable_fingerprint_authentication"
             app:icon="?android:attr/fingerprintAuthDrawable"
             android:widgetLayout="@layout/switch_layout" />
@@ -20,13 +20,13 @@
             app:min="0"
             app:defaultValue="5"
             android:defaultValue="2"
-            app:updatesContinuously="true"/>
+            app:updatesContinuously="true" />
 
         <Preference
             app:title="@string/backup"
             android:summary="@string/backup_summary"
             android:icon="@drawable/baseline_settings_backup_restore_24"
-            app:fragment="de.davis.passwordmanager.ui.backup.BackupFragment"/>
+            app:fragment="de.davis.passwordmanager.ui.backup.BackupFragment" />
 
     </PreferenceCategory>
 
@@ -36,7 +36,7 @@
             app:title="@string/autofill_service"
             app:icon="@drawable/ic_baseline_edit_24"
             android:widgetLayout="@layout/switch_layout"
-            android:summary="@string/instruction_activate_autofill"/>
+            android:summary="@string/instruction_activate_autofill" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/about">
@@ -44,24 +44,24 @@
         <Preference
             app:title="@string/developer"
             android:summary="@string/developer_name"
-            android:icon="@drawable/ic_baseline_person_24"/>
+            android:icon="@drawable/ic_baseline_person_24" />
 
         <Preference
             app:title="@string/third_party_dependencies"
             android:key="@string/preference_license"
-            android:icon="@drawable/ic_baseline_code_24"/>
+            android:icon="@drawable/ic_baseline_code_24" />
 
         <Preference
             android:key="@string/report"
             android:title="@string/report"
             android:summary="@string/report_summary"
-            android:icon="@drawable/baseline_bug_report_24"/>
+            android:icon="@drawable/baseline_bug_report_24" />
 
         <de.davis.passwordmanager.ui.views.VersionPreference
             android:key="@string/version"
             android:title="@string/version"
             android:icon="@drawable/ic_baseline_build_24"
-            android:fragment="de.davis.passwordmanager.ui.settings.VersionFragment"/>
+            android:fragment="de.davis.passwordmanager.ui.settings.VersionFragment" />
 
     </PreferenceCategory>
 </PreferenceScreen>

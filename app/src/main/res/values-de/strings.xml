@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="change_master_password">Master Passwort ändern</string>
-    <string name="master_password_changed">Master Passwort erfolgreich geändert</string>
     <string name="passphrase">Passphrase</string>
     <string name="password">Passwort</string>
     <string name="new_password">Neues Passwort</string>
@@ -22,11 +20,18 @@
     <string name="use_password">Passwort benutzen</string>
     <string name="no_elements_to_show">Keine Elemente vorhanden</string>
     <string name="add_element">Element hinzufügen</string>
-    <string name="password_does_not_match">Dieses Passwort ist inkorrekt</string>
+    <string name="password_incorrect">Passwort ist inkorrekt</string>
+    <string name="password_does_not_match">Passwort stimmt nicht überein</string>
     <string name="is_not_filled_in">Dieses Feld muss ausgefüllt sein</string>
     <string name="invalid_card_number_length">Kreditkartennummer muss 16 Zahlen beinhalten</string>
     <string name="invalid_date">Ungültiges Datum</string>
     <string name="invalid_url">Ungültige URL</string>
+
+    <string name="set_up_main_password">Hauptpasswort einrichten</string>
+    <string name="first_steps">Erste Schritte</string>
+    <string name="set_main_password_info">Lege ein Hauptpasswort fest</string>
+    <string name="update_main_password_info">Aktualisierte dein Hauptpasswort</string>
+
     <string name="edit">Bearbeiten</string>
     <string name="text_continue">Weiter</string>
     <string name="dashboard">Dashboard</string>
@@ -145,4 +150,5 @@
 
     <string name="wait_text">Das könnte ein wenig Zeit in Anspruch nehmen. Bitte haben Sie Geduld</string>
     <string name="authenticate_to_import">Um ein Backup laden zu können, ist eine Authentifizierung erforderlich</string>
+    <string name="authenticate_to_proceed">Authentifizieren um fortzufahren</string>
 </resources>

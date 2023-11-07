@@ -1,7 +1,9 @@
 package de.davis.passwordmanager;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Application;
+import android.content.Context;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -13,8 +15,9 @@ import androidx.annotation.Nullable;
 import com.amulyakhare.textdrawable.BuildConfig;
 import com.google.android.material.color.DynamicColors;
 
-import de.davis.passwordmanager.database.SecureElementDatabase;
-import de.davis.passwordmanager.ui.login.LoginActivity;
+import de.davis.passwordmanager.ui.auth.AuthenticationActivity;
+import de.davis.passwordmanager.ui.auth.AuthenticationActivityKt;
+import de.davis.passwordmanager.ui.auth.AuthenticationRequest;
 import de.davis.passwordmanager.utils.PreferenceUtil;
 import de.davis.passwordmanager.utils.TimeoutUtil;
 
@@ -22,10 +25,22 @@ public class PasswordManagerApplication extends Application {
 
     private boolean shouldAuthenticate = true;
 
+    @SuppressLint("StaticFieldLeak")
+    private static Context context;
+
+    @Override
+    protected void attachBaseContext(Context base) {
+        super.attachBaseContext(base);
+        context = base;
+    }
+
+    public static Context getAppContext() {
+        return context;
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
-        SecureElementDatabase.createAndGet(this);
 
         DynamicColors.applyToActivitiesIfAvailable(this);
 
@@ -59,10 +74,13 @@ public class PasswordManagerApplication extends Application {
                 if(lastPaused != activity)
                     return;
 
-                if(!shouldAuthenticate) {
+                if (!shouldAuthenticate) {
                     shouldAuthenticate = true;
                     return;
                 }
+
+                if(activity instanceof AuthenticationActivity)
+                    return;
 
                 timeoutUtil.initiateDelay();
                 long time = PreferenceUtil.getTimeForNewAuthentication(activity);
@@ -70,7 +88,7 @@ public class PasswordManagerApplication extends Application {
                     return;
 
                 if(time == Long.MAX_VALUE || timeoutUtil.delayMet(time * 60000)) {
-                    activity.startActivity(LoginActivity.getIntentForAuthentication(activity, activity.getIntent()));
+                    AuthenticationActivityKt.requestAuthentication(activity, new AuthenticationRequest.Builder().withIntent(activity.getIntent()).build());
                     activity.finish();
                 }
             }
@@ -93,9 +111,5 @@ public class PasswordManagerApplication extends Application {
 
     public void disableReAuthentication() {
         this.shouldAuthenticate = false;
-    }
-
-    public SecureElementDatabase getDatabase(){
-        return SecureElementDatabase.createAndGet(this);
     }
 }

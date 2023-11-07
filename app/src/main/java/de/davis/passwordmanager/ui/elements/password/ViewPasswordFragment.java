@@ -15,7 +15,7 @@ import androidx.appcompat.content.res.AppCompatResources;
 import com.google.android.material.textfield.TextInputLayout;
 
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.database.SecureElementDatabase;
+import de.davis.passwordmanager.database.KeyGoDatabase;
 import de.davis.passwordmanager.databinding.FragmentViewPasswordBinding;
 import de.davis.passwordmanager.listeners.OnInformationChangedListener;
 import de.davis.passwordmanager.manager.ActivityResultManager;
@@ -72,7 +72,7 @@ public class ViewPasswordFragment extends ViewSecureElementFragment {
         setStrengthValues(details);
         manageOrigin(details);
 
-        doInBackground(() -> SecureElementDatabase.getInstance().getSecureElementDao().update(password));
+        doInBackground(() -> KeyGoDatabase.getInstance().secureElementDao().update(password));
     }
 
     @Override
