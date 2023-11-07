@@ -25,7 +25,7 @@ import java.util.List;
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.backup.Result;
 import de.davis.passwordmanager.backup.SecureDataBackup;
-import de.davis.passwordmanager.database.SecureElementDatabase;
+import de.davis.passwordmanager.database.KeyGoDatabase;
 import de.davis.passwordmanager.gson.strategies.ExcludeAnnotationStrategy;
 import de.davis.passwordmanager.security.Cryptography;
 import de.davis.passwordmanager.security.element.ElementDetail;
@@ -87,8 +87,7 @@ public class KeyGoBackup extends SecureDataBackup {
             return new Result.Error(getContext().getString(R.string.invalid_file));
         }
 
-        List<SecureElement> elements = SecureElementDatabase.getInstance()
-                .getSecureElementDao()
+        List<SecureElement> elements = KeyGoDatabase.getInstance().secureElementDao()
                 .getAllOnce()
                 .blockingGet();
 
@@ -117,8 +116,7 @@ public class KeyGoBackup extends SecureDataBackup {
     @NonNull
     @Override
     protected Result runExport(OutputStream outputStream) throws Exception {
-        List<SecureElement> elements = SecureElementDatabase.getInstance()
-                .getSecureElementDao()
+        List<SecureElement> elements = KeyGoDatabase.getInstance().secureElementDao()
                 .getAllOnce()
                 .blockingGet();
 

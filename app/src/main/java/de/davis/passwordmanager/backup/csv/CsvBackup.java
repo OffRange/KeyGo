@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.backup.DataBackup;
 import de.davis.passwordmanager.backup.Result;
-import de.davis.passwordmanager.database.SecureElementDatabase;
+import de.davis.passwordmanager.database.KeyGoDatabase;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.security.element.SecureElementManager;
 import de.davis.passwordmanager.security.element.password.PasswordDetails;
@@ -43,8 +43,7 @@ public class CsvBackup extends DataBackup {
 
         String[] line;
 
-        List<SecureElement> elements = SecureElementDatabase.getInstance()
-                .getSecureElementDao()
+        List<SecureElement> elements = KeyGoDatabase.getInstance().secureElementDao()
                 .getAllByType(SecureElement.TYPE_PASSWORD)
                 .blockingGet();
 
@@ -83,8 +82,7 @@ public class CsvBackup extends DataBackup {
         CSVWriter csvWriter = (CSVWriter) new CSVWriterBuilder(new OutputStreamWriter(outputStream))
                 .build();
 
-        List<SecureElement> elements = SecureElementDatabase.getInstance()
-                .getSecureElementDao()
+        List<SecureElement> elements = KeyGoDatabase.getInstance().secureElementDao()
                 .getAllByType(SecureElement.TYPE_PASSWORD)
                 .blockingGet();
 

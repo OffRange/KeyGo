@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.database.SecureElementDatabase;
+import de.davis.passwordmanager.database.KeyGoDatabase;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.security.element.password.PasswordDetails;
 import de.davis.passwordmanager.ui.auth.AuthenticationActivityKt;
@@ -192,14 +192,14 @@ public class Response {
     }
 
     private int count(){
-        return SecureElementDatabase.createAndGet(context).getSecureElementDao().count()
+        return KeyGoDatabase.getInstance().secureElementDao().count()
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.newThread())
                 .blockingGet();
     }
 
     private List<SecureElement> fetchData(){
-        return SecureElementDatabase.createAndGet(context).getSecureElementDao()
+        return KeyGoDatabase.getInstance().secureElementDao()
                 .getAllByType(SecureElement.TYPE_PASSWORD)
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.newThread())

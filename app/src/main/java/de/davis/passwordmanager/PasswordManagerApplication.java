@@ -15,8 +15,9 @@ import androidx.annotation.Nullable;
 import com.amulyakhare.textdrawable.BuildConfig;
 import com.google.android.material.color.DynamicColors;
 
-import de.davis.passwordmanager.database.SecureElementDatabase;
-import de.davis.passwordmanager.ui.login.LoginActivity;
+import de.davis.passwordmanager.ui.auth.AuthenticationActivity;
+import de.davis.passwordmanager.ui.auth.AuthenticationActivityKt;
+import de.davis.passwordmanager.ui.auth.AuthenticationRequest;
 import de.davis.passwordmanager.utils.PreferenceUtil;
 import de.davis.passwordmanager.utils.TimeoutUtil;
 
@@ -40,7 +41,6 @@ public class PasswordManagerApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        SecureElementDatabase.createAndGet(this);
 
         DynamicColors.applyToActivitiesIfAvailable(this);
 
@@ -111,9 +111,5 @@ public class PasswordManagerApplication extends Application {
 
     public void disableReAuthentication() {
         this.shouldAuthenticate = false;
-    }
-
-    public SecureElementDatabase getDatabase(){
-        return SecureElementDatabase.createAndGet(this);
     }
 }

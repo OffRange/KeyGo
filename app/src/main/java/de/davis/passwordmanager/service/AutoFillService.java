@@ -18,7 +18,7 @@ import androidx.annotation.RequiresApi;
 
 import java.util.List;
 
-import de.davis.passwordmanager.database.SecureElementDatabase;
+import de.davis.passwordmanager.database.KeyGoDatabase;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.security.element.password.PasswordDetails;
 
@@ -104,8 +104,8 @@ public class AutoFillService extends AutofillService {
             return;
         }
 
-        doInBackground(() -> SecureElementDatabase.createAndGet(this)
-                .getSecureElementDao()
+        doInBackground(() -> KeyGoDatabase.getInstance()
+                .secureElementDao()
                 .insert(new SecureElement(
                         new PasswordDetails(finalPassword, finalWebDomain, finalUsername), finalWebDomainShort)));
         callback.onSuccess();
