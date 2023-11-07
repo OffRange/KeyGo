@@ -30,6 +30,7 @@ public class Cryptography {
     }
 
     public static boolean checkBcryptHash(String plaintext, byte[] hash){
+        if (hash == null || hash.length == 0) return false;
         return BCrypt.verifyer(VERSION_2A, LongPasswordStrategies.hashSha512(VERSION_2A)).verify(plaintext.getBytes(), hash).verified;
     }
 

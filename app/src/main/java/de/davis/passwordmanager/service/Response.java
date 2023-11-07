@@ -34,7 +34,8 @@ import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.database.SecureElementDatabase;
 import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.security.element.password.PasswordDetails;
-import de.davis.passwordmanager.ui.login.LoginActivity;
+import de.davis.passwordmanager.ui.auth.AuthenticationActivityKt;
+import de.davis.passwordmanager.ui.auth.AuthenticationRequest;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 
 @RequiresApi(api = Build.VERSION_CODES.O)
@@ -206,10 +207,12 @@ public class Response {
     }
 
     private IntentSender getIntentSender(){
+        Bundle bundle = new Bundle();
+        bundle.putParcelable(EXTRA_FILL_REQUEST, request);
         return PendingIntent.getActivity(
                 context,
                 1001,
-                LoginActivity.getIntentForAuthentication(context).putExtra(EXTRA_FILL_REQUEST, request),
+                AuthenticationActivityKt.createRequestAuthenticationIntent(context, new AuthenticationRequest.Builder().withAdditionalExtras(bundle).build()),
                 ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) ? PendingIntent.FLAG_MUTABLE : 0) | PendingIntent.FLAG_CANCEL_CURRENT
         ).getIntentSender();
     }

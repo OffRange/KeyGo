@@ -28,7 +28,7 @@ import com.google.android.gms.oss.licenses.OssLicensesMenuActivity;
 import java.util.Objects;
 
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.security.Authentication;
+import de.davis.passwordmanager.security.BiometricAuthentication;
 import de.davis.passwordmanager.ui.LinearLayoutManager;
 import de.davis.passwordmanager.version.CurrentVersion;
 
@@ -57,12 +57,12 @@ public class BaseSettingsFragment extends PreferenceFragmentCompat implements Pr
     public void onCreatePreferences(@Nullable Bundle savedInstanceState, @Nullable String rootKey) {
         setPreferencesFromResource(R.xml.root_preferences, rootKey);
         Preference fingerprint = findPreference(getString(R.string.preference_biometrics));
-        fingerprint.setVisible(Authentication.isAvailable(getContext()));
+        fingerprint.setVisible(BiometricAuthentication.isAvailable(getContext()));
         fingerprint.setOnPreferenceChangeListener((preference, newValue) -> {
             if(!(boolean)newValue)
                 return true;
 
-            Authentication.getInstance().auth(getString(R.string.cancel), this, new BiometricPrompt.AuthenticationCallback() {
+            BiometricAuthentication.auth(this, new BiometricPrompt.AuthenticationCallback() {
                 @Override
                 public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
                     super.onAuthenticationError(errorCode, errString);
@@ -75,7 +75,7 @@ public class BaseSettingsFragment extends PreferenceFragmentCompat implements Pr
                 public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
                     super.onAuthenticationSucceeded(result);
                 }
-            });
+            }, getString(R.string.cancel));
 
             return true;
         });

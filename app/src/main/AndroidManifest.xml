@@ -48,8 +48,9 @@
             android:theme="@style/AppTheme.NoActionBar" />
         <activity android:name=".ui.elements.creditcard.CreateCreditCardActivity" />
         <activity
-            android:name=".ui.login.LoginActivity"
-            android:exported="true">
+            android:name=".ui.auth.AuthenticationActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

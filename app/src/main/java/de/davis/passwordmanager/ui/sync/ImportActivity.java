@@ -12,7 +12,8 @@ import de.davis.passwordmanager.backup.DataBackup;
 import de.davis.passwordmanager.backup.keygo.KeyGoBackup;
 import de.davis.passwordmanager.databinding.ActivityImportBinding;
 import de.davis.passwordmanager.ui.MainActivity;
-import de.davis.passwordmanager.ui.login.LoginActivity;
+import de.davis.passwordmanager.ui.auth.AuthenticationActivityKt;
+import de.davis.passwordmanager.ui.auth.AuthenticationRequest;
 
 public class ImportActivity extends AppCompatActivity {
 
@@ -41,7 +42,8 @@ public class ImportActivity extends AppCompatActivity {
             backup.execute(DataBackup.TYPE_IMPORT, fileUri, r -> startActivity(new Intent(this, MainActivity.class)));
         });
 
-        auth.launch(LoginActivity.getIntentForAuthentication(this));
-        binding.button.setOnClickListener(v -> auth.launch(LoginActivity.getIntentForAuthentication(this)));
+        Intent authIntent = AuthenticationActivityKt.createRequestAuthenticationIntent(this, AuthenticationRequest.JUST_AUTHENTICATE);
+        auth.launch(authIntent);
+        binding.button.setOnClickListener(v -> auth.launch(authIntent));
     }
 }
