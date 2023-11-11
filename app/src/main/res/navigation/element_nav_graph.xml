@@ -11,7 +11,7 @@
 
         <argument
             android:name="element"
-            app:argType="de.davis.passwordmanager.security.element.SecureElement"/>
+            app:argType="de.davis.passwordmanager.database.dto.SecureElement" />
     </fragment>
 
     <fragment
@@ -21,9 +21,10 @@
 
         <argument
             android:name="element"
-            app:argType="de.davis.passwordmanager.security.element.SecureElement"/>
+            app:argType="de.davis.passwordmanager.database.dto.SecureElement" />
     </fragment>
-    <fragment android:id="@+id/noElementFragment"
+    <fragment
+        android:id="@+id/noElementFragment"
         android:name="de.davis.passwordmanager.ui.elements.NoElementFragment">
         <action
             android:id="@+id/action_placeholder_to_viewPasswordFragment"

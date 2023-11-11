@@ -15,14 +15,13 @@ import de.davis.passwordmanager.backup.Result
 import de.davis.passwordmanager.backup.SecureDataBackup
 import de.davis.passwordmanager.backup.TYPE_EXPORT
 import de.davis.passwordmanager.backup.TYPE_IMPORT
-import de.davis.passwordmanager.database.KeyGoDatabase.Companion.instance
+import de.davis.passwordmanager.database.ElementType
+import de.davis.passwordmanager.database.SecureElementManager
+import de.davis.passwordmanager.database.dto.SecureElement
+import de.davis.passwordmanager.database.entities.details.ElementDetail
+import de.davis.passwordmanager.database.entities.details.password.PasswordDetails
 import de.davis.passwordmanager.gson.strategies.ExcludeAnnotationStrategy
 import de.davis.passwordmanager.security.Cryptography
-import de.davis.passwordmanager.security.element.ElementDetail
-import de.davis.passwordmanager.security.element.SecureElement
-import de.davis.passwordmanager.security.element.SecureElementDetail
-import de.davis.passwordmanager.security.element.SecureElementManager
-import de.davis.passwordmanager.security.element.password.PasswordDetails
 import org.apache.commons.io.IOUtils
 import java.io.InputStream
 import java.io.OutputStream
@@ -40,7 +39,7 @@ class KeyGoBackup(context: Context) : SecureDataBackup(context) {
         ): ElementDetail {
             json.asJsonObject.run {
                 val type = this["type"].asInt
-                if (type == SecureElement.TYPE_PASSWORD) {
+                if (type == ElementType.PASSWORD.typeId) {
                     val passwordArray = JsonArray().apply {
                         for (b in Cryptography.encryptAES(this@run["password"].asString.toByteArray())) {
                             add(b)
@@ -52,7 +51,7 @@ class KeyGoBackup(context: Context) : SecureDataBackup(context) {
 
                 return context.deserialize(
                     json,
-                    SecureElementDetail.getFor(type).elementDetailClass
+                    ElementType.getTypeByTypeId(type).elementDetailClass
                 )
             }
         }
@@ -68,7 +67,7 @@ class KeyGoBackup(context: Context) : SecureDataBackup(context) {
                     "password",
                     src.password
                 )
-                addProperty("type", src.type)
+                addProperty("type", src.elementType.typeId)
             }
 
             return jsonObject
@@ -96,9 +95,7 @@ class KeyGoBackup(context: Context) : SecureDataBackup(context) {
             return Result.Error(context.getString(R.string.invalid_file))
         }
 
-        val elements = instance.secureElementDao()
-            .allOnce
-            .blockingGet()
+        val elements: List<SecureElement> = SecureElementManager.getSecureElements()
 
         var existed = 0
         val length = list.size
@@ -110,7 +107,7 @@ class KeyGoBackup(context: Context) : SecureDataBackup(context) {
                 notifyUpdate(i + 1, length)
                 continue
             }
-            SecureElementManager.getInstance().createElement(element)
+            SecureElementManager.insertElement(element)
             notifyUpdate(i + 1, length)
         }
         return if (existed != 0) Result.Duplicate(existed) else Result.Success(TYPE_IMPORT)
@@ -118,9 +115,7 @@ class KeyGoBackup(context: Context) : SecureDataBackup(context) {
 
     @Throws(Exception::class)
     override suspend fun runExport(outputStream: OutputStream): Result {
-        val elements = instance.secureElementDao()
-            .allOnce
-            .blockingGet()
+        val elements: List<SecureElement> = SecureElementManager.getSecureElements()
 
         val json = gson.toJson(elements)
 

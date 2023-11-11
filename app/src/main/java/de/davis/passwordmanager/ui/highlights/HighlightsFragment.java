@@ -15,10 +15,12 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 
+import java.util.List;
+
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.dashboard.viewholders.SecureElementViewHolder;
+import de.davis.passwordmanager.database.dto.SecureElement;
 import de.davis.passwordmanager.databinding.FragmentHighlightsBinding;
-import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.ui.viewmodels.HighlightsViewModel;
 
 public class HighlightsFragment extends Fragment {
@@ -56,25 +58,25 @@ public class HighlightsFragment extends Fragment {
 
         binding.materialButtonToggleGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> viewModel.setState(group.getCheckedButtonId() == binding.lastAdded.getId()));
 
-        viewModel.getFavorites().observe(getViewLifecycleOwner(), secureElements -> {
-            binding.noFavorites.setVisibility(secureElements.size() > 0 ? View.GONE : View.VISIBLE);
-            binding.favoriteContainer.removeViews(1, binding.favoriteContainer.getChildCount()-1);
-            secureElements.forEach(secureElement -> {
-                View fav_view = getLayoutInflater().inflate(R.layout.fav_layout, null, false);
-                ((TextView)fav_view.findViewById(R.id.title)).setText(secureElement.getTitle());
-                ((ImageView)fav_view.findViewById(R.id.image)).setImageDrawable(secureElement.getIcon(requireContext()));
 
-                fav_view.setOnClickListener(v -> launchElement(secureElement));
+        List<SecureElement> favorites = viewModel.getFavorites();
+        binding.noFavorites.setVisibility(favorites.size() > 0 ? View.GONE : View.VISIBLE);
+        binding.favoriteContainer.removeViews(1, binding.favoriteContainer.getChildCount()-1);
+        favorites.forEach(secureElement -> {
+            View fav_view = getLayoutInflater().inflate(R.layout.fav_layout, null, false);
+            ((TextView)fav_view.findViewById(R.id.title)).setText(secureElement.getTitle());
+            ((ImageView)fav_view.findViewById(R.id.image)).setImageDrawable(secureElement.getIcon(requireContext()));
 
-                ((ViewGroup)view.findViewById(R.id.favorite_container)).addView(fav_view);
-            });
+            fav_view.setOnClickListener(v -> launchElement(secureElement));
+
+            ((ViewGroup)view.findViewById(R.id.favorite_container)).addView(fav_view);
         });
     }
 
     private void launchElement(SecureElement element){
         NavController navController = Navigation.findNavController(requireActivity(), R.id.nav_host_fragment);
         Bundle bundle = new Bundle();
-        bundle.putSerializable("element", element);
+        bundle.putParcelable("element", element);
         navController.navigate(R.id.dashboardFragment, bundle);
     }
 }

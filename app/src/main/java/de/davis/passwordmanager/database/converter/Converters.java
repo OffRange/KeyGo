@@ -7,9 +7,9 @@ import com.google.gson.GsonBuilder;
 
 import java.util.Date;
 
+import de.davis.passwordmanager.database.entities.details.ElementDetail;
 import de.davis.passwordmanager.gson.ElementDetailTypeAdapter;
 import de.davis.passwordmanager.security.Cryptography;
-import de.davis.passwordmanager.security.element.ElementDetail;
 
 public class Converters {
 

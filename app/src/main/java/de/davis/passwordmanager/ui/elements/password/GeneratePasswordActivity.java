@@ -25,8 +25,8 @@ import java.util.concurrent.Executors;
 
 import de.davis.passwordmanager.Keys;
 import de.davis.passwordmanager.R;
+import de.davis.passwordmanager.database.entities.details.password.Strength;
 import de.davis.passwordmanager.databinding.ActivityGeneratePasswordBinding;
-import de.davis.passwordmanager.security.element.password.Strength;
 import de.davis.passwordmanager.utils.AssetsUtil;
 import de.davis.passwordmanager.utils.GeneratorUtil;
 import de.davis.passwordmanager.utils.TimeoutUtil;

@@ -3,9 +3,9 @@ package de.davis.passwordmanager.listeners;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import de.davis.passwordmanager.security.element.ElementDetail;
-import de.davis.passwordmanager.security.element.SecureElement;
-import de.davis.passwordmanager.security.element.SecureElementManager;
+import de.davis.passwordmanager.database.SecureElementManager;
+import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.entities.details.ElementDetail;
 import de.davis.passwordmanager.ui.views.InformationView;
 
 public class OnInformationChangedListener<E extends SecureElement> implements InformationView.OnInformationChangedListener {
@@ -24,7 +24,7 @@ public class OnInformationChangedListener<E extends SecureElement> implements In
         if(detail != null)
             element.setDetail(detail);
 
-        SecureElementManager.getInstance().editElement(element);
+        SecureElementManager.updateElement(element);
     }
 
     public interface ApplyChangeToElementHelper<E> {

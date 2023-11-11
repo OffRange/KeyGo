@@ -28,7 +28,7 @@ import de.davis.passwordmanager.dashboard.selection.SecureElementDetailsLookup;
 import de.davis.passwordmanager.dashboard.viewholders.BasicViewHolder;
 import de.davis.passwordmanager.dashboard.viewholders.HeaderViewHolder;
 import de.davis.passwordmanager.dashboard.viewholders.SecureElementViewHolder;
-import de.davis.passwordmanager.security.element.SecureElement;
+import de.davis.passwordmanager.database.dto.SecureElement;
 
 public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
 
@@ -284,7 +284,7 @@ public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
         update(elements);
     }
 
-    public void update(List<? extends SecureElement> overrideElements){
+    public void update(List<SecureElement> overrideElements){
         List<Item> oldEntries = getEntries();
 
         items.clear();

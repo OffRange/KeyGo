@@ -6,9 +6,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.security.element.SecureElement;
-import de.davis.passwordmanager.security.element.password.PasswordDetails;
-import de.davis.passwordmanager.security.element.password.Strength;
+import de.davis.passwordmanager.database.ElementType;
+import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.entities.details.password.PasswordDetails;
+import de.davis.passwordmanager.database.entities.details.password.Strength;
 
 public class Filter {
 
@@ -72,16 +73,16 @@ public class Filter {
         List<Integer> typeIds = type.getCheckedChipIds();
         List<Integer> strengthIds = strength.getCheckedChipIds();
         if(!typeIds.contains(ID_CREDIT_CARD))
-            toFilter.removeIf(element -> element.getType() == SecureElement.TYPE_CREDIT_CARD);
+            toFilter.removeIf(element -> element.getElementType() == ElementType.CREDIT_CARD);
 
 
         if(!typeIds.contains(ID_PASSWORD)) {
-            toFilter.removeIf(element -> element.getType() == SecureElement.TYPE_PASSWORD);
+            toFilter.removeIf(element -> element.getElementType() == ElementType.PASSWORD);
             return toFilter;
         }
 
         toFilter.removeIf(element -> {
-            if(element.getType() != SecureElement.TYPE_PASSWORD)
+            if(element.getElementType() != ElementType.PASSWORD)
                 return false;
 
             return !strengthIds.contains(ID_VERY_STRONG) && ((PasswordDetails)element.getDetail()).getStrength().type() == Strength.VERY_STRONG

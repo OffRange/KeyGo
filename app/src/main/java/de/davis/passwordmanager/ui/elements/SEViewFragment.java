@@ -9,7 +9,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-import de.davis.passwordmanager.security.element.SecureElement;
+import de.davis.passwordmanager.database.dto.SecureElement;
 
 public abstract class SEViewFragment extends Fragment implements SEBaseUi {
 

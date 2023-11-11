@@ -8,7 +8,7 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import de.davis.passwordmanager.security.element.SecureElement;
+import de.davis.passwordmanager.database.dto.SecureElement;
 
 public interface SEBaseUi {
 
@@ -17,7 +17,7 @@ public interface SEBaseUi {
             if(bundle == null || !bundle.containsKey(key))
                 return null;
 
-            Object object = bundle.getSerializable(key);
+            Object object = bundle.getParcelable(key);
             SecureElement element = null;
             try {
                 element = (SecureElement) object;

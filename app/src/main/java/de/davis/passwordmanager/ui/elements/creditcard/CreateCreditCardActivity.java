@@ -24,14 +24,15 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import de.davis.passwordmanager.R;
+import de.davis.passwordmanager.database.ElementType;
+import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.entities.details.creditcard.CreditCardDetails;
+import de.davis.passwordmanager.database.entities.details.creditcard.Name;
 import de.davis.passwordmanager.databinding.ActivityCreateCreditcardBinding;
 import de.davis.passwordmanager.listeners.OnCreditCardEndIconClickListener;
 import de.davis.passwordmanager.listeners.text.CreditCardNumberTextWatcher;
 import de.davis.passwordmanager.listeners.text.ExpiryDateTextWatcher;
 import de.davis.passwordmanager.nfc.NfcManager;
-import de.davis.passwordmanager.security.element.SecureElement;
-import de.davis.passwordmanager.security.element.creditcard.CreditCardDetails;
-import de.davis.passwordmanager.security.element.creditcard.Name;
 import de.davis.passwordmanager.text.method.CreditCardNumberTransformationMethod;
 import de.davis.passwordmanager.ui.elements.CreateSecureElementActivity;
 import de.davis.passwordmanager.utils.CreditCardUtil;
@@ -200,7 +201,7 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
 
         CreditCardDetails details = new CreditCardDetails(name, expiryDate, creditCardNumber, cvv);
         SecureElement card = getElement() == null ?
-                SecureElement.createEmpty() :
+                new SecureElement(title, details) :
                 getElement();
         card.setTitle(title);
         card.setDetail(details);
@@ -209,8 +210,8 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
     }
 
     @Override
-    public int getSecureElementType() {
-        return SecureElement.TYPE_CREDIT_CARD;
+    public ElementType getSecureElementType() {
+        return ElementType.CREDIT_CARD;
     }
 
     private void insertCard(EmvCard card){

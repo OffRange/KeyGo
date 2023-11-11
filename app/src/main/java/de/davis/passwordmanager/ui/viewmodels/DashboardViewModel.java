@@ -3,9 +3,8 @@ package de.davis.passwordmanager.ui.viewmodels;
 import static androidx.lifecycle.SavedStateHandleSupport.createSavedStateHandle;
 import static androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY;
 
-import android.text.TextUtils;
-
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.SavedStateHandle;
 import androidx.lifecycle.Transformations;
@@ -15,16 +14,15 @@ import androidx.lifecycle.viewmodel.ViewModelInitializer;
 import java.util.List;
 
 import de.davis.passwordmanager.PasswordManagerApplication;
-import de.davis.passwordmanager.database.KeyGoDatabase;
+import de.davis.passwordmanager.database.dto.SecureElement;
 import de.davis.passwordmanager.filter.Filter;
-import de.davis.passwordmanager.security.element.SecureElement;
 import de.davis.passwordmanager.ui.viewmodels.repositories.DashboardRepo;
 
 public class DashboardViewModel extends ViewModel {
 
     private static final String QUERY = "query";
 
-    private final LiveData<List<SecureElement>> searchResults;
+    private final MediatorLiveData<List<SecureElement>> searchResults = new MediatorLiveData<>();
     private final SavedStateHandle savedStateHandle;
 
     private final MutableLiveData<List<SecureElement>> elements;
@@ -33,11 +31,8 @@ public class DashboardViewModel extends ViewModel {
     public DashboardViewModel(DashboardRepo dashboardRepo, SavedStateHandle savedStateHandle) {
         this.savedStateHandle = savedStateHandle;
 
-        this.searchResults = Transformations.switchMap(savedStateHandle.getLiveData(QUERY, ""), input -> {
-            if(TextUtils.isEmpty(input))
-                return dashboardRepo.getElements();
-
-            return dashboardRepo.search("%"+ input +"%");
+        searchResults.addSource(savedStateHandle.getLiveData(QUERY, ""), query -> {
+            searchResults.postValue(dashboardRepo.search(query));
         });
 
         elements = (MutableLiveData<List<SecureElement>>) Transformations.map(dashboardRepo.getElements(), Filter.DEFAULT::filter);
@@ -66,6 +61,6 @@ public class DashboardViewModel extends ViewModel {
         if(app == null)
             throw new RuntimeException("app is null");
 
-        return new DashboardViewModel(DashboardRepo.getInstance(KeyGoDatabase.getInstance()), createSavedStateHandle(creationExtras));
+        return new DashboardViewModel(DashboardRepo.getInstance(), createSavedStateHandle(creationExtras));
     });
 }

@@ -6,21 +6,23 @@ import android.view.View;
 
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 
+import java.util.List;
+
 import de.davis.passwordmanager.R;
+import de.davis.passwordmanager.database.SecureElementManager;
+import de.davis.passwordmanager.database.dto.SecureElement;
 import de.davis.passwordmanager.databinding.MoreBottomSheetContentBinding;
 import de.davis.passwordmanager.dialog.DeleteDialog;
 import de.davis.passwordmanager.manager.ActivityResultManager;
-import de.davis.passwordmanager.security.element.SecureElement;
-import de.davis.passwordmanager.security.element.SecureElementManager;
 import de.davis.passwordmanager.ui.dashboard.DashboardFragment;
 
 public class OptionBottomSheet extends BottomSheetDialog {
 
-    private final SecureElement element;
+    private final List<SecureElement> elements;
 
-    public OptionBottomSheet(Context context, SecureElement element) {
+    public OptionBottomSheet(Context context, List<SecureElement> elements) {
         super(context);
-        this.element = element;
+        this.elements = elements;
     }
 
     @Override
@@ -29,40 +31,39 @@ public class OptionBottomSheet extends BottomSheetDialog {
         MoreBottomSheetContentBinding binding = MoreBottomSheetContentBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        binding.title.setText(element == null ? getContext().getString(R.string.options) : element.getTitle());
+        if(elements.isEmpty())
+            return;
 
-        binding.edit.setOnClickListener(v -> {
-            ActivityResultManager.getOrCreateManager(DashboardFragment.class, null).launchEdit(element, getContext());
-            dismiss();
-        });
+        SecureElement firstElement = elements.get(0);
 
+        binding.title.setText(elements.size() > 1 ? getContext().getString(R.string.options) : firstElement.getTitle());
 
-        binding.favorite.setOnClickListener(v -> {
-            if(element == null)
-                return;
-
-            SecureElementManager.getInstance().switchFavoriteState(element);
-            dismiss();
-        });
-
-        if(element == null) {
+        if(elements.size() > 1) {
             binding.edit.setVisibility(View.GONE);
             binding.favorite.setVisibility(View.GONE);
         }else {
+            binding.edit.setOnClickListener(v -> {
+                ActivityResultManager.getOrCreateManager(DashboardFragment.class, null).launchEdit(firstElement, getContext());
+                dismiss();
+            });
+
+            binding.favorite.setOnClickListener(v -> {
+                SecureElementManager.switchFavState(firstElement);
+                dismiss();
+            });
+
             binding.favorite.setCompoundDrawablesRelativeWithIntrinsicBounds(
-                    element.isFavorite() ?
+                    firstElement.getFavorite() ?
                             R.drawable.baseline_star_24
                             : R.drawable.baseline_star_outline_24,
                     0, 0, 0);
 
-            binding.favorite.setText(element.isFavorite() ? R.string.remove_from_favorite : R.string.mark_as_favorite);
+            binding.favorite.setText(firstElement.getFavorite() ? R.string.remove_from_favorite : R.string.mark_as_favorite);
         }
 
-
         binding.delete.setOnClickListener(v -> {
-            new DeleteDialog(getContext()).show(null, element);
+            new DeleteDialog(getContext()).show(elements);
             dismiss();
         });
-
     }
 }

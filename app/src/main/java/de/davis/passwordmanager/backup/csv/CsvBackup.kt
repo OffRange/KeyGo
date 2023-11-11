@@ -9,10 +9,10 @@ import de.davis.passwordmanager.backup.DataBackup
 import de.davis.passwordmanager.backup.Result
 import de.davis.passwordmanager.backup.TYPE_EXPORT
 import de.davis.passwordmanager.backup.TYPE_IMPORT
-import de.davis.passwordmanager.database.KeyGoDatabase.Companion.instance
-import de.davis.passwordmanager.security.element.SecureElement
-import de.davis.passwordmanager.security.element.SecureElementManager
-import de.davis.passwordmanager.security.element.password.PasswordDetails
+import de.davis.passwordmanager.database.ElementType
+import de.davis.passwordmanager.database.SecureElementManager
+import de.davis.passwordmanager.database.dto.SecureElement
+import de.davis.passwordmanager.database.entities.details.password.PasswordDetails
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.OutputStream
@@ -38,9 +38,8 @@ class CsvBackup(context: Context) : DataBackup(context) {
         }.build()
 
         var line: Array<String>
-        val elements: List<SecureElement> = instance.secureElementDao()
-            .getAllByType(SecureElement.TYPE_PASSWORD)
-            .blockingGet()
+        val elements: List<SecureElement> =
+            SecureElementManager.getSecureElements(ElementType.PASSWORD.typeId)
 
         var existed = 0
         csvReader.use {
@@ -57,8 +56,13 @@ class CsvBackup(context: Context) : DataBackup(context) {
                     existed++
                     continue
                 }
-                val details = PasswordDetails(pwd, origin, username)
-                SecureElementManager.getInstance().createElement(SecureElement(details, title))
+                val details =
+                    PasswordDetails(
+                        pwd,
+                        origin,
+                        username
+                    )
+                SecureElementManager.insertElement(SecureElement(title, details))
             }
         }
         return if (existed != 0) Result.Duplicate(existed) else Result.Success(TYPE_IMPORT)
@@ -68,9 +72,8 @@ class CsvBackup(context: Context) : DataBackup(context) {
     override suspend fun runExport(outputStream: OutputStream): Result {
         val csvWriter = CSVWriterBuilder(OutputStreamWriter(outputStream)).build()
 
-        val elements: List<SecureElement> = instance.secureElementDao()
-            .getAllByType(SecureElement.TYPE_PASSWORD)
-            .blockingGet()
+        val elements: List<SecureElement> =
+            SecureElementManager.getSecureElements(ElementType.PASSWORD.typeId)
 
         csvWriter.use {
             it.writeNext(arrayOf("name", "url", "username", "password", "note"))

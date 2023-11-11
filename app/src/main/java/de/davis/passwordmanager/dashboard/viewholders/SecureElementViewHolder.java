@@ -17,11 +17,13 @@ import androidx.recyclerview.selection.ItemDetailsLookup;
 import com.google.android.material.checkbox.MaterialCheckBox;
 import com.google.android.material.color.MaterialColors;
 
+import java.util.List;
+
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.security.element.SecureElement;
-import de.davis.passwordmanager.security.element.SecureElementDetail;
-import de.davis.passwordmanager.security.element.creditcard.CreditCardDetails;
-import de.davis.passwordmanager.security.element.password.PasswordDetails;
+import de.davis.passwordmanager.database.ElementType;
+import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.entities.details.creditcard.CreditCardDetails;
+import de.davis.passwordmanager.database.entities.details.password.PasswordDetails;
 import de.davis.passwordmanager.ui.views.OptionBottomSheet;
 
 public class SecureElementViewHolder extends BasicViewHolder<SecureElement> {
@@ -58,12 +60,12 @@ public class SecureElementViewHolder extends BasicViewHolder<SecureElement> {
         }
         title.setText(spannable);
 
-        type.setText(item.getTypeName());
+        type.setText(item.getElementType().getTitle());
 
-        typeIcon.setImageResource(SecureElementDetail.getFor(item).getIcon());
+        typeIcon.setImageResource(item.getElementType().getIcon());
         image.setImageDrawable(item.getIcon(context));
 
-        if(item.getType() == SecureElement.TYPE_PASSWORD){
+        if(item.getElementType() == ElementType.PASSWORD){
             info.setText(((PasswordDetails)item.getDetail()).getStrength().getString());
             info.setTextColor(((PasswordDetails)item.getDetail()).getStrength().getColor(context));
         }else{
@@ -77,7 +79,7 @@ public class SecureElementViewHolder extends BasicViewHolder<SecureElement> {
                 onItemClickedListener.onClicked(item);
         });
 
-        more.setOnClickListener(v -> new OptionBottomSheet(itemView.getContext(), item).show());
+        more.setOnClickListener(v -> new OptionBottomSheet(itemView.getContext(), List.of(item)).show());
     }
 
     @Override

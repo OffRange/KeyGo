@@ -11,11 +11,10 @@ import androidx.appcompat.content.res.AppCompatResources;
 import com.google.android.material.appbar.MaterialToolbar;
 
 import de.davis.passwordmanager.R;
+import de.davis.passwordmanager.database.SecureElementManager;
+import de.davis.passwordmanager.database.dto.SecureElement;
 import de.davis.passwordmanager.listeners.OnInformationChangedListener;
 import de.davis.passwordmanager.manager.ActivityResultManager;
-import de.davis.passwordmanager.security.element.SecureElement;
-import de.davis.passwordmanager.security.element.SecureElementDetail;
-import de.davis.passwordmanager.security.element.SecureElementManager;
 import de.davis.passwordmanager.ui.views.InformationView;
 
 public abstract class ViewSecureElementFragment extends SEViewFragment {
@@ -46,16 +45,17 @@ public abstract class ViewSecureElementFragment extends SEViewFragment {
 
     @Override
     public void fillInElement(@NonNull SecureElement e){
+        SecureElementManager.updateElement(e); // Update last modified value
         toolbar = requireView().findViewById(R.id.toolbar);
 
-        handleFavIcon(e.isFavorite());
+        handleFavIcon(e.getFavorite());
 
         toolbar.setTitle(e.getTitle());
-        toolbar.setSubtitle(SecureElementDetail.getFor(e).getTitle());
+        toolbar.setSubtitle(e.getElementType().getTitle());
         toolbar.setOnMenuItemClickListener(item -> {
             if (item.getItemId() == R.id.menu_fav){
-                SecureElementManager.getInstance().switchFavoriteState(e);
-                handleFavIcon(e.isFavorite());
+                SecureElementManager.switchFavState(e);
+                handleFavIcon(e.getFavorite());
                 return false;
             }
 

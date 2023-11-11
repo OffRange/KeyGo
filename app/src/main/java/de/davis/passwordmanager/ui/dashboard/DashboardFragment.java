@@ -29,14 +29,14 @@ import androidx.slidingpanelayout.widget.SlidingPaneLayout;
 
 import com.google.android.material.appbar.AppBarLayout;
 
+import java.util.List;
+
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.dashboard.DashboardAdapter;
 import de.davis.passwordmanager.dashboard.viewholders.BasicViewHolder;
+import de.davis.passwordmanager.database.dto.SecureElement;
 import de.davis.passwordmanager.databinding.FragmentDashboardBinding;
 import de.davis.passwordmanager.manager.ActivityResultManager;
-import de.davis.passwordmanager.security.element.SecureElement;
-import de.davis.passwordmanager.security.element.SecureElementDetail;
-import de.davis.passwordmanager.security.element.SecureElementManager;
 import de.davis.passwordmanager.ui.callbacks.SearchViewBackPressedHandler;
 import de.davis.passwordmanager.ui.callbacks.SlidingBackPaneManager;
 import de.davis.passwordmanager.ui.viewmodels.DashboardViewModel;
@@ -51,6 +51,8 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
 
     private DashboardViewModel viewModel;
     private ScrollingViewModel scrollingViewModel;
+
+    private final DashboardAdapter adapter = new DashboardAdapter();
 
     private boolean oldState = true;
 
@@ -81,37 +83,39 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
         arm.registerCreate();
         arm.registerEdit(null);
 
-        SecureElementManager manager = SecureElementManager.getInstance();
-        manager.setTriggerDataChanged(sem -> {
-            boolean hasElements = sem.hasElements();
-            binding.listPane.progress.setVisibility(View.GONE);
+        /*
+        TODO
+           SecureElementManager manager = SecureElementManager.getInstance();
+            manager.setTriggerDataChanged(sem -> {
+                boolean hasElements = sem.hasElements();
+                binding.listPane.progress.setVisibility(View.GONE);
+                '
+                binding.listPane.recyclerView.setVisibility(hasElements ? View.VISIBLE : View.GONE);
+                binding.listPane.viewToShow.setVisibility(hasElements ? View.GONE : View.VISIBLE);
+            });
+        */
 
-            binding.listPane.recyclerView.setVisibility(hasElements ? View.VISIBLE : View.GONE);
-            binding.listPane.viewToShow.setVisibility(hasElements ? View.GONE : View.VISIBLE);
-        });
-
-        DashboardAdapter dashboardAdapter = manager.getAdapter();
-        dashboardAdapter.applyWithTracker(binding.listPane.recyclerView);
+        adapter.applyWithTracker(binding.listPane.recyclerView);
 
         BasicViewHolder.OnItemClickedListener onItemClickedListener = element -> {
             scrollingViewModel.setVisibility(false);
             binding.listPane.searchView.hide();
             Bundle bundle = new Bundle();
-            bundle.putSerializable("element", element);
+            bundle.putParcelable("element", element);
             navController.popBackStack();
-            navController.navigate(SecureElementDetail.getFor(element).getViewFragmentId(), bundle);
+            navController.navigate(element.getElementType().getViewFragmentId(), bundle);
 
             binding.getRoot().open();
         };
 
-        dashboardAdapter.setOnItemClickedListener(onItemClickedListener);
+        adapter.setOnItemClickedListener(onItemClickedListener);
 
         DashboardAdapter searchResultAdapter = new DashboardAdapter();
         searchResultAdapter.setOnItemClickedListener(onItemClickedListener);
         binding.listPane.recyclerViewResults.setAdapter(searchResultAdapter);
 
 
-        addMenu(dashboardAdapter);
+        addMenu();
 
         binding.listPane.searchView.getEditText().addTextChangedListener(new TextWatcher() {
             @Override
@@ -128,7 +132,7 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
 
 
         viewModel = new ViewModelProvider(this, ViewModelProvider.Factory.from(DashboardViewModel.initializer)).get(DashboardViewModel.class);
-        viewModel.getElements().observe(getViewLifecycleOwner(), secureElements -> SecureElementManager.getInstance().update(secureElements));
+        viewModel.getElements().observe(getViewLifecycleOwner(), this::update);
         viewModel.getSearchResults().observe(getViewLifecycleOwner(), secureElements -> {
             searchResultAdapter.update(secureElements);
             searchResultAdapter.setFilter(viewModel.getSearchQuery());
@@ -165,12 +169,22 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
         if(getArguments() == null)
             return;
 
-        SecureElement element = (SecureElement) getArguments().getSerializable("element");
+        SecureElement element = getArguments().getParcelable("element");
         if(element == null)
             return;
 
         onItemClickedListener.onClicked(element);
         oldState = false;
+    }
+
+    private void update(List<SecureElement> secureElements){
+        adapter.update(secureElements);
+
+        boolean hasElements = adapter.getItemCount() > 0;
+        binding.listPane.progress.setVisibility(View.GONE);
+
+        binding.listPane.recyclerView.setVisibility(hasElements ? View.VISIBLE : View.GONE);
+        binding.listPane.viewToShow.setVisibility(hasElements ? View.GONE : View.VISIBLE);
     }
 
     @Override
@@ -186,12 +200,12 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
         scrollingViewModel.setVisibility(oldState);
     }
 
-    private void addMenu(DashboardAdapter dashboardAdapter){
+    private void addMenu(){
         requireActivity().addMenuProvider(new MenuProvider() {
             @Override
             public void  onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater menuInflater) {
                 menuInflater.inflate(R.menu.view_menu, menu);
-                dashboardAdapter.setStateChangeHandler(selectedItems -> {
+                adapter.setStateChangeHandler(selectedItems -> {
                     requireActivity().invalidateMenu();
                     binding.listPane.searchBar.setHint(selectedItems > 0 ? getString(R.string.selected_items, selectedItems) : getString(android.R.string.search_go));
                 });
@@ -200,14 +214,15 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
             @Override
             public void onPrepareMenu(@NonNull Menu menu) {
                 MenuProvider.super.onPrepareMenu(menu);
-                menu.findItem(R.id.more).setVisible(dashboardAdapter.getTracker().hasSelection());
+                menu.findItem(R.id.more).setVisible(adapter.getTracker().hasSelection());
             }
 
             @Override
             public boolean onMenuItemSelected(@NonNull MenuItem menuItem) {
                 if(menuItem.getItemId() == R.id.more){
-                    OptionBottomSheet optionBottomSheet = new OptionBottomSheet(requireContext(), null);
+                    OptionBottomSheet optionBottomSheet = new OptionBottomSheet(requireContext(), adapter.getSelectedElements());
                     optionBottomSheet.show();
+                    adapter.getTracker().clearSelection();
                 }else if(menuItem.getItemId() == R.id.filter){
                     new FilterBottomSheet().show(getParentFragmentManager(), "FilterDialog");
                 }
@@ -219,7 +234,7 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
     @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
-        SecureElementManager.getInstance().getAdapter().getTracker().onSaveInstanceState(outState);
+        adapter.getTracker().onSaveInstanceState(outState);
         if(binding == null)
             return;
         outState.putCharSequence("searchbar_hint", binding.listPane.searchBar.getHint());
@@ -228,7 +243,7 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
     @Override
     public void onViewStateRestored(@Nullable Bundle savedInstanceState) {
         super.onViewStateRestored(savedInstanceState);
-        SecureElementManager.getInstance().getAdapter().getTracker().onRestoreInstanceState(savedInstanceState);
+        adapter.getTracker().onRestoreInstanceState(savedInstanceState);
         if(savedInstanceState == null)
             return;
 

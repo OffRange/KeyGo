@@ -3,9 +3,9 @@ package de.davis.passwordmanager.database.entities.details.password;
 import java.io.Serial;
 import java.util.Objects;
 
+import de.davis.passwordmanager.database.ElementType;
+import de.davis.passwordmanager.database.entities.details.ElementDetail;
 import de.davis.passwordmanager.security.Cryptography;
-import de.davis.passwordmanager.security.element.ElementDetail;
-import de.davis.passwordmanager.security.element.SecureElement;
 
 public class PasswordDetails implements ElementDetail {
 
@@ -56,10 +56,9 @@ public class PasswordDetails implements ElementDetail {
         return new String(Cryptography.decryptAES(getPasswordData()));
     }
 
-    @SecureElement.ElementType
     @Override
-    public int getType() {
-        return SecureElement.TYPE_PASSWORD;
+    public ElementType getElementType() {
+        return ElementType.PASSWORD;
     }
 
     @Override

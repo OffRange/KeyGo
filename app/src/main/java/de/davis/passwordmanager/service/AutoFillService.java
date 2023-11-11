@@ -1,7 +1,5 @@
 package de.davis.passwordmanager.service;
 
-import static de.davis.passwordmanager.utils.BackgroundUtil.doInBackground;
-
 import android.app.assist.AssistStructure;
 import android.os.Build;
 import android.os.CancellationSignal;
@@ -18,9 +16,9 @@ import androidx.annotation.RequiresApi;
 
 import java.util.List;
 
-import de.davis.passwordmanager.database.KeyGoDatabase;
-import de.davis.passwordmanager.security.element.SecureElement;
-import de.davis.passwordmanager.security.element.password.PasswordDetails;
+import de.davis.passwordmanager.database.SecureElementManager;
+import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.entities.details.password.PasswordDetails;
 
 @RequiresApi(api = Build.VERSION_CODES.O)
 public class AutoFillService extends AutofillService {
@@ -104,10 +102,7 @@ public class AutoFillService extends AutofillService {
             return;
         }
 
-        doInBackground(() -> KeyGoDatabase.getInstance()
-                .secureElementDao()
-                .insert(new SecureElement(
-                        new PasswordDetails(finalPassword, finalWebDomain, finalUsername), finalWebDomainShort)));
+        SecureElementManager.insertElement(new SecureElement(finalWebDomainShort, new PasswordDetails(finalPassword, finalWebDomain, finalUsername)));
         callback.onSuccess();
     }
 

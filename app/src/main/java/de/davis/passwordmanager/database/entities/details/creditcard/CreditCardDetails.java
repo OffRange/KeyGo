@@ -3,8 +3,8 @@ package de.davis.passwordmanager.database.entities.details.creditcard;
 import java.io.Serial;
 import java.util.Objects;
 
-import de.davis.passwordmanager.security.element.ElementDetail;
-import de.davis.passwordmanager.security.element.SecureElement;
+import de.davis.passwordmanager.database.ElementType;
+import de.davis.passwordmanager.database.entities.details.ElementDetail;
 import de.davis.passwordmanager.utils.CreditCardUtil;
 
 public class CreditCardDetails implements ElementDetail {
@@ -66,10 +66,9 @@ public class CreditCardDetails implements ElementDetail {
         this.expirationDate = expirationDate;
     }
 
-    @SecureElement.ElementType
     @Override
-    public int getType() {
-        return SecureElement.TYPE_CREDIT_CARD;
+    public ElementType getElementType() {
+        return ElementType.CREDIT_CARD;
     }
 
     @Override

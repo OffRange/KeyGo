@@ -25,7 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.security.element.password.Strength;
+import de.davis.passwordmanager.database.entities.details.password.Strength;
 import de.davis.passwordmanager.utils.TimeoutUtil;
 
 public class PasswordStrengthBar extends LinearLayout implements TextWatcher {

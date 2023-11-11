@@ -1,7 +1,5 @@
 package de.davis.passwordmanager.ui.elements.password;
 
-import static de.davis.passwordmanager.utils.BackgroundUtil.doInBackground;
-
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,12 +13,11 @@ import androidx.appcompat.content.res.AppCompatResources;
 import com.google.android.material.textfield.TextInputLayout;
 
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.database.KeyGoDatabase;
+import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.entities.details.password.PasswordDetails;
 import de.davis.passwordmanager.databinding.FragmentViewPasswordBinding;
 import de.davis.passwordmanager.listeners.OnInformationChangedListener;
 import de.davis.passwordmanager.manager.ActivityResultManager;
-import de.davis.passwordmanager.security.element.SecureElement;
-import de.davis.passwordmanager.security.element.password.PasswordDetails;
 import de.davis.passwordmanager.ui.elements.ViewSecureElementFragment;
 import de.davis.passwordmanager.ui.views.PasswordStrengthBar;
 import de.davis.passwordmanager.utils.BrowserUtil;
@@ -71,8 +68,6 @@ public class ViewPasswordFragment extends ViewSecureElementFragment {
 
         setStrengthValues(details);
         manageOrigin(details);
-
-        doInBackground(() -> KeyGoDatabase.getInstance().secureElementDao().update(password));
     }
 
     @Override

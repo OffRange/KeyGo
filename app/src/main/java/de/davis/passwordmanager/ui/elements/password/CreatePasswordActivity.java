@@ -11,10 +11,11 @@ import androidx.annotation.Nullable;
 import java.util.Objects;
 
 import de.davis.passwordmanager.R;
+import de.davis.passwordmanager.database.ElementType;
+import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.entities.details.password.PasswordDetails;
 import de.davis.passwordmanager.databinding.ActivityCreatePasswordBinding;
 import de.davis.passwordmanager.manager.ActivityResultManager;
-import de.davis.passwordmanager.security.element.SecureElement;
-import de.davis.passwordmanager.security.element.password.PasswordDetails;
 import de.davis.passwordmanager.ui.elements.CreateSecureElementActivity;
 
 public class CreatePasswordActivity extends CreateSecureElementActivity {
@@ -87,7 +88,7 @@ public class CreatePasswordActivity extends CreateSecureElementActivity {
 
         PasswordDetails details = new PasswordDetails(password, origin, user);
         if(getElement() == null)
-            return new SecureElement(details, title);
+            return new SecureElement(title, details);
 
         getElement().setTitle(title);
         getElement().setDetail(details);
@@ -95,7 +96,7 @@ public class CreatePasswordActivity extends CreateSecureElementActivity {
     }
 
     @Override
-    public int getSecureElementType() {
-        return SecureElement.TYPE_PASSWORD;
+    public ElementType getSecureElementType() {
+        return ElementType.PASSWORD;
     }
 }
