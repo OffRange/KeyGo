@@ -1,4 +1,4 @@
-package de.davis.passwordmanager.security.element.password;
+package de.davis.passwordmanager.database.entities.details.password;
 
 import java.io.Serial;
 import java.util.Objects;

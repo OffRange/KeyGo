@@ -1,4 +1,4 @@
-package de.davis.passwordmanager.security.element.password;
+package de.davis.passwordmanager.database.entities.details.password;
 
 import android.content.Context;
 import android.graphics.Color;

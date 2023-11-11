@@ -1,4 +1,4 @@
-package de.davis.passwordmanager.security.element.creditcard;
+package de.davis.passwordmanager.database.entities.details.creditcard;
 
 import java.io.Serial;
 import java.io.Serializable;
