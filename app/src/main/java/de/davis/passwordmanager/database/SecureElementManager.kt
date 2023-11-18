@@ -3,7 +3,7 @@ package de.davis.passwordmanager.database
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.asLiveData
 import de.davis.passwordmanager.database.daos.SecureElementWithTagDao
-import de.davis.passwordmanager.database.dto.SecureElement
+import de.davis.passwordmanager.database.dtos.SecureElement
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow

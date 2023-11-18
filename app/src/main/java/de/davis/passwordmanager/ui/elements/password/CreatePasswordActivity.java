@@ -12,7 +12,7 @@ import java.util.Objects;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.database.ElementType;
-import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.dtos.SecureElement;
 import de.davis.passwordmanager.database.entities.details.password.PasswordDetails;
 import de.davis.passwordmanager.databinding.ActivityCreatePasswordBinding;
 import de.davis.passwordmanager.manager.ActivityResultManager;

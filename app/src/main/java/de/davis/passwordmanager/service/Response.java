@@ -33,7 +33,7 @@ import java.util.regex.Pattern;
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.database.ElementType;
 import de.davis.passwordmanager.database.SecureElementManager;
-import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.dtos.SecureElement;
 import de.davis.passwordmanager.database.entities.details.password.PasswordDetails;
 import de.davis.passwordmanager.ui.auth.AuthenticationActivityKt;
 import de.davis.passwordmanager.ui.auth.AuthenticationRequest;

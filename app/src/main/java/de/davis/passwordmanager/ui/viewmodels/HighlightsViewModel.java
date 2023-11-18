@@ -11,7 +11,7 @@ import androidx.lifecycle.viewmodel.ViewModelInitializer;
 import java.util.List;
 
 import de.davis.passwordmanager.database.SecureElementManager;
-import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.dtos.SecureElement;
 
 public class HighlightsViewModel extends ViewModel {
 

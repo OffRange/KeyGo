@@ -17,7 +17,7 @@ import androidx.annotation.RequiresApi;
 import java.util.List;
 
 import de.davis.passwordmanager.database.SecureElementManager;
-import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.dtos.SecureElement;
 import de.davis.passwordmanager.database.entities.details.password.PasswordDetails;
 
 @RequiresApi(api = Build.VERSION_CODES.O)

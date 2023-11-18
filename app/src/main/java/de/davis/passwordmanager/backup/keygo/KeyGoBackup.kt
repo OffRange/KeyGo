@@ -17,7 +17,7 @@ import de.davis.passwordmanager.backup.TYPE_EXPORT
 import de.davis.passwordmanager.backup.TYPE_IMPORT
 import de.davis.passwordmanager.database.ElementType
 import de.davis.passwordmanager.database.SecureElementManager
-import de.davis.passwordmanager.database.dto.SecureElement
+import de.davis.passwordmanager.database.dtos.SecureElement
 import de.davis.passwordmanager.database.entities.details.ElementDetail
 import de.davis.passwordmanager.database.entities.details.password.PasswordDetails
 import de.davis.passwordmanager.gson.strategies.ExcludeAnnotationStrategy

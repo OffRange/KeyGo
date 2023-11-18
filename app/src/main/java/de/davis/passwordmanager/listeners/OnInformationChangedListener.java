@@ -4,7 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import de.davis.passwordmanager.database.SecureElementManager;
-import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.dtos.SecureElement;
 import de.davis.passwordmanager.database.entities.details.ElementDetail;
 import de.davis.passwordmanager.ui.views.InformationView;
 

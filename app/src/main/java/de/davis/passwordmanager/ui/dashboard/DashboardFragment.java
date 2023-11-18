@@ -34,7 +34,7 @@ import java.util.List;
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.dashboard.DashboardAdapter;
 import de.davis.passwordmanager.dashboard.viewholders.BasicViewHolder;
-import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.dtos.SecureElement;
 import de.davis.passwordmanager.databinding.FragmentDashboardBinding;
 import de.davis.passwordmanager.manager.ActivityResultManager;
 import de.davis.passwordmanager.ui.callbacks.SearchViewBackPressedHandler;

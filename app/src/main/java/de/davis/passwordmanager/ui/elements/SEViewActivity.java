@@ -6,7 +6,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import de.davis.passwordmanager.Keys;
-import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.dtos.SecureElement;
 
 public abstract class SEViewActivity extends AppCompatActivity implements SEBaseUi {
 

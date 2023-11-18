@@ -12,7 +12,7 @@ import com.google.android.material.appbar.MaterialToolbar;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.database.SecureElementManager;
-import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.dtos.SecureElement;
 import de.davis.passwordmanager.listeners.OnInformationChangedListener;
 import de.davis.passwordmanager.manager.ActivityResultManager;
 import de.davis.passwordmanager.ui.views.InformationView;

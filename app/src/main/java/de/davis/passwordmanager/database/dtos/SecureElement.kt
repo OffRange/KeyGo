@@ -1,4 +1,4 @@
-package de.davis.passwordmanager.database.dto
+package de.davis.passwordmanager.database.dtos
 
 import android.content.Context
 import android.graphics.drawable.Drawable
@@ -55,8 +55,8 @@ private object TimestampsParceler : Parceler<Timestamps> {
 class SecureElement @JvmOverloads constructor(
     var title: String,
     var detail: ElementDetail,
-    var favorite: Boolean = false,
     var tags: List<Tag> = listOf(detail.elementType.tag),
+    var favorite: Boolean = false,
     private var timestamps: Timestamps = Timestamps.CURRENT,
     @Exclude override val id: Long = 0
 ) : Item, Comparable<SecureElement>, Parcelable {
@@ -95,10 +95,7 @@ class SecureElement @JvmOverloads constructor(
         @JvmStatic
         fun fromEntity(combinedElement: CombinedElement): SecureElement = combinedElement.run {
             val secureElement = secureElementEntity.run {
-                SecureElement(title, detail, favorite, listOf(), timestamps, id)
-            }
-            secureElement.apply {
-                tags = combinedElement.tags
+                SecureElement(title, detail, combinedElement.tags, favorite, timestamps, id)
             }
             return@run secureElement
         }

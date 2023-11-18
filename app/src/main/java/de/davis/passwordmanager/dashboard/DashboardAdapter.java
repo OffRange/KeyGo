@@ -28,7 +28,7 @@ import de.davis.passwordmanager.dashboard.selection.SecureElementDetailsLookup;
 import de.davis.passwordmanager.dashboard.viewholders.BasicViewHolder;
 import de.davis.passwordmanager.dashboard.viewholders.HeaderViewHolder;
 import de.davis.passwordmanager.dashboard.viewholders.SecureElementViewHolder;
-import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.dtos.SecureElement;
 
 public class DashboardAdapter extends RecyclerView.Adapter<BasicViewHolder<?>> {
 

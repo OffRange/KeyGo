@@ -6,7 +6,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import de.davis.passwordmanager.dashboard.selection.SecureElementDetailsLookup;
-import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.dtos.SecureElement;
 
 public abstract class BasicViewHolder<T> extends RecyclerView.ViewHolder implements SecureElementDetailsLookup.ItemDetailsLookup {
 

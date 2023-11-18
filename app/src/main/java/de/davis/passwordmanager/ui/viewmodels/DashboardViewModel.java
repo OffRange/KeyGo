@@ -14,7 +14,7 @@ import androidx.lifecycle.viewmodel.ViewModelInitializer;
 import java.util.List;
 
 import de.davis.passwordmanager.PasswordManagerApplication;
-import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.dtos.SecureElement;
 import de.davis.passwordmanager.filter.Filter;
 import de.davis.passwordmanager.ui.viewmodels.repositories.DashboardRepo;
 

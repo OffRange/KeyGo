@@ -5,7 +5,7 @@ import androidx.room.Room.inMemoryDatabaseBuilder
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import de.davis.passwordmanager.database.daos.SecureElementWithTagDao
-import de.davis.passwordmanager.database.dto.SecureElement
+import de.davis.passwordmanager.database.dtos.SecureElement
 import de.davis.passwordmanager.database.entities.details.creditcard.CreditCardDetails
 import de.davis.passwordmanager.database.entities.details.creditcard.Name
 import de.davis.passwordmanager.database.entities.details.password.PasswordDetails

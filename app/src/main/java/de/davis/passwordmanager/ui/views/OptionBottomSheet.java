@@ -10,7 +10,7 @@ import java.util.List;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.database.SecureElementManager;
-import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.dtos.SecureElement;
 import de.davis.passwordmanager.databinding.MoreBottomSheetContentBinding;
 import de.davis.passwordmanager.dialog.DeleteDialog;
 import de.davis.passwordmanager.manager.ActivityResultManager;

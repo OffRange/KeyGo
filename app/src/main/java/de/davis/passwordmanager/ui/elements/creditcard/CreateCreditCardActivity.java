@@ -25,7 +25,7 @@ import java.util.TimerTask;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.database.ElementType;
-import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.dtos.SecureElement;
 import de.davis.passwordmanager.database.entities.details.creditcard.CreditCardDetails;
 import de.davis.passwordmanager.database.entities.details.creditcard.Name;
 import de.davis.passwordmanager.databinding.ActivityCreateCreditcardBinding;

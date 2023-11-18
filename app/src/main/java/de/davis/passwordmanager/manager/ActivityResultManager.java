@@ -16,7 +16,7 @@ import java.util.Map;
 
 import de.davis.passwordmanager.Keys;
 import de.davis.passwordmanager.database.SecureElementManager;
-import de.davis.passwordmanager.database.dto.SecureElement;
+import de.davis.passwordmanager.database.dtos.SecureElement;
 import de.davis.passwordmanager.ui.elements.CreateSecureElementActivity;
 import de.davis.passwordmanager.ui.elements.password.GeneratePasswordActivity;
 
