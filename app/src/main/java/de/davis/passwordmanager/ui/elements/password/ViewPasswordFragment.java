@@ -30,11 +30,16 @@ public class ViewPasswordFragment extends ViewSecureElementFragment {
     private EditText editText;
 
     @Override
-    public void fillInElement(@NonNull SecureElement password) {
-        super.fillInElement(password);
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
 
         ActivityResultManager activityResultManager = ActivityResultManager.getOrCreateManager(getClass(), this);
         activityResultManager.registerGeneratePassword(result -> editText.setText(result));
+    }
+
+    @Override
+    public void fillInElement(@NonNull SecureElement password) {
+        super.fillInElement(password);
 
         PasswordDetails details = (PasswordDetails) password.getDetail();
 
@@ -50,7 +55,7 @@ public class ViewPasswordFragment extends ViewSecureElementFragment {
             passwordStrengthBar.update(editText.getText().toString(), false);
             editText.addTextChangedListener(passwordStrengthBar);
 
-            view.findViewById(R.id.generate).setOnClickListener(v -> activityResultManager.launchGeneratePassword(getContext()));
+            view.findViewById(R.id.generate).setOnClickListener(v -> ActivityResultManager.getOrCreateManager(getClass(), this).launchGeneratePassword(getContext()));
         });
 
         binding.origin.setInformationText(details.getOrigin());

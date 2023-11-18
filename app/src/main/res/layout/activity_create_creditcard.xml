@@ -118,5 +118,11 @@
             </com.google.android.material.textfield.TextInputLayout>
 
         </de.davis.passwordmanager.ui.views.InformationView>
+
+        <de.davis.passwordmanager.ui.views.TagView
+            android:id="@+id/tagView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:defaultTag="CreditCard" />
     </GridLayout>
 </ScrollView>

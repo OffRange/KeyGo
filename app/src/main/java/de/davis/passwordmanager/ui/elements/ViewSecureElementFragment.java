@@ -16,6 +16,7 @@ import de.davis.passwordmanager.database.dtos.SecureElement;
 import de.davis.passwordmanager.listeners.OnInformationChangedListener;
 import de.davis.passwordmanager.manager.ActivityResultManager;
 import de.davis.passwordmanager.ui.views.InformationView;
+import de.davis.passwordmanager.ui.views.TagView;
 
 public abstract class ViewSecureElementFragment extends SEViewFragment {
 
@@ -45,7 +46,7 @@ public abstract class ViewSecureElementFragment extends SEViewFragment {
 
     @Override
     public void fillInElement(@NonNull SecureElement e){
-        SecureElementManager.updateElement(e); // Update last modified value
+        SecureElementManager.updateModifiedAt(e);
         toolbar = requireView().findViewById(R.id.toolbar);
 
         handleFavIcon(e.getFavorite());
@@ -64,6 +65,13 @@ public abstract class ViewSecureElementFragment extends SEViewFragment {
         });
         toolbar.setNavigationOnClickListener(v -> requireActivity().getOnBackPressedDispatcher().onBackPressed());
         handleNavIcon();
+
+        TagView tagView = requireView().findViewById(R.id.tagView);
+        tagView.setTags(e.getTags());
+        tagView.setOnLongClickListener(v -> {
+            ActivityResultManager.getOrCreateManager(getClass(), null).launchEdit(e, requireContext());
+            return true;
+        });
     }
 
     @Override

@@ -8,11 +8,13 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.util.List;
 import java.util.Objects;
 
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.database.ElementType;
 import de.davis.passwordmanager.database.dtos.SecureElement;
+import de.davis.passwordmanager.database.entities.Tag;
 import de.davis.passwordmanager.database.entities.details.password.PasswordDetails;
 import de.davis.passwordmanager.databinding.ActivityCreatePasswordBinding;
 import de.davis.passwordmanager.manager.ActivityResultManager;
@@ -86,10 +88,12 @@ public class CreatePasswordActivity extends CreateSecureElementActivity {
         String origin = Objects.requireNonNull(binding.textInputLayoutOrigin.getEditText()).getText().toString();
 
 
+        List<Tag> tags = binding.tagView.getTags();
         PasswordDetails details = new PasswordDetails(password, origin, user);
         if(getElement() == null)
-            return new SecureElement(title, details);
+            return new SecureElement(title, details, tags);
 
+        getElement().setTags(tags);
         getElement().setTitle(title);
         getElement().setDetail(details);
         return getElement();

@@ -151,4 +151,8 @@
     <string name="wait_text">Das könnte ein wenig Zeit in Anspruch nehmen. Bitte haben Sie Geduld</string>
     <string name="authenticate_to_import">Um ein Backup laden zu können, ist eine Authentifizierung erforderlich</string>
     <string name="authenticate_to_proceed">Authentifizieren um fortzufahren</string>
+
+    <string name="tags">Tags</string>
+    <string name="add_tags">Tags hier hinzufügen</string>
+    <string name="prefix_not_allowed">Dieser Prefix ist reserviert und kann nicht verwendet werden</string>
 </resources>

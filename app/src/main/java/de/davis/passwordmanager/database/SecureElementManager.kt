@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.asLiveData
 import de.davis.passwordmanager.database.daos.SecureElementWithTagDao
 import de.davis.passwordmanager.database.dtos.SecureElement
+import de.davis.passwordmanager.database.entities.Tag
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -43,6 +44,8 @@ object SecureElementManager {
         return dao.getByTitle("%${query}%").map { SecureElement.fromEntity(it) }
     }
 
+    suspend fun getTags(): List<Tag> = dao.getTags()
+
     @JvmStatic
     @Deprecated("Calling this blocks the Main Thread", ReplaceWith("Kotlin Coroutine"))
     fun getByTitleSync(query: String): List<SecureElement> {
@@ -74,6 +77,19 @@ object SecureElementManager {
     fun updateElementCoroutine(secureElement: SecureElement) {
         scope.launch {
             updateElement(secureElement)
+        }
+    }
+
+    @JvmStatic
+    suspend fun updateModifiedAt(secureElement: SecureElement) {
+        dao.updateModifiedAt(secureElement.toEntity())
+    }
+
+    @JvmStatic
+    @JvmName("updateModifiedAt")
+    fun updateModifiedAtCoroutine(secureElement: SecureElement) {
+        scope.launch {
+            updateModifiedAt(secureElement)
         }
     }
 

@@ -35,6 +35,9 @@ abstract class SecureElementWithTagDao {
     @Query("SELECT * FROM SecureElement WHERE id = :id")
     abstract suspend fun getCombinedElementById(id: Long): CombinedElement
 
+    @Query("SELECT * FROM Tag")
+    abstract suspend fun getTags(): List<Tag>
+
     @Insert
     protected abstract suspend fun insert(secureElementEntity: SecureElementEntity): Long
 
@@ -62,6 +65,9 @@ abstract class SecureElementWithTagDao {
     @Query("DELETE FROM SecureElementTagCrossRef WHERE id = :elementId")
     protected abstract suspend fun deleteTagRelationsTo(elementId: Long)
 
+    @Query("DELETE FROM Tag  WHERE tagId NOT IN (SELECT tagId FROM SecureElementTagCrossRef)")
+    protected abstract suspend fun deleteUnusedTags()
+
     suspend fun insert(elementWithTags: CombinedElement): Long {
         val elementId = insert(elementWithTags.secureElementEntity)
         insertTags(elementWithTags.tags, elementId)
@@ -88,7 +94,15 @@ abstract class SecureElementWithTagDao {
             id.run {
                 deleteTagRelationsTo(this)
                 insertTags(elementWithTags.tags, this)
+                deleteUnusedTags()
             }
+        }
+    }
+
+    suspend fun updateModifiedAt(elementWithTags: CombinedElement) {
+        elementWithTags.secureElementEntity.run {
+            timestamps.modifiedAt = Date()
+            update(this)
         }
     }
 

@@ -203,6 +203,8 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
         SecureElement card = getElement() == null ?
                 new SecureElement(title, details) :
                 getElement();
+
+        card.setTags(binding.tagView.getTags());
         card.setTitle(title);
         card.setDetail(details);
 

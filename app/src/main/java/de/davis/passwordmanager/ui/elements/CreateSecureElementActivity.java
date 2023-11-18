@@ -12,6 +12,7 @@ import de.davis.passwordmanager.Keys;
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.database.ElementType;
 import de.davis.passwordmanager.database.dtos.SecureElement;
+import de.davis.passwordmanager.ui.views.TagView;
 
 public abstract class CreateSecureElementActivity extends SEViewActivity {
 
@@ -67,6 +68,7 @@ public abstract class CreateSecureElementActivity extends SEViewActivity {
     @Override
     public void fillInElement(@NonNull SecureElement secureElement) {
         setTitle(secureElement.getElementType().getTitle());
+        ((TagView) findViewById(R.id.tagView)).setTags(secureElement.getTags(), true);
     }
 
     public abstract ElementType getSecureElementType();

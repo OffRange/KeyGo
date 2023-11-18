@@ -14,7 +14,7 @@ import de.davis.passwordmanager.ui.elements.creditcard.ViewCreditCardFragment
 import de.davis.passwordmanager.ui.elements.password.CreatePasswordActivity
 import de.davis.passwordmanager.ui.elements.password.ViewPasswordFragment
 
-private const val TAG_PREFIX: String = "elementType:"
+const val TAG_PREFIX: String = "elementType:"
 
 enum class ElementType(
     val typeId: Int,
