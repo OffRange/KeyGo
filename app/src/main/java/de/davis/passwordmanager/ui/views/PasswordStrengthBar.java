@@ -25,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import de.davis.passwordmanager.R;
+import de.davis.passwordmanager.database.entities.details.password.EstimationHandler;
 import de.davis.passwordmanager.database.entities.details.password.Strength;
 import de.davis.passwordmanager.utils.TimeoutUtil;
 
@@ -42,6 +43,7 @@ public class PasswordStrengthBar extends LinearLayout implements TextWatcher {
     private String lastEstimatedPassword;
 
     private Strength strength;
+    private String warning;
 
     public PasswordStrengthBar(Context context) {
         super(context);
@@ -119,20 +121,22 @@ public class PasswordStrengthBar extends LinearLayout implements TextWatcher {
 
         executorService = Executors.newSingleThreadExecutor();
         executorService.execute(() -> {
-            strength = Strength.estimateStrength(password);
+            var wrapper = EstimationHandler.estimateWrapper(password);
+            strength = wrapper.getStrength();
+            warning = wrapper.getWarning();
 
             handler.post(() -> {
                 progressIndicator.setIndeterminate(false);
                 progressIndicator.setIndicatorColor(strength.getColor(getContext()));
-                progressIndicator.setProgress(password.length() > 0 ? strength.type() + 1 : 0);
+                progressIndicator.setProgress(password.length() > 0 ? strength.ordinal() + 1 : 0);
 
                 strengthText.setText(strength.getString());
                 strengthText.setTextColor(strength.getColor(getContext()));
                 strengthText.setVisibility(password.length() > 0 ? View.VISIBLE : View.GONE);
 
-                strengthWarning.setText(strength.warning());
+                strengthWarning.setText(warning);
                 strengthWarning.setTextColor(strength.getColor(getContext()));
-                strengthWarning.setVisibility(password.length() == 0 || strength.warning() == null ? GONE : VISIBLE);
+                strengthWarning.setVisibility(password.length() == 0 || warning == null ? GONE : VISIBLE);
             });
         });
         executorService.shutdown();
@@ -143,6 +147,7 @@ public class PasswordStrengthBar extends LinearLayout implements TextWatcher {
     protected Parcelable onSaveInstanceState() {
         SavedState ss = new SavedState(super.onSaveInstanceState());
         ss.strength = strength;
+        ss.warning = warning;
         return ss;
     }
 
@@ -151,18 +156,20 @@ public class PasswordStrengthBar extends LinearLayout implements TextWatcher {
         SavedState ss = (SavedState) state;
         super.onRestoreInstanceState(ss.getSuperState());
         strength = ss.strength;
+        warning = ss.warning;
         if(strength == null)
             return;
 
         progressIndicator.setIndicatorColor(strength.getColor(getContext()));
 
         strengthText.setVisibility(progressIndicator.getProgress() == 0 ? GONE : VISIBLE);
-        strengthWarning.setVisibility(progressIndicator.getProgress() == 0 || strength.warning() == null ? GONE : VISIBLE);
+        strengthWarning.setVisibility(progressIndicator.getProgress() == 0 || warning == null ? GONE : VISIBLE);
     }
 
 
     static class SavedState extends AbsSavedState {
         Strength strength;
+        String warning;
 
         SavedState(Parcelable superState) {
             super(superState);
@@ -171,12 +178,14 @@ public class PasswordStrengthBar extends LinearLayout implements TextWatcher {
         SavedState(@NonNull Parcel source, ClassLoader loader) {
             super(source, loader);
             strength = (Strength) source.readSerializable();
+            warning = source.readString();
         }
 
         @Override
         public void writeToParcel(@NonNull Parcel dest, int flags) {
             super.writeToParcel(dest, flags);
             dest.writeSerializable(strength);
+            dest.writeString(warning);
         }
 
         public static final Creator<SavedState> CREATOR =
@@ -187,7 +196,6 @@ public class PasswordStrengthBar extends LinearLayout implements TextWatcher {
                         return new SavedState(in, loader);
                     }
 
-                    @Nullable
                     @Override
                     public SavedState createFromParcel(@NonNull Parcel in) {
                         return new SavedState(in, null);

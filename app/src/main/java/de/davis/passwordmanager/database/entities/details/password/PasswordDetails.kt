@@ -1,76 +1,58 @@
-package de.davis.passwordmanager.database.entities.details.password;
+package de.davis.passwordmanager.database.entities.details.password
 
-import java.io.Serial;
-import java.util.Objects;
+import com.google.gson.annotations.SerializedName
+import de.davis.passwordmanager.database.ElementType
+import de.davis.passwordmanager.database.entities.details.ElementDetail
+import de.davis.passwordmanager.security.Cryptography
+import java.io.Serial
 
-import de.davis.passwordmanager.database.ElementType;
-import de.davis.passwordmanager.database.entities.details.ElementDetail;
-import de.davis.passwordmanager.security.Cryptography;
+class PasswordDetails(
+    password: String,
+    var origin: String,
+    var username: String,
+) : ElementDetail {
 
-public class PasswordDetails implements ElementDetail {
+    var strength: Strength = EstimationHandler.estimate(password)
+        private set
 
-    @Serial
-    private static final long serialVersionUID = 4938873580704485021L;
+    @SerializedName("password")
+    private var passwordEncrypted: ByteArray = Cryptography.encryptAES(password.toByteArray())
 
-    private byte[] password;
-    private String origin;
-    private String username;
-    private Strength strength;
-
-    public PasswordDetails(String password, String origin, String username) {
-        setPassword(password);
-        this.origin = origin;
-        this.username = username;
+    fun setPassword(password: String) {
+        strength = EstimationHandler.estimate(password)
+        passwordEncrypted = Cryptography.encryptAES(password.toByteArray())
     }
 
-    public String getOrigin() {
-        return origin;
+    val password get() = String(Cryptography.decryptAES(passwordEncrypted))
+
+
+    override fun getElementType(): ElementType {
+        return ElementType.PASSWORD
     }
 
-    public void setOrigin(String origin) {
-        this.origin = origin;
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as PasswordDetails
+
+        if (origin != other.origin) return false
+        if (username != other.username) return false
+        if (!passwordEncrypted.contentEquals(other.passwordEncrypted)) return false
+
+        return true
     }
 
-    public String getUsername() {
-        return username;
+    override fun hashCode(): Int {
+        var result = origin.hashCode()
+        result = 31 * result + username.hashCode()
+        result = 31 * result + passwordEncrypted.contentHashCode()
+        return result
     }
 
-    public void setUsername(String username) {
-        this.username = username;
-    }
 
-    public Strength getStrength() {
-        return strength;
-    }
-
-    public void setPassword(String password){
-        this.password = Cryptography.encryptAES(password.getBytes());
-        this.strength = Strength.estimateStrength(password);
-    }
-
-    public byte[] getPasswordData() {
-        return password;
-    }
-
-    public String getPassword(){
-        return new String(Cryptography.decryptAES(getPasswordData()));
-    }
-
-    @Override
-    public ElementType getElementType() {
-        return ElementType.PASSWORD;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        PasswordDetails that = (PasswordDetails) o;
-        return getPassword().equals(that.getPassword()) && Objects.equals(origin, that.origin) && Objects.equals(username, that.username);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(origin, username, getPassword());
+    companion object {
+        @Serial
+        private val serialVersionUID = 4938873580704485021L
     }
 }

@@ -25,6 +25,7 @@ import java.util.concurrent.Executors;
 
 import de.davis.passwordmanager.Keys;
 import de.davis.passwordmanager.R;
+import de.davis.passwordmanager.database.entities.details.password.EstimationHandler;
 import de.davis.passwordmanager.database.entities.details.password.Strength;
 import de.davis.passwordmanager.databinding.ActivityGeneratePasswordBinding;
 import de.davis.passwordmanager.utils.AssetsUtil;
@@ -133,7 +134,7 @@ public class GeneratePasswordActivity extends AppCompatActivity implements Slide
 
         estimationExecutor = Executors.newSingleThreadExecutor();
         estimationExecutor.execute(()->{
-            Strength strength = Strength.estimateStrength(password);
+            Strength strength = EstimationHandler.estimate(password);
             handler.post(()->{
                 binding.strength.setInformationText(strength.getString());
                 binding.strength.setInformationTextColor(strength.getColor(this));
