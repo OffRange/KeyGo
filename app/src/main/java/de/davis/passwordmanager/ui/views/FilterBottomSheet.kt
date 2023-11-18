@@ -1,64 +1,51 @@
-package de.davis.passwordmanager.ui.views;
+package de.davis.passwordmanager.ui.views
 
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import com.google.android.material.chip.ChipGroup
+import de.davis.passwordmanager.R
+import de.davis.passwordmanager.databinding.DialogFilterBinding
+import de.davis.passwordmanager.filter.Filter
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+class FilterBottomSheet : BottomSheetDialogFragment() {
 
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
-import com.google.android.material.chip.ChipGroup;
+    private lateinit var binding: DialogFilterBinding
 
-import java.util.List;
-
-import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.filter.Filter;
-
-public class FilterBottomSheet extends BottomSheetDialogFragment {
-
-    private static final int ID_PASSWORD = R.id.password;
-
-    public FilterBottomSheet() {}
-
-    @Nullable
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.dialog_filter, container, false);
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        binding = DialogFilterBinding.inflate(inflater, container, false)
+        return binding.root
     }
 
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-        InformationView type = view.findViewById(R.id.type);
-        InformationView strength = view.findViewById(R.id.strength);
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
-        ChipGroup strengthGroup = (ChipGroup)((ViewGroup)strength.getContent()).getChildAt(0);
-        ChipGroup typeGroup = (ChipGroup)((ViewGroup)type.getContent()).getChildAt(0);
-        Filter.DEFAULT.setStrength(strengthGroup);
-        Filter.DEFAULT.setType(typeGroup);
+        Filter.DEFAULT.setStrength(binding.strengthGroup)
+        Filter.DEFAULT.setType(binding.typeGroup)
 
+        updateSelection(binding.strengthGroup, binding.typeGroup)
 
-        updateSelection(strengthGroup, typeGroup);
-
-
-        typeGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
-            strength.setEnabled(checkedIds.contains(ID_PASSWORD));
-            Filter.DEFAULT.update();
-        });
-
-        strengthGroup.setOnCheckedStateChangeListener((group, checkedIds) -> Filter.DEFAULT.update());
+        binding.typeGroup.setOnCheckedStateChangeListener { _: ChipGroup, checkedIds: List<Int> ->
+            binding.strength.isEnabled = checkedIds.contains(R.id.password)
+            Filter.DEFAULT.update()
+        }
+        binding.strengthGroup.setOnCheckedStateChangeListener { _: ChipGroup, _: List<Int> -> Filter.DEFAULT.update() }
     }
 
-    private void updateSelection(ChipGroup... groups){
-        List<Integer> ids = Filter.DEFAULT.getSelectedIds();
-        if(ids.isEmpty())
-            return;
+    private fun updateSelection(vararg groups: ChipGroup) {
+        val ids = Filter.DEFAULT.selectedIds
+        if (ids.isEmpty())
+            return
 
-        for (ChipGroup group : groups) {
-            group.clearCheck();
-            ids.forEach(group::check);
+        groups.forEach { group ->
+            group.clearCheck()
+            ids.forEach { group.check(it) }
         }
     }
 }
