@@ -28,20 +28,6 @@ public abstract class ViewSecureElementFragment extends SEViewFragment {
 
         ActivityResultManager arm = ActivityResultManager.getOrCreateManager(getClass(), this);
         arm.registerEdit(this::setElement);
-
-        InformationView titleInformationView = view.findViewById(R.id.title);
-        if(titleInformationView == null)
-            return;
-
-        if(getElement() == null)
-            return;
-
-        titleInformationView.setInformationText(getElement().getTitle());
-        titleInformationView.setOnChangedListener(new OnInformationChangedListener<>(getElement(), (e, changes) -> {
-            getElement().setTitle(changes);
-            toolbar.setTitle(changes);
-            return null;
-        }));
     }
 
     @Override
@@ -49,6 +35,17 @@ public abstract class ViewSecureElementFragment extends SEViewFragment {
         toolbar = requireView().findViewById(R.id.toolbar);
 
         handleFavIcon(e.isFavorite());
+
+        InformationView titleInformationView = requireView().findViewById(R.id.title);
+        if(titleInformationView == null)
+            return;
+
+        titleInformationView.setInformationText(getElement().getTitle());
+        titleInformationView.setOnChangedListener(new OnInformationChangedListener<>(getElement(), (el, changes) -> {
+            getElement().setTitle(changes);
+            toolbar.setTitle(changes);
+            return null;
+        }));
 
         toolbar.setTitle(e.getTitle());
         toolbar.setSubtitle(SecureElementDetail.getFor(e).getTitle());

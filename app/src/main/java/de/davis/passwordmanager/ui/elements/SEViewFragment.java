@@ -38,9 +38,6 @@ public abstract class SEViewFragment extends Fragment implements SEBaseUi {
 
     protected void setElement(SecureElement element) {
         this.element = element;
-        getParentFragmentManager().beginTransaction()
-                .detach(this)
-                .attach(this)
-                .commit();
+        fillInElement(element);
     }
 }
