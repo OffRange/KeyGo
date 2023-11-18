@@ -34,6 +34,7 @@
 
 # Application classes that will be serialized/deserialized over Gson
 -keep class de.davis.passwordmanager.security.element.** { <fields>; }
+-keep class de.davis.passwordmanager.database.dtos.**
 
 # Prevent proguard from stripping interface information from TypeAdapter, TypeAdapterFactory,
 # JsonSerializer, JsonDeserializer instances (so they can be used in @JsonAdapter)
