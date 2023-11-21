@@ -8,6 +8,7 @@ import java.util.List;
 import de.davis.passwordmanager.R;
 import de.davis.passwordmanager.database.ElementType;
 import de.davis.passwordmanager.database.dtos.SecureElement;
+import de.davis.passwordmanager.database.entities.Tag;
 import de.davis.passwordmanager.database.entities.details.password.PasswordDetails;
 import de.davis.passwordmanager.database.entities.details.password.Strength;
 
@@ -26,6 +27,7 @@ public class Filter {
 
     private ChipGroup type;
     private ChipGroup strength;
+    private List<String> tags = new ArrayList<>();
 
     private final List<Integer> selectedIds = new ArrayList<>();
 
@@ -39,6 +41,14 @@ public class Filter {
         this.strength = strength;
     }
 
+    public void setTags(List<String> tags) {
+        this.tags = tags;
+    }
+
+    public List<String> getTags() {
+        return tags;
+    }
+
     public Runnable updater;
 
     public void setUpdater(Runnable updater) {
@@ -46,32 +56,36 @@ public class Filter {
     }
 
     public void update() {
-        if(updater != null)
-            updater.run();
-
-        if(!groupsSet())
+        if(groupsUnset())
             return;
 
         selectedIds.clear();
         selectedIds.addAll(type.getCheckedChipIds());
         selectedIds.addAll(strength.getCheckedChipIds());
+
+        if(updater != null)
+            updater.run();
     }
 
     public List<Integer> getSelectedIds() {
         return selectedIds;
     }
 
-    private boolean groupsSet(){
-        return type != null && strength != null;
+    private boolean groupsUnset(){
+        return type == null || strength == null;
     }
 
     public List<SecureElement> filter(List<SecureElement> elements) {
-        if(!groupsSet())
+        if(groupsUnset())
             return elements;
 
         List<SecureElement> toFilter = new ArrayList<>(elements);
         List<Integer> typeIds = type.getCheckedChipIds();
         List<Integer> strengthIds = strength.getCheckedChipIds();
+
+        if(!tags.isEmpty())
+            toFilter.removeIf(element -> element.getTags().stream().map(Tag::getName).noneMatch(tags::contains));
+
         if(!typeIds.contains(ID_CREDIT_CARD))
             toFilter.removeIf(element -> element.getElementType() == ElementType.CREDIT_CARD);
 

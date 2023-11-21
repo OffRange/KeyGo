@@ -116,5 +116,27 @@
                     app:checkedIconTint="?colorRidiculous" />
             </com.google.android.material.chip.ChipGroup>
         </de.davis.passwordmanager.ui.views.InformationView>
+
+        <de.davis.passwordmanager.ui.views.InformationView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:title="@string/tags"
+            app:contentEnabled="false">
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/tagGroup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:selectionRequired="false">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/allTagsChip"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/all"
+                    android:checked="true" />
+            </com.google.android.material.chip.ChipGroup>
+        </de.davis.passwordmanager.ui.views.InformationView>
     </GridLayout>
 </LinearLayout>
