@@ -75,8 +75,6 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
 
         ((AppCompatActivity)requireActivity()).setSupportActionBar(binding.listPane.searchBar);
 
-        binding.listPane.viewAddFirst.setOnClickListener(v -> showBottomSheet());
-
         ActivityResultManager arm = ActivityResultManager.getOrCreateManager(getClass(), this);
         arm.registerCreate();
         arm.registerEdit(null);
@@ -87,7 +85,7 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
             binding.listPane.progress.setVisibility(View.GONE);
 
             binding.listPane.recyclerView.setVisibility(hasElements ? View.VISIBLE : View.GONE);
-            binding.listPane.viewToShow.setVisibility(hasElements ? View.GONE : View.VISIBLE);
+            binding.listPane.noResults.setVisibility(hasElements ? View.GONE : View.VISIBLE);
         });
 
         DashboardAdapter dashboardAdapter = manager.getAdapter();
@@ -133,11 +131,11 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
             searchResultAdapter.update(secureElements);
             searchResultAdapter.setFilter(viewModel.getSearchQuery());
             if(!TextUtils.isEmpty(viewModel.getSearchQuery()) && secureElements.isEmpty()){
-                binding.listPane.noResults.setVisibility(View.VISIBLE);
+                binding.listPane.noResultsSearch.setVisibility(View.VISIBLE);
                 return;
             }
 
-            binding.listPane.noResults.setVisibility(View.GONE);
+            binding.listPane.noResultsSearch.setVisibility(View.GONE);
         });
 
 

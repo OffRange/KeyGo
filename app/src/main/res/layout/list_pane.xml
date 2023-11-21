@@ -12,19 +12,20 @@
         android:layout_height="match_parent"
         android:visibility="gone"
         app:layoutManager="de.davis.passwordmanager.ui.LinearLayoutManager"
-        app:layout_behavior="de.davis.passwordmanager.ui.dashboard.DashboardFragment$ScrollingViewBehavior"/>
+        app:layout_behavior="de.davis.passwordmanager.ui.dashboard.DashboardFragment$ScrollingViewBehavior" />
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appbarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:fitsSystemWindows="true">
+
         <com.google.android.material.search.SearchBar
             android:id="@+id/search_bar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="@android:string/search_go"
-            app:forceDefaultNavigationOnClickListener="true"/>
+            app:forceDefaultNavigationOnClickListener="true" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <com.google.android.material.search.SearchView
@@ -38,40 +39,25 @@
             android:id="@+id/recyclerViewResults"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"/>
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
         <TextView
-            android:id="@+id/no_results"
+            android:id="@+id/no_results_search"
             android:visibility="gone"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/no_results_found"
-            android:layout_gravity="center"/>
+            android:layout_gravity="center" />
 
     </com.google.android.material.search.SearchView>
 
-    <GridLayout
-        android:id="@+id/viewToShow"
-        android:layout_width="match_parent"
+    <TextView
+        android:id="@+id/no_results"
+        android:visibility="gone"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:useDefaultMargins="true"
-        android:visibility="gone">
-
-        <de.davis.passwordmanager.ui.views.InformationView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:contentEnabled="false"
-            app:title="@string/no_elements_to_show">
-
-            <Button
-                android:id="@+id/viewAddFirst"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/default_margin"
-                android:text="@string/add_element" />
-        </de.davis.passwordmanager.ui.views.InformationView>
-    </GridLayout>
+        android:text="@string/no_results_found"
+        android:layout_gravity="center" />
 
 
     <com.google.android.material.progressindicator.LinearProgressIndicator
@@ -79,6 +65,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
-        android:indeterminate="true"/>
+        android:indeterminate="true" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
