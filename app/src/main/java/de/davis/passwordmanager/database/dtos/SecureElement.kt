@@ -52,7 +52,7 @@ private object TimestampsParceler : Parceler<Timestamps> {
 @Parcelize
 @TypeParceler<Tag, TagParceler>
 @TypeParceler<Timestamps, TimestampsParceler>
-class SecureElement @JvmOverloads constructor(
+data class SecureElement @JvmOverloads constructor(
     var title: String,
     var detail: ElementDetail,
     var tags: List<Tag> = listOf(detail.elementType.tag),
