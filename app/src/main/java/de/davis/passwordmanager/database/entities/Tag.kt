@@ -9,7 +9,7 @@ import de.davis.passwordmanager.gson.annotations.Exclude
 @Entity(indices = [Index("name", unique = true)])
 class Tag @JvmOverloads constructor(
     val name: String,
-    @Exclude @PrimaryKey(autoGenerate = true) val tagId: Int = 0
+    @Exclude @PrimaryKey(autoGenerate = true) val tagId: Long = 0
 )
 
 fun Collection<Tag>.onlyCustoms(): Collection<Tag> {

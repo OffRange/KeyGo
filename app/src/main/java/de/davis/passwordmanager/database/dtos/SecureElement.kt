@@ -23,13 +23,13 @@ import java.util.Date
 
 private object TagParceler : Parceler<Tag> {
     override fun create(parcel: Parcel): Tag {
-        return Tag(parcel.readString()!!, parcel.readInt())
+        return Tag(parcel.readString()!!, parcel.readLong())
     }
 
     override fun Tag.write(parcel: Parcel, flags: Int) {
         parcel.apply {
             writeString(name)
-            writeInt(tagId)
+            writeLong(tagId)
         }
     }
 }
