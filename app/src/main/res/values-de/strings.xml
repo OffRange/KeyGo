@@ -156,4 +156,5 @@
     <string name="add_tags">Tags hier hinzufügen</string>
     <string name="prefix_not_allowed">Dieser Prefix ist reserviert und kann nicht verwendet werden</string>
     <string name="all">Alle</string>
+    <string name="items_n">Elemente: %d</string>
 </resources>

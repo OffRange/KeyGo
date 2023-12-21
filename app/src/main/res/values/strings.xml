@@ -198,5 +198,6 @@
     <string name="add_tags">Add tags here</string>
     <string name="prefix_not_allowed">This prefix is reserved and can\'t be used</string>
     <string name="all">All</string>
+    <string name="items_n">Items: %d</string>
 
 </resources>
