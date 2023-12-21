@@ -96,7 +96,7 @@ public class SecureElementViewHolder extends BasicViewHolder<SecureElement> {
         return new ItemDetailsLookup.ItemDetails<>() {
             @Override
             public int getPosition() {
-                return getAdapterPosition();
+                return getAbsoluteAdapterPosition();
             }
 
             @NonNull
