@@ -33,7 +33,9 @@ public class SecureElementViewHolder extends BasicViewHolder<SecureElement> {
     private final TextView title, info, type;
     private final MaterialCheckBox checkBox;
 
-    public SecureElementViewHolder(@NonNull View itemView) {
+    private final FragmentManager fragmentManager;
+
+    public SecureElementViewHolder(@NonNull View itemView, FragmentManager fragmentManager) {
         super(itemView);
         more = itemView.findViewById(R.id.more);
         image = itemView.findViewById(R.id.image);
@@ -41,7 +43,7 @@ public class SecureElementViewHolder extends BasicViewHolder<SecureElement> {
         info = itemView.findViewById(R.id.info);
         type = itemView.findViewById(R.id.type);
         typeIcon = itemView.findViewById(R.id.typeIcon);
-        checkBox = itemView.findViewById(R.id.checkboxSelection);
+        this.fragmentManager = fragmentManager;
     }
 
     @Override
@@ -79,7 +81,7 @@ public class SecureElementViewHolder extends BasicViewHolder<SecureElement> {
                 onItemClickedListener.onClicked(item);
         });
 
-        more.setOnClickListener(v -> new OptionBottomSheet(itemView.getContext(), List.of(item)).show());
+        more.setOnClickListener(v -> new OptionBottomSheet(List.of(item)).show(fragmentManager, "OptionSheet"));
     }
 
     @Override

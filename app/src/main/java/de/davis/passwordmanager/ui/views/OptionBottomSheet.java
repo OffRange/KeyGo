@@ -1,10 +1,14 @@
 package de.davis.passwordmanager.ui.views;
 
-import android.content.Context;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 
-import com.google.android.material.bottomsheet.BottomSheetDialog;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
 import java.util.List;
 
@@ -16,27 +20,30 @@ import de.davis.passwordmanager.dialog.DeleteDialog;
 import de.davis.passwordmanager.manager.ActivityResultManager;
 import de.davis.passwordmanager.ui.dashboard.DashboardFragment;
 
-public class OptionBottomSheet extends BottomSheetDialog {
+public class OptionBottomSheet extends BottomSheetDialogFragment {
 
+    private MoreBottomSheetContentBinding binding;
     private final List<SecureElement> elements;
 
-    public OptionBottomSheet(Context context, List<SecureElement> elements) {
-        super(context);
+    public OptionBottomSheet(List<SecureElement> elements) {
         this.elements = elements;
     }
 
+    @Nullable
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        MoreBottomSheetContentBinding binding = MoreBottomSheetContentBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        return (binding = MoreBottomSheetContentBinding.inflate(getLayoutInflater())).getRoot();
+    }
 
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
         if(elements.isEmpty())
             return;
 
         SecureElement firstElement = elements.get(0);
 
-        binding.title.setText(elements.size() > 1 ? getContext().getString(R.string.options) : firstElement.getTitle());
+        binding.title.setText(elements.size() > 1 ? requireContext().getString(R.string.options) : firstElement.getTitle());
 
         if(elements.size() > 1) {
             binding.edit.setVisibility(View.GONE);
