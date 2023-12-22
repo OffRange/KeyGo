@@ -1,7 +1,6 @@
 package de.davis.passwordmanager.dashboard
 
 import androidx.recyclerview.widget.DiffUtil
-import de.davis.passwordmanager.database.dtos.SecureElement
 
 class SecureElementDiffCallback(
     private val oldItems: List<Item>,
@@ -16,14 +15,14 @@ class SecureElementDiffCallback(
     }
 
     override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-        return oldItems[oldItemPosition].id == newItems[newItemPosition].id
+        val oldItem = oldItems[oldItemPosition]
+        val newItem = newItems[newItemPosition]
+        return oldItem::class.isInstance(newItem) && oldItems[oldItemPosition].id == newItems[newItemPosition].id
     }
 
     override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
         val oldItem = oldItems[oldItemPosition]
         val newItem = newItems[newItemPosition]
-        return if (oldItem is SecureElement && newItem is SecureElement) {
-            oldItem == newItem
-        } else false
+        return oldItem == newItem
     }
 }
