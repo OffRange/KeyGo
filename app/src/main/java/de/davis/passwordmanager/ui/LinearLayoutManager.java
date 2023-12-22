@@ -1,9 +1,7 @@
 package de.davis.passwordmanager.ui;
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.util.AttributeSet;
-import android.util.TypedValue;
 
 public class LinearLayoutManager extends androidx.recyclerview.widget.LinearLayoutManager {
 
@@ -31,9 +29,6 @@ public class LinearLayoutManager extends androidx.recyclerview.widget.LinearLayo
 
     @Override
     public int getPaddingBottom() {
-        float dip = 56+16*2;
-        Resources r = context.getResources();
-        float px = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dip, r.getDisplayMetrics());
-        return (int) px;
+        return LayoutManagerKt.getPaddingBottom(context);
     }
 }
