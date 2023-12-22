@@ -43,9 +43,7 @@ public class SlidingBackPaneManager extends OnBackPressedCallback implements Sli
     }
 
     @Override
-    public void onPanelSlide(@NonNull View panel, float slideOffset) {
-        updateState();
-    }
+    public void onPanelSlide(@NonNull View panel, float slideOffset) {}
 
     @Override
     public void onPanelOpened(@NonNull View panel) {
@@ -54,6 +52,6 @@ public class SlidingBackPaneManager extends OnBackPressedCallback implements Sli
 
     @Override
     public void onPanelClosed(@NonNull View panel) {
-
+        updateState();
     }
 }
