@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.annotation.IdRes
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentTransaction
 import androidx.fragment.app.commit
@@ -76,10 +77,11 @@ class AuthenticationActivity : AppCompatActivity() {
         authenticationRequest: AuthenticationRequest,
         mainPassword: MainPassword,
         tag: String? = null
-    ): FragmentTransaction = replace(containerViewId, F::class.java, Bundle().apply {
-        putParcelable(KEY_AUTHENTICATION_REQUEST, authenticationRequest)
-        putParcelable(KEY_MAIN_PASSWORD, mainPassword)
-    }, tag)
+    ): FragmentTransaction = replace(
+        containerViewId, F::class.java, bundleOf(
+            KEY_AUTHENTICATION_REQUEST to authenticationRequest, KEY_MAIN_PASSWORD to mainPassword
+        ), tag
+    )
 }
 
 fun Context.requestAuthentication(authenticationRequest: AuthenticationRequest) {
