@@ -4,6 +4,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.asLiveData
 import de.davis.passwordmanager.database.daos.SecureElementWithTagDao
 import de.davis.passwordmanager.database.dtos.SecureElement
+import de.davis.passwordmanager.database.dtos.TagWithCount
+import de.davis.passwordmanager.database.dtos.toDto
 import de.davis.passwordmanager.database.entities.Tag
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,6 +47,9 @@ object SecureElementManager {
     }
 
     suspend fun getTags(): List<Tag> = dao.getTags()
+
+    fun getTagsWithCount(): Flow<List<TagWithCount>> =
+        dao.getTagsWithCount().map { it.map { list -> list.toDto() } }
 
     @JvmStatic
     @Deprecated("Calling this blocks the Main Thread", ReplaceWith("Kotlin Coroutine"))

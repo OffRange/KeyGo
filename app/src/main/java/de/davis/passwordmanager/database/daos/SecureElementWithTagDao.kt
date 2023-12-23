@@ -10,6 +10,7 @@ import androidx.room.Transaction
 import androidx.room.Update
 import de.davis.passwordmanager.database.entities.SecureElementEntity
 import de.davis.passwordmanager.database.entities.Tag
+import de.davis.passwordmanager.database.entities.TagWithCountEntity
 import de.davis.passwordmanager.database.entities.junction.SecureElementTagCrossRef
 import de.davis.passwordmanager.database.entities.wrappers.CombinedElement
 import kotlinx.coroutines.flow.Flow
@@ -37,6 +38,9 @@ abstract class SecureElementWithTagDao {
 
     @Query("SELECT * FROM Tag")
     abstract suspend fun getTags(): List<Tag>
+
+    @Query("SELECT Tag.*, COUNT(SecureElementTagCrossRef.tagId) AS count FROM Tag LEFT JOIN SecureElementTagCrossRef ON Tag.tagId = SecureElementTagCrossRef.tagId GROUP BY Tag.tagId")
+    abstract fun getTagsWithCount(): Flow<List<TagWithCountEntity>>
 
     @Insert
     protected abstract suspend fun insert(secureElementEntity: SecureElementEntity): Long
