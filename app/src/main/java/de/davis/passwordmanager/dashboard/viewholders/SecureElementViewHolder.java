@@ -1,20 +1,25 @@
 package de.davis.passwordmanager.dashboard.viewholders;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Color;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.FragmentManager;
 import androidx.recyclerview.selection.ItemDetailsLookup;
 
-import com.google.android.material.checkbox.MaterialCheckBox;
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
 
 import java.util.List;
@@ -31,23 +36,24 @@ public class SecureElementViewHolder extends BasicViewHolder<SecureElement> {
     private final ImageButton more;
     private final ImageView image, typeIcon;
     private final TextView title, info, type;
-    private final MaterialCheckBox checkBox;
+    public final TextView letterView;
 
     private final FragmentManager fragmentManager;
 
-    public SecureElementViewHolder(@NonNull View itemView, FragmentManager fragmentManager) {
-        super(itemView);
+    public SecureElementViewHolder(@NonNull LayoutInflater inflater, @Nullable ViewGroup parent, @NonNull FragmentManager fragmentManager) {
+        super(inflater.inflate(R.layout.layout_element, parent, false));
         more = itemView.findViewById(R.id.more);
         image = itemView.findViewById(R.id.image);
         title = itemView.findViewById(R.id.title);
         info = itemView.findViewById(R.id.info);
         type = itemView.findViewById(R.id.type);
+        letterView = itemView.findViewById(R.id.header);
         typeIcon = itemView.findViewById(R.id.typeIcon);
         this.fragmentManager = fragmentManager;
     }
 
     @Override
-    public void bind(@NonNull SecureElement item, String filter, OnItemClickedListener onItemClickedListener) {
+    public void bindGeneral(@NonNull SecureElement item, String filter, OnItemClickedListener<SecureElement> onItemClickedListener) {
         Context context = itemView.getContext();
 
         String text = item.getTitle();
@@ -84,11 +90,16 @@ public class SecureElementViewHolder extends BasicViewHolder<SecureElement> {
         more.setOnClickListener(v -> new OptionBottomSheet(List.of(item)).show(fragmentManager, "OptionSheet"));
     }
 
+    public void setLetterVisible(boolean visible, char letter){
+        this.letterView.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
+        this.letterView.setText(visible ? Character.toString(letter) : "");
+    }
+
+    @SuppressLint("PrivateResource")
     @Override
-    public void onBindSelectablePayload(boolean selectable, boolean selected) {
-        more.setVisibility(selectable ? View.GONE : View.VISIBLE);
-        checkBox.setVisibility(selectable ? View.VISIBLE : View.GONE);
-        checkBox.setChecked(selected);
+    protected void handleSelectionState(boolean selected) {
+        ((MaterialCardView) itemView).setChecked(selected);
+        ((MaterialCardView) itemView).setStrokeWidth(selected ? (int) itemView.getResources().getDimension(com.google.android.material.R.dimen.m3_comp_outlined_card_outline_width) : 0);
     }
 
     @Override

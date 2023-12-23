@@ -49,8 +49,9 @@ public class HighlightsFragment extends Fragment {
             binding.viewToShow.setVisibility(elements.size() > 0 ? View.GONE : View.VISIBLE);
             binding.lastUsed.removeViews(2, binding.lastUsed.getChildCount()-2);
             elements.forEach(element -> {
-                SecureElementViewHolder viewHolder = new SecureElementViewHolder(getLayoutInflater().inflate(R.layout.item_element, null, false), getChildFragmentManager());
-                viewHolder.bind(element, null, this::launchElement);
+                SecureElementViewHolder viewHolder = new SecureElementViewHolder(getLayoutInflater(), binding.lastUsed, getChildFragmentManager());
+                viewHolder.bind(element, null, this::launchElement, false);
+                viewHolder.letterView.setVisibility(View.GONE);
                 viewHolder.itemView.setPadding(px, viewHolder.itemView.getPaddingTop(), px, viewHolder.itemView.getPaddingBottom());
                 binding.lastUsed.addView(viewHolder.itemView);
             });

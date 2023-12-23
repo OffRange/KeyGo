@@ -1,0 +1,124 @@
+package de.davis.passwordmanager.ui.dashboard
+
+import android.os.Bundle
+import android.view.ViewGroup
+import androidx.recyclerview.selection.SelectionPredicates
+import androidx.recyclerview.selection.SelectionTracker
+import androidx.recyclerview.selection.StorageStrategy
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.RecyclerView
+import de.davis.passwordmanager.dashboard.Item
+import de.davis.passwordmanager.dashboard.SecureElementDiffCallback
+import de.davis.passwordmanager.dashboard.selection.KeyProvider
+import de.davis.passwordmanager.dashboard.selection.SecureElementDetailsLookup
+import de.davis.passwordmanager.dashboard.viewholders.BasicViewHolder
+import de.davis.passwordmanager.ui.dashboard.managers.AbsItemManager
+
+class DashboardAdapter(private val onUpdate: (DashboardAdapter) -> Unit) :
+    RecyclerView.Adapter<BasicViewHolder<Item>>() {
+
+    private var itemManager: AbsItemManager<Item> = AbsItemManager.Empty()
+
+    private lateinit var recyclerView: RecyclerView
+
+    var filter: String = ""
+
+    private lateinit var tracker: SelectionTracker<Long>
+
+    init {
+        setHasStableIds(true)
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BasicViewHolder<Item> {
+        return itemManager.createViewHolder(parent)
+    }
+
+    override fun getItemCount(): Int = itemManager.items.size
+
+    override fun onBindViewHolder(holder: BasicViewHolder<Item>, position: Int) {
+        itemManager.bind(holder, filter, position, tracker.isSelected(getItemId(position)))
+    }
+
+    override fun getItemViewType(position: Int): Int {
+        return itemManager.viewType
+    }
+
+    override fun getItemId(position: Int): Long {
+        return itemManager.getItemId(position)
+    }
+
+    fun apply(
+        recyclerView: RecyclerView,
+        onSelectionChanged: (selectedElements: List<Item>) -> Unit = {}
+    ) = recyclerView.apply {
+        setHasFixedSize(true)
+        this@DashboardAdapter.recyclerView = recyclerView
+        adapter = this@DashboardAdapter
+
+        tracker = SelectionTracker.Builder(
+            "tracker",
+            this,
+            KeyProvider(this),
+            SecureElementDetailsLookup(this),
+            StorageStrategy.createLongStorage()
+        ).withSelectionPredicate(SelectionPredicates.createSelectAnything()).build()
+
+        tracker.addObserver(object : SelectionTracker.SelectionObserver<Long>() {
+            var oldSelection: List<Long>? = null
+
+            override fun onSelectionChanged() {
+                if (tracker.selection.toList() == oldSelection)
+                    return
+
+                onSelectionChanged(getSelectedElements())
+                oldSelection = tracker.selection.toList()
+            }
+        })
+    }
+
+    fun getSelectedElements(): List<Item> {
+        return tracker.selection
+            .map { itemManager.getElementById(it) }
+            .mapNotNull { it }.toList()
+    }
+
+    fun clearSelection() = tracker.clearSelection()
+
+    private fun configureRecyclerView() = recyclerView.apply {
+        layoutManager = itemManager.getLayoutManager(recyclerView.context)
+        for (i in 0 until recyclerView.itemDecorationCount) {
+            recyclerView.removeItemDecorationAt(i)
+        }
+        itemManager.getItemDecoration()?.let {
+            recyclerView.addItemDecoration(it)
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun <E : Item> update(itemManager: AbsItemManager<E>) {
+        val old = this.itemManager.items
+
+        this.itemManager = itemManager as AbsItemManager<Item>
+        itemManager.prepareDataset()
+
+        configureRecyclerView()
+
+        if (old.toTypedArray().contentEquals(itemManager.items.toTypedArray()))
+            return
+
+        
+        onUpdate(this)
+
+        val callback = SecureElementDiffCallback(old, itemManager.items)
+        val result = DiffUtil.calculateDiff(callback)
+        result.dispatchUpdatesTo(this)
+    }
+
+    fun onSaveInstanceState(bundle: Bundle) {
+        tracker.onSaveInstanceState(bundle)
+    }
+
+    fun onRestoreInstanceState(bundle: Bundle?) {
+        tracker.onRestoreInstanceState(bundle)
+    }
+}
