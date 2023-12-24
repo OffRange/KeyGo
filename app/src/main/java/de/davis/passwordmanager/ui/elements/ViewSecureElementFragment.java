@@ -1,7 +1,9 @@
 package de.davis.passwordmanager.ui.elements;
 
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.os.Bundle;
+import android.util.TypedValue;
 import android.view.View;
 
 import androidx.annotation.NonNull;
@@ -28,6 +30,15 @@ public abstract class ViewSecureElementFragment extends SEViewFragment {
 
         ActivityResultManager arm = ActivityResultManager.getOrCreateManager(getClass(), this);
         arm.registerEdit(this::setElement);
+
+        float screenWidthDp = getResources().getConfiguration().screenWidthDp;
+        if(screenWidthDp >= 600)
+            return;
+
+        float dip = 56+16*2;
+        Resources r = requireContext().getResources();
+        float px = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dip, r.getDisplayMetrics());
+        view.setPadding(view.getPaddingLeft(), view.getPaddingTop(), view.getPaddingRight(), (int) px);
     }
 
     @Override
