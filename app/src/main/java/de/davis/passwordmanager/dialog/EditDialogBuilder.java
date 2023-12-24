@@ -14,6 +14,7 @@ import android.view.View;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 
 import de.davis.passwordmanager.databinding.DialogEditViewBinding;
 import de.davis.passwordmanager.ui.views.InformationView;
@@ -28,6 +29,7 @@ public class EditDialogBuilder extends BaseDialogBuilder<EditDialogBuilder> {
     private int additionalCustomLayout;
 
     private DialogEditViewBinding binding;
+    private final OnClickListener[] listeners = new OnClickListener[3];
 
     public EditDialogBuilder(@NonNull Context context) {
         super(context);
@@ -81,13 +83,33 @@ public class EditDialogBuilder extends BaseDialogBuilder<EditDialogBuilder> {
     @NonNull
     public EditDialogBuilder setPositiveButton(int textId, @Nullable OnClickListener listener) {
         return super.setPositiveButton(textId, listener == null ? null : (dialog, which) ->
-                listener.onClick(dialog, which, binding.textInputEditText.getText().toString()));
+                listener.onClick(dialog, which, getText()));
     }
 
     @NonNull
-    public EditDialogBuilder setPositiveButton(@Nullable CharSequence text, @Nullable OnClickListener listener) {
-        return super.setPositiveButton(text, listener == null ? null : (dialog, which) ->
-                listener.onClick(dialog, which, binding.textInputEditText.getText().toString()));
+    public EditDialogBuilder setButtonListener(int whichButton, int textId, @Nullable OnClickListener listener) {
+        listeners[-whichButton - 1] = listener;
+        return super.setPositiveButton(textId, listener == null ? null : (dialog, which) -> {});
+    }
+
+    @Override
+    public AlertDialog show() {
+        AlertDialog alertDialog = super.show();
+
+        for(int i = 0; i < listeners.length; i++){
+            OnClickListener listener = listeners[i];
+            if(listener == null)
+                continue;
+
+            int finalI = i;
+            alertDialog.getButton(-(i + 1)).setOnClickListener(v -> listener.onClick(alertDialog, finalI, getText()));
+        }
+
+        return alertDialog;
+    }
+
+    private String getText() {
+        return binding.textInputEditText.getText().toString();
     }
 
     public interface OnClickListener {
