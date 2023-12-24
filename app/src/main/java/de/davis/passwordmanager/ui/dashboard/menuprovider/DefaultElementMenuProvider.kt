@@ -8,7 +8,6 @@ import androidx.core.view.MenuProvider
 import androidx.fragment.app.FragmentManager
 import de.davis.passwordmanager.R
 import de.davis.passwordmanager.dashboard.Item
-import de.davis.passwordmanager.database.dtos.SecureElement
 import de.davis.passwordmanager.ui.dashboard.DashboardAdapter
 import de.davis.passwordmanager.ui.views.FilterBottomSheet
 import de.davis.passwordmanager.ui.views.OptionBottomSheet
@@ -35,7 +34,7 @@ class DefaultElementMenuProvider(
 
     override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
         if (menuItem.itemId == R.id.more) {
-            val optionBottomSheet = OptionBottomSheet(selectedElements.map { it as SecureElement })
+            val optionBottomSheet = OptionBottomSheet(selectedElements)
             optionBottomSheet.show(manager, "MoreDialog")
             adapter.clearSelection()
         } else if (menuItem.itemId == R.id.filter) {

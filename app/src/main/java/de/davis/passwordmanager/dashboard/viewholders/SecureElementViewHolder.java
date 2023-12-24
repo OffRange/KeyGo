@@ -87,7 +87,7 @@ public class SecureElementViewHolder extends BasicViewHolder<SecureElement> {
                 onItemClickedListener.onClicked(item);
         });
 
-        more.setOnClickListener(v -> new OptionBottomSheet(List.of(item)).show(fragmentManager, "OptionSheet"));
+        more.setOnClickListener(v -> new OptionBottomSheet<>(List.of(item), SecureElement.class).show(fragmentManager, "OptionSheet"));
     }
 
     public void setLetterVisible(boolean visible, char letter){

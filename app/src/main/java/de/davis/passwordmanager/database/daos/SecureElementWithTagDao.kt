@@ -52,10 +52,10 @@ abstract class SecureElementWithTagDao {
     protected abstract suspend fun insert(crossRef: SecureElementTagCrossRef)
 
     @Delete
-    abstract suspend fun delete(secureElementEntity: SecureElementEntity)
+    abstract suspend fun deleteElements(secureElementEntities: List<SecureElementEntity>)
 
     @Delete
-    abstract suspend fun delete(tag: Tag)
+    abstract suspend fun deleteTags(tags: List<Tag>)
 
     @Delete
     abstract suspend fun delete(crossRef: SecureElementTagCrossRef)
@@ -90,6 +90,9 @@ abstract class SecureElementWithTagDao {
             )
         }
     }
+
+    @Update(onConflict = OnConflictStrategy.IGNORE)
+    abstract suspend fun updateTag(tag: Tag): Int
 
     suspend fun update(elementWithTags: CombinedElement) {
         elementWithTags.secureElementEntity.run {

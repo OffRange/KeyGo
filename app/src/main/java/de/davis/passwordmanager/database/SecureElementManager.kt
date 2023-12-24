@@ -2,6 +2,7 @@ package de.davis.passwordmanager.database
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.asLiveData
+import de.davis.passwordmanager.dashboard.Item
 import de.davis.passwordmanager.database.daos.SecureElementWithTagDao
 import de.davis.passwordmanager.database.dtos.SecureElement
 import de.davis.passwordmanager.database.dtos.TagWithCount
@@ -85,6 +86,10 @@ object SecureElementManager {
         }
     }
 
+    suspend fun updateTag(tag: Tag): Int {
+        return dao.updateTag(tag)
+    }
+
     @JvmStatic
     suspend fun updateModifiedAt(secureElement: SecureElement) {
         dao.updateModifiedAt(secureElement.toEntity())
@@ -112,15 +117,37 @@ object SecureElementManager {
     }
 
     @JvmStatic
-    suspend fun deleteElement(secureElement: SecureElement) {
-        dao.delete(secureElement.toEntity().secureElementEntity)
+    suspend fun deleteElements(secureElements: List<SecureElement>) {
+        dao.deleteElements(secureElements.map { it.toEntity().secureElementEntity })
     }
 
     @JvmStatic
-    @JvmName("deleteElement")
-    fun deleteElementCoroutine(secureElement: SecureElement) {
+    suspend fun deleteTags(tags: List<Tag>) {
+        dao.deleteTags(tags)
+    }
+
+    /**
+     * Deletes a list of items from the database.
+     *
+     * This function can handle different types of items that extend from the base 'Item' class.
+     * It filters and processes each item based on its actual type and performs the appropriate
+     * deletion operation.
+     *
+     * @param items A list of items to be deleted. These can be of any type that extends from 'Item'.
+     * @param <I> The type parameter indicating the subtype of 'Item' being deleted.
+     */
+    @JvmStatic
+    suspend fun <I : Item> delete(items: List<I>) {
+        deleteElements(items.filterIsInstance<SecureElement>())
+        deleteTags(items.filterIsInstance<TagWithCount>().map { it.tag })
+    }
+
+    @JvmStatic
+    @JvmName("delete")
+    fun <I : Item> deleteCoroutine(items: List<I>) {
         scope.launch {
-            deleteElement(secureElement)
+            deleteElements(items.filterIsInstance<SecureElement>())
+            deleteTags(items.filterIsInstance<TagWithCount>().map { it.tag })
         }
     }
 
