@@ -4,6 +4,7 @@ import static com.google.android.material.textfield.TextInputLayout.END_ICON_NON
 import static com.google.android.material.textfield.TextInputLayout.END_ICON_PASSWORD_TOGGLE;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.text.InputFilter;
@@ -12,6 +13,7 @@ import android.view.View;
 
 import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import de.davis.passwordmanager.databinding.DialogEditViewBinding;
 import de.davis.passwordmanager.ui.views.InformationView;
@@ -25,6 +27,8 @@ public class EditDialogBuilder extends BaseDialogBuilder<EditDialogBuilder> {
     @LayoutRes
     private int additionalCustomLayout;
 
+    private DialogEditViewBinding binding;
+
     public EditDialogBuilder(@NonNull Context context) {
         super(context);
     }
@@ -35,7 +39,7 @@ public class EditDialogBuilder extends BaseDialogBuilder<EditDialogBuilder> {
 
     @Override
     public View onCreateView(LayoutInflater inflater) {
-        DialogEditViewBinding binding = DialogEditViewBinding.inflate(inflater);
+        binding = DialogEditViewBinding.inflate(inflater);
 
         binding.textInputLayout.setEndIconMode(information.isSecret() ? END_ICON_PASSWORD_TOGGLE : END_ICON_NONE);
         binding.textInputEditText.setInputType(information.getInputType());
@@ -72,5 +76,22 @@ public class EditDialogBuilder extends BaseDialogBuilder<EditDialogBuilder> {
     public EditDialogBuilder withAdditionalCustomLayout(@LayoutRes int additionalCustomLayout){
         this.additionalCustomLayout = additionalCustomLayout;
         return this;
+    }
+
+    @NonNull
+    public EditDialogBuilder setPositiveButton(int textId, @Nullable OnClickListener listener) {
+        return super.setPositiveButton(textId, listener == null ? null : (dialog, which) ->
+                listener.onClick(dialog, which, binding.textInputEditText.getText().toString()));
+    }
+
+    @NonNull
+    public EditDialogBuilder setPositiveButton(@Nullable CharSequence text, @Nullable OnClickListener listener) {
+        return super.setPositiveButton(text, listener == null ? null : (dialog, which) ->
+                listener.onClick(dialog, which, binding.textInputEditText.getText().toString()));
+    }
+
+    public interface OnClickListener {
+
+        void onClick(DialogInterface dialog, int which, String newText);
     }
 }

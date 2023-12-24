@@ -13,7 +13,6 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -21,7 +20,6 @@ import androidx.annotation.ColorInt;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.card.MaterialCardView;
@@ -378,15 +376,14 @@ public class InformationView extends MaterialCardView implements CopyView {
 
         new EditDialogBuilder(getContext())
                 .setTitle(getContext().getString(R.string.change_param, titleView.getText().toString()))
-                .setPositiveButton(R.string.text_continue, (dialogInterface, i) -> {
-                    dialogInterface.dismiss();
-                    String information = ((EditText)((AlertDialog)dialogInterface).findViewById(R.id.textInputEditText)).getText().toString();
-                    if(!applyEmpties && information.trim().isEmpty())
+                .setPositiveButton(R.string.text_continue, (dialog, i, newText) -> {
+                    dialog.dismiss();
+                    if(!applyEmpties && newText.trim().isEmpty())
                         return;
 
-                    setInformationText(information);
+                    setInformationText(newText);
                     if(onInformationChangedListener != null)
-                        onInformationChangedListener.onInformationChanged(information);
+                        onInformationChangedListener.onInformationChanged(newText);
                 })
                 .withInformation(information)
                 .withStartIcon(iconView.getDrawable())
