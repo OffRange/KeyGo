@@ -60,7 +60,7 @@ public class BottomSectionHandler {
     }
 
     public void handle(){
-        scrollingViewModel.getVisibility().observe(activity, visible -> extendedFAB.setVisibility(visible ? View.VISIBLE : View.GONE));
+        scrollingViewModel.getFabVisibility().observe(activity, visible -> extendedFAB.setVisibility(visible ? View.VISIBLE : View.GONE));
         scrollingViewModel.getConsumedY().observe(activity, consumed -> {
             if(consumed < 0 && !extendedFAB.isExtended()) {
                 extendedFAB.extend();

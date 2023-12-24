@@ -29,7 +29,7 @@ public class SlidingBackPaneManager extends OnBackPressedCallback implements Sli
     @Override
     public void handleOnBackPressed() {
         slidingPaneLayout.closePane();
-        scrollingViewModel.setVisibility(true);
+        scrollingViewModel.setFabVisibility(true);
     }
 
     @Override

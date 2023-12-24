@@ -32,8 +32,7 @@ public class BaseMainActivity extends AppCompatActivity {
 
         getFAB().setOnClickListener(v -> new AddBottomSheet().show(getSupportFragmentManager(), "add-bottom-sheet"));
 
-
-        float screenWidthDp = getResources().getConfiguration().smallestScreenWidthDp;
+        float screenWidthDp = getResources().getConfiguration().screenWidthDp;
         if(screenWidthDp >= 600)
             return;
 
@@ -42,7 +41,7 @@ public class BaseMainActivity extends AppCompatActivity {
     }
 
     private View getFAB(){
-        float screenWidthDp = getResources().getConfiguration().smallestScreenWidthDp;
+        float screenWidthDp = getResources().getConfiguration().screenWidthDp;
         return screenWidthDp >= 600 ? findViewById(R.id.add_rail) : findViewById(R.id.add);
     }
 }
