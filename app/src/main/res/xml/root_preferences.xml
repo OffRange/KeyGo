@@ -37,6 +37,14 @@
             app:icon="@drawable/ic_baseline_edit_24"
             android:widgetLayout="@layout/switch_layout"
             android:summary="@string/instruction_activate_autofill" />
+
+        <SwitchPreference
+            android:summaryOff="@string/tag_view_off"
+            android:summaryOn="@string/tag_view_on"
+            android:widgetLayout="@layout/switch_layout"
+            app:icon="@drawable/ic_baseline_dashboard_24"
+            app:key="@string/preference_feature_tag_layout"
+            app:title="@string/tag_view" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/about">

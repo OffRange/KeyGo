@@ -195,6 +195,10 @@
     <string name="authenticate_to_proceed">Authenticate to proceed</string>
 
     <string name="tags">Tags</string>
+    <string name="tag_view">Tag Layout</string>
+    <string name="tag_view_on">Dashboard grouped by tags</string>
+    <string name="tag_view_off">Dashboard in list format</string>
+
     <string name="add_tags">Add tags here</string>
     <string name="edit_tag">Edit tag</string>
     <string name="tag_already_existed">This tag already exists</string>

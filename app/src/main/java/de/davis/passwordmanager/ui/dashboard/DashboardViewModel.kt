@@ -1,7 +1,10 @@
 package de.davis.passwordmanager.ui.dashboard
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.content.Context
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.passwordmanager.R
 import de.davis.passwordmanager.dashboard.Item
 import de.davis.passwordmanager.database.SecureElementManager
 import de.davis.passwordmanager.database.dtos.SecureElement
@@ -9,6 +12,7 @@ import de.davis.passwordmanager.database.dtos.TagWithCount
 import de.davis.passwordmanager.database.entities.onlyCustoms
 import de.davis.passwordmanager.filter.Filter
 import de.davis.passwordmanager.filter.applyFilter
+import de.davis.passwordmanager.utils.PreferenceUtil
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,15 +21,19 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.launch
 
+private fun Context.getDefaultListState(): ListState {
+    return if (PreferenceUtil.getBoolean(this, R.string.preference_feature_tag_layout, false))
+        ListState.Tag
+    else
+        ListState.AllElements
+}
 
-val DEFAULT_LIST_SATE = ListState.Tag
-
-class DashboardViewModel : ViewModel() {
+class DashboardViewModel(private val application: Application) : AndroidViewModel(application) {
 
     private val _state = MutableStateFlow<Pair<ListState, ListData<out Item>>?>(null)
     val state = _state.asStateFlow()
 
-    private val _listState = MutableStateFlow<ListState>(DEFAULT_LIST_SATE)
+    private val _listState = MutableStateFlow(application.getDefaultListState())
 
     private val elementsFlow = SecureElementManager.getSecureElementsFlow()
     private val tagsFlow = SecureElementManager.getTagsWithCount()
@@ -39,6 +47,10 @@ class DashboardViewModel : ViewModel() {
 
     fun updateState(state: ListState) {
         _listState.value = state
+    }
+
+    fun initiateState() {
+        updateState(application.getDefaultListState())
     }
 
     fun search(query: String) {

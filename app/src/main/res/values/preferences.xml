@@ -2,6 +2,7 @@
 <resources>
     <string name="preference_biometrics" translatable="false">authenticate_fingerprint</string>
     <string name="preference_feature_autofill" translatable="false">feature_autofill</string>
+    <string name="preference_feature_tag_layout" translatable="false">feature_tag_layout</string>
     <string name="preference_reauthenticate" translatable="false">feature_reauthenticate</string>
     <string name="preference_license" translatable="false">license</string>
     <string name="preference_import_csv" translatable="false">import_csv</string>

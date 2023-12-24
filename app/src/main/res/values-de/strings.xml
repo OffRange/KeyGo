@@ -153,6 +153,10 @@
     <string name="authenticate_to_proceed">Authentifizieren um fortzufahren</string>
 
     <string name="tags">Tags</string>
+    <string name="tag_view">Tag-Layout</string>
+    <string name="tag_view_on">Dashboard gruppiert nach Tags</string>
+    <string name="tag_view_off">Dashboard im Listenformat</string>
+
     <string name="edit_tag">Tag bearbeiten</string>
     <string name="add_tags">Tags hier hinzufügen</string>
     <string name="tag_already_existed">Dieser Tag existiert bereits</string>

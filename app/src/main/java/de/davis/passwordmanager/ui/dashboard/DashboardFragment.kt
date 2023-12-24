@@ -61,6 +61,8 @@ class DashboardFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        dashboardViewModel.initiateState()
+
         binding.root.lockMode = SlidingPaneLayout.LOCK_MODE_LOCKED
 
         val menuProvider = DefaultElementMenuProvider(parentFragmentManager, adapter)
@@ -228,6 +230,16 @@ class DashboardFragment : Fragment() {
         }
 
         binding.root.open()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        scrollingViewModel.setVisibility(false)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        scrollingViewModel.setVisibility(true)
     }
 
     private fun update(update: AbsItemManager<out Item>) {
