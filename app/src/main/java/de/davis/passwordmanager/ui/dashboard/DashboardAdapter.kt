@@ -2,8 +2,8 @@ package de.davis.passwordmanager.ui.dashboard
 
 import android.os.Bundle
 import android.view.ViewGroup
-import androidx.recyclerview.selection.SelectionPredicates
 import androidx.recyclerview.selection.SelectionTracker
+import androidx.recyclerview.selection.SelectionTracker.SelectionPredicate
 import androidx.recyclerview.selection.StorageStrategy
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
@@ -12,6 +12,8 @@ import de.davis.passwordmanager.dashboard.SecureElementDiffCallback
 import de.davis.passwordmanager.dashboard.selection.KeyProvider
 import de.davis.passwordmanager.dashboard.selection.SecureElementDetailsLookup
 import de.davis.passwordmanager.dashboard.viewholders.BasicViewHolder
+import de.davis.passwordmanager.database.dtos.TagWithCount
+import de.davis.passwordmanager.database.entities.shouldBeProtected
 import de.davis.passwordmanager.ui.dashboard.managers.AbsItemManager
 
 class DashboardAdapter(private val onUpdate: (DashboardAdapter) -> Unit) :
@@ -61,7 +63,24 @@ class DashboardAdapter(private val onUpdate: (DashboardAdapter) -> Unit) :
             KeyProvider(this),
             SecureElementDetailsLookup(this),
             StorageStrategy.createLongStorage()
-        ).withSelectionPredicate(SelectionPredicates.createSelectAnything()).build()
+        ).withSelectionPredicate(object : SelectionPredicate<Long>() {
+            override fun canSetStateForKey(key: Long, nextState: Boolean): Boolean {
+                val item = itemManager.getElementById(key)
+                return !(item is TagWithCount && item.tag.shouldBeProtected)
+            }
+
+            override fun canSetStateAtPosition(position: Int, nextState: Boolean): Boolean {
+                if (position !in itemManager.items.indices) return false
+
+                val item = itemManager.items[position]
+                return !(item is TagWithCount && item.tag.shouldBeProtected)
+            }
+
+            override fun canSelectMultiple(): Boolean {
+                return true
+            }
+
+        }).build()
 
         tracker.addObserver(object : SelectionTracker.SelectionObserver<Long>() {
             var oldSelection: List<Long>? = null
@@ -106,7 +125,6 @@ class DashboardAdapter(private val onUpdate: (DashboardAdapter) -> Unit) :
         if (old.toTypedArray().contentEquals(itemManager.items.toTypedArray()))
             return
 
-        
         onUpdate(this)
 
         val callback = SecureElementDiffCallback(old, itemManager.items)
