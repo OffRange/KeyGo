@@ -20,6 +20,7 @@ import de.davis.passwordmanager.database.entities.getLocalizedName
 import de.davis.passwordmanager.databinding.MoreBottomSheetContentBinding
 import de.davis.passwordmanager.dialog.DeleteDialog
 import de.davis.passwordmanager.dialog.EditDialogBuilder
+import de.davis.passwordmanager.ktx.capitalize
 import de.davis.passwordmanager.manager.ActivityResultManager
 import de.davis.passwordmanager.ui.dashboard.DashboardFragment
 import kotlinx.coroutines.launch
@@ -104,17 +105,32 @@ class OptionBottomSheet<out I : Item>(
                         DialogInterface.BUTTON_POSITIVE,
                         R.string.ok
                     ) { dialog, _, newText ->
+                        val inputLayout =
+                            (dialog as AlertDialog).findViewById<TextInputLayout>(R.id.textInputLayout)!!
+                        if (newText.isBlank()) {
+                            inputLayout.error = context.getString(R.string.tag_cant_be_blank)
+                            inputLayout.editText?.text?.clear()
+                            return@setButtonListener
+                        }
+
+                        if (newText == firstTag.tag.name) {
+                            dialog.dismiss()
+                            return@setButtonListener
+                        }
 
                         lifecycleScope.launch {
                             val updatedRows =
-                                SecureElementManager.updateTag(firstTag.tag.copy(name = newText))
+                                SecureElementManager.updateTag(
+                                    firstTag.tag.copy(
+                                        name = newText.trim().capitalize()
+                                    )
+                                )
                             if (updatedRows != 0) {
                                 dialog.dismiss()
                                 return@launch
                             }
 
-                            (dialog as AlertDialog).findViewById<TextInputLayout>(R.id.textInputLayout)?.error =
-                                context.getString(R.string.tag_already_existed)
+                            inputLayout.error = context.getString(R.string.tag_already_existed)
                         }
                     }
 

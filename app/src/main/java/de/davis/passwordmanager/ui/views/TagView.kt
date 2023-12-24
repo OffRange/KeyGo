@@ -22,6 +22,7 @@ import de.davis.passwordmanager.database.entities.Tag
 import de.davis.passwordmanager.database.entities.onlyCustoms
 import de.davis.passwordmanager.database.entities.shouldBeProtected
 import de.davis.passwordmanager.databinding.LayoutTagViewBinding
+import de.davis.passwordmanager.ktx.capitalize
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -234,10 +235,6 @@ class TagView @JvmOverloads constructor(
         } else {
             chip.isSelected = true
         }
-    }
-
-    private fun String.capitalize(): String {
-        return replaceFirstChar { it.uppercase() }
     }
 
     private val CharSequence.isProtectedTagName get() = startsWith(TAG_PREFIX)

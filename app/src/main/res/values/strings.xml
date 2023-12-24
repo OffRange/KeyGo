@@ -198,6 +198,7 @@
     <string name="add_tags">Add tags here</string>
     <string name="edit_tag">Edit tag</string>
     <string name="tag_already_existed">This tag already exists</string>
+    <string name="tag_cant_be_blank">Tags can\'t be blank</string>
     <string name="prefix_not_allowed">This prefix is reserved and can\'t be used</string>
     <string name="all">All</string>
     <string name="items_n">Items: %d</string>
