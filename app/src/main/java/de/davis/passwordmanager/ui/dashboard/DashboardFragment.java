@@ -52,7 +52,7 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
     private DashboardViewModel viewModel;
     private ScrollingViewModel scrollingViewModel;
 
-    private boolean oldState = true;
+    private boolean shouldShowBtn = true;
 
     @Nullable
     @Override
@@ -93,7 +93,7 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
         dashboardAdapter.applyWithTracker(binding.listPane.recyclerView);
 
         BasicViewHolder.OnItemClickedListener onItemClickedListener = element -> {
-            scrollingViewModel.setVisibility(false);
+            scrollingViewModel.setFabVisibility(false);
             binding.listPane.searchView.hide();
             Bundle bundle = new Bundle();
             bundle.putSerializable("element", element);
@@ -169,20 +169,20 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
             return;
 
         onItemClickedListener.onClicked(element);
-        oldState = false;
+        shouldShowBtn = false;
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        oldState = Boolean.TRUE.equals(scrollingViewModel.getVisibility().getValue());
-        scrollingViewModel.setVisibility(false);
+        shouldShowBtn = Boolean.TRUE.equals(scrollingViewModel.getFabVisibility().getValue());
+        scrollingViewModel.setFabVisibility(false);
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-        scrollingViewModel.setVisibility(oldState);
+    public void onStart() {
+        super.onStart();
+        scrollingViewModel.setFabVisibility(shouldShowBtn);
     }
 
     private void addMenu(DashboardAdapter dashboardAdapter){
@@ -222,6 +222,7 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
         if(binding == null)
             return;
         outState.putCharSequence("searchbar_hint", binding.listPane.searchBar.getHint());
+        outState.putBoolean("shouldShowBtn", shouldShowBtn);
     }
 
     @Override
@@ -232,6 +233,7 @@ public class DashboardFragment extends Fragment implements SearchView.OnQueryTex
             return;
 
         binding.listPane.searchBar.setHint(savedInstanceState.getCharSequence("searchbar_hint", getString(android.R.string.search_go)));
+        shouldShowBtn = savedInstanceState.getBoolean("shouldShowBtn");
     }
 
     private void showBottomSheet(){
