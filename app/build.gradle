@@ -4,13 +4,13 @@ plugins {
 }
 
 android {
-    compileSdk 33
+    compileSdk 34
 
     def versionPropsFile = file("version.properties")
     def build, major, minor, patch, vCode, vName
     Properties properties = new Properties()
 
-    if(!versionPropsFile.exists()){
+    if (!versionPropsFile.exists()) {
         properties.setProperty("build", "0") // alpha 0-31 | beta 32-63 | rc 64-95 | stable 96-99
         properties.setProperty("major", "1")
         properties.setProperty("minor", "0")
@@ -49,7 +49,7 @@ android {
     defaultConfig {
         applicationId "de.davis.passwordmanager"
         minSdk 23
-        targetSdk 33
+        targetSdk 34
         versionCode vCode
         versionName vName
 
@@ -70,20 +70,20 @@ android {
             minifyEnabled true
         }
 
-        debug{
+        debug {
             versionNameSuffix "-debug"
             applicationIdSuffix ".debug"
         }
     }
 
     flavorDimensions = ["market"]
-    productFlavors{
-        playstore{
+    productFlavors {
+        playstore {
             dimension "market"
 
         }
 
-        github{
+        github {
             dimension "market"
             versionNameSuffix "-github"
         }
