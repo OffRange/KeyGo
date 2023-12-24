@@ -114,20 +114,20 @@ dependencies {
     }
 
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.9.0'
+    implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.autofill:autofill:1.1.0'
 
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.3'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
 
     implementation 'com.google.android.gms:play-services-oss-licenses:17.0.1'
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation 'androidx.recyclerview:recyclerview-selection:1.1.0'
-    implementation 'androidx.navigation:navigation-fragment:2.6.0'
-    implementation 'androidx.navigation:navigation-ui:2.6.0'
+    implementation 'androidx.navigation:navigation-fragment:2.7.6'
+    implementation 'androidx.navigation:navigation-ui:2.7.6'
     implementation 'androidx.preference:preference:1.2.1'
     implementation 'androidx.biometric:biometric:1.1.0'
-    implementation 'androidx.browser:browser:1.5.0'
+    implementation 'androidx.browser:browser:1.7.0'
     implementation 'me.gosimple:nbvcxz:1.5.1'
     implementation 'at.favre.lib:bcrypt:0.10.2'
     implementation 'com.github.alvinhkh:TextDrawable:558677ea31'
@@ -137,9 +137,9 @@ dependencies {
     githubImplementation "com.squareup.retrofit2:retrofit:2.9.0"
     githubImplementation 'org.kohsuke:github-api:1.314'
 
-    implementation "androidx.room:room-runtime:2.5.2"
-    annotationProcessor "androidx.room:room-compiler:2.5.2"
-    implementation "androidx.room:room-rxjava3:2.5.2"
+    implementation "androidx.room:room-runtime:2.6.1"
+    annotationProcessor "androidx.room:room-compiler:2.6.1"
+    implementation "androidx.room:room-rxjava3:2.6.1"
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
