@@ -40,9 +40,9 @@ public abstract class ViewSecureElementFragment extends SEViewFragment {
         if(titleInformationView == null)
             return;
 
-        titleInformationView.setInformationText(getElement().getTitle());
-        titleInformationView.setOnChangedListener(new OnInformationChangedListener<>(getElement(), (el, changes) -> {
-            getElement().setTitle(changes);
+        titleInformationView.setInformationText(e.getTitle());
+        titleInformationView.setOnChangedListener(new OnInformationChangedListener<>(e, (el, changes) -> {
+            e.setTitle(changes);
             toolbar.setTitle(changes);
             return null;
         }));
