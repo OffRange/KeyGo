@@ -33,7 +33,9 @@
 -keep class com.google.gson.stream.** { *; }
 
 # Application classes that will be serialized/deserialized over Gson
--keep class de.davis.passwordmanager.security.element.** { <fields>; }
+-keep class * implements de.davis.passwordmanager.database.entities.details.ElementDetail{
+  *;
+}
 -keep class de.davis.passwordmanager.database.dtos.**
 
 # Prevent proguard from stripping interface information from TypeAdapter, TypeAdapterFactory,
