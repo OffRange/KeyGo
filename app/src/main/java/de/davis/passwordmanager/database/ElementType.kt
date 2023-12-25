@@ -47,7 +47,7 @@ enum class ElementType(
     companion object {
         @JvmStatic
         fun getTypeByTypeId(id: Int): ElementType {
-            return values().first { it.typeId == id }
+            return entries.first { it.typeId == id }
         }
     }
 }

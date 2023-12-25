@@ -21,7 +21,7 @@ public class ElementDetailTypeAdapter implements JsonSerializer<ElementDetail>, 
 
         JsonElement strengthElement = json.getAsJsonObject().get("strength");
         if(strengthElement != null && strengthElement.isJsonObject()){
-            json.getAsJsonObject().addProperty("strength", Strength.values()[strengthElement.getAsJsonObject().get("type").getAsInt()].name());
+            json.getAsJsonObject().addProperty("strength", Strength.getEntries().get(strengthElement.getAsJsonObject().get("type").getAsInt()).name());
         }
 
         return context.deserialize(json, ElementType.getTypeByTypeId(type).getElementDetailClass());
