@@ -37,7 +37,7 @@ abstract class KeyGoDatabase : RoomDatabase() {
                 PasswordManagerApplication.getAppContext(),
                 KeyGoDatabase::class.java,
                 DB_NAME
-            ).fallbackToDestructiveMigration().allowMainThreadQueries().build()
+            ).fallbackToDestructiveMigration().build()
                 .also { INSTANCE = it }
     }
 }
