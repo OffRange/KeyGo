@@ -17,6 +17,7 @@ import de.davis.passwordmanager.database.SecureElementManager.switchFavStateCoro
 import de.davis.passwordmanager.database.dtos.SecureElement
 import de.davis.passwordmanager.database.dtos.TagWithCount
 import de.davis.passwordmanager.database.entities.getLocalizedName
+import de.davis.passwordmanager.database.entities.isProtectedTagName
 import de.davis.passwordmanager.databinding.MoreBottomSheetContentBinding
 import de.davis.passwordmanager.dialog.DeleteDialog
 import de.davis.passwordmanager.dialog.EditDialogBuilder
@@ -110,6 +111,11 @@ class OptionBottomSheet<out I : Item>(
                         if (newText.isBlank()) {
                             inputLayout.error = context.getString(R.string.tag_cant_be_blank)
                             inputLayout.editText?.text?.clear()
+                            return@setButtonListener
+                        }
+
+                        if (newText.isProtectedTagName) {
+                            inputLayout.error = context.getString(R.string.prefix_not_allowed)
                             return@setButtonListener
                         }
 

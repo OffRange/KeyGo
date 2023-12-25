@@ -17,8 +17,8 @@ import com.google.android.material.chip.Chip
 import de.davis.passwordmanager.R
 import de.davis.passwordmanager.database.ElementType
 import de.davis.passwordmanager.database.SecureElementManager
-import de.davis.passwordmanager.database.TAG_PREFIX
 import de.davis.passwordmanager.database.entities.Tag
+import de.davis.passwordmanager.database.entities.isProtectedTagName
 import de.davis.passwordmanager.database.entities.onlyCustoms
 import de.davis.passwordmanager.database.entities.shouldBeProtected
 import de.davis.passwordmanager.databinding.LayoutTagViewBinding
@@ -236,6 +236,4 @@ class TagView @JvmOverloads constructor(
             chip.isSelected = true
         }
     }
-
-    private val CharSequence.isProtectedTagName get() = startsWith(TAG_PREFIX)
 }
