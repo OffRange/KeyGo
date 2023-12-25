@@ -1,5 +1,6 @@
 package de.davis.passwordmanager.database.converter;
 
+import androidx.annotation.Nullable;
 import androidx.room.TypeConverter;
 
 import com.google.gson.Gson;
@@ -16,6 +17,7 @@ public class Converters {
     private static final Gson gson = new GsonBuilder().registerTypeAdapter(ElementDetail.class, new ElementDetailTypeAdapter()).create();
 
     @TypeConverter
+    @Nullable
     public static byte[] convertDetails(ElementDetail elementDetail){
         String json = gson.toJson(elementDetail, ElementDetail.class);
         return Cryptography.encryptAES(json.getBytes());
@@ -28,11 +30,13 @@ public class Converters {
     }
 
     @TypeConverter
+    @Nullable
     public static Date fromTimestamp(Long value) {
         return value == null ? null : new Date(value);
     }
 
     @TypeConverter
+    @Nullable
     public static Long dateToTimestamp(Date date) {
         return date == null ? null : date.getTime();
     }

@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 3,
-    "identityHash": "ceb1caca6f62fb72bb85d7bfaaac98fd",
+    "identityHash": "0a97d13a94575bc2ed2ab009853b0086",
     "entities": [
       {
         "tableName": "SecureElement",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`title` TEXT NOT NULL, `data` BLOB NOT NULL, `favorite` INTEGER NOT NULL, `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `type` INTEGER NOT NULL, `created_at` INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP, `modified_at` INTEGER)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`title` TEXT NOT NULL, `data` BLOB NOT NULL, `favorite` INTEGER NOT NULL, `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `type` INTEGER NOT NULL, `created_at` INTEGER DEFAULT CURRENT_TIMESTAMP, `modified_at` INTEGER)",
         "fields": [
           {
             "fieldPath": "title",
@@ -42,7 +42,7 @@
             "fieldPath": "timestamps.createdAt",
             "columnName": "created_at",
             "affinity": "INTEGER",
-            "notNull": true,
+            "notNull": false,
             "defaultValue": "CURRENT_TIMESTAMP"
           },
           {
@@ -170,7 +170,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ceb1caca6f62fb72bb85d7bfaaac98fd')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0a97d13a94575bc2ed2ab009853b0086')"
     ]
   }
 }

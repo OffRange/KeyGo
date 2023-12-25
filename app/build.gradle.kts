@@ -137,3 +137,7 @@ dependencies {
 room {
     schemaDirectory("$projectDir/schemas")
 }
+
+ksp {
+    arg("room.generateKotlin", "true")
+}
