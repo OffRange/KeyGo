@@ -46,7 +46,7 @@ abstract class SecureElementWithTagDao {
     protected abstract suspend fun insert(secureElementEntity: SecureElementEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    protected abstract suspend fun insert(tags: List<Tag>): List<Long>
+    protected abstract suspend fun insert(tag: Tag): Long
 
     @Insert
     protected abstract suspend fun insert(crossRef: SecureElementTagCrossRef)
@@ -57,13 +57,10 @@ abstract class SecureElementWithTagDao {
     @Delete
     abstract suspend fun deleteTags(tags: List<Tag>)
 
-    @Delete
-    abstract suspend fun delete(crossRef: SecureElementTagCrossRef)
-
     @Update
     abstract suspend fun update(secureElementEntity: SecureElementEntity)
 
-    @Query("SELECT tagId FROM TAG WHERE name = :name")
+    @Query("SELECT tagId FROM TAG WHERE name = :name LIMIT 1")
     protected abstract suspend fun getIdByTagName(name: String): Long
 
     @Query("DELETE FROM SecureElementTagCrossRef WHERE id = :elementId")
@@ -75,18 +72,22 @@ abstract class SecureElementWithTagDao {
     @Transaction
     open suspend fun insert(elementWithTags: CombinedElement): Long {
         val elementId = insert(elementWithTags.secureElementEntity)
-        insertTags(elementWithTags.tags, elementId)
+        insertTagsAndMakeRelation(elementWithTags.tags, elementId)
         return elementId
     }
 
-    private suspend fun insertTags(tags: List<Tag>, elementId: Long) {
-        val tagIds = insert(tags)
+    private suspend fun insertTagsAndMakeRelation(tags: List<Tag>, elementId: Long) {
+        tags.forEach {
+            var tagId = getIdByTagName(it.name)
 
-        tagIds.forEachIndexed { index, l ->
+            if (tagId == 0L) {
+                tagId = insert(it)
+            }
+
             insert(
                 SecureElementTagCrossRef(
                     elementId,
-                    if (l > 0) l else getIdByTagName(tags[index].name)
+                    tagId
                 )
             )
         }
@@ -102,7 +103,7 @@ abstract class SecureElementWithTagDao {
             update(this)
             id.run {
                 deleteTagRelationsTo(this)
-                insertTags(elementWithTags.tags, this)
+                insertTagsAndMakeRelation(elementWithTags.tags, this)
                 deleteUnusedTags()
             }
         }
