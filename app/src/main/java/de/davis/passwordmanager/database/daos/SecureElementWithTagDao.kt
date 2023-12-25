@@ -32,7 +32,7 @@ abstract class SecureElementWithTagDao {
     abstract suspend fun getByTitle(query: String): List<CombinedElement>
 
     @Transaction
-    @VisibleForTesting
+    @VisibleForTesting(otherwise = VisibleForTesting.NONE)
     @Query("SELECT * FROM SecureElement WHERE id = :id")
     abstract suspend fun getCombinedElementById(id: Long): CombinedElement
 
