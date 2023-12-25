@@ -72,7 +72,8 @@ abstract class SecureElementWithTagDao {
     @Query("DELETE FROM Tag  WHERE tagId NOT IN (SELECT tagId FROM SecureElementTagCrossRef)")
     protected abstract suspend fun deleteUnusedTags()
 
-    suspend fun insert(elementWithTags: CombinedElement): Long {
+    @Transaction
+    open suspend fun insert(elementWithTags: CombinedElement): Long {
         val elementId = insert(elementWithTags.secureElementEntity)
         insertTags(elementWithTags.tags, elementId)
         return elementId
@@ -94,7 +95,8 @@ abstract class SecureElementWithTagDao {
     @Update(onConflict = OnConflictStrategy.IGNORE)
     abstract suspend fun updateTag(tag: Tag): Int
 
-    suspend fun update(elementWithTags: CombinedElement) {
+    @Transaction
+    open suspend fun update(elementWithTags: CombinedElement) {
         elementWithTags.secureElementEntity.run {
             timestamps.modifiedAt = Date()
             update(this)
