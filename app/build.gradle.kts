@@ -92,21 +92,21 @@ dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
 
     implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.material:material:1.10.0")
+    implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.autofill:autofill:1.1.0")
 
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.3")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 
     implementation("com.google.android.gms:play-services-oss-licenses:17.0.1")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.recyclerview:recyclerview-selection:1.1.0")
-    implementation("androidx.navigation:navigation-fragment-ktx:2.7.4")
-    implementation("androidx.navigation:navigation-ui-ktx:2.7.4")
+    implementation("androidx.navigation:navigation-fragment-ktx:2.7.6")
+    implementation("androidx.navigation:navigation-ui-ktx:2.7.6")
     implementation("androidx.preference:preference-ktx:1.2.1")
     implementation("androidx.biometric:biometric:1.1.0")
-    implementation("androidx.browser:browser:1.6.0")
+    implementation("androidx.browser:browser:1.7.0")
     implementation("me.gosimple:nbvcxz:1.5.1")
     implementation("at.favre.lib:bcrypt:0.10.2")
     implementation("com.github.alvinhkh:TextDrawable:558677ea31")
@@ -120,14 +120,12 @@ dependencies {
 
     implementation("com.opencsv:opencsv:5.8")
 
-    implementation("androidx.room:room-runtime:2.6.0")
-    implementation("androidx.room:room-ktx:2.6.0")
-    ksp("androidx.room:room-compiler:2.6.0")
-    implementation("androidx.room:room-rxjava3:2.6.0")
-    androidTestImplementation("androidx.room:room-testing:2.6.0")
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    ksp("androidx.room:room-compiler:2.6.1")
+    androidTestImplementation("androidx.room:room-testing:2.6.1")
 
     androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.1")
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.2") //Used to convert flow to livedata -> TODO delete when migrated Dashboard to kotlin
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
