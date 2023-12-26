@@ -10,7 +10,9 @@ import androidx.annotation.Nullable;
 
 import de.davis.passwordmanager.Keys;
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.security.element.SecureElement;
+import de.davis.passwordmanager.database.ElementType;
+import de.davis.passwordmanager.database.dtos.SecureElement;
+import de.davis.passwordmanager.ui.views.TagView;
 
 public abstract class CreateSecureElementActivity extends SEViewActivity {
 
@@ -22,7 +24,7 @@ public abstract class CreateSecureElementActivity extends SEViewActivity {
 
         getSupportActionBar().setHomeAsUpIndicator(R.drawable.ic_baseline_close_24);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        setTitle(SecureElement.getTypeName(getSecureElementType()));
+        setTitle(getSecureElementType().getTitle());
     }
 
     @Override
@@ -49,7 +51,7 @@ public abstract class CreateSecureElementActivity extends SEViewActivity {
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putSerializable(ELEMENT, toElement());
+        outState.putParcelable(ELEMENT, toElement());
     }
 
     @Override
@@ -65,11 +67,11 @@ public abstract class CreateSecureElementActivity extends SEViewActivity {
 
     @Override
     public void fillInElement(@NonNull SecureElement secureElement) {
-        setTitle(secureElement.getTypeName());
+        setTitle(secureElement.getElementType().getTitle());
+        ((TagView) findViewById(R.id.tagView)).setTags(secureElement.getTags(), true);
     }
 
-    @SecureElement.ElementType
-    public abstract int getSecureElementType();
+    public abstract ElementType getSecureElementType();
 
     public abstract Result check();
 

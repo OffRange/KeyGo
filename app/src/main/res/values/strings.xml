@@ -193,4 +193,20 @@
     <string name="wait_text">This might take a little time. Please be patient</string>
     <string name="authenticate_to_import">To load a backup, authentication is required</string>
     <string name="authenticate_to_proceed">Authenticate to proceed</string>
+
+    <string name="tag">Tag</string>
+    <string name="tags">Tags</string>
+    <string name="tag_view">Tag Layout</string>
+    <string name="tag_view_on">Dashboard grouped by tags</string>
+    <string name="tag_view_off">Dashboard in list format</string>
+
+    <string name="add_tags">Add tags here</string>
+    <string name="edit_tag">Edit tag</string>
+    <string name="merge_tag">Merge tags</string>
+    <string name="tag_already_existed">This tag already exists</string>
+    <string name="tag_cant_be_blank">Tags can\'t be blank</string>
+    <string name="prefix_not_allowed">This prefix is reserved and can\'t be used</string>
+    <string name="all">All</string>
+    <string name="items_n">Items: %d</string>
+
 </resources>

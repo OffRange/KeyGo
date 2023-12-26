@@ -5,9 +5,11 @@ import android.widget.Toast;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
+import java.util.List;
+
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.security.element.SecureElement;
-import de.davis.passwordmanager.security.element.SecureElementManager;
+import de.davis.passwordmanager.database.SecureElementManager;
+import de.davis.passwordmanager.database.dtos.Item;
 
 public class DeleteDialog {
 
@@ -19,28 +21,12 @@ public class DeleteDialog {
                 .setMessage(R.string.sure_delete);
     }
 
-    public void show(OnClickedListener onClickedListener, SecureElement toDelete){ // if toDelete is null -> delete selected
-        builder.setNegativeButton(R.string.no, (dialog, which) -> {
-            if(onClickedListener != null)
-                onClickedListener.onClicked(false);
+    public void show(List<Item> toDelete){ // if toDelete is null -> delete selected
+        builder.setNegativeButton(R.string.no, (dialog, which) -> {})
+                .setPositiveButton(R.string.yes, (dialog, which) -> {
+                    SecureElementManager.delete(toDelete);
 
-            dialog.dismiss();
-        }).setPositiveButton(R.string.yes, (dialog, which) -> {
-            if(toDelete == null)
-                SecureElementManager.getInstance().deleteSelected();
-            else
-                SecureElementManager.getInstance().delete(toDelete);
-
-            Toast.makeText(builder.getContext(), R.string.successful_deleted, Toast.LENGTH_LONG).show();
-
-            if(onClickedListener != null)
-                onClickedListener.onClicked(true);
-
-            dialog.dismiss();
-        }).show();
-    }
-
-    public interface OnClickedListener{
-        void onClicked(boolean deleted);
+                    Toast.makeText(builder.getContext(), R.string.successful_deleted, Toast.LENGTH_LONG).show();
+                }).show();
     }
 }

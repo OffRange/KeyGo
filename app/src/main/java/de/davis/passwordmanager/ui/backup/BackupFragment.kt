@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.os.bundleOf
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
@@ -149,15 +150,11 @@ class BackupFragment : PreferenceFragmentCompat() {
     }
 
     private fun launchAuth(@Type type: Int, format: String) {
-        val bundle = Bundle().apply {
-            putInt("type", type)
-            putString("format_type", format)
-        }
         auth.launch(
             requireContext().createRequestAuthenticationIntent(
                 AuthenticationRequest.Builder().apply {
                     withMessage(R.string.authenticate_to_proceed)
-                    withAdditionalExtras(bundle)
+                    withAdditionalExtras(bundleOf("type" to type, "format_type" to format))
                 }.build()
             )
         )

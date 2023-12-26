@@ -13,12 +13,12 @@ import androidx.appcompat.content.res.AppCompatResources;
 import com.google.android.material.appbar.MaterialToolbar;
 
 import de.davis.passwordmanager.R;
+import de.davis.passwordmanager.database.SecureElementManager;
+import de.davis.passwordmanager.database.dtos.SecureElement;
 import de.davis.passwordmanager.listeners.OnInformationChangedListener;
 import de.davis.passwordmanager.manager.ActivityResultManager;
-import de.davis.passwordmanager.security.element.SecureElement;
-import de.davis.passwordmanager.security.element.SecureElementDetail;
-import de.davis.passwordmanager.security.element.SecureElementManager;
 import de.davis.passwordmanager.ui.views.InformationView;
+import de.davis.passwordmanager.ui.views.TagView;
 
 public abstract class ViewSecureElementFragment extends SEViewFragment {
 
@@ -43,9 +43,10 @@ public abstract class ViewSecureElementFragment extends SEViewFragment {
 
     @Override
     public void fillInElement(@NonNull SecureElement e){
+        SecureElementManager.updateModifiedAt(e);
         toolbar = requireView().findViewById(R.id.toolbar);
 
-        handleFavIcon(e.isFavorite());
+        handleFavIcon(e.getFavorite());
 
         InformationView titleInformationView = requireView().findViewById(R.id.title);
         if(titleInformationView == null)
@@ -59,11 +60,11 @@ public abstract class ViewSecureElementFragment extends SEViewFragment {
         }));
 
         toolbar.setTitle(e.getTitle());
-        toolbar.setSubtitle(SecureElementDetail.getFor(e).getTitle());
+        toolbar.setSubtitle(e.getElementType().getTitle());
         toolbar.setOnMenuItemClickListener(item -> {
             if (item.getItemId() == R.id.menu_fav){
-                SecureElementManager.getInstance().switchFavoriteState(e);
-                handleFavIcon(e.isFavorite());
+                SecureElementManager.switchFavState(e);
+                handleFavIcon(e.getFavorite());
                 return false;
             }
 
@@ -72,6 +73,13 @@ public abstract class ViewSecureElementFragment extends SEViewFragment {
         });
         toolbar.setNavigationOnClickListener(v -> requireActivity().getOnBackPressedDispatcher().onBackPressed());
         handleNavIcon();
+
+        TagView tagView = requireView().findViewById(R.id.tagView);
+        tagView.setTags(e.getTags());
+        tagView.setOnLongClickListener(v -> {
+            ActivityResultManager.getOrCreateManager(getClass(), null).launchEdit(e, requireContext());
+            return true;
+        });
     }
 
     @Override

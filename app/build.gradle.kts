@@ -100,6 +100,7 @@ dependencies {
 
     implementation("com.google.android.gms:play-services-oss-licenses:17.0.1")
     implementation("com.google.code.gson:gson:2.10.1")
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.recyclerview:recyclerview-selection:1.1.0")
     implementation("androidx.navigation:navigation-fragment-ktx:2.7.4")
     implementation("androidx.navigation:navigation-ui-ktx:2.7.4")
@@ -120,9 +121,13 @@ dependencies {
     implementation("com.opencsv:opencsv:5.8")
 
     implementation("androidx.room:room-runtime:2.6.0")
+    implementation("androidx.room:room-ktx:2.6.0")
     ksp("androidx.room:room-compiler:2.6.0")
     implementation("androidx.room:room-rxjava3:2.6.0")
     androidTestImplementation("androidx.room:room-testing:2.6.0")
+
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.1")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.2") //Used to convert flow to livedata -> TODO delete when migrated Dashboard to kotlin
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
@@ -131,4 +136,8 @@ dependencies {
 
 room {
     schemaDirectory("$projectDir/schemas")
+}
+
+ksp {
+    arg("room.generateKotlin", "true")
 }

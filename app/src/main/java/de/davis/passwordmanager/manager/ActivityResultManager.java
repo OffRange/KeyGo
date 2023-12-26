@@ -15,9 +15,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import de.davis.passwordmanager.Keys;
-import de.davis.passwordmanager.security.element.SecureElement;
-import de.davis.passwordmanager.security.element.SecureElementDetail;
-import de.davis.passwordmanager.security.element.SecureElementManager;
+import de.davis.passwordmanager.database.SecureElementManager;
+import de.davis.passwordmanager.database.dtos.SecureElement;
+import de.davis.passwordmanager.ui.elements.CreateSecureElementActivity;
 import de.davis.passwordmanager.ui.elements.password.GeneratePasswordActivity;
 
 public class ActivityResultManager {
@@ -35,12 +35,14 @@ public class ActivityResultManager {
     public void registerEdit(@Nullable OnResult<SecureElement> onResult){
         editElement = resultCaller.registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
             Intent intent = checkAndGetData(result);
-            if(intent == null)
+            if(intent == null || intent.getExtras() == null)
                 return;
 
-            SecureElement element = (SecureElement) intent.getExtras().getSerializable(Keys.KEY_NEW);
+            SecureElement element = intent.getExtras().getParcelable(Keys.KEY_NEW);
+            if(element == null)
+                return;
 
-            SecureElementManager.getInstance().editElement(element);
+            SecureElementManager.updateElement(element);
 
             if(onResult != null)
                 onResult.onResult(element);
@@ -50,12 +52,14 @@ public class ActivityResultManager {
     public void registerCreate(){
         createElement = resultCaller.registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
             Intent intent = checkAndGetData(result);
-            if(intent == null)
+            if(intent == null || intent.getExtras() == null)
                 return;
 
-            SecureElement element = (SecureElement) intent.getExtras().getSerializable(Keys.KEY_NEW);
+            SecureElement element = intent.getExtras().getParcelable(Keys.KEY_NEW);
+            if(element == null)
+                return;
 
-            SecureElementManager.getInstance().createElement(element);
+            SecureElementManager.insertElement(element);
         });
     }
 
@@ -75,14 +79,14 @@ public class ActivityResultManager {
         if(editElement == null)
             throw new NullPointerException("registerEdit() must be called before launchEdit()");
 
-        editElement.launch(new Intent(context, SecureElementDetail.getFor(element).getCreateActivityClass()).putExtra(Keys.KEY_OLD, element));
+        editElement.launch(new Intent(context, element.getElementType().getCreateActivityClass()).putExtra(Keys.KEY_OLD, element));
     }
 
-    public void launchCreate(SecureElementDetail detail, Context context){
+    public void launchCreate(Class<? extends CreateSecureElementActivity> activityClass, Context context){
         if(createElement == null)
             throw new NullPointerException("registerCreate() must be called before launchCreate()");
 
-        createElement.launch(new Intent(context, detail.getCreateActivityClass()));
+        createElement.launch(new Intent(context, activityClass));
     }
 
     public void launchGeneratePassword(Context context){

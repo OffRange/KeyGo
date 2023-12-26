@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<de.davis.passwordmanager.ui.views.InformationView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:contentEnabled="false"
+    app:title="@string/tags"
+    android:labelFor="@id/tagInput">
+
+
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/chipGroup"
+        android:layout_marginTop="8dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.Material3.TextInputLayout.FilledBox.ExposedDropdownMenu"
+        android:id="@+id/textInputLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/add_tags"
+        android:layout_marginTop="0dp">
+
+        <com.google.android.material.textfield.MaterialAutoCompleteTextView
+            android:background="@android:color/transparent"
+            android:id="@+id/tagInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:inputType="text"
+            android:imeOptions="actionGo" />
+    </com.google.android.material.textfield.TextInputLayout>
+</de.davis.passwordmanager.ui.views.InformationView>

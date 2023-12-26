@@ -31,12 +31,12 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.database.KeyGoDatabase;
-import de.davis.passwordmanager.security.element.SecureElement;
-import de.davis.passwordmanager.security.element.password.PasswordDetails;
+import de.davis.passwordmanager.database.ElementType;
+import de.davis.passwordmanager.database.SecureElementManager;
+import de.davis.passwordmanager.database.dtos.SecureElement;
+import de.davis.passwordmanager.database.entities.details.password.PasswordDetails;
 import de.davis.passwordmanager.ui.auth.AuthenticationActivityKt;
 import de.davis.passwordmanager.ui.auth.AuthenticationRequest;
-import io.reactivex.rxjava3.schedulers.Schedulers;
 
 @RequiresApi(api = Build.VERSION_CODES.O)
 public class Response {
@@ -192,18 +192,11 @@ public class Response {
     }
 
     private int count(){
-        return KeyGoDatabase.getInstance().secureElementDao().count()
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.newThread())
-                .blockingGet();
+        return fetchData().size();
     }
 
     private List<SecureElement> fetchData(){
-        return KeyGoDatabase.getInstance().secureElementDao()
-                .getAllByType(SecureElement.TYPE_PASSWORD)
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.newThread())
-                .blockingGet();
+        return SecureElementManager.getSecureElementsSync(ElementType.PASSWORD.getTypeId());
     }
 
     private IntentSender getIntentSender(){

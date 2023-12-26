@@ -13,14 +13,14 @@ import androidx.annotation.Nullable;
 import com.google.android.material.textfield.TextInputLayout;
 
 import de.davis.passwordmanager.R;
+import de.davis.passwordmanager.database.dtos.SecureElement;
+import de.davis.passwordmanager.database.entities.details.creditcard.CreditCardDetails;
+import de.davis.passwordmanager.database.entities.details.creditcard.Name;
 import de.davis.passwordmanager.databinding.FragmentViewCreditCardBinding;
 import de.davis.passwordmanager.listeners.OnCreditCardEndIconClickListener;
 import de.davis.passwordmanager.listeners.OnInformationChangedListener;
 import de.davis.passwordmanager.listeners.text.CreditCardNumberTextWatcher;
 import de.davis.passwordmanager.listeners.text.ExpiryDateTextWatcher;
-import de.davis.passwordmanager.security.element.SecureElement;
-import de.davis.passwordmanager.security.element.creditcard.CreditCardDetails;
-import de.davis.passwordmanager.security.element.creditcard.Name;
 import de.davis.passwordmanager.text.method.CreditCardNumberTransformationMethod;
 import de.davis.passwordmanager.ui.elements.ViewSecureElementFragment;
 
