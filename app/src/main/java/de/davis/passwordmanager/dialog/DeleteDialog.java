@@ -8,8 +8,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import java.util.List;
 
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.dashboard.Item;
 import de.davis.passwordmanager.database.SecureElementManager;
+import de.davis.passwordmanager.database.dtos.Item;
 
 public class DeleteDialog {
 

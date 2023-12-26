@@ -11,9 +11,9 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.android.material.textfield.TextInputLayout
 import de.davis.passwordmanager.R
-import de.davis.passwordmanager.dashboard.Item
 import de.davis.passwordmanager.database.SecureElementManager
 import de.davis.passwordmanager.database.SecureElementManager.switchFavStateCoroutine
+import de.davis.passwordmanager.database.dtos.Item
 import de.davis.passwordmanager.database.dtos.SecureElement
 import de.davis.passwordmanager.database.dtos.TagWithCount
 import de.davis.passwordmanager.database.entities.getLocalizedName

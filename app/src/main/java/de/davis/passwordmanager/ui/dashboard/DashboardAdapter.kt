@@ -7,14 +7,13 @@ import androidx.recyclerview.selection.SelectionTracker.SelectionPredicate
 import androidx.recyclerview.selection.StorageStrategy
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
-import de.davis.passwordmanager.dashboard.Item
-import de.davis.passwordmanager.dashboard.SecureElementDiffCallback
-import de.davis.passwordmanager.dashboard.selection.KeyProvider
-import de.davis.passwordmanager.dashboard.selection.SecureElementDetailsLookup
-import de.davis.passwordmanager.dashboard.viewholders.BasicViewHolder
+import de.davis.passwordmanager.database.dtos.Item
 import de.davis.passwordmanager.database.dtos.TagWithCount
 import de.davis.passwordmanager.database.entities.shouldBeProtected
 import de.davis.passwordmanager.ui.dashboard.managers.AbsItemManager
+import de.davis.passwordmanager.ui.dashboard.selection.KeyProvider
+import de.davis.passwordmanager.ui.dashboard.selection.SecureElementDetailsLookup
+import de.davis.passwordmanager.ui.dashboard.viewholders.BasicViewHolder
 
 class DashboardAdapter(private val onUpdate: (DashboardAdapter) -> Unit) :
     RecyclerView.Adapter<BasicViewHolder<Item>>() {
@@ -61,7 +60,9 @@ class DashboardAdapter(private val onUpdate: (DashboardAdapter) -> Unit) :
             "tracker",
             this,
             KeyProvider(this),
-            SecureElementDetailsLookup(this),
+            SecureElementDetailsLookup(
+                this
+            ),
             StorageStrategy.createLongStorage()
         ).withSelectionPredicate(object : SelectionPredicate<Long>() {
             override fun canSetStateForKey(key: Long, nextState: Boolean): Boolean {

@@ -10,10 +10,10 @@ import androidx.recyclerview.selection.ItemDetailsLookup
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.card.MaterialCardView
 import de.davis.passwordmanager.R
-import de.davis.passwordmanager.dashboard.viewholders.BasicViewHolder
 import de.davis.passwordmanager.database.dtos.TagWithCount
 import de.davis.passwordmanager.database.entities.getLocalizedName
 import de.davis.passwordmanager.ui.GridLayoutManager
+import de.davis.passwordmanager.ui.dashboard.viewholders.BasicViewHolder
 import de.davis.passwordmanager.ui.views.InformationView
 
 class TagItemManager(

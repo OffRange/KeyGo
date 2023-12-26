@@ -1,6 +1,5 @@
 package de.davis.passwordmanager.database.dtos
 
-import de.davis.passwordmanager.dashboard.Item
 import de.davis.passwordmanager.database.entities.Tag
 import de.davis.passwordmanager.database.entities.TagWithCountEntity
 

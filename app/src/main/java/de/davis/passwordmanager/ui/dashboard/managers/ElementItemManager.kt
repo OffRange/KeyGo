@@ -10,10 +10,10 @@ import android.widget.TextView
 import androidx.fragment.app.FragmentManager
 import androidx.recyclerview.widget.RecyclerView
 import de.davis.passwordmanager.R
-import de.davis.passwordmanager.dashboard.viewholders.BasicViewHolder
-import de.davis.passwordmanager.dashboard.viewholders.SecureElementViewHolder
 import de.davis.passwordmanager.database.dtos.SecureElement
 import de.davis.passwordmanager.ui.LinearLayoutManager
+import de.davis.passwordmanager.ui.dashboard.viewholders.BasicViewHolder
+import de.davis.passwordmanager.ui.dashboard.viewholders.SecureElementViewHolder
 
 class ElementItemManager(
     initialItems: List<SecureElement>,
@@ -23,7 +23,11 @@ class ElementItemManager(
     AbsItemManager<SecureElement>(initialItems, onClick) {
 
     override fun createViewHolder(parent: ViewGroup): BasicViewHolder<SecureElement> {
-        return SecureElementViewHolder(LayoutInflater.from(parent.context), parent, fragmentManager)
+        return SecureElementViewHolder(
+            LayoutInflater.from(parent.context),
+            parent,
+            fragmentManager
+        )
     }
 
     override fun bind(

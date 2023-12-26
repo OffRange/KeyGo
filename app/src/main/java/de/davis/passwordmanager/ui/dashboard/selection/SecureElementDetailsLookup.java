@@ -1,4 +1,4 @@
-package de.davis.passwordmanager.dashboard.selection;
+package de.davis.passwordmanager.ui.dashboard.selection;
 
 import android.view.MotionEvent;
 import android.view.View;

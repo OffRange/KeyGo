@@ -7,7 +7,6 @@ import android.os.Parcelable
 import android.util.TypedValue
 import com.amulyakhare.textdrawable.TextDrawable
 import com.amulyakhare.textdrawable.util.ColorGenerator
-import de.davis.passwordmanager.dashboard.Item
 import de.davis.passwordmanager.database.ElementType
 import de.davis.passwordmanager.database.entities.SecureElementEntity
 import de.davis.passwordmanager.database.entities.Tag

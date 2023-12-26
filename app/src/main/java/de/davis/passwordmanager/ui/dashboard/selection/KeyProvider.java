@@ -1,4 +1,4 @@
-package de.davis.passwordmanager.dashboard.selection;
+package de.davis.passwordmanager.ui.dashboard.selection;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;

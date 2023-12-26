@@ -7,7 +7,7 @@ import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.FragmentManager
 import de.davis.passwordmanager.R
-import de.davis.passwordmanager.dashboard.Item
+import de.davis.passwordmanager.database.dtos.Item
 import de.davis.passwordmanager.ui.dashboard.DashboardAdapter
 import de.davis.passwordmanager.ui.views.FilterBottomSheet
 import de.davis.passwordmanager.ui.views.OptionBottomSheet

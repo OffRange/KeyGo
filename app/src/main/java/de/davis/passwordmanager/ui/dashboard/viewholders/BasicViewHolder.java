@@ -1,12 +1,12 @@
-package de.davis.passwordmanager.dashboard.viewholders;
+package de.davis.passwordmanager.ui.dashboard.viewholders;
 
 import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import de.davis.passwordmanager.dashboard.Item;
-import de.davis.passwordmanager.dashboard.selection.SecureElementDetailsLookup;
+import de.davis.passwordmanager.database.dtos.Item;
+import de.davis.passwordmanager.ui.dashboard.selection.SecureElementDetailsLookup;
 
 public abstract class BasicViewHolder<T extends Item> extends RecyclerView.ViewHolder implements SecureElementDetailsLookup.ItemDetailsLookup {
 

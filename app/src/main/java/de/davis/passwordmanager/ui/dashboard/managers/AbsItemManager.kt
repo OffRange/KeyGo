@@ -4,8 +4,8 @@ import android.content.Context
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView.ItemDecoration
 import androidx.recyclerview.widget.RecyclerView.LayoutManager
-import de.davis.passwordmanager.dashboard.Item
-import de.davis.passwordmanager.dashboard.viewholders.BasicViewHolder
+import de.davis.passwordmanager.database.dtos.Item
+import de.davis.passwordmanager.ui.dashboard.viewholders.BasicViewHolder
 
 sealed class AbsItemManager<E : Item>(
     initialItems: List<E>,

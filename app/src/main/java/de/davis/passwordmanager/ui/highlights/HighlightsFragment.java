@@ -18,9 +18,9 @@ import androidx.navigation.Navigation;
 import java.util.List;
 
 import de.davis.passwordmanager.R;
-import de.davis.passwordmanager.dashboard.viewholders.SecureElementViewHolder;
 import de.davis.passwordmanager.database.dtos.SecureElement;
 import de.davis.passwordmanager.databinding.FragmentHighlightsBinding;
+import de.davis.passwordmanager.ui.dashboard.viewholders.SecureElementViewHolder;
 import de.davis.passwordmanager.ui.viewmodels.HighlightsViewModel;
 
 public class HighlightsFragment extends Fragment {

@@ -1,4 +1,4 @@
-package de.davis.passwordmanager.dashboard.viewholders;
+package de.davis.passwordmanager.ui.dashboard.viewholders;
 
 import android.annotation.SuppressLint;
 import android.content.Context;

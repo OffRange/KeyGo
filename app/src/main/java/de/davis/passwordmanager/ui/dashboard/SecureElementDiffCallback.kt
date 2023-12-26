@@ -1,6 +1,7 @@
-package de.davis.passwordmanager.dashboard
+package de.davis.passwordmanager.ui.dashboard
 
 import androidx.recyclerview.widget.DiffUtil
+import de.davis.passwordmanager.database.dtos.Item
 
 class SecureElementDiffCallback(
     private val oldItems: List<Item>,

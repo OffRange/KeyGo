@@ -2,8 +2,8 @@ package de.davis.passwordmanager.database
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.asLiveData
-import de.davis.passwordmanager.dashboard.Item
 import de.davis.passwordmanager.database.daos.SecureElementWithTagDao
+import de.davis.passwordmanager.database.dtos.Item
 import de.davis.passwordmanager.database.dtos.SecureElement
 import de.davis.passwordmanager.database.dtos.TagWithCount
 import de.davis.passwordmanager.database.dtos.toDto

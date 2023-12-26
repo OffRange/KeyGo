@@ -20,7 +20,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.OnScrollListener
 import androidx.slidingpanelayout.widget.SlidingPaneLayout
 import de.davis.passwordmanager.R
-import de.davis.passwordmanager.dashboard.Item
+import de.davis.passwordmanager.database.dtos.Item
 import de.davis.passwordmanager.database.dtos.SecureElement
 import de.davis.passwordmanager.database.dtos.TagWithCount
 import de.davis.passwordmanager.databinding.FragmentDashboardBinding
