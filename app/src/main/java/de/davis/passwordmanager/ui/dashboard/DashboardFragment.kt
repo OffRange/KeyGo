@@ -221,7 +221,7 @@ class DashboardFragment : Fragment() {
     }
 
     private fun launchElement(element: SecureElement) {
-        scrollingViewModel.setVisibility(false)
+        scrollingViewModel.setFabVisibility(false)
         binding.listPane.searchView.hide()
         val bundle = bundleOf("element" to element)
         navController.apply {
@@ -234,12 +234,12 @@ class DashboardFragment : Fragment() {
 
     override fun onPause() {
         super.onPause()
-        scrollingViewModel.setVisibility(false)
+        scrollingViewModel.setFabVisibility(false)
     }
 
     override fun onResume() {
         super.onResume()
-        scrollingViewModel.setVisibility(true)
+        scrollingViewModel.setFabVisibility(true)
     }
 
     private fun update(update: AbsItemManager<out Item>) {
@@ -251,7 +251,7 @@ class DashboardFragment : Fragment() {
     private fun updateUI() {
         binding.listPane.progress.visibility = View.GONE
 
-        binding.listPane.viewToShow.visibility =
+        binding.listPane.noResults.visibility =
             if (adapter.itemCount > 0) View.GONE else View.VISIBLE
     }
 
