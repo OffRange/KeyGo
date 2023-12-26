@@ -48,7 +48,7 @@ abstract class SecureElementWithTagDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract suspend fun insert(tag: Tag): Long
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract suspend fun insert(crossRef: SecureElementTagCrossRef)
 
     @Delete
@@ -114,6 +114,39 @@ abstract class SecureElementWithTagDao {
             timestamps.modifiedAt = Date()
             update(this)
         }
+    }
+
+    @Query(
+        """
+        INSERT OR IGNORE INTO SecureElementTagCrossRef (id, tagId)
+        SELECT DISTINCT sec.id, (SELECT tagId FROM Tag WHERE name = :newTagName) 
+        FROM SecureElementTagCrossRef sec
+        INNER JOIN Tag t ON sec.tagId = t.tagId
+        WHERE t.name IN (:tagsToDelete)
+    """
+    )
+    protected abstract suspend fun reassignSecureElementsToNewTag(
+        newTagName: String,
+        tagsToDelete: List<String>
+    )
+
+    @Transaction
+    open suspend fun mergeTags(tags: List<Tag>, resultingTagName: String) {
+        if (tags.any { it.tagId == 0L })
+            throw IllegalStateException("Tags must be reference to database entries")
+
+        val tagId =
+            tags.find { it.name == resultingTagName }?.tagId ?: getIdByTagName(resultingTagName)
+
+
+        if (tagId == 0L)
+            insert(Tag(resultingTagName))
+
+
+        val cleanedTags = tags.filter { it.name != resultingTagName }
+        reassignSecureElementsToNewTag(resultingTagName, cleanedTags.map { it.name })
+
+        deleteTags(cleanedTags)
     }
 
     @Transaction

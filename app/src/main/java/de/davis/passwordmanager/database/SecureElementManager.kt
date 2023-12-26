@@ -151,6 +151,10 @@ object SecureElementManager {
         }
     }
 
+    suspend fun mergeTags(tags: List<Tag>, resultingTagName: String) {
+        dao.mergeTags(tags, resultingTagName)
+    }
+
     @JvmStatic
     @Deprecated("Calling this blocks the Main Thread", ReplaceWith("Kotlin Coroutine"))
     fun getLastCreatedSync(limit: Int = 5): List<SecureElement> {

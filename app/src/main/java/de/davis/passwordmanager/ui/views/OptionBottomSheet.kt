@@ -95,7 +95,35 @@ class OptionBottomSheet<out I : Item>(
         binding.favorite.visibility = View.GONE
 
         if (items.size > 1) {
-            binding.edit.visibility = View.GONE
+            binding.edit.text = getString(R.string.merge_tag)
+
+            binding.edit.setOnClickListener {
+                dismiss()
+
+                EditDialogBuilder(requireContext()).apply {
+                    setTitle(R.string.merge_tag)
+                    withInformation(InformationView.Information().apply {
+                        text = list.first().tag.name
+                        hint = getString(R.string.tag)
+                        inputType = InputType.TYPE_CLASS_TEXT
+                        isSecret = false
+                    })
+                    setButtonListener(
+                        DialogInterface.BUTTON_POSITIVE,
+                        R.string.ok
+                    ) { dialog, _, newText ->
+                        if (!checkInput(newText, dialog as AlertDialog))
+                            return@setButtonListener
+
+
+                        lifecycleScope.launch {
+                            SecureElementManager.mergeTags(list.map { it.tag }, newText)
+
+                            dialog.dismiss()
+                        }
+                    }
+                }.show()
+            }
         } else {
             val firstTag = list.first()
             binding.edit.setOnClickListener {
@@ -106,18 +134,8 @@ class OptionBottomSheet<out I : Item>(
                         DialogInterface.BUTTON_POSITIVE,
                         R.string.ok
                     ) { dialog, _, newText ->
-                        val inputLayout =
-                            (dialog as AlertDialog).findViewById<TextInputLayout>(R.id.textInputLayout)!!
-                        if (newText.isBlank()) {
-                            inputLayout.error = context.getString(R.string.tag_cant_be_blank)
-                            inputLayout.editText?.text?.clear()
+                        if (!checkInput(newText, dialog as AlertDialog))
                             return@setButtonListener
-                        }
-
-                        if (newText.isProtectedTagName) {
-                            inputLayout.error = context.getString(R.string.prefix_not_allowed)
-                            return@setButtonListener
-                        }
 
                         if (newText == firstTag.tag.name) {
                             dialog.dismiss()
@@ -136,19 +154,37 @@ class OptionBottomSheet<out I : Item>(
                                 return@launch
                             }
 
+                            val inputLayout =
+                                dialog.findViewById<TextInputLayout>(R.id.textInputLayout)!!
                             inputLayout.error = context.getString(R.string.tag_already_existed)
                         }
                     }
 
                     withInformation(InformationView.Information().apply {
                         text = title
-                        hint = getString(R.string.title)
+                        hint = getString(R.string.tag)
                         inputType = InputType.TYPE_CLASS_TEXT
                         isSecret = false
                     })
                 }.show()
             }
         }
+    }
+
+    private fun EditDialogBuilder.checkInput(input: String, dialog: AlertDialog): Boolean {
+        val inputLayout = dialog.findViewById<TextInputLayout>(R.id.textInputLayout)!!
+        if (input.isBlank()) {
+            inputLayout.error = context.getString(R.string.tag_cant_be_blank)
+            inputLayout.editText?.text?.clear()
+            return false
+        }
+
+        if (input.isProtectedTagName) {
+            inputLayout.error = context.getString(R.string.prefix_not_allowed)
+            return false
+        }
+
+        return true
     }
 
     private fun <I : Item> setTitle(list: List<I>, titleProvider: (I) -> String): String {

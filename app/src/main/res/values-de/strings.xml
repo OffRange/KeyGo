@@ -152,6 +152,7 @@
     <string name="authenticate_to_import">Um ein Backup laden zu können, ist eine Authentifizierung erforderlich</string>
     <string name="authenticate_to_proceed">Authentifizieren um fortzufahren</string>
 
+    <string name="tag">Tag</string>
     <string name="tags">Tags</string>
     <string name="tag_view">Tag-Layout</string>
     <string name="tag_view_on">Dashboard gruppiert nach Tags</string>
@@ -159,6 +160,7 @@
 
     <string name="edit_tag">Tag bearbeiten</string>
     <string name="add_tags">Tags hier hinzufügen</string>
+    <string name="merge_tag">Merge tags</string>
     <string name="tag_already_existed">Dieser Tag existiert bereits</string>
     <string name="tag_cant_be_blank">Tags dürfen nicht leer sein</string>
     <string name="prefix_not_allowed">Dieser Prefix ist reserviert und kann nicht verwendet werden</string>
