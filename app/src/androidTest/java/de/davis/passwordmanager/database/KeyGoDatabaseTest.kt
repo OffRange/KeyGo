@@ -6,9 +6,11 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import de.davis.passwordmanager.database.daos.SecureElementWithTagDao
 import de.davis.passwordmanager.database.dtos.SecureElement
+import de.davis.passwordmanager.database.entities.Tag
 import de.davis.passwordmanager.database.entities.details.creditcard.CreditCardDetails
 import de.davis.passwordmanager.database.entities.details.creditcard.Name
 import de.davis.passwordmanager.database.entities.details.password.PasswordDetails
+import de.davis.passwordmanager.database.entities.onlyCustoms
 import de.davis.passwordmanager.database.entities.wrappers.CombinedElement
 import de.davis.passwordmanager.utils.GeneratorUtil
 import kotlinx.coroutines.test.runTest
@@ -82,6 +84,63 @@ class KeyGoDatabaseTest {
 
             assertEquals(ElementType.CREDIT_CARD.tag.name, tags.first().name)
         }
+    }
+
+    @Test
+    fun testMergeTags() = runTest {
+        val tag1 = "TAG 1"
+        val tag2 = "TAG 2"
+        val tag32 = "TAG 32"
+
+        val tagIgnore = "TAG IGN"
+        val mergeTag = "TAG 1"
+
+        var creditCard = writeAndRead(
+            SecureElement(
+                "C",
+                CreditCardDetails(Name.fromFullName(""), "", "0000000000000000", ""),
+                listOf(Tag(tag1), Tag(tag2))
+            )
+        )
+
+        var password = writeAndRead(
+            SecureElement(
+                "P",
+                PasswordDetails("pwd", "", ""),
+                listOf(Tag(tag32), Tag(tagIgnore))
+            )
+        )
+
+        secureElementWithTagDao.mergeTags(
+            creditCard.tags.onlyCustoms().filter { it.name != tagIgnore } +
+                    password.tags.onlyCustoms().filter { it.name != tagIgnore },
+            mergeTag
+        )
+
+        creditCard =
+            secureElementWithTagDao.getCombinedElementById(creditCard.secureElementEntity.id)
+        password = secureElementWithTagDao.getCombinedElementById(password.secureElementEntity.id)
+
+        val creditCardTags = creditCard.tags.map { it.name }
+        val passwordTags = password.tags.map { it.name }
+
+        assertTrue(
+            creditCardTags.size == 2 && creditCardTags.containsAll(
+                listOf(
+                    ElementType.CREDIT_CARD.tag.name,
+                    mergeTag
+                )
+            )
+        )
+        assertTrue(
+            passwordTags.size == 3 && passwordTags.containsAll(
+                listOf(
+                    ElementType.PASSWORD.tag.name,
+                    tagIgnore,
+                    mergeTag
+                )
+            )
+        )
     }
 
     private suspend fun writeAndRead(element: SecureElement): CombinedElement {
