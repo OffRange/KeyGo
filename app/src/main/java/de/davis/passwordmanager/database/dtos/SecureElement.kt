@@ -55,11 +55,15 @@ private object TimestampsParceler : Parceler<Timestamps> {
 data class SecureElement @JvmOverloads constructor(
     var title: String,
     var detail: ElementDetail,
-    var tags: List<Tag> = listOf(detail.elementType.tag),
+    var tags: List<Tag> = listOf(),
     var favorite: Boolean = false,
     private var timestamps: Timestamps = Timestamps.CURRENT,
     @Exclude override val id: Long = 0
 ) : Item, Comparable<SecureElement>, Parcelable {
+
+    init {
+        tags += detail.elementType.tag
+    }
 
     val letter get() = title[0].uppercaseChar()
     val elementType: ElementType get() = detail.elementType
