@@ -13,7 +13,7 @@ android {
 
     val runTasks = gradle.startParameter.taskNames
     val isDebugBuild = runTasks.any { it.contains("assembleDebug") }
-    val build = 33 // alpha 0-31 | beta 32-63 | rc 64-95 | stable 96-99
+    val build = 35 // alpha 0-31 | beta 32-63 | rc 64-95 | stable 96-99
     val major = 1
     val minor = 2
     val patch = 0
