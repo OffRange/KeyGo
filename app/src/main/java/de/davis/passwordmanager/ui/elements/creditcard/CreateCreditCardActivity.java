@@ -156,7 +156,6 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
         String title = Objects.requireNonNull(binding.textInputLayoutTitle.getEditText()).getText().toString().trim();
         String creditCardNumber = Objects.requireNonNull(binding.textInputLayoutCardNumber.getEditText()).getText().toString().trim();
         String expiryDate = Objects.requireNonNull(binding.textInputLayoutCardDate.getEditText()).getText().toString().trim();
-        String cvv = Objects.requireNonNull(binding.textInputLayoutCardCVV.getEditText()).getText().toString().trim();
 
         if(title.isEmpty()){
             binding.textInputLayoutTitle.setError(getString(R.string.is_not_filled_in));

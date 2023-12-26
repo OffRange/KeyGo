@@ -1,7 +1,5 @@
 package de.davis.passwordmanager.database
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.asLiveData
 import de.davis.passwordmanager.database.daos.SecureElementWithTagDao
 import de.davis.passwordmanager.database.dtos.Item
 import de.davis.passwordmanager.database.dtos.SecureElement
@@ -35,11 +33,6 @@ object SecureElementManager {
     fun getSecureElementsFlow(typeId: Int? = null): Flow<List<SecureElement>> {
         return dao.getCombinedElementFlow(typeId)
             .map { it.map { e -> SecureElement.fromEntity(e) } }
-    }
-
-    @JvmStatic
-    fun getSecureElementsLiveData(typeId: Int? = null): LiveData<List<SecureElement>> {
-        return getSecureElementsFlow(typeId).asLiveData()
     }
 
     @JvmStatic
