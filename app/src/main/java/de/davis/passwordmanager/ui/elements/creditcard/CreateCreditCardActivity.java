@@ -153,17 +153,17 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
         Result result = new Result();
         result.setSuccess(true);
 
-        String title = Objects.requireNonNull(binding.textInputLayoutTitle.getEditText()).getText().toString().trim();
-        String creditCardNumber = Objects.requireNonNull(binding.textInputLayoutCardNumber.getEditText()).getText().toString().trim();
-        String expiryDate = Objects.requireNonNull(binding.textInputLayoutCardDate.getEditText()).getText().toString().trim();
+        String title = Objects.requireNonNull(binding.textInputLayoutTitle.getEditText()).getText().toString();
+        String creditCardNumber = Objects.requireNonNull(binding.textInputLayoutCardNumber.getEditText()).getText().toString();
+        String expiryDate = Objects.requireNonNull(binding.textInputLayoutCardDate.getEditText()).getText().toString();
 
-        if(title.isEmpty()){
+        if(title.isBlank()){
             binding.textInputLayoutTitle.setError(getString(R.string.is_not_filled_in));
             result.setSuccess(false);
         }else
             binding.textInputLayoutTitle.setErrorEnabled(false);
 
-        if(creditCardNumber.isEmpty()){
+        if(creditCardNumber.isBlank()){
             binding.textInputLayoutCardNumber.setError(getString(R.string.is_not_filled_in));
             result.setSuccess(false);
         }else
@@ -175,7 +175,7 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
         }else
             binding.textInputLayoutCardNumber.setErrorEnabled(false);
 
-        if(!expiryDate.isEmpty() && !CreditCardUtil.isValidDateFormat(expiryDate)){
+        if(!expiryDate.isBlank() && !CreditCardUtil.isValidDateFormat(expiryDate)){
             binding.textInputLayoutCardDate.setError(getString(R.string.invalid_date));
             result.setSuccess(false);
         }else

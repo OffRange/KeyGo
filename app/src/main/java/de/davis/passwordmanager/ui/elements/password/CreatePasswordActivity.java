@@ -59,14 +59,14 @@ public class CreatePasswordActivity extends CreateSecureElementActivity {
         Result result = new Result();
         result.setSuccess(true);
 
-        if(Objects.requireNonNull(binding.textInputLayoutTitle.getEditText()).getText().toString().trim().isEmpty()){
+        if(Objects.requireNonNull(binding.textInputLayoutTitle.getEditText()).getText().toString().isBlank()){
             binding.textInputLayoutTitle.setError(getString(R.string.is_not_filled_in));
             binding.textInputLayoutTitle.requestFocus();
             result.setSuccess(false);
         }else
             binding.textInputLayoutTitle.setErrorEnabled(false);
 
-        if(Objects.requireNonNull(binding.textInputLayoutPassword.getEditText()).getText().toString().trim().isEmpty()){
+        if(Objects.requireNonNull(binding.textInputLayoutPassword.getEditText()).getText().toString().isBlank()){
             binding.textInputLayoutPassword.setError(getString(R.string.is_not_filled_in));
             binding.textInputLayoutPassword.requestFocus();
             result.setSuccess(false);
