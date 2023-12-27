@@ -6,12 +6,12 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import de.davis.passwordmanager.database.ElementType
 import de.davis.passwordmanager.database.TAG_PREFIX
-import de.davis.passwordmanager.gson.annotations.Exclude
+import de.davis.passwordmanager.gson.annotations.ExcludeFromGson
 
 @Entity(indices = [Index("name", unique = true)])
 data class Tag @JvmOverloads constructor(
     val name: String,
-    @Exclude @PrimaryKey(autoGenerate = true) val tagId: Long = 0
+    @ExcludeFromGson @PrimaryKey(autoGenerate = true) val tagId: Long = 0
 )
 
 fun Collection<Tag>.onlyCustoms(): Collection<Tag> {

@@ -13,7 +13,7 @@ import de.davis.passwordmanager.database.entities.Tag
 import de.davis.passwordmanager.database.entities.Timestamps
 import de.davis.passwordmanager.database.entities.details.ElementDetail
 import de.davis.passwordmanager.database.entities.wrappers.CombinedElement
-import de.davis.passwordmanager.gson.annotations.Exclude
+import de.davis.passwordmanager.gson.annotations.ExcludeFromGson
 import kotlinx.parcelize.Parceler
 import kotlinx.parcelize.Parcelize
 import kotlinx.parcelize.TypeParceler
@@ -57,7 +57,7 @@ data class SecureElement @JvmOverloads constructor(
     var tags: List<Tag> = listOf(),
     var favorite: Boolean = false,
     private var timestamps: Timestamps = Timestamps.CURRENT,
-    @Exclude override val id: Long = 0
+    @ExcludeFromGson override val id: Long = 0
 ) : Item, Comparable<SecureElement>, Parcelable {
 
     init {
