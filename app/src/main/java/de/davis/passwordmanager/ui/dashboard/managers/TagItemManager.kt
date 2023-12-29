@@ -12,9 +12,11 @@ import com.google.android.material.card.MaterialCardView
 import de.davis.passwordmanager.R
 import de.davis.passwordmanager.database.dtos.TagWithCount
 import de.davis.passwordmanager.database.entities.getLocalizedName
+import de.davis.passwordmanager.database.entities.shouldBeProtected
 import de.davis.passwordmanager.ui.GridLayoutManager
 import de.davis.passwordmanager.ui.dashboard.viewholders.BasicViewHolder
 import de.davis.passwordmanager.ui.views.InformationView
+import net.greypanther.natsort.SimpleNaturalComparator
 
 class TagItemManager(
     initialItems: List<TagWithCount>,
@@ -97,5 +99,12 @@ class TagItemManager(
     override val viewType: Int
         get() = 2
 
-    override fun MutableList<TagWithCount>.sortItems() {}
+    override fun MutableList<TagWithCount>.sortItems() {
+        sortWith(
+            compareByDescending<TagWithCount> { it.tag.shouldBeProtected }.then(
+                compareBy(
+                    SimpleNaturalComparator.getInstance()
+                ) { it.tag.name })
+        )
+    }
 }
