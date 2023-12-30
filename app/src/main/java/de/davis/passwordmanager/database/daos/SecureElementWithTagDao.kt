@@ -52,7 +52,13 @@ abstract class SecureElementWithTagDao {
     protected abstract suspend fun insert(crossRef: SecureElementTagCrossRef)
 
     @Delete
-    abstract suspend fun deleteElements(secureElementEntities: List<SecureElementEntity>)
+    protected abstract suspend fun deleteElementsAbs(secureElementEntities: List<SecureElementEntity>)
+
+    @Transaction
+    open suspend fun deleteElements(secureElementEntities: List<SecureElementEntity>) {
+        deleteElementsAbs(secureElementEntities)
+        deleteUnusedTags()
+    }
 
     @Delete
     abstract suspend fun deleteTags(tags: List<Tag>)
