@@ -77,7 +77,7 @@ public class SecureElementViewHolder extends BasicViewHolder<SecureElement> {
             info.setTextColor(((PasswordDetails)item.getDetail()).getStrength().getColor(context));
         }else{
             CreditCardDetails details = (CreditCardDetails) item.getDetail();
-            info.setText(details.getSecretNumber());
+            setShortenedTextIfNeeded(info, details.getSecretNumber(), details.getSecretNumber().substring(15, 19));
             info.setTextColor(MaterialColors.getColor(itemView.getContext(), com.google.android.material.R.attr.colorOnSurface, Color.BLACK));
         }
 
@@ -87,6 +87,16 @@ public class SecureElementViewHolder extends BasicViewHolder<SecureElement> {
         });
 
         more.setOnClickListener(v -> new OptionBottomSheet<>(List.of(item), SecureElement.class).show(fragmentManager, "OptionSheet"));
+    }
+
+    private void setShortenedTextIfNeeded(TextView textView, String originalText, String shortenedText) {
+        textView.post(() -> {
+            int availableWidth = textView.getWidth() - textView.getPaddingLeft() - textView.getPaddingRight();
+            textView.setText(originalText);
+
+            if (textView.getPaint().measureText(originalText) > availableWidth)
+                textView.setText(shortenedText);
+        });
     }
 
     public void setLetterVisible(boolean visible, char letter){
