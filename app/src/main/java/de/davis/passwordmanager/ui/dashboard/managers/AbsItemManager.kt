@@ -14,7 +14,7 @@ sealed class AbsItemManager<E : Item>(
 
     val items = mutableListOf<E>().apply { addAll(initialItems) }
 
-    fun prepareDataset() = items.apply {
+    open fun prepareDataset() = items.apply {
         sortItems()
     }
 
@@ -23,13 +23,13 @@ sealed class AbsItemManager<E : Item>(
         addAll(collection)
     }
 
-    abstract fun createViewHolder(parent: ViewGroup): BasicViewHolder<E>
+    abstract fun createViewHolder(parent: ViewGroup, viewType: Int): BasicViewHolder<E>
     abstract fun getLayoutManager(context: Context): LayoutManager
     open fun getItemDecoration(): ItemDecoration? = null
     abstract fun getItemId(position: Int): Long
     abstract fun MutableList<E>.sortItems()
 
-    abstract val viewType: Int
+    abstract fun getViewType(position: Int): Int
 
     open fun bind(
         viewHolder: BasicViewHolder<E>,
@@ -47,10 +47,9 @@ sealed class AbsItemManager<E : Item>(
 
     class Empty : AbsItemManager<Item>(arrayListOf()) {
 
-        override val viewType: Int
-            get() = 0
+        override fun getViewType(position: Int): Int = 0
 
-        override fun createViewHolder(parent: ViewGroup): BasicViewHolder<Item> {
+        override fun createViewHolder(parent: ViewGroup, viewType: Int): BasicViewHolder<Item> {
             throw IllegalArgumentException("Can not call createViewHolder on a dummy Manager")
         }
 

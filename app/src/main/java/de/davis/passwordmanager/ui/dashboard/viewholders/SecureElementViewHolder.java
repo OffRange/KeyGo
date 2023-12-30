@@ -17,7 +17,6 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.FragmentManager;
-import androidx.recyclerview.selection.ItemDetailsLookup;
 
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
@@ -100,21 +99,5 @@ public class SecureElementViewHolder extends BasicViewHolder<SecureElement> {
     protected void handleSelectionState(boolean selected) {
         ((MaterialCardView) itemView).setChecked(selected);
         ((MaterialCardView) itemView).setStrokeWidth(selected ? (int) itemView.getResources().getDimension(com.google.android.material.R.dimen.m3_comp_outlined_card_outline_width) : 0);
-    }
-
-    @Override
-    public ItemDetailsLookup.ItemDetails<Long> getItemDetails() {
-        return new ItemDetailsLookup.ItemDetails<>() {
-            @Override
-            public int getPosition() {
-                return getAbsoluteAdapterPosition();
-            }
-
-            @NonNull
-            @Override
-            public Long getSelectionKey() {
-                return getItemId();
-            }
-        };
     }
 }

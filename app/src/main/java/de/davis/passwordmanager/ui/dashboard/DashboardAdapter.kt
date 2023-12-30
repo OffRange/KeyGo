@@ -31,7 +31,7 @@ class DashboardAdapter(private val onUpdate: (DashboardAdapter) -> Unit) :
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BasicViewHolder<Item> {
-        return itemManager.createViewHolder(parent)
+        return itemManager.createViewHolder(parent, viewType)
     }
 
     override fun getItemCount(): Int = itemManager.items.size
@@ -41,7 +41,7 @@ class DashboardAdapter(private val onUpdate: (DashboardAdapter) -> Unit) :
     }
 
     override fun getItemViewType(position: Int): Int {
-        return itemManager.viewType
+        return itemManager.getViewType(position)
     }
 
     override fun getItemId(position: Int): Long {

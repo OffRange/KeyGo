@@ -22,7 +22,10 @@ class ElementItemManager(
 ) :
     AbsItemManager<SecureElement>(initialItems, onClick) {
 
-    override fun createViewHolder(parent: ViewGroup): BasicViewHolder<SecureElement> {
+    override fun createViewHolder(
+        parent: ViewGroup,
+        viewType: Int
+    ): BasicViewHolder<SecureElement> {
         return SecureElementViewHolder(
             LayoutInflater.from(parent.context),
             parent,
@@ -43,8 +46,7 @@ class ElementItemManager(
         )
     }
 
-    override val viewType: Int
-        get() = 1
+    override fun getViewType(position: Int): Int = 1
 
 
     override fun getLayoutManager(context: Context): RecyclerView.LayoutManager {
