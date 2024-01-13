@@ -134,7 +134,7 @@ public class BaseSettingsFragment extends PreferenceFragmentCompat implements Pr
                 if(!(boolean) newValue)
                     afm.disableAutofillServices();
                 else
-                    startActivity(new Intent(Settings.ACTION_SETTINGS));
+                    startActivity(new Intent(Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE).setData(Uri.parse("package:"+ requireContext().getPackageName())));
 
                 return true;
             });
@@ -149,7 +149,7 @@ public class BaseSettingsFragment extends PreferenceFragmentCompat implements Pr
         }
 
         AutofillManager afm = requireContext().getSystemService(AutofillManager.class);
-        return afm != null;
+        return afm != null && afm.isAutofillSupported();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
