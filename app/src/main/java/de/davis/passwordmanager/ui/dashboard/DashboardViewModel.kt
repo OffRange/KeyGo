@@ -5,11 +5,13 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.passwordmanager.R
+import de.davis.passwordmanager.database.ElementType
 import de.davis.passwordmanager.database.SecureElementManager
 import de.davis.passwordmanager.database.dtos.Item
 import de.davis.passwordmanager.database.dtos.SecureElement
 import de.davis.passwordmanager.database.dtos.TagWithCount
 import de.davis.passwordmanager.database.entities.onlyCustoms
+import de.davis.passwordmanager.database.entities.tryGetElementType
 import de.davis.passwordmanager.filter.Filter
 import de.davis.passwordmanager.filter.applyFilter
 import de.davis.passwordmanager.utils.PreferenceUtil
@@ -45,11 +47,14 @@ class DashboardViewModel(private val application: Application) : AndroidViewMode
     val searchResults: StateFlow<Pair<String, List<SecureElement>>> = _searchResults.asStateFlow()
     private var searchJob: Job? = null
 
+    private var ignoreElementTypes: List<ElementType> = emptyList()
+
     fun updateState(state: ListState) {
         _listState.value = state
     }
 
-    fun initiateState() {
+    fun initiateState(ignoreElementTypes: List<ElementType>) {
+        this.ignoreElementTypes = ignoreElementTypes
         updateState(application.getDefaultListState())
     }
 
@@ -58,6 +63,7 @@ class DashboardViewModel(private val application: Application) : AndroidViewMode
 
         searchJob = viewModelScope.launch {
             _searchResults.value = query to SecureElementManager.getByTitle(query)
+                .filter { !ignoreElementTypes.contains(it.detail.elementType) }
         }
     }
 
@@ -70,11 +76,14 @@ class DashboardViewModel(private val application: Application) : AndroidViewMode
                 Filter.filterFlow
             ) { listState: ListState, secureElements: List<SecureElement>, tagsWithCount: List<TagWithCount>, filter ->
                 listState to when (listState) {
-                    is ListState.Tag -> ListData.Tags(tagsWithCount)
+                    is ListState.Tag -> ListData.Tags(tagsWithCount.filter {
+                        !ignoreElementTypes.contains(it.tag.tryGetElementType())
+                    })
 
                     is ListState.Element -> {
                         val elements = secureElements
                             .filter { it.tags.any { tag -> listState.tagName == tag.name } }
+                            .filter { !ignoreElementTypes.contains(it.detail.elementType) }
 
                         ListData.Elements(
                             elements.applyFilter(filter),

@@ -48,8 +48,9 @@ class DashboardAdapter(private val onUpdate: (DashboardAdapter) -> Unit) :
         return itemManager.getItemId(position)
     }
 
-    fun apply(
+    fun applyRecyclerView(
         recyclerView: RecyclerView,
+        enableSelection: Boolean = true,
         onSelectionChanged: (selectedElements: List<Item>) -> Unit = {}
     ) = recyclerView.apply {
         setHasFixedSize(true)
@@ -67,18 +68,18 @@ class DashboardAdapter(private val onUpdate: (DashboardAdapter) -> Unit) :
         ).withSelectionPredicate(object : SelectionPredicate<Long>() {
             override fun canSetStateForKey(key: Long, nextState: Boolean): Boolean {
                 val item = itemManager.getElementById(key)
-                return !(item is TagWithCount && item.tag.shouldBeProtected)
+                return enableSelection && !(item is TagWithCount && item.tag.shouldBeProtected)
             }
 
             override fun canSetStateAtPosition(position: Int, nextState: Boolean): Boolean {
                 if (position !in itemManager.items.indices) return false
 
                 val item = itemManager.items[position]
-                return !(item is TagWithCount && item.tag.shouldBeProtected)
+                return enableSelection && !(item is TagWithCount && item.tag.shouldBeProtected)
             }
 
             override fun canSelectMultiple(): Boolean {
-                return true
+                return enableSelection
             }
 
         }).build()

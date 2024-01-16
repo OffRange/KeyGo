@@ -2,6 +2,7 @@ package de.davis.passwordmanager.ui.dashboard
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.os.Parcelable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -19,7 +20,9 @@ import androidx.navigation.fragment.NavHostFragment
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.OnScrollListener
 import androidx.slidingpanelayout.widget.SlidingPaneLayout
+import androidx.slidingpanelayout.widget.SlidingPaneLayout.PanelSlideListener
 import de.davis.passwordmanager.R
+import de.davis.passwordmanager.database.ElementType
 import de.davis.passwordmanager.database.dtos.Item
 import de.davis.passwordmanager.database.dtos.SecureElement
 import de.davis.passwordmanager.database.dtos.TagWithCount
@@ -36,6 +39,7 @@ import de.davis.passwordmanager.ui.dashboard.managers.TagItemManager
 import de.davis.passwordmanager.ui.dashboard.menuprovider.DefaultElementMenuProvider
 import de.davis.passwordmanager.ui.viewmodels.ScrollingViewModel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.parcelize.Parcelize
 
 class DashboardFragment : Fragment() {
 
@@ -43,10 +47,23 @@ class DashboardFragment : Fragment() {
 
     private val adapter = DashboardAdapter { updateUI() }
 
-    val scrollingViewModel: ScrollingViewModel by activityViewModels()
+    private val scrollingViewModel: ScrollingViewModel by activityViewModels()
     private val dashboardViewModel: DashboardViewModel by viewModels()
 
     private lateinit var navController: NavController
+
+    private lateinit var dashboardHandler: DashboardHandler
+
+    private val onElementClicked = { e: SecureElement -> dashboardHandler.onElementClicked(e) }
+
+    @Parcelize
+    data class DashboardHandler(
+        val hideElementTypes: List<ElementType> = emptyList(),
+        val onElementClicked: (SecureElement) -> Unit
+    ) : Parcelable
+
+    private val defaultHandler = DashboardHandler { launchElement(it) }
+
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -57,11 +74,19 @@ class DashboardFragment : Fragment() {
         return binding.root
     }
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        dashboardHandler = arguments?.getParcelableCompat(
+            EXTRA_DASHBOARD_HANDLER,
+            DashboardHandler::class.java
+        ) ?: defaultHandler
+    }
+
     @SuppressLint("PrivateResource")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        dashboardViewModel.initiateState()
+        dashboardViewModel.initiateState(dashboardHandler.hideElementTypes)
 
         binding.root.lockMode = SlidingPaneLayout.LOCK_MODE_LOCKED
 
@@ -72,7 +97,10 @@ class DashboardFragment : Fragment() {
             Lifecycle.State.STARTED
         )
 
-        adapter.apply(binding.listPane.recyclerView) {
+        adapter.applyRecyclerView(
+            binding.listPane.recyclerView,
+            enableSelection = dashboardHandler == defaultHandler
+        ) {
             binding.listPane.searchBar.hint = if (it.isNotEmpty())
                 getString(R.string.selected_items, it.size)
             else
@@ -157,7 +185,7 @@ class DashboardFragment : Fragment() {
 
                             ElementItemManager(
                                 elements,
-                                ::launchElement,
+                                onElementClicked,
                                 childFragmentManager
                             )
                         }
@@ -195,14 +223,14 @@ class DashboardFragment : Fragment() {
             dashboardViewModel.search(it.toString())
         }
         val searchResultAdapter = DashboardAdapter {}
-        searchResultAdapter.apply(binding.listPane.recyclerViewResults)
+        searchResultAdapter.applyRecyclerView(binding.listPane.recyclerViewResults, false)
 
         doFlowInLifecycle(dashboardViewModel.searchResults) {
             collectLatest {
                 searchResultAdapter.update(
                     ElementItemManager(
                         it.second,
-                        onClick = ::launchElement,
+                        onElementClicked,
                         childFragmentManager
                     )
                 )
@@ -216,7 +244,7 @@ class DashboardFragment : Fragment() {
 
 
         arguments?.getParcelableCompat("element", SecureElement::class.java)?.let {
-            launchElement(it)
+            onElementClicked(it)
         }
     }
 
@@ -263,5 +291,9 @@ class DashboardFragment : Fragment() {
     override fun onViewStateRestored(savedInstanceState: Bundle?) {
         super.onViewStateRestored(savedInstanceState)
         adapter.onRestoreInstanceState(savedInstanceState)
+    }
+
+    companion object {
+        const val EXTRA_DASHBOARD_HANDLER = "de.davis.passwordmanager.extra.DASHBOARD_HANDLER"
     }
 }

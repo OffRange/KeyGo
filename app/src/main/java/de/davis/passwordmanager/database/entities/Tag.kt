@@ -22,5 +22,9 @@ val Tag.shouldBeProtected get() = this.name.startsWith(TAG_PREFIX)
 
 val CharSequence.isProtectedTagName get() = startsWith(TAG_PREFIX)
 
-fun Tag.getLocalizedName(context: Context) =
-    if (shouldBeProtected) context.getString(ElementType.entries.first { e -> e.tag.name == name }.title) else name
+fun Tag.getLocalizedName(context: Context) = tryGetElementType()?.let {
+    context.getString(it.title)
+} ?: name
+
+fun Tag.tryGetElementType() =
+    if (shouldBeProtected) ElementType.entries.first { e -> e.tag.name == name } else null
