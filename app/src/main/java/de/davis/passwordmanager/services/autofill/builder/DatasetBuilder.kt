@@ -19,10 +19,12 @@ import de.davis.passwordmanager.PasswordManagerApplication
 import de.davis.passwordmanager.R
 import de.davis.passwordmanager.services.autofill.entities.AutofillForm
 import de.davis.passwordmanager.services.autofill.entities.AutofillPair
+import de.davis.passwordmanager.services.autofill.extensions.getOnLongClickPendingIntent
+import de.davis.passwordmanager.services.autofill.extensions.getOpenAppPendingIntent
 
-const val REQUEST_CODE_OPEN_INLINE = 1
-const val REQUEST_CODE_OPEN_PINNED = 2
-const val REQUEST_CODE_OPEN_MENU = 3
+private const val REQUEST_CODE_OPEN_INLINE = 1
+private const val REQUEST_CODE_OPEN_MENU = 3
+private const val REQUEST_CODE_OPEN_PINNED = 2
 
 object DatasetBuilder {
 

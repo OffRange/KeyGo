@@ -1,19 +1,31 @@
 package de.davis.passwordmanager.services.autofill
 
 import android.annotation.SuppressLint
-import android.app.assist.AssistStructure.WindowNode
+import android.content.Context
+import android.content.res.XmlResourceParser
 import android.os.Build
 import android.os.CancellationSignal
 import android.service.autofill.AutofillService
 import android.service.autofill.FillCallback
-import android.service.autofill.FillContext
 import android.service.autofill.FillRequest
 import android.service.autofill.FillResponse
 import android.service.autofill.SaveCallback
 import android.service.autofill.SaveRequest
 import androidx.annotation.ChecksSdkIntAtLeast
 import androidx.annotation.RequiresApi
+import androidx.core.os.bundleOf
+import de.davis.passwordmanager.R
+import de.davis.passwordmanager.database.SecureElementManager
 import de.davis.passwordmanager.services.autofill.builder.DatasetBuilder
+import de.davis.passwordmanager.services.autofill.builder.applySaveInfo
+import de.davis.passwordmanager.services.autofill.extensions.get
+import de.davis.passwordmanager.services.autofill.extensions.getPackageName
+import de.davis.passwordmanager.services.autofill.extensions.getSavePendingIntent
+import de.davis.passwordmanager.services.autofill.extensions.getWindowNodes
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import org.xmlpull.v1.XmlPullParser
 
 @RequiresApi(Build.VERSION_CODES.O)
 class AutofillService : AutofillService() {
@@ -23,13 +35,14 @@ class AutofillService : AutofillService() {
         cancellationSignal: CancellationSignal,
         callback: FillCallback
     ) {
-        val windowNode = getWindowNodes(request.fillContexts).lastOrNull()
+        val windowNode = request.fillContexts.getWindowNodes().lastOrNull()
         if (windowNode == null) {
             callback.onSuccess(null)
             return
         }
 
-        if (windowNode.title.split("/").first() == packageName) {
+        val packageName = windowNode.getPackageName()
+        if (packageName == this.packageName) {
             callback.onSuccess(null)
             return
         }
@@ -56,19 +69,34 @@ class AutofillService : AutofillService() {
             } else {
                 DatasetBuilder.createMenuDatasets(nodeTraverse.autofillForm, applicationContext)
             }.forEach { addDataset(it) }
+
+            applySaveInfo(
+                nodeTraverse.autofillForm,
+                applicationContext.getBrowsers().contains(packageName),
+                request.clientState ?: bundleOf(),
+                request.id
+            )
         }.build()
 
         callback.onSuccess(response)
     }
 
     override fun onSaveRequest(request: SaveRequest, callback: SaveCallback) {
-        TODO("Not yet implemented")
-    }
+        val saveForm = request.clientState?.get() ?: return
 
-    private fun getWindowNodes(fillContexts: List<FillContext>): List<WindowNode> {
-        val fillContext = fillContexts.lastOrNull() ?: return emptyList()
-        return (0 until fillContext.structure.windowNodeCount).map {
-            fillContext.structure.getWindowNodeAt(it)
+        val element = saveForm.getElement(request, packageManager)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            callback.onSuccess(
+                getSavePendingIntent(
+                    REQUEST_CODE_CREATE_ELEMENT,
+                    element
+                ).intentSender
+            )
+        } else {
+            CoroutineScope(Dispatchers.IO).launch {
+                SecureElementManager.insertElement(element)
+            }
         }
     }
 
@@ -83,4 +111,31 @@ class AutofillService : AutofillService() {
         } else {
             false
         }
+
+    private fun Context.getBrowsers(): List<String> {
+        val packageNames = ArrayList<String>()
+        val parser: XmlResourceParser = resources.getXml(R.xml.autofill_configuration)
+
+        runCatching {
+            parser.use {
+                var eventType = parser.eventType
+                while (eventType != XmlPullParser.END_DOCUMENT) {
+                    if (eventType == XmlPullParser.START_TAG && parser.name == "compatibility-package") {
+                        val packageName = parser.getAttributeValue(
+                            "http://schemas.android.com/apk/res/android",
+                            "name"
+                        )
+                        packageNames.add(packageName)
+                    }
+                    eventType = parser.next()
+                }
+            }
+        }
+
+        return packageNames
+    }
+
+    companion object {
+        private const val REQUEST_CODE_CREATE_ELEMENT = 1
+    }
 }

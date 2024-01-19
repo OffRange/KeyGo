@@ -7,6 +7,5 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 data class AutofillField(
     val autofillId: AutofillId,
-    val isFocused: Boolean,
     val userCredentialsType: UserCredentialsType
 ) : Parcelable

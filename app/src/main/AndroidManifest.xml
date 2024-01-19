@@ -22,7 +22,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="false"
         android:theme="@style/AppTheme"
-        tools:targetApi="34">
+        tools:targetApi="34"
+        android:enableOnBackInvokedCallback="true">
         <activity
             android:name=".ui.sync.ImportActivity"
             android:exported="true"
@@ -40,6 +41,11 @@
 
         <activity
             android:name=".services.autofill.SelectionActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme.NoActionBar" />
+
+        <activity
+            android:name=".services.autofill.SaveActivity"
             android:exported="false"
             android:theme="@style/AppTheme.NoActionBar" />
 

@@ -1,10 +1,12 @@
-package de.davis.passwordmanager.services.autofill.builder
+package de.davis.passwordmanager.services.autofill.extensions
 
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.annotation.RequiresApi
+import de.davis.passwordmanager.database.dtos.SecureElement
+import de.davis.passwordmanager.services.autofill.SaveActivity
 import de.davis.passwordmanager.services.autofill.SelectionActivity
 import de.davis.passwordmanager.services.autofill.entities.AutofillForm
 
@@ -21,6 +23,17 @@ fun Context.getOpenAppPendingIntent(
         this,
         requestCode,
         SelectionActivity.newIntent(this, autofillForm),
+        AUTOFILL_PENDING_INTENT_FLAGS
+    )
+
+fun Context.getSavePendingIntent(
+    requestCode: Int,
+    element: SecureElement
+): PendingIntent =
+    PendingIntent.getActivity(
+        this,
+        requestCode,
+        SaveActivity.newIntent(this, element),
         AUTOFILL_PENDING_INTENT_FLAGS
     )
 

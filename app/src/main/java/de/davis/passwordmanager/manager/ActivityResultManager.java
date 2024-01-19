@@ -49,18 +49,33 @@ public class ActivityResultManager {
         });
     }
 
-    public void registerCreate(){
+    public void registerCreate(@Nullable OnResult<SecureElement> onResult){
         createElement = resultCaller.registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
             Intent intent = checkAndGetData(result);
-            if(intent == null || intent.getExtras() == null)
+            if(intent == null || intent.getExtras() == null) {
+                if(onResult != null)
+                    onResult.onResult(null);
+
                 return;
+            }
 
             SecureElement element = intent.getExtras().getParcelable(Keys.KEY_NEW);
-            if(element == null)
+            if(element == null) {
+                if(onResult != null)
+                    onResult.onResult(null);
+
                 return;
+            }
 
             SecureElementManager.insertElement(element);
+
+            if(onResult != null)
+                onResult.onResult(element);
         });
+    }
+
+    public void registerCreate(){
+        registerCreate(null);
     }
 
     public void registerGeneratePassword(@NonNull OnResult<String> onResult){
@@ -87,6 +102,13 @@ public class ActivityResultManager {
             throw new NullPointerException("registerCreate() must be called before launchCreate()");
 
         createElement.launch(new Intent(context, activityClass));
+    }
+
+    public void launchCreate(SecureElement element, Context context){
+        if(createElement == null)
+            throw new NullPointerException("registerCreate() must be called before launchCreate()");
+
+        createElement.launch(new Intent(context, element.getElementType().getCreateActivityClass()).putExtra(Keys.KEY_OLD, element));
     }
 
     public void launchGeneratePassword(Context context){

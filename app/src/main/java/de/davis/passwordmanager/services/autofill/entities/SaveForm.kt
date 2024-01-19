@@ -4,7 +4,8 @@ import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 
 @Parcelize
-data class AutofillForm(
-    val autofillFields: MutableList<AutofillField> = mutableListOf(),
-    var url: String? = null
+data class SaveForm(
+    val identifierSaveField: SaveField? = null,
+    val passwordSaveField: SaveField? = null,
+    val url: String? = null
 ) : Parcelable

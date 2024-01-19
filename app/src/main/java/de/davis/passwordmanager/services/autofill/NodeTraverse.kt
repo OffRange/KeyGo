@@ -18,9 +18,6 @@ class NodeTraverse(private val requestFlags: Int = 0) {
     var autofillForm: AutofillForm = AutofillForm()
         private set
 
-    var url: String? = null
-        private set
-
     private fun ViewNode.getUrl(): String? {
         val domain = webDomain ?: return null
         if (domain.isBlank()) return null
@@ -34,8 +31,8 @@ class NodeTraverse(private val requestFlags: Int = 0) {
     }
 
     fun traverseNode(node: ViewNode) {
-        if (url == null) {
-            url = node.getUrl()
+        if (autofillForm.url.isNullOrBlank()) {
+            autofillForm.url = node.getUrl()
         }
 
         if (node.childCount > 0) {
@@ -56,6 +53,7 @@ class NodeTraverse(private val requestFlags: Int = 0) {
                 }
 
                 else -> {
+                    /*If not manual request*/
                     if ((requestFlags and FillRequest.FLAG_MANUAL_REQUEST) != FillRequest.FLAG_MANUAL_REQUEST)
                         return
                 }
@@ -65,6 +63,8 @@ class NodeTraverse(private val requestFlags: Int = 0) {
         if (node.autofillId == null)
             return
 
+        // Check if the node is an input field. Skipped for Compose elements as they may not provide
+        // className (or other data like autofillValue).
         if (!node.isInput())
             return
 
@@ -73,7 +73,6 @@ class NodeTraverse(private val requestFlags: Int = 0) {
             else -> {
                 autofillForm.autofillFields += AutofillField(
                     node.autofillId!! /*We made sure that we don't reach this code if it is null*/,
-                    node.isFocused,
                     fieldType
                 )
             }
