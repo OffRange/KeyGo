@@ -18,6 +18,7 @@ import de.davis.passwordmanager.R
 import de.davis.passwordmanager.database.SecureElementManager
 import de.davis.passwordmanager.services.autofill.builder.DatasetBuilder
 import de.davis.passwordmanager.services.autofill.builder.applySaveInfo
+import de.davis.passwordmanager.services.autofill.entities.TraverseNode
 import de.davis.passwordmanager.services.autofill.extensions.get
 import de.davis.passwordmanager.services.autofill.extensions.getPackageName
 import de.davis.passwordmanager.services.autofill.extensions.getSavePendingIntent
@@ -49,7 +50,7 @@ class AutofillService : AutofillService() {
 
         val nodeTraverse =
             NodeTraverse(request.flags).apply {
-                traverseNode(windowNode.rootViewNode)
+                traverseNode(TraverseNode(windowNode.rootViewNode))
             }
         if (nodeTraverse.autofillForm.autofillFields.isEmpty()) {
             callback.onSuccess(null)

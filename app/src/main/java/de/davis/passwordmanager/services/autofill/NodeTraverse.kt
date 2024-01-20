@@ -9,8 +9,12 @@ import android.widget.EditText
 import androidx.annotation.RequiresApi
 import de.davis.passwordmanager.services.autofill.entities.AutofillField
 import de.davis.passwordmanager.services.autofill.entities.AutofillForm
+import de.davis.passwordmanager.services.autofill.entities.TraverseNode
 import de.davis.passwordmanager.services.autofill.entities.UserCredentialsType
 import java.text.Normalizer
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 
 @RequiresApi(Build.VERSION_CODES.O)
 class NodeTraverse(private val requestFlags: Int = 0) {
@@ -30,85 +34,106 @@ class NodeTraverse(private val requestFlags: Int = 0) {
         return "$scheme://$domain"
     }
 
-    fun traverseNode(node: ViewNode) {
-        if (autofillForm.url.isNullOrBlank()) {
-            autofillForm.url = node.getUrl()
-        }
-
-        if (node.childCount > 0) {
-            (0 until node.childCount).map { node.getChildAt(it) }.forEach {
-                traverseNode(it)
+    fun traverseNode(traverseNode: TraverseNode) {
+        traverseNode.run {
+            if (autofillForm.url.isNullOrBlank()) {
+                autofillForm.url = node.getUrl()
             }
 
-            return
-        }
-
-        // Node does not contain any children -> this is a potential node to add
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            when (node.importantForAutofill) {
-                View.IMPORTANT_FOR_AUTOFILL_AUTO,
-                View.IMPORTANT_FOR_AUTOFILL_YES,
-                View.IMPORTANT_FOR_AUTOFILL_YES_EXCLUDE_DESCENDANTS -> {
+            if (node.childCount > 0) {
+                (0 until node.childCount).map { node.getChildAt(it) }.forEach { node ->
+                    traverseNode(TraverseNode(node, this))
                 }
 
+                return
+            }
+
+            // Node does not contain any children -> this is a potential node to add
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                when (node.importantForAutofill) {
+                    View.IMPORTANT_FOR_AUTOFILL_AUTO,
+                    View.IMPORTANT_FOR_AUTOFILL_YES,
+                    View.IMPORTANT_FOR_AUTOFILL_YES_EXCLUDE_DESCENDANTS -> {
+                    }
+
+                    else -> {
+                        /*If not manual request*/
+                        if ((requestFlags and FillRequest.FLAG_MANUAL_REQUEST) != FillRequest.FLAG_MANUAL_REQUEST)
+                            return
+                    }
+                }
+            }
+
+            if (node.autofillId == null)
+                return
+
+            // Check if the node is an input field. Skipped for Compose elements as they may not provide
+            // className (or other data like autofillValue).
+            if (!node.isInput())
+                return
+
+            when (val fieldType = findFieldType(this)) {
+                UserCredentialsType.Unidentified -> {}
                 else -> {
-                    /*If not manual request*/
-                    if ((requestFlags and FillRequest.FLAG_MANUAL_REQUEST) != FillRequest.FLAG_MANUAL_REQUEST)
-                        return
+                    autofillForm.autofillFields += AutofillField(
+                        node.autofillId!! /*We made sure that we don't reach this code if it is null*/,
+                        fieldType
+                    )
                 }
             }
         }
-
-        if (node.autofillId == null)
-            return
-
-        // Check if the node is an input field. Skipped for Compose elements as they may not provide
-        // className (or other data like autofillValue).
-        if (!node.isInput())
-            return
-
-        when (val fieldType = findFieldType(node)) {
-            UserCredentialsType.Unidentified -> {}
-            else -> {
-                autofillForm.autofillFields += AutofillField(
-                    node.autofillId!! /*We made sure that we don't reach this code if it is null*/,
-                    fieldType
-                )
-            }
-        }
-
-
     }
 
 
-    private fun findFieldType(node: ViewNode): UserCredentialsType {
+    private fun findFieldTypeForNode(node: ViewNode): UserCredentialsType = node.run {
         // Try getting type by auto fill hints
-        when (val field = findFieldTypeByNodesAutofillHints(node)) {
-            UserCredentialsType.Unidentified -> {}
-            else -> return field
+        evaluateFieldTypeAndProcess(::findFieldTypeByNodesAutofillHints) {
+            return@run it
         }
         // No suitable autofill hint found
 
         // Try getting type by HTML-Info
-        when (val fieldType = findFieldTypeByHTML(node)) {
-            UserCredentialsType.Unidentified -> {}
-            else -> return fieldType
+        evaluateFieldTypeAndProcess(::findFieldTypeByHTML) {
+            return@run it
         }
 
         // Try getting type by input type
-        when (val fieldType = findFieldTypeByInputType(node)) {
-            UserCredentialsType.Unidentified -> {}
-            else -> return fieldType
+        evaluateFieldTypeAndProcess(::findFieldTypeByInputType) {
+            return@run it
         }
 
         // Try getting type by text, hint, idEntry if no field type is found yet
-        when (val fieldType = findFieldTypeFromPropertiesOfNode(node)) {
+        evaluateFieldTypeAndProcess(::findFieldTypeFromPropertiesOfNode) {
+            return@run it
+        }
+        return UserCredentialsType.Unidentified
+    }
+
+    private fun findFieldType(traverseNode: TraverseNode): UserCredentialsType = traverseNode.run {
+        when (val fieldType = findFieldTypeForNode(node)) {
             UserCredentialsType.Unidentified -> {}
             else -> return fieldType
         }
 
-        // TODO Try to understand the form/context
+        // Try to understand the form/context
+        var depth = 0
+        var localParent = parent
+        while (localParent != null && depth in 0 until MAX_CONTEXT_LVL_DEPTH) {
+            depth++
+
+            val children =
+                (0 until localParent.node.childCount).map { localParent!!.node.getChildAt(it) }
+                    .filter { node -> autofillForm.autofillFields.none { it.autofillId == node.autofillId } }
+
+            children.forEach { childNode ->
+                childNode.evaluateFieldTypeAndProcess(::findFieldTypeForNode) {
+                    return@run it
+                }
+            }
+
+            localParent = localParent.parent
+        }
 
         return UserCredentialsType.Unidentified
     }
@@ -211,7 +236,20 @@ class NodeTraverse(private val requestFlags: Int = 0) {
         Normalizer.normalize(this, Normalizer.Form.NFD)
             .replace(Regex("\\p{Punct}"), "")
 
+    @OptIn(ExperimentalContracts::class)
+    private inline fun ViewNode.evaluateFieldTypeAndProcess(
+        func: (ViewNode) -> UserCredentialsType,
+        onNotUnidentified: (UserCredentialsType) -> Unit
+    ) {
+        contract {
+            callsInPlace(func, InvocationKind.EXACTLY_ONCE)
+            callsInPlace(onNotUnidentified, InvocationKind.AT_MOST_ONCE)
+        }
+        func(this).takeIf { it != UserCredentialsType.Unidentified }?.let { onNotUnidentified(it) }
+    }
+
     companion object {
+        const val MAX_CONTEXT_LVL_DEPTH = 4
         val USERNAME_REGEX = Regex(
             "(username|login|user|email|account|" +
                     "usuario|correo|cuenta|nombredeusuario|" +
