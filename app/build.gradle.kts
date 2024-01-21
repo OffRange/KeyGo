@@ -3,7 +3,7 @@ plugins {
     id("com.google.android.gms.oss-licenses-plugin")
     kotlin("android") // org.jetbrains.kotlin.android
     kotlin("plugin.parcelize")
-    id("com.google.devtools.ksp") version "1.9.20-1.0.14"
+    id("com.google.devtools.ksp") version "1.9.22-1.0.17"
     id("androidx.room") version "2.6.0"
 }
 
