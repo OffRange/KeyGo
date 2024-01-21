@@ -1,4 +1,5 @@
 <resources>
+
     <style name="Widget.App.TextInputLayout" parent="Widget.Material3.TextInputLayout.FilledBox">
         <item name="materialThemeOverlay">@style/ThemeOverlay.App.TextInputEditText</item>
     </style>
@@ -17,9 +18,18 @@
     </style>
 
     <style name="ThemeOverlay.App.AutoCompleteTextView" parent="ThemeOverlay.Material3.AutoCompleteTextView.OutlinedBox">
-        <item name="autoCompleteTextViewStyle">@style/Widget.App.AutoCompleteTextView.FilledBox</item>
+        <item name="autoCompleteTextViewStyle">@style/Widget.App.AutoCompleteTextView.FilledBox
+        </item>
     </style>
 
-    <style name="Widget.App.AutoCompleteTextView.FilledBox" parent="Widget.Material3.AutoCompleteTextView.OutlinedBox">
+    <style name="Widget.App.AutoCompleteTextView.FilledBox" parent="Widget.Material3.AutoCompleteTextView.OutlinedBox"></style>
+
+    <style name="Widget.App.CardView.Outlined" parent="Widget.Material3.CardView.Outlined">
+        <item name="cardBackgroundColor">@android:color/transparent</item>
+    </style>
+
+    <style name="Widget.App.Chip.Filter" parent="Widget.Material3.Chip.Filter">
+        <item name="chipSurfaceColor">@android:color/transparent</item>
+        <item name="chipBackgroundColor">@color/chip_background_color</item>
     </style>
 </resources>

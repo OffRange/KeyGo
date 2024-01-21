@@ -16,12 +16,14 @@
         android:useDefaultMargins="true">
 
         <de.davis.passwordmanager.ui.views.InformationView
+            style="@style/Widget.App.CardView.Outlined"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:title="@string/filter"
             app:information="@string/filter_msg" />
 
         <de.davis.passwordmanager.ui.views.InformationView
+            style="@style/Widget.App.CardView.Outlined"
             android:id="@+id/type"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -36,7 +38,7 @@
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/password"
-                    style="@style/Widget.Material3.Chip.Filter"
+                    style="@style/Widget.App.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/password"
@@ -44,7 +46,7 @@
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/creditCard"
-                    style="@style/Widget.Material3.Chip.Filter"
+                    style="@style/Widget.App.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/credit_card"
@@ -53,6 +55,7 @@
         </de.davis.passwordmanager.ui.views.InformationView>
 
         <de.davis.passwordmanager.ui.views.InformationView
+            style="@style/Widget.App.CardView.Outlined"
             android:id="@+id/strength"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -67,7 +70,7 @@
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/veryStrong"
-                    style="@style/Widget.Material3.Chip.Filter"
+                    style="@style/Widget.App.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/very_strong"
@@ -77,7 +80,7 @@
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/strong"
-                    style="@style/Widget.Material3.Chip.Filter"
+                    style="@style/Widget.App.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/strong"
@@ -87,7 +90,7 @@
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/moderate"
-                    style="@style/Widget.Material3.Chip.Filter"
+                    style="@style/Widget.App.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/moderate"
@@ -97,7 +100,7 @@
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/weak"
-                    style="@style/Widget.Material3.Chip.Filter"
+                    style="@style/Widget.App.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/weak"
@@ -107,7 +110,7 @@
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/ridiculous"
-                    style="@style/Widget.Material3.Chip.Filter"
+                    style="@style/Widget.App.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/ridiculous"
@@ -118,6 +121,7 @@
         </de.davis.passwordmanager.ui.views.InformationView>
 
         <de.davis.passwordmanager.ui.views.InformationView
+            style="@style/Widget.App.CardView.Outlined"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:title="@string/tags"
@@ -131,7 +135,7 @@
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/allTagsChip"
-                    style="@style/Widget.Material3.Chip.Filter"
+                    style="@style/Widget.App.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/all"
