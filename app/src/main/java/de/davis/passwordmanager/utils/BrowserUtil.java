@@ -12,6 +12,7 @@ import java.util.regex.Pattern;
 
 import de.davis.passwordmanager.R;
 import kotlin.text.Regex;
+import kotlin.text.RegexOption;
 
 public class BrowserUtil {
 
@@ -27,17 +28,16 @@ public class BrowserUtil {
 
     public static Boolean couldBeUrl(String toCheck, String actualUrl){
         if (toCheck.isBlank()) return false;
-        String normalizedTitle = toCheck.toLowerCase();
-        String titleWithDots = Pattern.quote(normalizedTitle.replace(" ", "."));
-        String titleWithoutSpaces = Pattern.quote(normalizedTitle.replace(" ", ""));
+        String titleWithDots = Pattern.quote(toCheck.replace(" ", "."));
+        String titleWithoutSpaces = Pattern.quote(toCheck.replace(" ", ""));
 
         String regexPattern = "("+ titleWithDots +"|"+ titleWithoutSpaces +")";
         try {
             URL url = new URL(actualUrl);
-            String domain = url.getHost().toLowerCase();
+            String domain = url.getHost();
 
-            return new Regex(regexPattern).containsMatchIn(domain) ||
-                    new Regex(regexPattern).containsMatchIn(domain.replace(".", ""));
+            return new Regex(regexPattern, RegexOption.IGNORE_CASE).containsMatchIn(domain) ||
+                    new Regex(regexPattern, RegexOption.IGNORE_CASE).containsMatchIn(domain.replace(".", ""));
         } catch (Exception e) {
             return false;
         }
