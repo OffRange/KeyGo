@@ -139,8 +139,7 @@ object SecureElementManager {
     @JvmName("delete")
     fun <I : Item> deleteCoroutine(items: List<I>) {
         scope.launch {
-            deleteElements(items.filterIsInstance<SecureElement>())
-            deleteTags(items.filterIsInstance<TagWithCount>().map { it.tag })
+            delete(items)
         }
     }
 
