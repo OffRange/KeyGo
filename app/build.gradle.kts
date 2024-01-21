@@ -76,6 +76,7 @@ android {
 
     buildFeatures {
         viewBinding = true
+        buildConfig = false
     }
 
     kotlinOptions {
