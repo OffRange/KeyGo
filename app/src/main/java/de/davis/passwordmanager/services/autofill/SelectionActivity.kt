@@ -23,6 +23,7 @@ import de.davis.passwordmanager.services.autofill.builder.DatasetBuilder
 import de.davis.passwordmanager.services.autofill.entities.AutofillField
 import de.davis.passwordmanager.services.autofill.entities.AutofillForm
 import de.davis.passwordmanager.services.autofill.entities.AutofillPair
+import de.davis.passwordmanager.services.autofill.entities.Identifier
 import de.davis.passwordmanager.services.autofill.entities.UserCredentialsType
 import de.davis.passwordmanager.ui.auth.AuthenticationRequest
 import de.davis.passwordmanager.ui.auth.createRequestAuthenticationIntent
@@ -30,7 +31,7 @@ import de.davis.passwordmanager.ui.dashboard.DashboardFragment
 
 private fun AutofillField.toPair(secureElement: SecureElement) =
     when (userCredentialsType) {
-        is UserCredentialsType.Identifier -> AutofillPair(
+        is Identifier /*All kinds of identifiers*/ -> AutofillPair(
             this,
             (secureElement.detail as PasswordDetails).username
         )

@@ -9,6 +9,7 @@ import android.widget.EditText
 import androidx.annotation.RequiresApi
 import de.davis.passwordmanager.services.autofill.entities.AutofillField
 import de.davis.passwordmanager.services.autofill.entities.AutofillForm
+import de.davis.passwordmanager.services.autofill.entities.Identifier
 import de.davis.passwordmanager.services.autofill.entities.TraverseNode
 import de.davis.passwordmanager.services.autofill.entities.UserCredentialsType
 import de.davis.passwordmanager.utils.BrowserUtil
@@ -112,9 +113,8 @@ class NodeTraverse(private val requestFlags: Int = 0) {
     }
 
     private fun findFieldType(traverseNode: TraverseNode): UserCredentialsType = traverseNode.run {
-        when (val fieldType = findFieldTypeForNode(node)) {
-            UserCredentialsType.Unidentified -> {}
-            else -> return fieldType
+        node.evaluateFieldTypeAndProcess(::findFieldTypeForNode) {
+            return@run it
         }
 
         // Try to understand the form/context
@@ -170,8 +170,8 @@ class NodeTraverse(private val requestFlags: Int = 0) {
 
     private fun findFieldTypeByAutofillHint(autofillHint: String): UserCredentialsType {
         val userCredentialsType = when (autofillHint) {
-            View.AUTOFILL_HINT_USERNAME,
-            View.AUTOFILL_HINT_EMAIL_ADDRESS -> UserCredentialsType.Identifier
+            View.AUTOFILL_HINT_USERNAME -> Identifier.Username
+            View.AUTOFILL_HINT_EMAIL_ADDRESS -> Identifier.Email
 
             View.AUTOFILL_HINT_PASSWORD -> UserCredentialsType.Password
 
@@ -181,7 +181,8 @@ class NodeTraverse(private val requestFlags: Int = 0) {
         if (userCredentialsType != UserCredentialsType.Unidentified)
             return userCredentialsType
 
-        if (USERNAME_REGEX.containsMatchIn(autofillHint)) return UserCredentialsType.Identifier
+        if (USERNAME_REGEX.containsMatchIn(autofillHint)) return Identifier.Username
+        if (EMAIL_REGEX.containsMatchIn(autofillHint)) return Identifier.Email
 
         return UserCredentialsType.Unidentified
     }
@@ -193,7 +194,7 @@ class NodeTraverse(private val requestFlags: Int = 0) {
         val type = attr.firstOrNull { it.first == "type" }
         when (type?.second) {
             "password" -> return UserCredentialsType.Password
-            "email" -> return UserCredentialsType.Identifier
+            "email" -> return Identifier.Email
 
             //TODO implement other field detections
             else -> {}
@@ -208,15 +209,15 @@ class NodeTraverse(private val requestFlags: Int = 0) {
             this.hasInputType(
                 InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
                 InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS
-            ) -> UserCredentialsType.Identifier
+            ) -> Identifier.Email
 
-            this.hasInputType(
+            /*this.hasInputType(
                 InputType.TYPE_CLASS_PHONE,
-            ) -> UserCredentialsType.Identifier
+            ) -> UserCredentialsType.Identifier*/
 
             this.hasInputType(
                 InputType.TYPE_TEXT_VARIATION_PERSON_NAME,
-            ) -> UserCredentialsType.Identifier
+            ) -> Identifier.Username
 
             this.hasInputType(
                 InputType.TYPE_TEXT_VARIATION_PASSWORD,
@@ -252,17 +253,18 @@ class NodeTraverse(private val requestFlags: Int = 0) {
     companion object {
         const val MAX_CONTEXT_LVL_DEPTH = 4
         val USERNAME_REGEX = Regex(
-            "\\b(username|login|user|email|account|" +
-                    "usuario|correo|cuenta|nombredeusuario|" +
-                    "nomd'utilisateur|compte|adressemail|" +
-                    "benutzername|konto|emailadresse|" +
-                    "nomeusuario|conta|" +
-                    "nomeutente|" +
-                    "imyapolzovatelya|uchetnayazapis|elektronnayapochta|" +
-                    "yonghuming|zhanghu|dianziyoujian|" +
-                    "yūzāmei|akaunto|mēruadoresu|" +
-                    "ismalmustakhdim|alhisab|albaridal(')?iliktruni)",
-            RegexOption.IGNORE_CASE
+            "\\b(username|login|user|usuario|nombredeusuario|nomd'utilisateur|" +
+                    "benutzername|nomeusuario|nomeutente|imyapolzovatelya|yonghuming|" +
+                    "yūzāmei|ismalmustakhdim)" +
+                    "(\\b|$)", RegexOption.IGNORE_CASE
         )
+
+        val EMAIL_REGEX = Regex(
+            "\\b(email|account|correo|cuenta|adressemail|compte|" +
+                    "emailadresse|konto|conta|uchetnayazapis|elektronnayapochta|" +
+                    "zhanghu|dianziyoujian|akaunto|mēruadoresu|alhisab|albaridal(')?iliktruni)" +
+                    "(\\b|$)", RegexOption.IGNORE_CASE
+        )
+
     }
 }

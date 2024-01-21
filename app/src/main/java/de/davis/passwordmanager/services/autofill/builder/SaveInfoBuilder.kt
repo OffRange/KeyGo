@@ -9,8 +9,10 @@ import android.service.autofill.RegexValidator
 import android.service.autofill.SaveInfo
 import androidx.annotation.RequiresApi
 import de.davis.passwordmanager.services.autofill.entities.AutofillForm
+import de.davis.passwordmanager.services.autofill.entities.Identifier
 import de.davis.passwordmanager.services.autofill.entities.UserCredentialsType
 import de.davis.passwordmanager.services.autofill.entities.toSaveField
+import de.davis.passwordmanager.services.autofill.extensions.get
 import de.davis.passwordmanager.services.autofill.extensions.put
 
 fun FillResponse.Builder.applySaveInfo(
@@ -31,9 +33,24 @@ fun FillResponse.Builder.applySaveInfo(
         return
     }
 
+    autofillForm.autofillFields.map { it.toSaveField(requestId) }.forEach {
+        clientState.put(saveField = it, url = autofillForm.url)
+    }
+
+    val type = clientState.get().userCredentialsTypes.fold(0) { acc, credentialType ->
+        acc or when (credentialType) {
+            is Identifier.Username -> SaveInfo.SAVE_DATA_TYPE_USERNAME
+            is Identifier.Email -> SaveInfo.SAVE_DATA_TYPE_EMAIL_ADDRESS
+
+            is UserCredentialsType.Password -> SaveInfo.SAVE_DATA_TYPE_PASSWORD
+
+            else -> 0
+        }
+    }
+
     setSaveInfo(
         SaveInfo.Builder(
-            SaveInfo.SAVE_DATA_TYPE_GENERIC /*TODO*/,
+            type,
             autofillForm.autofillFields.map { it.autofillId }.toTypedArray()
         ).apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
@@ -49,10 +66,6 @@ fun FillResponse.Builder.applySaveInfo(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 if (autofillForm.autofillFields.none { it.userCredentialsType == UserCredentialsType.Password })
                     setFlags(SaveInfo.FLAG_DELAY_SAVE)
-            }
-
-            autofillForm.autofillFields.map { it.toSaveField(requestId) }.forEach {
-                clientState.put(saveField = it, url = autofillForm.url)
             }
 
             setClientState(clientState)
