@@ -7,7 +7,11 @@ import android.widget.Toast;
 
 import androidx.browser.customtabs.CustomTabsIntent;
 
+import java.net.URL;
+import java.util.regex.Pattern;
+
 import de.davis.passwordmanager.R;
+import kotlin.text.Regex;
 
 public class BrowserUtil {
 
@@ -19,6 +23,24 @@ public class BrowserUtil {
             return url;
 
         return "https://"+ url;
+    }
+
+    public static Boolean couldBeUrl(String toCheck, String actualUrl){
+        if (toCheck.isBlank()) return false;
+        String normalizedTitle = toCheck.toLowerCase();
+        String titleWithDots = Pattern.quote(normalizedTitle.replace(" ", "."));
+        String titleWithoutSpaces = Pattern.quote(normalizedTitle.replace(" ", ""));
+
+        String regexPattern = "("+ titleWithDots +"|"+ titleWithoutSpaces +")";
+        try {
+            URL url = new URL(actualUrl);
+            String domain = url.getHost().toLowerCase();
+
+            return new Regex(regexPattern).containsMatchIn(domain) ||
+                    new Regex(regexPattern).containsMatchIn(domain.replace(".", ""));
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public static void open(String url, Context context){

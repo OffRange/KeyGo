@@ -12,17 +12,18 @@ import de.davis.passwordmanager.services.autofill.entities.AutofillForm
 
 
 private const val AUTOFILL_PENDING_INTENT_FLAGS =
-    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_UPDATE_CURRENT
+    PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_UPDATE_CURRENT
 
 @RequiresApi(Build.VERSION_CODES.O)
-fun Context.getOpenAppPendingIntent(
+fun Context.getSelectionPendingIntent(
     requestCode: Int,
-    autofillForm: AutofillForm
+    autofillForm: AutofillForm,
+    secureElement: SecureElement? = null
 ): PendingIntent =
     PendingIntent.getActivity(
         this,
         requestCode,
-        SelectionActivity.newIntent(this, autofillForm),
+        SelectionActivity.newIntent(this, autofillForm, secureElement),
         AUTOFILL_PENDING_INTENT_FLAGS
     )
 
@@ -41,5 +42,5 @@ internal fun Context.getOnLongClickPendingIntent() = PendingIntent.getService(
     this,
     0,
     Intent(),
-    AUTOFILL_PENDING_INTENT_FLAGS
+    PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
 )

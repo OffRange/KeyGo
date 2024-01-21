@@ -11,6 +11,7 @@ import de.davis.passwordmanager.services.autofill.entities.AutofillField
 import de.davis.passwordmanager.services.autofill.entities.AutofillForm
 import de.davis.passwordmanager.services.autofill.entities.TraverseNode
 import de.davis.passwordmanager.services.autofill.entities.UserCredentialsType
+import de.davis.passwordmanager.utils.BrowserUtil
 import java.text.Normalizer
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
@@ -25,13 +26,13 @@ class NodeTraverse(private val requestFlags: Int = 0) {
     private fun ViewNode.getUrl(): String? {
         val domain = webDomain ?: return null
         if (domain.isBlank()) return null
-        val scheme = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            webScheme ?: "https"
+        val webDomain = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            if (webScheme != null) "$webScheme://$domain" else BrowserUtil.ensureProtocol(domain)
         } else {
-            "https"
+            BrowserUtil.ensureProtocol(domain)
         }
 
-        return "$scheme://$domain"
+        return webDomain
     }
 
     fun traverseNode(traverseNode: TraverseNode) {

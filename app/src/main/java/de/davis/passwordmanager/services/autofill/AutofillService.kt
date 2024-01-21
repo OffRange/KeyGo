@@ -23,6 +23,7 @@ import de.davis.passwordmanager.services.autofill.extensions.get
 import de.davis.passwordmanager.services.autofill.extensions.getPackageName
 import de.davis.passwordmanager.services.autofill.extensions.getSavePendingIntent
 import de.davis.passwordmanager.services.autofill.extensions.getWindowNodes
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -57,29 +58,40 @@ class AutofillService : AutofillService() {
             return
         }
 
-        @SuppressLint("DeprecatedSinceApi")
-        val response = FillResponse.Builder().apply {
-            if (hasSupportForInlineSuggestions(request)) {
-                request.inlineSuggestionsRequest?.let {
-                    DatasetBuilder.createInlineDatasets(
-                        it,
-                        nodeTraverse.autofillForm,
-                        applicationContext
-                    )
-                } ?: emptyList()
-            } else {
-                DatasetBuilder.createMenuDatasets(nodeTraverse.autofillForm, applicationContext)
-            }.forEach { addDataset(it) }
+        val handler = CoroutineExceptionHandler { _, _ ->
+            callback.onSuccess(null)
+        }
 
-            applySaveInfo(
-                nodeTraverse.autofillForm,
-                applicationContext.getBrowsers().contains(packageName),
-                request.clientState ?: bundleOf(),
-                request.id
-            )
-        }.build()
+        val job = CoroutineScope(Dispatchers.IO).launch(handler) {
+            @SuppressLint("DeprecatedSinceApi")
+            val response = FillResponse.Builder().apply {
+                if (hasSupportForInlineSuggestions(request)) {
+                    request.inlineSuggestionsRequest?.let {
+                        DatasetBuilder.createInlineDatasets(
+                            it,
+                            nodeTraverse.autofillForm,
+                            applicationContext
+                        )
+                    } ?: emptyList()
+                } else {
+                    DatasetBuilder.createMenuDatasets(nodeTraverse.autofillForm, applicationContext)
+                }.forEach { addDataset(it) }
 
-        callback.onSuccess(response)
+                applySaveInfo(
+                    nodeTraverse.autofillForm,
+                    applicationContext.getBrowsers().contains(packageName),
+                    request.clientState ?: bundleOf(),
+                    request.id
+                )
+            }.build()
+
+
+            callback.onSuccess(response)
+        }
+
+        cancellationSignal.setOnCancelListener {
+            job.cancel()
+        }
     }
 
     override fun onSaveRequest(request: SaveRequest, callback: SaveCallback) {

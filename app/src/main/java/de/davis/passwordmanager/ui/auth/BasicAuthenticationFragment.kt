@@ -35,11 +35,12 @@ open class BasicAuthenticationFragment : Fragment() {
 
         authenticationRequest.additionalExtras?.let {
             intent.putExtras(it)
-            requireActivity().setResult(
-                Activity.RESULT_OK,
-                intent
-            )
         }
+
+        requireActivity().setResult(
+            Activity.RESULT_OK,
+            intent
+        )
 
         if (requireActivity().intent.action == Intent.ACTION_MAIN)
             startActivity(Intent(requireContext(), MainActivity::class.java))

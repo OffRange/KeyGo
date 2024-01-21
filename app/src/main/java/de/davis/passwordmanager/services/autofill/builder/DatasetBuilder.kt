@@ -2,8 +2,6 @@ package de.davis.passwordmanager.services.autofill.builder
 
 import android.content.Context
 import android.content.IntentSender
-import android.graphics.BlendMode
-import android.graphics.drawable.Icon
 import android.os.Build
 import android.service.autofill.Dataset
 import android.service.autofill.Field
@@ -12,50 +10,37 @@ import android.service.autofill.Presentations
 import android.view.autofill.AutofillValue
 import android.view.inputmethod.InlineSuggestionsRequest
 import android.widget.RemoteViews
-import android.widget.inline.InlinePresentationSpec
 import androidx.annotation.DeprecatedSinceApi
 import androidx.annotation.RequiresApi
 import de.davis.passwordmanager.PasswordManagerApplication
-import de.davis.passwordmanager.R
 import de.davis.passwordmanager.services.autofill.entities.AutofillForm
 import de.davis.passwordmanager.services.autofill.entities.AutofillPair
-import de.davis.passwordmanager.services.autofill.extensions.getOnLongClickPendingIntent
-import de.davis.passwordmanager.services.autofill.extensions.getOpenAppPendingIntent
 
-private const val REQUEST_CODE_OPEN_INLINE = 1
-private const val REQUEST_CODE_OPEN_MENU = 3
-private const val REQUEST_CODE_OPEN_PINNED = 2
+/*
+ * Constants for request codes used in activity or fragment results.
+ * These codes are set to high values to avoid conflicts with dynamically
+ * assigned request codes, which are based on the index of items in their
+ * respective lists.
+ */
+const val REQUEST_CODE_OPEN_INLINE = 1000
+const val REQUEST_CODE_OPEN_PINNED = 2000
+const val REQUEST_CODE_OPEN_MENU = 3000
 
 object DatasetBuilder {
 
     @RequiresApi(Build.VERSION_CODES.O)
     @DeprecatedSinceApi(Build.VERSION_CODES.R)
-    fun createMenuDatasets(
+    suspend fun createMenuDatasets(
         autofillForm: AutofillForm,
         context: Context
     ): List<Dataset> {
-        return listOf(
-            /*TODO add support for suggested items*/
-            buildDataset(
-                BuilderVariant.FieldProperties(
-                    autofillForm,
-                    context.getOpenAppPendingIntent(
-                        REQUEST_CODE_OPEN_MENU,
-                        autofillForm
-                    ).intentSender,
-                    remoteViews = RemoteViews(
-                        context.packageName,
-                        android.R.layout.simple_list_item_1
-                    ).apply {
-                        setTextViewText(android.R.id.text1, context.getText(R.string.app_name))
-                    }
-                )
-            )
-        )
+        return MenuDatasetBuilder(context).run {
+            createSuggestedMenuDatasets(autofillForm).plus(createAppDataset(autofillForm))
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
-    fun createInlineDatasets(
+    suspend fun createInlineDatasets(
         inlineSuggestionsRequest: InlineSuggestionsRequest,
         autofillForm: AutofillForm,
         context: Context
@@ -68,10 +53,11 @@ object DatasetBuilder {
                 1 -> listOf(createPinnedAppDataset(autofillForm, specs.last()))
 
                 else -> {
-                    /*TODO add support for suggested items*/
-                    listOf(
-                        createBasicAppDataset(autofillForm, specs.dropLast(1).last()),
-                        createPinnedAppDataset(autofillForm, specs.last())
+                    createSuggestedInlineDatasets(autofillForm, specs.dropLast(2)).plus(
+                        listOf(
+                            createAppDataset(autofillForm, specs.dropLast(1).last()),
+                            createPinnedAppDataset(autofillForm, specs.last())
+                        )
                     )
                 }
             }
@@ -215,52 +201,4 @@ private sealed interface Builder {
             }
         }
     }
-}
-
-@RequiresApi(Build.VERSION_CODES.R)
-private class InlineDatasetBuilder(private val context: Context) {
-
-    fun createBasicAppDataset(
-        autofillForm: AutofillForm,
-        inlinePresentationSpec: InlinePresentationSpec
-    ) = DatasetBuilder.buildDataset(
-        DatasetBuilder.BuilderVariant.FieldProperties(
-            autofillForm,
-            context.getOpenAppPendingIntent(
-                REQUEST_CODE_OPEN_PINNED,
-                autofillForm
-            ).intentSender,
-            inlinePresentation = InlinePresentationBuilder.createBasicPresentation(
-                context.getString(R.string.app_name),
-                context.getString(R.string.autofill_service),
-                R.mipmap.ic_launcher_round.toDrawableIcon(),
-                inlinePresentationSpec,
-                context.getOnLongClickPendingIntent()
-            )
-        )
-    )
-
-    fun createPinnedAppDataset(
-        autofillForm: AutofillForm,
-        inlinePresentationSpec: InlinePresentationSpec
-    ) = DatasetBuilder.buildDataset(
-        DatasetBuilder.BuilderVariant.FieldProperties(
-            autofillForm,
-            context.getOpenAppPendingIntent(
-                REQUEST_CODE_OPEN_INLINE,
-                autofillForm
-            ).intentSender,
-            inlinePresentation = InlinePresentationBuilder.createPinnedPresentation(
-                R.mipmap.ic_launcher_round.toDrawableIcon(),
-                inlinePresentationSpec,
-                context.getOnLongClickPendingIntent()
-            )
-        )
-    )
-
-
-    private fun Int.toDrawableIcon(): Icon =
-        Icon.createWithResource(context, this).apply {
-            setTintBlendMode(BlendMode.DST)
-        }
 }

@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.autofill.AutofillManager
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.os.bundleOf
@@ -23,6 +24,8 @@ import de.davis.passwordmanager.services.autofill.entities.AutofillField
 import de.davis.passwordmanager.services.autofill.entities.AutofillForm
 import de.davis.passwordmanager.services.autofill.entities.AutofillPair
 import de.davis.passwordmanager.services.autofill.entities.UserCredentialsType
+import de.davis.passwordmanager.ui.auth.AuthenticationRequest
+import de.davis.passwordmanager.ui.auth.createRequestAuthenticationIntent
 import de.davis.passwordmanager.ui.dashboard.DashboardFragment
 
 private fun AutofillField.toPair(secureElement: SecureElement) =
@@ -42,6 +45,8 @@ private fun AutofillField.toPair(secureElement: SecureElement) =
 
 class SelectionActivity : AppCompatActivity() {
 
+    private var awaitingResult = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val binding = EmptyFragmentContainerBinding.inflate(layoutInflater, null, false)
@@ -55,6 +60,26 @@ class SelectionActivity : AppCompatActivity() {
             return
         }
 
+        val launcher =
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                awaitingResult = false
+                if (result.resultCode != RESULT_OK) {
+                    finish()
+                    return@registerForActivityResult
+                }
+
+                intent.extras?.getAutofillSelected()?.let {
+                    finishWithResult(autofillForm, it)
+                    return@registerForActivityResult
+                }
+
+                showSelectionUi(autofillForm)
+            }
+        awaitingResult = true
+        launcher.launch(createRequestAuthenticationIntent(AuthenticationRequest.JUST_AUTHENTICATE))
+    }
+
+    private fun showSelectionUi(autofillForm: AutofillForm) {
         supportFragmentManager.commit {
             add(
                 R.id.container,
@@ -62,33 +87,60 @@ class SelectionActivity : AppCompatActivity() {
                 bundleOf(
                     DashboardFragment.EXTRA_DASHBOARD_HANDLER to DashboardFragment.DashboardHandler(
                         listOf(ElementType.CREDIT_CARD)
-                    ) { element ->
-                        val autofillPairs = autofillForm.autofillFields.map { it.toPair(element) }
-
-                        val dataset = DatasetBuilder.buildDataset(
-                            DatasetBuilder.BuilderVariant.FillProperties(
-                                autofillPairs
-                            )
-                        )
-
-                        setResult(RESULT_OK, Intent().apply {
-                            putExtra(AutofillManager.EXTRA_AUTHENTICATION_RESULT, dataset)
-                        })
-                        finish()
-                    })
+                    ) { finishWithResult(autofillForm, it) }
+                )
             )
         }
     }
 
+    private fun finishWithResult(
+        autofillForm: AutofillForm,
+        element: SecureElement,
+        resultCode: Int = RESULT_OK
+    ) {
+        val autofillPairs = autofillForm.autofillFields.map { it.toPair(element) }
+
+        val dataset = DatasetBuilder.buildDataset(
+            DatasetBuilder.BuilderVariant.FillProperties(
+                autofillPairs
+            )
+        )
+
+        setResult(resultCode, Intent().apply {
+            putExtra(AutofillManager.EXTRA_AUTHENTICATION_RESULT, dataset)
+        })
+        finish()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (!awaitingResult)
+            finish()
+    }
+
     companion object {
         private const val EXTRA_AUTOFILL_FORM = "de.davis.passwordmanager.extra.AUTOFILL_FORM"
-        fun newIntent(context: Context, autofillForm: AutofillForm): Intent =
-            Intent(context, SelectionActivity::class.java).putExtra(
-                EXTRA_AUTOFILL_FORM, autofillForm
+        private const val EXTRA_AUTOFILL_SELECTED =
+            "de.davis.passwordmanager.extra.AUTOFILL_SELECTED"
+
+        fun newIntent(
+            context: Context,
+            autofillForm: AutofillForm,
+            selected: SecureElement? = null
+        ): Intent =
+            Intent(context, SelectionActivity::class.java).putExtras(
+                bundleOf(
+                    EXTRA_AUTOFILL_FORM to autofillForm,
+                    EXTRA_AUTOFILL_SELECTED to selected
+                )
             )
     }
 
     private fun Bundle.getAutofillForm(): AutofillForm? = getParcelableCompat(
         EXTRA_AUTOFILL_FORM, AutofillForm::class.java
+    )
+
+    private fun Bundle.getAutofillSelected(): SecureElement? = getParcelableCompat(
+        EXTRA_AUTOFILL_SELECTED, SecureElement::class.java
     )
 }
