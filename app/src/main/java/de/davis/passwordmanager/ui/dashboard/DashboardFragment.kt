@@ -246,7 +246,7 @@ class DashboardFragment : Fragment() {
                 )
                 searchResultAdapter.filter = it.first
 
-                binding.listPane.noResults.visibility =
+                binding.listPane.noResultsSearch.visibility =
                     if (it.first.isNotEmpty() && it.second.isEmpty()) View.VISIBLE
                     else View.GONE
             }
