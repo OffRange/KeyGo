@@ -251,7 +251,7 @@ class NodeTraverse(private val requestFlags: Int = 0) {
     companion object {
         const val MAX_CONTEXT_LVL_DEPTH = 4
         val USERNAME_REGEX = Regex(
-            "(username|login|user|email|account|" +
+            "\\b(username|login|user|email|account|" +
                     "usuario|correo|cuenta|nombredeusuario|" +
                     "nomd'utilisateur|compte|adressemail|" +
                     "benutzername|konto|emailadresse|" +
