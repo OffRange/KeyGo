@@ -28,10 +28,6 @@ public class CreatePasswordActivity extends CreateSecureElementActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Objects.requireNonNull(binding.textInputLayoutPassword.getEditText()).addTextChangedListener(binding.strengthBar);
-
-        binding.textInputLayoutPassword.getEditText().addTextChangedListener(binding.strengthBar);
-
         ActivityResultManager activityResultManager = ActivityResultManager.getOrCreateManager(getClass(), this);
         activityResultManager.registerGeneratePassword(result -> binding.textInputLayoutPassword.getEditText().setText(result));
         binding.generate.setOnClickListener(v -> activityResultManager.launchGeneratePassword(this));
@@ -42,6 +38,7 @@ public class CreatePasswordActivity extends CreateSecureElementActivity {
         if(binding == null)
             binding = ActivityCreatePasswordBinding.inflate(inflater, container, false);
 
+        binding.textInputLayoutPassword.getEditText().addTextChangedListener(binding.strengthBar);
         return binding.getRoot();
     }
 
