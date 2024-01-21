@@ -1,4 +1,4 @@
-package de.passwordmanager.version;
+package de.davis.passwordmanager.version;
 
 import static org.junit.Assert.assertEquals;
 
@@ -6,8 +6,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-
-import de.davis.passwordmanager.version.Version;
 
 @RunWith(JUnit4.class)
 public class VersionTest {
