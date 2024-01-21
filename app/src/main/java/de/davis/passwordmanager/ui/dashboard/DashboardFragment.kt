@@ -127,9 +127,18 @@ class DashboardFragment : Fragment() {
         val slidingBackPaneManager =
             SlidingBackPaneManager(binding.slidingPaneLayout, scrollingViewModel)
 
-        slidingBackPaneManager.setUpdateStateCallback {
-            backToTagsCallback.isEnabled = !it.isEnabled
-        }
+        binding.slidingPaneLayout.addPanelSlideListener(object : PanelSlideListener {
+            override fun onPanelSlide(panel: View, slideOffset: Float) {}
+
+            override fun onPanelOpened(panel: View) {
+                backToTagsCallback.isEnabled = false
+            }
+
+            override fun onPanelClosed(panel: View) {
+                backToTagsCallback.isEnabled = true
+            }
+
+        })
 
         requireActivity().onBackPressedDispatcher.apply {
             addCallback(
@@ -194,7 +203,8 @@ class DashboardFragment : Fragment() {
                     update(absItemManager)
 
                     // Update icon
-                    backToTagsCallback.isEnabled = listState is ListState.Element
+                    backToTagsCallback.isEnabled =
+                        listState is ListState.Element && !binding.slidingPaneLayout.isOpen
 
                     if (backToTagsCallback.isEnabled) {
                         binding.listPane.searchBar.navigationIcon =
