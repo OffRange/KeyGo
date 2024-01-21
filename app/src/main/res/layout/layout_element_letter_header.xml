@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="50dp"
     android:layout_height="50dp"
-    android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+    android:textAppearance="@style/TextAppearance.AppCompat.Title"
     android:gravity="center"
     android:text="L"
     tools:ignore="HardcodedText">
