@@ -29,6 +29,7 @@ class InlineDatasetBuilder(private val context: Context) {
             context.getSelectionPendingIntent(
                 requestCode,
                 autofillForm,
+                textProvider.element
             ).intentSender,
             inlinePresentation = InlinePresentationBuilder.createBasicPresentation(
                 title = textProvider.title,
