@@ -77,7 +77,8 @@ public class SecureElementViewHolder extends BasicViewHolder<SecureElement> {
             info.setTextColor(((PasswordDetails)item.getDetail()).getStrength().getColor(context));
         }else{
             CreditCardDetails details = (CreditCardDetails) item.getDetail();
-            setShortenedTextIfNeeded(info, details.getSecretNumber(), details.getSecretNumber().substring(15, 19));
+            String secret = details.getSecretNumber();
+            setShortenedTextIfNeeded(info, secret, secret.substring(secret.lastIndexOf(" ")));
             info.setTextColor(MaterialColors.getColor(itemView.getContext(), com.google.android.material.R.attr.colorOnSurface, Color.BLACK));
         }
 

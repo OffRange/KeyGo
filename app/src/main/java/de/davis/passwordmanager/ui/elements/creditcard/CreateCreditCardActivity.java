@@ -63,7 +63,7 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
 
         Objects.requireNonNull(binding.textInputLayoutCardDate.getEditText()).addTextChangedListener(new ExpiryDateTextWatcher());
 
-        Objects.requireNonNull(binding.textInputLayoutCardNumber.getEditText()).addTextChangedListener(new CreditCardNumberTextWatcher());
+        Objects.requireNonNull(binding.textInputLayoutCardNumber.getEditText()).addTextChangedListener(new CreditCardNumberTextWatcher(binding.textInputLayoutCardNumber.getEditText()));
         binding.textInputLayoutCardNumber.getEditText().setTransformationMethod(CreditCardNumberTransformationMethod.getInstance());
         binding.textInputLayoutCardNumber.setEndIconOnClickListener(new OnCreditCardEndIconClickListener(binding.textInputLayoutCardNumber));
 
@@ -169,8 +169,8 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
         }else
             binding.textInputLayoutCardNumber.setErrorEnabled(false);
 
-        if(!CreditCardUtil.isValidCardNumberLength(creditCardNumber)){
-            binding.textInputLayoutCardNumber.setError(getString(R.string.invalid_card_number_length));
+        if(!CreditCardUtil.isValidCardNumberLength(creditCardNumber) || !CreditCardUtil.isValidCheckSum(creditCardNumber)){
+            binding.textInputLayoutCardNumber.setError(getString(R.string.invalid_card));
             result.setSuccess(false);
         }else
             binding.textInputLayoutCardNumber.setErrorEnabled(false);

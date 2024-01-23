@@ -6,6 +6,8 @@ import java.util.Objects;
 import de.davis.passwordmanager.database.ElementType;
 import de.davis.passwordmanager.database.entities.details.ElementDetail;
 import de.davis.passwordmanager.utils.CreditCardUtil;
+import de.davis.passwordmanager.utils.card.Card;
+import de.davis.passwordmanager.utils.card.CardFactory;
 
 public class CreditCardDetails implements ElementDetail {
 
@@ -22,7 +24,7 @@ public class CreditCardDetails implements ElementDetail {
             this.expirationDate = expirationDate;
 
         this.cardholder = cardholder;
-        this.cardNumber = cardNumber.replaceAll("\\s", "");
+        this.cardNumber = cardNumber;
         this.cvv = cvv;
     }
 
@@ -35,7 +37,7 @@ public class CreditCardDetails implements ElementDetail {
     }
 
     public String getCardNumber() {
-        return cardNumber;
+        return getCard().getRawNumber();
     }
 
     public void setCardNumber(String cardNumber) {
@@ -43,11 +45,11 @@ public class CreditCardDetails implements ElementDetail {
     }
 
     public String getSecretNumber(){
-        return getFormattedNumber().replaceAll("(\\d{4}\\s){3}", "**** **** **** ");
+        return getCard().mask();
     }
 
     public String getFormattedNumber(){
-        return CreditCardUtil.formatNumber(getCardNumber());
+        return getCard().getCardNumber();
     }
 
     public String getCvv() {
@@ -69,6 +71,10 @@ public class CreditCardDetails implements ElementDetail {
     @Override
     public ElementType getElementType() {
         return ElementType.CREDIT_CARD;
+    }
+
+    private Card getCard(){
+        return CardFactory.INSTANCE.createFromCardNumber(cardNumber);
     }
 
     @Override

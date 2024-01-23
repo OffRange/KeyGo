@@ -47,7 +47,7 @@ public class ViewCreditCardFragment extends ViewSecureElementFragment {
             TextInputLayout til = view.findViewById(R.id.textInputLayout);
             EditText et = til.getEditText();
             et.setKeyListener(DigitsKeyListener.getInstance("0123456789 "));
-            et.addTextChangedListener(new CreditCardNumberTextWatcher());
+            et.addTextChangedListener(new CreditCardNumberTextWatcher(et));
             til.setEndIconOnClickListener(new OnCreditCardEndIconClickListener(til));
         });
         binding.cardNumber.setTransformationMethod(CreditCardNumberTransformationMethod.getInstance());

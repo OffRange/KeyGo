@@ -6,6 +6,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.Locale;
 
+import de.davis.passwordmanager.utils.card.Card;
+import de.davis.passwordmanager.utils.card.CardFactory;
+
 public class CreditCardUtil {
 
     public static boolean isValidDateFormat(String formatted){
@@ -24,14 +27,24 @@ public class CreditCardUtil {
         if(cardNumber == null)
             return false;
 
-        String formatted = cardNumber.replaceAll("\\s", "");
+        Card card = CardFactory.INSTANCE.createFromCardNumber(cardNumber);
 
-        return formatted.length() == 16;
+        return card.isValidLength();
+    }
+
+    public static boolean isValidCheckSum(String cardNumber){
+        if(cardNumber == null)
+            return false;
+
+        Card card = CardFactory.INSTANCE.createFromCardNumber(cardNumber);
+
+        return card.isValidLuhnNumber();
     }
 
     public static String formatNumber(String s){
-        String f = s.replaceAll("\\s", "").replaceAll("\\d{4}", "$0 ");
-        return f.endsWith(" ") ? f.substring(0, f.length() -1) : f;
+        Card card = CardFactory.INSTANCE.createFromCardNumber(s);
+
+        return card.getCardNumber();
     }
 
     public static String formatDate(Date date){

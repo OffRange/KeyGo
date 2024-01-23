@@ -38,7 +38,7 @@
     <string name="password_incorrect">Incorrect password</string>
     <string name="password_does_not_match">Password does not match</string>
     <string name="is_not_filled_in">This must be filled in</string>
-    <string name="invalid_card_number_length">Card number must have 16 numbers</string>
+    <string name="invalid_card">Invalid card number</string>
     <string name="invalid_date">Invalid date</string>
     <string name="invalid_url">Invalid url</string>
 
