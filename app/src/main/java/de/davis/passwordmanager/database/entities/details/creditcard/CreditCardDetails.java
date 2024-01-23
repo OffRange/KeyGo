@@ -73,7 +73,7 @@ public class CreditCardDetails implements ElementDetail {
         return ElementType.CREDIT_CARD;
     }
 
-    private Card getCard(){
+    public Card getCard(){
         return CardFactory.INSTANCE.createFromCardNumber(cardNumber);
     }
 
