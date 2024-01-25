@@ -5,19 +5,26 @@ import android.text.InputFilter;
 import android.text.TextWatcher;
 import android.widget.EditText;
 
+import java.util.function.Consumer;
+
 import de.davis.passwordmanager.utils.CreditCardUtil;
 import de.davis.passwordmanager.utils.card.CardType;
 import de.davis.passwordmanager.utils.card.Formatter;
 
 public class CreditCardNumberTextWatcher implements TextWatcher {
 
-    private final EditText editText;
+    private final EditText cardNumberEditText;
     private boolean changing;
 
-    public CreditCardNumberTextWatcher(EditText editText) {
-        this.editText = editText;
+    private Consumer<CardType> onTypeDetected;
+
+    public CreditCardNumberTextWatcher(EditText cardNumberEditText) {
+        this.cardNumberEditText = cardNumberEditText;
     }
 
+    public void setOnTypeDetected(Consumer<CardType> onTypeDetected) {
+        this.onTypeDetected = onTypeDetected;
+    }
 
     @Override
     public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -44,18 +51,20 @@ public class CreditCardNumberTextWatcher implements TextWatcher {
         if(formatted.length() > length)
             formatted = formatted.substring(0, length);
 
-        editText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(length)});
+        cardNumberEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(length)});
+        if(onTypeDetected != null)
+            onTypeDetected.accept(type);
 
 
-        int selectionEnd = editText.getSelectionEnd();
-        boolean isLast = editText.length() == selectionEnd;
+        int selectionEnd = cardNumberEditText.getSelectionEnd();
+        boolean isLast = cardNumberEditText.length() == selectionEnd;
 
         s.replace(0, s.length(), formatted);
 
         if(isLast)
-            editText.setSelection(formatted.length());
+            cardNumberEditText.setSelection(formatted.length());
         else
-            editText.setSelection(Math.min(formatted.length(), selectionEnd));
+            cardNumberEditText.setSelection(Math.min(formatted.length(), selectionEnd));
 
         changing = false;
     }

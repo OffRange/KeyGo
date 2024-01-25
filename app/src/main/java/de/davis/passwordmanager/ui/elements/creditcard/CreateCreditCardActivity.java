@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.InputFilter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -36,6 +37,7 @@ import de.davis.passwordmanager.nfc.NfcManager;
 import de.davis.passwordmanager.text.method.CreditCardNumberTransformationMethod;
 import de.davis.passwordmanager.ui.elements.CreateSecureElementActivity;
 import de.davis.passwordmanager.utils.CreditCardUtil;
+import de.davis.passwordmanager.utils.card.CardType;
 
 public class CreateCreditCardActivity extends CreateSecureElementActivity {
 
@@ -63,9 +65,19 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
 
         Objects.requireNonNull(binding.textInputLayoutCardDate.getEditText()).addTextChangedListener(new ExpiryDateTextWatcher());
 
-        Objects.requireNonNull(binding.textInputLayoutCardNumber.getEditText()).addTextChangedListener(new CreditCardNumberTextWatcher(binding.textInputLayoutCardNumber.getEditText()));
-        binding.textInputLayoutCardNumber.getEditText().setTransformationMethod(CreditCardNumberTransformationMethod.getInstance());
+        CreditCardNumberTextWatcher textWatcher = new CreditCardNumberTextWatcher(binding.cardNumber);
+        binding.cardNumber.addTextChangedListener(textWatcher);
+        binding.cardNumber.setTransformationMethod(CreditCardNumberTransformationMethod.getInstance());
         binding.textInputLayoutCardNumber.setEndIconOnClickListener(new OnCreditCardEndIconClickListener(binding.textInputLayoutCardNumber));
+
+
+        textWatcher.setOnTypeDetected(cardType -> {
+            int cvvMaxLength = cardType == CardType.AmericanExpress ? 4 : 3;
+            binding.cardCVV.setFilters(new InputFilter[]{new InputFilter.LengthFilter(cvvMaxLength)});
+
+            String cvv = Objects.requireNonNull(binding.cardCVV.getText()).toString();
+            binding.cardCVV.setText(cvv.subSequence(0, Math.min(cvv.length(), cvvMaxLength)));
+        });
 
         nfcManager = new NfcManager(this) {
             @Override
@@ -100,10 +112,10 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
         binding.textInputLayoutTitle.getEditText().setText(element.getTitle());
 
         CreditCardDetails details = (CreditCardDetails) element.getDetail();
-        binding.textInputLayoutUsername.getEditText().setText(details.getCardholder().getFullName());
-        binding.textInputLayoutCardNumber.getEditText().setText(details.getCardNumber());
-        binding.textInputLayoutCardCVV.getEditText().setText(details.getCvv());
-        binding.textInputLayoutCardDate.getEditText().setText(details.getExpirationDate());
+        binding.cardHolder.setText(details.getCardholder().getFullName());
+        binding.cardNumber.setText(details.getCardNumber());
+        binding.cardCVV.setText(details.getCvv());
+        binding.expirationDate.setText(details.getExpirationDate());
     }
 
     @Override
@@ -154,8 +166,8 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
         result.setSuccess(true);
 
         String title = Objects.requireNonNull(binding.textInputLayoutTitle.getEditText()).getText().toString();
-        String creditCardNumber = Objects.requireNonNull(binding.textInputLayoutCardNumber.getEditText()).getText().toString();
-        String expiryDate = Objects.requireNonNull(binding.textInputLayoutCardDate.getEditText()).getText().toString();
+        String creditCardNumber = Objects.requireNonNull(binding.cardNumber.getText()).toString();
+        String expiryDate = Objects.requireNonNull(binding.expirationDate.getText()).toString();
 
         if(title.isBlank()){
             binding.textInputLayoutTitle.setError(getString(R.string.is_not_filled_in));
@@ -192,11 +204,11 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
     @Override
     protected SecureElement toElement() {
         String title = Objects.requireNonNull(binding.textInputLayoutTitle.getEditText()).getText().toString().trim();
-        String creditCardNumber = Objects.requireNonNull(binding.textInputLayoutCardNumber.getEditText()).getText().toString().trim();
-        String expiryDate = Objects.requireNonNull(binding.textInputLayoutCardDate.getEditText()).getText().toString().trim();
-        String cvv = Objects.requireNonNull(binding.textInputLayoutCardCVV.getEditText()).getText().toString().trim();
+        String creditCardNumber = Objects.requireNonNull(binding.cardNumber.getText()).toString().trim();
+        String expiryDate = Objects.requireNonNull(binding.expirationDate.getText()).toString().trim();
+        String cvv = Objects.requireNonNull(binding.cardCVV.getText()).toString().trim();
 
-        Name name = Name.fromFullName(Objects.requireNonNull(binding.textInputLayoutUsername.getEditText()).getText().toString());
+        Name name = Name.fromFullName(Objects.requireNonNull(binding.cardHolder.getText()).toString());
 
         CreditCardDetails details = new CreditCardDetails(name, expiryDate, creditCardNumber, cvv);
         SecureElement card = getElement() == null ?
@@ -220,9 +232,9 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
         String cardNumber = card.getCardNumber();
         String expireString = CreditCardUtil.formatDate(card.getExpireDate());
 
-        Objects.requireNonNull(binding.textInputLayoutUsername.getEditText()).setText(name.getFullName());
-        Objects.requireNonNull(binding.textInputLayoutCardNumber.getEditText()).setText(cardNumber);
-        Objects.requireNonNull(binding.textInputLayoutCardDate.getEditText()).setText(expireString);
+        binding.cardHolder.setText(name.getFullName());
+        binding.cardNumber.setText(cardNumber);
+        binding.expirationDate.setText(expireString);
     }
 
     private void setNfcMessageSuccess(@StringRes int stringRes){
