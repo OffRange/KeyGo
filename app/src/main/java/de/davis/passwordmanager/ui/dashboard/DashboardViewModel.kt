@@ -85,6 +85,11 @@ class DashboardViewModel(private val application: Application) : AndroidViewMode
                             .filter { it.tags.any { tag -> listState.tagName == tag.name } }
                             .filter { !ignoreElementTypes.contains(it.detail.elementType) }
 
+                        if (elements.isEmpty()) {
+                            updateState(ListState.Tag)
+                            return@combine _state.value
+                        }
+
                         ListData.Elements(
                             elements.applyFilter(filter),
                             elements.flatMap { it.tags.onlyCustoms() }.map { it.name }.distinct()
@@ -93,7 +98,7 @@ class DashboardViewModel(private val application: Application) : AndroidViewMode
 
                     is ListState.AllElements -> ListData.Elements(secureElements, emptyList())
                 }
-            }.distinctUntilChangedBy { it.second.data }.collect {
+            }.distinctUntilChangedBy { it?.second?.data }.collect {
                 _state.value = it
             }
         }
