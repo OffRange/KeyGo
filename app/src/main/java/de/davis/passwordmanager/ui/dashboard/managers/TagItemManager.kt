@@ -117,7 +117,7 @@ class TagItemManager(
             }
 
             override fun onDrawOver(c: Canvas, parent: RecyclerView, state: RecyclerView.State) {
-                val child = parent.getChildAt(getLastDefaultTagPosition())
+                val child = parent.getChildAt(getLastDefaultTagPosition()) ?: return
                 val spacing = TypedValue.applyDimension(
                     TypedValue.COMPLEX_UNIT_DIP,
                     8f,
