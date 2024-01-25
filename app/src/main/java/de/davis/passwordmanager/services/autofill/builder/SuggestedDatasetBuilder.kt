@@ -14,11 +14,11 @@ object SuggestedDatasetBuilder {
         builder: (TextProvider, requestCode: Int) -> Dataset
     ): List<Dataset> = url?.let { url ->
         SecureElementManager.getSecureElements(typeId)
-            .take(n)
             .filter {
                 (it.detail as PasswordDetails).origin.couldBeUrl(url) ||
                         it.title.couldBeUrl(url)
             }
+            .take(n)
             .mapIndexed { index, element -> builder(element.getTextProvider(), index) }
     } ?: emptyList()
 

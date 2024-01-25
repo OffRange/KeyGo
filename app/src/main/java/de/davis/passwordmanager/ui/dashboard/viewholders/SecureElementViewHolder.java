@@ -29,6 +29,7 @@ import de.davis.passwordmanager.database.dtos.SecureElement;
 import de.davis.passwordmanager.database.entities.details.creditcard.CreditCardDetails;
 import de.davis.passwordmanager.database.entities.details.password.PasswordDetails;
 import de.davis.passwordmanager.ui.views.OptionBottomSheet;
+import de.davis.passwordmanager.utils.card.CardType;
 
 public class SecureElementViewHolder extends BasicViewHolder<SecureElement> {
 
@@ -73,11 +74,19 @@ public class SecureElementViewHolder extends BasicViewHolder<SecureElement> {
         image.setImageDrawable(item.getIcon(context));
 
         if(item.getElementType() == ElementType.PASSWORD){
+            type.setText(item.getElementType().getTitle());
             info.setText(((PasswordDetails)item.getDetail()).getStrength().getString());
             info.setTextColor(((PasswordDetails)item.getDetail()).getStrength().getColor(context));
         }else{
             CreditCardDetails details = (CreditCardDetails) item.getDetail();
-            setShortenedTextIfNeeded(info, details.getSecretNumber(), details.getSecretNumber().substring(15, 19));
+            CardType cardType = details.getCard().getType();
+            if(cardType == CardType.Unknown)
+                type.setText(item.getElementType().getTitle());
+            else
+                type.setText(cardType.name().replaceAll("([a-z])([A-Z])", "$1 $2"));
+
+            String secret = details.getSecretNumber();
+            setShortenedTextIfNeeded(info, secret, secret.substring(secret.lastIndexOf(" ")));
             info.setTextColor(MaterialColors.getColor(itemView.getContext(), com.google.android.material.R.attr.colorOnSurface, Color.BLACK));
         }
 

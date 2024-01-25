@@ -23,7 +23,7 @@
     <string name="password_incorrect">Passwort ist inkorrekt</string>
     <string name="password_does_not_match">Passwort stimmt nicht überein</string>
     <string name="is_not_filled_in">Dieses Feld muss ausgefüllt sein</string>
-    <string name="invalid_card_number_length">Kreditkartennummer muss 16 Zahlen beinhalten</string>
+    <string name="invalid_card">Ungültige Kartennummer</string>
     <string name="invalid_date">Ungültiges Datum</string>
     <string name="invalid_url">Ungültige URL</string>
 
