@@ -24,7 +24,7 @@ class DashboardAdapter(private val onUpdate: (DashboardAdapter) -> Unit) :
 
     var filter: String = ""
 
-    private lateinit var tracker: SelectionTracker<Long>
+    private var tracker: SelectionTracker<Long>? = null
 
     init {
         setHasStableIds(true)
@@ -37,7 +37,12 @@ class DashboardAdapter(private val onUpdate: (DashboardAdapter) -> Unit) :
     override fun getItemCount(): Int = itemManager.items.size
 
     override fun onBindViewHolder(holder: BasicViewHolder<Item>, position: Int) {
-        itemManager.bind(holder, filter, position, tracker.isSelected(getItemId(position)))
+        itemManager.bind(
+            holder,
+            filter,
+            position,
+            tracker?.isSelected(getItemId(position)) ?: false
+        )
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -82,28 +87,28 @@ class DashboardAdapter(private val onUpdate: (DashboardAdapter) -> Unit) :
                 return enableSelection
             }
 
-        }).build()
+        }).build().also {
+            it.addObserver(object : SelectionTracker.SelectionObserver<Long>() {
+                var oldSelection: List<Long>? = null
 
-        tracker.addObserver(object : SelectionTracker.SelectionObserver<Long>() {
-            var oldSelection: List<Long>? = null
+                override fun onSelectionChanged() {
+                    if (it.selection.toList() == oldSelection)
+                        return
 
-            override fun onSelectionChanged() {
-                if (tracker.selection.toList() == oldSelection)
-                    return
-
-                onSelectionChanged(getSelectedElements())
-                oldSelection = tracker.selection.toList()
-            }
-        })
+                    onSelectionChanged(getSelectedElements())
+                    oldSelection = it.selection.toList()
+                }
+            })
+        }
     }
 
     fun getSelectedElements(): List<Item> {
-        return tracker.selection
-            .map { itemManager.getElementById(it) }
-            .mapNotNull { it }.toList()
+        return tracker?.selection
+            ?.map { itemManager.getElementById(it) }
+            ?.mapNotNull { it }?.toList() ?: emptyList()
     }
 
-    fun clearSelection() = tracker.clearSelection()
+    fun clearSelection() = tracker?.clearSelection()
 
     private fun configureRecyclerView() = recyclerView.apply {
         layoutManager = itemManager.getLayoutManager(recyclerView.context)
@@ -135,10 +140,10 @@ class DashboardAdapter(private val onUpdate: (DashboardAdapter) -> Unit) :
     }
 
     fun onSaveInstanceState(bundle: Bundle) {
-        tracker.onSaveInstanceState(bundle)
+        tracker?.onSaveInstanceState(bundle)
     }
 
     fun onRestoreInstanceState(bundle: Bundle?) {
-        tracker.onRestoreInstanceState(bundle)
+        tracker?.onRestoreInstanceState(bundle)
     }
 }
