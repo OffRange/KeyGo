@@ -38,9 +38,7 @@ class PasswordDetails(
 
         if (origin != other.origin) return false
         if (username != other.username) return false
-        if (!passwordEncrypted.contentEquals(other.passwordEncrypted)) return false
-
-        return true
+        return password == other.password
     }
 
     override fun hashCode(): Int {
