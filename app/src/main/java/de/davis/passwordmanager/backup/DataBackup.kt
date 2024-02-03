@@ -25,12 +25,15 @@ abstract class DataBackup(private val backupListener: BackupListener = BackupLis
         }
     }
 
-    open suspend fun execute(backupOperation: BackupOperation, streamProvider: StreamProvider) {
+    open suspend fun execute(
+        backupOperation: BackupOperation,
+        backupResourceProvider: BackupResourceProvider
+    ) {
         backupListener.run {
             runCatching {
                 withContext(Dispatchers.Main) { onStart(backupOperation) }
 
-                streamProvider.run {
+                backupResourceProvider.run {
                     progressContext.run {
                         when (backupOperation) {
                             BackupOperation.IMPORT -> provideInputStream().use { runImport(it) }

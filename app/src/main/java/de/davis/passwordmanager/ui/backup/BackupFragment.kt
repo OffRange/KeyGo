@@ -21,7 +21,7 @@ import de.davis.passwordmanager.backup.impl.AndroidBackupListener
 import de.davis.passwordmanager.backup.impl.AndroidPasswordProvider
 import de.davis.passwordmanager.backup.impl.CsvBackup
 import de.davis.passwordmanager.backup.impl.KdbxBackup
-import de.davis.passwordmanager.backup.impl.UriStreamProvider
+import de.davis.passwordmanager.backup.impl.UriBackupResourceProvider
 import de.davis.passwordmanager.ktx.getParcelableCompat
 import de.davis.passwordmanager.ui.auth.AuthenticationRequest
 import de.davis.passwordmanager.ui.auth.createRequestAuthenticationIntent
@@ -95,7 +95,7 @@ class BackupFragment : PreferenceFragmentCompat() {
         backup: DataBackup
     ): ActivityResultLauncher<T> {
         val createStreamProvider = { uri: Uri ->
-            UriStreamProvider(uri, requireContext().contentResolver)
+            UriBackupResourceProvider(uri, requireContext().contentResolver)
         }
 
         return registerForActivityResult(contract) { uri: Uri? ->

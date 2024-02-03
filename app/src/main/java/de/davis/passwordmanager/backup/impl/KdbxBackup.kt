@@ -39,8 +39,7 @@ class KdbxBackup(
         inputStream: InputStream,
         password: String
     ): BackupResult {
-        val database =
-            inputStream.use { KeePassDatabase.decode(it, credentialFactory(password)) }
+        val database = inputStream.use { KeePassDatabase.decode(it, credentialFactory(password)) }
 
         val existingElements = SecureElementManager.getSecureElements(ElementType.PASSWORD.typeId)
         val elementsToAdd = mutableListOf<SecureElement>()

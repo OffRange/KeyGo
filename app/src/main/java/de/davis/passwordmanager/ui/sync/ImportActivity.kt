@@ -7,16 +7,18 @@ import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import de.davis.passwordmanager.R
 import de.davis.passwordmanager.backup.BackupOperation
 import de.davis.passwordmanager.backup.BackupResult
 import de.davis.passwordmanager.backup.impl.AndroidBackupListener
 import de.davis.passwordmanager.backup.impl.AndroidPasswordProvider
 import de.davis.passwordmanager.backup.impl.KdbxBackup
-import de.davis.passwordmanager.backup.impl.UriStreamProvider
+import de.davis.passwordmanager.backup.impl.UriBackupResourceProvider
 import de.davis.passwordmanager.databinding.ActivityImportBinding
 import de.davis.passwordmanager.ui.MainActivity
 import de.davis.passwordmanager.ui.auth.AuthenticationRequest
 import de.davis.passwordmanager.ui.auth.createRequestAuthenticationIntent
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class ImportActivity : AppCompatActivity() {
@@ -46,18 +48,32 @@ class ImportActivity : AppCompatActivity() {
             layoutInflater
         )
         setContentView(binding.root)
+        val fileUri = intent.data ?: run {
+            finish()
+            return
+        }
+
+        val uriBackupResourceProvider = UriBackupResourceProvider(fileUri, contentResolver)
+
+        lifecycleScope.launch(Dispatchers.Main) {
+            binding.informationView.setInformationText(
+                getString(
+                    R.string.authenticate_to_import,
+                    uriBackupResourceProvider.getFileName()
+                )
+            )
+        }
 
         val auth =
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
                 if (result.resultCode != RESULT_OK) return@registerForActivityResult
                 if (intent.action == null) return@registerForActivityResult
                 if (intent.action != Intent.ACTION_VIEW) return@registerForActivityResult
-                val fileUri = intent.data ?: return@registerForActivityResult
 
                 lifecycleScope.launch {
                     kdbxBackup.execute(
                         BackupOperation.IMPORT,
-                        UriStreamProvider(fileUri, contentResolver)
+                        UriBackupResourceProvider(fileUri, contentResolver)
                     )
                 }
             }

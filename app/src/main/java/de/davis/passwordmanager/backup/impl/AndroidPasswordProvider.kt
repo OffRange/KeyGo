@@ -10,6 +10,7 @@ import androidx.appcompat.content.res.AppCompatResources
 import com.google.android.material.textfield.TextInputLayout
 import de.davis.passwordmanager.R
 import de.davis.passwordmanager.backup.BackupOperation
+import de.davis.passwordmanager.backup.BackupResourceProvider
 import de.davis.passwordmanager.backup.PasswordProvider
 import de.davis.passwordmanager.dialog.EditDialogBuilder
 import de.davis.passwordmanager.ui.views.InformationView
@@ -22,6 +23,7 @@ import kotlinx.coroutines.withContext
 class AndroidPasswordProvider(private val context: Context) : PasswordProvider {
     override suspend fun invoke(
         backupOperation: BackupOperation,
+        backupResourceProvider: BackupResourceProvider,
         callback: suspend (password: String) -> Unit
     ) {
         withContext(Dispatchers.Main) {
@@ -33,6 +35,12 @@ class AndroidPasswordProvider(private val context: Context) : PasswordProvider {
 
             EditDialogBuilder(context).apply {
                 setTitle(R.string.password)
+                setMessage(
+                    context.getString(
+                        R.string.enter_password_for_s,
+                        backupResourceProvider.getFileName()
+                    )
+                )
                 setPositiveButton(R.string.yes) { _: DialogInterface?, _: Int -> }
                 setButtonListener(
                     DialogInterface.BUTTON_POSITIVE,

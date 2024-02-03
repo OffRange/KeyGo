@@ -27,10 +27,13 @@ abstract class SecureDataBackup(
     final override suspend fun ProgressContext.runExport(outputStream: OutputStream): BackupResult =
         runExport(outputStream, password)
 
-    override suspend fun execute(backupOperation: BackupOperation, streamProvider: StreamProvider) {
-        passwordProvider(backupOperation) {
+    override suspend fun execute(
+        backupOperation: BackupOperation,
+        backupResourceProvider: BackupResourceProvider
+    ) {
+        passwordProvider(backupOperation, backupResourceProvider) {
             password = it
-            super.execute(backupOperation, streamProvider)
+            super.execute(backupOperation, backupResourceProvider)
         }
     }
 }

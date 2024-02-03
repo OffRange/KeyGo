@@ -191,8 +191,9 @@
     <string name="invalid_file">Invalid file</string>
 
     <string name="wait_text">This might take a little time. Please be patient</string>
-    <string name="authenticate_to_import">To load a backup, authentication is required</string>
+    <string name="authenticate_to_import">To load \"%s\", authentication is required</string>
     <string name="authenticate_to_proceed">Authenticate to proceed</string>
+    <string name="enter_password_for_s">Enter password for \"%s\"</string>
 
     <string name="tag">Tag</string>
     <string name="tags">Tags</string>

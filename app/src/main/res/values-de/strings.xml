@@ -149,8 +149,9 @@
     <string name="invalid_file">Ungültige Datei</string>
 
     <string name="wait_text">Das könnte ein wenig Zeit in Anspruch nehmen. Bitte haben Sie Geduld</string>
-    <string name="authenticate_to_import">Um ein Backup laden zu können, ist eine Authentifizierung erforderlich</string>
+    <string name="authenticate_to_import">Um \"%s\" laden zu können, ist eine Authentifizierung erforderlich</string>
     <string name="authenticate_to_proceed">Authentifizieren um fortzufahren</string>
+    <string name="enter_password_for_s">Geben Sie das Passwort für \"%s\" ein</string>
 
     <string name="tag">Tag</string>
     <string name="tags">Tags</string>
