@@ -63,6 +63,14 @@
 
 -dontwarn org.slf4j.impl.StaticLoggerBinder
 
+# -------------------------- ProtoBuf --------------------------
+-keepclassmembers class * extends com.google.protobuf.GeneratedMessageLite {
+    <methods>;
+}
+-keep class * extends com.google.protobuf.GeneratedMessageLite {
+    *;
+}
+
 # -------------------------- Retrofit --------------------------
 
 # Retrofit does reflection on generic parameters. InnerClasses is required to use Signature and

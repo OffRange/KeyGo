@@ -1,25 +1,22 @@
 package de.davis.passwordmanager.security.mainpassword
 
+import androidx.datastore.core.CorruptionException
 import androidx.datastore.core.Serializer
-import com.google.gson.Gson
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.google.protobuf.InvalidProtocolBufferException
 import java.io.InputStream
-import java.io.InputStreamReader
 import java.io.OutputStream
 
-object MainPasswordSerializer : Serializer<MainPassword> {
+object MainPasswordSerializer : Serializer<UserMainPassword> {
 
-    override val defaultValue: MainPassword
-        get() = MainPassword.EMPTY
+    override val defaultValue: UserMainPassword = UserMainPassword.getDefaultInstance()
 
-    override suspend fun readFrom(input: InputStream): MainPassword {
-        return Gson().fromJson(InputStreamReader(input), MainPassword::class.java)
-    }
-
-    override suspend fun writeTo(t: MainPassword, output: OutputStream) {
-        withContext(Dispatchers.IO) {
-            output.write(Gson().toJson(t).toByteArray())
+    override suspend fun readFrom(input: InputStream): UserMainPassword {
+        try {
+            return UserMainPassword.parseFrom(input)
+        } catch (exception: InvalidProtocolBufferException) {
+            throw CorruptionException("Cannot read proto.", exception)
         }
     }
+
+    override suspend fun writeTo(t: UserMainPassword, output: OutputStream) = t.writeTo(output)
 }

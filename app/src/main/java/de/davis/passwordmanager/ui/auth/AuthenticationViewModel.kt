@@ -7,6 +7,7 @@ import de.davis.passwordmanager.R
 import de.davis.passwordmanager.security.Cryptography
 import de.davis.passwordmanager.security.mainpassword.MainPassword
 import de.davis.passwordmanager.security.mainpassword.MainPasswordManager
+import de.davis.passwordmanager.security.mainpassword.isEmpty
 import kotlinx.coroutines.launch
 
 class AuthenticationViewModel : ViewModel() {
@@ -42,8 +43,8 @@ class AuthenticationViewModel : ViewModel() {
                 return@launch
             }
 
-            if ((mainPassword == MainPassword.EMPTY || isCorrectPassword) && isNewEqualsConfirmed) {
-                MainPasswordManager.updatePassword(MainPassword(Cryptography.bcrypt(newPassword)))
+            if ((mainPassword.isEmpty || isCorrectPassword) && isNewEqualsConfirmed) {
+                MainPasswordManager.updatePassword(Cryptography.bcrypt(newPassword))
                 _authenticationResult.value = AuthenticationResult.Success
                 return@launch
             }

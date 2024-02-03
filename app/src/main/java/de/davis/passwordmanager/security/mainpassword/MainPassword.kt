@@ -4,15 +4,15 @@ import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 import java.time.Instant
 
+fun UserMainPassword.toNormal() = MainPassword(
+    hexHash, Instant.ofEpochSecond(
+        createdAt.seconds,
+        createdAt.nanos.toLong()
+    )
+)
+
 @Parcelize
-data class MainPassword(val hexHash: String, val createdAt: Instant = Instant.now()) : Parcelable {
+data class MainPassword(val hexHash: String, val createdAt: Instant) : Parcelable
 
-    @OptIn(ExperimentalStdlibApi::class)
-    constructor(hash: ByteArray) : this(hash.toHexString())
-
-    companion object {
-
-        @JvmField
-        val EMPTY: MainPassword = MainPassword(ByteArray(0))
-    }
-}
+val MainPassword.isEmpty: Boolean
+    get() = hexHash.isBlank()

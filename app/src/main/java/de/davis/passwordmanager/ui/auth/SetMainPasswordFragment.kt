@@ -9,7 +9,7 @@ import androidx.lifecycle.lifecycleScope
 import de.davis.passwordmanager.R
 import de.davis.passwordmanager.databinding.FragmentSetMainPasswordBinding
 import de.davis.passwordmanager.security.BiometricAuthentication
-import de.davis.passwordmanager.security.mainpassword.MainPassword
+import de.davis.passwordmanager.security.mainpassword.isEmpty
 import de.davis.passwordmanager.utils.PreferenceUtil
 import kotlinx.coroutines.launch
 
@@ -30,7 +30,7 @@ class SetMainPasswordFragment : BasicAuthenticationFragment() {
         val continueBtn = binding.continueBtn
 
         authForm.setTitle(
-            if (mainPassword == MainPassword.EMPTY) {
+            if (mainPassword.isEmpty) {
                 R.string.first_steps
             } else {
                 authenticationRequest.message
@@ -39,10 +39,10 @@ class SetMainPasswordFragment : BasicAuthenticationFragment() {
 
         lifecycleScope.launch {
             password.visibility =
-                if (mainPassword == MainPassword.EMPTY) View.GONE else View.VISIBLE
+                if (mainPassword.isEmpty) View.GONE else View.VISIBLE
 
             biometricSwitch.visibility =
-                if (mainPassword == MainPassword.EMPTY && BiometricAuthentication.isAvailable(
+                if (mainPassword.isEmpty && BiometricAuthentication.isAvailable(
                         requireContext()
                     )
                 )

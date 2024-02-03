@@ -8,15 +8,19 @@ import kotlinx.coroutines.flow.first
 object MainPasswordManager {
 
     private val Context.mainPasswordDataStore by dataStore(
-        "main-password.json",
+        "main-password.db",
         MainPasswordSerializer
     )
 
-    suspend fun getPassword(): MainPassword {
-        return PasswordManagerApplication.getAppContext().mainPasswordDataStore.data.first()
-    }
+    suspend fun getPassword(): MainPassword =
+        PasswordManagerApplication.getAppContext().mainPasswordDataStore.data.first().toNormal()
 
-    suspend fun updatePassword(mainPassword: MainPassword) {
-        PasswordManagerApplication.getAppContext().mainPasswordDataStore.updateData { mainPassword }
+    @OptIn(ExperimentalStdlibApi::class)
+    suspend fun updatePassword(hashedPassword: ByteArray) {
+        PasswordManagerApplication.getAppContext().mainPasswordDataStore.updateData {
+            it.copy {
+                hexHash = hashedPassword.toHexString()
+            }
+        }
     }
 }

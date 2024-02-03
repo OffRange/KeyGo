@@ -15,6 +15,7 @@ import de.davis.passwordmanager.databinding.ActivityAuthenticationBinding
 import de.davis.passwordmanager.ktx.getParcelableCompat
 import de.davis.passwordmanager.security.mainpassword.MainPassword
 import de.davis.passwordmanager.security.mainpassword.MainPasswordManager
+import de.davis.passwordmanager.security.mainpassword.isEmpty
 import de.davis.passwordmanager.ui.auth.RequestType.Companion.AUTH_REQUEST_AUTHENTICATE
 import de.davis.passwordmanager.ui.auth.RequestType.Companion.AUTH_REQUEST_CHANGE_MAIN_PASSWORD
 import kotlinx.coroutines.launch
@@ -35,7 +36,7 @@ class AuthenticationActivity : AppCompatActivity() {
                 EXTRA_AUTH_REQUEST,
                 AuthenticationRequest::class.java
             ) ?: AuthenticationRequest(
-                if (mainPassword == MainPassword.EMPTY)
+                if (mainPassword.isEmpty)
                     AUTH_REQUEST_CHANGE_MAIN_PASSWORD
                 else
                     AUTH_REQUEST_AUTHENTICATE

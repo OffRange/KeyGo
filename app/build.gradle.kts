@@ -5,6 +5,7 @@ plugins {
     kotlin("plugin.parcelize")
     id("com.google.devtools.ksp") version "1.9.22-1.0.17"
     id("androidx.room") version "2.6.0"
+    id("com.google.protobuf") version "0.9.4"
 }
 
 android {
@@ -125,6 +126,7 @@ dependencies {
     implementation("com.squareup.okio:okio:3.4.0") //Needed for Meta for kotpass
 
     implementation("androidx.datastore:datastore:1.0.0")
+    implementation("com.google.protobuf:protobuf-kotlin-lite:3.25.2")
 
     "githubImplementation"("com.squareup.retrofit2:retrofit:2.9.0")
     "githubImplementation"("org.kohsuke:github-api:1.318")
@@ -149,4 +151,22 @@ room {
 
 ksp {
     arg("room.generateKotlin", "true")
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.25.2"
+    }
+    generateProtoTasks {
+        all().forEach {
+            it.builtins {
+                create("java") {
+                    option("lite")
+                }
+                create("kotlin") {
+                    option("lite")
+                }
+            }
+        }
+    }
 }
