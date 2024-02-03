@@ -126,20 +126,20 @@
     <string name="backup_summary">Exportiere oder importiere ein Backup</string>
     <string name="export">Export</string>
     <string name="csv_file">CSV Datei</string>
-    <string name="keygo_file">KeyGo Datei</string>
-    <string name="use_keygo">KEYGO Format verwenden</string>
+    <string name="kdbx_file">KDBX Datei</string>
+    <string name="use_kdbx">KDBX Format verwenden</string>
 
     <string name="backup_restored">Backup erfolgreich geladen</string>
     <string name="backup_stored">Backup erfolgreich gespeichert</string>
     <string name="import_str">Import</string>
 
-    <string name="keygo_summary_import">Importiere Elemente aus einer verschlüsselten .keygo Datei</string>
-    <string name="keygo_summary_export">Exportiere Elemente in eine .keygo Datei. Diese Datei ist durch ein Passwort geschützt</string>
+    <string name="kdbx_summary_import">Importiere Elemente aus einer verschlüsselten .kdbx Datei</string>
+    <string name="kdbx_summary_export">Exportiere Elemente in eine .kdbx Datei. Diese Datei ist durch ein Passwort geschützt</string>
 
     <string name="csv_summary_import">Importieren Sie Passwörter von Ihrem Browser. Suchen Sie nach <b>Passwortmanager</b> in den <b>Einstellungen</b> Ihres Browsers und exportienen Sie Ihre Passwörter in einer CSV Datei.</string>
     <string name="csv_summary_export">Exportieren Sie Passwörter in ein CSV-Format, um sie z.B in Ihrem Browser zu importieren.</string>
     <string name="csv_row_number_error">CSV Datei muss 5 Spalten haben.</string>
-    <string name="csv_export_warning">Bitte beachten Sie, dass dieser Exportprozess keine Verschlüsselung bietet. Wenn nicht autorisierte Dritte Zugriff auf diese Datei erhalten, können sie Ihre Passwörter einsehen. Darüber hinaus ermöglicht diese Option ausschließlich die Exportierung von Passwörtern.\n\n<b>Es wird empfohlen, das KEYGO Dateiformat zu wählen!</b></string>
+    <string name="csv_export_warning">Bitte beachten Sie, dass dieser Exportprozess keine Verschlüsselung bietet. Wenn nicht autorisierte Dritte Zugriff auf diese Datei erhalten, können sie Ihre Passwörter einsehen. Darüber hinaus ermöglicht diese Option ausschließlich die Exportierung von Passwörtern.\n\n<b>Es wird empfohlen, das KDBX Dateiformat zu wählen!</b></string>
 
     <plurals name="item_existed">
         <item quantity="one">%d Element wurde ignoriert, da es bereits existiert</item>

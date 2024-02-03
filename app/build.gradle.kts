@@ -121,6 +121,9 @@ dependencies {
     implementation("com.github.devnied.emvnfccard:library:3.0.1")
     implementation("net.grey-panther:natural-comparator:1.1")
 
+    implementation("com.github.keemobile:kotpass:0.6.1")
+    implementation("com.squareup.okio:okio:3.4.0") //Needed for Meta for kotpass
+
     implementation("androidx.datastore:datastore:1.0.0")
 
     "githubImplementation"("com.squareup.retrofit2:retrofit:2.9.0")
