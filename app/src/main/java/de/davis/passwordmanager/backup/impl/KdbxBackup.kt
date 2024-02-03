@@ -22,6 +22,7 @@ import de.davis.passwordmanager.database.SecureElementManager
 import de.davis.passwordmanager.database.dtos.SecureElement
 import de.davis.passwordmanager.database.entities.Tag
 import de.davis.passwordmanager.database.entities.details.password.PasswordDetails
+import de.davis.passwordmanager.database.entities.onlyCustoms
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID
@@ -101,7 +102,8 @@ class KdbxBackup(
                             BasicField.Password() to EntryValue.Encrypted(
                                 EncryptedValue.fromString(details.password)
                             ),
-                        )
+                        ),
+                        tags = it.tags.onlyCustoms().map { tag -> tag.name }
                     )
                 })
             }
