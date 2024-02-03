@@ -1,14 +1,12 @@
-package de.davis.passwordmanager.backup.csv
+package de.davis.passwordmanager.backup.impl
 
-import android.content.Context
 import com.opencsv.CSVReaderBuilder
 import com.opencsv.CSVWriterBuilder
 import com.opencsv.validators.RowFunctionValidator
-import de.davis.passwordmanager.R
+import de.davis.passwordmanager.backup.BackupResult
 import de.davis.passwordmanager.backup.DataBackup
-import de.davis.passwordmanager.backup.Result
-import de.davis.passwordmanager.backup.TYPE_EXPORT
-import de.davis.passwordmanager.backup.TYPE_IMPORT
+import de.davis.passwordmanager.backup.ProgressContext
+import de.davis.passwordmanager.backup.listener.BackupListener
 import de.davis.passwordmanager.database.ElementType
 import de.davis.passwordmanager.database.SecureElementManager
 import de.davis.passwordmanager.database.dtos.SecureElement
@@ -18,33 +16,30 @@ import java.io.InputStreamReader
 import java.io.OutputStream
 import java.io.OutputStreamWriter
 
-class CsvBackup(context: Context) : DataBackup(context) {
-    @Throws(Exception::class)
-    override suspend fun runImport(inputStream: InputStream): Result {
+class CsvBackup(backupListener: BackupListener = BackupListener.Empty) :
+    DataBackup(backupListener = backupListener) {
+
+    override suspend fun ProgressContext.runImport(inputStream: InputStream): BackupResult {
         val csvReader = CSVReaderBuilder(InputStreamReader(inputStream)).apply {
             withSkipLines(1)
             withRowValidator(
                 RowFunctionValidator(
                     { s: Array<String?> -> s.size == 5 },
-                    context.getString(R.string.csv_row_number_error)
-                )
-            )
-            withRowValidator(
-                RowFunctionValidator(
-                    { s: Array<String?> -> s.size == 5 },
-                    context.getString(R.string.csv_row_number_error)
+                    AndroidBackupListener.MSG_ROW_NUMBER_ERROR
                 )
             )
         }.build()
 
-        var line: Array<String>
+        var line: Array<String> = emptyArray()
         val elements: List<SecureElement> =
             SecureElementManager.getSecureElements(ElementType.PASSWORD.typeId)
 
         var existed = 0
         csvReader.use {
-            while (csvReader.readNext().also { line = it } != null) {
-                if (line[0].isEmpty() || line[3].isEmpty()) // name and password must not be empty
+            while (csvReader.readNext()?.also { line = it } != null) {
+                // Skip lines where either the name (index 0) or password (index 3) is empty.
+                // Assumes length validation by RowValidator, thus preventing IndexOutOfBoundsException.
+                if (line[0].isEmpty() || line[3].isEmpty())
                     continue
 
                 val title = line[0]
@@ -65,11 +60,10 @@ class CsvBackup(context: Context) : DataBackup(context) {
                 SecureElementManager.insertElement(SecureElement(title, details))
             }
         }
-        return if (existed != 0) Result.Duplicate(existed) else Result.Success(TYPE_IMPORT)
+        return if (existed != 0) BackupResult.SuccessWithDuplicates(existed) else BackupResult.Success()
     }
 
-    @Throws(Exception::class)
-    override suspend fun runExport(outputStream: OutputStream): Result {
+    override suspend fun ProgressContext.runExport(outputStream: OutputStream): BackupResult {
         val csvWriter = CSVWriterBuilder(OutputStreamWriter(outputStream)).build()
 
         val elements: List<SecureElement> =
@@ -88,6 +82,6 @@ class CsvBackup(context: Context) : DataBackup(context) {
             })
             it.flush()
         }
-        return Result.Success(TYPE_EXPORT)
+        return BackupResult.Success()
     }
 }

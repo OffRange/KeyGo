@@ -28,13 +28,13 @@
             android:name=".ui.sync.ImportActivity"
             android:exported="true"
             android:theme="@style/AppTheme.NoActionBar">
+
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
                 <category android:name="android.intent.category.DEFAULT" />
 
-                <data android:mimeType="application/octet-stream" />
-                <data android:pathPattern=".*\\.keygo" />
+                <data android:mimeType="application/x-kdbx" />
                 <data android:scheme="content" />
             </intent-filter>
         </activity>

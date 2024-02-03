@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.os.bundleOf
 import androidx.lifecycle.lifecycleScope
@@ -14,104 +15,137 @@ import androidx.preference.PreferenceFragmentCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import de.davis.passwordmanager.PasswordManagerApplication
 import de.davis.passwordmanager.R
-import de.davis.passwordmanager.backup.TYPE_EXPORT
-import de.davis.passwordmanager.backup.TYPE_IMPORT
-import de.davis.passwordmanager.backup.Type
-import de.davis.passwordmanager.backup.csv.CsvBackup
-import de.davis.passwordmanager.backup.keygo.KeyGoBackup
+import de.davis.passwordmanager.backup.BackupOperation
+import de.davis.passwordmanager.backup.DataBackup
+import de.davis.passwordmanager.backup.impl.AndroidBackupListener
+import de.davis.passwordmanager.backup.impl.AndroidPasswordProvider
+import de.davis.passwordmanager.backup.impl.CsvBackup
+import de.davis.passwordmanager.backup.impl.KdbxBackup
+import de.davis.passwordmanager.backup.impl.UriBackupResourceProvider
+import de.davis.passwordmanager.ktx.getParcelableCompat
 import de.davis.passwordmanager.ui.auth.AuthenticationRequest
 import de.davis.passwordmanager.ui.auth.createRequestAuthenticationIntent
 import kotlinx.coroutines.launch
 
-private const val TYPE_KEYGO = "keygo"
-private const val TYPE_CSV = "csv"
-
 class BackupFragment : PreferenceFragmentCompat() {
+
+    private lateinit var kdbxBackup: KdbxBackup
+    private lateinit var csvBackup: CsvBackup
 
 
     private lateinit var csvImportLauncher: ActivityResultLauncher<Array<String>>
     private lateinit var csvExportLauncher: ActivityResultLauncher<String>
 
-    private lateinit var keyGoImportLauncher: ActivityResultLauncher<Array<String>>
-    private lateinit var keyGoExportLauncher: ActivityResultLauncher<String>
+    private lateinit var kdbxImportLauncher: ActivityResultLauncher<Array<String>>
+    private lateinit var kdbxExportLauncher: ActivityResultLauncher<String>
+
 
     val auth: ActivityResultLauncher<Intent> =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult? ->
             if (result == null) return@registerForActivityResult
             val data = result.data?.extras ?: return@registerForActivityResult
-            val formatType = data.getString("format_type") ?: return@registerForActivityResult
-            when (data.getInt("type")) {
-                TYPE_EXPORT -> {
-                    if (formatType == TYPE_CSV) {
+            val formatType = data.getString(EXTRA_BACKUP_FORMAT) ?: return@registerForActivityResult
+            val backupOperation =
+                data.getParcelableCompat(EXTRA_BACKUP_TYPE, BackupOperation::class.java)
+                    ?: return@registerForActivityResult
+
+            when (backupOperation) {
+                BackupOperation.EXPORT -> {
+                    if (formatType == BACKUP_FORMAT_CSV) {
                         (requireActivity().application as PasswordManagerApplication).disableReAuthentication()
-                        csvExportLauncher.launch("keygo-passwords.csv")
-                    } else if (formatType == TYPE_KEYGO) {
+                        csvExportLauncher.launch(DEFAULT_FILE_NAME_CSV)
+                    } else if (formatType == BACKUP_FORMAT_KDBX) {
                         (requireActivity().application as PasswordManagerApplication).disableReAuthentication()
-                        keyGoExportLauncher.launch("elements.keygo")
+                        kdbxExportLauncher.launch(DEFAULT_FILE_NAME_KDBX)
                     }
                 }
 
-                TYPE_IMPORT -> {
-                    if (formatType == TYPE_CSV) {
+                BackupOperation.IMPORT -> {
+                    if (formatType == BACKUP_FORMAT_CSV) {
                         (requireActivity().application as PasswordManagerApplication).disableReAuthentication()
-                        csvImportLauncher.launch(arrayOf("text/comma-separated-values"))
-                    } else if (formatType == TYPE_KEYGO) {
+                        csvImportLauncher.launch(arrayOf(MIME_TYPE_CSV))
+                    } else if (formatType == BACKUP_FORMAT_KDBX) {
                         (requireActivity().application as PasswordManagerApplication).disableReAuthentication()
-                        keyGoImportLauncher.launch(arrayOf("application/octet-stream"))
+                        kdbxImportLauncher.launch(arrayOf(MIME_TYPE_KDBX))
                     }
                 }
             }
         }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun <T> DataBackup.useForActivityResultRegistration(backupOperation: BackupOperation): ActivityResultLauncher<T> {
+        val contract = when (backupOperation) {
+            BackupOperation.IMPORT -> ActivityResultContracts.OpenDocument()
+            BackupOperation.EXPORT -> {
+                val mimeType = when (this) {
+                    is CsvBackup -> MIME_TYPE_CSV
+                    is KdbxBackup -> MIME_TYPE_KDBX
+                    else -> throw IllegalStateException("Unregistered DataBackup")
+                }
+
+                ActivityResultContracts.CreateDocument(mimeType)
+            }
+        }
+
+        return registerBackupLauncher(contract, this) as ActivityResultLauncher<T>
+    }
+
+    private fun <T> registerBackupLauncher(
+        contract: ActivityResultContract<T, Uri?>,
+        backup: DataBackup
+    ): ActivityResultLauncher<T> {
+        val createStreamProvider = { uri: Uri ->
+            UriBackupResourceProvider(uri, requireContext().contentResolver)
+        }
+
+        return registerForActivityResult(contract) { uri: Uri? ->
+            uri?.let {
+                lifecycleScope.launch {
+                    backup.execute(
+                        if (contract is ActivityResultContracts.OpenDocument) BackupOperation.IMPORT else BackupOperation.EXPORT,
+                        createStreamProvider(uri)
+                    )
+                }
+            }
+        }
+    }
+
+    private fun Preference.addLaunchAuthFunctionality(
+        backupOperation: BackupOperation,
+        bT: String
+    ) {
+        onPreferenceClickListener = Preference.OnPreferenceClickListener { _: Preference? ->
+            launchAuth(backupOperation, bT)
+            true
+        }
+    }
+
+    private fun initiateBackupImpl() {
+        AndroidBackupListener(requireContext()).also {
+            kdbxBackup = KdbxBackup(AndroidPasswordProvider(requireContext()), it)
+            csvBackup = CsvBackup(it)
+        }
+    }
+
+    private fun initiateLaunchers() {
+        initiateBackupImpl()
+
+        csvImportLauncher = csvBackup.useForActivityResultRegistration(BackupOperation.IMPORT)
+        csvExportLauncher = csvBackup.useForActivityResultRegistration(BackupOperation.EXPORT)
+
+        kdbxImportLauncher = kdbxBackup.useForActivityResultRegistration(BackupOperation.IMPORT)
+        kdbxExportLauncher = kdbxBackup.useForActivityResultRegistration(BackupOperation.EXPORT)
+    }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         addPreferencesFromResource(R.xml.backup_preferences)
 
-        CsvBackup(requireContext()).run {
-            csvImportLauncher =
-                registerForActivityResult<Array<String>, Uri>(ActivityResultContracts.OpenDocument()) { result: Uri? ->
-                    result?.let {
-                        lifecycleScope.launch {
-                            execute(TYPE_IMPORT, result)
-                        }
-                    }
-                }
+        initiateLaunchers()
 
-            csvExportLauncher =
-                registerForActivityResult<String, Uri>(ActivityResultContracts.CreateDocument("text/comma-separated-values")) { result: Uri? ->
-                    result?.let {
-                        lifecycleScope.launch {
-                            execute(TYPE_EXPORT, result)
-                        }
-                    }
-                }
-        }
-
-        KeyGoBackup(requireContext()).run {
-            keyGoExportLauncher =
-                registerForActivityResult<String, Uri>(ActivityResultContracts.CreateDocument("application/octet-stream")) { result: Uri? ->
-                    result?.let {
-                        lifecycleScope.launch {
-                            execute(TYPE_EXPORT, result)
-                        }
-                    }
-                }
-            keyGoImportLauncher =
-                registerForActivityResult<Array<String>, Uri>(ActivityResultContracts.OpenDocument()) { result: Uri? ->
-                    result?.let {
-                        lifecycleScope.launch {
-                            execute(TYPE_IMPORT, result)
-                        }
-                    }
-                }
-        }
-
-
-        findPreference<Preference>(getString(R.string.preference_import_csv))?.onPreferenceClickListener =
-            Preference.OnPreferenceClickListener { _: Preference? ->
-                launchAuth(TYPE_IMPORT, TYPE_CSV)
-                true
-            }
-
+        findPreference<Preference>(getString(R.string.preference_import_csv))?.addLaunchAuthFunctionality(
+            BackupOperation.IMPORT,
+            BACKUP_FORMAT_CSV
+        )
         findPreference<Preference>(getString(R.string.preference_export_csv))?.onPreferenceClickListener =
             Preference.OnPreferenceClickListener { _: Preference? ->
                 MaterialAlertDialogBuilder(
@@ -120,43 +154,54 @@ class BackupFragment : PreferenceFragmentCompat() {
                 ).apply {
                     setTitle(R.string.warning)
                     setMessage(R.string.csv_export_warning)
-                    setPositiveButton(R.string.text_continue) { _: DialogInterface?, _: Int ->
-                        launchAuth(
-                            TYPE_EXPORT,
-                            TYPE_CSV
-                        )
+                    setNegativeButton(R.string.text_continue) { _: DialogInterface?, _: Int ->
+                        launchAuth(BackupOperation.EXPORT, BACKUP_FORMAT_CSV)
                     }
-                    setNegativeButton(R.string.use_keygo) { _: DialogInterface?, _: Int ->
-                        launchAuth(
-                            TYPE_EXPORT,
-                            TYPE_KEYGO
-                        )
+                    setPositiveButton(R.string.use_kdbx) { _: DialogInterface?, _: Int ->
+                        launchAuth(BackupOperation.EXPORT, BACKUP_FORMAT_KDBX)
                     }
                     setNeutralButton(R.string.cancel) { dialog: DialogInterface, _: Int -> dialog.dismiss() }
                 }.show()
                 true
             }
 
-        findPreference<Preference>(getString(R.string.preference_export_keygo))?.onPreferenceClickListener =
-            Preference.OnPreferenceClickListener { _: Preference? ->
-                launchAuth(TYPE_EXPORT, TYPE_KEYGO)
-                true
-            }
-        findPreference<Preference>(getString(R.string.preference_import_keygo))?.onPreferenceClickListener =
-            Preference.OnPreferenceClickListener { _: Preference? ->
-                launchAuth(TYPE_IMPORT, TYPE_KEYGO)
-                true
-            }
+        findPreference<Preference>(getString(R.string.preference_export_kdbx))?.addLaunchAuthFunctionality(
+            BackupOperation.EXPORT,
+            BACKUP_FORMAT_KDBX
+        )
+        findPreference<Preference>(getString(R.string.preference_import_kdbx))?.addLaunchAuthFunctionality(
+            BackupOperation.IMPORT,
+            BACKUP_FORMAT_KDBX
+        )
     }
 
-    private fun launchAuth(@Type type: Int, format: String) {
+    private fun launchAuth(backupOperation: BackupOperation, format: String) {
         auth.launch(
             requireContext().createRequestAuthenticationIntent(
                 AuthenticationRequest.Builder().apply {
                     withMessage(R.string.authenticate_to_proceed)
-                    withAdditionalExtras(bundleOf("type" to type, "format_type" to format))
+                    withAdditionalExtras(
+                        bundleOf(
+                            EXTRA_BACKUP_TYPE to backupOperation,
+                            EXTRA_BACKUP_FORMAT to format
+                        )
+                    )
                 }.build()
             )
         )
+    }
+
+    companion object {
+        private const val MIME_TYPE_CSV = "text/comma-separated-values"
+        private const val MIME_TYPE_KDBX = "application/octet-stream"
+
+        private const val EXTRA_BACKUP_TYPE = "de.davis.passwordmanager.extra.BACKUP_TYPE"
+        private const val EXTRA_BACKUP_FORMAT = "de.davis.passwordmanager.extra.BACKUP_FORMAT"
+
+        private const val BACKUP_FORMAT_CSV = "type_csv"
+        private const val BACKUP_FORMAT_KDBX = "type_kdbx"
+
+        private const val DEFAULT_FILE_NAME_CSV = "passwords-keygo.csv"
+        private const val DEFAULT_FILE_NAME_KDBX = "elements-keygo.kdbx"
     }
 }

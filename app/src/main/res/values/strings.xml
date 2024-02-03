@@ -172,14 +172,14 @@
     <string name="import_str">Import</string>
     <string name="export">Export</string>
     <string name="csv_file">CSV File</string>
-    <string name="keygo_file">KeyGo File</string>
-    <string name="use_keygo">Use KEYGO format</string>
-    <string name="keygo_summary_import">Import elements using a encrypted .keygo file</string>
-    <string name="keygo_summary_export">Export elements using a .keygo file. Elements exported using this option will be securely encrypted with a password</string>
+    <string name="kdbx_file">KDBX File</string>
+    <string name="use_kdbx">Use KDBX format</string>
+    <string name="kdbx_summary_import">Import elements using a encrypted .kdbx file</string>
+    <string name="kdbx_summary_export">Export elements using a .kdbx file. Elements exported using this option will be securely encrypted with a password</string>
 
     <string name="csv_summary_import">Import passwords from your browser. Search for <b>Passwordmanager</b> in your browser\'s <b>Settings</b> and export your passwords as a csv file.</string>
     <string name="csv_summary_export">Export passwords in a csv format to import them in your browser\'s password manager</string>
-    <string name="csv_export_warning">Please note that this export process does not provide encryption, and if unauthorized third parties gain access to this file, they will have visibility into your passwords. Furthermore, please be aware that this option allows the export of passwords exclusively.\n\n<b>It is recommended to choose the KEYGO file format!</b></string>
+    <string name="csv_export_warning">Please note that this export process does not provide encryption, and if unauthorized third parties gain access to this file, they will have visibility into your passwords. Furthermore, please be aware that this option allows the export of passwords exclusively.\n\n<b>It is recommended to choose the KDBX file format!</b></string>
     <string name="csv_row_number_error">CSV file must have 5 rows.</string>
     <string name="backup_restored">Backup successfully restored</string>
     <string name="backup_stored">Backup successfully stored</string>
@@ -191,8 +191,9 @@
     <string name="invalid_file">Invalid file</string>
 
     <string name="wait_text">This might take a little time. Please be patient</string>
-    <string name="authenticate_to_import">To load a backup, authentication is required</string>
+    <string name="authenticate_to_import">To load \"%s\", authentication is required</string>
     <string name="authenticate_to_proceed">Authenticate to proceed</string>
+    <string name="enter_password_for_s">Enter password for \"%s\"</string>
 
     <string name="tag">Tag</string>
     <string name="tags">Tags</string>
