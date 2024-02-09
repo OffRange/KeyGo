@@ -22,14 +22,17 @@ android {
     // xxyyyzzbb
     val vCode = if (isDebugBuild) 10 else major * 10_000_000 + minor * 10_000 + patch * 100 + build
 
-    val vName = "$major.$minor.$patch-${
+    fun createSuffix(suffix: String): String = if (suffix.isNotBlank())
+        "-${suffix}${String.format("%02d", (build % 32) + 1)}" else ""
+
+    val vName = "$major.$minor.$patch${
         when (build.floorDiv(32)) {
-            3 -> "" // build >= 96
-            2 -> "rc" // build >= 64
-            1 -> "beta" // build >= 32
-            else -> "alpha"
+            3 -> createSuffix("") // build >= 96
+            2 -> createSuffix("-rc") // build >= 64
+            1 -> createSuffix("beta") // build >= 32
+            else -> createSuffix("alpha")
         }
-    }${String.format("%02d", (build % 32) + 1)}"
+    }"
 
     defaultConfig {
         applicationId = "de.davis.passwordmanager"
