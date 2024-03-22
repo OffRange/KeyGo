@@ -59,6 +59,16 @@ public abstract class ViewSecureElementFragment extends SEViewFragment {
             return null;
         }));
 
+        InformationView noteInformationView = requireView().findViewById(R.id.note);
+        if(noteInformationView == null)
+            return;
+
+        noteInformationView.setInformationText(e.getNote());
+        noteInformationView.setOnChangedListener(new OnInformationChangedListener<>(e, (el, changes) -> {
+            e.setNote(changes);
+            return null;
+        }));
+
         toolbar.setTitle(e.getTitle());
         toolbar.setSubtitle(e.getElementType().getTitle());
         toolbar.setOnMenuItemClickListener(item -> {

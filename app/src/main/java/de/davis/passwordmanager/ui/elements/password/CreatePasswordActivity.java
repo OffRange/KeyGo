@@ -49,6 +49,7 @@ public class CreatePasswordActivity extends CreateSecureElementActivity {
         binding.textInputLayoutPassword.getEditText().setText(((PasswordDetails)element.getDetail()).getPassword());
         binding.textInputLayoutUsername.getEditText().setText(((PasswordDetails)element.getDetail()).getUsername());
         binding.textInputLayoutOrigin.getEditText().setText(((PasswordDetails)element.getDetail()).getOrigin());
+        binding.note.setText(element.getNote());
     }
 
     @Override
@@ -83,16 +84,18 @@ public class CreatePasswordActivity extends CreateSecureElementActivity {
         String password = Objects.requireNonNull(binding.textInputLayoutPassword.getEditText()).getText().toString();
         String user = Objects.requireNonNull(binding.textInputLayoutUsername.getEditText()).getText().toString().trim();
         String origin = Objects.requireNonNull(binding.textInputLayoutOrigin.getEditText()).getText().toString().trim();
+        String note = Objects.requireNonNull(binding.note.getText()).toString().trim();
 
 
         List<Tag> tags = binding.tagView.getTags();
         PasswordDetails details = new PasswordDetails(password, origin, user);
         if(getElement() == null)
-            return new SecureElement(title, details, tags);
+            return new SecureElement(title, details, tags, note);
 
         getElement().setTags(tags);
         getElement().setTitle(title);
         getElement().setDetail(details);
+        getElement().setNote(note);
         return getElement();
     }
 

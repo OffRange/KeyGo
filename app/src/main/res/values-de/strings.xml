@@ -56,11 +56,12 @@
     <string name="strong">Stark</string>
     <string name="very_strong">Sehr Stark</string>
     <string name="loading">Laden</string>
-    <string name="general_information">Allgemeine Information</string>
-    <string name="user_information">Benutzer inforamtionen</string>
+    <string name="general_information">Allgemeine informationen</string>
+    <string name="additional_information">Zusätzliche informationen</string>
     <string name="password_information">Passwort informationen</string>
     <string name="credit_card_information">Kreditkarten informationen</string>
     <string name="star_required">*erforderlich</string>
+    <string name="note">Notiz</string>
     <string name="options">Optionen</string>
     <string name="enable">Aktivieren</string>
     <string name="title">Titel</string>

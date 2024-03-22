@@ -116,6 +116,7 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
         binding.cardNumber.setText(details.getCardNumber());
         binding.cardCVV.setText(details.getCvv());
         binding.expirationDate.setText(details.getExpirationDate());
+        binding.note.setText(element.getNote());
     }
 
     @Override
@@ -207,6 +208,7 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
         String creditCardNumber = Objects.requireNonNull(binding.cardNumber.getText()).toString().trim();
         String expiryDate = Objects.requireNonNull(binding.expirationDate.getText()).toString().trim();
         String cvv = Objects.requireNonNull(binding.cardCVV.getText()).toString().trim();
+        String note = Objects.requireNonNull(binding.note.getText()).toString().trim();
 
         Name name = Name.fromFullName(Objects.requireNonNull(binding.cardHolder.getText()).toString());
 
@@ -218,6 +220,7 @@ public class CreateCreditCardActivity extends CreateSecureElementActivity {
         card.setTags(binding.tagView.getTags());
         card.setTitle(title);
         card.setDetail(details);
+        card.setNote(note);
 
         return card;
     }

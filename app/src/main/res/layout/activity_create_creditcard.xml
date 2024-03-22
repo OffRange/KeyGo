@@ -119,6 +119,31 @@
 
         </de.davis.passwordmanager.ui.views.InformationView>
 
+
+        <de.davis.passwordmanager.ui.views.InformationView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:contentEnabled="false"
+            app:title="@string/additional_information">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/textInputLayoutNote"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/note"
+                app:startIconDrawable="@drawable/baseline_assignment_24">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/note"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textMultiLine" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+        </de.davis.passwordmanager.ui.views.InformationView>
+
         <de.davis.passwordmanager.ui.views.TagView
             android:id="@+id/tagView"
             android:layout_width="match_parent"
