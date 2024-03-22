@@ -55,6 +55,7 @@ data class SecureElement @JvmOverloads constructor(
     var title: String,
     var detail: ElementDetail,
     var tags: List<Tag> = listOf(),
+    var note: String = "",
     var favorite: Boolean = false,
     private var timestamps: Timestamps = Timestamps.CURRENT,
     @ExcludeFromGson override val id: Long = 0
@@ -68,7 +69,10 @@ data class SecureElement @JvmOverloads constructor(
     val elementType: ElementType get() = detail.elementType
 
     fun toEntity(): CombinedElement = run {
-        return CombinedElement(SecureElementEntity(title, detail, favorite, timestamps, id), tags)
+        return CombinedElement(
+            SecureElementEntity(title, detail, favorite, timestamps, id, note),
+            tags
+        )
     }
 
     fun getIcon(context: Context): Drawable {
@@ -98,7 +102,7 @@ data class SecureElement @JvmOverloads constructor(
         @JvmStatic
         fun fromEntity(combinedElement: CombinedElement): SecureElement = combinedElement.run {
             val secureElement = secureElementEntity.run {
-                SecureElement(title, detail, combinedElement.tags, favorite, timestamps, id)
+                SecureElement(title, detail, combinedElement.tags, note, favorite, timestamps, id)
             }
             return@run secureElement
         }

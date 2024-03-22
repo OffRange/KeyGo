@@ -14,6 +14,7 @@ data class SecureElementEntity @JvmOverloads constructor(
     val favorite: Boolean = false,
     @Embedded val timestamps: Timestamps = Timestamps.CURRENT,
     @PrimaryKey(autoGenerate = true) var id: Long = 0,
+    @ColumnInfo(defaultValue = "") val note: String
 ) {
     var type: ElementType = detail.elementType
 }

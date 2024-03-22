@@ -17,11 +17,12 @@ import de.davis.passwordmanager.database.migration.MigrationSpec2To3
 
 @TypeConverters(Converters::class, ElementTypeConverter::class)
 @Database(
-    version = 3,
+    version = 4,
     entities = [SecureElementEntity::class, Tag::class, SecureElementTagCrossRef::class],
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = MigrationSpec1To2::class),
-        AutoMigration(from = 2, to = 3, spec = MigrationSpec2To3::class)
+        AutoMigration(from = 2, to = 3, spec = MigrationSpec2To3::class),
+        AutoMigration(from = 3, to = 4)
     ]
 )
 abstract class KeyGoDatabase : RoomDatabase() {
