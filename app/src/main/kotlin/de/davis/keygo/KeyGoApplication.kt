@@ -1,22 +1,5 @@
 package de.davis.keygo
 
 import android.app.Application
-import de.davis.keygo.auth.di.authModule
-import de.davis.keygo.core.di.coreModule
-import org.koin.android.ext.koin.androidContext
-import org.koin.core.context.startKoin
 
-class KeyGoApplication : Application() {
-
-    override fun onCreate() {
-        super.onCreate()
-
-        // Initialize Koin
-        startKoin {
-            androidContext(this@KeyGoApplication)
-
-            // modules
-            modules(coreModule, authModule)
-        }
-    }
-}
+class KeyGoApplication : Application()

@@ -11,7 +11,8 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
-import org.koin.androidx.compose.KoinAndroidContext
+import de.davis.keygo.core.di.init
+import org.koin.compose.KoinApplication
 
 
 fun isContrastAvailable(): Boolean {
@@ -60,19 +61,15 @@ fun KeyGoTheme(
         else -> selectSchemeForContrast(isDarkMode)
     }
 
-    if (LocalInspectionMode.current) {
+    val context = LocalContext.current
+
+    KoinApplication(
+        application = { init(context) }
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = KeyGoTypography,
             content = content
         )
-    } else {
-        KoinAndroidContext {
-            MaterialTheme(
-                colorScheme = colorScheme,
-                typography = KeyGoTypography,
-                content = content
-            )
-        }
     }
 }

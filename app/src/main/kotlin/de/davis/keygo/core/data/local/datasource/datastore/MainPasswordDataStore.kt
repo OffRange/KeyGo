@@ -14,7 +14,7 @@ import okio.BufferedSink
 import okio.BufferedSource
 import okio.FileSystem
 import okio.Path.Companion.toPath
-import org.koin.android.ext.koin.androidApplication
+import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
 private const val DATA_STORE_NAME = "main-password.db"
@@ -23,7 +23,7 @@ private fun <T> produceMigrations(context: Context): List<DataMigration<T>> = em
 
 internal val dataStoreModule = module {
     single {
-        val appContext = androidApplication()
+        val appContext = androidContext()
         DataStoreFactory.create(
             storage = OkioStorage(
                 FileSystem.SYSTEM,
