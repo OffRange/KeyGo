@@ -60,11 +60,19 @@ fun KeyGoTheme(
         else -> selectSchemeForContrast(isDarkMode)
     }
 
-    KoinAndroidContext {
+    if (LocalInspectionMode.current) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = KeyGoTypography,
             content = content
         )
+    } else {
+        KoinAndroidContext {
+            MaterialTheme(
+                colorScheme = colorScheme,
+                typography = KeyGoTypography,
+                content = content
+            )
+        }
     }
 }
