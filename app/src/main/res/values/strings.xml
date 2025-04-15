@@ -1,3 +1,17 @@
 <resources>
     <string name="app_name">KeyGo</string>
+
+    <string name="authenticate_to_access">Authenticate to access</string>
+    <string name="your_vault">your vault</string>
+
+    <string name="show_password_content_description">Show password</string>
+    <string name="hide_password_content_description">Hide password</string>
+    <string name="request_biometric_authentication_content_description">Request biometric authentication</string>
+
+    <string name="password">Password</string>
+
+    <string name="incorrect_password">Password is incorrect!</string>
+    <string name="authenticate">Authenticate</string>
+
+    <string name="cancel">Cancel</string>
 </resources>

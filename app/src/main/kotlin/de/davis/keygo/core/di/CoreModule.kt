@@ -8,6 +8,7 @@ import de.davis.keygo.core.data.repository.MainPasswordRepositoryImpl
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.crypto.EncryptionKeyProvider
 import de.davis.keygo.core.domain.repository.MainPasswordRepository
+import de.davis.keygo.core.domain.usecase.ValidateMainPassword
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
@@ -15,13 +16,12 @@ import org.koin.dsl.module
 private val cryptoModule = module {
     singleOf(::EncryptionKeyProviderImpl) bind EncryptionKeyProvider::class
     singleOf(::CryptographicScopeProviderImpl) bind CryptographicScopeProvider::class
-    singleOf(::EncryptionKeyProviderImpl) bind EncryptionKeyProvider::class
+    singleOf(::MainPasswordRepositoryImpl) bind MainPasswordRepository::class
+    singleOf(::ValidateMainPassword)
 }
 
 val coreModule = module {
     includes(dataStoreModule, KeyGoDatabase.koinModule)
 
     includes(cryptoModule)
-
-    singleOf(::MainPasswordRepositoryImpl) bind MainPasswordRepository::class
 }

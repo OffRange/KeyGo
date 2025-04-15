@@ -16,6 +16,7 @@ protobuf = "0.9.4"
 protoc = "4.29.3"
 coroutinesTest = "1.10.1"
 bcrypt = "0.10.2"
+biometric = "1.4.0-alpha03"
 
 [libraries]
 google-protobuf-protoc = { group = "com.google.protobuf", name = "protoc", version.ref = "protoc" }
@@ -35,6 +36,8 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 
 koin-bom = { group = "io.insert-koin", name = "koin-bom", version.ref = "koinBOM" }
 koin-androidx-compose = { group = "io.insert-koin", name = "koin-androidx-compose" }
