@@ -1,4 +1,4 @@
-package de.davis.keygo
+package de.davis.keygo.app
 
 import android.app.Application
 

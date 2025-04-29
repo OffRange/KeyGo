@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <application
-        android:name=".KeyGoApplication"
+        android:name=".app.KeyGoApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:enableOnBackInvokedCallback="true"
@@ -14,7 +14,7 @@
         android:supportsRtl="true"
         tools:targetApi="33">
         <activity
-            android:name=".MainActivity"
+            android:name=".app.presentation.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.KeyGoV2">
             <intent-filter>

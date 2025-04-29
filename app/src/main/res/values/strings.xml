@@ -7,6 +7,13 @@
     <string name="show_password_content_description">Show password</string>
     <string name="hide_password_content_description">Hide password</string>
     <string name="request_biometric_authentication_content_description">Request biometric authentication</string>
+    <string name="open_navigation_drawer_content_description">Open Navigation Drawer</string>
+    <string name="close_navigation_drawer_content_description">Close Navigation Drawer</string>
+    <string name="add_content_description">Add</string>
+    <string name="search_content_description">Search</string>
+    <string name="back_content_description">Back</string>
+
+    <string name="add">Add</string>
 
     <string name="password">Password</string>
 
@@ -14,4 +21,10 @@
     <string name="authenticate">Authenticate</string>
 
     <string name="cancel">Cancel</string>
+
+    <string name="home">Home</string>
+    <string name="connectivity">Connectivity</string>
+    <string name="settings">Settings</string>
+
+    <string name="search_your_vault">Search your Vault</string>
 </resources>
