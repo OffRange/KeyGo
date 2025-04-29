@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Fingerprint
@@ -55,7 +56,7 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
                 .fillMaxSize()
                 .padding(8.dp)
         ) {
-            ElevatedCard {
+            ElevatedCard(modifier = Modifier.widthIn(max = 500.dp)) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
