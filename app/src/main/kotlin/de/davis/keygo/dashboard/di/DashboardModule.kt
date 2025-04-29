@@ -1,0 +1,9 @@
+package de.davis.keygo.dashboard.di
+
+import de.davis.keygo.dashboard.presentation.DashboardViewModel
+import org.koin.core.module.dsl.viewModelOf
+import org.koin.dsl.module
+
+val dashboardModule = module {
+    viewModelOf(::DashboardViewModel)
+}
