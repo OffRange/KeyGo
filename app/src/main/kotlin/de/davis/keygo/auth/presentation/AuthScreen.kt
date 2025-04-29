@@ -7,9 +7,11 @@ import androidx.compose.runtime.getValue
 import de.davis.keygo.auth.domain.rememberBiometricManager
 import de.davis.keygo.auth.presentation.model.AuthEvent
 import de.davis.keygo.auth.presentation.model.AuthUIEvent
+import de.davis.keygo.processor.annotation.Route
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
+@Route(name = "Auth")
 @Composable
 fun AuthScreen(navigate: (/*TODO*/) -> Unit) {
     val biometricManager = rememberBiometricManager()

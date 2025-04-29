@@ -1,3 +1,5 @@
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
 pluginManagement {
     repositories {
         google {
@@ -19,6 +21,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "KeyGo V2"
+rootProject.name = "KeyGoV2"
 include(":app")
- 
+include(":automation-processor")
+include(":automation")

@@ -60,6 +60,10 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
+    // Automation
+    implementation(projects.automation)
+    ksp(projects.automationProcessor)
+
     // Datastore
     implementation(libs.androidx.datastore)
     implementation(libs.google.protobuf.kotlin.lite)

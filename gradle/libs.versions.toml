@@ -40,6 +40,7 @@ androidx-material-icons-extended = { group = "androidx.compose.material", name =
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 
 koin-bom = { group = "io.insert-koin", name = "koin-bom", version.ref = "koinBOM" }
+koin-core = { group = "io.insert-koin", name = "koin-core" }
 koin-androidx-compose = { group = "io.insert-koin", name = "koin-androidx-compose" }
 koin-androidx-compose-navigation = { group = "io.insert-koin", name = "koin-androidx-compose-navigation" }
 
@@ -50,6 +51,8 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 androidx-datastore = { group = "androidx.datastore", name = "datastore", version.ref = "datastore" }
 
 at-favre-bcrypt = { group = "at.favre.lib", name = "bcrypt", version.ref = "bcrypt" }
+
+google-devtools-ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 
 [plugins]
 google-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
