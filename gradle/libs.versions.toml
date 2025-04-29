@@ -11,9 +11,9 @@ activityCompose = "1.10.1"
 composeBom = "2025.03.01"
 semver = "0.2.5"
 koinBOM = "4.0.3"
-room = "2.6.1"
-ksp = "2.1.0-1.0.29"
-datastore = "1.1.4"
+room = "2.7.1"
+ksp = "2.1.20-2.0.0"
+datastore = "1.1.5"
 protobuf = "0.9.4"
 protoc = "4.29.3"
 coroutinesTest = "1.10.1"
@@ -63,6 +63,7 @@ google-devtools-ksp-api = { module = "com.google.devtools.ksp:symbol-processing-
 google-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 google-protobuf = { id = "com.google.protobuf", version.ref = "protobuf" }
 android-application = { id = "com.android.application", version.ref = "agp" }
+androidx-room = { id = "androidx.room", version.ref = "room" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
