@@ -22,7 +22,7 @@ import de.davis.keygo.app.presentation.component.KeyGoNavigationWrapper
 import de.davis.keygo.auth.presentation.authNavGraph
 import de.davis.keygo.core.presentation.theme.KeyGoTheme
 import de.davis.keygo.dashboard.presentation.dashboardGraph
-import de.davis.keygo.generated.Route
+import de.davis.keygo.generated.RouteDestination
 
 class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,9 +34,9 @@ class MainActivity : FragmentActivity() {
     }
 }
 
-private class ReplyNavigationActions(private val navController: NavHostController) {
+private class NavigationActions(private val navController: NavHostController) {
 
-    fun navigateTo(route: Route) {
+    fun navigateTo(route: RouteDestination) {
         navController.navigate(route) {
             popUpTo(navController.graph.findStartDestination().id) {
                 saveState = true
@@ -56,13 +56,13 @@ private fun App() {
     KeyGoTheme {
         val navController = rememberNavController()
         val navigationActions = remember(navController) {
-            ReplyNavigationActions(navController)
+            NavigationActions(navController)
         }
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentDestination = navBackStackEntry?.destination
 
         val showChrome = remember(currentDestination) {
-            currentDestination?.parent?.hasRoute<Route.Main.Root>() == true
+            currentDestination?.parent?.hasRoute<RouteDestination.Main.Root>() == true
         }
 
         KeyGoNavigationWrapper(
@@ -73,24 +73,24 @@ private fun App() {
         ) {
             NavHost(
                 navController = navController,
-                startDestination = Route.Auth
+                startDestination = RouteDestination.Auth
             ) {
                 authNavGraph(
                     onSuccess = {
-                        navController.navigate(Route.Main.Root) {
-                            popUpTo(Route.Auth) { inclusive = true }
+                        navController.navigate(RouteDestination.Main.Root) {
+                            popUpTo(RouteDestination.Auth) { inclusive = true }
                         }
                     }
                 )
-                navigation<Route.Main.Root>(
-                    startDestination = Route.Main.Home
+                navigation<RouteDestination.Main.Root>(
+                    startDestination = RouteDestination.Main.Home
                 ) {
                     dashboardGraph()
 
-                    composable<Route.Main.Connectivity> {
+                    composable<RouteDestination.Main.Connectivity> {
                         Text("CONNECTIVITY")
                     }
-                    composable<Route.Main.Settings> {
+                    composable<RouteDestination.Main.Settings> {
                         Text("SETTINGS")
                     }
                 }

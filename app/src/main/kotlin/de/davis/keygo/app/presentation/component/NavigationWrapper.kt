@@ -70,14 +70,14 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.window.core.layout.WindowSizeClass
 import de.davis.keygo.R
 import de.davis.keygo.app.presentation.AppDestinations
-import de.davis.keygo.generated.Route
+import de.davis.keygo.generated.RouteDestination
 import kotlinx.coroutines.launch
 
 
 @Composable
 fun KeyGoNavigationWrapper(
     currentDestination: NavDestination?,
-    navigateToTopLevelDestination: (Route) -> Unit,
+    navigateToTopLevelDestination: (RouteDestination) -> Unit,
     onButtonClicked: () -> Unit,
     showChrome: Boolean = true,
     containerColor: Color = NavigationSuiteScaffoldDefaults.containerColor,
@@ -191,7 +191,7 @@ fun KeyGoNavigationWrapper(
 fun KeyGoNavigationSuite(
     currentDestination: NavDestination?,
     layoutType: NavigationSuiteType,
-    navigateToTopLvlDestination: (Route) -> Unit,
+    navigateToTopLvlDestination: (RouteDestination) -> Unit,
     onButtonClicked: () -> Unit,
     onOpenDrawer: () -> Unit,
     buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
@@ -233,7 +233,7 @@ fun KeyGoNavigationSuite(
 @Composable
 fun KeyGoNavigationBar(
     currentDestination: NavDestination?,
-    navigateToTopLvlDestination: (Route) -> Unit
+    navigateToTopLvlDestination: (RouteDestination) -> Unit
 ) {
     NavigationBar {
         AppDestinations.entries.forEach { destination ->
@@ -256,7 +256,7 @@ fun KeyGoNavigationBar(
 @Composable
 fun KeyGoNavigationRail(
     currentDestination: NavDestination?,
-    navigateToTopLvlDestination: (Route) -> Unit,
+    navigateToTopLvlDestination: (RouteDestination) -> Unit,
     onButtonClicked: () -> Unit,
     onOpenDrawer: () -> Unit,
     buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
@@ -314,7 +314,7 @@ fun KeyGoNavigationRail(
 @Composable
 fun KeyGoNavigationDrawer(
     currentDestination: NavDestination?,
-    navigateToTopLvlDestination: (Route) -> Unit,
+    navigateToTopLvlDestination: (RouteDestination) -> Unit,
     onButtonClicked: () -> Unit,
     buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
     buttonContentColor: Color = contentColorFor(buttonContainerColor)
@@ -335,7 +335,7 @@ fun KeyGoNavigationDrawer(
 @Composable
 fun DrawerContent(
     currentDestination: NavDestination?,
-    navigateToTopLvlDestination: (Route) -> Unit,
+    navigateToTopLvlDestination: (RouteDestination) -> Unit,
     onButtonClicked: () -> Unit,
     onCloseDrawer: (() -> Unit)? = null,
     buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
@@ -421,7 +421,7 @@ fun DrawerContent(
     }
 }
 
-fun NavDestination?.hasRoute(dest: Route): Boolean {
+fun NavDestination?.hasRoute(dest: RouteDestination): Boolean {
     return this?.hasRoute(dest::class) == true
 }
 

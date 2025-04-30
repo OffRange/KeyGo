@@ -19,9 +19,11 @@ class AutomationProcessor(
         val handler = RouteHandler()
         resolver.handle(handler)
 
-
-        stopKoin()
         return emptyList()
+    }
+
+    override fun finish() {
+        stopKoin()
     }
 }
 

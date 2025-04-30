@@ -1,6 +1,8 @@
 package de.davis.keygo.automation.processor.handler
 
 import com.google.devtools.ksp.processing.CodeGenerator
+import com.google.devtools.ksp.processing.KSPLogger
+import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import de.davis.keygo.automation.processor.WriterScope
 import de.davis.keygo.automation.processor.ext.getAnnotation
@@ -12,8 +14,9 @@ import org.koin.core.component.inject
 
 class RouteHandler : Handler<KSFunctionDeclaration, Route>, KoinComponent {
     private val codeGenerator: CodeGenerator by inject()
+    private val logger: KSPLogger by inject()
 
-    override fun handleSymbols(symbols: List<KSFunctionDeclaration>) {
+    override fun handleSymbols(symbols: List<KSFunctionDeclaration>): List<KSAnnotated> {
         val grouped = symbols.groupBy { symbol ->
             val annotation = symbol.getAnnotation<Route>() ?: return@groupBy ""
 
@@ -25,6 +28,8 @@ class RouteHandler : Handler<KSFunctionDeclaration, Route>, KoinComponent {
                 val annotation = declaration.getAnnotation<Route>()
                 val name = annotation?.name?.ifBlank { null }
                     ?: declaration.simpleName.getShortName()
+
+                logger.warn(name)
                 RouteTree.Endpoint(name)
             }
 
@@ -34,17 +39,21 @@ class RouteHandler : Handler<KSFunctionDeclaration, Route>, KoinComponent {
                 listOf(RouteTree.Root(groupName, endpoints.toSet()))
         }
 
-        val root = RouteTree.Root("Route", tree.toSet())
+        val root = RouteTree.Root("RouteDestination", tree.toSet())
 
+        logger.warn("writing $root}")
         codeGenerator.file(fileName = root.name) {
-            write(root)
+            write(root, logger)
         }
+
+        return emptyList()
     }
 }
 
-private fun WriterScope.write(treeNode: RouteTree) {
+private fun WriterScope.write(treeNode: RouteTree, logger: KSPLogger) {
     when (treeNode) {
         is RouteTree.Endpoint -> {
+            logger.warn("write ${treeNode.name}")
             dataObject(
                 name = treeNode.name,
                 annotations = listOf("kotlinx.serialization.Serializable")
@@ -57,7 +66,9 @@ private fun WriterScope.write(treeNode: RouteTree) {
                     name = "Root",
                     annotations = listOf("kotlinx.serialization.Serializable")
                 )
-                treeNode.routes.forEach(::write)
+                treeNode.routes.forEach {
+                    write(it, logger)
+                }
             }
         }
     }
