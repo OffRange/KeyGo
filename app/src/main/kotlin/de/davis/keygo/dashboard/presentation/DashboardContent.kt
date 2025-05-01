@@ -25,10 +25,14 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.currentWindowSize
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -70,6 +74,14 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
         ) -> true
 
         else -> false
+    }
+
+    val viewConfig = LocalViewConfiguration.current
+    val newViewConfiguration = remember(viewConfig) {
+        object : ViewConfiguration by viewConfig {
+            override val touchSlop: Float
+                get() = viewConfig.touchSlop * 3f
+        }
     }
 
     val inputField = @Composable {
@@ -140,27 +152,31 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
             modifier = Modifier
                 .padding(it)
         ) {
-            KeyGoLazyColumn(
-                items = uiState.items,
-                selectedItemIds = uiState.selectedItemIds,
-                openedItemId = uiState.openedItemId,
-                itemContent = { item, containerColor, header ->
-                    KeyGoLazyItem(
-                        item = item,
-                        header = header,
-                        modifier = Modifier.combinedClickable(
-                            onLongClick = {
-                                onEvent(DashboardUIEvent.OnLongClicked(item.vaultItemId))
-                            },
-                            onClick = {
-                                onEvent(DashboardUIEvent.OnClicked(item.vaultItemId))
-                            },
-                        ),
-                        containerColor = containerColor,
-                    )
-                },
-                modifier = Modifier.padding(8.dp)
-            )
+            CompositionLocalProvider(
+                LocalViewConfiguration provides newViewConfiguration,
+            ) {
+                KeyGoLazyColumn(
+                    items = uiState.items,
+                    selectedItemIds = uiState.selectedItemIds,
+                    openedItemId = uiState.openedItemId,
+                    itemContent = { item, containerColor, header ->
+                        KeyGoLazyItem(
+                            item = item,
+                            header = header,
+                            modifier = Modifier.combinedClickable(
+                                onLongClick = {
+                                    onEvent(DashboardUIEvent.OnLongClicked(item.vaultItemId))
+                                },
+                                onClick = {
+                                    onEvent(DashboardUIEvent.OnClicked(item.vaultItemId))
+                                },
+                            ),
+                            containerColor = containerColor,
+                        )
+                    },
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
         }
     }
 }
