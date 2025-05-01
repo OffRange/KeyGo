@@ -27,9 +27,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuOpen
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material3.BottomAppBarDefaults
+import androidx.compose.material3.BottomAppBarScrollBehavior
 import androidx.compose.material3.DrawerDefaults
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
@@ -55,10 +58,17 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -72,14 +82,17 @@ import de.davis.keygo.R
 import de.davis.keygo.app.presentation.AppDestinations
 import de.davis.keygo.generated.RouteDestination
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KeyGoNavigationWrapper(
     currentDestination: NavDestination?,
     navigateToTopLevelDestination: (RouteDestination) -> Unit,
     onButtonClicked: () -> Unit,
     showChrome: Boolean = true,
+    showPrimaryActionButton: Boolean = true,
     containerColor: Color = NavigationSuiteScaffoldDefaults.containerColor,
     contentColor: Color = NavigationSuiteScaffoldDefaults.contentColor,
     buttonContainerColor: Color = MaterialTheme.colorScheme.tertiaryContainer,
@@ -107,6 +120,8 @@ fun KeyGoNavigationWrapper(
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    val scrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
 
     ModalNavigationDrawer(
         drawerContent = {
@@ -156,28 +171,64 @@ fun KeyGoNavigationWrapper(
                                     }
                                 },
                                 buttonContainerColor = buttonContainerColor,
-                                buttonContentColor = buttonContentColor
+                                buttonContentColor = buttonContentColor,
+                                scrollBehavior = scrollBehavior
                             )
                         }
                     }
                 },
-                layoutType = layoutType,
-                content = {
-                    Box(
-                        Modifier.consumeWindowInsets(
-                            when (layoutType) {
-                                NavigationSuiteType.NavigationBar ->
-                                    NavigationBarDefaults.windowInsets.only(WindowInsetsSides.Bottom)
+                navigationSuiteType = layoutType,
+                primaryActionContent = {
+                    AnimatedVisibility(
+                        visible = showChrome && showPrimaryActionButton,
+                        exit = fadeOut(),
+                        enter = fadeIn()
+                    ) {
+                        var lastOffset by remember { mutableFloatStateOf(0f) }
+                        val extend by remember {
+                            derivedStateOf {
+                                val offset = scrollBehavior.state.heightOffset
+                                offset >= lastOffset.also {
+                                    lastOffset = offset
+                                }
+                            }
+                        }
 
-                                NavigationSuiteType.NavigationRail ->
-                                    NavigationRailDefaults.windowInsets.only(WindowInsetsSides.Start)
-
-                                NavigationSuiteType.NavigationDrawer ->
-                                    DrawerDefaults.windowInsets.only(WindowInsetsSides.Start)
-
-                                else -> WindowInsets(0, 0, 0, 0)
+                        ExtendedFloatingActionButton(
+                            onClick = onButtonClicked,
+                            expanded = extend,
+                            containerColor = buttonContainerColor,
+                            contentColor = buttonContentColor,
+                            text = {
+                                Text(text = stringResource(R.string.add_new_element))
+                            },
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = stringResource(R.string.add_content_description)
+                                )
                             }
                         )
+                    }
+                },
+                content = {
+                    Box(
+                        Modifier
+                            .consumeWindowInsets(
+                                when (layoutType) {
+                                    NavigationSuiteType.NavigationBar ->
+                                        NavigationBarDefaults.windowInsets.only(WindowInsetsSides.Bottom)
+
+                                    NavigationSuiteType.NavigationRail ->
+                                        NavigationRailDefaults.windowInsets.only(WindowInsetsSides.Start)
+
+                                    NavigationSuiteType.NavigationDrawer ->
+                                        DrawerDefaults.windowInsets.only(WindowInsetsSides.Start)
+
+                                    else -> WindowInsets(0, 0, 0, 0)
+                                }
+                            )
+                            .nestedScroll(scrollBehavior.nestedScrollConnection)
                     ) {
                         content()
                     }
@@ -187,6 +238,7 @@ fun KeyGoNavigationWrapper(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KeyGoNavigationSuite(
     currentDestination: NavDestination?,
@@ -195,13 +247,15 @@ fun KeyGoNavigationSuite(
     onButtonClicked: () -> Unit,
     onOpenDrawer: () -> Unit,
     buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
-    buttonContentColor: Color = contentColorFor(buttonContainerColor)
+    buttonContentColor: Color = contentColorFor(buttonContainerColor),
+    scrollBehavior: BottomAppBarScrollBehavior? = null,
 ) {
     when (layoutType) {
         NavigationSuiteType.NavigationBar -> {
             KeyGoNavigationBar(
                 currentDestination = currentDestination,
-                navigateToTopLvlDestination = navigateToTopLvlDestination
+                navigateToTopLvlDestination = navigateToTopLvlDestination,
+                scrollBehavior = scrollBehavior
             )
         }
 
@@ -230,12 +284,26 @@ fun KeyGoNavigationSuite(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KeyGoNavigationBar(
     currentDestination: NavDestination?,
-    navigateToTopLvlDestination: (RouteDestination) -> Unit
+    navigateToTopLvlDestination: (RouteDestination) -> Unit,
+    scrollBehavior: BottomAppBarScrollBehavior? = null
 ) {
-    NavigationBar {
+    NavigationBar(
+        modifier = Modifier.layout { measurable, constraints ->
+            val placeable = measurable.measure(constraints)
+
+            // Sets the app bar's height offset to collapse the entire bar's height when
+            // content is scrolled.
+            scrollBehavior?.state?.heightOffsetLimit = -placeable.height.toFloat()
+
+            val height = (placeable.height + (scrollBehavior?.state?.heightOffset ?: 0f))
+                .coerceAtLeast(0f)
+            layout(placeable.width, height.roundToInt()) { placeable.place(0, 0) }
+        } // TODO decide to add appBarDragModifier
+    ) {
         AppDestinations.entries.forEach { destination ->
             NavigationBarItem(
                 selected = currentDestination.hasRoute(destination.route),

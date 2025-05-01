@@ -65,11 +65,16 @@ private fun App() {
             currentDestination?.parent?.hasRoute<RouteDestination.Main.Root>() == true
         }
 
+        val showPrimaryActionButton = remember(currentDestination) {
+            currentDestination?.hasRoute<RouteDestination.Main.Home>() == true
+        }
+
         KeyGoNavigationWrapper(
             currentDestination = currentDestination,
             navigateToTopLevelDestination = navigationActions::navigateTo,
             onButtonClicked = {},
-            showChrome = showChrome
+            showChrome = showChrome,
+            showPrimaryActionButton = showPrimaryActionButton
         ) {
             NavHost(
                 navController = navController,
