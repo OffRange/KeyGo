@@ -21,8 +21,11 @@ import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopSearchBar
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.currentWindowSize
+import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
+import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -128,7 +131,6 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
                 state = searchBarState,
                 inputField = inputField,
                 scrollBehavior = scrollBehavior,
-                modifier = Modifier.fillMaxWidth()
             )
 
             if (shouldBeDocked) {
@@ -181,31 +183,54 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
     }
 }
 
-@Preview
+@Composable
+private fun PreviewContent() {
+    DashboardContent(
+        uiState = DashboardUIState(
+            textFieldState = TextFieldState(),
+            items = buildList {
+                repeat(25) {
+                    val p = Password(
+                        it.toLong(),
+                        "Item $it",
+                        "Description $it",
+                        it.toLong(),
+                        "${if (it >= 5) 'a' else 'P'}assword $it",
+                        CryptographicData.EMPTY,
+                        "Password $it"
+                    )
+                    add(p)
+                }
+            }.toPersistentList(),
+            selectedItemIds = persistentSetOf(1, 2, 3),
+            openedItemId = 0
+        ),
+        onEvent = {}
+    )
+}
+
+@Preview(device = "spec:width=1080px,height=2340px,dpi=320")
 @Composable
 private fun DashboardContentPreview() {
     MaterialTheme {
-        DashboardContent(
-            uiState = DashboardUIState(
-                textFieldState = TextFieldState(),
-                items = buildList {
-                    repeat(25) {
-                        val p = Password(
-                            it.toLong(),
-                            "Item $it",
-                            "Description $it",
-                            it.toLong(),
-                            "${if (it >= 5) 'a' else 'P'}assword $it",
-                            CryptographicData.EMPTY,
-                            "Password $it"
-                        )
-                        add(p)
-                    }
-                }.toPersistentList(),
-                selectedItemIds = persistentSetOf(1, 2, 3),
-                openedItemId = 0
-            ),
-            onEvent = {}
+        PreviewContent()
+    }
+}
+
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+@Preview(device = "spec:width=673dp,height=841dp,orientation=landscape")
+@Composable
+private fun Test() {
+    MaterialTheme {
+        NavigableListDetailPaneScaffold(
+            navigator = rememberListDetailPaneScaffoldNavigator<Unit>(),
+            listPane = {
+                PreviewContent()
+            },
+            detailPane = {
+                Text(text = "TEXT")
+            }
         )
     }
+
 }
