@@ -5,13 +5,18 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.core.domain.model.VaultItem
+import de.davis.keygo.core.domain.model.crypto.CryptographicData
 import de.davis.keygo.core.domain.repository.PasswordRepository
 import de.davis.keygo.core.domain.usecase.InsertVaultItem
+import de.davis.keygo.dashboard.presentation.model.DashboardNavEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIState
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
@@ -19,6 +24,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 class DashboardViewModel(
     passwordRepository: PasswordRepository,
@@ -41,36 +47,45 @@ class DashboardViewModel(
         )
 
     private val openedItemId = MutableStateFlow(-1L)
+    private val navEvent = MutableStateFlow<DashboardNavEvent>(DashboardNavEvent.None)
 
     init {
-        /*viewModelScope.launch {
-            (0..25).map {
-                async {
-                    insertVaultItem(
-                        Password(
-                            username = "User $it",
-                            website = null,
-                            name = "${if (it > 10) "A" else "B"} PWD $it",
-                            encryptedData = CryptographicData.EMPTY,
-                            note = null
-                        )
-                    )
+        viewModelScope.launch {
+            items.collectLatest {
+                if (it.isNotEmpty()) {
+                    return@collectLatest
                 }
-            }.awaitAll()
-        }*/
+                
+                (0..25).map {
+                    async {
+                        insertVaultItem(
+                            Password(
+                                username = "User $it",
+                                website = null,
+                                name = "${if (it > 10) "A" else "B"} PWD $it",
+                                encryptedData = CryptographicData.EMPTY,
+                                note = null
+                            )
+                        )
+                    }
+                }.awaitAll()
+            }
+        }
     }
 
     val uiState = combine(
         items,
         selectedItemIds,
         openedItemId,
-        searchResult
-    ) { items, selectedItemIds, openedItemId, _ ->
+        searchResult,
+        navEvent
+    ) { items, selectedItemIds, openedItemId, _, navEvent ->
         DashboardUIState(
             textFieldState = textFieldState,
             items = items.sortedBy { it.name }.toImmutableList(),
             selectedItemIds = selectedItemIds.toImmutableSet(),
-            openedItemId = openedItemId
+            openedItemId = openedItemId,
+            navEvent = navEvent
         )
     }.stateIn(
         scope = viewModelScope,

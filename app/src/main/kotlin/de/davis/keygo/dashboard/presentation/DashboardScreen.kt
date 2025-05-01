@@ -15,18 +15,26 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import de.davis.keygo.core.domain.model.VaultItem
+import de.davis.keygo.dashboard.presentation.model.DashboardNavEvent
+import de.davis.keygo.generated.RouteDestination
 import de.davis.keygo.processor.annotation.Route
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Route(name = "Home", parent = "Main")
 @Composable
-fun DashboardScreen() {
+fun DashboardScreen(navigate: (RouteDestination) -> Unit) {
     val viewModel: DashboardViewModel = koinViewModel()
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.runSearch()
+    }
+
+    LaunchedEffect(uiState.navEvent) {
+        when (uiState.navEvent) {
+            is DashboardNavEvent.None -> {}
+        }
     }
 
     val navigator = rememberListDetailPaneScaffoldNavigator<VaultItem>()

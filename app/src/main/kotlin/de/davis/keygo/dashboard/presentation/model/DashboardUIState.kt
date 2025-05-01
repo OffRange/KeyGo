@@ -11,5 +11,6 @@ data class DashboardUIState(
     val textFieldState: TextFieldState,
     val items: ImmutableList<VaultItem> = persistentListOf(),
     val selectedItemIds: ImmutableSet<Long> = persistentSetOf(),
-    val openedItemId: Long = -1
+    val openedItemId: Long = -1,
+    val navEvent: DashboardNavEvent = DashboardNavEvent.None,
 )

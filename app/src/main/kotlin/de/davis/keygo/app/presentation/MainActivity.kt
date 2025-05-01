@@ -90,7 +90,7 @@ private fun App() {
                 navigation<RouteDestination.Main.Root>(
                     startDestination = RouteDestination.Main.Home
                 ) {
-                    dashboardGraph()
+                    dashboardGraph(navigate = navigationActions::navigateTo)
 
                     composable<RouteDestination.Main.Connectivity> {
                         Text("CONNECTIVITY")

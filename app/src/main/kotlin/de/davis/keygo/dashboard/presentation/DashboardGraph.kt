@@ -4,8 +4,8 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import de.davis.keygo.generated.RouteDestination
 
-fun NavGraphBuilder.dashboardGraph() {
+fun NavGraphBuilder.dashboardGraph(navigate: (RouteDestination) -> Unit) {
     composable<RouteDestination.Main.Home> {
-        DashboardScreen()
+        DashboardScreen(navigate = navigate)
     }
 }
