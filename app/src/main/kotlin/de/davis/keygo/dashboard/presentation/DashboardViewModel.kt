@@ -8,8 +8,12 @@ import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.core.domain.model.VaultItem
 import de.davis.keygo.core.domain.model.crypto.CryptographicData
+import de.davis.keygo.core.domain.model.snackbar.SnackbarAction
+import de.davis.keygo.core.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.domain.repository.PasswordRepository
+import de.davis.keygo.core.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.domain.usecase.InsertVaultItem
+import de.davis.keygo.core.presentation.asUIText
 import de.davis.keygo.dashboard.presentation.model.DashboardNavEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIState
@@ -27,6 +31,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class DashboardViewModel(
+    private val snackbarManager: SnackbarManager,
     passwordRepository: PasswordRepository,
     insertVaultItem: InsertVaultItem
 ) : ViewModel() {
@@ -55,7 +60,7 @@ class DashboardViewModel(
                 if (it.isNotEmpty()) {
                     return@collectLatest
                 }
-                
+
                 (0..25).map {
                     async {
                         insertVaultItem(
@@ -130,6 +135,22 @@ class DashboardViewModel(
         is DashboardUIEvent.OnLongClicked -> {
             selectedItemIds.update {
                 it + event.vaultId
+            }
+        }
+
+        is DashboardUIEvent.OnDeleteRequested -> {
+            viewModelScope.launch {
+                snackbarManager.sendMessage(
+                    SnackbarMessage(
+                        message = "Delete ${event.vaultId}?".asUIText(),
+                        action = SnackbarAction(
+                            label = "Undo".asUIText(),
+                            onClick = {
+                                //TODO
+                            },
+                        )
+                    )
+                )
             }
         }
     }

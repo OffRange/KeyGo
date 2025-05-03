@@ -168,6 +168,7 @@ fun KeyGoLazyColumn(
 fun LazyItemScope.KeyGoLazyItem(
     item: VaultItem,
     header: @Composable () -> Unit,
+    onDeleteRequested: () -> Unit,
     modifier: Modifier = Modifier,
     containerColor: Color = Color.Unspecified,
     contentColor: Color = contentColorFor(containerColor),
@@ -176,6 +177,7 @@ fun LazyItemScope.KeyGoLazyItem(
         title = item.name,
         description = "TODO type of Item",
         onDeleteRequested = {
+            onDeleteRequested()
             // We return false here because it allows the swipe state to reset.
             // When an item is successfully deleted, a new list containing the
             // remaining items will be provided, causing the list to recompose
@@ -217,7 +219,7 @@ private fun KeyGoLazyColumnPreview() {
             selectedItemIds = persistentSetOf(4),
             openedItemId = -1,
             itemContent = { item, containerColor, header ->
-                KeyGoLazyItem(item = item, header = header, containerColor = containerColor)
+                KeyGoLazyItem(item = item, header = header, onDeleteRequested = {}, containerColor = containerColor)
             },
             modifier = Modifier.fillMaxSize()
         )

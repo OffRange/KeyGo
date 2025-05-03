@@ -165,6 +165,9 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
                         KeyGoLazyItem(
                             item = item,
                             header = header,
+                            onDeleteRequested = {
+                                onEvent(DashboardUIEvent.OnDeleteRequested(item.vaultItemId))
+                            },
                             modifier = Modifier.combinedClickable(
                                 onLongClick = {
                                     onEvent(DashboardUIEvent.OnLongClicked(item.vaultItemId))
