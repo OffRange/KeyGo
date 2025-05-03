@@ -27,7 +27,10 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,13 +55,20 @@ fun DeletableVaultItem(
 
     val currentOnDeleteRequested by rememberUpdatedState(onDeleteRequested)
 
-    LaunchedEffect(key1 = state.currentValue) {
-        if (state.currentValue == SwipeToDismissBoxValue.EndToStart) {
+    var prev by remember { mutableStateOf(state.currentValue) }
+
+    LaunchedEffect(Unit) {
+        state.reset()
+    }
+
+    LaunchedEffect(state.currentValue) {
+        if (prev != state.currentValue &&
+            state.currentValue == SwipeToDismissBoxValue.EndToStart
+        ) {
             val deleted = currentOnDeleteRequested()
-            if (!deleted) {
-                state.reset()
-            }
+            if (!deleted) state.reset()
         }
+        prev = state.currentValue
     }
 
     HapticSwipeToDismissBox(

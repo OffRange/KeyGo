@@ -5,15 +5,14 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.domain.keyGoCombine
 import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.core.domain.model.VaultItem
 import de.davis.keygo.core.domain.model.crypto.CryptographicData
-import de.davis.keygo.core.domain.model.snackbar.SnackbarAction
-import de.davis.keygo.core.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.domain.repository.VaultItemRepository
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.domain.usecase.InsertVaultItem
-import de.davis.keygo.core.presentation.asUIText
+import de.davis.keygo.core.presentation.snackbar.ItemDeletedMessage
 import de.davis.keygo.dashboard.presentation.model.DashboardNavEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIState
@@ -24,7 +23,6 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -32,7 +30,7 @@ import kotlinx.coroutines.launch
 
 class DashboardViewModel(
     private val snackbarManager: SnackbarManager,
-    vaultItemRepository: VaultItemRepository,
+    private val vaultItemRepository: VaultItemRepository,
     insertVaultItem: InsertVaultItem
 ) : ViewModel() {
 
@@ -41,6 +39,8 @@ class DashboardViewModel(
     private val items = vaultItemRepository.observeVaultItems()
 
     private val searchResult = MutableStateFlow(emptyList<VaultItem>())
+
+    private val flaggedForDeletion = MutableStateFlow(setOf<Long>())
 
     private val selectedItemIds = MutableStateFlow(setOf<Long>())
     private val selectionMode = selectedItemIds
@@ -78,16 +78,20 @@ class DashboardViewModel(
         }
     }
 
-    val uiState = combine(
+    val uiState = keyGoCombine(
         items,
+        flaggedForDeletion,
         selectedItemIds,
         openedItemId,
         searchResult,
         navEvent
-    ) { items, selectedItemIds, openedItemId, _, navEvent ->
+    ) { items, markedAsDeleted, selectedItemIds, openedItemId, _, navEvent ->
         DashboardUIState(
             textFieldState = textFieldState,
-            items = items.sortedBy { it.name }.toImmutableList(),
+            items = items
+                .filterNot { it.vaultItemId in markedAsDeleted }
+                .sortedBy { it.name }
+                .toImmutableList(),
             selectedItemIds = selectedItemIds.toImmutableSet(),
             openedItemId = openedItemId,
             navEvent = navEvent
@@ -120,11 +124,8 @@ class DashboardViewModel(
 
         is DashboardUIEvent.OnClicked -> {
             if (selectionMode.value) {
-                selectedItemIds.update {
-                    val id = event.vaultId
-                    if (id in it) it - id
-                    else it + id
-                }
+                val id = event.vaultId
+                toggleSelection(id)
             } else {
                 openedItemId.update {
                     event.vaultId
@@ -133,25 +134,52 @@ class DashboardViewModel(
         }
 
         is DashboardUIEvent.OnLongClicked -> {
-            selectedItemIds.update {
-                it + event.vaultId
-            }
+            updateSelection(event.vaultId, select = true)
         }
 
         is DashboardUIEvent.OnDeleteRequested -> {
+            val id = event.vaultId
+            updateSelection(id, select = false)
+            updateDeletionFlag(id, flag = true)
+
             viewModelScope.launch {
                 snackbarManager.sendMessage(
-                    SnackbarMessage(
-                        message = "Delete ${event.vaultId}?".asUIText(),
-                        action = SnackbarAction(
-                            label = "Undo".asUIText(),
-                            onClick = {
-                                //TODO
-                            },
-                        )
+                    ItemDeletedMessage(
+                        onClick = {
+                            updateDeletionFlag(id = id, flag = false)
+                        },
+                        onDismiss = {
+                            viewModelScope.launch {
+                                vaultItemRepository.deleteVaultItem(id)
+
+                                // Inside this coroutine to ensure it only runs after the deletion
+                                updateDeletionFlag(id = id, flag = false)
+                            }
+                        }
                     )
                 )
             }
+        }
+    }
+
+    private fun toggleSelection(id: Long) {
+        selectedItemIds.update {
+            if (id in it) it - id
+            else it + id
+        }
+    }
+
+    private fun updateSelection(id: Long, select: Boolean = true) {
+        selectedItemIds.update {
+            if (select) it + id
+            else it - id
+        }
+    }
+
+    private fun updateDeletionFlag(id: Long, flag: Boolean = true) {
+        flaggedForDeletion.update {
+            if (flag) it + id
+            else it - id
         }
     }
 }
