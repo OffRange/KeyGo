@@ -10,5 +10,5 @@ data class VaultPassword(
         parentColumn = "id",
         entityColumn = "vault_id",
     )
-    val passwords: List<Password>,
+    val password: Password,
 )

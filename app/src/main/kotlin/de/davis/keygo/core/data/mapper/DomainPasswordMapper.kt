@@ -22,4 +22,4 @@ fun DataPassword.asDomain(vaultItem: VaultItem) = DomainPassword(
     note = vaultItem.shortNote,
 )
 
-fun VaultPassword.asDomain() = passwords.map { it.asDomain(vaultItem) }
+fun VaultPassword.asDomain() = password.asDomain(vaultItem)

@@ -17,6 +17,6 @@ class PasswordRepositoryImpl(
 
     override fun observeVaultPasswords(): Flow<List<Password>> =
         passwordDao.getVaultPasswords().map { vaultPassword ->
-            vaultPassword.flatMap { it.asDomain() }
+            vaultPassword.map { it.asDomain() }
         }
 }
