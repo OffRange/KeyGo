@@ -7,11 +7,13 @@ import de.davis.keygo.core.data.local.datasource.datastore.dataStoreModule
 import de.davis.keygo.core.data.repository.MainPasswordRepositoryImpl
 import de.davis.keygo.core.data.repository.PasswordRepositoryImpl
 import de.davis.keygo.core.data.repository.VaultItemRepositoryImpl
+import de.davis.keygo.core.data.snackbar.SnackbarManagerImpl
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.crypto.EncryptionKeyProvider
 import de.davis.keygo.core.domain.repository.MainPasswordRepository
 import de.davis.keygo.core.domain.repository.PasswordRepository
 import de.davis.keygo.core.domain.repository.VaultItemRepository
+import de.davis.keygo.core.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.domain.usecase.InsertVaultItem
 import de.davis.keygo.core.domain.usecase.ValidateMainPassword
 import org.koin.core.module.dsl.singleOf
@@ -28,6 +30,8 @@ private val cryptoModule = module {
     singleOf(::PasswordRepositoryImpl) bind PasswordRepository::class
     singleOf(::VaultItemRepositoryImpl) bind VaultItemRepository::class
     singleOf(::InsertVaultItem)
+
+    singleOf(::SnackbarManagerImpl) bind SnackbarManager::class
 }
 
 val coreModule = module {

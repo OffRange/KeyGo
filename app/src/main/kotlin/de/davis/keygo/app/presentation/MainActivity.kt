@@ -3,10 +3,14 @@ package de.davis.keygo.app.presentation
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.Wallpapers
 import androidx.fragment.app.FragmentActivity
@@ -20,16 +24,28 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
 import de.davis.keygo.app.presentation.component.KeyGoNavigationWrapper
 import de.davis.keygo.auth.presentation.authNavGraph
+import de.davis.keygo.core.domain.model.snackbar.SnackbarMessage
+import de.davis.keygo.core.domain.snackbar.SnackbarManager
+import de.davis.keygo.core.presentation.asUIText
+import de.davis.keygo.core.presentation.snackbar.LocalSnackbarManager
+import de.davis.keygo.core.presentation.snackbar.SnackbarHandler
 import de.davis.keygo.core.presentation.theme.KeyGoTheme
 import de.davis.keygo.dashboard.presentation.dashboardGraph
 import de.davis.keygo.generated.RouteDestination
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            App()
+            KeyGoTheme {
+                val snackbarManager = koinInject<SnackbarManager>()
+                CompositionLocalProvider(LocalSnackbarManager provides snackbarManager) {
+                    App()
+                }
+            }
         }
     }
 }
@@ -53,51 +69,61 @@ private class NavigationActions(private val navController: NavHostController) {
 @Preview(wallpaper = Wallpapers.RED_DOMINATED_EXAMPLE, device = "id:desktop_large")
 @Composable
 private fun App() {
-    KeyGoTheme {
-        val navController = rememberNavController()
-        val navigationActions = remember(navController) {
-            NavigationActions(navController)
-        }
-        val navBackStackEntry by navController.currentBackStackEntryAsState()
-        val currentDestination = navBackStackEntry?.destination
+    val navController = rememberNavController()
+    val navigationActions = remember(navController) {
+        NavigationActions(navController)
+    }
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
 
-        val showChrome = remember(currentDestination) {
-            currentDestination?.parent?.hasRoute<RouteDestination.Main.Root>() == true
-        }
+    val showChrome = remember(currentDestination) {
+        currentDestination?.parent?.hasRoute<RouteDestination.Main.Root>() == true
+    }
 
-        val showPrimaryActionButton = remember(currentDestination) {
-            currentDestination?.hasRoute<RouteDestination.Main.Home>() == true
-        }
+    val showPrimaryActionButton = remember(currentDestination) {
+        currentDestination?.hasRoute<RouteDestination.Main.Home>() == true
+    }
 
-        KeyGoNavigationWrapper(
-            currentDestination = currentDestination,
-            navigateToTopLevelDestination = navigationActions::navigateTo,
-            onButtonClicked = {},
-            showChrome = showChrome,
-            showPrimaryActionButton = showPrimaryActionButton
+    val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarManager = LocalSnackbarManager.current
+    SnackbarHandler(snackbarManager, snackbarHostState)
+
+    val scope = rememberCoroutineScope()
+    KeyGoNavigationWrapper(
+        currentDestination = currentDestination,
+        navigateToTopLevelDestination = navigationActions::navigateTo,
+        onButtonClicked = {
+            scope.launch {
+                snackbarManager.sendMessage(SnackbarMessage("${System.currentTimeMillis()}".asUIText()))
+            }
+        },
+        showChrome = showChrome,
+        showPrimaryActionButton = showPrimaryActionButton,
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState)
+        }
+    ) {
+        NavHost(
+            navController = navController,
+            startDestination = RouteDestination.Auth,
         ) {
-            NavHost(
-                navController = navController,
-                startDestination = RouteDestination.Auth
+            authNavGraph(
+                onSuccess = {
+                    navController.navigate(RouteDestination.Main.Root) {
+                        popUpTo(RouteDestination.Auth) { inclusive = true }
+                    }
+                }
+            )
+            navigation<RouteDestination.Main.Root>(
+                startDestination = RouteDestination.Main.Home
             ) {
-                authNavGraph(
-                    onSuccess = {
-                        navController.navigate(RouteDestination.Main.Root) {
-                            popUpTo(RouteDestination.Auth) { inclusive = true }
-                        }
-                    }
-                )
-                navigation<RouteDestination.Main.Root>(
-                    startDestination = RouteDestination.Main.Home
-                ) {
-                    dashboardGraph(navigate = navigationActions::navigateTo)
+                dashboardGraph(navigate = navigationActions::navigateTo)
 
-                    composable<RouteDestination.Main.Connectivity> {
-                        Text("CONNECTIVITY")
-                    }
-                    composable<RouteDestination.Main.Settings> {
-                        Text("SETTINGS")
-                    }
+                composable<RouteDestination.Main.Connectivity> {
+                    Text("CONNECTIVITY")
+                }
+                composable<RouteDestination.Main.Settings> {
+                    Text("SETTINGS")
                 }
             }
         }

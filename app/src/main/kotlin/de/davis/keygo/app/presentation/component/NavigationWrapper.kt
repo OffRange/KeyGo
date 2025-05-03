@@ -53,7 +53,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.currentWindowSize
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldLayout
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberDrawerState
@@ -97,6 +96,7 @@ fun KeyGoNavigationWrapper(
     contentColor: Color = NavigationSuiteScaffoldDefaults.contentColor,
     buttonContainerColor: Color = MaterialTheme.colorScheme.tertiaryContainer,
     buttonContentColor: Color = contentColorFor(buttonContainerColor),
+    snackbarHost: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     val adaptiveInfo = currentWindowAdaptiveInfo()
@@ -146,7 +146,7 @@ fun KeyGoNavigationWrapper(
         drawerState = drawerState
     ) {
         Surface(color = containerColor, contentColor = contentColor) {
-            NavigationSuiteScaffoldLayout(
+            KeyGoNavigationSuiteScaffoldLayout(
                 navigationSuite = {
                     Box {
                         AnimatedVisibility(
@@ -211,6 +211,7 @@ fun KeyGoNavigationWrapper(
                         )
                     }
                 },
+                snackbarHost = snackbarHost,
                 content = {
                     Box(
                         Modifier
