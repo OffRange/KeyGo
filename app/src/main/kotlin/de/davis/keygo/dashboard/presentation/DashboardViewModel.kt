@@ -10,7 +10,7 @@ import de.davis.keygo.core.domain.model.VaultItem
 import de.davis.keygo.core.domain.model.crypto.CryptographicData
 import de.davis.keygo.core.domain.model.snackbar.SnackbarAction
 import de.davis.keygo.core.domain.model.snackbar.SnackbarMessage
-import de.davis.keygo.core.domain.repository.PasswordRepository
+import de.davis.keygo.core.domain.repository.VaultItemRepository
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.domain.usecase.InsertVaultItem
 import de.davis.keygo.core.presentation.asUIText
@@ -32,13 +32,13 @@ import kotlinx.coroutines.launch
 
 class DashboardViewModel(
     private val snackbarManager: SnackbarManager,
-    passwordRepository: PasswordRepository,
+    vaultItemRepository: VaultItemRepository,
     insertVaultItem: InsertVaultItem
 ) : ViewModel() {
 
     private val textFieldState = TextFieldState()
 
-    private val items = passwordRepository.observeVaultPasswords()
+    private val items = vaultItemRepository.observeVaultItems()
 
     private val searchResult = MutableStateFlow(emptyList<VaultItem>())
 

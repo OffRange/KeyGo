@@ -9,3 +9,10 @@ fun DomainVaultItem.toData() = DataVaultItem(
     encryptedData = encryptedData,
     shortNote = note
 )
+
+fun DataVaultItem.toDomain() = DomainVaultItem.Basic(
+    vaultItemId = id,
+    name = name,
+    note = shortNote,
+    encryptedData = encryptedData
+)
