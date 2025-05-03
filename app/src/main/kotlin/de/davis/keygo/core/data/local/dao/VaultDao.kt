@@ -12,6 +12,9 @@ interface VaultDao {
     @Insert
     suspend fun insert(vaultItem: VaultItem): Long
 
+    @Query("DELETE FROM VaultItem WHERE id = :vaultItemId")
+    suspend fun delete(vaultItemId: Long)
+
     @Query("SELECT * FROM VaultItem WHERE id = :id")
     suspend fun getVaultItemById(id: Long): VaultItem?
 

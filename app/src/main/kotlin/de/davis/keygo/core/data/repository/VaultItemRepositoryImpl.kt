@@ -12,6 +12,10 @@ class VaultItemRepositoryImpl(
     private val vaultDao: VaultDao
 ) : VaultItemRepository {
 
+    override suspend fun deleteVaultItem(vaultItemId: Long) {
+        vaultDao.delete(vaultItemId)
+    }
+
     override suspend fun createNewVaultItem(vaultItem: VaultItem): Long =
         vaultDao.insert(vaultItem.toData())
 

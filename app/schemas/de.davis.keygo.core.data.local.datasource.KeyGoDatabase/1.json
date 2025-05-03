@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "b8be8da906c3782c7fd841f192146495",
+    "identityHash": "c3d7d6365c5bda6f3af910aa5b412d52",
     "entities": [
       {
         "tableName": "VaultItem",
@@ -41,7 +41,7 @@
       },
       {
         "tableName": "Password",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `vault_id` INTEGER NOT NULL, `username` TEXT, `website` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `vault_id` INTEGER NOT NULL, `username` TEXT, `website` TEXT, FOREIGN KEY(`vault_id`) REFERENCES `VaultItem`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -71,12 +71,36 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "index_Password_vault_id",
+            "unique": true,
+            "columnNames": [
+              "vault_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_Password_vault_id` ON `${TABLE_NAME}` (`vault_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "VaultItem",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "vault_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b8be8da906c3782c7fd841f192146495')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c3d7d6365c5bda6f3af910aa5b412d52')"
     ]
   }
 }
