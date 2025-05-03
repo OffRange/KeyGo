@@ -35,18 +35,19 @@ fun SnackbarHandler(
                         duration = SnackbarDuration.Short
                     )
 
+
                     when {
-                        msg.action == null -> {
-                            // oneShotFlow has no replay
-                        }
-
-                        result == SnackbarResult.ActionPerformed -> {
+                        msg.action != null && result == SnackbarResult.ActionPerformed -> {
                             msg.action.onClick()
-                            snackbarManager.reset()
                         }
 
-                        else -> {}
+                        else -> {
+                            msg.onDismiss()
+                        }
                     }
+
+                    if (msg.action != null)
+                        snackbarManager.reset()
                 }
             }
         }
