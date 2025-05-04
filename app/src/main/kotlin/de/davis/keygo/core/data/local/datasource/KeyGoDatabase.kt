@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
+import de.davis.keygo.core.data.converter.crypto.CryptoConverter
 import de.davis.keygo.core.data.local.dao.PasswordDao
 import de.davis.keygo.core.data.local.dao.VaultDao
 import de.davis.keygo.core.data.local.model.Password
@@ -12,6 +14,7 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
 
 @Database(entities = [VaultItem::class, Password::class], version = 1)
+@TypeConverters(CryptoConverter::class)
 abstract class KeyGoDatabase : RoomDatabase() {
 
     abstract fun vaultDao(): VaultDao
