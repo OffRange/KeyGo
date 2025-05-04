@@ -4,6 +4,7 @@ import de.davis.keygo.core.data.local.dao.VaultDao
 import de.davis.keygo.core.data.mapper.toData
 import de.davis.keygo.core.data.mapper.toDomain
 import de.davis.keygo.core.domain.model.VaultItem
+import de.davis.keygo.core.domain.model.VaultSearchResult
 import de.davis.keygo.core.domain.repository.VaultItemRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -18,6 +19,9 @@ class VaultItemRepositoryImpl(
 
     override suspend fun createNewVaultItem(vaultItem: VaultItem): Long =
         vaultDao.insert(vaultItem.toData())
+
+    override suspend fun searchVaultItem(query: String): List<VaultSearchResult> =
+        vaultDao.searchVaultItem(query).map { it.toDomain() }
 
     override fun observeVaultItems(): Flow<List<VaultItem>> =
         vaultDao.getAllVaultItems()

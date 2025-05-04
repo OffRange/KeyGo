@@ -12,7 +12,7 @@ fun DomainPassword.toData(vaultId: Long = vaultItemId) = DataPassword(
     website = this.website,
 )
 
-fun DataPassword.asDomain(vaultItem: VaultItem) = DomainPassword(
+fun DataPassword.toDomain(vaultItem: VaultItem) = DomainPassword(
     vaultItemId = vaultItem.id,
     passwordId = this.id,
     name = vaultItem.name,
@@ -22,4 +22,4 @@ fun DataPassword.asDomain(vaultItem: VaultItem) = DomainPassword(
     note = vaultItem.shortNote,
 )
 
-fun VaultPassword.asDomain() = password.asDomain(vaultItem)
+fun VaultPassword.toDomain() = password.toDomain(vaultItem)

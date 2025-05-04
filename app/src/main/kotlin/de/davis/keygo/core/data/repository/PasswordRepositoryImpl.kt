@@ -1,8 +1,8 @@
 package de.davis.keygo.core.data.repository
 
 import de.davis.keygo.core.data.local.dao.PasswordDao
-import de.davis.keygo.core.data.mapper.asDomain
 import de.davis.keygo.core.data.mapper.toData
+import de.davis.keygo.core.data.mapper.toDomain
 import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.core.domain.repository.PasswordRepository
 import kotlinx.coroutines.flow.Flow
@@ -17,6 +17,6 @@ class PasswordRepositoryImpl(
 
     override fun observeVaultPasswords(): Flow<List<Password>> =
         passwordDao.getVaultPasswords().map { vaultPassword ->
-            vaultPassword.map { it.asDomain() }
+            vaultPassword.map { it.toDomain() }
         }
 }
