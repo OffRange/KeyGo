@@ -11,13 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteForever
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBoxState
@@ -34,7 +30,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
@@ -81,27 +76,16 @@ fun DeletableVaultItem(
         modifier = modifier.clip(CardDefaults.shape),
         state = state
     ) {
-        Card(colors = cardColors) {
-            ListItem(
-                colors = ListItemDefaults.colors(
-                    containerColor = Color.Transparent,
-                    headlineColor = LocalContentColor.current,
-                    supportingColor = LocalContentColor.current,
-                    leadingIconColor = LocalContentColor.current,
-                    trailingIconColor = LocalContentColor.current,
-                    disabledHeadlineColor = cardColors.disabledContentColor,
-                    disabledLeadingIconColor = cardColors.disabledContentColor,
-                    disabledTrailingIconColor = cardColors.disabledContentColor,
-                ),
-                headlineContent = {
-                    Text(text = title)
-                },
-                supportingContent = {
-                    Text(text = description)
-                },
-                leadingContent = leadingContent
-            )
-        }
+        VaultItem(
+            headlineContent = {
+                Text(text = title)
+            },
+            supportingContent = {
+                Text(text = description)
+            },
+            leadingContent = leadingContent,
+            cardColors = cardColors
+        )
     }
 }
 

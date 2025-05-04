@@ -35,4 +35,9 @@
     </plurals>
 
     <string name="undo">Undo</string>
+
+    <string name="match_name">Matched name</string>
+    <string name="match_note">Matched note</string>
+    <string name="match_name_and_note">Matched name and note</string>
+    <string name="match_not_found">No matches found</string>
 </resources>

@@ -2,8 +2,11 @@ package de.davis.keygo.dashboard.presentation.model
 
 sealed interface DashboardUIEvent {
 
-    data object OnSearchSubmitted : DashboardUIEvent
-    data class OnClicked(val vaultId: Long) : DashboardUIEvent
-    data class OnLongClicked(val vaultId: Long) : DashboardUIEvent
-    data class OnDeleteRequested(val vaultId: Long) : DashboardUIEvent
+    data object OnSearchSubmit : DashboardUIEvent
+    data object OnSearchClear : DashboardUIEvent
+    data object OnSearchCollapse : DashboardUIEvent
+
+    data class OnClick(val vaultId: Long) : DashboardUIEvent
+    data class OnLongClick(val vaultId: Long) : DashboardUIEvent
+    data class OnDeleteRequest(val vaultId: Long) : DashboardUIEvent
 }

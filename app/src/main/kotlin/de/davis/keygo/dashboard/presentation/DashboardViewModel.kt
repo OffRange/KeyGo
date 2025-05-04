@@ -1,13 +1,13 @@
 package de.davis.keygo.dashboard.presentation
 
-import android.util.Log
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.domain.keyGoCombine
 import de.davis.keygo.core.domain.model.Password
-import de.davis.keygo.core.domain.model.VaultItem
+import de.davis.keygo.core.domain.model.VaultSearchResult
 import de.davis.keygo.core.domain.model.crypto.CryptographicData
 import de.davis.keygo.core.domain.repository.VaultItemRepository
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
@@ -18,15 +18,21 @@ import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIState
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 class DashboardViewModel(
     private val snackbarManager: SnackbarManager,
@@ -36,27 +42,29 @@ class DashboardViewModel(
 
     private val textFieldState = TextFieldState()
 
-    private val items = vaultItemRepository.observeVaultItems()
+    private val submittedSearchQuery = MutableStateFlow("")
 
-    private val searchResult = MutableStateFlow(emptyList<VaultItem>())
+    private val searchResult = MutableStateFlow(emptyList<VaultSearchResult>())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val mainViewItems = submittedSearchQuery.flatMapLatest { show ->
+        if (show.isBlank()) {
+            vaultItemRepository.observeVaultItems()
+        } else {
+            flowOf(searchResult.value) // TODO introduce suggestion and ful-search queries
+        }
+    }
 
     private val flaggedForDeletion = MutableStateFlow(setOf<Long>())
 
     private val selectedItemIds = MutableStateFlow(setOf<Long>())
-    private val selectionMode = selectedItemIds
-        .map { it.isNotEmpty() }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Eagerly,
-            initialValue = false
-        )
 
     private val openedItemId = MutableStateFlow(-1L)
     private val navEvent = MutableStateFlow<DashboardNavEvent>(DashboardNavEvent.None)
 
     init {
         viewModelScope.launch {
-            items.collectLatest {
+            vaultItemRepository.observeVaultItems().collectLatest {
                 if (it.isNotEmpty()) {
                     return@collectLatest
                 }
@@ -79,19 +87,20 @@ class DashboardViewModel(
     }
 
     val uiState = keyGoCombine(
-        items,
+        mainViewItems,
         flaggedForDeletion,
         selectedItemIds,
         openedItemId,
         searchResult,
         navEvent
-    ) { items, markedAsDeleted, selectedItemIds, openedItemId, _, navEvent ->
+    ) { items, markedAsDeleted, selectedItemIds, openedItemId, searchResult, navEvent ->
         DashboardUIState(
             textFieldState = textFieldState,
             items = items
                 .filterNot { it.vaultItemId in markedAsDeleted }
                 .sortedBy { it.name }
                 .toImmutableList(),
+            searchResult = searchResult.toImmutableList(),
             selectedItemIds = selectedItemIds.toImmutableSet(),
             openedItemId = openedItemId,
             navEvent = navEvent
@@ -102,64 +111,82 @@ class DashboardViewModel(
         initialValue = DashboardUIState(textFieldState)
     )
 
+    @OptIn(FlowPreview::class)
     suspend fun runSearch() {
         snapshotFlow {
             textFieldState.text
-        }.collectLatest {
-            searchResult.update {
-                performSearch()
+        }.debounce(300.milliseconds)
+            .distinctUntilChanged()
+            .collectLatest { query ->
+                searchResult.update {
+                    performSearch(query.toString())
+                }
             }
-        }
     }
 
-    private suspend fun performSearch(): List<VaultItem> {
-        Log.d("DashboardViewModel", "performSearch: ${textFieldState.text}")
-        return emptyList() // TODO("Implement search logic")
+    private suspend fun performSearch(query: String): List<VaultSearchResult> {
+        return vaultItemRepository.searchVaultItem(query)
     }
 
-    fun onEvent(event: DashboardUIEvent) = when (event) {
-        is DashboardUIEvent.OnSearchSubmitted -> {
+    fun onEvent(event: DashboardUIEvent) {
+        when (event) {
+            is DashboardUIEvent.OnSearchSubmit -> {
+                submittedSearchQuery.update { textFieldState.text.toString() }
+            }
 
-        }
+            is DashboardUIEvent.OnSearchClear -> {
+                clearSearch()
+            }
 
-        is DashboardUIEvent.OnClicked -> {
-            if (selectionMode.value) {
+            is DashboardUIEvent.OnSearchCollapse -> {
+                // Reset to the actual submitted query for cases where the user performed back press action
+                textFieldState.edit {
+                    replace(0, length, submittedSearchQuery.value)
+                }
+            }
+
+            is DashboardUIEvent.OnClick -> {
+                if (selectedItemIds.value.isNotEmpty()) {
+                    toggleSelection(event.vaultId)
+                } else {
+                    openedItemId.update {
+                        event.vaultId
+                    }
+                }
+            }
+
+            is DashboardUIEvent.OnLongClick -> {
+                updateSelection(event.vaultId, select = true)
+            }
+
+            is DashboardUIEvent.OnDeleteRequest -> {
                 val id = event.vaultId
-                toggleSelection(id)
-            } else {
-                openedItemId.update {
-                    event.vaultId
+                updateSelection(id, select = false)
+                updateDeletionFlag(id, flag = true)
+
+                viewModelScope.launch {
+                    snackbarManager.sendMessage(
+                        ItemDeletedMessage(
+                            onClick = {
+                                updateDeletionFlag(id = id, flag = false)
+                            },
+                            onDismiss = {
+                                viewModelScope.launch {
+                                    vaultItemRepository.deleteVaultItem(id)
+
+                                    // Inside this coroutine to ensure it only runs after the deletion
+                                    updateDeletionFlag(id = id, flag = false)
+                                }
+                            }
+                        )
+                    )
                 }
             }
         }
+    }
 
-        is DashboardUIEvent.OnLongClicked -> {
-            updateSelection(event.vaultId, select = true)
-        }
-
-        is DashboardUIEvent.OnDeleteRequested -> {
-            val id = event.vaultId
-            updateSelection(id, select = false)
-            updateDeletionFlag(id, flag = true)
-
-            viewModelScope.launch {
-                snackbarManager.sendMessage(
-                    ItemDeletedMessage(
-                        onClick = {
-                            updateDeletionFlag(id = id, flag = false)
-                        },
-                        onDismiss = {
-                            viewModelScope.launch {
-                                vaultItemRepository.deleteVaultItem(id)
-
-                                // Inside this coroutine to ensure it only runs after the deletion
-                                updateDeletionFlag(id = id, flag = false)
-                            }
-                        }
-                    )
-                )
-            }
-        }
+    private fun clearSearch() {
+        textFieldState.clearText()
     }
 
     private fun toggleSelection(id: Long) {

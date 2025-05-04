@@ -242,7 +242,7 @@ private fun KeyGoInlineHeader(header: String, color: Color, modifier: Modifier =
 @Stable
 private fun Modifier.headerSize() = this.size(40.dp)
 
-private val ItemVerticalPadding = 8.dp
+internal val ItemVerticalPadding = 8.dp
 
 private val ContainerColor
     @Composable get() = MaterialTheme.colorScheme.surfaceContainerHigh

@@ -5,7 +5,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.input.clearText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
@@ -29,8 +28,10 @@ import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaf
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
@@ -46,10 +47,12 @@ import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.core.domain.model.crypto.CryptographicData
 import de.davis.keygo.dashboard.presentation.component.KeyGoLazyColumn
 import de.davis.keygo.dashboard.presentation.component.KeyGoLazyItem
+import de.davis.keygo.dashboard.presentation.component.SearchResult
 import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIState
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toPersistentList
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,6 +61,19 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
     val scrollBehavior = SearchBarDefaults.enterAlwaysSearchBarScrollBehavior()
 
     val searchBarState = rememberSearchBarState()
+    LaunchedEffect(Unit) {
+        snapshotFlow { searchBarState.targetValue }
+            .collectLatest {
+                when (it) {
+                    SearchBarValue.Collapsed -> {
+                        onEvent(DashboardUIEvent.OnSearchCollapse)
+                    }
+
+                    else -> {}
+                }
+            }
+    }
+
     val scope = rememberCoroutineScope()
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
@@ -93,21 +109,21 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
             searchBarState = searchBarState,
             onSearch = {
                 scope.launch { searchBarState.animateToCollapsed() }
-                onEvent(DashboardUIEvent.OnSearchSubmitted)
+                onEvent(DashboardUIEvent.OnSearchSubmit)
             },
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = {
-                AnimatedContent(searchBarState.currentValue) {
+                AnimatedContent(uiState.textFieldState.text.isEmpty() && searchBarState.currentValue == SearchBarValue.Collapsed) {
                     when (it) {
-                        SearchBarValue.Collapsed -> Icon(
+                        true -> Icon(
                             imageVector = Icons.Default.Search,
-                            contentDescription = stringResource(R.string.search_content_description)
+                            contentDescription = stringResource(R.string.search_content_description),
                         )
 
                         else -> IconButton(
                             onClick = {
                                 scope.launch { searchBarState.animateToCollapsed() }
-                                uiState.textFieldState.clearText()
+                                onEvent(DashboardUIEvent.OnSearchClear)
                             }
                         ) {
                             Icon(
@@ -115,6 +131,7 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
                                 contentDescription = stringResource(R.string.back_content_description)
                             )
                         }
+
                     }
                 }
             },
@@ -138,14 +155,28 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
                     state = searchBarState,
                     inputField = inputField,
                 ) {
-
+                    SearchResult(
+                        searchResult = uiState.searchResult,
+                        onClick = {
+                            scope.launch { searchBarState.animateToCollapsed() }
+                            onEvent(DashboardUIEvent.OnClick(it.vaultItemId)) // TODO Should not be able to select -> prevent from selecting, enforce opening
+                        },
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
                 }
             } else {
                 ExpandedFullScreenSearchBar(
                     state = searchBarState,
                     inputField = inputField,
                 ) {
-
+                    SearchResult(
+                        uiState.searchResult,
+                        onClick = {
+                            scope.launch { searchBarState.animateToCollapsed() }
+                            onEvent(DashboardUIEvent.OnClick(it.vaultItemId))
+                        },
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
                 }
             }
         }
@@ -166,14 +197,14 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
                             item = item,
                             header = header,
                             onDeleteRequested = {
-                                onEvent(DashboardUIEvent.OnDeleteRequested(item.vaultItemId))
+                                onEvent(DashboardUIEvent.OnDeleteRequest(item.vaultItemId))
                             },
                             modifier = Modifier.combinedClickable(
                                 onLongClick = {
-                                    onEvent(DashboardUIEvent.OnLongClicked(item.vaultItemId))
+                                    onEvent(DashboardUIEvent.OnLongClick(item.vaultItemId))
                                 },
                                 onClick = {
-                                    onEvent(DashboardUIEvent.OnClicked(item.vaultItemId))
+                                    onEvent(DashboardUIEvent.OnClick(item.vaultItemId))
                                 },
                             ),
                             containerColor = containerColor,
