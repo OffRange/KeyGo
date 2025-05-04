@@ -179,7 +179,7 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
                             containerColor = containerColor,
                         )
                     },
-                    modifier = Modifier.padding(8.dp)
+                    modifier = Modifier.padding(horizontal = 8.dp)
                 )
             }
         }
