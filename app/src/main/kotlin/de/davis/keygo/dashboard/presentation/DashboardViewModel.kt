@@ -145,14 +145,13 @@ class DashboardViewModel(
                 }
             }
 
-            is DashboardUIEvent.OnClick -> {
-                if (selectedItemIds.value.isNotEmpty()) {
+            is DashboardUIEvent.OnOpen -> openItem(event.vaultId)
+
+            is DashboardUIEvent.OnOpenOrSelect -> {
+                if (selectedItemIds.value.isNotEmpty())
                     toggleSelection(event.vaultId)
-                } else {
-                    openedItemId.update {
-                        event.vaultId
-                    }
-                }
+                else
+                    openItem(event.vaultId)
             }
 
             is DashboardUIEvent.OnLongClick -> {
@@ -183,6 +182,10 @@ class DashboardViewModel(
                 }
             }
         }
+    }
+
+    private fun openItem(id: Long) {
+        openedItemId.update { id }
     }
 
     private fun clearSearch() {

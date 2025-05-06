@@ -44,12 +44,14 @@ import androidx.compose.ui.unit.toSize
 import androidx.window.core.layout.WindowSizeClass
 import de.davis.keygo.R
 import de.davis.keygo.core.domain.model.Password
+import de.davis.keygo.core.domain.model.VaultSearchResult
 import de.davis.keygo.core.domain.model.crypto.CryptographicData
 import de.davis.keygo.dashboard.presentation.component.KeyGoLazyColumn
 import de.davis.keygo.dashboard.presentation.component.KeyGoLazyItem
 import de.davis.keygo.dashboard.presentation.component.SearchResult
 import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIState
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.flow.collectLatest
@@ -155,13 +157,10 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
                     state = searchBarState,
                     inputField = inputField,
                 ) {
-                    SearchResult(
+                    DashboardSearchResult(
                         searchResult = uiState.searchResult,
-                        onClick = {
-                            scope.launch { searchBarState.animateToCollapsed() }
-                            onEvent(DashboardUIEvent.OnClick(it.vaultItemId)) // TODO Should not be able to select -> prevent from selecting, enforce opening
-                        },
-                        modifier = Modifier.padding(horizontal = 8.dp)
+                        onCollapse = searchBarState::animateToCollapsed,
+                        onEvent = onEvent
                     )
                 }
             } else {
@@ -169,13 +168,10 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
                     state = searchBarState,
                     inputField = inputField,
                 ) {
-                    SearchResult(
-                        uiState.searchResult,
-                        onClick = {
-                            scope.launch { searchBarState.animateToCollapsed() }
-                            onEvent(DashboardUIEvent.OnClick(it.vaultItemId))
-                        },
-                        modifier = Modifier.padding(horizontal = 8.dp)
+                    DashboardSearchResult(
+                        searchResult = uiState.searchResult,
+                        onCollapse = searchBarState::animateToCollapsed,
+                        onEvent = onEvent
                     )
                 }
             }
@@ -204,7 +200,7 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
                                     onEvent(DashboardUIEvent.OnLongClick(item.vaultItemId))
                                 },
                                 onClick = {
-                                    onEvent(DashboardUIEvent.OnClick(item.vaultItemId))
+                                    onEvent(DashboardUIEvent.OnOpenOrSelect(item.vaultItemId))
                                 },
                             ),
                             containerColor = containerColor,
@@ -215,6 +211,23 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
             }
         }
     }
+}
+
+@Composable
+private fun DashboardSearchResult(
+    searchResult: ImmutableList<VaultSearchResult>,
+    onCollapse: suspend () -> Unit,
+    onEvent: (DashboardUIEvent) -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    SearchResult(
+        searchResult = searchResult,
+        onClick = {
+            scope.launch { onCollapse() }
+            onEvent(DashboardUIEvent.OnOpen(it.vaultItemId))
+        },
+        modifier = Modifier.padding(horizontal = 8.dp)
+    )
 }
 
 @Composable

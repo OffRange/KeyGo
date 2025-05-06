@@ -68,8 +68,8 @@ fun KeyGoLazyColumn(
     val containerColorForId = remember<@Composable (Long) -> Color>(openedItemId, selectedItemIds) {
         @Composable { id: Long ->
             when (id) {
-                openedItemId -> OpenedContainerColor
                 in selectedItemIds -> SelectedContainerColor
+                openedItemId -> OpenedContainerColor
                 else -> ContainerColor
             }
         }
@@ -81,7 +81,6 @@ fun KeyGoLazyColumn(
             verticalArrangement = Arrangement.spacedBy(ItemVerticalPadding)
         ) {
             itemsIndexed(items, key = { _, item -> item.vaultItemId }) { index, item ->
-
                 itemContent(
                     item,
                     containerColorForId(item.vaultItemId),
