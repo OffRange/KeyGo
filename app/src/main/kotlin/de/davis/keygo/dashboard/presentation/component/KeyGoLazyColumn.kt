@@ -105,7 +105,7 @@ fun KeyGoLazyColumn(
         if (items.isEmpty()) {
             return
         }
-        val headerContent by remember {
+        val headerContent by remember(items) {
             derivedStateOf {
                 if (listState.firstVisibleItemIndex < items.size)
                     headerProducer(items[listState.firstVisibleItemIndex]).toString()
@@ -218,7 +218,12 @@ private fun KeyGoLazyColumnPreview() {
             selectedItemIds = persistentSetOf(4),
             openedItemId = -1,
             itemContent = { item, containerColor, header ->
-                KeyGoLazyItem(item = item, header = header, onDeleteRequested = {}, containerColor = containerColor)
+                KeyGoLazyItem(
+                    item = item,
+                    header = header,
+                    onDeleteRequested = {},
+                    containerColor = containerColor
+                )
             },
             modifier = Modifier.fillMaxSize()
         )
