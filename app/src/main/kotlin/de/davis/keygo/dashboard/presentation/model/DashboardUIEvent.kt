@@ -1,5 +1,7 @@
 package de.davis.keygo.dashboard.presentation.model
 
+import de.davis.keygo.dashboard.domain.model.Filter
+
 sealed interface DashboardUIEvent {
 
     data object OnSearchSubmit : DashboardUIEvent
@@ -10,4 +12,6 @@ sealed interface DashboardUIEvent {
     data class OnOpenOrSelect(val vaultId: Long) : DashboardUIEvent
     data class OnLongClick(val vaultId: Long) : DashboardUIEvent
     data class OnDeleteRequest(val vaultId: Long) : DashboardUIEvent
+
+    data class OnFilterChange(val filter: Filter) : DashboardUIEvent
 }

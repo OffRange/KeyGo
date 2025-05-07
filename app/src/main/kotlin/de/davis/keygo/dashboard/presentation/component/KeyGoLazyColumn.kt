@@ -1,6 +1,7 @@
 package de.davis.keygo.dashboard.presentation.component
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
@@ -48,7 +49,9 @@ fun KeyGoLazyColumn(
     items: ImmutableList<VaultItem>,
     selectedItemIds: ImmutableSet<Long>,
     openedItemId: Long,
-    itemContent: @Composable LazyItemScope.(item: VaultItem, containerColor: Color, header: @Composable () -> Unit) -> Unit,
+    onDeleteRequest: (Long) -> Unit,
+    onItemClick: (Long) -> Unit,
+    onItemLongClick: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val groupedItems = remember(items) {
@@ -81,10 +84,9 @@ fun KeyGoLazyColumn(
             verticalArrangement = Arrangement.spacedBy(ItemVerticalPadding)
         ) {
             itemsIndexed(items, key = { _, item -> item.vaultItemId }) { index, item ->
-                itemContent(
-                    item,
-                    containerColorForId(item.vaultItemId),
-                    {
+                KeyGoLazyItem(
+                    item = item,
+                    header = {
                         val isFirstVisibleItem by remember {
                             derivedStateOf { listState.firstVisibleItemIndex == index }
                         }
@@ -97,7 +99,13 @@ fun KeyGoLazyColumn(
                         } else {
                             Spacer(modifier = Modifier.headerSize())
                         }
-                    }
+                    },
+                    onDeleteRequest = { onDeleteRequest(item.vaultItemId) },
+                    modifier = Modifier.combinedClickable(
+                        onClick = { onItemClick(item.vaultItemId) },
+                        onLongClick = { onItemLongClick(item.vaultItemId) }
+                    ),
+                    containerColor = containerColorForId(item.vaultItemId)
                 )
             }
         }
@@ -164,10 +172,10 @@ fun KeyGoLazyColumn(
 }
 
 @Composable
-fun LazyItemScope.KeyGoLazyItem(
+private fun LazyItemScope.KeyGoLazyItem(
     item: VaultItem,
     header: @Composable () -> Unit,
-    onDeleteRequested: () -> Unit,
+    onDeleteRequest: () -> Unit,
     modifier: Modifier = Modifier,
     containerColor: Color = Color.Unspecified,
     contentColor: Color = contentColorFor(containerColor),
@@ -176,7 +184,7 @@ fun LazyItemScope.KeyGoLazyItem(
         title = item.name,
         description = "TODO type of Item",
         onDeleteRequested = {
-            onDeleteRequested()
+            onDeleteRequest()
             // We return false here because it allows the swipe state to reset.
             // When an item is successfully deleted, a new list containing the
             // remaining items will be provided, causing the list to recompose
@@ -217,14 +225,9 @@ private fun KeyGoLazyColumnPreview() {
             }.toPersistentList(),
             selectedItemIds = persistentSetOf(4),
             openedItemId = -1,
-            itemContent = { item, containerColor, header ->
-                KeyGoLazyItem(
-                    item = item,
-                    header = header,
-                    onDeleteRequested = {},
-                    containerColor = containerColor
-                )
-            },
+            onDeleteRequest = {},
+            onItemClick = {},
+            onItemLongClick = {},
             modifier = Modifier.fillMaxSize()
         )
     }
@@ -251,6 +254,6 @@ internal val ItemVerticalPadding = 8.dp
 private val ContainerColor
     @Composable get() = MaterialTheme.colorScheme.surfaceContainerHigh
 private val OpenedContainerColor
-    @Composable get() = MaterialTheme.colorScheme.secondaryContainer
-private val SelectedContainerColor
     @Composable get() = MaterialTheme.colorScheme.primaryContainer
+private val SelectedContainerColor
+    @Composable get() = MaterialTheme.colorScheme.secondaryContainer

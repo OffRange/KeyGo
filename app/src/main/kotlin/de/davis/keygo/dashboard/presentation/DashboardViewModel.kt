@@ -13,6 +13,8 @@ import de.davis.keygo.core.domain.repository.VaultItemRepository
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.domain.usecase.InsertVaultItem
 import de.davis.keygo.core.presentation.snackbar.ItemDeletedMessage
+import de.davis.keygo.dashboard.domain.model.Filter
+import de.davis.keygo.dashboard.domain.usecase.FilterUseCase
 import de.davis.keygo.dashboard.presentation.model.DashboardNavEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIState
@@ -25,10 +27,10 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -37,7 +39,8 @@ import kotlin.time.Duration.Companion.milliseconds
 class DashboardViewModel(
     private val snackbarManager: SnackbarManager,
     private val vaultItemRepository: VaultItemRepository,
-    insertVaultItem: InsertVaultItem
+    insertVaultItem: InsertVaultItem,
+    filterItems: FilterUseCase
 ) : ViewModel() {
 
     private val textFieldState = TextFieldState()
@@ -46,16 +49,39 @@ class DashboardViewModel(
 
     private val searchResult = MutableStateFlow(emptyList<VaultSearchResult>())
 
+    private val filter = MutableStateFlow<Filter>(Filter.Alphanumerical())
+    private val flaggedForDeletion = MutableStateFlow(setOf<Long>())
+
+    private val nonDeletedSearchResult = combine(
+        flaggedForDeletion,
+        searchResult
+    ) { flaggedForDeletion, searchResult ->
+        filterItems(
+            filter = Filter.Alphanumerical(),
+            vaultItems = searchResult.filterNot { it.vaultItemId in flaggedForDeletion }
+        )
+    }
+
+
+    private val repoFilteredItems = combine(
+        vaultItemRepository.observeVaultItems(),
+        filter,
+        flaggedForDeletion
+    ) { items, filter, flaggedForDeletion ->
+        filterItems(
+            filter = filter,
+            vaultItems = items.filterNot { it.vaultItemId in flaggedForDeletion }
+        )
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     private val mainViewItems = submittedSearchQuery.flatMapLatest { show ->
         if (show.isBlank()) {
-            vaultItemRepository.observeVaultItems()
+            repoFilteredItems
         } else {
-            flowOf(searchResult.value) // TODO introduce suggestion and full-search queries
+            nonDeletedSearchResult // TODO introduce suggestion and full-search queries
         }
     }
-
-    private val flaggedForDeletion = MutableStateFlow(setOf<Long>())
 
     private val selectedItemIds = MutableStateFlow(setOf<Long>())
 
@@ -91,14 +117,13 @@ class DashboardViewModel(
         flaggedForDeletion,
         selectedItemIds,
         openedItemId,
-        searchResult,
+        nonDeletedSearchResult,
         navEvent
     ) { items, markedAsDeleted, selectedItemIds, openedItemId, searchResult, navEvent ->
         DashboardUIState(
             textFieldState = textFieldState,
             items = items
                 .filterNot { it.vaultItemId in markedAsDeleted }
-                .sortedBy { it.name }
                 .toImmutableList(),
             searchResult = searchResult.toImmutableList(),
             selectedItemIds = selectedItemIds.toImmutableSet(),
@@ -180,6 +205,10 @@ class DashboardViewModel(
                         )
                     )
                 }
+            }
+
+            is DashboardUIEvent.OnFilterChange -> {
+                filter.update { event.filter }
             }
         }
     }

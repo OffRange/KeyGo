@@ -1,7 +1,6 @@
 package de.davis.keygo.dashboard.presentation
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.input.TextFieldState
@@ -47,7 +46,6 @@ import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.core.domain.model.VaultSearchResult
 import de.davis.keygo.core.domain.model.crypto.CryptographicData
 import de.davis.keygo.dashboard.presentation.component.KeyGoLazyColumn
-import de.davis.keygo.dashboard.presentation.component.KeyGoLazyItem
 import de.davis.keygo.dashboard.presentation.component.SearchResult
 import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIState
@@ -105,7 +103,7 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
         }
     }
 
-    val inputField = @Composable {
+    val searchInputField = @Composable {
         SearchBarDefaults.InputField(
             textFieldState = uiState.textFieldState,
             searchBarState = searchBarState,
@@ -133,7 +131,6 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
                                 contentDescription = stringResource(R.string.back_content_description)
                             )
                         }
-
                     }
                 }
             },
@@ -148,14 +145,14 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
         topBar = {
             TopSearchBar(
                 state = searchBarState,
-                inputField = inputField,
+                inputField = searchInputField,
                 scrollBehavior = scrollBehavior,
             )
 
             if (shouldBeDocked) {
                 ExpandedDockedSearchBar(
                     state = searchBarState,
-                    inputField = inputField,
+                    inputField = searchInputField,
                 ) {
                     DashboardSearchResult(
                         searchResult = uiState.searchResult,
@@ -166,7 +163,7 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
             } else {
                 ExpandedFullScreenSearchBar(
                     state = searchBarState,
-                    inputField = inputField,
+                    inputField = searchInputField,
                 ) {
                     DashboardSearchResult(
                         searchResult = uiState.searchResult,
@@ -176,10 +173,10 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
                 }
             }
         }
-    ) {
+    ) { padding ->
         Surface(
             modifier = Modifier
-                .padding(it)
+                .padding(padding)
         ) {
             CompositionLocalProvider(
                 LocalViewConfiguration provides newViewConfiguration,
@@ -188,23 +185,14 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
                     items = uiState.items,
                     selectedItemIds = uiState.selectedItemIds,
                     openedItemId = uiState.openedItemId,
-                    itemContent = { item, containerColor, header ->
-                        KeyGoLazyItem(
-                            item = item,
-                            header = header,
-                            onDeleteRequested = {
-                                onEvent(DashboardUIEvent.OnDeleteRequest(item.vaultItemId))
-                            },
-                            modifier = Modifier.combinedClickable(
-                                onLongClick = {
-                                    onEvent(DashboardUIEvent.OnLongClick(item.vaultItemId))
-                                },
-                                onClick = {
-                                    onEvent(DashboardUIEvent.OnOpenOrSelect(item.vaultItemId))
-                                },
-                            ),
-                            containerColor = containerColor,
-                        )
+                    onDeleteRequest = {
+                        onEvent(DashboardUIEvent.OnDeleteRequest(it))
+                    },
+                    onItemClick = {
+                        onEvent(DashboardUIEvent.OnOpenOrSelect(it))
+                    },
+                    onItemLongClick = {
+                        onEvent(DashboardUIEvent.OnLongClick(it))
                     },
                     modifier = Modifier.padding(horizontal = 8.dp)
                 )
