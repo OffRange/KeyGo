@@ -51,7 +51,7 @@ class DashboardViewModel(
         if (show.isBlank()) {
             vaultItemRepository.observeVaultItems()
         } else {
-            flowOf(searchResult.value) // TODO introduce suggestion and ful-search queries
+            flowOf(searchResult.value) // TODO introduce suggestion and full-search queries
         }
     }
 
@@ -190,6 +190,7 @@ class DashboardViewModel(
 
     private fun clearSearch() {
         textFieldState.clearText()
+        submittedSearchQuery.update { "" }
     }
 
     private fun toggleSelection(id: Long) {
