@@ -115,7 +115,7 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
             },
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = {
-                AnimatedContent(uiState.textFieldState.text.isEmpty() && searchBarState.currentValue == SearchBarValue.Collapsed) {
+                AnimatedContent(uiState.textFieldState.text.isEmpty() && searchBarState.targetValue == SearchBarValue.Collapsed) {
                     when (it) {
                         true -> Icon(
                             imageVector = Icons.Default.Search,
