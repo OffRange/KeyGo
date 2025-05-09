@@ -1,7 +1,6 @@
 package de.davis.keygo.automation.processor.handler
 
 import com.google.devtools.ksp.processing.CodeGenerator
-import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import de.davis.keygo.automation.processor.WriterScope
@@ -14,7 +13,6 @@ import org.koin.core.component.inject
 
 class RouteHandler : Handler<KSFunctionDeclaration, Route>, KoinComponent {
     private val codeGenerator: CodeGenerator by inject()
-    private val logger: KSPLogger by inject()
 
     override fun handleSymbols(symbols: List<KSFunctionDeclaration>): List<KSAnnotated> {
         val grouped = symbols.groupBy { symbol ->
@@ -29,7 +27,6 @@ class RouteHandler : Handler<KSFunctionDeclaration, Route>, KoinComponent {
                 val name = annotation?.name?.ifBlank { null }
                     ?: declaration.simpleName.getShortName()
 
-                logger.warn(name)
                 RouteTree.Endpoint(name)
             }
 
@@ -41,19 +38,17 @@ class RouteHandler : Handler<KSFunctionDeclaration, Route>, KoinComponent {
 
         val root = RouteTree.Root("RouteDestination", tree.toSet())
 
-        logger.warn("writing $root}")
         codeGenerator.file(fileName = root.name) {
-            write(root, logger)
+            write(root)
         }
 
         return emptyList()
     }
 }
 
-private fun WriterScope.write(treeNode: RouteTree, logger: KSPLogger) {
+private fun WriterScope.write(treeNode: RouteTree) {
     when (treeNode) {
         is RouteTree.Endpoint -> {
-            logger.warn("write ${treeNode.name}")
             dataObject(
                 name = treeNode.name,
                 annotations = listOf("kotlinx.serialization.Serializable")
@@ -67,7 +62,7 @@ private fun WriterScope.write(treeNode: RouteTree, logger: KSPLogger) {
                     annotations = listOf("kotlinx.serialization.Serializable")
                 )
                 treeNode.routes.forEach {
-                    write(it, logger)
+                    write(it)
                 }
             }
         }
