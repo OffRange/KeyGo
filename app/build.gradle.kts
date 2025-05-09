@@ -119,3 +119,7 @@ protobuf {
 room {
     schemaDirectory("$projectDir/schemas")
 }
+
+ksp {
+    arg("automation.packageName", "de.davis.keygo.generated")
+}

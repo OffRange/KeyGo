@@ -1,7 +1,9 @@
 package de.davis.keygo.core.domain.model
 
 import de.davis.keygo.core.domain.model.crypto.CryptographicData
+import de.davis.keygo.processor.annotation.VaultEntity
 
+@VaultEntity(resString = "password")
 data class Password(
     val passwordId: Long = 0,
     val username: String?,

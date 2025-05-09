@@ -7,6 +7,7 @@ import java.io.OutputStream
 @DslMarker
 annotation class WriterDsl
 
+@Deprecated("Migrate to kotlinpoet")
 @WriterDsl
 class WriterScope(
     private val outputStream: OutputStream
@@ -87,9 +88,11 @@ fun CodeGenerator.file(
         ex.file.outputStream()
     }
 
-    WriterScope(outputStream).apply {
-        write("package $packageName", newLine = true)
-        writeNewLine()
-        block()
+    outputStream.use {
+        WriterScope(it).apply {
+            write("package $packageName", newLine = true)
+            writeNewLine()
+            block()
+        }
     }
 }
