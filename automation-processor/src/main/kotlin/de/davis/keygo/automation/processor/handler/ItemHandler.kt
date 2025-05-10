@@ -8,6 +8,7 @@ import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.AnnotationSpec
+import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.LONG
 import de.davis.keygo.automation.processor.exception.NotFoundException
@@ -19,8 +20,10 @@ import de.davis.keygo.automation.processor.model.Entry
 import de.davis.keygo.automation.processor.model.ForeignKey
 import de.davis.keygo.automation.processor.model.Index
 import de.davis.keygo.automation.processor.model.getOwnProperties
+import de.davis.keygo.automation.processor.util.COMPOSABLE_CLASS_NAME
 import de.davis.keygo.automation.processor.util.EMBEDDED_CLASS_NAME
 import de.davis.keygo.automation.processor.util.GetClassName
+import de.davis.keygo.automation.processor.util.STRING_RESOURCE_MEMBER_NAME
 import de.davis.keygo.automation.processor.util.StringUtils.camelToSnakeCase
 import de.davis.keygo.automation.processor.util.StringUtils.isCamelCase
 import de.davis.keygo.automation.processor.util.primaryRoomKey
@@ -79,9 +82,11 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
 
     fun writeEnum(roots: List<Entry.RootEntry>) {
         roots.forEach { root ->
+            val rootClassName = root.enumClassName(getClassName = className)
+
             file(
                 codeGenerator = codeGenerator,
-                className = root.enumClassName(getClassName = className)
+                className = rootClassName
             ) { className ->
                 enum(className) {
                     constructor {
@@ -94,6 +99,14 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
                         }
                     }
                 }
+
+                val funSpec = FunSpec.builder("getString")
+                    .addAnnotation(COMPOSABLE_CLASS_NAME)
+                    .receiver(rootClassName)
+                    .returns(String::class)
+                    .addStatement("return %M(resString)", STRING_RESOURCE_MEMBER_NAME)
+
+                fileSpecBuilder.addFunction(funSpec.build())
             }
         }
     }
