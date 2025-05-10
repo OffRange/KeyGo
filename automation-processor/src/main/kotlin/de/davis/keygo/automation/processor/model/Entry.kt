@@ -37,6 +37,11 @@ sealed class Entry : KoinComponent {
     ) : Entry() {
 
         val rootVaultId: String = Constants.ColumnNames.VAULT_ID
+
+        fun relationClassName(getClassName: GetClassName) = getClassName(
+            "${Constants.Prefixes.VAULT_PREFIX}$simpleName",
+            packageNameSuffix = Constants.Packages.RELATION_PACKAGE_SUFFIX
+        )
     }
 
     fun entityClassName(getClassName: GetClassName) = getClassName(

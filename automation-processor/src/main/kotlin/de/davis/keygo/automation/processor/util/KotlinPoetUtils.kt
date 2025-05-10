@@ -45,8 +45,16 @@ fun roomEntity(foreignKey: ForeignKey? = null, index: Index? = null) =
         }
         .build()
 
+fun roomRelation(parentColumn: String, entityColumn: String) =
+    AnnotationSpec.builder(RELATION_CLASS_NAME)
+        .addMember("parentColumn = %S", parentColumn)
+        .addMember("entityColumn = %S", entityColumn)
+        .build()
+
 val FOREIGN_KEY_CLASS_NAME = ClassName("androidx.room", "ForeignKey")
 val INDEX_CLASS_NAME = ClassName("androidx.room", "Index")
 val ENTITY_CLASS_NAME = ClassName("androidx.room", "Entity")
+val EMBEDDED_CLASS_NAME = ClassName("androidx.room", "Embedded")
+val RELATION_CLASS_NAME = ClassName("androidx.room", "Relation")
 val COMPOSABLE_CLASS_NAME = ClassName("androidx.compose.runtime", "Composable")
 val STRING_RESOURCE_MEMBER_NAME = MemberName("androidx.compose.ui.res", "stringResource")

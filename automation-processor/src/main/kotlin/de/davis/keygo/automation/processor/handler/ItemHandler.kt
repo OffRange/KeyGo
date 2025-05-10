@@ -19,12 +19,14 @@ import de.davis.keygo.automation.processor.model.Entry
 import de.davis.keygo.automation.processor.model.ForeignKey
 import de.davis.keygo.automation.processor.model.Index
 import de.davis.keygo.automation.processor.model.getOwnProperties
+import de.davis.keygo.automation.processor.util.EMBEDDED_CLASS_NAME
 import de.davis.keygo.automation.processor.util.GetClassName
 import de.davis.keygo.automation.processor.util.StringUtils.camelToSnakeCase
 import de.davis.keygo.automation.processor.util.StringUtils.isCamelCase
 import de.davis.keygo.automation.processor.util.primaryRoomKey
 import de.davis.keygo.automation.processor.util.roomColumnInfo
 import de.davis.keygo.automation.processor.util.roomEntity
+import de.davis.keygo.automation.processor.util.roomRelation
 import de.davis.keygo.automation.processor.util.stringRes
 import de.davis.keygo.processor.annotation.Ignore
 import de.davis.keygo.processor.annotation.RootVaultEntity
@@ -70,6 +72,7 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
 
         writeEnum(roots)
         writeEntities(roots)
+        writeRelations(roots)
 
         return emptyList()
     }
@@ -149,6 +152,42 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
                                 subclass.rootVaultId,
                                 LONG,
                                 listOf(roomColumnInfo(name = subclass.rootVaultId.camelToSnakeCase()))
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fun writeRelations(roots: List<Entry.RootEntry>) {
+        roots.forEach { root ->
+            val rootClassName = root.entityClassName(getClassName = className)
+
+            root.children.forEach { subclass ->
+                file(
+                    codeGenerator = codeGenerator,
+                    className = subclass.relationClassName(getClassName = className)
+                ) {
+                    dataClass(subclass.relationClassName(getClassName = className)) {
+                        constructor {
+                            parameter(
+                                name = rootClassName.simpleName.replaceFirstChar { it.lowercase() },
+                                type = rootClassName,
+                                annotations = listOf(
+                                    AnnotationSpec.builder(EMBEDDED_CLASS_NAME).build()
+                                )
+                            )
+
+                            parameter(
+                                name = subclass.simpleName.replaceFirstChar { it.lowercase() },
+                                type = subclass.entityClassName(getClassName = className),
+                                annotations = listOf(
+                                    roomRelation(
+                                        parentColumn = root.idProperty.name.camelToSnakeCase(),
+                                        entityColumn = subclass.rootVaultId.camelToSnakeCase()
+                                    )
+                                )
                             )
                         }
                     }
