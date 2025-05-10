@@ -8,6 +8,10 @@ import de.davis.keygo.automation.processor.ext.findSymbolsWith
 interface Handler<Node : KSNode, A : Annotation> {
 
     fun handleSymbols(symbols: List<Node>): List<KSAnnotated>
+
+    fun filter(node: Node): Boolean {
+        return true
+    }
 }
 
 /**
@@ -21,6 +25,7 @@ interface Handler<Node : KSNode, A : Annotation> {
 inline fun <reified Node : KSNode, reified A : Annotation> Resolver.handle(handler: Handler<Node, A>): List<KSAnnotated> =
     findSymbolsWith<Node, A>()
         .takeIf { it.isNotEmpty() }
+        ?.filter(handler::filter)
         ?.let {
             handler.handleSymbols(it)
         } ?: emptyList()

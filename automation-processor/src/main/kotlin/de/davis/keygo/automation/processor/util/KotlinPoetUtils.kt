@@ -37,10 +37,13 @@ fun roomColumnInfo(name: String) =
         .addMember("name = %S", name)
         .build()
 
-fun roomEntity(foreignKey: ForeignKey, index: Index) = AnnotationSpec.builder(ENTITY_CLASS_NAME)
-    .addMember("foreignKeys = [%L]", foreignKey.foreignKey())
-    .addMember("indices = [%L]", index.index())
-    .build()
+fun roomEntity(foreignKey: ForeignKey? = null, index: Index? = null) =
+    AnnotationSpec.builder(ENTITY_CLASS_NAME)
+        .apply {
+            foreignKey?.let { addMember("foreignKeys = [%L]", it.foreignKey()) }
+            index?.let { addMember("indices = [%L]", it.index()) }
+        }
+        .build()
 
 val FOREIGN_KEY_CLASS_NAME = ClassName("androidx.room", "ForeignKey")
 val INDEX_CLASS_NAME = ClassName("androidx.room", "Index")

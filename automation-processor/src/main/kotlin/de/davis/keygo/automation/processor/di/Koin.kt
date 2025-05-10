@@ -4,8 +4,6 @@ import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.KSPLogger
 import de.davis.keygo.automation.processor.model.Options
 import de.davis.keygo.automation.processor.util.GetClassName
-import de.davis.keygo.automation.processor.writer.EntityWriter
-import de.davis.keygo.automation.processor.writer.EnumWriter
 import org.koin.core.context.startKoin
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
@@ -18,8 +16,6 @@ fun initiateKoin(logger: KSPLogger, codeGenerator: CodeGenerator, options: Optio
             single { options }
 
             singleOf(::GetClassName)
-            singleOf(::EntityWriter)
-            singleOf(::EnumWriter)
         }.also(::modules)
     }
 }

@@ -12,11 +12,6 @@ object Constants {
     }
 
     object ColumnNames {
-        const val ID = "id"
         const val VAULT_ID = "vaultId"
-    }
-
-    object ErrorMessages {
-        const val VAULT_ENTITY_ANNOTATION_MISSING = "Annotation @VaultEntity is missing on %s"
     }
 }
