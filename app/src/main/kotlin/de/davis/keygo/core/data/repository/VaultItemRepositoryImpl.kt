@@ -9,7 +9,7 @@ import de.davis.keygo.core.domain.repository.VaultItemRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class VaultItemRepositoryImpl(
+internal class VaultItemRepositoryImpl(
     private val vaultDao: VaultDao
 ) : VaultItemRepository {
 

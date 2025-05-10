@@ -2,15 +2,15 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "c3d7d6365c5bda6f3af910aa5b412d52",
+    "identityHash": "1bc6affa57b0b30b1ed9347730c997fe",
     "entities": [
       {
-        "tableName": "VaultItem",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `encrypted_data` BLOB NOT NULL, `short_note` TEXT)",
+        "tableName": "VaultItemEntity",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`vault_item_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `note` TEXT, `encrypted_data` BLOB NOT NULL)",
         "fields": [
           {
-            "fieldPath": "id",
-            "columnName": "id",
+            "fieldPath": "vaultItemId",
+            "columnName": "vault_item_id",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -21,37 +21,31 @@
             "notNull": true
           },
           {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          },
+          {
             "fieldPath": "encryptedData",
             "columnName": "encrypted_data",
             "affinity": "BLOB",
             "notNull": true
-          },
-          {
-            "fieldPath": "shortNote",
-            "columnName": "short_note",
-            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
           "autoGenerate": true,
           "columnNames": [
-            "id"
+            "vault_item_id"
           ]
         }
       },
       {
-        "tableName": "Password",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `vault_id` INTEGER NOT NULL, `username` TEXT, `website` TEXT, FOREIGN KEY(`vault_id`) REFERENCES `VaultItem`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "tableName": "PasswordEntity",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`password_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `username` TEXT, `website` TEXT, `vault_id` INTEGER NOT NULL, FOREIGN KEY(`vault_id`) REFERENCES `VaultItemEntity`(`vault_item_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "vaultId",
-            "columnName": "vault_id",
+            "fieldPath": "passwordId",
+            "columnName": "password_id",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -64,35 +58,41 @@
             "fieldPath": "website",
             "columnName": "website",
             "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "vaultId",
+            "columnName": "vault_id",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
           "autoGenerate": true,
           "columnNames": [
-            "id"
+            "password_id"
           ]
         },
         "indices": [
           {
-            "name": "index_Password_vault_id",
+            "name": "index_PasswordEntity_vault_id",
             "unique": true,
             "columnNames": [
               "vault_id"
             ],
             "orders": [],
-            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_Password_vault_id` ON `${TABLE_NAME}` (`vault_id`)"
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_PasswordEntity_vault_id` ON `${TABLE_NAME}` (`vault_id`)"
           }
         ],
         "foreignKeys": [
           {
-            "table": "VaultItem",
+            "table": "VaultItemEntity",
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
               "vault_id"
             ],
             "referencedColumns": [
-              "id"
+              "vault_item_id"
             ]
           }
         ]
@@ -100,7 +100,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c3d7d6365c5bda6f3af910aa5b412d52')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1bc6affa57b0b30b1ed9347730c997fe')"
     ]
   }
 }

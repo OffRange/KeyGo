@@ -8,7 +8,7 @@ import de.davis.keygo.core.domain.repository.PasswordRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class PasswordRepositoryImpl(
+internal class PasswordRepositoryImpl(
     private val passwordDao: PasswordDao
 ) : PasswordRepository {
 
