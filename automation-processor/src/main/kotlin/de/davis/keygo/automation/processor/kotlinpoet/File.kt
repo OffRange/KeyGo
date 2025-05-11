@@ -10,7 +10,7 @@ import com.squareup.kotlinpoet.ksp.writeTo
 class FileBuilder(
     private val codeGenerator: CodeGenerator,
     val fileSpecBuilder: FileSpec.Builder,
-) {
+) : FunctionHolder<FileSpec.Builder>(fileSpecBuilder) {
 
     fun build() {
         fileSpecBuilder

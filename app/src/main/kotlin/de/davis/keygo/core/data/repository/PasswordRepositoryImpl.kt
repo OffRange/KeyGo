@@ -1,10 +1,10 @@
 package de.davis.keygo.core.data.repository
 
 import de.davis.keygo.core.data.local.dao.PasswordDao
-import de.davis.keygo.core.data.mapper.toData
-import de.davis.keygo.core.data.mapper.toDomain
 import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.core.domain.repository.PasswordRepository
+import de.davis.keygo.generated.item.data.mapper.toData
+import de.davis.keygo.generated.item.data.mapper.toDomain
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 

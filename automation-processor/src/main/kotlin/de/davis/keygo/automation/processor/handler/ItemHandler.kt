@@ -10,9 +10,10 @@ import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
-import com.squareup.kotlinpoet.LONG
+import com.squareup.kotlinpoet.TypeName
 import de.davis.keygo.automation.processor.exception.NotFoundException
 import de.davis.keygo.automation.processor.ext.getAnnotation
+import de.davis.keygo.automation.processor.kotlinpoet.FileBuilder
 import de.davis.keygo.automation.processor.kotlinpoet.dataClass
 import de.davis.keygo.automation.processor.kotlinpoet.enum
 import de.davis.keygo.automation.processor.kotlinpoet.file
@@ -21,6 +22,7 @@ import de.davis.keygo.automation.processor.model.ForeignKey
 import de.davis.keygo.automation.processor.model.Index
 import de.davis.keygo.automation.processor.model.getOwnProperties
 import de.davis.keygo.automation.processor.util.COMPOSABLE_CLASS_NAME
+import de.davis.keygo.automation.processor.util.Constants
 import de.davis.keygo.automation.processor.util.EMBEDDED_CLASS_NAME
 import de.davis.keygo.automation.processor.util.GetClassName
 import de.davis.keygo.automation.processor.util.STRING_RESOURCE_MEMBER_NAME
@@ -51,6 +53,9 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
     @OptIn(KspExperimental::class)
     override fun handleSymbols(symbols: List<KSClassDeclaration>): List<KSAnnotated> {
         symbols.map { root ->
+            val rootProperties = root.getOwnProperties()
+            val rootId = rootProperties.first { it.isId }
+
             val subclasses = root.getSealedSubclasses()
                 .filterNot { it.isAnnotationPresent(Ignore::class) }
                 .map {
@@ -60,7 +65,8 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
                         vaultEntity = it.getAnnotation<VaultEntity>() ?: throw NotFoundException(
                             "Annotation @VaultEntity is missing on ${it.simpleName.asString()}"
                         ),
-                        properties = it.getOwnProperties()
+                        properties = it.getOwnProperties(),
+                        rootId = rootId
                     )
                 }
                 .toList()
@@ -68,7 +74,7 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
             Entry.RootEntry(
                 simpleName = root.simpleName.asString(),
                 packageName = root.packageName.asString(),
-                properties = root.getOwnProperties(),
+                properties = rootProperties,
                 children = subclasses
             )
         }.also(roots::addAll)
@@ -76,6 +82,7 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
         writeEnum(roots)
         writeEntities(roots)
         writeRelations(roots)
+        writeMappers(roots)
 
         return emptyList()
     }
@@ -143,10 +150,10 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
                                 foreignKey = ForeignKey(
                                     entity = root.entityClassName(getClassName = className),
                                     parentColumns = listOf(root.idProperty.name.camelToSnakeCase()),
-                                    childColumns = listOf(subclass.rootVaultId.camelToSnakeCase()),
+                                    childColumns = listOf(subclass.rootId.name.camelToSnakeCase()),
                                 ),
                                 index = Index(
-                                    value = listOf(subclass.rootVaultId.camelToSnakeCase()),
+                                    value = listOf(subclass.rootId.name.camelToSnakeCase()),
                                     unique = true,
                                 )
                             )
@@ -162,9 +169,9 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
                             }
 
                             parameter(
-                                subclass.rootVaultId,
-                                LONG,
-                                listOf(roomColumnInfo(name = subclass.rootVaultId.camelToSnakeCase()))
+                                subclass.rootId.name,
+                                subclass.rootId.type,
+                                listOf(roomColumnInfo(name = subclass.rootId.name.camelToSnakeCase()))
                             )
                         }
                     }
@@ -185,7 +192,7 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
                     dataClass(subclass.relationClassName(getClassName = className)) {
                         constructor {
                             parameter(
-                                name = rootClassName.simpleName.replaceFirstChar { it.lowercase() },
+                                name = root.embeddedName(getClassName = className),
                                 type = rootClassName,
                                 annotations = listOf(
                                     AnnotationSpec.builder(EMBEDDED_CLASS_NAME).build()
@@ -193,12 +200,12 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
                             )
 
                             parameter(
-                                name = subclass.simpleName.replaceFirstChar { it.lowercase() },
+                                name = subclass.relationPropertyName,
                                 type = subclass.entityClassName(getClassName = className),
                                 annotations = listOf(
                                     roomRelation(
                                         parentColumn = root.idProperty.name.camelToSnakeCase(),
-                                        entityColumn = subclass.rootVaultId.camelToSnakeCase()
+                                        entityColumn = subclass.rootId.name.camelToSnakeCase()
                                     )
                                 )
                             )
@@ -207,5 +214,141 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
                 }
             }
         }
+    }
+
+    fun writeMappers(roots: List<Entry.RootEntry>) {
+        roots.forEach { root ->
+            file(
+                codeGenerator = codeGenerator,
+                className = root.mapperClassName(getClassName = className)
+            ) {
+                writeMapperFunction(
+                    type = MapperType.TO_DATA,
+                    root = root
+                )
+                writeMapperFunction(
+                    type = MapperType.TO_DOMAIN,
+                    root = root
+                )
+            }
+
+            root.children.forEach { subclass ->
+                file(
+                    codeGenerator = codeGenerator,
+                    className = subclass.mapperClassName(getClassName = className)
+                ) {
+                    writeMapperFunction(
+                        type = MapperType.TO_DATA,
+                        root = root,
+                        child = subclass
+                    )
+                    writeMapperFunction(
+                        type = MapperType.TO_DOMAIN,
+                        root = root,
+                        child = subclass
+                    )
+
+                    mapperFunction(
+                        name = MapperType.TO_DOMAIN.funName,
+                        receiver = subclass.relationClassName(getClassName = className),
+                        returnType = subclass.className
+                    ) {
+                        `return`(
+                            "%L.%L(%L)",
+                            subclass.relationPropertyName,
+                            MapperType.TO_DOMAIN.funName,
+                            root.embeddedName(getClassName = className)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+
+    private fun FileBuilder.writeMapperFunction(
+        type: MapperType,
+        root: Entry.RootEntry,
+    ) {
+        val (receiver, returnType) = when (type) {
+            MapperType.TO_DATA -> root.className to root.entityClassName(getClassName = className)
+            MapperType.TO_DOMAIN -> root.entityClassName(getClassName = className) to root.className
+        }
+
+        val fields = root.properties.associate {
+            it.name to it.name
+        }
+
+        writeMapperFunction(
+            funName = type.funName,
+            receiver = receiver,
+            returnType = returnType,
+            fields = fields,
+        )
+    }
+
+    private fun FileBuilder.writeMapperFunction(
+        type: MapperType,
+        root: Entry.RootEntry,
+        child: Entry.ChildEntry,
+    ) {
+        val (receiver, returnType) = when (type) {
+            MapperType.TO_DATA -> child.className to child.entityClassName(getClassName = className)
+            MapperType.TO_DOMAIN -> child.entityClassName(getClassName = className) to child.className
+        }
+
+        val fields = child.properties.associate {
+            it.name to it.name
+        }.toMutableMap()
+
+        val parameter = when (type) {
+            MapperType.TO_DATA -> {
+                fields.put(child.rootId.name, child.rootId.name)
+                null
+            }
+
+            MapperType.TO_DOMAIN -> {
+                val rootItem = root.entityClassName(getClassName = className)
+                    .simpleName
+                    .replaceFirstChar { it.lowercase() }
+                root.properties.associate {
+                    it.name to "$rootItem.${it.name}"
+                }.also(fields::putAll)
+                rootItem to root.entityClassName(getClassName = className)
+            }
+        }
+
+        writeMapperFunction(
+            funName = type.funName,
+            receiver = receiver,
+            returnType = returnType,
+            fields = fields,
+            parameter = parameter
+        )
+    }
+
+    private fun FileBuilder.writeMapperFunction(
+        funName: String,
+        receiver: TypeName,
+        returnType: TypeName,
+        fields: Map<String, String>,
+        parameter: Pair<String, TypeName>? = null,
+    ) {
+        mapperFunction(
+            name = funName,
+            receiver = receiver,
+            returnType = returnType
+        ) {
+            parameter?.let { (paramName, paramType) ->
+                parameter(paramName, paramType)
+            }
+
+            `return`("%T(${fields.entries.joinToString(", ")})", returnType)
+        }
+    }
+
+    enum class MapperType(val funName: String) {
+        TO_DATA(Constants.MapperNames.TO_DATA),
+        TO_DOMAIN(Constants.MapperNames.TO_DOMAIN)
     }
 }
