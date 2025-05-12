@@ -40,7 +40,7 @@ import de.davis.keygo.generated.item.VaultItemEnum
 import de.davis.keygo.generated.item.getString
 
 @Composable
-fun SelectItemContent() {
+fun SelectItemContent(onSelect: (VaultItemEnum) -> Unit) {
     AlertDialogContent(
         title = {
             Text(text = stringResource(R.string.select_item))
@@ -54,7 +54,7 @@ fun SelectItemContent() {
                     modifier = Modifier
                         .minimumInteractiveComponentSize()
                         .clickable(
-                            onClick = { /* TODO: Handle click */ },
+                            onClick = { onSelect(it) },
                             interactionSource = interactionSource,
                             indication = ripple()
                         ),
@@ -189,7 +189,7 @@ private fun SelectItemContentPreview() {
             BasicAlertDialog(
                 onDismissRequest = {},
             ) {
-                SelectItemContent()
+                SelectItemContent(onSelect = {})
             }
         }
     }
