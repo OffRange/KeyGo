@@ -1,8 +1,8 @@
 package de.davis.keygo.core.domain.model
 
 import de.davis.keygo.core.domain.model.crypto.CryptographicData
+import de.davis.keygo.processor.annotation.BasicModel
 import de.davis.keygo.processor.annotation.Id
-import de.davis.keygo.processor.annotation.Ignore
 import de.davis.keygo.processor.annotation.RootVaultEntity
 
 @RootVaultEntity
@@ -13,7 +13,7 @@ sealed interface VaultItem {
     val note: String?
     val encryptedData: CryptographicData
 
-    @Ignore
+    @BasicModel
     data class Basic(
         override val vaultItemId: Long = 0,
         override val name: String,

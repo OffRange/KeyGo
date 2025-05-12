@@ -11,6 +11,7 @@ import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.ksp.toClassName
 import de.davis.keygo.automation.processor.exception.NotFoundException
 import de.davis.keygo.automation.processor.ext.getAnnotation
 import de.davis.keygo.automation.processor.kotlinpoet.FileBuilder
@@ -33,11 +34,13 @@ import de.davis.keygo.automation.processor.util.roomColumnInfo
 import de.davis.keygo.automation.processor.util.roomEntity
 import de.davis.keygo.automation.processor.util.roomRelation
 import de.davis.keygo.automation.processor.util.stringRes
+import de.davis.keygo.processor.annotation.BasicModel
 import de.davis.keygo.processor.annotation.Ignore
 import de.davis.keygo.processor.annotation.RootVaultEntity
 import de.davis.keygo.processor.annotation.VaultEntity
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import kotlin.reflect.KClass
 
 class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent {
 
@@ -57,13 +60,13 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
             val rootId = rootProperties.first { it.isId }
 
             val subclasses = root.getSealedSubclasses()
-                .filterNot { it.isAnnotationPresent(Ignore::class) }
+                .filterNot { it.areAnyAnnotationsPresent(Ignore::class, BasicModel::class) }
                 .map {
                     Entry.ChildEntry(
                         simpleName = it.simpleName.asString(),
                         packageName = it.packageName.asString(),
                         vaultEntity = it.getAnnotation<VaultEntity>() ?: throw NotFoundException(
-                            "Annotation @VaultEntity is missing on ${it.simpleName.asString()}"
+                            "Annotation @RootVaultEntity is missing on ${it.qualifiedName?.asString()}"
                         ),
                         properties = it.getOwnProperties(),
                         rootId = rootId
@@ -75,6 +78,8 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
                 simpleName = root.simpleName.asString(),
                 packageName = root.packageName.asString(),
                 properties = rootProperties,
+                basicClassName = root.getSealedSubclasses()
+                    .firstOrNull { it.isAnnotationPresent(BasicModel::class) }?.toClassName(),
                 children = subclasses
             )
         }.also(roots::addAll)
@@ -86,6 +91,10 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
 
         return emptyList()
     }
+
+    @OptIn(KspExperimental::class)
+    fun KSClassDeclaration.areAnyAnnotationsPresent(vararg annotations: KClass<out Annotation>) =
+        annotations.any { isAnnotationPresent(it) }
 
     fun writeEnum(roots: List<Entry.RootEntry>) {
         roots.forEach { root ->
@@ -272,8 +281,10 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
     ) {
         val (receiver, returnType) = when (type) {
             MapperType.TO_DATA -> root.className to root.entityClassName(getClassName = className)
-            MapperType.TO_DOMAIN -> root.entityClassName(getClassName = className) to root.className
+            MapperType.TO_DOMAIN -> root.entityClassName(getClassName = className) to root.basicClassName
         }
+
+        returnType ?: return
 
         val fields = root.properties.associate {
             it.name to it.name

@@ -18,6 +18,7 @@ sealed class Entry : KoinComponent {
         override val simpleName: String,
         override val packageName: String,
         override val properties: Sequence<Property>,
+        val basicClassName: ClassName?,
         val children: List<ChildEntry>
     ) : Entry() {
 
