@@ -23,6 +23,10 @@ class EnumBuilder(
         fun parameter(memberName: MemberName) {
             typeSpec.addSuperclassConstructorParameter("%L", memberName)
         }
+
+        fun parameter(format: String, vararg args: Any) {
+            typeSpec.addSuperclassConstructorParameter(format, *args)
+        }
     }
 }
 

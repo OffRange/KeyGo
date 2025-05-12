@@ -51,6 +51,9 @@ fun roomRelation(parentColumn: String, entityColumn: String) =
         .addMember("entityColumn = %S", entityColumn)
         .build()
 
+fun defaultIconMemberName(iconName: String) =
+    MemberName("${ICONS_DEFAULT_CLASS_NAME.packageName}.filled", iconName)
+
 val FOREIGN_KEY_CLASS_NAME = ClassName("androidx.room", "ForeignKey")
 val INDEX_CLASS_NAME = ClassName("androidx.room", "Index")
 val ENTITY_CLASS_NAME = ClassName("androidx.room", "Entity")
@@ -58,3 +61,6 @@ val EMBEDDED_CLASS_NAME = ClassName("androidx.room", "Embedded")
 val RELATION_CLASS_NAME = ClassName("androidx.room", "Relation")
 val COMPOSABLE_CLASS_NAME = ClassName("androidx.compose.runtime", "Composable")
 val STRING_RESOURCE_MEMBER_NAME = MemberName("androidx.compose.ui.res", "stringResource")
+
+val ICONS_DEFAULT_CLASS_NAME = ClassName("androidx.compose.material.icons", "Icons")
+val IMAGE_VECTOR_CLASS_NAME = ClassName("androidx.compose.ui.graphics.vector", "ImageVector")

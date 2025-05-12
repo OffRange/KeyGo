@@ -4,7 +4,7 @@ import de.davis.keygo.core.domain.model.crypto.CryptographicData
 import de.davis.keygo.processor.annotation.Id
 import de.davis.keygo.processor.annotation.VaultEntity
 
-@VaultEntity(resString = "password")
+@VaultEntity(resString = "password", defaultIconType = "Password")
 data class Password(
     @Id
     val passwordId: Long = 0,

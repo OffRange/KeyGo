@@ -26,9 +26,12 @@ import de.davis.keygo.automation.processor.util.COMPOSABLE_CLASS_NAME
 import de.davis.keygo.automation.processor.util.Constants
 import de.davis.keygo.automation.processor.util.EMBEDDED_CLASS_NAME
 import de.davis.keygo.automation.processor.util.GetClassName
+import de.davis.keygo.automation.processor.util.ICONS_DEFAULT_CLASS_NAME
+import de.davis.keygo.automation.processor.util.IMAGE_VECTOR_CLASS_NAME
 import de.davis.keygo.automation.processor.util.STRING_RESOURCE_MEMBER_NAME
 import de.davis.keygo.automation.processor.util.StringUtils.camelToSnakeCase
 import de.davis.keygo.automation.processor.util.StringUtils.isCamelCase
+import de.davis.keygo.automation.processor.util.defaultIconMemberName
 import de.davis.keygo.automation.processor.util.primaryRoomKey
 import de.davis.keygo.automation.processor.util.roomColumnInfo
 import de.davis.keygo.automation.processor.util.roomEntity
@@ -107,11 +110,17 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
                 enum(className) {
                     constructor {
                         parameter("resString", Int::class, KModifier.INTERNAL)
+                        parameter("icon", IMAGE_VECTOR_CLASS_NAME, emptyList(), KModifier.INTERNAL)
                     }
 
                     root.children.forEach {
                         entry(it.simpleName) {
                             parameter(stringRes(it.vaultEntity.resString))
+                            parameter(
+                                "%T.Default.%M",
+                                ICONS_DEFAULT_CLASS_NAME,
+                                defaultIconMemberName(it.vaultEntity.defaultIconType)
+                            )
                         }
                     }
                 }

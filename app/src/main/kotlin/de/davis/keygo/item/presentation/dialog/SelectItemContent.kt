@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Password
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,7 +42,6 @@ import de.davis.keygo.generated.item.getString
 @Composable
 fun SelectItemContent() {
     AlertDialogContent(
-        buttons = {},
         title = {
             Text(text = stringResource(R.string.select_item))
         }
@@ -65,7 +62,7 @@ fun SelectItemContent() {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Password /* TODO get from automation */,
+                        imageVector = it.icon,
                         contentDescription = null
                     )
                     Text(text = it.getString())
@@ -78,8 +75,8 @@ fun SelectItemContent() {
 
 @Composable
 internal fun AlertDialogContent(
-    buttons: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    buttons: (@Composable () -> Unit)? = null,
     icon: (@Composable () -> Unit)? = null,
     title: (@Composable () -> Unit)? = null,
     shape: Shape = AlertDialogDefaults.shape,
@@ -144,13 +141,15 @@ internal fun AlertDialogContent(
                     content()
                 }
             }
-            Box(modifier = Modifier.align(Alignment.End)) {
-                val textStyle = MaterialTheme.typography.labelLarge
-                ProvideContentColorTextStyle(
-                    contentColor = buttonContentColor,
-                    textStyle = textStyle,
-                    content = buttons
-                )
+            buttons?.let {
+                Box(modifier = Modifier.align(Alignment.End)) {
+                    val textStyle = MaterialTheme.typography.labelLarge
+                    ProvideContentColorTextStyle(
+                        contentColor = buttonContentColor,
+                        textStyle = textStyle,
+                        content = buttons
+                    )
+                }
             }
         }
     }
