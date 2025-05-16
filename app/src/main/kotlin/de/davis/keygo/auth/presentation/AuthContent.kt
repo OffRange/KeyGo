@@ -11,13 +11,10 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Fingerprint
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -45,6 +42,7 @@ import de.davis.keygo.R
 import de.davis.keygo.auth.presentation.model.AuthState
 import de.davis.keygo.auth.presentation.model.AuthUIEvent
 import de.davis.keygo.auth.presentation.model.UIPasswordError
+import de.davis.keygo.core.presentation.component.VisibilityButton
 import de.davis.keygo.core.presentation.theme.KeyGoTheme
 
 @Composable
@@ -100,21 +98,10 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
                         },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         trailingIcon = {
-                            IconButton(
-                                onClick = { passwordHidden = !passwordHidden }
-                            ) {
-                                val icon =
-                                    if (passwordHidden) Icons.Default.Visibility
-                                    else Icons.Default.VisibilityOff
-
-                                val description =
-                                    if (passwordHidden) R.string.show_password_content_description
-                                    else R.string.hide_password_content_description
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = stringResource(id = description)
-                                )
-                            }
+                            VisibilityButton(
+                                isHidden = passwordHidden,
+                                onClick = { passwordHidden = !passwordHidden },
+                            )
                         },
                         isError = state.passwordError !is UIPasswordError.None,
                         supportingText = when (state.passwordError) {
