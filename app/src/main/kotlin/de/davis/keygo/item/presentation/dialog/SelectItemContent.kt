@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.BasicAlertDialog
@@ -46,26 +47,31 @@ fun SelectItemContent(onSelect: (VaultItemEnum) -> Unit) {
             Text(text = stringResource(R.string.select_item))
         }
     ) {
-        val interactionSource = remember { MutableInteractionSource() }
         Column {
             HorizontalDivider()
             VaultItemEnum.entries.forEach {
-                Row(
+                val interactionSource = remember { MutableInteractionSource() }
+                Box(
                     modifier = Modifier
                         .minimumInteractiveComponentSize()
                         .clickable(
                             onClick = { onSelect(it) },
                             interactionSource = interactionSource,
                             indication = ripple()
-                        ),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        )
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp)
                 ) {
-                    Icon(
-                        imageVector = it.icon,
-                        contentDescription = null
-                    )
-                    Text(text = it.getString())
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = it.icon,
+                            contentDescription = null
+                        )
+                        Text(text = it.getString())
+                    }
                 }
             }
             HorizontalDivider()
