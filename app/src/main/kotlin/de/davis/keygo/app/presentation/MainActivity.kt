@@ -40,7 +40,7 @@ import de.davis.keygo.core.presentation.snackbar.SnackbarHandler
 import de.davis.keygo.core.presentation.theme.KeyGoTheme
 import de.davis.keygo.dashboard.presentation.DashboardScreen
 import de.davis.keygo.generated.RouteDestination
-import kotlinx.coroutines.launch
+import de.davis.keygo.item.presentation.itemGraph
 import org.koin.compose.koinInject
 
 class MainActivity : FragmentActivity() {
@@ -96,14 +96,11 @@ private fun App() {
     val snackbarManager = LocalSnackbarManager.current
     SnackbarHandler(snackbarManager, snackbarHostState)
 
-    val scope = rememberCoroutineScope()
     KeyGoNavigationWrapper(
         currentDestination = currentDestination,
         navigateToTopLevelDestination = navigationActions::navigateTo,
         onButtonClicked = {
-            scope.launch {
-                snackbarManager.sendMessage(SnackbarMessage("${System.currentTimeMillis()}".asUIText()))
-            }
+            navigationActions.navigateTo(RouteDestination.Main.SelectItem)
         },
         showChrome = showChrome,
         showPrimaryActionButton = showPrimaryActionButton,
@@ -126,6 +123,7 @@ private fun App() {
                 startDestination = RouteDestination.Main.Home
             ) {
                 mainGraph(navigate = navigationActions::navigateTo)
+                itemGraph(navigate = navigationActions::navigateTo)
 
                 composable<RouteDestination.Main.Connectivity> {
                     Text("CONNECTIVITY")

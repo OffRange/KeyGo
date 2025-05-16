@@ -21,6 +21,7 @@ bcrypt = "0.10.2"
 biometric = "1.4.0-alpha03"
 navigation = "2.8.9"
 kotlinpoet = "2.1.0"
+nbvcxz = "1.5.1"
 
 [libraries]
 google-protobuf-protoc = { group = "com.google.protobuf", name = "protoc", version.ref = "protoc" }
@@ -66,6 +67,8 @@ at-favre-bcrypt = { group = "at.favre.lib", name = "bcrypt", version.ref = "bcry
 
 google-devtools-ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 squareup-kotlinpoet = { group = "com.squareup", name = "kotlinpoet-ksp", version.ref = "kotlinpoet" }
+
+gosimple-nbvcxz = { group = "me.gosimple", name = "nbvcxz", version.ref = "nbvcxz" }
 
 [plugins]
 google-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

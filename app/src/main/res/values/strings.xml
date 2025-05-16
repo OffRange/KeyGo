@@ -12,6 +12,7 @@
     <string name="add_content_description">Add</string>
     <string name="search_content_description">Search</string>
     <string name="back_content_description">Back</string>
+    <string name="generate_password_content_description">Generate Password</string>
 
     <string name="add">Add</string>
     <string name="add_new_element">Add new Element</string>
@@ -42,4 +43,22 @@
     <string name="match_not_found">No matches found</string>
 
     <string name="select_item">Select an Item</string>
+
+    <string name="general_information">General Information</string>
+    <string name="additional_information">Additional Information</string>
+    <string name="password_information">Password Information</string>
+
+    <string name="name">Name</string>
+    <string name="name_placeholder">Enter Name</string>
+    <string name="note">Note</string>
+    <string name="note_placeholder">Write your Note</string>
+
+    <string name="username">Username</string>
+    <string name="website">Website</string>
+
+    <string name="password_strength_ridiculous">Ridiculous</string>
+    <string name="password_strength_weak">Weak</string>
+    <string name="password_strength_moderate">Moderate</string>
+    <string name="password_strength_strong">Strong</string>
+    <string name="password_strength_excellent">Excellent</string>
 </resources>

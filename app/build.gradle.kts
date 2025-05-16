@@ -72,6 +72,8 @@ dependencies {
 
     implementation(libs.at.favre.bcrypt)
 
+    implementation(libs.gosimple.nbvcxz)
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -114,6 +116,11 @@ protobuf {
             }
         }
     }
+}
+
+composeCompiler {
+    reportsDestination = layout.buildDirectory.dir("compose_compiler")
+    metricsDestination = layout.buildDirectory.dir("compose_compiler")
 }
 
 room {
