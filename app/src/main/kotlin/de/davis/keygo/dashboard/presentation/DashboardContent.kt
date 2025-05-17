@@ -108,8 +108,8 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
             textFieldState = uiState.textFieldState,
             searchBarState = searchBarState,
             onSearch = {
-                scope.launch { searchBarState.animateToCollapsed() }
                 onEvent(DashboardUIEvent.OnSearchSubmit)
+                scope.launch { searchBarState.animateToCollapsed() }
             },
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = {
