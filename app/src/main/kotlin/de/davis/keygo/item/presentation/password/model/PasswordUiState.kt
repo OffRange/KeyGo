@@ -1,7 +1,7 @@
 package de.davis.keygo.item.presentation.password.model
 
 import androidx.compose.foundation.text.input.TextFieldState
-import de.davis.keygo.item.domain.model.Strength
+import de.davis.keygo.item.domain.model.Score
 
 data class PasswordUiState(
     val nameTextFieldState: TextFieldState = TextFieldState(),
@@ -9,10 +9,5 @@ data class PasswordUiState(
     val passwordTextFieldState: TextFieldState = TextFieldState(),
     val usernameTextFieldState: TextFieldState = TextFieldState(),
     val websiteTextFieldState: TextFieldState = TextFieldState(),
-    val strengthState: StrengthUiState = StrengthUiState(),
-)
-
-data class StrengthUiState(
-    val score: Strength.Score = Strength.Score.None,
-    val hintAvailable: Boolean = false,
+    val strengthScore: Score = Score.None,
 )
