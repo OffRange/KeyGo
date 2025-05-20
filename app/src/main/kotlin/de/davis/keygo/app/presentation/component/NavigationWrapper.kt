@@ -76,10 +76,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.window.core.layout.WindowSizeClass
 import de.davis.keygo.R
 import de.davis.keygo.app.presentation.AppDestinations
-import de.davis.keygo.generated.RouteDestination
+import de.davis.keygo.core.presentation.model.RouteDestination
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -307,7 +308,7 @@ fun KeyGoNavigationBar(
     ) {
         AppDestinations.entries.forEach { destination ->
             NavigationBarItem(
-                selected = currentDestination.hasRoute(destination.route),
+                selected = currentDestination?.hierarchy?.any { it.hasRoute(destination.route.graphDest) } == true,
                 onClick = { navigateToTopLvlDestination(destination.route) },
                 icon = {
                     Icon(
@@ -364,7 +365,7 @@ fun KeyGoNavigationRail(
         ) {
             AppDestinations.entries.forEach { destination ->
                 NavigationRailItem(
-                    selected = currentDestination.hasRoute(destination.route),
+                    selected = currentDestination?.hierarchy?.any { it.hasRoute(destination.route.graphDest) } == true,
                     onClick = { navigateToTopLvlDestination(destination.route) },
                     icon = {
                         Icon(
@@ -482,7 +483,7 @@ fun DrawerContent(
                     label = {
                         Text(text = stringResource(destination.label))
                     },
-                    selected = currentDestination.hasRoute(destination.route),
+                    selected = currentDestination?.hierarchy?.any { it.hasRoute(destination.route.graphDest) } == true,
                     onClick = { navigateToTopLvlDestination(destination.route) },
                 )
             }

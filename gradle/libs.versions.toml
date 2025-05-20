@@ -19,7 +19,7 @@ protoc = "4.29.3"
 coroutinesTest = "1.10.2"
 bcrypt = "0.10.2"
 biometric = "1.4.0-alpha03"
-navigation = "2.8.9"
+navigation = "2.9.0"
 kotlinpoet = "2.1.0"
 nbvcxz = "1.5.1"
 
@@ -55,7 +55,6 @@ androidx-biometric = { group = "androidx.biometric", name = "biometric", version
 koin-bom = { group = "io.insert-koin", name = "koin-bom", version.ref = "koinBOM" }
 koin-core = { group = "io.insert-koin", name = "koin-core" }
 koin-androidx-compose = { group = "io.insert-koin", name = "koin-androidx-compose" }
-koin-androidx-compose-navigation = { group = "io.insert-koin", name = "koin-androidx-compose-navigation" }
 
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }

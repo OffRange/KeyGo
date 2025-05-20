@@ -55,7 +55,6 @@ dependencies {
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))
     implementation(libs.koin.androidx.compose)
-    implementation(libs.koin.androidx.compose.navigation)
 
     // Room
     implementation(libs.androidx.room.runtime)

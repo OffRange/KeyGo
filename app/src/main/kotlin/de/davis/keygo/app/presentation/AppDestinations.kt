@@ -7,8 +7,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 import de.davis.keygo.R
-import de.davis.keygo.generated.RouteDestination
-import de.davis.keygo.processor.annotation.Route
+import de.davis.keygo.core.presentation.model.RouteDestination
 
 enum class AppDestinations(
     val route: RouteDestination,
@@ -16,25 +15,17 @@ enum class AppDestinations(
     val icon: ImageVector,
     @StringRes val contentDescription: Int
 ) {
-    HOME(RouteDestination.Main.Home, R.string.home, Icons.Default.Home, R.string.home),
+    HOME(RouteDestination.Home.Root, R.string.home, Icons.Default.Home, R.string.home),
     CONNECTIVITY(
-        RouteDestination.Main.Connectivity,
+        RouteDestination.Connectivity,
         R.string.connectivity,
         Icons.Default.Cast,
         R.string.connectivity
     ),
     SETTINGS(
-        RouteDestination.Main.Settings,
+        RouteDestination.Settings,
         R.string.settings,
         Icons.Default.Settings,
         R.string.settings
     ),
-}
-
-@Route(parent = "Main")
-private fun Connectivity() {
-}
-
-@Route(parent = "Main")
-private fun Settings() {
 }
