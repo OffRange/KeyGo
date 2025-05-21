@@ -51,6 +51,7 @@ import de.davis.keygo.item.domain.model.Score
 import de.davis.keygo.item.presentation.component.FormField
 import de.davis.keygo.item.presentation.component.FormGroup
 import de.davis.keygo.item.presentation.component.KeyGoItemForm
+import de.davis.keygo.item.presentation.component.StrengthIndicator
 import de.davis.keygo.item.presentation.password.model.PasswordUiEvent
 import de.davis.keygo.item.presentation.password.model.PasswordUiState
 
@@ -138,74 +139,6 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                         placeholder = { Text(text = stringResource(R.string.website)) },
                     )
                 }
-            }
-        }
-    }
-}
-
-@SuppressLint("UnusedTransitionTargetStateParameter")
-@Composable
-fun StrengthIndicator(
-    score: Score,
-    forceCompact: Boolean = false,
-) {
-    val targetTrackColor =
-        if (score.isNone || score == Score.Excellent)
-            MaterialTheme.colorScheme.secondaryContainer
-        else
-            MaterialTheme.colorScheme.errorContainer
-
-    val targetIndicatorColor =
-        if (score.isNone || score == Score.Excellent)
-            MaterialTheme.colorScheme.onSecondaryContainer
-        else
-            MaterialTheme.colorScheme.error
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            repeat(5) {
-                val backgroundColor by animateColorAsState(
-                    if (it < score.ordinal) targetIndicatorColor else targetTrackColor,
-                    label = "Indicator color $it"
-                )
-                Box(
-                    modifier = Modifier
-                        .size(4.dp)
-                        .clip(CircleShape)
-                        .background(backgroundColor)
-                )
-            }
-        }
-
-        val contentColor by animateColorAsState(
-            targetIndicatorColor,
-            label = "Content color"
-        )
-        CompositionLocalProvider(
-            LocalContentColor provides contentColor,
-            LocalTextStyle provides MaterialTheme.typography.bodySmall,
-        ) {
-            AnimatedVisibility(
-                visible = !score.isNone && !forceCompact,
-                enter = expandVertically(),
-                exit = shrinkVertically(),
-            ) {
-                val text = when (score) {
-                    Score.None,
-                    Score.Ridiculous -> stringResource(R.string.password_strength_ridiculous)
-
-                    Score.Weak -> stringResource(R.string.password_strength_weak)
-                    Score.Moderate -> stringResource(R.string.password_strength_moderate)
-                    Score.Strong -> stringResource(R.string.password_strength_strong)
-                    Score.Excellent -> stringResource(R.string.password_strength_excellent)
-                }
-
-                Text(text = text)
             }
         }
     }
