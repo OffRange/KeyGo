@@ -61,4 +61,6 @@
     <string name="password_strength_moderate">Moderate</string>
     <string name="password_strength_strong">Strong</string>
     <string name="password_strength_excellent">Excellent</string>
+
+    <string name="create_new_item">Create new Item</string>
 </resources>

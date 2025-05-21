@@ -11,23 +11,25 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.material3.MediumFlexibleTopAppBar
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -38,10 +40,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
+import de.davis.keygo.core.presentation.LocalShowBackButton
 import de.davis.keygo.core.presentation.theme.KeyGoTheme
 import de.davis.keygo.item.domain.model.Score
 import de.davis.keygo.item.presentation.component.FormField
@@ -50,19 +54,42 @@ import de.davis.keygo.item.presentation.component.KeyGoItemForm
 import de.davis.keygo.item.presentation.password.model.PasswordUiEvent
 import de.davis.keygo.item.presentation.password.model.PasswordUiState
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) {
-    Surface(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(WindowInsets.systemBars.asPaddingValues())
-    ) {
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            MediumFlexibleTopAppBar(
+                title = {
+                    Text(text = stringResource(R.string.create_new_item))
+                },
+                subtitle = {
+                    Text(text = stringResource(R.string.password))
+                },
+                navigationIcon = {
+                    if (LocalShowBackButton.current) {
+                        IconButton(onClick = { onEvent(PasswordUiEvent.OnBackClick) }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Default.ArrowBack,
+                                contentDescription = stringResource(R.string.back_content_description)
+                            )
+                        }
+                    }
+                },
+                scrollBehavior = scrollBehavior
+            )
+        }
+    ) { innerPadding ->
         KeyGoItemForm(
             nameTextFieldState = state.nameTextFieldState,
             notesTextFieldState = state.notesTextFieldState,
             modifier = Modifier
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
                 .padding(8.dp)
-                .consumeWindowInsets(WindowInsets.systemBars)
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
         ) {
             item(key = "password_information") {
                 var forceCompact by rememberSaveable { mutableStateOf(false) }

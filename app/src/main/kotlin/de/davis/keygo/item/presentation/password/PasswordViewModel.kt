@@ -4,6 +4,7 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.domain.navigation.Navigator
 import de.davis.keygo.item.domain.usecase.EstimatePasswordStrengthUseCase
 import de.davis.keygo.item.presentation.password.model.PasswordUiEvent
 import de.davis.keygo.item.presentation.password.model.PasswordUiState
@@ -15,9 +16,11 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
 class PasswordViewModel(
+    private val navigator: Navigator,
     private val estimateStrength: EstimatePasswordStrengthUseCase
 ) : ViewModel() {
 
@@ -42,6 +45,12 @@ class PasswordViewModel(
         when (event) {
             is PasswordUiEvent.OnGeneratePasswordClick -> {
                 // TODO Handle the event
+            }
+
+            is PasswordUiEvent.OnBackClick -> {
+                viewModelScope.launch {
+                    navigator.navigateUp(detail = true)
+                }
             }
         }
     }

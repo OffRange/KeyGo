@@ -16,6 +16,7 @@ import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaf
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -42,6 +43,7 @@ import de.davis.keygo.core.domain.model.navigation.DetailItem
 import de.davis.keygo.core.domain.model.navigation.NavigationAction
 import de.davis.keygo.core.domain.navigation.Navigator
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
+import de.davis.keygo.core.presentation.LocalShowBackButton
 import de.davis.keygo.core.presentation.ObserveAsEvents
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.presentation.navigation.LocalNavigator
@@ -199,50 +201,58 @@ private fun NavGraphBuilder.mainGraph(
     navigate: (RouteDestination) -> Unit
 ) {
     composable<RouteDestination.Home.Root> {
-        NavigableListDetailPaneScaffold(
-            navigator = listNavigator,
-            listPane = {
-                AnimatedPane {
-                    DashboardScreen(navigate = navigate)
-                }
-            },
-            detailPane = {
-                AnimatedPane {
-                    Surface {
-                        when (val detailItem = listNavigator.currentDestination?.contentKey) {
-                            is DetailItem.Edit -> {
-                                val store = remember { ViewModelStore() }
+        val showDetailBackButton by remember(listNavigator.scaffoldDirective) {
+            derivedStateOf {
+                listNavigator.scaffoldDirective.maxHorizontalPartitions == 1
+            }
+        }
+        CompositionLocalProvider(
+            LocalShowBackButton provides showDetailBackButton,
+        ) {
+            NavigableListDetailPaneScaffold(
+                navigator = listNavigator,
+                listPane = {
+                    AnimatedPane {
+                        DashboardScreen(navigate = navigate)
+                    }
+                },
+                detailPane = {
+                    AnimatedPane {
+                        Surface {
+                            when (val detailItem = listNavigator.currentDestination?.contentKey) {
+                                is DetailItem.Edit -> {
+                                    val store = remember { ViewModelStore() }
 
-                                DisposableEffect(detailItem) {
-                                    onDispose {
-                                        store.clear()
+                                    DisposableEffect(detailItem) {
+                                        onDispose {
+                                            store.clear()
+                                        }
+                                    }
+
+                                    val storeOwner = remember(store) {
+                                        object : ViewModelStoreOwner {
+                                            override val viewModelStore: ViewModelStore = store
+                                        }
+                                    }
+
+                                    CompositionLocalProvider(
+                                        LocalViewModelStoreOwner provides storeOwner
+                                    ) {
+                                        PasswordScreen()
                                     }
                                 }
 
-                                val storeOwner = remember(store) {
-                                    object : ViewModelStoreOwner {
-                                        override val viewModelStore: ViewModelStore = store
-                                    }
+                                is DetailItem.View -> {
+                                    Text("View ${detailItem.item.name}")
                                 }
 
-                                CompositionLocalProvider(
-                                    LocalViewModelStoreOwner provides storeOwner
-                                ) {
-                                    PasswordScreen(navigate = navigate)
-                                }
+                                else -> {}
                             }
-
-                            is DetailItem.View -> {
-                                Text("View ${detailItem.item.name}")
-                            }
-
-                            else -> {}
                         }
                     }
                 }
-            }
-        )
-
+            )
+        }
     }
 }
 
