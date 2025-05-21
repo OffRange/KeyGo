@@ -44,7 +44,7 @@ import de.davis.keygo.core.domain.navigation.Navigator
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.presentation.ObserveAsEvents
 import de.davis.keygo.core.presentation.model.RouteDestination
-import de.davis.keygo.core.presentation.snackbar.LocalNavigator
+import de.davis.keygo.core.presentation.navigation.LocalNavigator
 import de.davis.keygo.core.presentation.snackbar.LocalSnackbarManager
 import de.davis.keygo.core.presentation.snackbar.SnackbarHandler
 import de.davis.keygo.core.presentation.theme.KeyGoTheme
