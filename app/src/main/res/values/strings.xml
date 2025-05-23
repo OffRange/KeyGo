@@ -63,4 +63,16 @@
     <string name="password_strength_excellent">Excellent</string>
 
     <string name="create_new_item">Create new Item</string>
+    <string name="generate_password">Generate Password</string>
+    <string name="use_generated_password">Use generated Password</string>
+
+    <string name="caution">Caution</string>
+    <string name="character_sets">Character Sets</string>
+    <string name="lowercase">Lowercase</string>
+    <string name="uppercase">Uppercase</string>
+    <string name="digits">Digits</string>
+    <string name="punctuations">Punctuations</string>
+    <string name="consider_all_char_sets">For strongest protection, include lowercase, uppercase, numbers, and symbols.</string>
+
+    <string name="length">Length [%d]</string>
 </resources>

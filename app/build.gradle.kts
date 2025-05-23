@@ -40,10 +40,10 @@ android {
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_21
     }
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = "21"
     }
     buildFeatures {
         compose = true
@@ -72,6 +72,8 @@ dependencies {
     implementation(libs.at.favre.bcrypt)
 
     implementation(libs.gosimple.nbvcxz)
+
+    implementation(libs.offrange.passgen)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

@@ -22,6 +22,7 @@ biometric = "1.4.0-alpha04"
 navigation = "2.9.0"
 kotlinpoet = "2.1.0"
 nbvcxz = "1.5.1"
+passGen = "v0.0.3-beta"
 
 [libraries]
 google-protobuf-protoc = { group = "com.google.protobuf", name = "protoc", version.ref = "protoc" }
@@ -68,6 +69,8 @@ google-devtools-ksp-api = { module = "com.google.devtools.ksp:symbol-processing-
 squareup-kotlinpoet = { group = "com.squareup", name = "kotlinpoet-ksp", version.ref = "kotlinpoet" }
 
 gosimple-nbvcxz = { group = "me.gosimple", name = "nbvcxz", version.ref = "nbvcxz" }
+
+offrange-passgen = { group = "com.github.offrange", name = "passgen", version.ref = "passGen" }
 
 [plugins]
 google-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
