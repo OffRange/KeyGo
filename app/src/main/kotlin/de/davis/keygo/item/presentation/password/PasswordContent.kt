@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -65,6 +66,14 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                         }
                     }
                 },
+                actions = {
+                    IconButton(onClick = { onEvent(PasswordUiEvent.OnSubmit) }) {
+                        Icon(
+                            imageVector = Icons.Default.Done,
+                            contentDescription = stringResource(R.string.submit_content_description)
+                        )
+                    }
+                },
                 scrollBehavior = scrollBehavior
             )
         }
@@ -76,7 +85,8 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)
                 .padding(8.dp)
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .nestedScroll(scrollBehavior.nestedScrollConnection),
+            nameError = state.nameError,
         ) {
             item(key = "password_information") {
                 var forceCompact by rememberSaveable { mutableStateOf(false) }
@@ -105,7 +115,8 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                                         contentDescription = stringResource(R.string.generate_password_content_description)
                                     )
                                 }
-                            }
+                            },
+                            error = state.passwordError,
                         )
 
                         StrengthIndicator(

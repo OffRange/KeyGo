@@ -2,6 +2,7 @@ package de.davis.keygo.item.di
 
 import de.davis.keygo.item.data.PasswordGeneratorImpl
 import de.davis.keygo.item.domain.PasswordGenerator
+import de.davis.keygo.item.domain.usecase.CreateNewPassword
 import de.davis.keygo.item.domain.usecase.EstimatePasswordStrengthUseCase
 import de.davis.keygo.item.presentation.password.GeneratePasswordViewModel
 import de.davis.keygo.item.presentation.password.PasswordViewModel
@@ -19,4 +20,6 @@ val itemModule = module {
     singleOf(::EstimatePasswordStrengthUseCase)
 
     singleOf(::PasswordGeneratorImpl) bind PasswordGenerator::class
+
+    singleOf(::CreateNewPassword)
 }

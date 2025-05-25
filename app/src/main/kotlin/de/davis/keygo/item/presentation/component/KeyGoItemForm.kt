@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.davis.keygo.R
 import de.davis.keygo.core.presentation.component.VisibilityButton
+import de.davis.keygo.item.presentation.model.InputFieldError
 
 
 @Composable
@@ -46,6 +47,7 @@ fun KeyGoItemForm(
     nameTextFieldState: TextFieldState,
     notesTextFieldState: TextFieldState,
     modifier: Modifier = Modifier,
+    nameError: InputFieldError? = null,
     content: LazyListScope.() -> Unit
 ) {
     LazyColumn(
@@ -60,7 +62,8 @@ fun KeyGoItemForm(
                 FormField(
                     state = nameTextFieldState,
                     label = { Text(text = stringResource(R.string.name)) },
-                    placeholder = { Text(text = stringResource(R.string.name_placeholder)) }
+                    placeholder = { Text(text = stringResource(R.string.name_placeholder)) },
+                    error = nameError
                 )
             }
         }
@@ -114,9 +117,19 @@ internal fun FormField(
     placeholder: @Composable (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null,
     outsideTrailingContent: @Composable (() -> Unit)? = null,
+    error: InputFieldError? = null,
     lineLimits: TextFieldLineLimits = TextFieldLineLimits.SingleLine,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next)
 ) {
+    val supportingText: @Composable (() -> Unit)? = error?.let {
+        {
+            val text = when (error) {
+                InputFieldError.Empty -> stringResource(R.string.field_blank)
+            }
+            Text(text = text, color = MaterialTheme.colorScheme.error)
+        }
+    }
+
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -141,6 +154,8 @@ internal fun FormField(
                             onClick = { passwordHidden = !passwordHidden },
                         )
                     },
+                    supportingText = supportingText,
+                    isError = supportingText != null,
                     keyboardOptions = keyboardOptions
                 )
             }
@@ -152,6 +167,8 @@ internal fun FormField(
                 placeholder = placeholder,
                 trailingIcon = trailingContent,
                 lineLimits = lineLimits,
+                supportingText = supportingText,
+                isError = supportingText != null,
                 keyboardOptions = keyboardOptions
             )
         }
@@ -205,7 +222,8 @@ private fun KeyGoItemFormPreview() {
                                         contentDescription = null
                                     )
                                 }
-                            }
+                            },
+                            error = InputFieldError.Empty
                         )
 
                         FormField(

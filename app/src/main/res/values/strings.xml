@@ -13,6 +13,7 @@
     <string name="search_content_description">Search</string>
     <string name="back_content_description">Back</string>
     <string name="generate_password_content_description">Generate Password</string>
+    <string name="submit_content_description">Submit</string>
 
     <string name="add">Add</string>
     <string name="add_new_element">Add new Element</string>
@@ -75,4 +76,6 @@
     <string name="consider_all_char_sets">For strongest protection, include lowercase, uppercase, numbers, and symbols.</string>
 
     <string name="length">Length [%d]</string>
+
+    <string name="field_blank">This field can not be blank</string>
 </resources>

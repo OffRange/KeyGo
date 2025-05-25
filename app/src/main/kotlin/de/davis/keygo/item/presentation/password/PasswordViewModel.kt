@@ -4,7 +4,13 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.domain.navigation.Navigator
+import de.davis.keygo.core.domain.onFailure
+import de.davis.keygo.core.domain.onSuccess
+import de.davis.keygo.core.domain.usecase.InsertVaultItem
+import de.davis.keygo.item.presentation.model.InputFieldError
 import de.davis.keygo.item.domain.PasswordGenerator
+import de.davis.keygo.item.domain.model.PasswordError
+import de.davis.keygo.item.domain.usecase.CreateNewPassword
 import de.davis.keygo.item.domain.usecase.EstimatePasswordStrengthUseCase
 import de.davis.keygo.item.presentation.password.model.GeneratePasswordUiEvent
 import de.davis.keygo.item.presentation.password.model.PasswordUiEvent
@@ -29,7 +35,9 @@ import kotlin.time.Duration.Companion.milliseconds
 class PasswordViewModel(
     passwordGenerator: PasswordGenerator,
     private val navigator: Navigator,
-    private val estimateStrength: EstimatePasswordStrengthUseCase
+    private val estimateStrength: EstimatePasswordStrengthUseCase,
+    private val createNewPassword: CreateNewPassword,
+    private val insertVaultItem: InsertVaultItem
 ) : GeneratePasswordViewModel(passwordGenerator, estimateStrength) {
 
     private val passwordTextFieldState = TextFieldState()
@@ -79,17 +87,42 @@ class PasswordViewModel(
         }.launchIn(viewModelScope)
     }
 
+    private fun navigateUp() {
+        viewModelScope.launch {
+            navigator.navigateUp(detail = true)
+        }
+    }
+
     fun onEvent(event: PasswordUiEvent) {
         when (event) {
+            is PasswordUiEvent.OnSubmit -> {
+                viewModelScope.launch {
+                    val state = _uiState.value
+                    createNewPassword(
+                        name = state.nameTextFieldState.text.toString(),
+                        username = state.usernameTextFieldState.text.toString(),
+                        website = state.websiteTextFieldState.text.toString(),
+                        password = state.passwordTextFieldState.text.toString(),
+                        note = state.notesTextFieldState.text.toString()
+                    ).onSuccess {
+                        insertVaultItem(it)
+                        navigateUp()
+                    }.onFailure { failure ->
+                        _uiState.update {
+                            it.copy(
+                                nameError = if (failure.contains(PasswordError.BlankName)) InputFieldError.Empty else null,
+                                passwordError = if (failure.contains(PasswordError.BlankPassword)) InputFieldError.Empty else null
+                            )
+                        }
+                    }
+                }
+            }
+
             is PasswordUiEvent.OnGeneratePasswordClick -> {
                 _uiState.update { it.copy(generatePasswordBottomSheetVisible = true) }
             }
 
-            is PasswordUiEvent.OnBackClick -> {
-                viewModelScope.launch {
-                    navigator.navigateUp(detail = true)
-                }
-            }
+            is PasswordUiEvent.OnBackClick -> navigateUp()
 
             is PasswordUiEvent.OnCloseBottomSheet -> {
                 _uiState.update { it.copy(generatePasswordBottomSheetVisible = false) }
