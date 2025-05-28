@@ -20,6 +20,13 @@ inline fun <S, E> Result<S, E>.onFailure(action: (E) -> Unit): Result<S, E> {
     return this
 }
 
+inline fun <S, E, MS> Result<S, E>.mapSuccess(transform: (S) -> MS): Result<MS, E> {
+    return when (this) {
+        is Result.Success -> Result.Success(transform(success))
+        is Result.Failure -> Result.Failure(error)
+    }
+}
+
 fun <E> Boolean.asResult(fail: E): Result<Unit, E> = if (this) {
     Result.Success(Unit)
 } else {
