@@ -2,19 +2,16 @@ package de.davis.keygo.auth.presentation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import de.davis.keygo.auth.domain.rememberBiometricManager
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.auth.presentation.model.AuthEvent
 import de.davis.keygo.auth.presentation.model.AuthUIEvent
 import org.koin.androidx.compose.koinViewModel
-import org.koin.core.parameter.parametersOf
 
 @Composable
 fun AuthScreen(navigate: (/*TODO*/) -> Unit) {
-    val biometricManager = rememberBiometricManager()
-    val viewModel = koinViewModel<AuthViewModel> { parametersOf(biometricManager) }
-    val state by viewModel.state.collectAsState()
+    val viewModel = koinViewModel<AuthViewModel>()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.authEvent) {
         when (state.authEvent) {
@@ -23,6 +20,19 @@ fun AuthScreen(navigate: (/*TODO*/) -> Unit) {
             AuthEvent.Success -> navigate()
         }
     }
+
+    BiometricAuthHandler(
+        flow = viewModel.biometricRequests,
+        onAuthenticationSucceeded = {
+            viewModel.onEvent(AuthUIEvent.BiometricSuccess(it))
+        },
+        onAuthenticationError = { errorCode, errString ->
+            viewModel.onEvent(AuthUIEvent.BiometricError)
+        },
+        onAuthenticationFailed = {
+            viewModel.onEvent(AuthUIEvent.BiometricFailure)
+        }
+    )
 
     AuthContent(state = state, onEvent = viewModel::onEvent)
 }

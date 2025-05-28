@@ -1,20 +1,15 @@
 package de.davis.keygo.auth.di
 
-import de.davis.keygo.auth.data.BiometricManagerImpl
-import de.davis.keygo.auth.domain.BiometricManager
+import de.davis.keygo.auth.data.repository.CheckBiometricCapabilityRepositoryImpl
+import de.davis.keygo.auth.domain.repository.CheckBiometricCapabilityRepository
 import de.davis.keygo.auth.presentation.AuthViewModel
-import org.koin.android.ext.koin.androidContext
-import org.koin.core.module.dsl.viewModel
+import org.koin.core.module.dsl.singleOf
+import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
 val authModule = module {
-    single { parameter ->
-        BiometricManagerImpl(
-            androidContext(),
-            parameter.get(),
-            parameter.get()
-        )
-    } bind BiometricManager::class
-    viewModel { parameter -> AuthViewModel(parameter.get(), get()) }
+    viewModelOf(::AuthViewModel)
+
+    singleOf(::CheckBiometricCapabilityRepositoryImpl) bind CheckBiometricCapabilityRepository::class
 }
