@@ -59,8 +59,15 @@ fun BiometricAuthHandler(
                 )
             }
 
-            BiometricRequest.Class3 -> {
-                // TODO
+            is BiometricRequest.Class3 -> {
+                prompt.authenticate(
+                    BiometricPrompt.PromptInfo.Builder()
+                        .setTitle(title)
+                        .setNegativeButtonText(negativeButtonText)
+                        .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+                        .build(),
+                    BiometricPrompt.CryptoObject(request.cipher)
+                )
             }
         }
     }

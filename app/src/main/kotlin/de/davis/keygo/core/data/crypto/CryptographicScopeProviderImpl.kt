@@ -2,14 +2,12 @@ package de.davis.keygo.core.data.crypto
 
 import de.davis.keygo.core.domain.crypto.CryptographicScope
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
-import de.davis.keygo.core.domain.crypto.EncryptionKeyProvider
+import de.davis.keygo.core.domain.model.crypto.AesKey
 
-class CryptographicScopeProviderImpl(
-    private val aesKeyProvider: EncryptionKeyProvider
+internal class CryptographicScopeProviderImpl(
+    private val aesKey: AesKey
 ) : CryptographicScopeProvider {
 
     override suspend fun <R> scope(block: suspend CryptographicScope.() -> R): R =
-        with(aesKeyProvider.provide()) {
-            CryptographicScopeImpl(this).block()
-        }
+        CryptographicScopeImpl(aesKey).block()
 }

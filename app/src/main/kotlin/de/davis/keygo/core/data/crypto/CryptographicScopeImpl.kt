@@ -11,7 +11,7 @@ import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import kotlin.coroutines.CoroutineContext
 
-class CryptographicScopeImpl(private val aesKey: AesKey) : CryptographicScope {
+internal class CryptographicScopeImpl(private val aesKey: AesKey) : CryptographicScope {
 
     override suspend fun ByteArray.encrypt(
         context: CoroutineContext
