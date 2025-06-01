@@ -8,7 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import javax.crypto.Cipher
 import kotlin.coroutines.CoroutineContext
 
-interface BiometricCipherFactory {
+interface CipherFactory {
 
     fun prepareCipher(
         mode: CryptographicMode,

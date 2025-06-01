@@ -27,6 +27,8 @@ import org.koin.dsl.module
 import java.security.KeyStore
 
 private val cryptoModule = module {
+
+    // TODO migrate
     singleOf(::MainPasswordRepositoryImpl) bind MainPasswordRepository::class
 
     singleOf(::PasswordRepositoryImpl) bind PasswordRepository::class

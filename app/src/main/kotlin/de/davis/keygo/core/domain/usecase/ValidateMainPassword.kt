@@ -7,6 +7,7 @@ import de.davis.keygo.core.domain.error.ValidationError
 import de.davis.keygo.core.domain.model.crypto.asCryptographicData
 import de.davis.keygo.core.domain.repository.MainPasswordRepository
 
+@Deprecated("Use auth domain instead")
 class ValidateMainPassword(
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val mainPasswordRepository: MainPasswordRepository

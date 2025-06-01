@@ -1,28 +1,23 @@
 package de.davis.keygo.auth.data.repository
 
 import androidx.datastore.core.DataStore
-import com.google.protobuf.kotlin.toByteString
 import de.davis.keygo.auth.data.local.model.ProtoBiometricKeyData
-import de.davis.keygo.auth.data.local.model.copy
 import de.davis.keygo.auth.data.mapper.toDomain
+import de.davis.keygo.auth.data.mapper.toProto
+import de.davis.keygo.auth.di.annotation.BiometricQualifier
 import de.davis.keygo.auth.domain.model.BiometricWrappedKeyData
-import de.davis.keygo.auth.domain.repository.BiometricWrappedKeyRepository
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.map
+import de.davis.keygo.auth.domain.repository.WrappedKeyRepository
+import org.koin.core.annotation.Single
 
-class BiometricWrappedKeyRepositoryImpl(
-    private val dataStore: DataStore<ProtoBiometricKeyData>
-) : BiometricWrappedKeyRepository {
+typealias BiometricWrappedKeyRepository = WrappedKeyRepository<BiometricWrappedKeyData>
 
-    override suspend fun getBiometricWrappedKeyData(): BiometricWrappedKeyData? =
-        dataStore.data.map(ProtoBiometricKeyData::toDomain).firstOrNull()
-
-    override suspend fun setBiometricWrappedKeyData(wrappedKey: ByteArray?, iv: ByteArray?) {
-        dataStore.updateData {
-            it.copy {
-                wrappedKey?.let { newKey -> key = newKey.toByteString() }
-                iv?.let { newIv -> keyIV = newIv.toByteString() }
-            }
-        }
-    }
-}
+@Suppress("FunctionName")
+@Single(binds = [WrappedKeyRepository::class])
+@BiometricQualifier
+fun BiometricWrappedKeyRepositoryImpl(@BiometricQualifier dataStore: DataStore<ProtoBiometricKeyData>) =
+    DefaultWrappedKeyRepository(
+        dataStore = dataStore,
+        toDomain = ProtoBiometricKeyData::toDomain,
+        toProto = BiometricWrappedKeyData::toProto,
+        defaultInstance = ProtoBiometricKeyData::getDefaultInstance
+    )

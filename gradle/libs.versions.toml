@@ -12,6 +12,7 @@ composeBom = "2025.05.01"
 mockk = "1.14.2"
 semver = "0.2.5"
 koinBOM = "4.0.3"
+koinAnnotationsBOM = "2.0.0"
 room = "2.7.1"
 ksp = "2.1.20-2.0.0"
 datastore = "1.1.7"
@@ -55,7 +56,10 @@ androidx-material-icons-extended = { group = "androidx.compose.material", name =
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 
 koin-bom = { group = "io.insert-koin", name = "koin-bom", version.ref = "koinBOM" }
+koin-annotations-bom = { group = "io.insert-koin", name = "koin-annotations-bom", version.ref = "koinAnnotationsBOM" }
 koin-core = { group = "io.insert-koin", name = "koin-core" }
+koin-annotations = { group = "io.insert-koin", name = "koin-annotations" }
+koin-ksp-compiler = { group = "io.insert-koin", name = "koin-ksp-compiler", version.ref = "koinAnnotationsBOM" }
 koin-androidx-compose = { group = "io.insert-koin", name = "koin-androidx-compose" }
 
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }

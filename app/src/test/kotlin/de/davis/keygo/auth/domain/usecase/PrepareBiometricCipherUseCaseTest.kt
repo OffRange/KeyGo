@@ -1,12 +1,12 @@
 package de.davis.keygo.auth.domain.usecase
 
-import de.davis.keygo.auth.domain.factory.BiometricCipherFactory
+import de.davis.keygo.auth.data.repository.BiometricWrappedKeyRepository
+import de.davis.keygo.auth.domain.factory.CipherFactory
 import de.davis.keygo.auth.domain.model.BiometricWrappedKeyData
 import de.davis.keygo.auth.domain.model.CryptographicMode
 import de.davis.keygo.auth.domain.model.CryptographyError
 import de.davis.keygo.auth.domain.model.KeyStoreError
 import de.davis.keygo.auth.domain.repository.BiometricKekRepository
-import de.davis.keygo.auth.domain.repository.BiometricWrappedKeyRepository
 import de.davis.keygo.core.domain.Result
 import de.davis.keygo.core.domain.isFailure
 import de.davis.keygo.core.domain.isSuccess
@@ -26,7 +26,7 @@ class PrepareBiometricCipherUseCaseTest {
 
     private lateinit var kekRepository: BiometricKekRepository
     private lateinit var biometricWrappedKeyRepository: BiometricWrappedKeyRepository
-    private lateinit var biometricCipherFactory: BiometricCipherFactory
+    private lateinit var cipherFactory: CipherFactory
 
     private lateinit var useCase: PrepareBiometricCipherUseCase
 
@@ -34,12 +34,12 @@ class PrepareBiometricCipherUseCaseTest {
     fun setUp() {
         kekRepository = mockk()
         biometricWrappedKeyRepository = mockk()
-        biometricCipherFactory = mockk()
+        cipherFactory = mockk()
 
         useCase = PrepareBiometricCipherUseCase(
             kekRepository = kekRepository,
             biometricWrappedKeyRepository = biometricWrappedKeyRepository,
-            biometricCipherFactory = biometricCipherFactory
+            cipherFactory = cipherFactory
         )
     }
 
@@ -56,7 +56,7 @@ class PrepareBiometricCipherUseCaseTest {
     fun `test return Failure when no wrapped key was found`() = runTest {
         val fakeKey = mockk<SecretKey>().asAesKey()
         every { kekRepository.getKek() } returns Result.Success(fakeKey)
-        coEvery { biometricWrappedKeyRepository.getBiometricWrappedKeyData() } returns null
+        coEvery { biometricWrappedKeyRepository.getWrappedKeyData() } returns null
         val result = useCase(mode = CryptographicMode.Wrap)
 
         assertTrue(result.isFailure())
@@ -67,13 +67,13 @@ class PrepareBiometricCipherUseCaseTest {
     fun `test return Success when kek and wrapped key was found`() = runTest {
         val fakeKey = mockk<SecretKey>().asAesKey()
         every { kekRepository.getKek() } returns Result.Success(fakeKey)
-        coEvery { biometricWrappedKeyRepository.getBiometricWrappedKeyData() } returns BiometricWrappedKeyData(
+        coEvery { biometricWrappedKeyRepository.getWrappedKeyData() } returns BiometricWrappedKeyData(
             wrappedKey = byteArrayOf(),
             iv = byteArrayOf()
         )
 
         val fakeCipher = mockk<Cipher>()
-        every { biometricCipherFactory.prepareCipher(any(), any(), any()) } returns Result.Success(
+        every { cipherFactory.prepareCipher(any(), any(), any()) } returns Result.Success(
             fakeCipher
         )
 

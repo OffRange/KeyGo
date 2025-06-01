@@ -1,9 +1,8 @@
 package de.davis.keygo.auth.domain.repository
 
-import de.davis.keygo.auth.domain.model.BiometricWrappedKeyData
+interface WrappedKeyRepository<T> {
 
-interface BiometricWrappedKeyRepository {
-
-    suspend fun getBiometricWrappedKeyData(): BiometricWrappedKeyData?
-    suspend fun setBiometricWrappedKeyData(wrappedKey: ByteArray? = null, iv: ByteArray? = null)
+    suspend fun getWrappedKeyData(): T?
+    suspend fun setWrappedKeyData(keyData: T)
+    suspend fun clearWrappedKeyData()
 }

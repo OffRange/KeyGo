@@ -1,13 +1,17 @@
 package de.davis.keygo.auth.domain.usecase
 
+import de.davis.keygo.auth.data.repository.BiometricWrappedKeyRepository
+import de.davis.keygo.auth.di.annotation.BiometricQualifier
 import de.davis.keygo.auth.domain.model.BiometricAvailability
 import de.davis.keygo.auth.domain.model.BiometricClass
 import de.davis.keygo.auth.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.auth.domain.repository.BiometricKekRepository
-import de.davis.keygo.auth.domain.repository.BiometricWrappedKeyRepository
+import org.koin.core.annotation.Single
 
+@Single
 class GetBiometricAvailabilityUseCase(
     private val biometricKekRepository: BiometricKekRepository,
+    @BiometricQualifier
     private val wrappedKeyRepository: BiometricWrappedKeyRepository,
     private val biometricAvailabilityRepository: BiometricAvailabilityRepository
 ) {
@@ -16,7 +20,7 @@ class GetBiometricAvailabilityUseCase(
         if (!biometricKekRepository.hasKek()) {
             return BiometricAvailability.Unavailable(BiometricAvailability.Reason.NoKek)
         }
-        val wrappedKeyData = wrappedKeyRepository.getBiometricWrappedKeyData()
+        val wrappedKeyData = wrappedKeyRepository.getWrappedKeyData()
         if (wrappedKeyData?.isValid() != true) {
             return BiometricAvailability.Unavailable(BiometricAvailability.Reason.InvalidWrappedKey)
         }

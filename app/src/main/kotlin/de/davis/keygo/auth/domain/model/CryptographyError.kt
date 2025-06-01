@@ -7,5 +7,7 @@ sealed interface CryptographyError {
 
     data object KeyNotInKeyStore : CryptographyError
     data object WrappedKeyNotFound : CryptographyError
+
+    data class DerivationFailed(val reason: String) : CryptographyError
     data class Unknown(val throwable: Throwable) : CryptographyError
 }

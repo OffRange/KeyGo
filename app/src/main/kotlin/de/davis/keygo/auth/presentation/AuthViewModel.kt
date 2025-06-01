@@ -8,9 +8,11 @@ import de.davis.keygo.auth.domain.model.CryptographicMode
 import de.davis.keygo.auth.domain.usecase.GetBiometricAvailabilityUseCase
 import de.davis.keygo.auth.domain.usecase.PrepareBiometricCipherUseCase
 import de.davis.keygo.auth.domain.usecase.UnlockWithBiometricsUseCase
+import de.davis.keygo.auth.domain.usecase.UnlockWithPasswordUseCase
 import de.davis.keygo.auth.presentation.model.AuthEvent
 import de.davis.keygo.auth.presentation.model.AuthState
 import de.davis.keygo.auth.presentation.model.AuthUIEvent
+import de.davis.keygo.auth.presentation.model.UIPasswordError
 import de.davis.keygo.core.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
@@ -29,6 +31,7 @@ class AuthViewModel(
     getBiometricAvailability: GetBiometricAvailabilityUseCase,
     private val prepareBiometricCipher: PrepareBiometricCipherUseCase,
     private val unlockWithBiometrics: UnlockWithBiometricsUseCase,
+    private val unlockWithPasswordUseCase: UnlockWithPasswordUseCase,
     private val snackbarManager: SnackbarManager
 ) : ViewModel() {
 
@@ -67,7 +70,18 @@ class AuthViewModel(
             is AuthUIEvent.PasswordChanged -> updateState { it.copy(password = event.password) }
             AuthUIEvent.Submit -> {
                 viewModelScope.launch {
-                    // TODO
+                    unlockWithPasswordUseCase(state.value.password)
+                        .onSuccess {
+                            updateState { it.copy(authEvent = AuthEvent.Success) }
+                        }
+                        .onFailure {
+                            updateState {
+                                it.copy(
+                                    authEvent = AuthEvent.Failure,
+                                    passwordError = UIPasswordError.Incorrect
+                                )
+                            }
+                        }
                 }
             }
 

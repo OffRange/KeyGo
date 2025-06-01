@@ -8,6 +8,7 @@ import de.davis.keygo.core.domain.model.MainPassword
 import de.davis.keygo.core.domain.repository.MainPasswordRepository
 import kotlinx.coroutines.flow.first
 
+@Deprecated("Use auth domain instead")
 class MainPasswordRepositoryImpl(
     private val dataStore: DataStore<ProtoMainPassword>
 ) : MainPasswordRepository {

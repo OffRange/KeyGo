@@ -1,34 +1,63 @@
 package de.davis.keygo.auth.di
 
-import de.davis.keygo.auth.data.factory.BiometricCipherFactoryImpl
+import android.content.Context
+import androidx.datastore.dataStore
+import com.lambdapioneer.argon2kt.Argon2Kt
+import de.davis.keygo.auth.data.factory.CipherFactoryImpl
+import de.davis.keygo.auth.data.local.model.ProtoBiometricKeyData
+import de.davis.keygo.auth.data.local.model.ProtoPasswordKeyData
 import de.davis.keygo.auth.data.repository.BiometricAvailabilityRepositoryImpl
 import de.davis.keygo.auth.data.repository.BiometricKekRepositoryImpl
-import de.davis.keygo.auth.data.repository.BiometricWrappedKeyRepositoryImpl
-import de.davis.keygo.auth.domain.factory.BiometricCipherFactory
+import de.davis.keygo.auth.data.repository.KeyDerivationRepositoryImpl
+import de.davis.keygo.auth.di.annotation.BiometricQualifier
+import de.davis.keygo.auth.di.annotation.PasswordQualifier
+import de.davis.keygo.auth.domain.factory.CipherFactory
 import de.davis.keygo.auth.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.auth.domain.repository.BiometricKekRepository
-import de.davis.keygo.auth.domain.repository.BiometricWrappedKeyRepository
-import de.davis.keygo.auth.domain.usecase.GetBiometricAvailabilityUseCase
-import de.davis.keygo.auth.domain.usecase.PrepareBiometricCipherUseCase
-import de.davis.keygo.auth.domain.usecase.UnlockWithBiometricsUseCase
+import de.davis.keygo.auth.domain.repository.KeyDerivationRepository
 import de.davis.keygo.auth.presentation.AuthViewModel
+import de.davis.keygo.core.di.DefaultProtoSerializer
 import de.davis.keygo.core.di.sessionScope
+import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
+import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
+import org.koin.ksp.generated.module
+
+private val Context.protoPasswordKeyDataStore by dataStore(
+    "password_key_data.pb",
+    DefaultProtoSerializer(
+        defaultInstance = ProtoPasswordKeyData.getDefaultInstance(),
+        parser = ProtoPasswordKeyData.parser()
+    )
+)
+
+private val Context.protoBiometricKeyDataStore by dataStore(
+    "biometric_key_data.pb",
+    DefaultProtoSerializer(
+        defaultInstance = ProtoBiometricKeyData.getDefaultInstance(),
+        parser = ProtoBiometricKeyData.parser()
+    )
+)
+
+private val BIOMETRIC_QUALIFIER = named<BiometricQualifier>()
+private val PASSWORD_QUALIFIER = named<PasswordQualifier>()
 
 val authModule = module {
+    includes(AuthModule.module)
     sessionScope {
         viewModelOf(::AuthViewModel)
     }
 
-    singleOf(::BiometricAvailabilityRepositoryImpl) bind BiometricAvailabilityRepository::class
-    singleOf(::BiometricWrappedKeyRepositoryImpl) bind BiometricWrappedKeyRepository::class
-    singleOf(::BiometricCipherFactoryImpl) bind BiometricCipherFactory::class
-    singleOf(::BiometricKekRepositoryImpl) bind BiometricKekRepository::class
-    singleOf(::UnlockWithBiometricsUseCase)
+    single(qualifier = PASSWORD_QUALIFIER) { androidContext().protoPasswordKeyDataStore }
+    single(qualifier = BIOMETRIC_QUALIFIER) { androidContext().protoBiometricKeyDataStore }
 
-    singleOf(::PrepareBiometricCipherUseCase)
-    singleOf(::GetBiometricAvailabilityUseCase)
+    singleOf(::BiometricAvailabilityRepositoryImpl) bind BiometricAvailabilityRepository::class
+    singleOf(::CipherFactoryImpl) bind CipherFactory::class
+    singleOf(::BiometricKekRepositoryImpl) bind BiometricKekRepository::class
+
+    single { Argon2Kt() }
+    singleOf(::KeyDerivationRepositoryImpl) bind KeyDerivationRepository::class
 }

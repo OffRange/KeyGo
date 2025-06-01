@@ -1,9 +1,9 @@
 package de.davis.keygo.auth.domain.usecase
 
-import de.davis.keygo.auth.domain.factory.BiometricCipherFactory
+import de.davis.keygo.auth.data.repository.BiometricWrappedKeyRepository
+import de.davis.keygo.auth.domain.factory.CipherFactory
 import de.davis.keygo.auth.domain.model.BiometricWrappedKeyData
 import de.davis.keygo.auth.domain.model.CryptographyError
-import de.davis.keygo.auth.domain.repository.BiometricWrappedKeyRepository
 import de.davis.keygo.core.domain.Result
 import de.davis.keygo.core.domain.Session
 import de.davis.keygo.core.domain.isFailure
@@ -23,7 +23,7 @@ import kotlin.test.assertTrue
 class UnlockWithBiometricsUseCaseTest {
 
     private lateinit var cipher: Cipher
-    private lateinit var biometricCipherFactory: BiometricCipherFactory
+    private lateinit var cipherFactory: CipherFactory
     private lateinit var wrappedKeyRepository: BiometricWrappedKeyRepository
     private lateinit var session: Session
     private lateinit var useCase: UnlockWithBiometricsUseCase
@@ -31,11 +31,11 @@ class UnlockWithBiometricsUseCaseTest {
     @BeforeTest
     fun setUp() {
         cipher = mockk()
-        biometricCipherFactory = mockk()
+        cipherFactory = mockk()
         wrappedKeyRepository = mockk()
         session = mockk(relaxed = true)
         useCase = UnlockWithBiometricsUseCase(
-            biometricCipherFactory = biometricCipherFactory,
+            cipherFactory = cipherFactory,
             wrappedKeyRepository = wrappedKeyRepository,
             session = session
         )
@@ -43,7 +43,7 @@ class UnlockWithBiometricsUseCaseTest {
 
     @Test
     fun `test fail when has no wrapped key`() = runTest {
-        coEvery { wrappedKeyRepository.getBiometricWrappedKeyData() } returns null
+        coEvery { wrappedKeyRepository.getWrappedKeyData() } returns null
         val result = useCase(cipher)
 
         assertTrue(result.isFailure())
@@ -53,12 +53,12 @@ class UnlockWithBiometricsUseCaseTest {
     @Test
     fun `test fail when unwrapping key fails`() = runTest {
         val error = mockk<CryptographyError>()
-        coEvery { wrappedKeyRepository.getBiometricWrappedKeyData() } returns BiometricWrappedKeyData(
+        coEvery { wrappedKeyRepository.getWrappedKeyData() } returns BiometricWrappedKeyData(
             wrappedKey = byteArrayOf(),
             iv = byteArrayOf()
         )
         coEvery {
-            biometricCipherFactory.unwrapDataKey(
+            cipherFactory.unwrapDataKey(
                 cipher,
                 any()
             )
@@ -77,9 +77,9 @@ class UnlockWithBiometricsUseCaseTest {
             iv = byteArrayOf()
         )
         val aesKey = mockk<SecretKey>().asAesKey()
-        coEvery { wrappedKeyRepository.getBiometricWrappedKeyData() } returns wrappedKeyData
+        coEvery { wrappedKeyRepository.getWrappedKeyData() } returns wrappedKeyData
         coEvery {
-            biometricCipherFactory.unwrapDataKey(
+            cipherFactory.unwrapDataKey(
                 cipher,
                 any()
             )

@@ -40,6 +40,46 @@ inline fun <S, E : F, F, MS> Result<S, E>.newResultOnSuccess(transform: (S) -> R
     }
 }
 
+data class SuccessPair2<S1, S2>(val success1: S1, val success2: S2)
+data class SuccessPair3<S1, S2, S3>(val success1: S1, val success2: S2, val success3: S3)
+data class SuccessPair4<S1, S2, S3, S4>(
+    val success1: S1,
+    val success2: S2,
+    val success3: S3,
+    val success4: S4
+)
+
+inline fun <S, S2, E : F, F> Result<S, E>.zip(transform: (S) -> Result<S2, F>): Result<SuccessPair2<S, S2>, F> =
+    when (this) {
+        is Result.Success -> transform(success).mapSuccess { SuccessPair2(success, it) }
+        is Result.Failure -> Result.Failure(error)
+    }
+
+inline fun <S1, S2, S3, E : F, F> Result<SuccessPair2<S1, S2>, E>.zip(transform: (S1, S2) -> Result<S3, F>): Result<SuccessPair3<S1, S2, S3>, F> =
+    when (this) {
+        is Result.Success -> with(success) {
+            transform(success1, success2).mapSuccess { SuccessPair3(success1, success2, it) }
+        }
+
+        is Result.Failure -> Result.Failure(error)
+    }
+
+inline fun <S1, S2, S3, S4, E : F, F> Result<SuccessPair3<S1, S2, S3>, E>.zip(transform: (S1, S2, S3) -> Result<S4, F>): Result<SuccessPair4<S1, S2, S3, S4>, F> =
+    when (this) {
+        is Result.Success -> with(success) {
+            transform(success1, success2, success3).mapSuccess {
+                SuccessPair4(
+                    success1,
+                    success2,
+                    success3,
+                    it
+                )
+            }
+        }
+
+        is Result.Failure -> Result.Failure(error)
+    }
+
 inline fun <S, E> Result<S, E>.onFailure(action: (E) -> Unit): Result<S, E> {
     if (this is Result.Failure) {
         action(error)

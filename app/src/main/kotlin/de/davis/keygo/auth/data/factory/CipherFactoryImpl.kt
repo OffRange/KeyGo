@@ -1,6 +1,6 @@
 package de.davis.keygo.auth.data.factory
 
-import de.davis.keygo.auth.domain.factory.BiometricCipherFactory
+import de.davis.keygo.auth.domain.factory.CipherFactory
 import de.davis.keygo.auth.domain.model.CryptographicMode
 import de.davis.keygo.auth.domain.model.CryptographyError
 import de.davis.keygo.core.domain.Result
@@ -15,7 +15,7 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import kotlin.coroutines.CoroutineContext
 
-class BiometricCipherFactoryImpl : BiometricCipherFactory {
+class CipherFactoryImpl : CipherFactory {
 
     override fun prepareCipher(
         mode: CryptographicMode,

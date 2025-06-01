@@ -54,7 +54,10 @@ dependencies {
 
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))
+    implementation(project.dependencies.platform(libs.koin.annotations.bom))
     implementation(libs.koin.androidx.compose)
+    implementation(libs.koin.annotations)
+    ksp(libs.koin.ksp.compiler)
 
     // Room
     implementation(libs.androidx.room.runtime)
@@ -74,6 +77,7 @@ dependencies {
     implementation(libs.gosimple.nbvcxz)
 
     implementation(libs.offrange.passgen)
+    implementation("com.lambdapioneer.argon2kt:argon2kt:1.6.0")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -131,4 +135,6 @@ room {
 
 ksp {
     arg("automation.packageName", "de.davis.keygo.generated")
+
+    arg("KOIN_DEFAULT_MODULE", "true")
 }
