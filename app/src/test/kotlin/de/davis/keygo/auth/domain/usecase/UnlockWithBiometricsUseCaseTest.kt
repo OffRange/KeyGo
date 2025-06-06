@@ -42,7 +42,7 @@ class UnlockWithBiometricsUseCaseTest {
     }
 
     @Test
-    fun `test fail when has no wrapped key`() = runTest {
+    fun `test failing - without wrapped key data`() = runTest {
         coEvery { wrappedKeyRepository.getWrappedKeyData() } returns null
         val result = useCase(cipher)
 
@@ -51,7 +51,7 @@ class UnlockWithBiometricsUseCaseTest {
     }
 
     @Test
-    fun `test fail when unwrapping key fails`() = runTest {
+    fun `test failing - unwrapping key fails`() = runTest {
         val error = mockk<CryptographyError>()
         coEvery { wrappedKeyRepository.getWrappedKeyData() } returns BiometricWrappedKeyData(
             wrappedKey = byteArrayOf(),
@@ -71,7 +71,7 @@ class UnlockWithBiometricsUseCaseTest {
     }
 
     @Test
-    fun `test succeeds`() = runTest {
+    fun `test succeeding`() = runTest {
         val wrappedKeyData = BiometricWrappedKeyData(
             wrappedKey = byteArrayOf(),
             iv = byteArrayOf()

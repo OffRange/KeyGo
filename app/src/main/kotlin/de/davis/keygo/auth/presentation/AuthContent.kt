@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.TextObfuscationMode
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Fingerprint
@@ -68,9 +69,9 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val firstPartOfTitle = when (state.authMode) {
-                        is AuthState.Mode.Login -> stringResource(R.string.authenticate_to_access)
-                        is AuthState.Mode.Register -> stringResource(R.string.create_access_access)
+                    val firstPartOfTitle = when (state) {
+                        is AuthState.Login -> stringResource(R.string.authenticate_to_access)
+                        is AuthState.CreateAccess -> stringResource(R.string.create_access_access)
                     }
                     Text(
                         text = buildAnnotatedString {
@@ -97,7 +98,7 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
                         textAlign = TextAlign.Center,
                     )
 
-                    with(state.authMode) {
+                    with(state) {
                         var passwordHidden by rememberSaveable { mutableStateOf(true) }
                         var forceCompact by rememberSaveable { mutableStateOf(false) }
                         OutlinedSecureTextField(
@@ -133,7 +134,7 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
                             },
                         )
 
-                        if (this is AuthState.Mode.Register) {
+                        if (this is AuthState.CreateAccess) {
                             StrengthIndicator(
                                 score = score,
                                 forceCompact = forceCompact,
@@ -171,7 +172,7 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
                                 },
                             )
 
-                            if (state.biometricsAvailable)
+                            if (biometricsAvailable)
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
@@ -203,14 +204,14 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
                             enabled = !state.loading
                         ) {
                             Text(
-                                text = when (state.authMode) {
-                                    is AuthState.Mode.Login -> stringResource(R.string.authenticate)
-                                    is AuthState.Mode.Register -> stringResource(R.string.create_access)
+                                text = when (state) {
+                                    is AuthState.Login -> stringResource(R.string.authenticate)
+                                    is AuthState.CreateAccess -> stringResource(R.string.create_access)
                                 }
                             )
                         }
 
-                        if (state.authMode is AuthState.Mode.Login && state.biometricsAvailable) {
+                        if (state is AuthState.Login && state.biometricAuthenticationAvailable) {
                             FilledTonalIconButton(
                                 onClick = {
                                     onEvent(AuthUIEvent.RequestBiometricAuthentication)
@@ -257,7 +258,7 @@ internal val DialogMaxWidth = 560.dp
 private fun AuthContentPreview() {
     KeyGoTheme {
         AuthContent(
-            state = AuthState(biometricsAvailable = true),
+            state = AuthState.CreateAccess(passwordTextFieldState = TextFieldState(), biometricsAvailable = true),
             onEvent = {}
         )
     }

@@ -53,7 +53,7 @@ class UnlockWithPasswordUseCaseTest {
     }
 
     @Test
-    fun `test fail when has no wrapped key`() = runTest {
+    fun `test failing - without wrapped key`() = runTest {
         coEvery { wrappedKeyRepository.getWrappedKeyData() } returns null
         val result = useCase("password")
 
@@ -62,7 +62,7 @@ class UnlockWithPasswordUseCaseTest {
     }
 
     @Test
-    fun `test fail when deriving key fails`() = runTest {
+    fun `test failing - deriving key fails`() = runTest {
         val password = "password"
         val wrappedKeyData = PasswordWrappedKeyData(
             wrappedKey = byteArrayOf(0x1),
@@ -90,7 +90,7 @@ class UnlockWithPasswordUseCaseTest {
     }
 
     @Test
-    fun `test fail when prepare Cipher fails`() = runTest {
+    fun `test failing - preparing Cipher fails`() = runTest {
         val password = "password"
         val wrappedKeyData = PasswordWrappedKeyData(
             wrappedKey = byteArrayOf(0x1),
@@ -118,7 +118,7 @@ class UnlockWithPasswordUseCaseTest {
     }
 
     @Test
-    fun `test fail when unwrapping key fails`() = runTest {
+    fun `test failing - unwrapping key fails`() = runTest {
         val password = "password"
         val wrappedKeyData = PasswordWrappedKeyData(
             wrappedKey = byteArrayOf(0x1),
@@ -154,7 +154,7 @@ class UnlockWithPasswordUseCaseTest {
 
 
     @Test
-    fun `test succeeds`() = runTest {
+    fun `test succeeding`() = runTest {
         val password = "password"
         val wrappedKeyData = PasswordWrappedKeyData(
             wrappedKey = byteArrayOf(0x1),

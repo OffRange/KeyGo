@@ -14,10 +14,10 @@ import de.davis.keygo.auth.domain.usecase.HasValidAccessUseCase
 import de.davis.keygo.auth.domain.usecase.PrepareBiometricCipherUseCase
 import de.davis.keygo.auth.domain.usecase.UnlockWithBiometricsUseCase
 import de.davis.keygo.auth.domain.usecase.UnlockWithPasswordUseCase
-import de.davis.keygo.auth.presentation.model.AuthEvent
 import de.davis.keygo.auth.presentation.model.AuthState
 import de.davis.keygo.auth.presentation.model.AuthUIEvent
 import de.davis.keygo.auth.presentation.model.UIPasswordError
+import de.davis.keygo.core.domain.Result
 import de.davis.keygo.core.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
@@ -29,16 +29,15 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
@@ -58,49 +57,80 @@ class AuthViewModel(
     private val passwordTextFieldState = TextFieldState()
     private val confirmPasswordTextFieldState = TextFieldState()
 
-    private val _state = MutableStateFlow(AuthState())
-    val state = _state.onStart {
-        val hasAccess = hasValidAccessUseCase()
-        updateState {
-            it.copy(
-                authMode = when {
-                    hasAccess -> AuthState.Mode.Login(
-                        passwordTextFieldState = passwordTextFieldState
-                    )
+    private val _uiState =
+        MutableStateFlow<AuthState>(AuthState.CreateAccess(passwordTextFieldState = passwordTextFieldState))
+    val uiState = _uiState.asStateFlow()
 
-                    else -> AuthState.Mode.Register(
+    init {
+        viewModelScope.launch {
+            val hasAccess = hasValidAccessUseCase()
+
+            val isBiometricHardwareAvailable =
+                getBiometricHardwareAvailability() == BiometricAvailability.Available
+            val isBiometricCryptoSetupAvailable = if (hasAccess)
+                getBiometricCryptoSetupAvailability() == BiometricAvailability.Available
+            else false
+
+            val biometricsUsable = isBiometricHardwareAvailable && isBiometricCryptoSetupAvailable
+            if (biometricsUsable) requestBiometricAuthentication()
+
+
+            _uiState.update {
+                if (hasAccess) {
+                    AuthState.Login(
                         passwordTextFieldState = passwordTextFieldState,
-                        confirmPasswordTextFieldState = confirmPasswordTextFieldState
+                        biometricAuthenticationAvailable = biometricsUsable
+                    )
+                } else {
+                    observePasswordStrength()
+                    observePasswordError()
+                    observeConfirmPasswordError()
+
+                    AuthState.CreateAccess(
+                        passwordTextFieldState = passwordTextFieldState,
+                        confirmPasswordTextFieldState = confirmPasswordTextFieldState,
+                        biometricsAvailable = isBiometricHardwareAvailable
                     )
                 }
-            )
-        }
-
-        val isBiometricHardwareAvailable =
-            getBiometricHardwareAvailability() == BiometricAvailability.Available
-        if (!hasAccess) {
-            observePasswordStrength()
-
-            updateState {
-                it.copy(biometricsAvailable = isBiometricHardwareAvailable)
             }
-            return@onStart
         }
+    }
 
-        val isBiometricCryptoSetupAvailable =
-            getBiometricCryptoSetupAvailability() == BiometricAvailability.Available
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
+    private fun observePasswordError() {
+        snapshotFlow { passwordTextFieldState.text }
+            .debounce(150.milliseconds)
+            .mapLatest { it.isBlank() }
+            .distinctUntilChanged()
+            .onEach { isBlank ->
+                if (isBlank) return@onEach
 
-        val canAuthenticate = isBiometricHardwareAvailable && isBiometricCryptoSetupAvailable
-        if (canAuthenticate) requestBiometricAuthentication()
+                _uiState.update {
+                    if (it !is AuthState.CreateAccess) return@update it
+                    it.copy(passwordError = UIPasswordError.None)
+                }
+            }
+            .flowOn(Dispatchers.Default)
+            .launchIn(viewModelScope)
+    }
 
-        updateState {
-            it.copy(biometricsAvailable = canAuthenticate)
-        }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = AuthState()
-    )
+    private fun observeConfirmPasswordError() {
+        snapshotFlow { passwordTextFieldState.text }
+            .combine(snapshotFlow { confirmPasswordTextFieldState.text }) { password, confirm ->
+                password == confirm
+            }
+            .distinctUntilChanged()
+            .onEach { equal ->
+                if (!equal) return@onEach
+
+                _uiState.update {
+                    if (it !is AuthState.CreateAccess) return@update it
+                    it.copy(confirmPasswordError = UIPasswordError.None)
+                }
+            }
+            .flowOn(Dispatchers.Default)
+            .launchIn(viewModelScope)
+    }
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private fun observePasswordStrength() {
@@ -109,8 +139,9 @@ class AuthViewModel(
             .mapLatest { estimateStrength(it.toString()) }
             .distinctUntilChanged()
             .onEach { score ->
-                updateState {
-                    it.copy(authMode = it.authMode.copyDefaults(score = score))
+                _uiState.update {
+                    if (it !is AuthState.CreateAccess) return@update it
+                    it.copy(score = score)
                 }
             }
             .flowOn(Dispatchers.Default)
@@ -120,73 +151,51 @@ class AuthViewModel(
     private val biometricRequestChannel = Channel<BiometricRequest>()
     val biometricRequests = biometricRequestChannel.receiveAsFlow()
 
+    private val navigationEventChannel = Channel<Unit>()
+    val navigationEvent = navigationEventChannel.receiveAsFlow()
 
     fun onEvent(event: AuthUIEvent) {
         when (event) {
-            is AuthUIEvent.RequestBiometricAuthentication -> if (state.value.authMode is AuthState.Mode.Login) requestBiometricAuthentication()
+            is AuthUIEvent.RequestBiometricAuthentication -> if (uiState.value is AuthState.Login) requestBiometricAuthentication()
 
             AuthUIEvent.Submit -> {
-                val state = state.value
-                when (state.authMode) {
-                    is AuthState.Mode.Login -> {
-                        val password = state.authMode.passwordTextFieldState.text.toString()
-                        if (password.isNotBlank())
-                            updateState { it.copy(loading = true) }
-
-                        viewModelScope.launch {
+                val state = _uiState.value
+                val password = state.passwordTextFieldState.text.toString()
+                when (state) {
+                    is AuthState.Login -> {
+                        loading(setLoading = password.isNotBlank()) {
                             unlockWithPasswordUseCase(
                                 password = password
-                            ).onSuccess {
-                                updateState { it.copy(authEvent = AuthEvent.Success) }
-                            }.onFailure {
-                                updateState {
-                                    it.copy(
-                                        loading = false,
-                                        authEvent = AuthEvent.Failure,
-                                        authMode = it.authMode.copyDefaults(passwordError = UIPasswordError.Incorrect)
-                                    )
-                                }
+                            ).handleAuthenticationResult {
+                                state.copyDefaultState(passwordError = UIPasswordError.Incorrect)
                             }
                         }
                     }
 
-                    is AuthState.Mode.Register -> {
-                        val password = state.authMode.passwordTextFieldState.text.toString()
+                    is AuthState.CreateAccess -> {
+                        val errorFreeState = state.copy(
+                            passwordError = UIPasswordError.None,
+                            confirmPasswordError = UIPasswordError.None
+                        )
+
                         if (password.isBlank()) {
-                            updateState {
-                                it.copy(
-                                    authMode = state.authMode.copyDefaults(passwordError = UIPasswordError.Empty)
-                                )
+                            _uiState.update {
+                                errorFreeState.copy(passwordError = UIPasswordError.Empty)
                             }
                             return
                         }
                         val confirmedPassword =
-                            state.authMode.confirmPasswordTextFieldState.text.toString()
+                            errorFreeState.confirmPasswordTextFieldState.text.toString()
                         if (password != confirmedPassword) {
-                            updateState {
-                                it.copy(
-                                    authMode = state.authMode.copy(
-                                        confirmPasswordError = UIPasswordError.Incorrect
-                                    )
-                                )
+                            _uiState.update {
+                                errorFreeState.copy(confirmPasswordError = UIPasswordError.Incorrect)
                             }
                             return
                         }
 
-                        if (!state.biometricsAvailable || !state.authMode.useBiometrics) {
-                            updateState { it.copy(loading = true) }
-                            viewModelScope.launch {
-                                createAccess(password = password)
-                                    .onSuccess {
-                                        updateState { it.copy(authEvent = AuthEvent.Success) }
-                                    }.onFailure {
-                                        updateState {
-                                            it.copy(
-                                                authEvent = AuthEvent.Failure,
-                                                loading = false
-                                            )
-                                        }
-                                    }
+                        if (!errorFreeState.biometricsAvailable || !errorFreeState.useBiometrics) {
+                            loading {
+                                createAccess(password = password).handleAuthenticationResult()
                             }
 
                             return
@@ -201,41 +210,26 @@ class AuthViewModel(
             AuthUIEvent.BiometricFailure -> {}
             is AuthUIEvent.BiometricSuccess -> {
                 val cipher = event.result.cryptoObject?.cipher ?: return
-                updateState { it.copy(loading = true) }
-                val state = state.value
-                if (state.authMode is AuthState.Mode.Login) {
-                    viewModelScope.launch {
-                        unlockWithBiometrics(cipher)
-                            .onSuccess {
-                                updateState { it.copy(authEvent = AuthEvent.Success) }
-                            }.onFailure {
-                                updateState {
-                                    it.copy(
-                                        authEvent = AuthEvent.Failure,
-                                        loading = false
-                                    )
-                                }
-                            }
-                    }
-                    return
-                }
+                loading {
+                    when (val state = uiState.value) {
+                        is AuthState.CreateAccess -> {
+                            createAccess(
+                                password = state.passwordTextFieldState.text.toString(),
+                                biometricCipher = cipher
+                            ).handleAuthenticationResult()
+                        }
 
-                viewModelScope.launch {
-                    createAccess(
-                        password = state.authMode.passwordTextFieldState.text.toString(),
-                        biometricCipher = cipher
-                    ).onSuccess {
-                        updateState { it.copy(authEvent = AuthEvent.Success) }
-                    }.onFailure {
-                        updateState { it.copy(authEvent = AuthEvent.Failure, loading = false) }
+                        is AuthState.Login -> {
+                            unlockWithBiometrics(cipher).handleAuthenticationResult()
+                        }
                     }
                 }
             }
 
             is AuthUIEvent.ToggleUseBiometrics -> {
-                updateState {
-                    val mode = it.authMode as? AuthState.Mode.Register ?: return@updateState it
-                    it.copy(authMode = mode.copy(useBiometrics = event.checked))
+                _uiState.update {
+                    if (it !is AuthState.CreateAccess) return@update it
+                    else it.copy(useBiometrics = event.checked)
                 }
             }
         }
@@ -253,7 +247,35 @@ class AuthViewModel(
         }
     }
 
-    private fun updateState(block: (AuthState) -> AuthState) {
-        _state.update(block)
+    private fun loading(
+        setLoading: Boolean = true,
+        block: suspend LoadingScope<AuthState>.() -> Unit
+    ) {
+        if (setLoading)
+            _uiState.update { it.copyDefaultState(loading = true) }
+
+        viewModelScope.launch {
+            _uiState.update {
+                LoadingScope(
+                    state = it,
+                    onSuccess = { navigationEventChannel.trySend(Unit) },
+                ).apply {
+                    block()
+                }.updatedState.copyDefaultState(loading = false)
+            }
+        }
+    }
+}
+
+private class LoadingScope<State>(
+    state: State,
+    private val onSuccess: () -> Unit,
+) {
+    var updatedState: State = state
+        private set
+
+    fun <S, E> Result<S, E>.handleAuthenticationResult(onFailure: State.(E) -> State = { this }) {
+        onSuccess { onSuccess() }
+            .onFailure { updatedState = updatedState.onFailure(it) }
     }
 }

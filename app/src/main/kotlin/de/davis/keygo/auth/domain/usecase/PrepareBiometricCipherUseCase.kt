@@ -20,14 +20,14 @@ class PrepareBiometricCipherUseCase(
 ) {
 
     suspend operator fun invoke(mode: CryptographicMode): Result<Cipher, CryptographyError> {
-        val key = kekRepository.getKek()
-            .getOrNull() ?: kekRepository.createKek()
-
         val iv = if (mode == CryptographicMode.Unwrap) {
             biometricWrappedKeyRepository.getWrappedKeyData()?.iv ?: return Result.Failure(
                 CryptographyError.WrappedKeyNotFound
             )
         } else null
+
+        val key = kekRepository.getKek().getOrNull()
+            ?: kekRepository.createKek()
 
         return cipherFactory.prepareCipher(
             mode = mode,

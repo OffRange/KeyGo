@@ -2,7 +2,6 @@ package de.davis.keygo.auth.domain.usecase
 
 import de.davis.keygo.auth.data.repository.BiometricWrappedKeyRepository
 import de.davis.keygo.auth.domain.model.BiometricAvailability
-import de.davis.keygo.auth.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.auth.domain.repository.BiometricKekRepository
 import io.mockk.coEvery
 import io.mockk.every
@@ -16,18 +15,15 @@ class GetBiometricAvailabilityUseCaseTest {
 
     private lateinit var biometricKekRepository: BiometricKekRepository
     private lateinit var wrappedKeyRepository: BiometricWrappedKeyRepository
-    private lateinit var biometricAvailabilityRepository: BiometricAvailabilityRepository
     private lateinit var useCase: GetBiometricCryptoSetupAvailabilityUseCase
 
     @BeforeTest
     fun setUp() {
         biometricKekRepository = mockk()
         wrappedKeyRepository = mockk()
-        biometricAvailabilityRepository = mockk()
         useCase = GetBiometricCryptoSetupAvailabilityUseCase(
             biometricKekRepository = biometricKekRepository,
             wrappedKeyRepository = wrappedKeyRepository,
-            biometricAvailabilityRepository = biometricAvailabilityRepository
         )
     }
 
@@ -57,7 +53,6 @@ class GetBiometricAvailabilityUseCaseTest {
         coEvery { wrappedKeyRepository.getWrappedKeyData() } returns mockk {
             every { isValid() } returns true
         }
-        coEvery { biometricAvailabilityRepository.availability(any()) } returns BiometricAvailability.Available
 
         val result = useCase()
 
