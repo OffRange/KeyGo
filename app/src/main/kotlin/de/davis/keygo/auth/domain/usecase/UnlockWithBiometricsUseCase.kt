@@ -8,8 +8,8 @@ import de.davis.keygo.core.domain.Result
 import de.davis.keygo.core.domain.Session
 import de.davis.keygo.core.domain.asResult
 import de.davis.keygo.core.domain.asUnitResult
-import de.davis.keygo.core.domain.newResultOnSuccess
 import de.davis.keygo.core.domain.onSuccess
+import de.davis.keygo.core.domain.zip
 import org.koin.core.annotation.Single
 import javax.crypto.Cipher
 
@@ -24,14 +24,14 @@ class UnlockWithBiometricsUseCase(
     suspend operator fun invoke(cipher: Cipher): Result<Unit, CryptographyError> =
         wrappedKeyRepository.getWrappedKeyData()
             .asResult(CryptographyError.WrappedKeyNotFound)
-            .newResultOnSuccess {
+            .zip {
                 cipherFactory.unwrapDataKey(
                     cipher = cipher,
                     wrappedKey = it.wrappedKey,
                 )
             }
-            .onSuccess {
-                session.startSession(it)
+            .onSuccess { (_, key) ->
+                session.startSession(key)
             }
             .asUnitResult()
 }

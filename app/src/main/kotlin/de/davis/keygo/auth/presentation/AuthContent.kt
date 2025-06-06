@@ -7,17 +7,23 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextObfuscationMode
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,15 +32,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontSynthesis
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -42,9 +47,11 @@ import de.davis.keygo.R
 import de.davis.keygo.auth.presentation.model.AuthState
 import de.davis.keygo.auth.presentation.model.AuthUIEvent
 import de.davis.keygo.auth.presentation.model.UIPasswordError
+import de.davis.keygo.core.presentation.component.StrengthIndicator
 import de.davis.keygo.core.presentation.component.VisibilityButton
 import de.davis.keygo.core.presentation.theme.KeyGoTheme
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
     Surface(modifier = Modifier.fillMaxSize()) {
@@ -59,12 +66,15 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    val firstPartOfTitle = when (state.authMode) {
+                        is AuthState.Mode.Login -> stringResource(R.string.authenticate_to_access)
+                        is AuthState.Mode.Register -> stringResource(R.string.create_access_access)
+                    }
                     Text(
                         text = buildAnnotatedString {
-                            append(stringResource(R.string.authenticate_to_access))
+                            append(firstPartOfTitle)
                             append(" ")
 
                             withStyle(
@@ -82,35 +92,106 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
                             ) {
                                 append(stringResource(R.string.your_vault))
                             }
-                        }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center,
                     )
 
-                    var passwordHidden by rememberSaveable { mutableStateOf(true) }
-                    OutlinedTextField(
-                        value = state.password,
-                        onValueChange = { onEvent(AuthUIEvent.PasswordChanged(it)) },
-                        label = { Text(stringResource(R.string.password)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        visualTransformation = if (passwordHidden) {
-                            PasswordVisualTransformation()
-                        } else {
-                            VisualTransformation.None
-                        },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        trailingIcon = {
-                            VisibilityButton(
-                                isHidden = passwordHidden,
-                                onClick = { passwordHidden = !passwordHidden },
+                    with(state.authMode) {
+                        var passwordHidden by rememberSaveable { mutableStateOf(true) }
+                        var forceCompact by rememberSaveable { mutableStateOf(false) }
+                        OutlinedSecureTextField(
+                            state = passwordTextFieldState,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onFocusChanged {
+                                    forceCompact = !it.hasFocus
+                                },
+                            label = {
+                                Text(text = stringResource(R.string.password))
+                            },
+                            isError = passwordError !is UIPasswordError.None,
+                            supportingText = when (passwordError) {
+                                is UIPasswordError.None -> null
+                                is UIPasswordError.Incorrect -> {
+                                    { Text(stringResource(R.string.incorrect_password)) }
+                                }
+
+                                else -> {
+                                    { Text(stringResource(R.string.blank_password)) }
+                                }
+                            },
+                            textObfuscationMode = when {
+                                passwordHidden -> TextObfuscationMode.RevealLastTyped
+                                else -> TextObfuscationMode.Visible
+                            },
+                            trailingIcon = {
+                                VisibilityButton(
+                                    isHidden = passwordHidden,
+                                    onClick = { passwordHidden = !passwordHidden },
+                                )
+                            },
+                        )
+
+                        if (this is AuthState.Mode.Register) {
+                            StrengthIndicator(
+                                score = score,
+                                forceCompact = forceCompact,
                             )
-                        },
-                        isError = state.passwordError !is UIPasswordError.None,
-                        supportingText = when (state.passwordError) {
-                            is UIPasswordError.None -> null
-                            is UIPasswordError.Incorrect -> {
-                                { Text(stringResource(R.string.incorrect_password)) }
-                            }
+
+                            var confirmPasswordHidden by rememberSaveable { mutableStateOf(true) }
+                            OutlinedSecureTextField(
+                                state = confirmPasswordTextFieldState,
+                                modifier = Modifier.fillMaxWidth(),
+                                label = {
+                                    Text(text = stringResource(R.string.confirm_password))
+                                },
+                                isError = confirmPasswordError !is UIPasswordError.None,
+                                supportingText = when (confirmPasswordError) {
+                                    is UIPasswordError.None -> null
+                                    is UIPasswordError.Incorrect -> {
+                                        { Text(stringResource(R.string.password_does_not_match)) }
+                                    }
+
+                                    else -> {
+                                        { Text(stringResource(R.string.blank_password)) }
+                                    }
+                                },
+                                textObfuscationMode = when {
+                                    confirmPasswordHidden -> TextObfuscationMode.RevealLastTyped
+                                    else -> TextObfuscationMode.Visible
+                                },
+                                trailingIcon = {
+                                    VisibilityButton(
+                                        isHidden = confirmPasswordHidden,
+                                        onClick = {
+                                            confirmPasswordHidden = !confirmPasswordHidden
+                                        },
+                                    )
+                                },
+                            )
+
+                            if (state.biometricsAvailable)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                ) {
+                                    Text(text = stringResource(R.string.use_biometrics))
+
+                                    Switch(
+                                        checked = useBiometrics,
+                                        onCheckedChange = {
+                                            onEvent(
+                                                AuthUIEvent.ToggleUseBiometrics(
+                                                    it
+                                                )
+                                            )
+                                        }
+                                    )
+                                }
                         }
-                    )
+                    }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -118,16 +199,23 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
                     ) {
                         FilledTonalButton(
                             onClick = { onEvent(AuthUIEvent.Submit) },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            enabled = !state.loading
                         ) {
-                            Text(text = stringResource(R.string.authenticate))
+                            Text(
+                                text = when (state.authMode) {
+                                    is AuthState.Mode.Login -> stringResource(R.string.authenticate)
+                                    is AuthState.Mode.Register -> stringResource(R.string.create_access)
+                                }
+                            )
                         }
 
-                        if (state.biometricsAvailable) {
+                        if (state.authMode is AuthState.Mode.Login && state.biometricsAvailable) {
                             FilledTonalIconButton(
                                 onClick = {
                                     onEvent(AuthUIEvent.RequestBiometricAuthentication)
-                                }
+                                },
+                                enabled = !state.loading
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Fingerprint,
@@ -138,9 +226,28 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
                     }
                 }
             }
+
+            if (state.loading) {
+                BasicAlertDialog(
+                    onDismissRequest = { },
+                ) {
+                    Box(
+                        modifier = Modifier.sizeIn(
+                            minWidth = DialogMinWidth,
+                            maxWidth = DialogMaxWidth
+                        ),
+                        propagateMinConstraints = true
+                    ) {
+                        LoadingIndicator()
+                    }
+                }
+            }
         }
     }
 }
+
+internal val DialogMinWidth = 280.dp
+internal val DialogMaxWidth = 560.dp
 
 @Composable
 @Preview

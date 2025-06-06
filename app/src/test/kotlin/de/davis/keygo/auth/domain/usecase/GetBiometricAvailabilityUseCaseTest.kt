@@ -17,14 +17,14 @@ class GetBiometricAvailabilityUseCaseTest {
     private lateinit var biometricKekRepository: BiometricKekRepository
     private lateinit var wrappedKeyRepository: BiometricWrappedKeyRepository
     private lateinit var biometricAvailabilityRepository: BiometricAvailabilityRepository
-    private lateinit var useCase: GetBiometricAvailabilityUseCase
+    private lateinit var useCase: GetBiometricCryptoSetupAvailabilityUseCase
 
     @BeforeTest
     fun setUp() {
         biometricKekRepository = mockk()
         wrappedKeyRepository = mockk()
         biometricAvailabilityRepository = mockk()
-        useCase = GetBiometricAvailabilityUseCase(
+        useCase = GetBiometricCryptoSetupAvailabilityUseCase(
             biometricKekRepository = biometricKekRepository,
             wrappedKeyRepository = wrappedKeyRepository,
             biometricAvailabilityRepository = biometricAvailabilityRepository

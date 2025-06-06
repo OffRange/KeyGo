@@ -13,12 +13,20 @@ interface CipherFactory {
     fun prepareCipher(
         mode: CryptographicMode,
         kek: AesKey,
-        iv: ByteArray
+        iv: ByteArray? = null,
     ): Result<Cipher, CryptographyError>
+
+    fun generateIv(length: Int = 12): ByteArray
 
     suspend fun unwrapDataKey(
         cipher: Cipher,
         wrappedKey: ByteArray,
         coroutineContext: CoroutineContext = Dispatchers.Default
     ): Result<AesKey, CryptographyError>
+
+    suspend fun wrapDataKey(
+        cipher: Cipher,
+        keyToWrap: AesKey,
+        coroutineContext: CoroutineContext = Dispatchers.Default
+    ): Result<ByteArray, CryptographyError>
 }

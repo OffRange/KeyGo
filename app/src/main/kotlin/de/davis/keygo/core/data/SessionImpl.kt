@@ -12,7 +12,6 @@ class SessionImpl : Session {
 
     override fun endSession() {
         if (scope.isNotClosed()) {
-            scope.get<AesKey>().close()
             scope.close()
         }
     }

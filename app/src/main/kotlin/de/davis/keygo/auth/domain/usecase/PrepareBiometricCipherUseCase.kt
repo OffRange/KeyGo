@@ -5,11 +5,9 @@ import de.davis.keygo.auth.di.annotation.BiometricQualifier
 import de.davis.keygo.auth.domain.factory.CipherFactory
 import de.davis.keygo.auth.domain.model.CryptographicMode
 import de.davis.keygo.auth.domain.model.CryptographyError
-import de.davis.keygo.auth.domain.model.KeyStoreError
 import de.davis.keygo.auth.domain.repository.BiometricKekRepository
 import de.davis.keygo.core.domain.Result
 import de.davis.keygo.core.domain.getOrNull
-import de.davis.keygo.core.domain.onFailure
 import org.koin.core.annotation.Single
 import javax.crypto.Cipher
 
@@ -23,20 +21,18 @@ class PrepareBiometricCipherUseCase(
 
     suspend operator fun invoke(mode: CryptographicMode): Result<Cipher, CryptographyError> {
         val key = kekRepository.getKek()
-            .onFailure {
-                return when (it) {
-                    is KeyStoreError.KeyNotFound -> Result.Failure(CryptographyError.KeyNotInKeyStore)
-                }
-            }
-            .getOrNull() ?: error("Unreachable")
+            .getOrNull() ?: kekRepository.createKek()
 
-        val wrappedKeyData = biometricWrappedKeyRepository.getWrappedKeyData()
-            ?: return Result.Failure(CryptographyError.WrappedKeyNotFound)
+        val iv = if (mode == CryptographicMode.Unwrap) {
+            biometricWrappedKeyRepository.getWrappedKeyData()?.iv ?: return Result.Failure(
+                CryptographyError.WrappedKeyNotFound
+            )
+        } else null
 
         return cipherFactory.prepareCipher(
             mode = mode,
             kek = key,
-            iv = wrappedKeyData.iv
+            iv = iv
         )
     }
 }

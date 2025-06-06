@@ -10,6 +10,7 @@ import de.davis.keygo.core.domain.model.crypto.asAesKey
 import kotlinx.coroutines.withContext
 import java.security.InvalidKeyException
 import java.security.NoSuchAlgorithmException
+import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
@@ -20,7 +21,7 @@ class CipherFactoryImpl : CipherFactory {
     override fun prepareCipher(
         mode: CryptographicMode,
         kek: AesKey,
-        iv: ByteArray
+        iv: ByteArray?
     ): Result<Cipher, CryptographyError> {
         val cipherMode = when (mode) {
             CryptographicMode.Wrap -> Cipher.WRAP_MODE
@@ -29,7 +30,8 @@ class CipherFactoryImpl : CipherFactory {
 
         return runCatching {
             CryptographicConstants.DEFAULT_CIPHER.apply {
-                init(cipherMode, kek.key, GCMParameterSpec(AUTH_TAG_LENGTH, iv))
+                iv?.let { init(cipherMode, kek.key, GCMParameterSpec(AUTH_TAG_LENGTH, iv)) }
+                    ?: init(cipherMode, kek.key)
             }
         }.fold(
             onSuccess = {
@@ -45,6 +47,15 @@ class CipherFactoryImpl : CipherFactory {
 
     }
 
+    override fun generateIv(length: Int): ByteArray {
+        val random = SecureRandom()
+        val iv = ByteArray(length)
+
+        random.nextBytes(iv)
+
+        return iv
+    }
+
     override suspend fun unwrapDataKey(
         cipher: Cipher,
         wrappedKey: ByteArray,
@@ -58,6 +69,7 @@ class CipherFactoryImpl : CipherFactory {
             ) as SecretKey
         }.fold(
             onFailure = {
+                println("Error unwrapping data key: ${it}")
                 when (it) {
                     is IllegalStateException -> Result.Failure(CryptographyError.IllegalState)
                     is NoSuchAlgorithmException -> Result.Failure(CryptographyError.NoSuchAlgorithm)
@@ -66,6 +78,26 @@ class CipherFactoryImpl : CipherFactory {
                 }
             },
             onSuccess = { Result.Success(it.asAesKey()) }
+        )
+    }
+
+    override suspend fun wrapDataKey(
+        cipher: Cipher,
+        keyToWrap: AesKey,
+        coroutineContext: CoroutineContext
+    ): Result<ByteArray, CryptographyError> = withContext(coroutineContext) {
+        runCatching {
+            cipher.wrap(keyToWrap.key)
+        }.fold(
+            onFailure = {
+                when (it) {
+                    is IllegalStateException -> Result.Failure(CryptographyError.IllegalState)
+                    is NoSuchAlgorithmException -> Result.Failure(CryptographyError.NoSuchAlgorithm)
+                    is InvalidKeyException -> Result.Failure(CryptographyError.InvalidKey)
+                    else -> Result.Failure(CryptographyError.Unknown(it))
+                }
+            },
+            onSuccess = { Result.Success(it) }
         )
     }
 

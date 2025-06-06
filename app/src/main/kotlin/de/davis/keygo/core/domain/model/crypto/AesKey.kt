@@ -5,11 +5,7 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.SecretKeySpec
 
 @JvmInline
-value class AesKey(val key: SecretKey) : AutoCloseable {
-    override fun close() {
-        key.destroy()
-    }
-}
+value class AesKey(val key: SecretKey)
 
 fun SecretKey.asAesKey() = AesKey(this)
 fun Key.asAesKey() = AesKey(this as SecretKey)

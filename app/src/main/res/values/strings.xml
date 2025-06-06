@@ -2,6 +2,7 @@
     <string name="app_name">KeyGo</string>
 
     <string name="authenticate_to_access">Authenticate to access</string>
+    <string name="create_access_access">Create an access to</string>
     <string name="your_vault">your vault</string>
 
     <string name="show_password_content_description">Show password</string>
@@ -19,9 +20,15 @@
     <string name="add_new_element">Add new Element</string>
 
     <string name="password">Password</string>
+    <string name="confirm_password">Confirm Password</string>
 
+    <string name="blank_password">You must set a password</string>
     <string name="incorrect_password">Password is incorrect!</string>
+    <string name="password_does_not_match">Password does not match</string>
     <string name="authenticate">Authenticate</string>
+    <string name="create_access">Create your access</string>
+
+    <string name="use_biometrics">Use biometrics</string>
 
     <string name="cancel">Cancel</string>
 

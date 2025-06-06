@@ -13,10 +13,7 @@ open class DefaultWrappedKeyRepository<Proto, Domain>(
 ) : WrappedKeyRepository<Domain> {
 
     override suspend fun getWrappedKeyData(): Domain? =
-        dataStore.data.map {
-            println("Fetching wrapped key data from DataStore: $it")
-            it.toDomain()
-        }.firstOrNull()
+        dataStore.data.map { it.toDomain() }.firstOrNull()
 
     override suspend fun setWrappedKeyData(keyData: Domain) {
         dataStore.updateData { keyData.toProto() }
