@@ -32,13 +32,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
+import de.davis.keygo.core.domain.model.Score
 import de.davis.keygo.core.presentation.LocalShowBackButton
+import de.davis.keygo.core.presentation.component.StrengthIndicator
 import de.davis.keygo.core.presentation.theme.KeyGoTheme
-import de.davis.keygo.item.domain.model.Score
 import de.davis.keygo.item.presentation.component.FormField
 import de.davis.keygo.item.presentation.component.FormGroup
 import de.davis.keygo.item.presentation.component.KeyGoItemForm
-import de.davis.keygo.item.presentation.component.StrengthIndicator
 import de.davis.keygo.item.presentation.password.model.PasswordUiEvent
 import de.davis.keygo.item.presentation.password.model.PasswordUiState
 

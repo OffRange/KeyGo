@@ -36,10 +36,10 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
-import de.davis.keygo.item.domain.model.Score
+import de.davis.keygo.core.domain.model.Score
+import de.davis.keygo.core.presentation.component.StrengthIndicator
 import de.davis.keygo.item.presentation.component.KeyGoCard
 import de.davis.keygo.item.presentation.component.KeyGoCardProp
-import de.davis.keygo.item.presentation.component.StrengthIndicator
 import de.davis.keygo.item.presentation.password.model.GeneratePasswordUiEvent
 import de.davis.keygo.item.presentation.password.model.GeneratePasswordUiState
 import de.davis.keygo.item.presentation.password.model.UiCharacterSet

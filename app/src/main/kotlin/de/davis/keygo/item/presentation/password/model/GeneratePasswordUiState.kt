@@ -2,7 +2,7 @@ package de.davis.keygo.item.presentation.password.model
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SliderState
-import de.davis.keygo.item.domain.model.Score
+import de.davis.keygo.core.domain.model.Score
 
 data class GeneratePasswordUiState(
     val generatedPassword: UiPassword = UiPassword(""),

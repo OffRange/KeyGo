@@ -1,4 +1,4 @@
-package de.davis.keygo.item.presentation.component
+package de.davis.keygo.core.presentation.component
 
 import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedVisibility
@@ -24,7 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
-import de.davis.keygo.item.domain.model.Score
+import de.davis.keygo.core.domain.model.Score
 
 @SuppressLint("UnusedTransitionTargetStateParameter")
 @Composable
@@ -69,7 +69,7 @@ fun StrengthIndicator(
             targetIndicatorColor,
             label = "Content color"
         )
-        
+
         CompositionLocalProvider(
             LocalContentColor provides contentColor,
             LocalTextStyle provides MaterialTheme.typography.bodySmall,
