@@ -6,7 +6,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.merge
+import org.koin.core.annotation.Single
 
+@Single
 class SnackbarManagerImpl : SnackbarManager {
 
     private val stickyFlow = MutableSharedFlow<SnackbarMessage>(replay = 1, extraBufferCapacity = 1)

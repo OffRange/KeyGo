@@ -21,6 +21,7 @@ private const val DATA_STORE_NAME = "main-password.db"
 
 private fun <T> produceMigrations(context: Context): List<DataMigration<T>> = emptyList()
 
+@Deprecated("Keep for migration purposes")
 internal val dataStoreModule = module {
     single {
         val appContext = androidContext()

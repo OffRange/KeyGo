@@ -1,7 +1,7 @@
 package de.davis.keygo.auth.domain.usecase
 
-import de.davis.keygo.auth.di.annotation.PasswordQualifier
 import de.davis.keygo.auth.domain.repository.PasswordWrappedKeyRepository
+import de.davis.keygo.core.di.annotation.PasswordQualifier
 import org.koin.core.annotation.Single
 
 @Single

@@ -40,8 +40,10 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.koin.android.annotation.KoinViewModel
 import kotlin.time.Duration.Companion.milliseconds
 
+@KoinViewModel
 class AuthViewModel(
     getBiometricCryptoSetupAvailability: GetBiometricCryptoSetupAvailabilityUseCase,
     getBiometricHardwareAvailability: GetBiometricHardwareAvailabilityUseCase,

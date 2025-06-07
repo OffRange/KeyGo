@@ -1,4 +1,4 @@
-package de.davis.keygo.auth.di.annotation
+package de.davis.keygo.core.di.annotation
 
 import org.koin.core.annotation.Named
 

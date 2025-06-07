@@ -8,7 +8,9 @@ import de.davis.keygo.core.domain.navigation.Navigator
 import de.davis.keygo.core.presentation.model.RouteDestination
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
+import org.koin.core.annotation.Single
 
+@Single
 class NavigatorImpl : Navigator {
 
     private val _navigationAction = Channel<NavigationAction>()

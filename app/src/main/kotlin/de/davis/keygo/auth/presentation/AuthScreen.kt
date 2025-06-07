@@ -4,19 +4,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.auth.presentation.model.AuthUIEvent
-import de.davis.keygo.core.domain.Session
 import de.davis.keygo.core.presentation.ObserveAsEvents
 import org.koin.androidx.compose.koinViewModel
-import org.koin.compose.koinInject
-import org.koin.compose.scope.rememberKoinScope
-import org.koin.core.annotation.KoinExperimentalAPI
 
-@OptIn(KoinExperimentalAPI::class)
 @Composable
 fun AuthScreen(navigate: (/*TODO*/) -> Unit) {
-    val session = koinInject<Session>()
-    val scope = rememberKoinScope(session.scope)
-    val viewModel = koinViewModel<AuthViewModel>(scope = scope)
+    val viewModel = koinViewModel<AuthViewModel>()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     ObserveAsEvents(viewModel.navigationEvent) {

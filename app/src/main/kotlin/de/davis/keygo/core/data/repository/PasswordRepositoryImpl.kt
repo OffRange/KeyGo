@@ -7,7 +7,9 @@ import de.davis.keygo.generated.item.data.mapper.toData
 import de.davis.keygo.generated.item.data.mapper.toDomain
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import org.koin.core.annotation.Single
 
+@Single
 internal class PasswordRepositoryImpl(
     private val passwordDao: PasswordDao
 ) : PasswordRepository {

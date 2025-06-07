@@ -4,7 +4,9 @@ import de.davis.keygo.core.domain.Result
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.item.domain.model.PasswordError
+import org.koin.core.annotation.Single
 
+@Single
 class CreateNewPassword(
     private val cryptographicScopeProvider: CryptographicScopeProvider
 ) {

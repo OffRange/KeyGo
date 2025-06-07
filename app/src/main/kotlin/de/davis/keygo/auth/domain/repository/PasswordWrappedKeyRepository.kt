@@ -5,8 +5,8 @@ import de.davis.keygo.auth.data.local.model.ProtoPasswordKeyData
 import de.davis.keygo.auth.data.mapper.toDomain
 import de.davis.keygo.auth.data.mapper.toProto
 import de.davis.keygo.auth.data.repository.DefaultWrappedKeyRepository
-import de.davis.keygo.auth.di.annotation.PasswordQualifier
 import de.davis.keygo.auth.domain.model.PasswordWrappedKeyData
+import de.davis.keygo.core.di.annotation.PasswordQualifier
 import org.koin.core.annotation.Single
 
 typealias PasswordWrappedKeyRepository = WrappedKeyRepository<PasswordWrappedKeyData>

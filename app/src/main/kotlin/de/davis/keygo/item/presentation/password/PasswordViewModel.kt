@@ -7,11 +7,11 @@ import de.davis.keygo.core.domain.navigation.Navigator
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
 import de.davis.keygo.core.domain.usecase.InsertVaultItem
-import de.davis.keygo.item.presentation.model.InputFieldError
 import de.davis.keygo.item.domain.PasswordGenerator
 import de.davis.keygo.item.domain.model.PasswordError
 import de.davis.keygo.item.domain.usecase.CreateNewPassword
 import de.davis.keygo.item.domain.usecase.EstimatePasswordStrengthUseCase
+import de.davis.keygo.item.presentation.model.InputFieldError
 import de.davis.keygo.item.presentation.password.model.GeneratePasswordUiEvent
 import de.davis.keygo.item.presentation.password.model.PasswordUiEvent
 import de.davis.keygo.item.presentation.password.model.PasswordUiState
@@ -30,8 +30,10 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.koin.android.annotation.KoinViewModel
 import kotlin.time.Duration.Companion.milliseconds
 
+@KoinViewModel
 class PasswordViewModel(
     passwordGenerator: PasswordGenerator,
     private val navigator: Navigator,

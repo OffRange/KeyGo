@@ -1,60 +1,39 @@
 package de.davis.keygo.core.di
 
-import de.davis.keygo.core.data.SessionImpl
-import de.davis.keygo.core.data.crypto.CryptographicScopeProviderImpl
-import de.davis.keygo.core.data.local.datasource.KeyGoDatabase
 import de.davis.keygo.core.data.local.datasource.datastore.dataStoreModule
-import de.davis.keygo.core.data.navigation.NavigatorImpl
 import de.davis.keygo.core.data.repository.MainPasswordRepositoryImpl
-import de.davis.keygo.core.data.repository.PasswordRepositoryImpl
-import de.davis.keygo.core.data.repository.VaultItemRepositoryImpl
-import de.davis.keygo.core.data.snackbar.SnackbarManagerImpl
-import de.davis.keygo.core.domain.Session
-import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
-import de.davis.keygo.core.domain.navigation.Navigator
 import de.davis.keygo.core.domain.repository.MainPasswordRepository
-import de.davis.keygo.core.domain.repository.PasswordRepository
-import de.davis.keygo.core.domain.repository.VaultItemRepository
-import de.davis.keygo.core.domain.snackbar.SnackbarManager
-import de.davis.keygo.core.domain.usecase.InsertVaultItem
 import de.davis.keygo.core.domain.usecase.ValidateMainPassword
 import org.koin.core.annotation.ComponentScan
+import org.koin.core.annotation.Module
+import org.koin.core.annotation.Single
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
 import org.koin.ksp.generated.module
 import java.security.KeyStore
 
+@Deprecated("")
 private val cryptoModule = module {
 
     // TODO migrate
     singleOf(::MainPasswordRepositoryImpl) bind MainPasswordRepository::class
-
-    singleOf(::PasswordRepositoryImpl) bind PasswordRepository::class
-    singleOf(::VaultItemRepositoryImpl) bind VaultItemRepository::class
-    singleOf(::InsertVaultItem)
-
-    singleOf(::SnackbarManagerImpl) bind SnackbarManager::class
-
-    singleOf(::NavigatorImpl) bind Navigator::class
-
-    singleOf(::SessionImpl) bind Session::class
-    single {
-        KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-    }
-
     singleOf(::ValidateMainPassword)
+}
+
+val coreModule = module {
+    includes(dataStoreModule)
+
+    includes(cryptoModule)
 
     includes(CoreModule.module)
 }
 
-val coreModule = module {
-    includes(dataStoreModule, KeyGoDatabase.koinModule)
 
-    includes(cryptoModule)
-}
-
-
-@org.koin.core.annotation.Module
+@Module
 @ComponentScan("de.davis.keygo.core.**")
-object CoreModule
+object CoreModule {
+
+    @Single
+    fun keyStore(): KeyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+}
