@@ -6,7 +6,9 @@ import com.lambdapioneer.argon2kt.Argon2Version
 import de.davis.keygo.auth.domain.model.CryptographyError
 import de.davis.keygo.auth.domain.repository.KeyDerivationRepository
 import de.davis.keygo.core.domain.Result
+import org.koin.core.annotation.Single
 
+@Single
 class KeyDerivationRepositoryImpl(
     private val argon2Kt: Argon2Kt,
 ) : KeyDerivationRepository {

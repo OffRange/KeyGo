@@ -8,6 +8,7 @@ import de.davis.keygo.core.domain.crypto.CryptographicConstants
 import de.davis.keygo.core.domain.model.crypto.AesKey
 import de.davis.keygo.core.domain.model.crypto.asAesKey
 import kotlinx.coroutines.withContext
+import org.koin.core.annotation.Single
 import java.security.InvalidKeyException
 import java.security.NoSuchAlgorithmException
 import java.security.SecureRandom
@@ -16,6 +17,7 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import kotlin.coroutines.CoroutineContext
 
+@Single
 class CipherFactoryImpl : CipherFactory {
 
     override fun prepareCipher(

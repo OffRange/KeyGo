@@ -5,7 +5,9 @@ import androidx.biometric.BiometricManager
 import de.davis.keygo.auth.domain.model.BiometricAvailability
 import de.davis.keygo.auth.domain.model.BiometricClass
 import de.davis.keygo.auth.domain.repository.BiometricAvailabilityRepository
+import org.koin.core.annotation.Single
 
+@Single
 class BiometricAvailabilityRepositoryImpl(
     private val context: Context
 ) : BiometricAvailabilityRepository {

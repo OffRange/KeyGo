@@ -12,9 +12,11 @@ import de.davis.keygo.core.domain.asResult
 import de.davis.keygo.core.domain.crypto.CryptographicConstants
 import de.davis.keygo.core.domain.model.crypto.AesKey
 import de.davis.keygo.core.domain.model.crypto.asAesKey
+import org.koin.core.annotation.Single
 import java.security.KeyStore
 import javax.crypto.KeyGenerator
 
+@Single
 class BiometricKekRepositoryImpl(
     private val keyStore: KeyStore,
 ) : BiometricKekRepository {
