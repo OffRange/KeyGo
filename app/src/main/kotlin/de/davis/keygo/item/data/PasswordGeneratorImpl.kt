@@ -9,7 +9,9 @@ import de.davis.passgen.generators.Password
 import de.davis.passgen.generators.generate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.koin.core.annotation.Single
 
+@Single
 class PasswordGeneratorImpl : PasswordGenerator {
 
     override suspend fun generatePassword(

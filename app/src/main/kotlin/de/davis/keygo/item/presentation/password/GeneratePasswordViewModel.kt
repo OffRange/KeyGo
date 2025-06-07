@@ -28,8 +28,10 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.koin.android.annotation.KoinViewModel
 import kotlin.time.Duration.Companion.milliseconds
 
+@KoinViewModel
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 open class GeneratePasswordViewModel(
     private val passwordGenerator: PasswordGenerator,
