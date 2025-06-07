@@ -2,6 +2,7 @@ package de.davis.keygo.app.di
 
 import android.content.Context
 import de.davis.keygo.auth.di.AuthModule
+import de.davis.keygo.core.data.local.datasource.KeyGoDatabase
 import de.davis.keygo.core.di.coreModule
 import de.davis.keygo.dashboard.di.DashboardModule
 import de.davis.keygo.item.di.ItemModule
@@ -13,5 +14,11 @@ fun KoinApplication.init(androidContext: Context) {
     androidContext(androidContext)
 
     // modules
-    modules(coreModule, AuthModule.module, DashboardModule.module, ItemModule.module)
+    modules(
+        KeyGoDatabase.koinModule,
+        coreModule,
+        AuthModule.module,
+        DashboardModule.module,
+        ItemModule.module
+    )
 }

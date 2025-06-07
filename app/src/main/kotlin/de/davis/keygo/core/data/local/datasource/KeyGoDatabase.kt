@@ -21,7 +21,7 @@ abstract class KeyGoDatabase : RoomDatabase() {
     internal abstract fun passwordDao(): PasswordDao
 
     companion object {
-        internal val koinModule = module {
+        val koinModule = module {
             single { create(get()) }
 
             singleOf(KeyGoDatabase::vaultDao)
