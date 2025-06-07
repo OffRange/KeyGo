@@ -34,8 +34,10 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.koin.android.annotation.KoinViewModel
 import kotlin.time.Duration.Companion.milliseconds
 
+@KoinViewModel
 class DashboardViewModel(
     private val snackbarManager: SnackbarManager,
     private val vaultItemRepository: VaultItemRepository,

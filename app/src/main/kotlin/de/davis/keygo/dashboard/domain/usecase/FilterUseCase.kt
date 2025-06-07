@@ -2,7 +2,9 @@ package de.davis.keygo.dashboard.domain.usecase
 
 import de.davis.keygo.core.domain.model.VaultItem
 import de.davis.keygo.dashboard.domain.model.Filter
+import org.koin.core.annotation.Single
 
+@Single
 class FilterUseCase {
 
     operator fun <I : VaultItem> invoke(filter: Filter, vaultItems: List<I>): List<I> {
