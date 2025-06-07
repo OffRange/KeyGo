@@ -18,12 +18,11 @@ import de.davis.keygo.core.domain.repository.VaultItemRepository
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.domain.usecase.InsertVaultItem
 import de.davis.keygo.core.domain.usecase.ValidateMainPassword
-import org.koin.core.module.Module
-import org.koin.core.module.dsl.scopedOf
+import org.koin.core.annotation.ComponentScan
 import org.koin.core.module.dsl.singleOf
-import org.koin.dsl.ScopeDSL
 import org.koin.dsl.bind
 import org.koin.dsl.module
+import org.koin.ksp.generated.module
 import java.security.KeyStore
 
 private val cryptoModule = module {
@@ -43,10 +42,10 @@ private val cryptoModule = module {
     single {
         KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
     }
-    sessionScope {
-        scopedOf(::ValidateMainPassword)
-        scopedOf(::CryptographicScopeProviderImpl) bind CryptographicScopeProvider::class
-    }
+
+    singleOf(::ValidateMainPassword)
+
+    includes(CoreModule.module)
 }
 
 val coreModule = module {
@@ -55,6 +54,7 @@ val coreModule = module {
     includes(cryptoModule)
 }
 
-fun Module.sessionScope(block: ScopeDSL.() -> Unit) {
-    scope<SessionImpl>(block)
-}
+
+@org.koin.core.annotation.Module
+@ComponentScan("de.davis.keygo.core.**")
+object CoreModule
