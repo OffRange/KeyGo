@@ -33,15 +33,15 @@ object AuthModule {
     )
 
     @Single
-    fun provideArgon2Kt() = Argon2Kt()
+    internal fun provideArgon2Kt() = Argon2Kt()
 
     @Single
     @PasswordQualifier
-    fun provideProtoPasswordKeyDataStore(context: Context) =
+    internal fun provideProtoPasswordKeyDataStore(context: Context) =
         context.protoPasswordKeyDataStore
 
     @Single
     @BiometricQualifier
-    fun provideProtoBiometricKeyDataStore(context: Context) =
+    internal fun provideProtoBiometricKeyDataStore(context: Context) =
         context.protoBiometricKeyDataStore
 }

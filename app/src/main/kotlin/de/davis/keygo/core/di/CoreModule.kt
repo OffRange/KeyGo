@@ -35,5 +35,6 @@ val coreModule = module {
 object CoreModule {
 
     @Single
-    fun keyStore(): KeyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+    internal fun provideKeyStore(): KeyStore =
+        KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
 }

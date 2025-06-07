@@ -10,5 +10,5 @@ import org.koin.core.annotation.Single
 object ItemModule {
 
     @Single
-    fun provideNbvcxz() = Nbvcxz()
+    internal fun provideNbvcxz() = Nbvcxz()
 }
