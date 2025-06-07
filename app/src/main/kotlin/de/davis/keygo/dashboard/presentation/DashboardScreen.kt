@@ -1,6 +1,5 @@
 package de.davis.keygo.dashboard.presentation
 
-import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -9,7 +8,6 @@ import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.dashboard.presentation.model.DashboardNavEvent
 import org.koin.androidx.compose.koinViewModel
 
-@OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun DashboardScreen(navigate: (RouteDestination) -> Unit) {
     val viewModel: DashboardViewModel = koinViewModel()
