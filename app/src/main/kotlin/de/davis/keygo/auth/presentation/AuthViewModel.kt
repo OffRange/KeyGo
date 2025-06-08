@@ -1,5 +1,6 @@
 package de.davis.keygo.auth.presentation
 
+import android.util.Log
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
@@ -18,11 +19,8 @@ import de.davis.keygo.auth.presentation.model.AuthState
 import de.davis.keygo.auth.presentation.model.AuthUIEvent
 import de.davis.keygo.auth.presentation.model.UIPasswordError
 import de.davis.keygo.core.domain.Result
-import de.davis.keygo.core.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
-import de.davis.keygo.core.domain.snackbar.SnackbarManager
-import de.davis.keygo.core.presentation.UIText
 import de.davis.keygo.item.domain.usecase.EstimatePasswordStrengthUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.ClearMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
@@ -62,8 +60,7 @@ class AuthViewModel(
     private val prepareBiometricCipher: PrepareBiometricCipherUseCase,
     private val unlockWithBiometrics: UnlockWithBiometricsUseCase,
     private val unlockWithPasswordUseCase: UnlockWithPasswordUseCase,
-    private val createAccess: CreateAccessUseCase,
-    private val snackbarManager: SnackbarManager
+    private val createAccess: CreateAccessUseCase
 ) : ViewModel() {
 
     private val passwordTextFieldState = TextFieldState()
@@ -293,7 +290,7 @@ class AuthViewModel(
                     biometricRequestChannel.send(BiometricRequest.Class3(it))
                 }
                 .onFailure {
-                    snackbarManager.sendMessage(SnackbarMessage(UIText.RawString("$it") /*TODO*/))
+                    Log.e(TAG, "Failed to prepare biometric cipher. Error: $it")
                 }
         }
     }
@@ -315,6 +312,10 @@ class AuthViewModel(
                 }.updatedState.copyDefaultState(loading = false)
             }
         }
+    }
+
+    companion object {
+        private const val TAG = "AuthViewModel"
     }
 }
 
