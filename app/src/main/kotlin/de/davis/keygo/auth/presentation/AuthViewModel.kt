@@ -24,6 +24,9 @@ import de.davis.keygo.core.domain.onSuccess
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.presentation.UIText
 import de.davis.keygo.item.domain.usecase.EstimatePasswordStrengthUseCase
+import de.davis.keygo.migration.create_access.domain.usecase.ClearMainPasswordUseCase
+import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
+import de.davis.keygo.migration.create_access.domain.usecase.ValidateMainPassword
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -47,7 +50,14 @@ import kotlin.time.Duration.Companion.milliseconds
 class AuthViewModel(
     getBiometricCryptoSetupAvailability: GetBiometricCryptoSetupAvailabilityUseCase,
     getBiometricHardwareAvailability: GetBiometricHardwareAvailabilityUseCase,
-    hasValidAccessUseCase: HasValidAccessUseCase,
+    hasValidAccess: HasValidAccessUseCase,
+
+    // ---- Migration ----
+    hasMainPassword: HasMainPasswordUseCase,
+    private val validateMainPassword: ValidateMainPassword,
+    private val clearMainPasswordUseCase: ClearMainPasswordUseCase,
+    // -------------------
+
     private val estimateStrength: EstimatePasswordStrengthUseCase,
     private val prepareBiometricCipher: PrepareBiometricCipherUseCase,
     private val unlockWithBiometrics: UnlockWithBiometricsUseCase,
@@ -65,7 +75,9 @@ class AuthViewModel(
 
     init {
         viewModelScope.launch {
-            val hasAccess = hasValidAccessUseCase()
+            val hasAccess = hasValidAccess()
+            val hasAccessButShouldMigrate = if (!hasAccess) hasMainPassword()
+            else false
 
             val isBiometricHardwareAvailable =
                 getBiometricHardwareAvailability() == BiometricAvailability.Available
@@ -78,21 +90,30 @@ class AuthViewModel(
 
 
             _uiState.update {
-                if (hasAccess) {
-                    AuthState.Login(
+                when {
+                    hasAccessButShouldMigrate -> {
+                        AuthState.Migrating(
+                            passwordTextFieldState = passwordTextFieldState,
+                            biometricsAvailable = isBiometricHardwareAvailable,
+                        )
+                    }
+
+                    hasAccess -> AuthState.Login(
                         passwordTextFieldState = passwordTextFieldState,
                         biometricAuthenticationAvailable = biometricsUsable
                     )
-                } else {
-                    observePasswordStrength()
-                    observePasswordError()
-                    observeConfirmPasswordError()
 
-                    AuthState.CreateAccess(
-                        passwordTextFieldState = passwordTextFieldState,
-                        confirmPasswordTextFieldState = confirmPasswordTextFieldState,
-                        biometricsAvailable = isBiometricHardwareAvailable
-                    )
+                    else -> {
+                        observePasswordStrength()
+                        observePasswordError()
+                        observeConfirmPasswordError()
+
+                        AuthState.CreateAccess(
+                            passwordTextFieldState = passwordTextFieldState,
+                            confirmPasswordTextFieldState = confirmPasswordTextFieldState,
+                            biometricsAvailable = isBiometricHardwareAvailable
+                        )
+                    }
                 }
             }
         }
@@ -174,6 +195,19 @@ class AuthViewModel(
                         }
                     }
 
+                    is AuthState.Migrating -> {
+                        loading {
+                            validateMainPassword(password).onFailure {
+                                _uiState.update {
+                                    it.copyDefaultState(passwordError = UIPasswordError.Incorrect)
+                                }
+                            }.onSuccess {
+                                clearMainPasswordUseCase()
+                                createPasswordOrBiometricAccess(state, password)
+                            }
+                        }
+                    }
+
                     is AuthState.CreateAccess -> {
                         val errorFreeState = state.copy(
                             passwordError = UIPasswordError.None,
@@ -195,16 +229,15 @@ class AuthViewModel(
                             return
                         }
 
-                        if (!errorFreeState.biometricsAvailable || !errorFreeState.useBiometrics) {
-                            loading {
-                                createAccess(password = password).handleAuthenticationResult()
-                            }
-
-                            return
-                        }
-
-                        requestBiometricAuthentication(mode = CryptographicMode.Wrap)
+                        createPasswordOrBiometricAccess(errorFreeState, password)
                     }
+                }
+            }
+
+            AuthUIEvent.CloseMigrationDialog -> {
+                _uiState.update {
+                    if (it !is AuthState.Migrating) return@update it
+                    it.copy(showMigrationDialog = false)
                 }
             }
 
@@ -214,6 +247,7 @@ class AuthViewModel(
                 val cipher = event.result.cryptoObject?.cipher ?: return
                 loading {
                     when (val state = uiState.value) {
+                        is AuthState.Migrating,
                         is AuthState.CreateAccess -> {
                             createAccess(
                                 password = state.passwordTextFieldState.text.toString(),
@@ -230,11 +264,26 @@ class AuthViewModel(
 
             is AuthUIEvent.ToggleUseBiometrics -> {
                 _uiState.update {
-                    if (it !is AuthState.CreateAccess) return@update it
-                    else it.copy(useBiometrics = event.checked)
+                    if (it !is AuthState.BiometricAuthState) return@update it
+                    it.copyBiometricState(useBiometrics = event.checked)
                 }
             }
         }
+    }
+
+    private fun createPasswordOrBiometricAccess(
+        authState: AuthState.BiometricAuthState,
+        password: String
+    ) {
+        if (!authState.biometricsAvailable || !authState.useBiometrics) {
+            loading {
+                createAccess(password = password).handleAuthenticationResult()
+            }
+
+            return
+        }
+
+        requestBiometricAuthentication(mode = CryptographicMode.Wrap)
     }
 
     private fun requestBiometricAuthentication(mode: CryptographicMode = CryptographicMode.Unwrap) {

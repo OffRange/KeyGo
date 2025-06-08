@@ -1,11 +1,11 @@
-package de.davis.keygo.core.data.local.datasource.datastore
+package de.davis.keygo.migration.create_access.data.local.datasource.datastore
 
 import androidx.datastore.core.Serializer
-import de.davis.keygo.core.data.local.model.ProtoMainPassword
+import de.davis.keygo.migration.create_access.data.local.model.ProtoMainPassword
 import java.io.InputStream
 import java.io.OutputStream
 
-object MainPasswordSerializer : Serializer<ProtoMainPassword> {
+internal object MainPasswordSerializer : Serializer<ProtoMainPassword> {
 
     override val defaultValue: ProtoMainPassword = ProtoMainPassword.getDefaultInstance()
 

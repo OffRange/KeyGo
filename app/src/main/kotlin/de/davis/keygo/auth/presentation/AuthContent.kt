@@ -12,8 +12,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.TextObfuscationMode
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -69,13 +72,9 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val firstPartOfTitle = when (state) {
-                        is AuthState.Login -> stringResource(R.string.authenticate_to_access)
-                        is AuthState.CreateAccess -> stringResource(R.string.create_access_access)
-                    }
                     Text(
                         text = buildAnnotatedString {
-                            append(firstPartOfTitle)
+                            append(state.firstTitlePart)
                             append(" ")
 
                             withStyle(
@@ -171,27 +170,23 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
                                     )
                                 },
                             )
-
-                            if (biometricsAvailable)
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                ) {
-                                    Text(text = stringResource(R.string.use_biometrics))
-
-                                    Switch(
-                                        checked = useBiometrics,
-                                        onCheckedChange = {
-                                            onEvent(
-                                                AuthUIEvent.ToggleUseBiometrics(
-                                                    it
-                                                )
-                                            )
-                                        }
-                                    )
-                                }
                         }
+
+                        if (state is AuthState.BiometricAuthState && state.biometricsAvailable)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(text = stringResource(R.string.use_biometrics))
+
+                                Switch(
+                                    checked = state.useBiometrics,
+                                    onCheckedChange = {
+                                        onEvent(AuthUIEvent.ToggleUseBiometrics(it))
+                                    }
+                                )
+                            }
                     }
 
                     Row(
@@ -203,12 +198,7 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
                             modifier = Modifier.weight(1f),
                             enabled = !state.loading
                         ) {
-                            Text(
-                                text = when (state) {
-                                    is AuthState.Login -> stringResource(R.string.authenticate)
-                                    is AuthState.CreateAccess -> stringResource(R.string.create_access)
-                                }
-                            )
+                            Text(text = state.buttonText)
                         }
 
                         if (state is AuthState.Login && state.biometricAuthenticationAvailable) {
@@ -243,12 +233,57 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
                     }
                 }
             }
+
+            if (state is AuthState.Migrating && state.showMigrationDialog)
+                MigrationDialog(onClick = { onEvent(AuthUIEvent.CloseMigrationDialog) })
         }
     }
 }
 
+@Composable
+fun MigrationDialog(onClick: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = {},
+        icon = {
+            Icon(
+                imageVector = Icons.Default.AutoFixHigh,
+                contentDescription = null
+            )
+        },
+        title = {
+            Text(text = stringResource(R.string.migrating))
+        },
+        text = {
+            Text(text = stringResource(R.string.migrate_to_access_description))
+        },
+        confirmButton = {
+            Button(
+                onClick = onClick
+            ) {
+                Text(text = stringResource(R.string.migrate))
+            }
+        }
+    )
+}
+
 internal val DialogMinWidth = 280.dp
 internal val DialogMaxWidth = 560.dp
+
+private val AuthState.firstTitlePart: String
+    @Composable
+    get() = when (this) {
+        is AuthState.Login -> stringResource(R.string.authenticate_to_access)
+        is AuthState.Migrating -> stringResource(R.string.migrate_to_access)
+        is AuthState.CreateAccess -> stringResource(R.string.create_access_access)
+    }
+
+private val AuthState.buttonText: String
+    @Composable
+    get() = when (this) {
+        is AuthState.Login -> stringResource(R.string.authenticate)
+        is AuthState.Migrating -> stringResource(R.string.migrate)
+        is AuthState.CreateAccess -> stringResource(R.string.create_access)
+    }
 
 @Composable
 @Preview
@@ -258,7 +293,10 @@ internal val DialogMaxWidth = 560.dp
 private fun AuthContentPreview() {
     KeyGoTheme {
         AuthContent(
-            state = AuthState.CreateAccess(passwordTextFieldState = TextFieldState(), biometricsAvailable = true),
+            state = AuthState.CreateAccess(
+                passwordTextFieldState = TextFieldState(),
+                biometricsAvailable = true
+            ),
             onEvent = {}
         )
     }
