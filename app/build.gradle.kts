@@ -72,12 +72,12 @@ dependencies {
     implementation(libs.androidx.datastore)
     implementation(libs.google.protobuf.kotlin.lite)
 
-    implementation(libs.at.favre.bcrypt)
-
     implementation(libs.gosimple.nbvcxz)
 
     implementation(libs.offrange.passgen)
     implementation("com.lambdapioneer.argon2kt:argon2kt:1.6.0")
+
+    implementation(projects.migrationCreateAccess)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -135,6 +135,4 @@ room {
 
 ksp {
     arg("automation.packageName", "de.davis.keygo.generated")
-
-    arg("KOIN_DEFAULT_MODULE", "true")
 }

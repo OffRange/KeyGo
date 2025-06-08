@@ -19,6 +19,7 @@ import de.davis.keygo.auth.presentation.model.AuthState
 import de.davis.keygo.auth.presentation.model.AuthUIEvent
 import de.davis.keygo.auth.presentation.model.UIPasswordError
 import de.davis.keygo.core.domain.Result
+import de.davis.keygo.core.domain.asResult
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
 import de.davis.keygo.item.domain.usecase.EstimatePasswordStrengthUseCase
@@ -194,14 +195,15 @@ class AuthViewModel(
 
                     is AuthState.Migrating -> {
                         loading {
-                            validateMainPassword(password).onFailure {
-                                _uiState.update {
-                                    it.copyDefaultState(passwordError = UIPasswordError.Incorrect)
+                            validateMainPassword(password).asResult(Unit)
+                                .onFailure {
+                                    _uiState.update {
+                                        it.copyDefaultState(passwordError = UIPasswordError.Incorrect)
+                                    }
+                                }.onSuccess {
+                                    clearMainPasswordUseCase()
+                                    createPasswordOrBiometricAccess(state, password)
                                 }
-                            }.onSuccess {
-                                clearMainPasswordUseCase()
-                                createPasswordOrBiometricAccess(state, password)
-                            }
                         }
                     }
 

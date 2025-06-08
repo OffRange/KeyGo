@@ -4,8 +4,10 @@ import de.davis.keygo.migration.create_access.domain.repository.MainPasswordRepo
 import org.koin.core.annotation.Single
 
 @Single
-class ClearMainPasswordUseCase(
+class HasMainPasswordUseCase internal constructor(
     private val mainPasswordRepository: MainPasswordRepository
 ) {
-    suspend operator fun invoke() = mainPasswordRepository.clearMainPassword()
+
+    suspend operator fun invoke(): Boolean =
+        mainPasswordRepository.getMainPassword().hash.isNotEmpty()
 }

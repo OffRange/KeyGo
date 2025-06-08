@@ -26,3 +26,4 @@ rootProject.name = "KeyGoV2"
 include(":app")
 include(":automation-processor")
 include(":automation")
+include(":migration-create-access")
