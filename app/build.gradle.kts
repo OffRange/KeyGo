@@ -75,7 +75,7 @@ dependencies {
     implementation(libs.gosimple.nbvcxz)
 
     implementation(libs.offrange.passgen)
-    implementation("com.lambdapioneer.argon2kt:argon2kt:1.6.0")
+    implementation(libs.argon2kt)
 
     implementation(projects.migrationCreateAccess)
 
