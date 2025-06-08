@@ -1,6 +1,8 @@
 package de.davis.keygo.dashboard.presentation
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.input.TextFieldState
@@ -10,6 +12,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExpandedDockedSearchBar
 import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
@@ -45,10 +49,17 @@ import de.davis.keygo.R
 import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.core.domain.model.VaultSearchResult
 import de.davis.keygo.core.domain.model.crypto.CryptographicData
+import de.davis.keygo.core.domain.model.navigation.DetailItem
+import de.davis.keygo.core.presentation.model.RouteDestination
+import de.davis.keygo.core.presentation.navigation.LocalNavigator
 import de.davis.keygo.dashboard.presentation.component.KeyGoLazyColumn
 import de.davis.keygo.dashboard.presentation.component.SearchResult
 import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIState
+import de.davis.keygo.generated.item.VaultItemEnum
+import de.davis.keygo.generated.item.getString
+import de.davis.keygo.item.presentation.component.KeyGoCard
+import de.davis.keygo.item.presentation.component.KeyGoCardProp
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toPersistentList
@@ -102,6 +113,8 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
                 get() = viewConfig.touchSlop * 3f
         }
     }
+
+    val navigator = LocalNavigator.current
 
     val searchInputField = @Composable {
         SearchBarDefaults.InputField(
@@ -178,24 +191,62 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
             modifier = Modifier
                 .padding(padding)
         ) {
-            CompositionLocalProvider(
-                LocalViewConfiguration provides newViewConfiguration,
+            AnimatedContent(
+                targetState = uiState.items.isEmpty()
             ) {
-                KeyGoLazyColumn(
-                    items = uiState.items,
-                    selectedItemIds = uiState.selectedItemIds,
-                    openedItemId = uiState.openedItemId,
-                    onDeleteRequest = {
-                        onEvent(DashboardUIEvent.OnDeleteRequest(it))
-                    },
-                    onItemClick = {
-                        onEvent(DashboardUIEvent.OnOpenOrSelect(it))
-                    },
-                    onItemLongClick = {
-                        onEvent(DashboardUIEvent.OnLongClick(it))
-                    },
-                    modifier = Modifier.padding(horizontal = 8.dp)
-                )
+                when (it) {
+                    true -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            KeyGoCard(
+                                title = {
+                                    Text(text = stringResource(R.string.create_new_item))
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                prop = KeyGoCardProp.elevated()
+                            ) {
+                                VaultItemEnum.entries.forEach {
+                                    FilledTonalButton(
+                                        onClick = {
+                                            scope.launch {
+                                                navigator.navigateToDetail(
+                                                    DetailItem.Edit(it)
+                                                )
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(text = it.getString())
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    else -> CompositionLocalProvider(
+                        LocalViewConfiguration provides newViewConfiguration,
+                    ) {
+                        KeyGoLazyColumn(
+                            items = uiState.items,
+                            selectedItemIds = uiState.selectedItemIds,
+                            openedItemId = uiState.openedItemId,
+                            onDeleteRequest = {
+                                onEvent(DashboardUIEvent.OnDeleteRequest(it))
+                            },
+                            onItemClick = {
+                                onEvent(DashboardUIEvent.OnOpenOrSelect(it))
+                            },
+                            onItemLongClick = {
+                                onEvent(DashboardUIEvent.OnLongClick(it))
+                            },
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+                    }
+                }
             }
         }
     }
@@ -219,12 +270,12 @@ private fun DashboardSearchResult(
 }
 
 @Composable
-private fun PreviewContent() {
+private fun PreviewContent(empty: Boolean = false) {
     DashboardContent(
         uiState = DashboardUIState(
             textFieldState = TextFieldState(),
             items = buildList {
-                repeat(25) {
+                repeat(25.takeIf { !empty } ?: 0) {
                     val p = Password(
                         it.toLong(),
                         "Item $it",
@@ -252,6 +303,14 @@ private fun DashboardContentPreview() {
     }
 }
 
+@Preview(device = "spec:width=1080px,height=2340px,dpi=320")
+@Composable
+private fun DashboardContentEmptyPreview() {
+    MaterialTheme {
+        PreviewContent(empty = true)
+    }
+}
+
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Preview(device = "spec:width=673dp,height=841dp,orientation=landscape")
 @Composable
@@ -267,5 +326,4 @@ private fun Test() {
             }
         )
     }
-
 }

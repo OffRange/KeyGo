@@ -14,5 +14,4 @@ data class DashboardUIState(
     val searchResult: ImmutableList<VaultSearchResult> = persistentListOf(),
     val selectedItemIds: ImmutableSet<Long> = persistentSetOf(),
     val openedItemId: Long = -1,
-    val navEvent: DashboardNavEvent = DashboardNavEvent.None,
 )

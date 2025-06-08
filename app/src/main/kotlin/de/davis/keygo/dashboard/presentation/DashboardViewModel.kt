@@ -5,25 +5,18 @@ import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import de.davis.keygo.core.domain.keyGoCombine
-import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.core.domain.model.VaultSearchResult
-import de.davis.keygo.core.domain.model.crypto.CryptographicData
 import de.davis.keygo.core.domain.repository.VaultItemRepository
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
-import de.davis.keygo.core.domain.usecase.InsertVaultItem
 import de.davis.keygo.core.presentation.snackbar.ItemDeletedMessage
 import de.davis.keygo.dashboard.domain.model.Filter
 import de.davis.keygo.dashboard.domain.usecase.FilterUseCase
-import de.davis.keygo.dashboard.presentation.model.DashboardNavEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIState
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
@@ -41,7 +34,6 @@ import kotlin.time.Duration.Companion.milliseconds
 class DashboardViewModel(
     private val snackbarManager: SnackbarManager,
     private val vaultItemRepository: VaultItemRepository,
-    insertVaultItem: InsertVaultItem,
     filterItems: FilterUseCase
 ) : ViewModel() {
 
@@ -88,40 +80,14 @@ class DashboardViewModel(
     private val selectedItemIds = MutableStateFlow(setOf<Long>())
 
     private val openedItemId = MutableStateFlow(-1L)
-    private val navEvent = MutableStateFlow<DashboardNavEvent>(DashboardNavEvent.None)
 
-    init {
-        viewModelScope.launch {
-            vaultItemRepository.observeVaultItems().collectLatest {
-                if (it.isNotEmpty()) {
-                    return@collectLatest
-                }
-
-                (0..25).map {
-                    async {
-                        insertVaultItem(
-                            Password(
-                                username = "User $it",
-                                website = null,
-                                name = "${if (it > 10) "A" else "B"} PWD $it",
-                                encryptedData = CryptographicData.EMPTY,
-                                note = null
-                            )
-                        )
-                    }
-                }.awaitAll()
-            }
-        }
-    }
-
-    val uiState = keyGoCombine(
+    val uiState = combine(
         mainViewItems,
         flaggedForDeletion,
         selectedItemIds,
         openedItemId,
         nonDeletedSearchResult,
-        navEvent
-    ) { items, markedAsDeleted, selectedItemIds, openedItemId, searchResult, navEvent ->
+    ) { items, markedAsDeleted, selectedItemIds, openedItemId, searchResult ->
         DashboardUIState(
             textFieldState = textFieldState,
             items = items
@@ -130,7 +96,6 @@ class DashboardViewModel(
             searchResult = searchResult.toImmutableList(),
             selectedItemIds = selectedItemIds.toImmutableSet(),
             openedItemId = openedItemId,
-            navEvent = navEvent
         )
     }.stateIn(
         scope = viewModelScope,
