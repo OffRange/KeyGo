@@ -53,6 +53,7 @@ import de.davis.keygo.core.presentation.theme.KeyGoTheme
 import de.davis.keygo.dashboard.presentation.DashboardScreen
 import de.davis.keygo.item.presentation.dialog.SelectItemContent
 import de.davis.keygo.item.presentation.password.PasswordScreen
+import de.davis.keygo.viewing.presentation.ViewPasswordScreen
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -243,7 +244,7 @@ private fun NavGraphBuilder.mainGraph(
                                 }
 
                                 is DetailItem.View -> {
-                                    Text("View ${detailItem.item.name}")
+                                    ViewPasswordScreen(detailItem.itemId)
                                 }
 
                                 else -> {}

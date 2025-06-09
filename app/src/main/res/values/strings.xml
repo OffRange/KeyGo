@@ -16,6 +16,7 @@
     <string name="back_content_description">Back</string>
     <string name="generate_password_content_description">Generate Password</string>
     <string name="submit_content_description">Submit</string>
+    <string name="open_website_content_description">Open website</string>
 
     <string name="add">Add</string>
     <string name="add_new_element">Add new Element</string>
