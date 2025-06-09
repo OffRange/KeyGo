@@ -50,6 +50,8 @@ import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.core.domain.model.VaultSearchResult
 import de.davis.keygo.core.domain.model.crypto.CryptographicData
 import de.davis.keygo.core.domain.model.navigation.DetailItem
+import de.davis.keygo.core.presentation.component.KeyGoCard
+import de.davis.keygo.core.presentation.component.KeyGoCardProp
 import de.davis.keygo.core.presentation.navigation.LocalNavigator
 import de.davis.keygo.dashboard.presentation.component.KeyGoLazyColumn
 import de.davis.keygo.dashboard.presentation.component.SearchResult
@@ -57,8 +59,6 @@ import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIState
 import de.davis.keygo.generated.item.VaultItemEnum
 import de.davis.keygo.generated.item.getString
-import de.davis.keygo.item.presentation.component.KeyGoCard
-import de.davis.keygo.item.presentation.component.KeyGoCardProp
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toPersistentList

@@ -1,4 +1,4 @@
-package de.davis.keygo.item.presentation.component
+package de.davis.keygo.core.presentation.component
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement

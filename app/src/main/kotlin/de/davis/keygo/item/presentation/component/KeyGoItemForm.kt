@@ -38,6 +38,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.davis.keygo.R
+import de.davis.keygo.core.presentation.component.KeyGoCard
+import de.davis.keygo.core.presentation.component.KeyGoCardProp
 import de.davis.keygo.core.presentation.component.VisibilityButton
 import de.davis.keygo.item.presentation.model.InputFieldError
 
