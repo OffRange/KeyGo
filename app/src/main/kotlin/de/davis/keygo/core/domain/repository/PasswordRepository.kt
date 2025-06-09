@@ -7,4 +7,5 @@ interface PasswordRepository {
 
     suspend fun createNewPassword(password: Password): Long
     fun observeVaultPasswords(): Flow<List<Password>>
+    fun observeVaultPasswordById(id: Long): Flow<Password>
 }
