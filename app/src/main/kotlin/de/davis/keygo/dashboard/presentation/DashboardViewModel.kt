@@ -69,8 +69,8 @@ class DashboardViewModel(
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val mainViewItems = submittedSearchQuery.flatMapLatest { show ->
-        if (show.isBlank()) {
+    private val mainViewItems = submittedSearchQuery.flatMapLatest { query ->
+        if (query.isBlank()) {
             repoFilteredItems
         } else {
             nonDeletedSearchResult // TODO introduce suggestion and full-search queries
@@ -83,16 +83,13 @@ class DashboardViewModel(
 
     val uiState = combine(
         mainViewItems,
-        flaggedForDeletion,
         selectedItemIds,
         openedItemId,
         nonDeletedSearchResult,
-    ) { items, markedAsDeleted, selectedItemIds, openedItemId, searchResult ->
+    ) { items, selectedItemIds, openedItemId, searchResult ->
         DashboardUIState(
             textFieldState = textFieldState,
-            items = items
-                .filterNot { it.vaultItemId in markedAsDeleted }
-                .toImmutableList(),
+            items = items.toImmutableList(),
             searchResult = searchResult.toImmutableList(),
             selectedItemIds = selectedItemIds.toImmutableSet(),
             openedItemId = openedItemId,
