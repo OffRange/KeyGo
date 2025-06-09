@@ -50,7 +50,6 @@ import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.core.domain.model.VaultSearchResult
 import de.davis.keygo.core.domain.model.crypto.CryptographicData
 import de.davis.keygo.core.domain.model.navigation.DetailItem
-import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.presentation.navigation.LocalNavigator
 import de.davis.keygo.dashboard.presentation.component.KeyGoLazyColumn
 import de.davis.keygo.dashboard.presentation.component.SearchResult
@@ -193,8 +192,8 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
         ) {
             AnimatedContent(
                 targetState = uiState.items.isEmpty()
-            ) {
-                when (it) {
+            ) { isEmpty ->
+                when (isEmpty) {
                     true -> {
                         Box(
                             modifier = Modifier
