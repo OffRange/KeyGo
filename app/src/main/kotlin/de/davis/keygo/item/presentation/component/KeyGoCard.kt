@@ -2,6 +2,7 @@ package de.davis.keygo.item.presentation.component
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CardElevation
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -71,7 +73,11 @@ fun KeyGoCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                leadingItem?.invoke()
+                leadingItem?.let {
+                    Box(modifier = Modifier.minimumInteractiveComponentSize()) {
+                        leadingItem()
+                    }
+                }
 
                 Column(
                     modifier = Modifier.weight(1f),
@@ -90,7 +96,11 @@ fun KeyGoCard(
                     }
                 }
 
-                trailingItem?.invoke()
+                trailingItem?.let {
+                    Box(modifier = Modifier.minimumInteractiveComponentSize()) {
+                        trailingItem()
+                    }
+                }
             }
         }
     }
