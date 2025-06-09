@@ -33,7 +33,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
 import de.davis.keygo.core.domain.model.Score
-import de.davis.keygo.core.presentation.LocalShowBackButton
+import de.davis.keygo.core.presentation.LocalIsInSinglePaneMode
 import de.davis.keygo.core.presentation.component.StrengthIndicator
 import de.davis.keygo.core.presentation.theme.KeyGoTheme
 import de.davis.keygo.item.presentation.component.FormField
@@ -57,7 +57,7 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                     Text(text = stringResource(R.string.password))
                 },
                 navigationIcon = {
-                    if (LocalShowBackButton.current) {
+                    if (LocalIsInSinglePaneMode.current) {
                         IconButton(onClick = { onEvent(PasswordUiEvent.OnBackClick) }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Default.ArrowBack,

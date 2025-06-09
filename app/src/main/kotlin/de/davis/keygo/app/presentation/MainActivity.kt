@@ -43,7 +43,7 @@ import de.davis.keygo.core.domain.model.navigation.DetailItem
 import de.davis.keygo.core.domain.model.navigation.NavigationAction
 import de.davis.keygo.core.domain.navigation.Navigator
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
-import de.davis.keygo.core.presentation.LocalShowBackButton
+import de.davis.keygo.core.presentation.LocalIsInSinglePaneMode
 import de.davis.keygo.core.presentation.ObserveAsEvents
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.presentation.navigation.LocalNavigator
@@ -201,13 +201,13 @@ private fun NavGraphBuilder.mainGraph(
     navigate: (RouteDestination) -> Unit
 ) {
     composable<RouteDestination.Home.Root> {
-        val showDetailBackButton by remember(listNavigator.scaffoldDirective) {
+        val isSinglePaneMode by remember(listNavigator.scaffoldDirective) {
             derivedStateOf {
                 listNavigator.scaffoldDirective.maxHorizontalPartitions == 1
             }
         }
         CompositionLocalProvider(
-            LocalShowBackButton provides showDetailBackButton,
+            LocalIsInSinglePaneMode provides isSinglePaneMode,
         ) {
             NavigableListDetailPaneScaffold(
                 navigator = listNavigator,
