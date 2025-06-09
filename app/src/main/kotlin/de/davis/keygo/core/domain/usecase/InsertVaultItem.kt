@@ -18,8 +18,6 @@ class InsertVaultItem(
             is Password -> {
                 passwordRepository.createNewPassword(item.copy(vaultItemId = id))
             }
-
-            else -> {}
         }
     }
 }
