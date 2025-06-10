@@ -50,6 +50,7 @@ import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.core.domain.model.VaultSearchResult
 import de.davis.keygo.core.domain.model.crypto.CryptographicData
 import de.davis.keygo.core.domain.model.navigation.DetailItem
+import de.davis.keygo.core.presentation.LocalIsInSinglePaneMode
 import de.davis.keygo.core.presentation.component.KeyGoCard
 import de.davis.keygo.core.presentation.component.KeyGoCardProp
 import de.davis.keygo.core.presentation.navigation.LocalNavigator
@@ -232,7 +233,7 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
                         KeyGoLazyColumn(
                             items = uiState.items,
                             selectedItemIds = uiState.selectedItemIds,
-                            openedItemId = uiState.openedItemId,
+                            openedItemId = if (LocalIsInSinglePaneMode.current) -1L else uiState.openedItemId,
                             onDeleteRequest = {
                                 onEvent(DashboardUIEvent.OnDeleteRequest(it))
                             },
