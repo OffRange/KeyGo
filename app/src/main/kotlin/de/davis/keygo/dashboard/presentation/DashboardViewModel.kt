@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.domain.model.VaultSearchResult
 import de.davis.keygo.core.domain.repository.VaultItemRepository
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
+import de.davis.keygo.core.domain.`typealias`.ItemId
 import de.davis.keygo.core.presentation.snackbar.ItemDeletedMessage
 import de.davis.keygo.dashboard.domain.model.Filter
 import de.davis.keygo.dashboard.domain.usecase.FilterUseCase
@@ -44,7 +45,7 @@ class DashboardViewModel(
     private val searchResult = MutableStateFlow(emptyList<VaultSearchResult>())
 
     private val filter = MutableStateFlow<Filter>(Filter.Alphanumerical())
-    private val flaggedForDeletion = MutableStateFlow(setOf<Long>())
+    private val flaggedForDeletion = MutableStateFlow(setOf<ItemId>())
 
     private val nonDeletedSearchResult = combine(
         flaggedForDeletion,
@@ -77,7 +78,7 @@ class DashboardViewModel(
         }
     }
 
-    private val selectedItemIds = MutableStateFlow(setOf<Long>())
+    private val selectedItemIds = MutableStateFlow(setOf<ItemId>())
 
     private val openedItemId = MutableStateFlow(-1L)
 
@@ -177,7 +178,7 @@ class DashboardViewModel(
         }
     }
 
-    private fun openItem(id: Long) {
+    private fun openItem(id: ItemId) {
         openedItemId.update { id }
     }
 
@@ -186,21 +187,21 @@ class DashboardViewModel(
         submittedSearchQuery.update { "" }
     }
 
-    private fun toggleSelection(id: Long) {
+    private fun toggleSelection(id: ItemId) {
         selectedItemIds.update {
             if (id in it) it - id
             else it + id
         }
     }
 
-    private fun updateSelection(id: Long, select: Boolean = true) {
+    private fun updateSelection(id: ItemId, select: Boolean = true) {
         selectedItemIds.update {
             if (select) it + id
             else it - id
         }
     }
 
-    private fun updateDeletionFlag(id: Long, flag: Boolean = true) {
+    private fun updateDeletionFlag(id: ItemId, flag: Boolean = true) {
         flaggedForDeletion.update {
             if (flag) it + id
             else it - id

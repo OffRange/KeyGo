@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.core.domain.model.VaultItem
 import de.davis.keygo.core.domain.model.crypto.CryptographicData
+import de.davis.keygo.core.domain.`typealias`.ItemId
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentSetOf
@@ -47,11 +48,11 @@ private fun headerProducer(item: VaultItem) = item.name.firstOrNull() ?: ' '
 @Composable
 fun KeyGoLazyColumn(
     items: ImmutableList<VaultItem>,
-    selectedItemIds: ImmutableSet<Long>,
-    openedItemId: Long,
-    onDeleteRequest: (Long) -> Unit,
-    onItemClick: (Long) -> Unit,
-    onItemLongClick: (Long) -> Unit,
+    selectedItemIds: ImmutableSet<ItemId>,
+    openedItemId: ItemId,
+    onDeleteRequest: (ItemId) -> Unit,
+    onItemClick: (ItemId) -> Unit,
+    onItemLongClick: (ItemId) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val groupedItems = remember(items) {
@@ -68,15 +69,16 @@ fun KeyGoLazyColumn(
 
     val listState = rememberLazyListState()
 
-    val containerColorForId = remember<@Composable (Long) -> Color>(openedItemId, selectedItemIds) {
-        @Composable { id: Long ->
-            when (id) {
-                in selectedItemIds -> SelectedContainerColor
-                openedItemId -> OpenedContainerColor
-                else -> ContainerColor
+    val containerColorForId =
+        remember<@Composable (ItemId) -> Color>(openedItemId, selectedItemIds) {
+            @Composable { id: ItemId ->
+                when (id) {
+                    in selectedItemIds -> SelectedContainerColor
+                    openedItemId -> OpenedContainerColor
+                    else -> ContainerColor
+                }
             }
         }
-    }
 
     Box(modifier = modifier.clipToBounds()) {
         LazyColumn(

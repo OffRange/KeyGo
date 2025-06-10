@@ -2,6 +2,7 @@ package de.davis.keygo.core.domain.model.navigation
 
 import android.os.Parcel
 import android.os.Parcelable
+import de.davis.keygo.core.domain.`typealias`.ItemId
 import de.davis.keygo.generated.item.VaultItemEnum
 
 // Todo(b/378882434): Configuration changes will cause a crash as android can not save the state yet
@@ -27,7 +28,7 @@ sealed interface DetailItem : Parcelable {
         }
     }
 
-    data class View(val itemId: Long) : DetailItem {
+    data class View(val itemId: ItemId) : DetailItem {
         constructor(parcel: Parcel) : this(parcel.readLong())
 
         override fun describeContents(): Int = 0

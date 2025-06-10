@@ -5,6 +5,7 @@ import de.davis.keygo.core.data.mapper.toDomain
 import de.davis.keygo.core.domain.model.VaultItem
 import de.davis.keygo.core.domain.model.VaultSearchResult
 import de.davis.keygo.core.domain.repository.VaultItemRepository
+import de.davis.keygo.core.domain.`typealias`.ItemId
 import de.davis.keygo.generated.item.data.mapper.toData
 import de.davis.keygo.generated.item.data.mapper.toDomain
 import kotlinx.coroutines.flow.Flow
@@ -16,11 +17,11 @@ internal class VaultItemRepositoryImpl(
     private val vaultDao: VaultDao
 ) : VaultItemRepository {
 
-    override suspend fun deleteVaultItem(vaultItemId: Long) {
+    override suspend fun deleteVaultItem(vaultItemId: ItemId) {
         vaultDao.delete(vaultItemId)
     }
 
-    override suspend fun createNewVaultItem(vaultItem: VaultItem): Long =
+    override suspend fun createNewVaultItem(vaultItem: VaultItem): ItemId =
         vaultDao.insert(vaultItem.toData())
 
     override suspend fun searchVaultItem(query: String): List<VaultSearchResult> =

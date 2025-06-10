@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.navigation.Navigator
 import de.davis.keygo.core.domain.repository.PasswordRepository
+import de.davis.keygo.core.domain.`typealias`.ItemId
 import de.davis.keygo.item.domain.usecase.EstimatePasswordStrengthUseCase
 import de.davis.keygo.viewing.presentation.model.ViewPasswordState
 import de.davis.keygo.viewing.presentation.model.ViewPasswordUiEvent
@@ -24,7 +25,7 @@ import org.koin.core.annotation.InjectedParam
 class ViewPasswordViewModel(
     passwordRepository: PasswordRepository,
     @InjectedParam
-    private val itemId: Long,
+    private val itemId: ItemId,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val estimatePasswordStrength: EstimatePasswordStrengthUseCase, /* TODO store in db or make it a core use-case*/
     private val navigator: Navigator,

@@ -1,5 +1,6 @@
 package de.davis.keygo.dashboard.presentation.model
 
+import de.davis.keygo.core.domain.`typealias`.ItemId
 import de.davis.keygo.dashboard.domain.model.Filter
 
 sealed interface DashboardUIEvent {
@@ -8,10 +9,10 @@ sealed interface DashboardUIEvent {
     data object OnSearchClear : DashboardUIEvent
     data object OnSearchCollapse : DashboardUIEvent
 
-    data class OnOpen(val vaultId: Long) : DashboardUIEvent
-    data class OnOpenOrSelect(val vaultId: Long) : DashboardUIEvent
-    data class OnLongClick(val vaultId: Long) : DashboardUIEvent
-    data class OnDeleteRequest(val vaultId: Long) : DashboardUIEvent
+    data class OnOpen(val vaultId: ItemId) : DashboardUIEvent
+    data class OnOpenOrSelect(val vaultId: ItemId) : DashboardUIEvent
+    data class OnLongClick(val vaultId: ItemId) : DashboardUIEvent
+    data class OnDeleteRequest(val vaultId: ItemId) : DashboardUIEvent
 
     data class OnFilterChange(val filter: Filter) : DashboardUIEvent
 }
