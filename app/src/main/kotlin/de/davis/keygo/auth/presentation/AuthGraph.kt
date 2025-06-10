@@ -4,7 +4,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import de.davis.keygo.core.presentation.model.RouteDestination
 
-fun NavGraphBuilder.authNavGraph(onSuccess: () -> Unit) {
+fun NavGraphBuilder.authGraph(onSuccess: () -> Unit) {
     composable<RouteDestination.Auth> {
         AuthScreen(
             navigate = onSuccess

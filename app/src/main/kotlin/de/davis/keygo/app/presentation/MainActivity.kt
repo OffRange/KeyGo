@@ -28,7 +28,6 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -37,7 +36,7 @@ import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
 import de.davis.keygo.app.presentation.component.KeyGoNavigationWrapper
-import de.davis.keygo.auth.presentation.authNavGraph
+import de.davis.keygo.auth.presentation.authGraph
 import de.davis.keygo.core.domain.annotation.OneTimeUsage
 import de.davis.keygo.core.domain.model.navigation.DetailItem
 import de.davis.keygo.core.domain.model.navigation.NavigationAction
@@ -85,7 +84,7 @@ private fun App() {
     val listNavigator = rememberListDetailPaneScaffoldNavigator<DetailItem>()
     val navController = rememberNavController()
     val navigator = LocalNavigator.current
-    ObserveAsEvents(navigator.navigationAction) {
+    ObserveAsEvents(navigator.navigationAction, listNavigator, navController) {
         when (it) {
             is NavigationAction.NavigateToDetail -> {
                 listNavigator.navigateTo(ThreePaneScaffoldRole.Primary, it.destination)
@@ -133,7 +132,7 @@ private fun App() {
         navigateToTopLevelDestination = {
             scope.launch {
                 navigator.navigateTo(destination = it) {
-                    popUpTo(navController.graph.findStartDestination().id) {
+                    popUpTo<RouteDestination.TopLevelAppGraph> {
                         saveState = true
                     }
 
@@ -157,9 +156,9 @@ private fun App() {
             navController = navController,
             startDestination = RouteDestination.Auth,
         ) {
-            authNavGraph(
+            authGraph(
                 onSuccess = {
-                    navController.navigate(RouteDestination.Home.NavGraph) {
+                    navController.navigate(RouteDestination.TopLevelAppGraph) {
                         popUpTo(RouteDestination.Auth) { inclusive = true }
                     }
                 }

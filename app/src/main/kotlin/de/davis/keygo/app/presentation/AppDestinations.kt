@@ -15,7 +15,7 @@ enum class AppDestinations(
     val icon: ImageVector,
     @StringRes val contentDescription: Int
 ) {
-    HOME(RouteDestination.Home.Root, R.string.home, Icons.Default.Home, R.string.home),
+    HOME(RouteDestination.Home.NavGraph, R.string.home, Icons.Default.Home, R.string.home),
     CONNECTIVITY(
         RouteDestination.Connectivity,
         R.string.connectivity,
