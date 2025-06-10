@@ -38,6 +38,7 @@ import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.core.domain.model.VaultItem
 import de.davis.keygo.core.domain.model.crypto.CryptographicData
 import de.davis.keygo.core.domain.`typealias`.ItemId
+import de.davis.keygo.core.domain.`typealias`.ItemIdNone
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentSetOf
@@ -226,7 +227,7 @@ private fun KeyGoLazyColumnPreview() {
                 }
             }.toPersistentList(),
             selectedItemIds = persistentSetOf(4),
-            openedItemId = -1,
+            openedItemId = ItemIdNone,
             onDeleteRequest = {},
             onItemClick = {},
             onItemLongClick = {},
