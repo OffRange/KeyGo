@@ -6,8 +6,6 @@ import de.davis.keygo.core.presentation.model.RouteDestination
 
 fun NavGraphBuilder.authGraph(onSuccess: () -> Unit) {
     composable<RouteDestination.Auth> {
-        AuthScreen(
-            navigate = onSuccess
-        )
+        AuthScreen(onSuccess = onSuccess)
     }
 }

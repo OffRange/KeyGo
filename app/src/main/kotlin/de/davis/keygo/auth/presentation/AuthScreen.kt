@@ -8,12 +8,12 @@ import de.davis.keygo.core.presentation.ObserveAsEvents
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
-fun AuthScreen(navigate: (/*TODO*/) -> Unit) {
+fun AuthScreen(onSuccess: () -> Unit) {
     val viewModel = koinViewModel<AuthViewModel>()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     ObserveAsEvents(viewModel.navigationEvent) {
-        navigate()
+        onSuccess()
     }
 
     BiometricAuthHandler(
