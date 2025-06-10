@@ -1,4 +1,4 @@
-package de.davis.keygo.core.domain.`typealias`
+package de.davis.keygo.core.domain.alias
 
 typealias ItemId = Long
 

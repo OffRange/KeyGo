@@ -1,7 +1,7 @@
 package de.davis.keygo.core.domain.repository
 
+import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.core.domain.model.Password
-import de.davis.keygo.core.domain.`typealias`.ItemId
 import kotlinx.coroutines.flow.Flow
 
 interface PasswordRepository {

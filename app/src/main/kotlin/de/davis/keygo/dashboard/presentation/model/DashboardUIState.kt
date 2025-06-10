@@ -1,10 +1,10 @@
 package de.davis.keygo.dashboard.presentation.model
 
 import androidx.compose.foundation.text.input.TextFieldState
+import de.davis.keygo.core.domain.alias.ItemId
+import de.davis.keygo.core.domain.alias.ItemIdNone
 import de.davis.keygo.core.domain.model.VaultItem
 import de.davis.keygo.core.domain.model.VaultSearchResult
-import de.davis.keygo.core.domain.`typealias`.ItemId
-import de.davis.keygo.core.domain.`typealias`.ItemIdNone
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf

@@ -2,7 +2,7 @@ package de.davis.keygo.core.domain.model.navigation
 
 import android.os.Parcel
 import android.os.Parcelable
-import de.davis.keygo.core.domain.`typealias`.ItemId
+import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.generated.item.VaultItemEnum
 
 // Todo(b/378882434): Configuration changes will cause a crash as android can not save the state yet

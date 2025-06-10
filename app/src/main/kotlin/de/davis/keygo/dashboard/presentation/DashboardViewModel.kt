@@ -5,11 +5,11 @@ import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.domain.alias.ItemId
+import de.davis.keygo.core.domain.alias.ItemIdNone
 import de.davis.keygo.core.domain.model.VaultSearchResult
 import de.davis.keygo.core.domain.repository.VaultItemRepository
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
-import de.davis.keygo.core.domain.`typealias`.ItemId
-import de.davis.keygo.core.domain.`typealias`.ItemIdNone
 import de.davis.keygo.core.presentation.snackbar.ItemDeletedMessage
 import de.davis.keygo.dashboard.domain.model.Filter
 import de.davis.keygo.dashboard.domain.usecase.FilterUseCase

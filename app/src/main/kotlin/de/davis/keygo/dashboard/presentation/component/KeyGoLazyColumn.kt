@@ -34,11 +34,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.domain.alias.ItemId
+import de.davis.keygo.core.domain.alias.ItemIdNone
 import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.core.domain.model.VaultItem
 import de.davis.keygo.core.domain.model.crypto.CryptographicData
-import de.davis.keygo.core.domain.`typealias`.ItemId
-import de.davis.keygo.core.domain.`typealias`.ItemIdNone
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentSetOf

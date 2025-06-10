@@ -1,7 +1,7 @@
 package de.davis.keygo.core.domain.model
 
+import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.core.domain.model.crypto.CryptographicData
-import de.davis.keygo.core.domain.`typealias`.ItemId
 import de.davis.keygo.processor.annotation.Ignore
 
 @Ignore

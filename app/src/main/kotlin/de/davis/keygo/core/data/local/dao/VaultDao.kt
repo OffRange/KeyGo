@@ -4,7 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import de.davis.keygo.core.data.local.model.VaultItemMatch
-import de.davis.keygo.core.domain.`typealias`.ItemId
+import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.generated.item.data.local.entity.VaultItemEntity
 import kotlinx.coroutines.flow.Flow
 

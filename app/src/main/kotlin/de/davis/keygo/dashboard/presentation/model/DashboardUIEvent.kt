@@ -1,6 +1,6 @@
 package de.davis.keygo.dashboard.presentation.model
 
-import de.davis.keygo.core.domain.`typealias`.ItemId
+import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.dashboard.domain.model.Filter
 
 sealed interface DashboardUIEvent {

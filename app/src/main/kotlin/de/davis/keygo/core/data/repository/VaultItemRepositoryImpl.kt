@@ -2,10 +2,10 @@ package de.davis.keygo.core.data.repository
 
 import de.davis.keygo.core.data.local.dao.VaultDao
 import de.davis.keygo.core.data.mapper.toDomain
+import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.core.domain.model.VaultItem
 import de.davis.keygo.core.domain.model.VaultSearchResult
 import de.davis.keygo.core.domain.repository.VaultItemRepository
-import de.davis.keygo.core.domain.`typealias`.ItemId
 import de.davis.keygo.generated.item.data.mapper.toData
 import de.davis.keygo.generated.item.data.mapper.toDomain
 import kotlinx.coroutines.flow.Flow

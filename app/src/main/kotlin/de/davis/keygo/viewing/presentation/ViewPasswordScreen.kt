@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import de.davis.keygo.core.domain.`typealias`.ItemId
+import de.davis.keygo.core.domain.alias.ItemId
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 

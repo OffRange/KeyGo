@@ -2,10 +2,10 @@ package de.davis.keygo.viewing.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.navigation.Navigator
 import de.davis.keygo.core.domain.repository.PasswordRepository
-import de.davis.keygo.core.domain.`typealias`.ItemId
 import de.davis.keygo.item.domain.usecase.EstimatePasswordStrengthUseCase
 import de.davis.keygo.viewing.presentation.model.ViewPasswordState
 import de.davis.keygo.viewing.presentation.model.ViewPasswordUiEvent
