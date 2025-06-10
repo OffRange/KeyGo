@@ -53,10 +53,10 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
         topBar = {
             MediumFlexibleTopAppBar(
                 title = {
-                    Text(text = stringResource(R.string.password))
+                    Text(text = state.name)
                 },
                 subtitle = {
-                    Text(text = state.name)
+                    Text(text = stringResource(R.string.password))
                 },
                 navigationIcon = {
                     if (LocalIsInSinglePaneMode.current) {
