@@ -12,10 +12,6 @@ fun DashboardScreen(navigate: (RouteDestination) -> Unit) {
     val viewModel: DashboardViewModel = koinViewModel()
     val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(Unit) {
-        viewModel.runSearch()
-    }
-
     DashboardContent(
         uiState = uiState,
         onEvent = viewModel::onEvent,

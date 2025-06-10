@@ -17,15 +17,19 @@ import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIState
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -95,6 +99,8 @@ class DashboardViewModel(
             selectedItemIds = selectedItemIds.toImmutableSet(),
             openedItemId = openedItemId,
         )
+    }.onStart {
+        runSearch()
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -102,16 +108,18 @@ class DashboardViewModel(
     )
 
     @OptIn(FlowPreview::class)
-    suspend fun runSearch() {
+    private fun runSearch() {
         snapshotFlow {
             textFieldState.text
         }.debounce(300.milliseconds)
             .distinctUntilChanged()
-            .collectLatest { query ->
+            .onEach { query ->
                 searchResult.update {
                     performSearch(query.toString())
                 }
             }
+            .flowOn(Dispatchers.Default)
+            .launchIn(viewModelScope)
     }
 
     private suspend fun performSearch(query: String): List<VaultSearchResult> {
