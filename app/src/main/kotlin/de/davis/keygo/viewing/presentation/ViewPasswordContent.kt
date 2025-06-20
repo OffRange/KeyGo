@@ -11,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.Person
@@ -90,7 +91,7 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
         ) {
             entry(
                 title = name,
-                leadingIcon = Icons.Default.AccountCircle
+                leadingIcon = Icons.Default.Badge
             ) {
                 Text(text = state.name)
             }
