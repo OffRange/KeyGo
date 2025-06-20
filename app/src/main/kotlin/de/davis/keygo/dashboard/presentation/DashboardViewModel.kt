@@ -13,6 +13,7 @@ import de.davis.keygo.core.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.presentation.snackbar.ItemDeletedMessage
 import de.davis.keygo.dashboard.domain.model.Filter
 import de.davis.keygo.dashboard.domain.usecase.FilterUseCase
+import de.davis.keygo.dashboard.presentation.model.DashboardEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIState
 import kotlinx.collections.immutable.toImmutableList
@@ -20,6 +21,7 @@ import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -30,6 +32,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -97,7 +100,8 @@ class DashboardViewModel(
             items = items.toImmutableList(),
             searchResult = searchResult.toImmutableList(),
             selectedItemIds = selectedItemIds.toImmutableSet(),
-            openedItemId = openedItemId,
+            openedItemId = if (openedItemId == -2L) items.firstOrNull()?.vaultItemId
+                ?: ItemIdNone else openedItemId,
         )
     }.onStart {
         runSearch()
@@ -106,6 +110,9 @@ class DashboardViewModel(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = DashboardUIState(textFieldState)
     )
+
+    private val eventChannel = Channel<DashboardEvent>()
+    val eventFlow = eventChannel.receiveAsFlow()
 
     @OptIn(FlowPreview::class)
     private fun runSearch() {
@@ -141,6 +148,16 @@ class DashboardViewModel(
                 textFieldState.edit {
                     replace(0, length, submittedSearchQuery.value)
                 }
+            }
+
+            is DashboardUIEvent.CloseItem -> {
+                openedItemId.update { ItemIdNone }
+            }
+
+            is DashboardUIEvent.OpenFirstItem -> openItem(-2L)
+
+            is DashboardUIEvent.OnCreateNewItemRequest -> viewModelScope.launch {
+                eventChannel.send(DashboardEvent.CreateNewItemRequest(event.itemType))
             }
 
             is DashboardUIEvent.OnOpen -> openItem(event.vaultId)

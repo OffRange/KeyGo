@@ -3,10 +3,10 @@ package de.davis.keygo.item.presentation.password
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.viewModelScope
-import de.davis.keygo.core.domain.navigation.Navigator
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
 import de.davis.keygo.core.domain.usecase.InsertVaultItem
+import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.item.domain.PasswordGenerator
 import de.davis.keygo.item.domain.model.PasswordError
 import de.davis.keygo.item.domain.usecase.CreateNewPassword
@@ -18,6 +18,7 @@ import de.davis.keygo.item.presentation.password.model.PasswordUiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.debounce
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -36,7 +38,6 @@ import kotlin.time.Duration.Companion.milliseconds
 @KoinViewModel
 class PasswordViewModel(
     passwordGenerator: PasswordGenerator,
-    private val navigator: Navigator,
     private val estimateStrength: EstimatePasswordStrengthUseCase,
     private val createNewPassword: CreateNewPassword,
     private val insertVaultItem: InsertVaultItem
@@ -56,6 +57,9 @@ class PasswordViewModel(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = PasswordUiState(passwordTextFieldState = passwordTextFieldState)
         )
+
+    private val navigationEventChannel = Channel<NavigationEvent>()
+    val navigationEvent = navigationEventChannel.receiveAsFlow()
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private fun observePasswordTextField() {
@@ -91,7 +95,7 @@ class PasswordViewModel(
 
     private fun navigateUp() {
         viewModelScope.launch {
-            navigator.navigateUp(detail = true)
+            navigationEventChannel.send(NavigationEvent.NavigateBack)
         }
     }
 
