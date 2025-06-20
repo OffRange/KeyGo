@@ -10,4 +10,5 @@ data class ViewPasswordState(
     val username: String = "",
     val website: String = "",
     val note: String = "",
+    val canOpenWebsite: Boolean = false,
 )

@@ -7,6 +7,8 @@ import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.repository.PasswordRepository
 import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.item.domain.usecase.EstimatePasswordStrengthUseCase
+import de.davis.keygo.viewing.domain.WebsiteHandler
+import de.davis.keygo.viewing.domain.usecase.IsValidUrlUseCase
 import de.davis.keygo.viewing.presentation.model.ViewPasswordState
 import de.davis.keygo.viewing.presentation.model.ViewPasswordUiEvent
 import de.davis.keygo.viewing.presentation.model.asObfuscatedString
@@ -27,6 +29,8 @@ class ViewPasswordViewModel(
     private val passwordRepository: PasswordRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val estimatePasswordStrength: EstimatePasswordStrengthUseCase, /* TODO store in db or make it a core use-case*/
+    private val isValidUrl: IsValidUrlUseCase,
+    private val websiteHandler: WebsiteHandler
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ViewPasswordState())
@@ -50,6 +54,7 @@ class ViewPasswordViewModel(
                         username = password.username ?: "",
                         website = password.website ?: "",
                         note = password.note ?: "",
+                        canOpenWebsite = isValidUrl(password.website ?: "")
                     )
                 }
             }
@@ -64,7 +69,13 @@ class ViewPasswordViewModel(
                 navigationEventChannel.send(NavigationEvent.NavigateBack)
             }
 
-            ViewPasswordUiEvent.OpenWebsite -> TODO()
+            ViewPasswordUiEvent.OpenWebsite -> {
+                val url = _state.value.website
+                if (!isValidUrl(url))
+                    return
+
+                websiteHandler.openWebsite(url)
+            }
         }
     }
 }

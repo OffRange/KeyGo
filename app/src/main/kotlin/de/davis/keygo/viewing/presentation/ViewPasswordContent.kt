@@ -1,17 +1,20 @@
 package de.davis.keygo.viewing.presentation
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.Person
@@ -99,13 +102,29 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                 title = password,
                 leadingIcon = Icons.Default.Password,
                 trailingIcon = {
-                    VisibilityButton(
-                        isHidden = isPasswordHidden,
-                        onClick = { isPasswordHidden = !isPasswordHidden },
-                    )
+                    Row {
+                        IconButton(
+                            onClick = { onEvent(ViewPasswordUiEvent.CopyPassword) },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = stringResource(R.string.copy_password_content_description)
+                            )
+                        }
+
+                        VisibilityButton(
+                            isHidden = isPasswordHidden,
+                            onClick = { isPasswordHidden = !isPasswordHidden },
+                        )
+                    }
                 }
             ) {
-                Text(text = if (isPasswordHidden) state.password.hidden else state.password.raw)
+                val scrollState = rememberScrollState()
+                Text(
+                    text = if (isPasswordHidden) state.password.hidden else state.password.raw,
+                    maxLines = 1,
+                    modifier = Modifier.horizontalScroll(scrollState)
+                )
                 StrengthIndicator(
                     score = state.passwordStrengthScore,
                     forceCompact = true
@@ -122,14 +141,16 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
             entry(
                 title = website,
                 leadingIcon = Icons.Default.Link,
-                trailingIcon = {
-                    IconButton(onClick = { onEvent(ViewPasswordUiEvent.OpenWebsite) }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Default.OpenInNew,
-                            contentDescription = stringResource(R.string.open_website_content_description)
-                        )
+                trailingIcon = if (state.canOpenWebsite) {
+                    {
+                        IconButton(onClick = { onEvent(ViewPasswordUiEvent.OpenWebsite) }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Default.OpenInNew,
+                                contentDescription = stringResource(R.string.open_website_content_description)
+                            )
+                        }
                     }
-                }
+                } else null
             ) {
                 Text(text = state.website)
             }
@@ -183,6 +204,7 @@ private fun ViewPasswordContentPreview() {
                     username = "Username 1",
                     website = "example.com",
                     note = "Note about the password or any additional information that might be useful.",
+                    canOpenWebsite = true,
                 ),
                 onEvent = {}
             )
