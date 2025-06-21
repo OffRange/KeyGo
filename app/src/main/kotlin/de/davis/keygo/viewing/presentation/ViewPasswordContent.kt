@@ -1,8 +1,13 @@
 package de.davis.keygo.viewing.presentation
 
+import android.content.ClipData
+import android.content.ClipDescription
+import android.os.Build
+import android.os.PersistableBundle
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -31,11 +36,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.toClipEntry
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -44,10 +54,10 @@ import de.davis.keygo.core.domain.model.Score
 import de.davis.keygo.core.presentation.LocalIsInSinglePaneMode
 import de.davis.keygo.core.presentation.component.KeyGoCard
 import de.davis.keygo.core.presentation.component.StrengthIndicator
-import de.davis.keygo.core.presentation.component.VisibilityButton
 import de.davis.keygo.viewing.presentation.model.ObfuscatedString
 import de.davis.keygo.viewing.presentation.model.ViewPasswordState
 import de.davis.keygo.viewing.presentation.model.ViewPasswordUiEvent
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -101,20 +111,46 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
             entry(
                 title = password,
                 leadingIcon = Icons.Default.Password,
-                trailingIcon = {
-                    Row {
-                        IconButton(
-                            onClick = { onEvent(ViewPasswordUiEvent.CopyPassword) },
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ContentCopy,
-                                contentDescription = stringResource(R.string.copy_password_content_description)
-                            )
-                        }
+                modifier = Modifier.pointerInput(Unit) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown()
+                        isPasswordHidden = false
 
-                        VisibilityButton(
-                            isHidden = isPasswordHidden,
-                            onClick = { isPasswordHidden = !isPasswordHidden },
+                        val pointerId = down.id
+                        do {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == pointerId }
+                            if (change == null || change.changedToUpIgnoreConsumed()) {
+                                break
+                            }
+
+                            change.consume()
+                        } while (true)
+
+                        isPasswordHidden = true
+                    }
+                },
+                trailingIcon = {
+                    val clipboard = LocalClipboard.current
+                    val scope = rememberCoroutineScope()
+                    IconButton(
+                        onClick = {
+                            val clipData =
+                                ClipData.newPlainText(state.password.raw, state.password.raw)
+                                    .apply {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                                            description.extras = PersistableBundle().apply {
+                                                putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
+                                            }
+                                    }
+                            scope.launch {
+                                clipboard.setClipEntry(clipData.toClipEntry())
+                            }
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ContentCopy,
+                            contentDescription = stringResource(R.string.copy_password_content_description)
                         )
                     }
                 }
@@ -168,6 +204,7 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
 private fun LazyListScope.entry(
     title: String,
     leadingIcon: ImageVector,
+    modifier: Modifier = Modifier,
     trailingIcon: @Composable (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
@@ -182,7 +219,8 @@ private fun LazyListScope.entry(
                     contentDescription = null,
                 )
             },
-            trailingItem = trailingIcon
+            trailingItem = trailingIcon,
+            modifier = modifier
         ) {
             content()
         }
