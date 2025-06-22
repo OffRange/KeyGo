@@ -2,6 +2,7 @@ package de.davis.keygo.dashboard.presentation
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -145,9 +146,7 @@ class DashboardViewModel(
 
             is DashboardUIEvent.OnSearchCollapse -> {
                 // Reset to the actual submitted query for cases where the user performed back press action
-                textFieldState.edit {
-                    replace(0, length, submittedSearchQuery.value)
-                }
+                textFieldState.setTextAndPlaceCursorAtEnd(submittedSearchQuery.value)
             }
 
             is DashboardUIEvent.CloseItem -> {
