@@ -33,13 +33,6 @@ inline fun <S, E> Result<S, E>.onSuccess(action: (S) -> Unit): Result<S, E> {
     return this
 }
 
-inline fun <S, E : F, F, MS> Result<S, E>.newResultOnSuccess(transform: (S) -> Result<MS, F>): Result<MS, F> {
-    return when (this) {
-        is Result.Success -> transform(success)
-        is Result.Failure -> Result.Failure(error)
-    }
-}
-
 data class SuccessPair2<S1, S2>(val success1: S1, val success2: S2)
 data class SuccessPair3<S1, S2, S3>(val success1: S1, val success2: S2, val success3: S3)
 data class SuccessPair4<S1, S2, S3, S4>(
