@@ -11,4 +11,5 @@ data class ViewPasswordState(
     val website: String = "",
     val note: String = "",
     val canOpenWebsite: Boolean = false,
+    val modificationDialog: ModificationDialog? = null,
 )

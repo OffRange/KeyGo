@@ -8,21 +8,30 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddLink
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -31,6 +40,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -53,7 +63,11 @@ import de.davis.keygo.R
 import de.davis.keygo.core.domain.model.Score
 import de.davis.keygo.core.presentation.LocalIsInSinglePaneMode
 import de.davis.keygo.core.presentation.component.KeyGoCard
+import de.davis.keygo.core.presentation.component.KeyGoFormField
 import de.davis.keygo.core.presentation.component.StrengthIndicator
+import de.davis.keygo.core.presentation.transformation.TrimTransformation
+import de.davis.keygo.viewing.presentation.model.FieldType
+import de.davis.keygo.viewing.presentation.model.ModificationDialog
 import de.davis.keygo.viewing.presentation.model.ObfuscatedString
 import de.davis.keygo.viewing.presentation.model.ViewPasswordState
 import de.davis.keygo.viewing.presentation.model.ViewPasswordUiEvent
@@ -167,37 +181,145 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                 )
             }
 
-            entry(
-                title = username,
-                leadingIcon = Icons.Default.Person
-            ) {
-                Text(text = state.username)
+            if (state.username.isNotBlank()) {
+                entry(
+                    title = username,
+                    leadingIcon = Icons.Default.Person
+                ) {
+                    Text(text = state.username)
+                }
             }
 
-            entry(
-                title = website,
-                leadingIcon = Icons.Default.Link,
-                trailingIcon = if (state.canOpenWebsite) {
-                    {
-                        IconButton(onClick = { onEvent(ViewPasswordUiEvent.OpenWebsite) }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Default.OpenInNew,
-                                contentDescription = stringResource(R.string.open_website_content_description)
-                            )
+            if (state.website.isNotBlank()) {
+                entry(
+                    title = website,
+                    leadingIcon = Icons.Default.Link,
+                    trailingIcon = if (state.canOpenWebsite) {
+                        {
+                            IconButton(onClick = { onEvent(ViewPasswordUiEvent.OpenWebsite) }) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Default.OpenInNew,
+                                    contentDescription = stringResource(R.string.open_website_content_description)
+                                )
+                            }
                         }
-                    }
-                } else null
-            ) {
-                Text(text = state.website)
+                    } else null
+                ) {
+                    Text(text = state.website)
+                }
             }
 
-            entry(
-                title = note,
-                leadingIcon = Icons.AutoMirrored.Default.Notes,
-            ) {
-                Text(text = state.note)
+            if (state.note.isNotBlank()) {
+                entry(
+                    title = note,
+                    leadingIcon = Icons.AutoMirrored.Default.Notes,
+                ) {
+                    Text(text = state.note)
+                }
+            }
+
+            item(key = "actions") {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (state.username.isBlank()) {
+                        AddChip(
+                            fieldType = FieldType.Username,
+                            onClick = { onEvent(ViewPasswordUiEvent.OnModifyFieldRequest(it)) }
+                        )
+                    }
+                    if (state.website.isBlank()) {
+                        AddChip(
+                            fieldType = FieldType.Website,
+                            onClick = { onEvent(ViewPasswordUiEvent.OnModifyFieldRequest(it)) }
+                        )
+                    }
+
+                    if (state.note.isBlank()) {
+                        AddChip(
+                            fieldType = FieldType.Note,
+                            onClick = { onEvent(ViewPasswordUiEvent.OnModifyFieldRequest(it)) }
+                        )
+                    }
+                }
             }
         }
+
+        state.modificationDialog?.let { dialog ->
+            AlertDialog(
+                onDismissRequest = { onEvent(ViewPasswordUiEvent.OnCloseDialog) },
+                confirmButton = {
+                    TextButton(
+                        onClick = { onEvent(ViewPasswordUiEvent.OnSubmitModification) }
+                    ) {
+                        Text(text = stringResource(R.string.add))
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                    )
+                },
+                title = {
+                    Text(text = stringResource(R.string.add))
+                },
+                text = {
+                    KeyGoFormField(
+                        state = dialog.textFieldState,
+                        label = {
+                            Text(text = dialog.fieldType.addLabel())
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        isSecure = dialog.fieldType.isSensitive,
+                        inputTransformation = if (!dialog.fieldType.isSensitive)
+                            TrimTransformation
+                        else null,
+                    )
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun AddChip(fieldType: FieldType, onClick: (FieldType) -> Unit) {
+    AssistChip(
+        onClick = {
+            onClick(fieldType)
+        },
+        label = { Text(text = fieldType.addLabel()) },
+        leadingIcon = {
+            Icon(
+                imageVector = fieldType.addIcon(),
+                contentDescription = null
+            )
+        }
+    )
+}
+
+@Composable
+private fun FieldType.addLabel(): String {
+    return when (this) {
+        FieldType.Name -> stringResource(R.string.name)
+        FieldType.Password -> stringResource(R.string.password)
+        FieldType.Username -> stringResource(R.string.add_username)
+        FieldType.Website -> stringResource(R.string.add_website)
+        FieldType.Note -> stringResource(R.string.add_note)
+    }
+}
+
+@Composable
+private fun FieldType.addIcon(): ImageVector {
+    return when (this) {
+        FieldType.Name -> Icons.Default.Badge
+        FieldType.Password -> Icons.Default.Password
+        FieldType.Username -> Icons.Default.PersonAdd
+        FieldType.Website -> Icons.Default.AddLink
+        FieldType.Note -> Icons.AutoMirrored.Default.NoteAdd
     }
 }
 
@@ -243,6 +365,32 @@ private fun ViewPasswordContentPreview() {
                     website = "example.com",
                     note = "Note about the password or any additional information that might be useful.",
                     canOpenWebsite = true,
+                ),
+                onEvent = {}
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun ViewPasswordContentModificationDialogPreview() {
+    MaterialTheme {
+        CompositionLocalProvider(
+            LocalIsInSinglePaneMode provides true
+        ) {
+            ViewPasswordContent(
+                state = ViewPasswordState(
+                    name = "Password 1",
+                    password = ObfuscatedString("Password"),
+                    passwordStrengthScore = Score.Ridiculous,
+                    username = "Username 1",
+                    website = "example.com",
+                    canOpenWebsite = true,
+                    modificationDialog = ModificationDialog(
+                        fieldType = FieldType.Name,
+                        textFieldState = rememberTextFieldState()
+                    )
                 ),
                 onEvent = {}
             )

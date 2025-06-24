@@ -1,14 +1,18 @@
 package de.davis.keygo.viewing.presentation
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.repository.PasswordRepository
+import de.davis.keygo.core.domain.usecase.UpdatePasswordUseCase
 import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.item.domain.usecase.EstimatePasswordStrengthUseCase
 import de.davis.keygo.viewing.domain.WebsiteHandler
 import de.davis.keygo.viewing.domain.usecase.IsValidUrlUseCase
+import de.davis.keygo.viewing.presentation.model.FieldType
+import de.davis.keygo.viewing.presentation.model.ModificationDialog
 import de.davis.keygo.viewing.presentation.model.ViewPasswordState
 import de.davis.keygo.viewing.presentation.model.ViewPasswordUiEvent
 import de.davis.keygo.viewing.presentation.model.asObfuscatedString
@@ -23,12 +27,14 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.android.annotation.KoinViewModel
+import kotlin.properties.Delegates
 
 @KoinViewModel
 class ViewPasswordViewModel(
     private val passwordRepository: PasswordRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val estimatePasswordStrength: EstimatePasswordStrengthUseCase, /* TODO store in db or make it a core use-case*/
+    private val updatePassword: UpdatePasswordUseCase,
     private val isValidUrl: IsValidUrlUseCase,
     private val websiteHandler: WebsiteHandler
 ) : ViewModel() {
@@ -39,7 +45,10 @@ class ViewPasswordViewModel(
     private val navigationEventChannel = Channel<NavigationEvent>()
     val navigationEvent = navigationEventChannel.receiveAsFlow()
 
+    private var itemId by Delegates.notNull<ItemId>()
+
     fun init(itemId: ItemId) {
+        this.itemId = itemId
         passwordRepository.observeVaultPasswordById(itemId)
             .onEach { password ->
                 val obfuscatedString = cryptographicScopeProvider.scope {
@@ -74,6 +83,47 @@ class ViewPasswordViewModel(
                     return
 
                 websiteHandler.openWebsite(url)
+            }
+
+            ViewPasswordUiEvent.OnCloseDialog -> {
+                _state.update { it.copy(modificationDialog = null) }
+            }
+
+            is ViewPasswordUiEvent.OnModifyFieldRequest -> {
+                val fieldType = event.fieldType
+                val textFieldState = when (fieldType) {
+                    FieldType.Name -> _state.value.name
+                    FieldType.Password -> _state.value.password.raw
+                    FieldType.Username -> _state.value.username
+                    FieldType.Website -> _state.value.website
+                    FieldType.Note -> _state.value.note
+                }
+
+                _state.update {
+                    it.copy(
+                        modificationDialog = ModificationDialog(
+                            fieldType = fieldType,
+                            textFieldState = TextFieldState(textFieldState)
+                        )
+                    )
+                }
+            }
+
+            ViewPasswordUiEvent.OnSubmitModification -> {
+                val dialog = _state.value.modificationDialog ?: return
+                val newText = dialog.textFieldState.text.toString()
+
+                viewModelScope.launch {
+                    when (dialog.fieldType) {
+                        FieldType.Name -> updatePassword(itemId = itemId, name = newText)
+                        FieldType.Password -> updatePassword(itemId = itemId, password = newText)
+                        FieldType.Username -> updatePassword(itemId = itemId, username = newText)
+                        FieldType.Website -> updatePassword(itemId = itemId, website = newText)
+                        FieldType.Note -> updatePassword(itemId = itemId, note = newText)
+                    }
+
+                    _state.update { it.copy(modificationDialog = null) }
+                }
             }
         }
     }

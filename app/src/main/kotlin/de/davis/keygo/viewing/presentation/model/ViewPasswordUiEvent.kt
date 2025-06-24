@@ -4,4 +4,8 @@ sealed interface ViewPasswordUiEvent {
 
     data object OpenWebsite : ViewPasswordUiEvent
     data object OnBackClick : ViewPasswordUiEvent
+
+    data object OnCloseDialog : ViewPasswordUiEvent
+    data object OnSubmitModification : ViewPasswordUiEvent
+    data class OnModifyFieldRequest(val fieldType: FieldType) : ViewPasswordUiEvent
 }

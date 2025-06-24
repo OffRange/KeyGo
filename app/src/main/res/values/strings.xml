@@ -20,6 +20,9 @@
     <string name="copy_password_content_description">Copy Password</string>
 
     <string name="add">Add</string>
+    <string name="add_username">Add Username</string>
+    <string name="add_website">Add Website</string>
+    <string name="add_note">Add Note</string>
     <string name="add_new_element">Add new Element</string>
 
     <string name="password">Password</string>
