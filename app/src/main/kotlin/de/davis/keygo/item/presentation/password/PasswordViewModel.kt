@@ -1,6 +1,7 @@
 package de.davis.keygo.item.presentation.password
 
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.domain.onFailure
@@ -84,9 +85,7 @@ class PasswordViewModel(
         }.launchIn(viewModelScope)
 
         finalPassword.onEach { password ->
-            passwordTextFieldState.edit {
-                replace(0, length, password)
-            }
+            passwordTextFieldState.setTextAndPlaceCursorAtEnd(password)
             _uiState.update {
                 it.copy(generatePasswordBottomSheetVisible = false)
             }
