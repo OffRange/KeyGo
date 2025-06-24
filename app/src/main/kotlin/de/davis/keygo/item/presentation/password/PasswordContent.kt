@@ -34,9 +34,9 @@ import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
 import de.davis.keygo.core.domain.model.Score
 import de.davis.keygo.core.presentation.LocalIsInSinglePaneMode
+import de.davis.keygo.core.presentation.component.KeyGoFormField
 import de.davis.keygo.core.presentation.component.StrengthIndicator
 import de.davis.keygo.core.presentation.theme.KeyGoTheme
-import de.davis.keygo.item.presentation.component.FormField
 import de.davis.keygo.item.presentation.component.FormGroup
 import de.davis.keygo.item.presentation.component.KeyGoItemForm
 import de.davis.keygo.item.presentation.password.model.PasswordUiEvent
@@ -98,7 +98,7 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                     Column(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        FormField(
+                        KeyGoFormField(
                             state = state.passwordTextFieldState,
                             label = { Text(text = stringResource(R.string.password)) },
                             modifier = Modifier.onFocusChanged {
@@ -126,12 +126,12 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                         )
                     }
 
-                    FormField(
+                    KeyGoFormField(
                         state = state.usernameTextFieldState,
                         label = { Text(text = stringResource(R.string.username)) },
                         placeholder = { Text(text = stringResource(R.string.username)) },
                     )
-                    FormField(
+                    KeyGoFormField(
                         state = state.websiteTextFieldState,
                         label = { Text(text = stringResource(R.string.website)) },
                         placeholder = { Text(text = stringResource(R.string.website)) },

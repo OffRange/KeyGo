@@ -7,12 +7,12 @@ import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
 import de.davis.keygo.core.domain.usecase.InsertVaultItem
+import de.davis.keygo.core.presentation.model.InputFieldError
 import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.item.domain.PasswordGenerator
 import de.davis.keygo.item.domain.model.PasswordError
 import de.davis.keygo.item.domain.usecase.CreateNewPassword
 import de.davis.keygo.item.domain.usecase.EstimatePasswordStrengthUseCase
-import de.davis.keygo.item.presentation.model.InputFieldError
 import de.davis.keygo.item.presentation.password.model.GeneratePasswordUiEvent
 import de.davis.keygo.item.presentation.password.model.PasswordUiEvent
 import de.davis.keygo.item.presentation.password.model.PasswordUiState

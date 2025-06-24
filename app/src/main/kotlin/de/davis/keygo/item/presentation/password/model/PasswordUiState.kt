@@ -3,7 +3,7 @@ package de.davis.keygo.item.presentation.password.model
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import de.davis.keygo.core.domain.model.Score
-import de.davis.keygo.item.presentation.model.InputFieldError
+import de.davis.keygo.core.presentation.model.InputFieldError
 
 data class PasswordUiState(
     val nameTextFieldState: TextFieldState = TextFieldState(),
