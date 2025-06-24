@@ -64,7 +64,6 @@ class ViewPasswordViewModel(
 
     fun onEvent(event: ViewPasswordUiEvent) {
         when (event) {
-            ViewPasswordUiEvent.CopyPassword -> TODO()
             ViewPasswordUiEvent.OnBackClick -> viewModelScope.launch {
                 navigationEventChannel.send(NavigationEvent.NavigateBack)
             }
