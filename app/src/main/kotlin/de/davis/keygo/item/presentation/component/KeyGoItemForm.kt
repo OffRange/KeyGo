@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.TextObfuscationMode
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.Icon
@@ -30,6 +32,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -41,6 +44,7 @@ import de.davis.keygo.R
 import de.davis.keygo.core.presentation.component.KeyGoCard
 import de.davis.keygo.core.presentation.component.KeyGoCardProp
 import de.davis.keygo.core.presentation.component.VisibilityButton
+import de.davis.keygo.core.presentation.transformation.TrimTransformation
 import de.davis.keygo.item.presentation.model.InputFieldError
 
 
@@ -121,7 +125,8 @@ internal fun FormField(
     outsideTrailingContent: @Composable (() -> Unit)? = null,
     error: InputFieldError? = null,
     lineLimits: TextFieldLineLimits = TextFieldLineLimits.SingleLine,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next)
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next),
+    inputTransformation: InputTransformation? = TrimTransformation
 ) {
     val supportingText: @Composable (() -> Unit)? = error?.let {
         {
@@ -142,7 +147,9 @@ internal fun FormField(
                 var passwordHidden by rememberSaveable { mutableStateOf(true) }
                 OutlinedSecureTextField(
                     state = state,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .trimOnFocusLost(state, inputTransformation is TrimTransformation),
                     label = label,
                     placeholder = placeholder,
                     textObfuscationMode = if (passwordHidden) {
@@ -158,20 +165,24 @@ internal fun FormField(
                     },
                     supportingText = supportingText,
                     isError = supportingText != null,
-                    keyboardOptions = keyboardOptions
+                    keyboardOptions = keyboardOptions,
+                    inputTransformation = inputTransformation
                 )
             }
 
             else -> OutlinedTextField(
                 state = state,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .trimOnFocusLost(state, inputTransformation is TrimTransformation),
                 label = label,
                 placeholder = placeholder,
                 trailingIcon = trailingContent,
                 lineLimits = lineLimits,
                 supportingText = supportingText,
                 isError = supportingText != null,
-                keyboardOptions = keyboardOptions
+                keyboardOptions = keyboardOptions,
+                inputTransformation = inputTransformation
             )
         }
 
@@ -182,6 +193,19 @@ internal fun FormField(
         }
     }
 }
+
+private fun Modifier.trimOnFocusLost(
+    state: TextFieldState,
+    enable: Boolean
+): Modifier = if (enable) {
+    onFocusChanged {
+        if (!it.hasFocus) {
+            state.setTextAndPlaceCursorAtEnd(
+                state.text.trim().toString()
+            )
+        }
+    }
+} else this
 
 /**
  * Copied from android's internal source code

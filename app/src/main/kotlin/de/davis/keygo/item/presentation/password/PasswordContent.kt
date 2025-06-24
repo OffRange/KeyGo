@@ -117,6 +117,7 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                                 }
                             },
                             error = state.passwordError,
+                            inputTransformation = null
                         )
 
                         StrengthIndicator(
