@@ -21,6 +21,9 @@ internal class VaultItemRepositoryImpl(
         vaultDao.delete(vaultItemId)
     }
 
+    override suspend fun getVaultItem(vaultItemId: ItemId): VaultItem.Basic? =
+        vaultDao.getVaultItemById(vaultItemId)?.toDomain()
+
     override suspend fun createNewOrUpdateVaultItem(vaultItem: VaultItem): ItemId =
         vaultDao.upsert(vaultItem.toData())
 

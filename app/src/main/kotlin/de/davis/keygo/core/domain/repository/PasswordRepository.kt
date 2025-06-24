@@ -8,5 +8,7 @@ interface PasswordRepository {
 
     suspend fun createNewOrUpdatePassword(password: Password): ItemId
     fun observeVaultPasswords(): Flow<List<Password>>
+
+    suspend fun getVaultPasswordById(vaultId: ItemId): Password?
     fun observeVaultPasswordById(vaultId: ItemId): Flow<Password>
 }

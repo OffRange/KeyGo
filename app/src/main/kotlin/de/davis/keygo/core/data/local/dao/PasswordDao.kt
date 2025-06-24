@@ -21,6 +21,10 @@ internal interface PasswordDao {
     @Query("SELECT * FROM VaultItemEntity WHERE vault_item_id = :vaultId")
     fun observeVaultPassword(vaultId: ItemId): Flow<VaultPassword>
 
+    @Transaction
+    @Query("SELECT * FROM VaultItemEntity WHERE vault_item_id = :vaultId")
+    suspend fun getVaultPassword(vaultId: ItemId): VaultPassword?
+
     @Upsert
     suspend fun upsert(password: PasswordEntity): ItemId
 }
