@@ -13,10 +13,10 @@ class InsertVaultItem(
 ) {
 
     suspend operator fun <I : VaultItem> invoke(item: I) {
-        val id = vaultItemRepository.createNewVaultItem(item)
+        val id = vaultItemRepository.createNewOrUpdateVaultItem(item)
         when (item) {
             is Password -> {
-                passwordRepository.createNewPassword(item.copy(vaultItemId = id))
+                passwordRepository.createNewOrUpdatePassword(item.copy(vaultItemId = id))
             }
 
             else -> {}

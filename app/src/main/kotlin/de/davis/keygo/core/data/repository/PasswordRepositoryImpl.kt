@@ -16,14 +16,14 @@ internal class PasswordRepositoryImpl(
     private val passwordDao: PasswordDao
 ) : PasswordRepository {
 
-    override suspend fun createNewPassword(password: Password): ItemId =
-        passwordDao.insert(password.toData())
+    override suspend fun createNewOrUpdatePassword(password: Password): ItemId =
+        passwordDao.upsert(password.toData())
 
     override fun observeVaultPasswords(): Flow<List<Password>> =
         passwordDao.getVaultPasswords().map { vaultPassword ->
             vaultPassword.map { it.toDomain() }
         }
 
-    override fun observeVaultPasswordById(id: ItemId): Flow<Password> =
-        passwordDao.observeVaultPassword(id).map(VaultPassword::toDomain)
+    override fun observeVaultPasswordById(vaultId: ItemId): Flow<Password> =
+        passwordDao.observeVaultPassword(vaultId).map(VaultPassword::toDomain)
 }

@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface PasswordRepository {
 
-    suspend fun createNewPassword(password: Password): ItemId
+    suspend fun createNewOrUpdatePassword(password: Password): ItemId
     fun observeVaultPasswords(): Flow<List<Password>>
-    fun observeVaultPasswordById(id: ItemId): Flow<Password>
+    fun observeVaultPasswordById(vaultId: ItemId): Flow<Password>
 }

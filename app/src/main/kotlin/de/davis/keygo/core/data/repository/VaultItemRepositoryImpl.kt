@@ -21,8 +21,8 @@ internal class VaultItemRepositoryImpl(
         vaultDao.delete(vaultItemId)
     }
 
-    override suspend fun createNewVaultItem(vaultItem: VaultItem): ItemId =
-        vaultDao.insert(vaultItem.toData())
+    override suspend fun createNewOrUpdateVaultItem(vaultItem: VaultItem): ItemId =
+        vaultDao.upsert(vaultItem.toData())
 
     override suspend fun searchVaultItem(query: String): List<VaultSearchResult> =
         vaultDao.searchVaultItem(query).map { it.toDomain() }

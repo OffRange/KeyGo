@@ -1,9 +1,9 @@
 package de.davis.keygo.core.data.local.dao
 
 import androidx.room.Dao
-import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Upsert
 import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.generated.item.data.local.entity.PasswordEntity
 import de.davis.keygo.generated.item.data.local.relation.VaultPassword
@@ -21,6 +21,6 @@ internal interface PasswordDao {
     @Query("SELECT * FROM VaultItemEntity WHERE vault_item_id = :vaultId")
     fun observeVaultPassword(vaultId: ItemId): Flow<VaultPassword>
 
-    @Insert
-    suspend fun insert(password: PasswordEntity): ItemId
+    @Upsert
+    suspend fun upsert(password: PasswordEntity): ItemId
 }

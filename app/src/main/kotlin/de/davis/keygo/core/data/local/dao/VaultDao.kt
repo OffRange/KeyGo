@@ -1,8 +1,8 @@
 package de.davis.keygo.core.data.local.dao
 
 import androidx.room.Dao
-import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Upsert
 import de.davis.keygo.core.data.local.model.VaultItemMatch
 import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.generated.item.data.local.entity.VaultItemEntity
@@ -11,8 +11,8 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 internal interface VaultDao {
 
-    @Insert
-    suspend fun insert(vaultItem: VaultItemEntity): ItemId
+    @Upsert
+    suspend fun upsert(vaultItem: VaultItemEntity): ItemId
 
     @Query("DELETE FROM VaultItemEntity WHERE vault_item_id = :vaultItemId")
     suspend fun delete(vaultItemId: ItemId)
