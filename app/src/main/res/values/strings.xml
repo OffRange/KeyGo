@@ -12,6 +12,7 @@
     <string name="open_navigation_drawer_content_description">Open Navigation Drawer</string>
     <string name="close_navigation_drawer_content_description">Close Navigation Drawer</string>
     <string name="add_content_description">Add</string>
+    <string name="edit_content_description">Edit</string>
     <string name="search_content_description">Search</string>
     <string name="back_content_description">Back</string>
     <string name="generate_password_content_description">Generate Password</string>

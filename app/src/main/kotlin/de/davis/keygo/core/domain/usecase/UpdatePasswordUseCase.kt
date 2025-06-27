@@ -23,26 +23,26 @@ class UpdatePasswordUseCase(
         website: String? = null,
         note: String? = null
     ): Result<Unit, UpdateError> {
-        if (name != null || note != null) {
+        if (name != null || note != null || password != null) {
             val vaultItem = vaultRepository.getVaultItem(itemId)
                 ?: return Result.Failure(UpdateError.VaultItemNotFound)
 
             val updated = vaultItem.copy(
                 name = name ?: vaultItem.name,
-                note = note ?: vaultItem.note
+                note = note ?: vaultItem.note,
+                encryptedData = cryptographicScopeProvider.scope {
+                    password?.encodeToByteArray()?.encrypt()
+                } ?: vaultItem.encryptedData,
             )
 
             vaultRepository.createNewOrUpdateVaultItem(updated)
         }
 
-        if (password != null || username != null || website != null) {
+        if (username != null || website != null) {
             val passwordItem = passwordRepository.getVaultPasswordById(itemId)
                 ?: return Result.Failure(UpdateError.VaultItemNotFound)
 
             val updatedPassword = passwordItem.copy(
-                encryptedData = cryptographicScopeProvider.scope {
-                    password?.encodeToByteArray()?.encrypt()
-                } ?: passwordItem.encryptedData,
                 username = username ?: passwordItem.username,
                 website = website ?: passwordItem.website
             )

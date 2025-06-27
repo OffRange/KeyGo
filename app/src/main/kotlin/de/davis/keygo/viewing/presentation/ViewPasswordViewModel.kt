@@ -8,6 +8,7 @@ import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.repository.PasswordRepository
 import de.davis.keygo.core.domain.usecase.UpdatePasswordUseCase
 import de.davis.keygo.core.presentation.model.NavigationEvent
+import de.davis.keygo.generated.item.VaultItemEnum
 import de.davis.keygo.item.domain.usecase.EstimatePasswordStrengthUseCase
 import de.davis.keygo.viewing.domain.WebsiteHandler
 import de.davis.keygo.viewing.domain.usecase.IsValidUrlUseCase
@@ -83,6 +84,17 @@ class ViewPasswordViewModel(
                     return
 
                 websiteHandler.openWebsite(url)
+            }
+
+            ViewPasswordUiEvent.OnEditRequest -> {
+                viewModelScope.launch {
+                    navigationEventChannel.send(
+                        NavigationEvent.NavigateToEdit(
+                            VaultItemEnum.Password,
+                            itemId
+                        )
+                    )
+                }
             }
 
             ViewPasswordUiEvent.OnCloseDialog -> {

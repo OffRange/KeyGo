@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddLink
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.Person
@@ -94,6 +95,16 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                                 contentDescription = stringResource(R.string.back_content_description)
                             )
                         }
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = { onEvent(ViewPasswordUiEvent.OnEditRequest) }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = stringResource(R.string.edit_content_description)
+                        )
                     }
                 },
                 scrollBehavior = scrollBehavior

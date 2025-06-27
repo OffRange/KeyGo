@@ -4,6 +4,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.AnimatedPane
 import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldRole
+import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
 import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.runtime.CompositionLocalProvider
@@ -109,11 +110,18 @@ fun NavGraphBuilder.dashboardGraph(
                                         LocalViewModelStoreOwner provides storeOwner
                                     ) {
                                         PasswordScreen(
+                                            itemId = detailItem.itemId,
                                             navigate = {
                                                 when (it) {
                                                     NavigationEvent.NavigateBack -> scope.launch {
-                                                        listNavigator.navigateBack()
+                                                        // We don't want to pop the detail pane entirely,
+                                                        // Just until the content changes
+                                                        listNavigator.navigateBack(
+                                                            BackNavigationBehavior.PopUntilContentChange
+                                                        )
                                                     }
+
+                                                    is NavigationEvent.NavigateToEdit -> {}
                                                 }
                                             }
                                         )
@@ -127,6 +135,13 @@ fun NavGraphBuilder.dashboardGraph(
                                             when (it) {
                                                 NavigationEvent.NavigateBack -> scope.launch {
                                                     listNavigator.navigateBack()
+                                                }
+
+                                                is NavigationEvent.NavigateToEdit -> scope.launch {
+                                                    listNavigator.navigateTo(
+                                                        ThreePaneScaffoldRole.Primary,
+                                                        DetailItem.Edit(it.vaultType, it.itemId)
+                                                    )
                                                 }
                                             }
                                         }
