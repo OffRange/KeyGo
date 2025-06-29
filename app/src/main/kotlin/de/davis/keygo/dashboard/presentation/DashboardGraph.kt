@@ -82,6 +82,7 @@ fun NavGraphBuilder.dashboardGraph(
         ) {
             NavigableListDetailPaneScaffold(
                 navigator = listNavigator,
+                defaultBackBehavior = BackNavigationBehavior.PopUntilContentChange,
                 listPane = {
                     AnimatedPane {
                         DashboardContent(uiState = uiState, onEvent = viewModel::onEvent)
