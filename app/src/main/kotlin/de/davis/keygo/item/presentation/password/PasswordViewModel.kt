@@ -10,11 +10,12 @@ import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
 import de.davis.keygo.core.domain.repository.PasswordRepository
-import de.davis.keygo.core.domain.usecase.InsertVaultItem
-import de.davis.keygo.core.domain.usecase.UpdatePasswordUseCase
+import de.davis.keygo.core.presentation.model.InputFieldError
 import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.item.domain.PasswordGenerator
-import de.davis.keygo.item.domain.usecase.CreateNewPassword
+import de.davis.keygo.item.domain.model.PasswordError
+import de.davis.keygo.item.domain.model.Upsert
+import de.davis.keygo.item.domain.usecase.CreateNewOrUpdatePassword
 import de.davis.keygo.item.domain.usecase.EstimatePasswordStrengthUseCase
 import de.davis.keygo.item.presentation.password.model.GeneratePasswordUiEvent
 import de.davis.keygo.item.presentation.password.model.PasswordUiEvent
@@ -44,11 +45,9 @@ import kotlin.time.Duration.Companion.milliseconds
 class PasswordViewModel(
     passwordGenerator: PasswordGenerator,
     private val passwordRepository: PasswordRepository,
-    private val updatePassword: UpdatePasswordUseCase,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val estimateStrength: EstimatePasswordStrengthUseCase,
-    private val createNewPassword: CreateNewPassword, // TODO
-    private val insertVaultItem: InsertVaultItem
+    private val createNewOrUpdatePassword: CreateNewOrUpdatePassword,
 ) : GeneratePasswordViewModel(passwordGenerator, estimateStrength) {
 
     private val passwordTextFieldState = TextFieldState()
@@ -136,39 +135,26 @@ class PasswordViewModel(
             is PasswordUiEvent.OnSubmit -> {
                 viewModelScope.launch {
                     val state = _uiState.value
-                    updatePassword(
-                        itemId = itemId,
-                        name = state.nameTextFieldState.text.toString(),
-                        username = state.usernameTextFieldState.text.toString(),
-                        website = state.websiteTextFieldState.text.toString(),
-                        password = state.passwordTextFieldState.text.toString(),
-                        note = state.notesTextFieldState.text.toString()
+                    createNewOrUpdatePassword(
+                        Upsert.Update(
+                            vaultId = itemId,
+                            name = state.nameTextFieldState.text.toString(),
+                            username = state.usernameTextFieldState.text.toString(),
+                            website = state.websiteTextFieldState.text.toString(),
+                            password = state.passwordTextFieldState.text.toString(),
+                            note = state.notesTextFieldState.text.toString()
+                        )
                     ).onSuccess {
                         navigateUp()
                     }.onFailure { failure ->
-                        //TODO: maybe just rename CreateNewPassword to something like CreateOrUpdatePassword?
-                        // so we call createOrUpdatePassword and pass the optional (vault) itemId down.
-                        // The use case would then fetch the password item id from the repository.
-                        // And construct a new password instance that represents either a new password
-                        // - if the optional itemId parameter was not set - or an updated one, otherwise.
-                    }
-                    /*createNewPassword(
-                        name = state.nameTextFieldState.text.toString(),
-                        username = state.usernameTextFieldState.text.toString(),
-                        website = state.websiteTextFieldState.text.toString(),
-                        password = state.passwordTextFieldState.text.toString(),
-                        note = state.notesTextFieldState.text.toString()
-                    ).onSuccess {
-                        insertVaultItem(it)
-                        navigateUp()
-                    }.onFailure { failure ->
+                        // TODO handle database error
                         _uiState.update {
                             it.copy(
                                 nameError = if (failure.contains(PasswordError.BlankName)) InputFieldError.Empty else null,
                                 passwordError = if (failure.contains(PasswordError.BlankPassword)) InputFieldError.Empty else null
                             )
                         }
-                    }*/
+                    }
                 }
             }
 

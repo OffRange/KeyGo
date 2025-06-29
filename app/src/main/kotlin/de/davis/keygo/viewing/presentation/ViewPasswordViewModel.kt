@@ -5,10 +5,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.core.domain.onFailure
+import de.davis.keygo.core.domain.onSuccess
 import de.davis.keygo.core.domain.repository.PasswordRepository
-import de.davis.keygo.core.domain.usecase.UpdatePasswordUseCase
+import de.davis.keygo.core.presentation.model.InputFieldError
 import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.generated.item.VaultItemEnum
+import de.davis.keygo.item.domain.model.PasswordError
+import de.davis.keygo.item.domain.model.Upsert
+import de.davis.keygo.item.domain.usecase.CreateNewOrUpdatePassword
 import de.davis.keygo.item.domain.usecase.EstimatePasswordStrengthUseCase
 import de.davis.keygo.viewing.domain.WebsiteHandler
 import de.davis.keygo.viewing.domain.usecase.IsValidUrlUseCase
@@ -35,7 +40,7 @@ class ViewPasswordViewModel(
     private val passwordRepository: PasswordRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val estimatePasswordStrength: EstimatePasswordStrengthUseCase, /* TODO store in db or make it a core use-case*/
-    private val updatePassword: UpdatePasswordUseCase,
+    private val updatePassword: CreateNewOrUpdatePassword,
     private val isValidUrl: IsValidUrlUseCase,
     private val websiteHandler: WebsiteHandler
 ) : ViewModel() {
@@ -115,7 +120,7 @@ class ViewPasswordViewModel(
                     it.copy(
                         modificationDialog = ModificationDialog(
                             fieldType = fieldType,
-                            textFieldState = TextFieldState(textFieldState)
+                            textFieldState = TextFieldState(textFieldState),
                         )
                     )
                 }
@@ -126,15 +131,47 @@ class ViewPasswordViewModel(
                 val newText = dialog.textFieldState.text.toString()
 
                 viewModelScope.launch {
-                    when (dialog.fieldType) {
-                        FieldType.Name -> updatePassword(itemId = itemId, name = newText)
-                        FieldType.Password -> updatePassword(itemId = itemId, password = newText)
-                        FieldType.Username -> updatePassword(itemId = itemId, username = newText)
-                        FieldType.Website -> updatePassword(itemId = itemId, website = newText)
-                        FieldType.Note -> updatePassword(itemId = itemId, note = newText)
-                    }
+                    updatePassword(
+                        when (dialog.fieldType) {
+                            FieldType.Name -> Upsert.Update(
+                                vaultId = itemId,
+                                name = newText
+                            )
 
-                    _state.update { it.copy(modificationDialog = null) }
+
+                            FieldType.Password -> Upsert.Update(
+                                vaultId = itemId,
+                                password = newText
+                            )
+
+                            FieldType.Username -> Upsert.Update(
+                                vaultId = itemId,
+                                username = newText
+                            )
+
+                            FieldType.Website -> Upsert.Update(
+                                vaultId = itemId,
+                                website = newText
+                            )
+
+                            FieldType.Note -> Upsert.Update(
+                                vaultId = itemId,
+                                note = newText
+                            )
+                        }
+                    ).onFailure { failure ->
+                        _state.update {
+                            it.copy(
+                                modificationDialog = it.modificationDialog?.copy(
+                                    error = if (failure.contains(PasswordError.BlankPassword)
+                                        || failure.contains(PasswordError.BlankName)
+                                    ) InputFieldError.Empty else null
+                                ),
+                            )
+                        }
+                    }.onSuccess {
+                        _state.update { it.copy(modificationDialog = null) }
+                    }
                 }
             }
         }

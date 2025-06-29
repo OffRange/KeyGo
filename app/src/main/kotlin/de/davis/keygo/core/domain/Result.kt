@@ -87,6 +87,13 @@ inline fun <S, E, MS> Result<S, E>.mapSuccess(transform: (S) -> MS): Result<MS, 
     }
 }
 
+inline fun <S, E, ME> Result<S, E>.mapFailure(transform: (E) -> ME): Result<S, ME> {
+    return when (this) {
+        is Result.Success -> Result.Success(success)
+        is Result.Failure -> Result.Failure(transform(error))
+    }
+}
+
 fun <S, E> Result<S, E>.asUnitResult(): Result<Unit, E> = mapSuccess {}
 
 fun <S, E> Result<S, E>.getOrNull(): S? = when (this) {
