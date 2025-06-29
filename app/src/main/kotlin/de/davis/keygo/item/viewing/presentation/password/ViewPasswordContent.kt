@@ -353,7 +353,7 @@ private fun LazyListScope.entry(
                 )
             },
             trailingItem = trailingIcon,
-            modifier = modifier
+            modifier = modifier.animateItem()
         ) {
             content()
         }
