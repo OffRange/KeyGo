@@ -133,10 +133,10 @@ internal fun AlertDialogContent(
                     }
                 }
             }
-            val textStyle = MaterialTheme.typography.bodyMedium
+            val contentTextStyle = MaterialTheme.typography.bodyMedium
             ProvideContentColorTextStyle(
                 contentColor = textContentColor,
-                textStyle = textStyle
+                textStyle = contentTextStyle
             ) {
                 Box(
                     Modifier
