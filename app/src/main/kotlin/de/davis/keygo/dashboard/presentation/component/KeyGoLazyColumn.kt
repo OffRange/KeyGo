@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.core.domain.alias.ItemIdNone
 import de.davis.keygo.core.domain.model.Password
+import de.davis.keygo.core.domain.model.Score
 import de.davis.keygo.core.domain.model.VaultItem
 import de.davis.keygo.core.domain.model.crypto.CryptographicData
 import kotlinx.collections.immutable.ImmutableList
@@ -215,13 +216,14 @@ private fun KeyGoLazyColumnPreview() {
             items = buildList {
                 repeat(25) {
                     val p = Password(
-                        it.toLong(),
-                        "Item $it",
-                        "Description $it",
-                        it.toLong(),
-                        "${if (it >= 5) 'a' else 'P'}assword $it",
-                        CryptographicData.EMPTY,
-                        "Password $it"
+                        passwordId = it.toLong(),
+                        username = "User $it",
+                        website = "Website",
+                        score = Score.Weak,
+                        vaultItemId = it.toLong(),
+                        name = "${if (it >= 5) 'A' else 'B'} Item $it",
+                        encryptedData = CryptographicData.EMPTY,
+                        note = "This is a note for item $it"
                     )
                     add(p)
                 }

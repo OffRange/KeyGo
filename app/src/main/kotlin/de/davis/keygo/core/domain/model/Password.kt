@@ -11,6 +11,7 @@ data class Password(
     val passwordId: ItemId = 0,
     val username: String?,
     val website: String?,
+    val score: Score,
     override val vaultItemId: ItemId = 0,
     override val name: String,
     override val encryptedData: CryptographicData,

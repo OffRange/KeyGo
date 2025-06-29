@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "06788e37bc2fd5027502fcb1e93b25a2",
+    "identityHash": "1c768d1609ba8f557db0dd8951fef0c4",
     "entities": [
       {
         "tableName": "VaultItemEntity",
@@ -41,7 +41,7 @@
       },
       {
         "tableName": "PasswordEntity",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`password_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `username` TEXT, `website` TEXT, `vault_item_id` INTEGER NOT NULL, FOREIGN KEY(`vault_item_id`) REFERENCES `VaultItemEntity`(`vault_item_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`password_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `username` TEXT, `website` TEXT, `score` TEXT NOT NULL, `vault_item_id` INTEGER NOT NULL, FOREIGN KEY(`vault_item_id`) REFERENCES `VaultItemEntity`(`vault_item_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "passwordId",
@@ -58,6 +58,12 @@
             "fieldPath": "website",
             "columnName": "website",
             "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "score",
+            "columnName": "score",
+            "affinity": "TEXT",
+            "notNull": true
           },
           {
             "fieldPath": "vaultItemId",
@@ -100,7 +106,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '06788e37bc2fd5027502fcb1e93b25a2')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1c768d1609ba8f557db0dd8951fef0c4')"
     ]
   }
 }

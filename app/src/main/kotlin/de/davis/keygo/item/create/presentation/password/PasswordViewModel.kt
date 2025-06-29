@@ -141,14 +141,24 @@ class PasswordViewModel(
                 viewModelScope.launch {
                     val state = _uiState.value
                     createNewOrUpdatePassword(
-                        Upsert.Update(
-                            vaultId = itemId,
-                            name = state.nameTextFieldState.text.toString(),
-                            username = state.usernameTextFieldState.text.toString(),
-                            website = state.websiteTextFieldState.text.toString(),
-                            password = state.passwordTextFieldState.text.toString(),
-                            note = state.notesTextFieldState.text.toString()
-                        )
+                        upsert = when (itemId == ItemIdNone) {
+                            true -> Upsert.Create(
+                                name = state.nameTextFieldState.text.toString(),
+                                username = state.usernameTextFieldState.text.toString(),
+                                website = state.websiteTextFieldState.text.toString(),
+                                password = state.passwordTextFieldState.text.toString(),
+                                note = state.notesTextFieldState.text.toString()
+                            )
+
+                            false -> Upsert.Update(
+                                vaultId = itemId,
+                                name = state.nameTextFieldState.text.toString(),
+                                username = state.usernameTextFieldState.text.toString(),
+                                website = state.websiteTextFieldState.text.toString(),
+                                password = state.passwordTextFieldState.text.toString(),
+                                note = state.notesTextFieldState.text.toString()
+                            )
+                        }
                     ).onSuccess {
                         navigateUp()
                     }.onFailure { failure ->

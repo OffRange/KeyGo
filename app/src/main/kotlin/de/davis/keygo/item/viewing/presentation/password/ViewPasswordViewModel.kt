@@ -8,7 +8,6 @@ import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
 import de.davis.keygo.core.domain.repository.PasswordRepository
-import de.davis.keygo.core.domain.usecase.EstimatePasswordStrengthUseCase
 import de.davis.keygo.core.presentation.model.InputFieldError
 import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.generated.item.VaultItemEnum
@@ -39,7 +38,6 @@ import kotlin.properties.Delegates
 class ViewPasswordViewModel(
     private val passwordRepository: PasswordRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
-    private val estimatePasswordStrength: EstimatePasswordStrengthUseCase, /* TODO store in db or make it a core use-case*/
     private val updatePassword: CreateNewOrUpdatePassword,
     private val isValidUrl: IsValidUrlUseCase,
     private val websiteHandler: WebsiteHandler
@@ -65,7 +63,7 @@ class ViewPasswordViewModel(
                     it.copy(
                         name = password.name,
                         password = obfuscatedString,
-                        passwordStrengthScore = estimatePasswordStrength(obfuscatedString.raw),
+                        passwordStrengthScore = password.score,
                         username = password.username ?: "",
                         website = password.website ?: "",
                         note = password.note ?: "",
