@@ -97,4 +97,7 @@
     <string name="length">Length [%d]</string>
 
     <string name="field_blank">This field can not be blank</string>
+
+    <string name="database_error">An unexpected database error has occurred: %s</string>
+    <string name="invalid_vault_id">Vault item ID can not be found</string>
 </resources>

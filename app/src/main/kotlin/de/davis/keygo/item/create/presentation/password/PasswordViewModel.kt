@@ -4,13 +4,17 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.R
 import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.core.domain.alias.ItemIdNone
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.core.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
 import de.davis.keygo.core.domain.repository.PasswordRepository
+import de.davis.keygo.core.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.domain.usecase.EstimatePasswordStrengthUseCase
+import de.davis.keygo.core.presentation.UIText
 import de.davis.keygo.core.presentation.model.InputFieldError
 import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.item.core.domain.model.PasswordError
@@ -48,6 +52,7 @@ class PasswordViewModel(
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val estimateStrength: EstimatePasswordStrengthUseCase,
     private val createNewOrUpdatePassword: CreateNewOrUpdatePassword,
+    private val snackbarManager: SnackbarManager
 ) : GeneratePasswordViewModel(passwordGenerator, estimateStrength) {
 
     private val passwordTextFieldState = TextFieldState()
@@ -147,12 +152,34 @@ class PasswordViewModel(
                     ).onSuccess {
                         navigateUp()
                     }.onFailure { failure ->
-                        // TODO handle database error
                         _uiState.update {
                             it.copy(
                                 nameError = if (failure.contains(PasswordError.BlankName)) InputFieldError.Empty else null,
                                 passwordError = if (failure.contains(PasswordError.BlankPassword)) InputFieldError.Empty else null
                             )
+                        }
+
+                        if (failure.any { it is PasswordError.InvalidVaultId }) {
+                            snackbarManager.sendMessage(
+                                message = SnackbarMessage(
+                                    message = UIText.ResourceString(R.string.invalid_vault_id)
+                                )
+                            )
+                        }
+
+                        if (failure.any { it is PasswordError.DatabaseError }) {
+                            failure.filterIsInstance<PasswordError.DatabaseError>()
+                                .first()
+                                .let { dbError ->
+                                    snackbarManager.sendMessage(
+                                        message = SnackbarMessage(
+                                            message = UIText.ResourceString(
+                                                R.string.database_error,
+                                                dbError.throwable.message ?: "no message"
+                                            ),
+                                        )
+                                    )
+                                }
                         }
                     }
                 }
