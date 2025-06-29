@@ -8,12 +8,12 @@ import de.davis.keygo.R
 import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.core.domain.alias.ItemIdNone
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.core.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
 import de.davis.keygo.core.domain.repository.PasswordRepository
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
-import de.davis.keygo.core.domain.usecase.EstimatePasswordStrengthUseCase
 import de.davis.keygo.core.presentation.UIText
 import de.davis.keygo.core.presentation.model.InputFieldError
 import de.davis.keygo.core.presentation.model.NavigationEvent
@@ -50,10 +50,10 @@ class PasswordViewModel(
     passwordGenerator: PasswordGenerator,
     private val passwordRepository: PasswordRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
-    private val estimateStrength: EstimatePasswordStrengthUseCase,
+    private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val createNewOrUpdatePassword: CreateNewOrUpdatePassword,
     private val snackbarManager: SnackbarManager
-) : GeneratePasswordViewModel(passwordGenerator, estimateStrength) {
+) : GeneratePasswordViewModel(passwordGenerator, passwordStrengthEstimator) {
 
     private val passwordTextFieldState = TextFieldState()
     private val _uiState =
@@ -79,7 +79,7 @@ class PasswordViewModel(
     private fun observePasswordTextField() {
         snapshotFlow { passwordTextFieldState.text }
             .debounce(150.milliseconds)
-            .mapLatest { estimateStrength(it.toString()) }
+            .mapLatest { passwordStrengthEstimator(it.toString()) }
             .distinctUntilChanged()
             .onEach { score ->
                 _uiState.update {

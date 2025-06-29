@@ -2,10 +2,10 @@ package de.davis.keygo.item.core.domain.usecase
 
 import de.davis.keygo.core.domain.Result
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.core.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.domain.mapFailure
 import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.core.domain.repository.PasswordRepository
-import de.davis.keygo.core.domain.usecase.EstimatePasswordStrengthUseCase
 import de.davis.keygo.core.domain.usecase.UpsertVaultItem
 import de.davis.keygo.item.core.domain.model.PasswordError
 import de.davis.keygo.item.core.domain.model.Upsert
@@ -18,7 +18,7 @@ class CreateNewOrUpdatePassword(
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passwordRepository: PasswordRepository,
     private val upsertVaultItem: UpsertVaultItem,
-    private val estimatePasswordStrength: EstimatePasswordStrengthUseCase
+    private val passwordStrengthEstimator: PasswordStrengthEstimator
 ) {
 
     suspend operator fun invoke(upsert: Upsert): Result<Unit, List<PasswordError>> =
@@ -40,7 +40,7 @@ class CreateNewOrUpdatePassword(
                 }
             }
 
-            val passwordStrength = upsert.password?.let { async { estimatePasswordStrength(it) } }
+            val passwordStrength = upsert.password?.let { async { passwordStrengthEstimator(it) } }
 
             val updatedPassword = when (upsert) {
                 is Upsert.Create -> {

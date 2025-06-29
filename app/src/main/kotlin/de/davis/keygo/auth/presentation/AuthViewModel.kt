@@ -20,9 +20,9 @@ import de.davis.keygo.auth.presentation.model.AuthUIEvent
 import de.davis.keygo.auth.presentation.model.UIPasswordError
 import de.davis.keygo.core.domain.Result
 import de.davis.keygo.core.domain.asResult
+import de.davis.keygo.core.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
-import de.davis.keygo.core.domain.usecase.EstimatePasswordStrengthUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.ClearMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.ValidateMainPassword
@@ -57,7 +57,7 @@ class AuthViewModel(
     private val clearMainPasswordUseCase: ClearMainPasswordUseCase,
     // -------------------
 
-    private val estimateStrength: EstimatePasswordStrengthUseCase,
+    private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val prepareBiometricCipher: PrepareBiometricCipherUseCase,
     private val unlockWithBiometrics: UnlockWithBiometricsUseCase,
     private val unlockWithPasswordUseCase: UnlockWithPasswordUseCase,
@@ -157,7 +157,7 @@ class AuthViewModel(
     private fun observePasswordStrength() {
         snapshotFlow { passwordTextFieldState.text }
             .debounce(150.milliseconds)
-            .mapLatest { estimateStrength(it.toString()) }
+            .mapLatest { passwordStrengthEstimator(it.toString()) }
             .distinctUntilChanged()
             .onEach { score ->
                 _uiState.update {

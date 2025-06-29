@@ -5,7 +5,7 @@ import androidx.compose.material3.SliderState
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import de.davis.keygo.core.domain.usecase.EstimatePasswordStrengthUseCase
+import de.davis.keygo.core.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.item.create.domain.PasswordGenerator
 import de.davis.keygo.item.create.presentation.password.model.GeneratePasswordUiEvent
 import de.davis.keygo.item.create.presentation.password.model.GeneratePasswordUiState
@@ -35,7 +35,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 open class GeneratePasswordViewModel(
     private val passwordGenerator: PasswordGenerator,
-    private val estimatePasswordStrength: EstimatePasswordStrengthUseCase,
+    private val passwordStrengthEstimator: PasswordStrengthEstimator,
 ) : ViewModel() {
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -91,7 +91,7 @@ open class GeneratePasswordViewModel(
             useNumbers = characterSet.selected(UiCharacterSet.DIGITS),
             useSymbols = characterSet.selected(UiCharacterSet.PUNCTUATIONS),
         )
-        val score = estimatePasswordStrength(newPassword)
+        val score = passwordStrengthEstimator(newPassword)
         _generationState.update { ui ->
             ui.copy(generatedPassword = newPassword.asUiPassword(), passwordStrength = score)
         }
