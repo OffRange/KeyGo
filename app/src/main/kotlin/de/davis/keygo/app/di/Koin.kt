@@ -7,7 +7,6 @@ import de.davis.keygo.core.di.CoreModule
 import de.davis.keygo.dashboard.di.DashboardModule
 import de.davis.keygo.item.di.ItemModule
 import de.davis.keygo.migration.create_access.di.MigrationCreateAccessModule
-import de.davis.keygo.viewing.di.ViewingModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.KoinApplication
 import org.koin.ksp.generated.module
@@ -22,7 +21,6 @@ fun KoinApplication.init(androidContext: Context) {
         AuthModule.module,
         DashboardModule.module,
         ItemModule.module,
-        ViewingModule.module,
 
         MigrationCreateAccessModule.module
     )

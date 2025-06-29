@@ -22,7 +22,7 @@ import de.davis.keygo.core.domain.Result
 import de.davis.keygo.core.domain.asResult
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
-import de.davis.keygo.item.domain.usecase.EstimatePasswordStrengthUseCase
+import de.davis.keygo.core.domain.usecase.EstimatePasswordStrengthUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.ClearMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.ValidateMainPassword

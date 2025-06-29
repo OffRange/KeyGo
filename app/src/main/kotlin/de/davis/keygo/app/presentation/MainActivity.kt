@@ -34,7 +34,7 @@ import de.davis.keygo.core.presentation.snackbar.LocalSnackbarManager
 import de.davis.keygo.core.presentation.snackbar.SnackbarHandler
 import de.davis.keygo.core.presentation.theme.KeyGoTheme
 import de.davis.keygo.dashboard.presentation.dashboardGraph
-import de.davis.keygo.item.presentation.dialog.SelectItemContent
+import de.davis.keygo.item.create.presentation.dialog.SelectItemContent
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 

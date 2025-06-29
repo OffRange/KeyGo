@@ -28,8 +28,8 @@ import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.dashboard.presentation.model.DashboardEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
-import de.davis.keygo.item.presentation.password.PasswordScreen
-import de.davis.keygo.viewing.presentation.ViewPasswordScreen
+import de.davis.keygo.item.create.presentation.password.PasswordScreen
+import de.davis.keygo.item.viewing.presentation.password.ViewPasswordScreen
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
