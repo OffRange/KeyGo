@@ -37,11 +37,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
-import de.davis.keygo.generated.item.VaultItemEnum
+import de.davis.keygo.generated.item.VaultItemType
 import de.davis.keygo.generated.item.getString
 
 @Composable
-fun SelectItemContent(onSelect: (VaultItemEnum) -> Unit) {
+fun SelectItemContent(onSelect: (VaultItemType) -> Unit) {
     AlertDialogContent(
         title = {
             Text(text = stringResource(R.string.select_item))
@@ -49,7 +49,7 @@ fun SelectItemContent(onSelect: (VaultItemEnum) -> Unit) {
     ) {
         Column {
             HorizontalDivider()
-            VaultItemEnum.entries.forEach {
+            VaultItemType.entries.forEach {
                 val interactionSource = remember { MutableInteractionSource() }
                 Box(
                     modifier = Modifier

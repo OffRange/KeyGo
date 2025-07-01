@@ -87,7 +87,7 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
             )
         }.also(roots::addAll)
 
-        writeEnum(roots)
+        writeEnumType(roots)
         writeEntities(roots)
         writeRelations(roots)
         writeMappers(roots)
@@ -99,9 +99,9 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
     fun KSClassDeclaration.areAnyAnnotationsPresent(vararg annotations: KClass<out Annotation>) =
         annotations.any { isAnnotationPresent(it) }
 
-    fun writeEnum(roots: List<Entry.RootEntry>) {
+    fun writeEnumType(roots: List<Entry.RootEntry>) {
         roots.forEach { root ->
-            val rootClassName = root.enumClassName(getClassName = className)
+            val rootClassName = root.enumTypeClassName(getClassName = className)
 
             file(
                 codeGenerator = codeGenerator,

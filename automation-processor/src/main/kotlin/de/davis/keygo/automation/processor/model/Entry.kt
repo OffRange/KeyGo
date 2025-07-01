@@ -31,8 +31,8 @@ sealed class Entry : KoinComponent {
             .simpleName
             .replaceFirstChar { it.lowercase() }
 
-        fun enumClassName(getClassName: GetClassName) = getClassName(
-            "$simpleName${Constants.Suffixes.ENUM_SUFFIX}",
+        fun enumTypeClassName(getClassName: GetClassName) = getClassName(
+            "$simpleName${Constants.Suffixes.TYPE_SUFFIX}",
             packageNameSuffix = Constants.Packages.ENUM_PACKAGE_SUFFIX
         )
     }

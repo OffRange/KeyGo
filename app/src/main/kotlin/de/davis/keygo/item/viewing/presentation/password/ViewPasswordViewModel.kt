@@ -10,7 +10,7 @@ import de.davis.keygo.core.domain.onSuccess
 import de.davis.keygo.core.domain.repository.PasswordRepository
 import de.davis.keygo.core.presentation.model.InputFieldError
 import de.davis.keygo.core.presentation.model.NavigationEvent
-import de.davis.keygo.generated.item.VaultItemEnum
+import de.davis.keygo.generated.item.VaultItemType
 import de.davis.keygo.item.core.domain.model.PasswordError
 import de.davis.keygo.item.core.domain.model.Upsert
 import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePassword
@@ -93,7 +93,7 @@ class ViewPasswordViewModel(
                 viewModelScope.launch {
                     navigationEventChannel.send(
                         NavigationEvent.NavigateToEdit(
-                            VaultItemEnum.Password,
+                            VaultItemType.Password,
                             itemId
                         )
                     )

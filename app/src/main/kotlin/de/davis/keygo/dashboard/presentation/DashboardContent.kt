@@ -58,7 +58,7 @@ import de.davis.keygo.dashboard.presentation.component.KeyGoLazyColumn
 import de.davis.keygo.dashboard.presentation.component.SearchResult
 import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIState
-import de.davis.keygo.generated.item.VaultItemEnum
+import de.davis.keygo.generated.item.VaultItemType
 import de.davis.keygo.generated.item.getString
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentSetOf
@@ -207,7 +207,7 @@ fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> U
                                 modifier = Modifier.fillMaxWidth(),
                                 prop = KeyGoCardProp.elevated()
                             ) {
-                                VaultItemEnum.entries.forEach {
+                                VaultItemType.entries.forEach {
                                     FilledTonalButton(
                                         onClick = {
                                             onEvent(DashboardUIEvent.OnCreateNewItemRequest(it))

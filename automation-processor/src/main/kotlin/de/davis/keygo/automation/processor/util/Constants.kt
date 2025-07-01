@@ -8,7 +8,7 @@ object Constants {
     object Suffixes {
         const val MAPPER_SUFFIX = "Mapper"
         const val ENTITY_SUFFIX = "Entity"
-        const val ENUM_SUFFIX = "Enum"
+        const val TYPE_SUFFIX = "Type"
     }
 
     object Packages {
@@ -17,7 +17,7 @@ object Constants {
         const val ENTITY_PACKAGE_SUFFIX = "$ENUM_PACKAGE_SUFFIX.data.local.entity"
         const val RELATION_PACKAGE_SUFFIX = "$ENUM_PACKAGE_SUFFIX.data.local.relation"
     }
-    
+
     object MapperNames {
         const val TO_DATA = "toData"
         const val TO_DOMAIN = "toDomain"
