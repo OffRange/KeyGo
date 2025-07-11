@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "de.davis.keygo.migration.create_access"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 26

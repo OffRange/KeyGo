@@ -19,12 +19,12 @@ versioning {
 android versionedBy versioning
 android {
     namespace = "de.davis.keygo"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "de.davis.passwordmanager.v2_new" // TODO: Change the applicationId
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
