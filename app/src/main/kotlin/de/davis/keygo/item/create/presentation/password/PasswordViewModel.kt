@@ -19,6 +19,7 @@ import de.davis.keygo.core.presentation.model.InputFieldError
 import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.item.core.domain.model.PasswordError
 import de.davis.keygo.item.core.domain.model.Upsert
+import de.davis.keygo.item.core.domain.model.fieldUpdate
 import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePassword
 import de.davis.keygo.item.create.domain.PasswordGenerator
 import de.davis.keygo.item.create.presentation.password.model.GeneratePasswordUiEvent
@@ -27,7 +28,9 @@ import de.davis.keygo.item.create.presentation.password.model.PasswordUiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.debounce
@@ -117,18 +120,32 @@ class PasswordViewModel(
 
         passwordRepository.observeVaultPasswordById(itemId)
             .onEach { password ->
-                val pwd = cryptographicScopeProvider.scope {
-                    password.encryptedData.decrypt().decodeToString()
-                }
-                passwordTextFieldState.setTextAndPlaceCursorAtEnd(pwd)
+                coroutineScope {
+                    val pwdDeferred = async {
+                        cryptographicScopeProvider.scope {
+                            password.encryptedData.decrypt().decodeToString()
+                        }
+                    }
 
-                _uiState.update {
-                    it.copy(
-                        nameTextFieldState = TextFieldState(password.name),
-                        usernameTextFieldState = TextFieldState(password.username ?: ""),
-                        websiteTextFieldState = TextFieldState(password.website ?: ""),
-                        notesTextFieldState = TextFieldState(password.note ?: "")
-                    )
+                    val totpSecret = password.totpSecret?.let { totpSecret ->
+                        async {
+                            cryptographicScopeProvider.scope {
+                                totpSecret.encodedSecret.decrypt().decodeToString()
+                            }
+                        }
+                    }
+
+                    passwordTextFieldState.setTextAndPlaceCursorAtEnd(pwdDeferred.await())
+
+                    _uiState.update {
+                        it.copy(
+                            nameTextFieldState = TextFieldState(password.name),
+                            totpTextFieldState = TextFieldState(totpSecret?.await() ?: ""),
+                            usernameTextFieldState = TextFieldState(password.username ?: ""),
+                            websiteTextFieldState = TextFieldState(password.website ?: ""),
+                            notesTextFieldState = TextFieldState(password.note ?: "")
+                        )
+                    }
                 }
             }
             .flowOn(Dispatchers.Default)
@@ -143,20 +160,22 @@ class PasswordViewModel(
                     createNewOrUpdatePassword(
                         upsert = when (itemId == ItemIdNone) {
                             true -> Upsert.Create(
-                                name = state.nameTextFieldState.text.toString(),
-                                username = state.usernameTextFieldState.text.toString(),
-                                website = state.websiteTextFieldState.text.toString(),
-                                password = state.passwordTextFieldState.text.toString(),
-                                note = state.notesTextFieldState.text.toString()
+                                name = fieldUpdate(state.nameTextFieldState.text.toString()),
+                                username = fieldUpdate(state.usernameTextFieldState.text.toString()),
+                                website = fieldUpdate(state.websiteTextFieldState.text.toString()),
+                                password = fieldUpdate(state.passwordTextFieldState.text.toString()),
+                                totpSecret = fieldUpdate(state.totpTextFieldState.text.toString()),
+                                note = fieldUpdate(state.notesTextFieldState.text.toString())
                             )
 
                             false -> Upsert.Update(
                                 vaultId = itemId,
-                                name = state.nameTextFieldState.text.toString(),
-                                username = state.usernameTextFieldState.text.toString(),
-                                website = state.websiteTextFieldState.text.toString(),
-                                password = state.passwordTextFieldState.text.toString(),
-                                note = state.notesTextFieldState.text.toString()
+                                name = fieldUpdate(state.nameTextFieldState.text.toString()),
+                                username = fieldUpdate(state.usernameTextFieldState.text.toString()),
+                                website = fieldUpdate(state.websiteTextFieldState.text.toString()),
+                                password = fieldUpdate(state.passwordTextFieldState.text.toString()),
+                                totpSecret = fieldUpdate(state.totpTextFieldState.text.toString()),
+                                note = fieldUpdate(state.notesTextFieldState.text.toString())
                             )
                         }
                     ).onSuccess {

@@ -1,9 +1,8 @@
 package de.davis.keygo.item.viewing.presentation.password
 
-import android.content.ClipData
-import android.content.ClipDescription
-import android.os.Build
-import android.os.PersistableBundle
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.horizontalScroll
@@ -22,12 +21,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddLink
 import androidx.compose.material.icons.filled.Badge
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.MoreTime
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
@@ -37,6 +37,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
@@ -45,9 +46,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -55,8 +57,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalClipboard
-import androidx.compose.ui.platform.toClipEntry
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -67,12 +67,13 @@ import de.davis.keygo.core.presentation.component.KeyGoCard
 import de.davis.keygo.core.presentation.component.KeyGoFormField
 import de.davis.keygo.core.presentation.component.StrengthIndicator
 import de.davis.keygo.core.presentation.transformation.TrimTransformation
+import de.davis.keygo.item.core.presentation.component.CopyToClipboardButton
 import de.davis.keygo.item.viewing.presentation.password.model.FieldType
 import de.davis.keygo.item.viewing.presentation.password.model.ModificationDialog
 import de.davis.keygo.item.viewing.presentation.password.model.ObfuscatedString
 import de.davis.keygo.item.viewing.presentation.password.model.ViewPasswordState
 import de.davis.keygo.item.viewing.presentation.password.model.ViewPasswordUiEvent
-import kotlinx.coroutines.launch
+import de.davis.keygo.totp.domain.model.TotpInformation
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -113,17 +114,34 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
     ) { innerPadding ->
         val name = stringResource(R.string.name)
         val password = stringResource(R.string.password)
+        val totp = stringResource(R.string.totp)
         val username = stringResource(R.string.username)
         val website = stringResource(R.string.website)
         val note = stringResource(R.string.note)
 
         var isPasswordHidden by rememberSaveable { mutableStateOf(true) }
+
+        val progress = remember { Animatable(1f) }
+        val totpInformation = state.totpInformation
+        LaunchedEffect(totpInformation.validUntil, totpInformation.code) {
+            val remaining = totpInformation.validUntil - System.currentTimeMillis()
+
+            progress.snapTo(remaining / totpInformation.maxLifetime.toFloat())
+            progress.animateTo(
+                targetValue = 0f,
+                animationSpec = tween(
+                    durationMillis = remaining.toInt(),
+                    easing = LinearEasing
+                )
+            )
+        }
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp)
                 .consumeWindowInsets(innerPadding)
+                .padding(start = 8.dp, end = 8.dp, top = 8.dp)
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -155,29 +173,8 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                         isPasswordHidden = true
                     }
                 },
-                trailingIcon = {
-                    val clipboard = LocalClipboard.current
-                    val scope = rememberCoroutineScope()
-                    IconButton(
-                        onClick = {
-                            val clipData =
-                                ClipData.newPlainText(state.password.raw, state.password.raw)
-                                    .apply {
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                                            description.extras = PersistableBundle().apply {
-                                                putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
-                                            }
-                                    }
-                            scope.launch {
-                                clipboard.setClipEntry(clipData.toClipEntry())
-                            }
-                        },
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ContentCopy,
-                            contentDescription = stringResource(R.string.copy_password_content_description)
-                        )
-                    }
+                trailingContent = {
+                    CopyToClipboardButton(state.password.raw)
                 }
             ) {
                 val scrollState = rememberScrollState()
@@ -190,6 +187,22 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                     score = state.passwordStrengthScore,
                     forceCompact = true
                 )
+            }
+
+            if (state.totpInformation.code.isNotBlank()) {
+                entry(
+                    title = totp,
+                    leadingIcon = Icons.Default.AccessTime,
+                    trailingContent = {
+                        CopyToClipboardButton(state.totpInformation.code)
+                    }
+                ) {
+                    Text(text = state.totpInformation.code.chunked(3).joinToString(" "))
+                    LinearProgressIndicator(
+                        progress = { progress.value },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
 
             if (state.username.isNotBlank()) {
@@ -205,7 +218,7 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                 entry(
                     title = website,
                     leadingIcon = Icons.Default.Link,
-                    trailingIcon = if (state.canOpenWebsite) {
+                    trailingContent = if (state.canOpenWebsite) {
                         {
                             IconButton(onClick = { onEvent(ViewPasswordUiEvent.OpenWebsite) }) {
                                 Icon(
@@ -235,6 +248,12 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    if (state.totpInformation.code.isBlank()) {
+                        AddChip(
+                            fieldType = FieldType.Totp,
+                            onClick = { onEvent(ViewPasswordUiEvent.OnModifyFieldRequest(it)) }
+                        )
+                    }
                     if (state.username.isBlank()) {
                         AddChip(
                             fieldType = FieldType.Username,
@@ -317,6 +336,7 @@ private fun FieldType.addLabel(): String {
     return when (this) {
         FieldType.Name -> stringResource(R.string.name)
         FieldType.Password -> stringResource(R.string.password)
+        FieldType.Totp -> stringResource(R.string.add_totp)
         FieldType.Username -> stringResource(R.string.add_username)
         FieldType.Website -> stringResource(R.string.add_website)
         FieldType.Note -> stringResource(R.string.add_note)
@@ -328,6 +348,7 @@ private fun FieldType.addIcon(): ImageVector {
     return when (this) {
         FieldType.Name -> Icons.Default.Badge
         FieldType.Password -> Icons.Default.Password
+        FieldType.Totp -> Icons.Default.MoreTime
         FieldType.Username -> Icons.Default.PersonAdd
         FieldType.Website -> Icons.Default.AddLink
         FieldType.Note -> Icons.AutoMirrored.Default.NoteAdd
@@ -338,7 +359,7 @@ private fun LazyListScope.entry(
     title: String,
     leadingIcon: ImageVector,
     modifier: Modifier = Modifier,
-    trailingIcon: @Composable (() -> Unit)? = null,
+    trailingContent: @Composable (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     item(key = title) {
@@ -352,7 +373,7 @@ private fun LazyListScope.entry(
                     contentDescription = null,
                 )
             },
-            trailingItem = trailingIcon,
+            trailingItem = trailingContent,
             modifier = modifier.animateItem()
         ) {
             content()
@@ -372,6 +393,11 @@ private fun ViewPasswordContentPreview() {
                     name = "Password 1",
                     password = ObfuscatedString("Password"),
                     passwordStrengthScore = Score.Ridiculous,
+                    totpInformation = TotpInformation(
+                        code = "123456",
+                        validUntil = System.currentTimeMillis() + 30_000L,
+                        maxLifetime = 30_000L
+                    ),
                     username = "Username 1",
                     website = "example.com",
                     note = "Note about the password or any additional information that might be useful.",

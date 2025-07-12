@@ -18,9 +18,10 @@
     <string name="generate_password_content_description">Generate Password</string>
     <string name="submit_content_description">Submit</string>
     <string name="open_website_content_description">Open website</string>
-    <string name="copy_password_content_description">Copy Password</string>
+    <string name="copy_to_clipboard_content_description">Copy to clipboard</string>
 
     <string name="add">Add</string>
+    <string name="add_totp">Add TOTP Secret</string>
     <string name="add_username">Add Username</string>
     <string name="add_website">Add Website</string>
     <string name="add_note">Add Note</string>
@@ -28,6 +29,9 @@
 
     <string name="password">Password</string>
     <string name="confirm_password">Confirm Password</string>
+
+    <string name="totp_secret">TOTP Secret</string>
+    <string name="totp">TOTP</string>
 
     <string name="blank_password">You must set a password</string>
     <string name="incorrect_password">Password is incorrect!</string>

@@ -4,6 +4,7 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.domain.alias.ItemId
+import de.davis.keygo.core.domain.alias.ItemIdNone
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
@@ -13,6 +14,7 @@ import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.generated.item.VaultItemType
 import de.davis.keygo.item.core.domain.model.PasswordError
 import de.davis.keygo.item.core.domain.model.Upsert
+import de.davis.keygo.item.core.domain.model.fieldUpdate
 import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePassword
 import de.davis.keygo.item.viewing.domain.WebsiteHandler
 import de.davis.keygo.item.viewing.domain.usecase.IsValidUrlUseCase
@@ -21,18 +23,27 @@ import de.davis.keygo.item.viewing.presentation.password.model.ModificationDialo
 import de.davis.keygo.item.viewing.presentation.password.model.ViewPasswordState
 import de.davis.keygo.item.viewing.presentation.password.model.ViewPasswordUiEvent
 import de.davis.keygo.item.viewing.presentation.password.model.asObfuscatedString
+import de.davis.keygo.totp.domain.model.TotpInformation
+import de.davis.keygo.totp.domain.repository.TotpGenerator
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.android.annotation.KoinViewModel
-import kotlin.properties.Delegates
 
 @KoinViewModel
 class ViewPasswordViewModel(
@@ -40,39 +51,73 @@ class ViewPasswordViewModel(
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val updatePassword: CreateNewOrUpdatePassword,
     private val isValidUrl: IsValidUrlUseCase,
-    private val websiteHandler: WebsiteHandler
+    private val websiteHandler: WebsiteHandler,
+    private val totpGenerator: TotpGenerator
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(ViewPasswordState())
-    val state = _state.asStateFlow()
+    private val _modificationDialogState = MutableStateFlow<ModificationDialog?>(null)
+    private val _itemId = MutableStateFlow(ItemIdNone)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val stateWithoutModification = _itemId
+        .filter { it != ItemIdNone }
+        .distinctUntilChanged()
+        .flatMapLatest { id ->
+            passwordRepository.observeVaultPasswordById(id).flatMapLatest { password ->
+                coroutineScope {
+                    val obfuscatedString = async {
+                        cryptographicScopeProvider.scope {
+                            password.encryptedData.decrypt().decodeToString()
+                        }.asObfuscatedString()
+                    }
+
+                    val totpSecret = password.totpSecret?.let { totpSecret ->
+                        async {
+                            cryptographicScopeProvider.scope {
+                                totpSecret.encodedSecret.decrypt()
+                            }
+                        }
+                    }
+
+
+                    val base = ViewPasswordState(
+                        name = password.name,
+                        password = obfuscatedString.await(),
+                        passwordStrengthScore = password.score,
+                        username = password.username.orEmpty(),
+                        website = password.website.orEmpty(),
+                        note = password.note.orEmpty(),
+                        canOpenWebsite = isValidUrl(password.website.orEmpty()),
+                        totpInformation = TotpInformation("", 0, 0),
+                    )
+
+                    when {
+                        totpSecret == null -> flowOf(base)
+                        else -> totpGenerator.observeTotp(totpSecret.await()).map {
+                            base.copy(totpInformation = it)
+                        }
+                    }
+                }
+            }
+        }.flowOn(Dispatchers.Default)
+
+
+    val state =
+        combine(stateWithoutModification, _modificationDialogState) { state, modificationDialog ->
+            state.copy(modificationDialog = modificationDialog)
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = ViewPasswordState()
+        )
 
     private val navigationEventChannel = Channel<NavigationEvent>()
     val navigationEvent = navigationEventChannel.receiveAsFlow()
 
-    private var itemId by Delegates.notNull<ItemId>()
-
     fun init(itemId: ItemId) {
-        this.itemId = itemId
-        passwordRepository.observeVaultPasswordById(itemId)
-            .onEach { password ->
-                val obfuscatedString = cryptographicScopeProvider.scope {
-                    password.encryptedData.decrypt().decodeToString()
-                }.asObfuscatedString()
-
-                _state.update {
-                    it.copy(
-                        name = password.name,
-                        password = obfuscatedString,
-                        passwordStrengthScore = password.score,
-                        username = password.username ?: "",
-                        website = password.website ?: "",
-                        note = password.note ?: "",
-                        canOpenWebsite = isValidUrl(password.website ?: "")
-                    )
-                }
-            }
-            .flowOn(Dispatchers.Default)
-            .launchIn(viewModelScope)
+        _itemId.update {
+            itemId
+        }
     }
 
     fun onEvent(event: ViewPasswordUiEvent) {
@@ -82,7 +127,7 @@ class ViewPasswordViewModel(
             }
 
             ViewPasswordUiEvent.OpenWebsite -> {
-                val url = _state.value.website
+                val url = state.value.website
                 if (!isValidUrl(url))
                     return
 
@@ -94,39 +139,40 @@ class ViewPasswordViewModel(
                     navigationEventChannel.send(
                         NavigationEvent.NavigateToEdit(
                             VaultItemType.Password,
-                            itemId
+                            _itemId.value
                         )
                     )
                 }
             }
 
             ViewPasswordUiEvent.OnCloseDialog -> {
-                _state.update { it.copy(modificationDialog = null) }
+                _modificationDialogState.update { null }
             }
 
             is ViewPasswordUiEvent.OnModifyFieldRequest -> {
                 val fieldType = event.fieldType
+                val state = state.value
                 val textFieldState = when (fieldType) {
-                    FieldType.Name -> _state.value.name
-                    FieldType.Password -> _state.value.password.raw
-                    FieldType.Username -> _state.value.username
-                    FieldType.Website -> _state.value.website
-                    FieldType.Note -> _state.value.note
+                    FieldType.Name -> state.name
+                    FieldType.Password -> state.password.raw
+                    FieldType.Totp -> "" // TOTP is not editable in this context
+                    FieldType.Username -> state.username
+                    FieldType.Website -> state.website
+                    FieldType.Note -> state.note
                 }
 
-                _state.update {
-                    it.copy(
-                        modificationDialog = ModificationDialog(
-                            fieldType = fieldType,
-                            textFieldState = TextFieldState(textFieldState),
-                        )
+                _modificationDialogState.update {
+                    ModificationDialog(
+                        fieldType = fieldType,
+                        textFieldState = TextFieldState(textFieldState),
                     )
                 }
             }
 
             ViewPasswordUiEvent.OnSubmitModification -> {
-                val dialog = _state.value.modificationDialog ?: return
-                val newText = dialog.textFieldState.text.toString()
+                val dialog = _modificationDialogState.value ?: return
+                val itemId = _itemId.value
+                val newText = fieldUpdate(dialog.textFieldState.text.toString())
 
                 viewModelScope.launch {
                     updatePassword(
@@ -136,10 +182,14 @@ class ViewPasswordViewModel(
                                 name = newText
                             )
 
-
                             FieldType.Password -> Upsert.Update(
                                 vaultId = itemId,
                                 password = newText
+                            )
+
+                            FieldType.Totp -> Upsert.Update(
+                                vaultId = itemId,
+                                totpSecret = newText
                             )
 
                             FieldType.Username -> Upsert.Update(
@@ -158,17 +208,15 @@ class ViewPasswordViewModel(
                             )
                         }
                     ).onFailure { failure ->
-                        _state.update {
-                            it.copy(
-                                modificationDialog = it.modificationDialog?.copy(
-                                    error = if (failure.contains(PasswordError.BlankPassword)
-                                        || failure.contains(PasswordError.BlankName)
-                                    ) InputFieldError.Empty else null
-                                ),
+                        _modificationDialogState.update {
+                            dialog.copy(
+                                error = if (failure.contains(PasswordError.BlankPassword)
+                                    || failure.contains(PasswordError.BlankName)
+                                ) InputFieldError.Empty else null
                             )
                         }
                     }.onSuccess {
-                        _state.update { it.copy(modificationDialog = null) }
+                        _modificationDialogState.update { null }
                     }
                 }
             }

@@ -127,6 +127,13 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                     }
 
                     KeyGoFormField(
+                        state = state.totpTextFieldState,
+                        label = { Text(text = stringResource(R.string.totp_secret)) },
+                        placeholder = { Text(text = stringResource(R.string.totp_secret)) },
+                        isSecure = true
+                    )
+
+                    KeyGoFormField(
                         state = state.usernameTextFieldState,
                         label = { Text(text = stringResource(R.string.username)) },
                         placeholder = { Text(text = stringResource(R.string.username)) },

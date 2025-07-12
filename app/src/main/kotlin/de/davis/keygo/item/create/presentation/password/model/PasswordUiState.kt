@@ -9,6 +9,7 @@ data class PasswordUiState(
     val nameTextFieldState: TextFieldState = TextFieldState(),
     val notesTextFieldState: TextFieldState = TextFieldState(),
     val passwordTextFieldState: TextFieldState = TextFieldState(),
+    val totpTextFieldState: TextFieldState = TextFieldState(),
     val usernameTextFieldState: TextFieldState = TextFieldState(),
     val websiteTextFieldState: TextFieldState = TextFieldState(),
     val strengthScore: Score = Score.None,

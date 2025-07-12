@@ -25,6 +25,7 @@ biometric = "1.4.0-alpha04"
 navigation = "2.9.1"
 kotlinpoet = "2.2.0"
 nbvcxz = "1.5.1"
+totp = "2.4.1"
 passGen = "v0.0.3-beta"
 
 [libraries]
@@ -77,6 +78,7 @@ io-mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 squareup-kotlinpoet = { group = "com.squareup", name = "kotlinpoet-ksp", version.ref = "kotlinpoet" }
 
 gosimple-nbvcxz = { group = "me.gosimple", name = "nbvcxz", version.ref = "nbvcxz" }
+turingcomplete-totp = { group = "dev.turingcomplete", name = "kotlin-onetimepassword", version.ref = "totp" }
 
 offrange-passgen = { group = "com.github.offrange", name = "passgen", version.ref = "passGen" }
 

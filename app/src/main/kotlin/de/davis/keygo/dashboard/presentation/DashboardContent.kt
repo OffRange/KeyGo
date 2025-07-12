@@ -278,7 +278,8 @@ private fun PreviewContent(empty: Boolean = false) {
                         vaultItemId = it.toLong(),
                         name = "${if (it >= 5) 'A' else 'B'} Item $it",
                         encryptedData = CryptographicData.EMPTY,
-                        note = "This is a note for item $it"
+                        note = "This is a note for item $it",
+                        totpSecret = null
                     )
                     add(p)
                 }
