@@ -73,6 +73,7 @@ dependencies {
     implementation(libs.google.protobuf.kotlin.lite)
 
     implementation(libs.gosimple.nbvcxz)
+    implementation(libs.turingcomplete.totp)
 
     implementation(libs.offrange.passgen)
     implementation(libs.argon2kt)
