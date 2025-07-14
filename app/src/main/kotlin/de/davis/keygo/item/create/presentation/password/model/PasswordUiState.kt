@@ -19,4 +19,5 @@ data class PasswordUiState(
     val nameError: InputFieldError? = null,
     val passwordError: InputFieldError? = null,
     val scanning: Boolean = false,
+    val updating: Boolean = false,
 )

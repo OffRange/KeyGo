@@ -146,7 +146,8 @@ class PasswordViewModel(
                             totpTextFieldState = TextFieldState(totpSecret?.await() ?: ""),
                             usernameTextFieldState = TextFieldState(password.username ?: ""),
                             websiteTextFieldState = TextFieldState(password.website ?: ""),
-                            notesTextFieldState = TextFieldState(password.note ?: "")
+                            notesTextFieldState = TextFieldState(password.note ?: ""),
+                            updating = true
                         )
                     }
                 }

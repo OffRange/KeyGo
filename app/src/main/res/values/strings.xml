@@ -88,6 +88,7 @@
     <string name="password_strength_strong">Strong</string>
     <string name="password_strength_excellent">Excellent</string>
 
+    <string name="update_item">Update your Item</string>
     <string name="create_new_item">Create new Item</string>
     <string name="generate_password">Generate Password</string>
     <string name="use_generated_password">Use generated Password</string>

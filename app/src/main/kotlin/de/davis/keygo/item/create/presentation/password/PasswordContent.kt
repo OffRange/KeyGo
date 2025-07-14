@@ -53,7 +53,14 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
         topBar = {
             MediumFlexibleTopAppBar(
                 title = {
-                    Text(text = stringResource(R.string.create_new_item))
+                    Text(
+                        text = stringResource(
+                            when {
+                                state.updating -> R.string.update_item
+                                else -> R.string.create_new_item
+                            }
+                        )
+                    )
                 },
                 subtitle = {
                     Text(text = stringResource(R.string.password))
