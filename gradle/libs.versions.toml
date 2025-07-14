@@ -1,6 +1,9 @@
 [versions]
 agp = "8.11.1"
 argon2kt = "1.6.0"
+camera = "1.5.0-beta01"
+gmsMlkitBarcodeScanning = "18.3.1"
+zxingBarcodeScanning = "3.5.3"
 kotlin = "2.2.0"
 kotlinSerializationJson = "1.9.0"
 collectionsImmutable = "0.4.0"
@@ -58,6 +61,10 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 
+androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "camera" }
+androidx-camera-compose = { module = "androidx.camera:camera-compose", version.ref = "camera" }
+androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camera" }
+
 koin-bom = { group = "io.insert-koin", name = "koin-bom", version.ref = "koinBOM" }
 koin-annotations-bom = { group = "io.insert-koin", name = "koin-annotations-bom", version.ref = "koinAnnotationsBOM" }
 koin-core = { group = "io.insert-koin", name = "koin-core" }
@@ -81,6 +88,9 @@ gosimple-nbvcxz = { group = "me.gosimple", name = "nbvcxz", version.ref = "nbvcx
 turingcomplete-totp = { group = "dev.turingcomplete", name = "kotlin-onetimepassword", version.ref = "totp" }
 
 offrange-passgen = { group = "com.github.offrange", name = "passgen", version.ref = "passGen" }
+
+gms-mlkit-barcode-scanning = { group = "com.google.android.gms", name = "play-services-mlkit-barcode-scanning", version.ref = "gmsMlkitBarcodeScanning" }
+zxing-barcode-scanning = { group = "com.google.zxing", name = "core", version.ref = "zxingBarcodeScanning" }
 
 [plugins]
 google-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

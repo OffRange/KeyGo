@@ -10,7 +10,7 @@
     <string name="hide_password_content_description">Hide password</string>
     <string name="request_biometric_authentication_content_description">Request biometric authentication</string>
     <string name="open_navigation_drawer_content_description">Open Navigation Drawer</string>
-    <string name="close_navigation_drawer_content_description">Close Navigation Drawer</string>
+    <string name="close_content_description">Close</string>
     <string name="add_content_description">Add</string>
     <string name="edit_content_description">Edit</string>
     <string name="search_content_description">Search</string>
@@ -32,6 +32,8 @@
 
     <string name="totp_secret">TOTP Secret</string>
     <string name="totp">TOTP</string>
+
+    <string name="scan_qr_code">Scan QR Code</string>
 
     <string name="blank_password">You must set a password</string>
     <string name="incorrect_password">Password is incorrect!</string>

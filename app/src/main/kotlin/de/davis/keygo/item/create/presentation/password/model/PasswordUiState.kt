@@ -18,4 +18,5 @@ data class PasswordUiState(
     val generatePasswordState: GeneratePasswordUiState = GeneratePasswordUiState(),
     val nameError: InputFieldError? = null,
     val passwordError: InputFieldError? = null,
+    val scanning: Boolean = false,
 )

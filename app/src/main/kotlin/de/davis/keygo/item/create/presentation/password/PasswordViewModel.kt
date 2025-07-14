@@ -9,6 +9,7 @@ import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.core.domain.alias.ItemIdNone
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.estimator.PasswordStrengthEstimator
+import de.davis.keygo.core.domain.getOrNull
 import de.davis.keygo.core.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
@@ -25,6 +26,7 @@ import de.davis.keygo.item.create.domain.PasswordGenerator
 import de.davis.keygo.item.create.presentation.password.model.GeneratePasswordUiEvent
 import de.davis.keygo.item.create.presentation.password.model.PasswordUiEvent
 import de.davis.keygo.item.create.presentation.password.model.PasswordUiState
+import de.davis.keygo.totp.domain.usecase.GetTotpSecretFromUrlUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -55,7 +57,8 @@ class PasswordViewModel(
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val createNewOrUpdatePassword: CreateNewOrUpdatePassword,
-    private val snackbarManager: SnackbarManager
+    private val snackbarManager: SnackbarManager,
+    private val getTotpSecret: GetTotpSecretFromUrlUseCase,
 ) : GeneratePasswordViewModel(passwordGenerator, passwordStrengthEstimator) {
 
     private val passwordTextFieldState = TextFieldState()
@@ -218,13 +221,47 @@ class PasswordViewModel(
                 _uiState.update { it.copy(generatePasswordBottomSheetVisible = true) }
             }
 
-            is PasswordUiEvent.OnBackClick -> navigateUp()
+            is PasswordUiEvent.OnBackClick -> {
+                if (_uiState.value.scanning) {
+                    _uiState.update { it.copy(scanning = false) }
+                    return
+                }
+
+                navigateUp()
+            }
 
             is PasswordUiEvent.OnCloseBottomSheet -> {
                 _uiState.update { it.copy(generatePasswordBottomSheetVisible = false) }
             }
 
             is GeneratePasswordUiEvent -> super.onEvent(event)
+
+            is PasswordUiEvent.OnScanCodeRequest -> {
+                _uiState.update { it.copy(scanning = true) }
+            }
+
+            is PasswordUiEvent.OnCodesScanned -> {
+                event.codes.firstNotNullOfOrNull { getTotpSecret(it).getOrNull() }
+                    ?.let { secret ->
+                        val currentState = _uiState.value
+                        currentState.totpTextFieldState.setTextAndPlaceCursorAtEnd(secret.secret)
+                        secret.issuer?.let { issuer ->
+                            currentState.nameTextFieldState.setTextAndPlaceCursorAtEnd(issuer)
+                        }
+
+                        // TODO show dialog to ask the user if they want to overwrite the current username if one is set
+                        //  Same with the issuer
+                        secret.accountName
+                            .takeIf { it.isNotBlank() }
+                            ?.let { accountName ->
+                                currentState.usernameTextFieldState.setTextAndPlaceCursorAtEnd(
+                                    accountName
+                                )
+                            }
+
+                        _uiState.update { it.copy(scanning = false) }
+                    }
+            }
         }
     }
 }

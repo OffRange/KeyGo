@@ -434,7 +434,7 @@ fun DrawerContent(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Default.MenuOpen,
-                        contentDescription = stringResource(R.string.close_navigation_drawer_content_description)
+                        contentDescription = stringResource(R.string.close_content_description)
                     )
                 }
             }

@@ -5,4 +5,7 @@ sealed interface PasswordUiEvent {
     data object OnGeneratePasswordClick : PasswordUiEvent
     data object OnBackClick : PasswordUiEvent
     data object OnCloseBottomSheet : PasswordUiEvent
+    data object OnScanCodeRequest : PasswordUiEvent
+
+    data class OnCodesScanned(val codes: List<String>) : PasswordUiEvent
 }

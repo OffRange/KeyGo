@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -41,6 +42,7 @@ import de.davis.keygo.item.create.presentation.component.FormGroup
 import de.davis.keygo.item.create.presentation.component.KeyGoItemForm
 import de.davis.keygo.item.create.presentation.password.model.PasswordUiEvent
 import de.davis.keygo.item.create.presentation.password.model.PasswordUiState
+import de.davis.keygo.totp.presentation.component.QRScanner
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -130,6 +132,16 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                         state = state.totpTextFieldState,
                         label = { Text(text = stringResource(R.string.totp_secret)) },
                         placeholder = { Text(text = stringResource(R.string.totp_secret)) },
+                        outsideTrailingContent = {
+                            IconButton(
+                                onClick = { onEvent(PasswordUiEvent.OnScanCodeRequest) }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.QrCodeScanner,
+                                    contentDescription = null
+                                )
+                            }
+                        },
                         isSecure = true
                     )
 
@@ -158,6 +170,15 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                 containerColor = BottomSheetDefaults.ContainerColor,
             )
         }
+    }
+
+    if (state.scanning) {
+        QRScanner(
+            onClose = { onEvent(PasswordUiEvent.OnBackClick) },
+            success = {
+                onEvent(PasswordUiEvent.OnCodesScanned(it))
+            }
+        )
     }
 }
 
