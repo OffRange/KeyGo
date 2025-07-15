@@ -73,7 +73,9 @@ fun DeletableVaultItem(
                 modifier = Modifier.fillMaxSize()
             )
         },
-        modifier = modifier.clip(CardDefaults.shape),
+        modifier = Modifier
+            .clip(CardDefaults.shape)
+            .then(modifier),
         state = state
     ) {
         VaultItem(
