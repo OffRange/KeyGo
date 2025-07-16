@@ -103,4 +103,14 @@ class GetTotpSecretFromUrlUseCaseTest {
         assertEquals("Example", info.issuer)
         assertEquals("alice@google.com", info.accountName)
     }
+
+    @Test
+    fun `issuer in path only succeeds`() {
+        val url = "otpauth://totp/Example:alice@google.com?secret=JBSWY3DPEHPK3PXP"
+        val result = useCase(url)
+        assertTrue(result is Result.Success)
+        val info = (result as Result.Success).success
+        assertEquals("Example", info.issuer)
+        assertEquals("alice@google.com", info.accountName)
+    }
 }
