@@ -55,6 +55,13 @@ fun NavGraphBuilder.dashboardGraph(
                         DetailItem.Edit(it.itemType)
                     )
                 }
+
+                is DashboardEvent.CreateOrUpdate -> {
+                    listNavigator.navigateTo(
+                        ThreePaneScaffoldRole.Primary,
+                        DetailItem.Edit.byTotpUri(it.totpUri)
+                    )
+                }
             }
         }
 
@@ -111,7 +118,7 @@ fun NavGraphBuilder.dashboardGraph(
                                         LocalViewModelStoreOwner provides storeOwner
                                     ) {
                                         PasswordScreen(
-                                            itemId = detailItem.itemId,
+                                            getBy = detailItem.getBy,
                                             navigate = {
                                                 when (it) {
                                                     NavigationEvent.NavigateBack -> scope.launch {
@@ -141,7 +148,10 @@ fun NavGraphBuilder.dashboardGraph(
                                                 is NavigationEvent.NavigateToEdit -> scope.launch {
                                                     listNavigator.navigateTo(
                                                         ThreePaneScaffoldRole.Primary,
-                                                        DetailItem.Edit(it.vaultType, it.itemId)
+                                                        DetailItem.Edit.byId(
+                                                            it.vaultType,
+                                                            it.itemId
+                                                        )
                                                     )
                                                 }
                                             }

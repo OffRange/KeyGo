@@ -19,7 +19,7 @@ sealed interface RouteDestination {
         data object NavGraph : Home
 
         @Serializable
-        data object Root : Home
+        data class Root(val totpUri: String? = null) : Home
 
         @Serializable
         data object SelectItem : Home
@@ -38,5 +38,10 @@ sealed interface RouteDestination {
     }
 
     @Serializable
-    data object Auth : RouteDestination
+    data class Auth(val totpInfo: String? = null, val queries: String? = null) : RouteDestination {
+        val uri
+            get() = if (!totpInfo.isNullOrBlank() && !queries.isNullOrBlank())
+                "otpauth://totp/$totpInfo?$queries"
+            else null
+    }
 }

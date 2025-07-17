@@ -10,6 +10,7 @@ import de.davis.keygo.core.domain.alias.ItemIdNone
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.domain.getOrNull
+import de.davis.keygo.core.domain.model.navigation.DetailItem
 import de.davis.keygo.core.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
@@ -117,7 +118,14 @@ class PasswordViewModel(
         }
     }
 
-    fun init(itemId: ItemId) {
+    fun init(getBy: DetailItem.Edit.GetBy) {
+        when (getBy) {
+            is DetailItem.Edit.GetBy.Id -> initWithId(getBy.itemId)
+            is DetailItem.Edit.GetBy.TotpUri -> {}
+        }
+    }
+
+    private fun initWithId(itemId: ItemId) {
         this.itemId = itemId
         if (itemId == ItemIdNone) return
 
