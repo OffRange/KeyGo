@@ -16,9 +16,9 @@ import de.davis.keygo.item.core.domain.model.PasswordError
 import de.davis.keygo.item.core.domain.model.Upsert
 import de.davis.keygo.item.core.domain.model.fieldUpdate
 import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePassword
+import de.davis.keygo.item.core.presentation.password.model.FieldType
 import de.davis.keygo.item.viewing.domain.WebsiteHandler
 import de.davis.keygo.item.viewing.domain.usecase.IsValidUrlUseCase
-import de.davis.keygo.item.viewing.presentation.password.model.FieldType
 import de.davis.keygo.item.viewing.presentation.password.model.ModificationDialog
 import de.davis.keygo.item.viewing.presentation.password.model.ViewPasswordState
 import de.davis.keygo.item.viewing.presentation.password.model.ViewPasswordUiEvent

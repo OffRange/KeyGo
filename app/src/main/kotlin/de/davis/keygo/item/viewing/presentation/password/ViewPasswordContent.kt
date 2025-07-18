@@ -68,7 +68,7 @@ import de.davis.keygo.core.presentation.component.KeyGoFormField
 import de.davis.keygo.core.presentation.component.StrengthIndicator
 import de.davis.keygo.core.presentation.transformation.TrimTransformation
 import de.davis.keygo.item.core.presentation.component.CopyToClipboardButton
-import de.davis.keygo.item.viewing.presentation.password.model.FieldType
+import de.davis.keygo.item.core.presentation.password.model.FieldType
 import de.davis.keygo.item.viewing.presentation.password.model.ModificationDialog
 import de.davis.keygo.item.viewing.presentation.password.model.ObfuscatedString
 import de.davis.keygo.item.viewing.presentation.password.model.ViewPasswordState
