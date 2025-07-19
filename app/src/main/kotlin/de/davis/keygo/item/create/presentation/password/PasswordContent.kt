@@ -43,6 +43,7 @@ import de.davis.keygo.item.create.presentation.component.FormGroup
 import de.davis.keygo.item.create.presentation.component.KeyGoItemForm
 import de.davis.keygo.item.create.presentation.component.OverrideTotpDialog
 import de.davis.keygo.item.create.presentation.component.SelectItemForTotpModificationDialog
+import de.davis.keygo.item.create.presentation.component.TotpParseErrorDialog
 import de.davis.keygo.item.create.presentation.password.model.DialogState
 import de.davis.keygo.item.create.presentation.password.model.PasswordUiEvent
 import de.davis.keygo.item.create.presentation.password.model.PasswordUiState
@@ -173,6 +174,12 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
         when (state.dialogState) {
             DialogState.None -> {
                 // No dialog to show
+            }
+
+            DialogState.TotpParseError -> {
+                TotpParseErrorDialog(
+                    onDismiss = { onEvent(PasswordUiEvent.OnTotpParseErrorDismiss) },
+                )
             }
 
             is DialogState.SelectItemForModification -> {

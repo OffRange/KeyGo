@@ -30,6 +30,8 @@
     <string name="password">Password</string>
     <string name="confirm_password">Confirm Password</string>
 
+    <string name="totp_parse_error">TOTP Parse Error</string>
+    <string name="totp_parse_error_description">The TOTP code could not be parsed.</string>
     <string name="totp_secret">TOTP Secret</string>
     <string name="totp">TOTP</string>
 
@@ -120,4 +122,6 @@
     <string name="override_totp_fields">Override TOTP fields?</string>
     <string name="override">Override</string>
     <string name="keep">Keep</string>
+
+    <string name="ok">OK</string>
 </resources>

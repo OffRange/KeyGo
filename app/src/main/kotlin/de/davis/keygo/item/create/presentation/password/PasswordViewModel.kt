@@ -177,7 +177,7 @@ class PasswordViewModel(
 
     private fun initWithTotpUri(totpUri: String) {
         getTotpSecret(totpUri).onFailure {
-            // TODO: Handle error, e.g., show a snackbar
+            showTotpParseError()
         }.onSuccess { secret ->
             totpSecretInformation = secret
             viewModelScope.launch {
@@ -296,7 +296,7 @@ class PasswordViewModel(
 
                         totpSecretInformation = it
                         requestTotpSecretUpdate(it)
-                    }
+                    } ?: showTotpParseError()
             }
 
             is PasswordUiEvent.OnTotpModificationItemSelected -> {
@@ -346,6 +346,15 @@ class PasswordViewModel(
 
                 totpSecretInformation?.let {
                     currentDialogState.fields.applyToUi { before }
+                }
+            }
+
+            is PasswordUiEvent.OnTotpParseErrorDismiss -> {
+                _uiState.update {
+                    it.copy(
+                        dialogState = DialogState.None,
+                        scanning = false
+                    )
                 }
             }
         }
@@ -467,5 +476,14 @@ class PasswordViewModel(
                     dialogState = DialogState.None,
                 )
             }
+    }
+
+    private fun showTotpParseError() {
+        _uiState.update {
+            it.copy(
+                dialogState = DialogState.TotpParseError,
+                scanning = false
+            )
+        }
     }
 }

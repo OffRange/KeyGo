@@ -10,6 +10,8 @@ sealed interface PasswordUiEvent {
     data object OnCloseBottomSheet : PasswordUiEvent
     data object OnScanCodeRequest : PasswordUiEvent
 
+    data object OnTotpParseErrorDismiss : PasswordUiEvent
+
     data class OnCodesScanned(val codes: List<String>) : PasswordUiEvent
     data class OnTotpModificationItemSelected(val itemId: ItemId) : PasswordUiEvent
     data object OnCreateNewItemForTotp : PasswordUiEvent
