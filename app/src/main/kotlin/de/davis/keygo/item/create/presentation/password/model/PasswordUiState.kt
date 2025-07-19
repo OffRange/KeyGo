@@ -16,6 +16,7 @@ data class PasswordUiState(
     val generatePasswordBottomSheetVisible: Boolean = false,
     @OptIn(ExperimentalMaterial3Api::class)
     val generatePasswordState: GeneratePasswordUiState = GeneratePasswordUiState(),
+    val dialogState: DialogState = DialogState.None,
     val nameError: InputFieldError? = null,
     val passwordError: InputFieldError? = null,
     val scanning: Boolean = false,

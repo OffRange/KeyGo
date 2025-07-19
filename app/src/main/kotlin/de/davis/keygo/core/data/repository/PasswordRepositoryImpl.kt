@@ -24,6 +24,12 @@ internal class PasswordRepositoryImpl(
             vaultPassword.map { it.toDomain() }
         }
 
+    override suspend fun searchVaultPasswords(
+        username: String?,
+        website: String?
+    ): List<Password> = passwordDao.searchVaultPassword(username, website)
+        .map(VaultPassword::toDomain)
+
     override suspend fun getVaultPasswordById(vaultId: ItemId): Password? =
         passwordDao.getVaultPassword(vaultId)?.toDomain()
 
