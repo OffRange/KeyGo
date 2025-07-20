@@ -22,7 +22,7 @@ import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.item.core.domain.model.PasswordError
 import de.davis.keygo.item.core.domain.model.Upsert
 import de.davis.keygo.item.core.domain.model.fieldUpdate
-import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePassword
+import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePasswordUseCase
 import de.davis.keygo.item.core.presentation.password.model.FieldType
 import de.davis.keygo.item.create.domain.PasswordGenerator
 import de.davis.keygo.item.create.presentation.password.model.DialogState
@@ -61,7 +61,7 @@ class PasswordViewModel(
     private val passwordRepository: PasswordRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
-    private val createNewOrUpdatePassword: CreateNewOrUpdatePassword,
+    private val createNewOrUpdatePassword: CreateNewOrUpdatePasswordUseCase,
     private val snackbarManager: SnackbarManager,
     private val getTotpSecret: GetTotpSecretFromUrlUseCase,
 ) : GeneratePasswordViewModel(passwordGenerator, passwordStrengthEstimator) {
