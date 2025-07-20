@@ -12,6 +12,7 @@ data class PasswordUiState(
     val totpTextFieldState: TextFieldState = TextFieldState(),
     val usernameTextFieldState: TextFieldState = TextFieldState(),
     val websiteTextFieldState: TextFieldState = TextFieldState(),
+    val nameExists: Boolean = false,
     val strengthScore: Score = Score.None,
     val generatePasswordBottomSheetVisible: Boolean = false,
     @OptIn(ExperimentalMaterial3Api::class)

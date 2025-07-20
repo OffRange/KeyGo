@@ -15,6 +15,7 @@ import de.davis.keygo.core.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
 import de.davis.keygo.core.domain.repository.PasswordRepository
+import de.davis.keygo.core.domain.repository.VaultItemRepository
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.presentation.UIText
 import de.davis.keygo.core.presentation.model.InputFieldError
@@ -58,6 +59,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @KoinViewModel
 class PasswordViewModel(
     passwordGenerator: PasswordGenerator,
+    private val vaultItemRepository: VaultItemRepository,
     private val passwordRepository: PasswordRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
@@ -66,19 +68,25 @@ class PasswordViewModel(
     private val getTotpSecret: GetTotpSecretFromUrlUseCase,
 ) : GeneratePasswordViewModel(passwordGenerator, passwordStrengthEstimator) {
 
+    private val nameTextFieldState = TextFieldState()
     private val passwordTextFieldState = TextFieldState()
-    private val _uiState =
-        MutableStateFlow(PasswordUiState(passwordTextFieldState = passwordTextFieldState))
+    private val _uiState = MutableStateFlow(
+        PasswordUiState(
+            nameTextFieldState = nameTextFieldState,
+            passwordTextFieldState = passwordTextFieldState
+        )
+    )
 
     val state = _uiState
         .onStart {
+            observeNameTextField()
             observePasswordTextField()
             observeGenerator()
         }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = PasswordUiState(passwordTextFieldState = passwordTextFieldState)
+            initialValue = _uiState.value
         )
 
     private val navigationEventChannel = Channel<NavigationEvent>()
@@ -86,6 +94,24 @@ class PasswordViewModel(
 
     private var itemId = ItemIdNone
     private var totpSecretInformation: TotpSecretInformation? = null
+
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
+    private fun observeNameTextField() {
+        snapshotFlow { nameTextFieldState.text }
+            .debounce(150.milliseconds)
+            .mapLatest { input ->
+                vaultItemRepository.searchVaultItem(input.toString())
+                    .any { it.vaultItemId != itemId && it.name == input.toString() }
+            }
+            .distinctUntilChanged()
+            .onEach { exists ->
+                _uiState.update {
+                    it.copy(nameExists = exists)
+                }
+            }
+            .flowOn(Dispatchers.Default)
+            .launchIn(viewModelScope)
+    }
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private fun observePasswordTextField() {
@@ -151,11 +177,11 @@ class PasswordViewModel(
                         }
                     }
 
+                    nameTextFieldState.setTextAndPlaceCursorAtEnd(password.name)
                     passwordTextFieldState.setTextAndPlaceCursorAtEnd(pwdDeferred.await())
 
                     _uiState.update {
                         it.copy(
-                            nameTextFieldState = TextFieldState(password.name),
                             totpTextFieldState = TextFieldState(totpSecret?.await() ?: ""),
                             usernameTextFieldState = TextFieldState(password.username ?: ""),
                             websiteTextFieldState = TextFieldState(password.website ?: ""),

@@ -101,6 +101,7 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                 .padding(8.dp)
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             nameError = state.nameError,
+            nameExists = state.nameExists,
         ) {
             item(key = "password_information") {
                 var forceCompact by rememberSaveable { mutableStateOf(false) }
@@ -246,7 +247,8 @@ private fun PasswordContentPreview() {
     KeyGoTheme {
         PasswordContent(
             state = PasswordUiState(
-                strengthScore = Score.Weak
+                strengthScore = Score.Weak,
+                nameExists = true
             ),
             onEvent = {}
         )

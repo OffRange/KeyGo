@@ -1,8 +1,11 @@
 package de.davis.keygo.item.create.presentation.component
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.text.KeyboardOptions
@@ -10,6 +13,7 @@ import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +39,7 @@ fun KeyGoItemForm(
     notesTextFieldState: TextFieldState,
     modifier: Modifier = Modifier,
     nameError: InputFieldError? = null,
+    nameExists: Boolean = false,
     content: LazyListScope.() -> Unit
 ) {
     LazyColumn(
@@ -44,14 +49,40 @@ fun KeyGoItemForm(
         item(key = "general_information") {
             FormGroup(
                 title = stringResource(R.string.general_information),
-                modifier = Modifier
             ) {
-                KeyGoFormField(
-                    state = nameTextFieldState,
-                    label = { Text(text = stringResource(R.string.name)) },
-                    placeholder = { Text(text = stringResource(R.string.name_placeholder)) },
-                    error = nameError
-                )
+                Column {
+                    AnimatedVisibility(
+                        visible = nameExists,
+                    ) {
+                        KeyGoCard(
+                            title = {
+                                Text(text = stringResource(R.string.warning))
+                            },
+                            prop = KeyGoCardProp.elevated(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+
+                            // We use a padding modifier and not a verticalArrangement, as verticalArrangement
+                            // causes the layout to snap when disappearing. That is also why we use
+                            // a separate Column as the default Column of the form has the
+                            // verticalArrangement attribute set.
+                            modifier = Modifier.padding(bottom = 8.dp),
+                            leadingItem = {
+                                Icon(
+                                    imageVector = Icons.Default.WarningAmber,
+                                    contentDescription = null,
+                                )
+                            },
+                        ) {
+                            Text(text = stringResource(R.string.multiple_items_same_name))
+                        }
+                    }
+
+                    KeyGoFormField(
+                        state = nameTextFieldState,
+                        label = { Text(text = stringResource(R.string.name)) },
+                        placeholder = { Text(text = stringResource(R.string.name_placeholder)) },
+                        error = nameError
+                    )
+                }
             }
         }
 
@@ -104,7 +135,8 @@ private fun KeyGoItemFormPreview() {
 
             KeyGoItemForm(
                 nameTextFieldState = remember { TextFieldState() },
-                notesTextFieldState = remember { TextFieldState() }
+                notesTextFieldState = remember { TextFieldState() },
+                nameExists = true
             ) {
                 item(key = "password_information") {
                     FormGroup(

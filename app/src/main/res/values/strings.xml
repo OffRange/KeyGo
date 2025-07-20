@@ -124,4 +124,7 @@
     <string name="keep">Keep</string>
 
     <string name="ok">OK</string>
+    <string name="warning">Warning</string>
+
+    <string name="multiple_items_same_name">Some items will have identical names.</string>
 </resources>
