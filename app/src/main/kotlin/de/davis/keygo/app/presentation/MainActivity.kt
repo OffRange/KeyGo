@@ -108,12 +108,16 @@ private fun App() {
     ) {
         NavHost(
             navController = navController,
-            startDestination = RouteDestination.Auth,
+            startDestination = RouteDestination.Auth(),
         ) {
             authGraph(
-                onSuccess = {
-                    navController.navigate(RouteDestination.TopLevelAppGraph) {
-                        popUpTo(RouteDestination.Auth) { inclusive = true }
+                onSuccess = { totpUri ->
+                    val dest = totpUri?.let {
+                        RouteDestination.Home.Root(it)
+                    } ?: RouteDestination.TopLevelAppGraph
+
+                    navController.navigate(dest) {
+                        popUpTo<RouteDestination.Auth> { inclusive = true }
                     }
                 }
             )
@@ -122,7 +126,7 @@ private fun App() {
                 startDestination = RouteDestination.Home.NavGraph
             ) {
                 navigation<RouteDestination.Home.NavGraph>(
-                    startDestination = RouteDestination.Home.Root
+                    startDestination = RouteDestination.Home.Root()
                 ) {
                     dialog<RouteDestination.Home.SelectItem> {
                         SelectItemContent(

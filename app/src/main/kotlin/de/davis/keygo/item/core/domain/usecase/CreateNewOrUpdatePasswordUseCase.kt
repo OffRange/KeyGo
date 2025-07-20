@@ -21,7 +21,7 @@ import org.koin.core.annotation.Single
 import kotlin.contracts.ExperimentalContracts
 
 @Single
-class CreateNewOrUpdatePassword(
+class CreateNewOrUpdatePasswordUseCase(
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passwordRepository: PasswordRepository,
     private val upsertVaultItem: UpsertVaultItem,

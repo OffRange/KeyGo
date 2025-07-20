@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -40,6 +41,10 @@ import de.davis.keygo.core.presentation.component.StrengthIndicator
 import de.davis.keygo.core.presentation.theme.KeyGoTheme
 import de.davis.keygo.item.create.presentation.component.FormGroup
 import de.davis.keygo.item.create.presentation.component.KeyGoItemForm
+import de.davis.keygo.item.create.presentation.component.OverrideTotpDialog
+import de.davis.keygo.item.create.presentation.component.SelectItemForTotpModificationDialog
+import de.davis.keygo.item.create.presentation.component.TotpParseErrorDialog
+import de.davis.keygo.item.create.presentation.password.model.DialogState
 import de.davis.keygo.item.create.presentation.password.model.PasswordUiEvent
 import de.davis.keygo.item.create.presentation.password.model.PasswordUiState
 import de.davis.keygo.totp.presentation.component.QRScanner
@@ -163,6 +168,51 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                         placeholder = { Text(text = stringResource(R.string.website)) },
                     )
                 }
+            }
+        }
+
+        when (state.dialogState) {
+            DialogState.None -> {
+                // No dialog to show
+            }
+
+            DialogState.TotpParseError -> {
+                TotpParseErrorDialog(
+                    onDismiss = { onEvent(PasswordUiEvent.OnTotpParseErrorDismiss) },
+                )
+            }
+
+            is DialogState.SelectItemForModification -> {
+                SelectItemForTotpModificationDialog(
+                    onDismissRequest = {
+                        // Don't allow dismissal
+                    },
+                    items = state.dialogState.items,
+                    onItemClicked = { item ->
+                        onEvent(PasswordUiEvent.OnTotpModificationItemSelected(item.vaultItemId))
+                    },
+                    onCreateNew = { onEvent(PasswordUiEvent.OnCreateNewItemForTotp) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            is DialogState.OverrideTotp -> {
+                OverrideTotpDialog(
+                    onDismissRequest = {
+                        // Don't allow dismissal
+                    },
+                    overrideFields = state.dialogState.fields,
+                    onOverride = {
+                        onEvent(PasswordUiEvent.OnOverrideTotpFieldsConfirmed)
+                    },
+                    onKeep = {
+                        onEvent(PasswordUiEvent.OnOverrideTotpFieldsKept)
+                    },
+                    onFieldClicked = {
+                        onEvent(PasswordUiEvent.OnOverrideFieldClicked(it))
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }

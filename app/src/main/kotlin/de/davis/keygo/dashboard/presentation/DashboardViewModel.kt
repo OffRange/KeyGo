@@ -4,13 +4,16 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshotFlow
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.toRoute
 import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.core.domain.alias.ItemIdNone
 import de.davis.keygo.core.domain.model.VaultSearchResult
 import de.davis.keygo.core.domain.repository.VaultItemRepository
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
+import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.presentation.snackbar.ItemDeletedMessage
 import de.davis.keygo.dashboard.domain.model.Filter
 import de.davis.keygo.dashboard.domain.usecase.FilterUseCase
@@ -44,7 +47,8 @@ import kotlin.time.Duration.Companion.milliseconds
 class DashboardViewModel(
     private val snackbarManager: SnackbarManager,
     private val vaultItemRepository: VaultItemRepository,
-    filterItems: FilterUseCase
+    filterItems: FilterUseCase,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val textFieldState = TextFieldState()
@@ -114,6 +118,16 @@ class DashboardViewModel(
 
     private val eventChannel = Channel<DashboardEvent>()
     val eventFlow = eventChannel.receiveAsFlow()
+
+
+    init {
+        val totpUri = savedStateHandle.toRoute<RouteDestination.Home.Root>().totpUri
+        totpUri?.let {
+            viewModelScope.launch {
+                eventChannel.send(DashboardEvent.CreateOrUpdate(it))
+            }
+        }
+    }
 
     @OptIn(FlowPreview::class)
     private fun runSearch() {

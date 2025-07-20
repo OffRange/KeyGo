@@ -15,10 +15,10 @@ import de.davis.keygo.generated.item.VaultItemType
 import de.davis.keygo.item.core.domain.model.PasswordError
 import de.davis.keygo.item.core.domain.model.Upsert
 import de.davis.keygo.item.core.domain.model.fieldUpdate
-import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePassword
+import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePasswordUseCase
+import de.davis.keygo.item.core.presentation.password.model.FieldType
 import de.davis.keygo.item.viewing.domain.WebsiteHandler
 import de.davis.keygo.item.viewing.domain.usecase.IsValidUrlUseCase
-import de.davis.keygo.item.viewing.presentation.password.model.FieldType
 import de.davis.keygo.item.viewing.presentation.password.model.ModificationDialog
 import de.davis.keygo.item.viewing.presentation.password.model.ViewPasswordState
 import de.davis.keygo.item.viewing.presentation.password.model.ViewPasswordUiEvent
@@ -49,7 +49,7 @@ import org.koin.android.annotation.KoinViewModel
 class ViewPasswordViewModel(
     private val passwordRepository: PasswordRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
-    private val updatePassword: CreateNewOrUpdatePassword,
+    private val updatePassword: CreateNewOrUpdatePasswordUseCase,
     private val isValidUrl: IsValidUrlUseCase,
     private val websiteHandler: WebsiteHandler,
     private val totpGenerator: TotpGenerator

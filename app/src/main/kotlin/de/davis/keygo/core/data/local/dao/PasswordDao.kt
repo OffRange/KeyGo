@@ -21,6 +21,10 @@ internal interface PasswordDao {
     @Query("SELECT * FROM VaultItemEntity WHERE vault_item_id = :vaultId")
     fun observeVaultPassword(vaultId: ItemId): Flow<VaultPassword>
 
+    // TODO: provide a lighter entity for search results
+    @Query("SELECT * FROM VaultItemEntity WHERE vault_item_id IN (SELECT vault_item_id FROM PasswordEntity WHERE username LIKE '%' || :username || '%' OR website  LIKE '%' || :website || '%')")
+    suspend fun searchVaultPassword(username: String?, website: String?): List<VaultPassword>
+
     @Transaction
     @Query("SELECT * FROM VaultItemEntity WHERE vault_item_id = :vaultId")
     suspend fun getVaultPassword(vaultId: ItemId): VaultPassword?

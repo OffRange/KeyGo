@@ -10,6 +10,7 @@ import de.davis.keygo.core.domain.alias.ItemIdNone
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.domain.getOrNull
+import de.davis.keygo.core.domain.model.navigation.DetailItem
 import de.davis.keygo.core.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
@@ -21,12 +22,17 @@ import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.item.core.domain.model.PasswordError
 import de.davis.keygo.item.core.domain.model.Upsert
 import de.davis.keygo.item.core.domain.model.fieldUpdate
-import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePassword
+import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePasswordUseCase
+import de.davis.keygo.item.core.presentation.password.model.FieldType
 import de.davis.keygo.item.create.domain.PasswordGenerator
+import de.davis.keygo.item.create.presentation.password.model.DialogState
 import de.davis.keygo.item.create.presentation.password.model.GeneratePasswordUiEvent
+import de.davis.keygo.item.create.presentation.password.model.OverrideTotpField
 import de.davis.keygo.item.create.presentation.password.model.PasswordUiEvent
 import de.davis.keygo.item.create.presentation.password.model.PasswordUiState
+import de.davis.keygo.totp.domain.model.TotpSecretInformation
 import de.davis.keygo.totp.domain.usecase.GetTotpSecretFromUrlUseCase
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -47,7 +53,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.android.annotation.KoinViewModel
-import kotlin.properties.Delegates
 import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
@@ -56,7 +61,7 @@ class PasswordViewModel(
     private val passwordRepository: PasswordRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
-    private val createNewOrUpdatePassword: CreateNewOrUpdatePassword,
+    private val createNewOrUpdatePassword: CreateNewOrUpdatePasswordUseCase,
     private val snackbarManager: SnackbarManager,
     private val getTotpSecret: GetTotpSecretFromUrlUseCase,
 ) : GeneratePasswordViewModel(passwordGenerator, passwordStrengthEstimator) {
@@ -79,7 +84,8 @@ class PasswordViewModel(
     private val navigationEventChannel = Channel<NavigationEvent>()
     val navigationEvent = navigationEventChannel.receiveAsFlow()
 
-    private var itemId by Delegates.notNull<ItemId>()
+    private var itemId = ItemIdNone
+    private var totpSecretInformation: TotpSecretInformation? = null
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private fun observePasswordTextField() {
@@ -117,7 +123,14 @@ class PasswordViewModel(
         }
     }
 
-    fun init(itemId: ItemId) {
+    fun init(getBy: DetailItem.Edit.GetBy) {
+        when (getBy) {
+            is DetailItem.Edit.GetBy.Id -> initWithId(getBy.itemId)
+            is DetailItem.Edit.GetBy.TotpUri -> initWithTotpUri(getBy.uri)
+        }
+    }
+
+    private fun initWithId(itemId: ItemId) {
         this.itemId = itemId
         if (itemId == ItemIdNone) return
 
@@ -147,13 +160,46 @@ class PasswordViewModel(
                             usernameTextFieldState = TextFieldState(password.username ?: ""),
                             websiteTextFieldState = TextFieldState(password.website ?: ""),
                             notesTextFieldState = TextFieldState(password.note ?: ""),
+                            dialogState = DialogState.None,
                             updating = true
                         )
+                    }
+
+                    // Update the TOTP secret information if available
+                    totpSecretInformation?.let {
+                        requestTotpSecretUpdate(it)
                     }
                 }
             }
             .flowOn(Dispatchers.Default)
             .launchIn(viewModelScope)
+    }
+
+    private fun initWithTotpUri(totpUri: String) {
+        getTotpSecret(totpUri).onFailure {
+            showTotpParseError()
+        }.onSuccess { secret ->
+            totpSecretInformation = secret
+            viewModelScope.launch {
+                val matchedItems = passwordRepository.searchVaultPasswords(
+                    username = secret.accountName,
+                    website = secret.issuer
+                )
+
+                if (matchedItems.isEmpty()) {
+                    updateUiWithTotpSecretInfo(secret)
+                    return@launch
+                }
+
+                _uiState.update {
+                    it.copy(
+                        dialogState = DialogState.SelectItemForModification(
+                            items = matchedItems.toImmutableList()
+                        )
+                    )
+                }
+            }
+        }
     }
 
     fun onEvent(event: PasswordUiEvent) {
@@ -243,26 +289,201 @@ class PasswordViewModel(
 
             is PasswordUiEvent.OnCodesScanned -> {
                 event.codes.firstNotNullOfOrNull { getTotpSecret(it).getOrNull() }
-                    ?.let { secret ->
-                        val currentState = _uiState.value
-                        currentState.totpTextFieldState.setTextAndPlaceCursorAtEnd(secret.secret)
-                        secret.issuer?.let { issuer ->
-                            currentState.nameTextFieldState.setTextAndPlaceCursorAtEnd(issuer)
+                    ?.let {
+                        _uiState.update { state ->
+                            state.copy(scanning = false)
                         }
 
-                        // TODO show dialog to ask the user if they want to overwrite the current username if one is set
-                        //  Same with the issuer
-                        secret.accountName
-                            .takeIf { it.isNotBlank() }
-                            ?.let { accountName ->
-                                currentState.usernameTextFieldState.setTextAndPlaceCursorAtEnd(
-                                    accountName
-                                )
+                        totpSecretInformation = it
+                        requestTotpSecretUpdate(it)
+                    } ?: showTotpParseError()
+            }
+
+            is PasswordUiEvent.OnTotpModificationItemSelected -> {
+                initWithId(event.itemId)
+            }
+
+            is PasswordUiEvent.OnCreateNewItemForTotp -> {
+                totpSecretInformation?.let {
+                    updateUiWithTotpSecretInfo(it)
+                }
+            }
+
+            is PasswordUiEvent.OnOverrideFieldClicked -> {
+                _uiState.update {
+                    it.copy(
+                        dialogState = when (it.dialogState) {
+                            is DialogState.OverrideTotp -> {
+                                val fields = it.dialogState.fields.map { field ->
+                                    if (field.fieldType == event.fieldType)
+                                        field.copy(selected = !field.selected)
+                                    else field
+                                }.toImmutableList()
+                                it.dialogState.copy(fields = fields)
                             }
 
-                        _uiState.update { it.copy(scanning = false) }
-                    }
+                            else -> it.dialogState
+                        }
+                    )
+                }
             }
+
+            is PasswordUiEvent.OnOverrideTotpFieldsConfirmed -> {
+                val currentDialogState = _uiState.value.dialogState
+                if (currentDialogState !is DialogState.OverrideTotp) return
+
+                totpSecretInformation?.let {
+                    val selectedFields =
+                        currentDialogState.fields.filter { field -> field.selected }
+
+                    selectedFields.applyToUi { after }
+                }
+            }
+
+            is PasswordUiEvent.OnOverrideTotpFieldsKept -> {
+                val currentDialogState = _uiState.value.dialogState
+                if (currentDialogState !is DialogState.OverrideTotp) return
+
+                totpSecretInformation?.let {
+                    currentDialogState.fields.applyToUi { before }
+                }
+            }
+
+            is PasswordUiEvent.OnTotpParseErrorDismiss -> {
+                _uiState.update {
+                    it.copy(
+                        dialogState = DialogState.None,
+                        scanning = false
+                    )
+                }
+            }
+        }
+    }
+
+    private fun List<OverrideTotpField>.applyToUi(overrideWith: OverrideTotpField.() -> String) {
+        val secretField = find { field -> field.fieldType == FieldType.Totp }
+        val usernameField = find { field -> field.fieldType == FieldType.Username }
+        val websiteField = find { field -> field.fieldType == FieldType.Website }
+
+
+        updateUiWithSpecificTotpSecretInfo(
+            secret = secretField?.overrideWith(),
+            issuer = websiteField?.overrideWith(),
+            accountName = usernameField?.overrideWith()
+        )
+    }
+
+    private fun requestTotpSecretUpdate(secretInformation: TotpSecretInformation) {
+        val currentState = _uiState.value
+        val currentTotpSecret = currentState.totpTextFieldState.text.toString()
+        val currentIssuer = currentState.websiteTextFieldState.text.toString()
+        val currentAccountName = currentState.usernameTextFieldState.text.toString()
+
+        val newTotpSecret = secretInformation.secret
+        val newIssuer = secretInformation.issuer ?: ""
+        val newAccountName = secretInformation.accountName
+
+        val isCurrentSecretSet = currentTotpSecret.isNotBlank()
+        val isCurrentIssuerSet = currentIssuer.isNotBlank()
+        val isCurrentAccountNameSet = currentAccountName.isNotBlank()
+
+        val isCurrentTotpSecretSame = currentTotpSecret == newTotpSecret
+        val isCurrentIssuerSame = newIssuer.isBlank() || currentIssuer == newIssuer
+        val isCurrentAccountNameSame = currentAccountName == newAccountName
+
+        val overridingFields = mutableSetOf<OverrideTotpField>()
+
+        val isOverridingTotpSecret = isCurrentSecretSet && !isCurrentTotpSecretSame
+        val isOverridingIssuer = isCurrentIssuerSet && !isCurrentIssuerSame
+        val isOverridingAccountName = isCurrentAccountNameSet && !isCurrentAccountNameSame
+
+        if (isOverridingTotpSecret) {
+            overridingFields.add(
+                OverrideTotpField(
+                    fieldType = FieldType.Totp,
+                    before = currentTotpSecret,
+                    after = newTotpSecret
+                )
+            )
+        }
+
+        if (isOverridingIssuer) {
+            overridingFields.add(
+                OverrideTotpField(
+                    fieldType = FieldType.Website,
+                    before = currentIssuer,
+                    after = newIssuer
+                )
+            )
+        }
+
+        if (isOverridingAccountName) {
+            overridingFields.add(
+                OverrideTotpField(
+                    fieldType = FieldType.Username,
+                    before = currentAccountName,
+                    after = newAccountName
+                )
+            )
+        }
+
+        updateUiWithSpecificTotpSecretInfo(
+            secret = if (!isOverridingTotpSecret) newTotpSecret else null,
+            issuer = if (!isOverridingIssuer) newIssuer else null,
+            accountName = if (!isOverridingAccountName) newAccountName else null,
+            closeDialog = false
+        )
+
+        if (overridingFields.isNotEmpty())
+            _uiState.update {
+                it.copy(
+                    dialogState = DialogState.OverrideTotp(
+                        fields = overridingFields.toImmutableList()
+                    )
+                )
+            }
+    }
+
+    private fun updateUiWithTotpSecretInfo(secretInformation: TotpSecretInformation) =
+        updateUiWithSpecificTotpSecretInfo(
+            secret = secretInformation.secret,
+            issuer = secretInformation.issuer,
+            accountName = secretInformation.accountName
+        )
+
+    private fun updateUiWithSpecificTotpSecretInfo(
+        secret: String? = null,
+        issuer: String? = null,
+        accountName: String? = null,
+        closeDialog: Boolean = true
+    ) {
+        val currentState = _uiState.value
+        secret?.let {
+            currentState.totpTextFieldState.setTextAndPlaceCursorAtEnd(it)
+        }
+
+        issuer?.let {
+            currentState.websiteTextFieldState.setTextAndPlaceCursorAtEnd(it)
+        }
+
+        accountName?.let {
+            currentState.usernameTextFieldState.setTextAndPlaceCursorAtEnd(it)
+        }
+
+        if (closeDialog)
+            _uiState.update {
+                it.copy(
+                    dialogState = DialogState.None,
+                )
+            }
+    }
+
+    private fun showTotpParseError() {
+        _uiState.update {
+            it.copy(
+                dialogState = DialogState.TotpParseError,
+                scanning = false
+            )
         }
     }
 }
