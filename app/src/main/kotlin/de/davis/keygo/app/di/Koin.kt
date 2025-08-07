@@ -2,6 +2,7 @@ package de.davis.keygo.app.di
 
 import android.content.Context
 import de.davis.keygo.auth.di.AuthModule
+import de.davis.keygo.autofill.di.AutofillModule
 import de.davis.keygo.core.data.local.datasource.KeyGoDatabase
 import de.davis.keygo.core.di.CoreModule
 import de.davis.keygo.dashboard.di.DashboardModule
@@ -23,6 +24,7 @@ fun KoinApplication.init(androidContext: Context) {
         DashboardModule.module,
         ItemModule.module,
         TotpModule.module,
+        AutofillModule.module,
 
         MigrationCreateAccessModule.module
     )

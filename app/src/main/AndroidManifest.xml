@@ -43,6 +43,15 @@
                     android:scheme="otpauth" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".autofill.presentation.KeyGoAutofillService"
+            android:exported="true"
+            android:permission="android.permission.BIND_AUTOFILL_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.autofill.AutofillService" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>
