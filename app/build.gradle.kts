@@ -92,6 +92,8 @@ dependencies {
     implementation(libs.offrange.passgen)
     implementation(libs.argon2kt)
 
+    implementation(libs.androidx.autofill)
+
     // Use GMS ML Kit for barcode scanning on the Play Store to minimize app size; use ZXing for F-Droid builds.
     "playStoreImplementation"(libs.gms.mlkit.barcode.scanning)
     "fdroidImplementation"(libs.zxing.barcode.scanning)

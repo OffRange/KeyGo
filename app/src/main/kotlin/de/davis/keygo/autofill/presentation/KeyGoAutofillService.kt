@@ -4,6 +4,7 @@ import android.os.CancellationSignal
 import android.service.autofill.AutofillService
 import android.service.autofill.FillCallback
 import android.service.autofill.FillRequest
+import android.service.autofill.FillResponse
 import android.service.autofill.SaveCallback
 import android.service.autofill.SaveRequest
 import android.util.Log
@@ -17,6 +18,7 @@ import org.koin.android.ext.android.inject
 class KeyGoAutofillService : AutofillService() {
 
     private val extractor by inject<Extractor>()
+    private val datasetProvider by inject<AutofillDatasetProvider>()
 
     override fun onFillRequest(
         request: FillRequest,
@@ -56,10 +58,14 @@ class KeyGoAutofillService : AutofillService() {
                 return@launch
             }
 
-
-
             Log.d(TAG, "Extracted fields: $extraction")
-            callback.onSuccess(null)
+
+            val dataset = datasetProvider.getAutofillDataset(request, extraction)
+            val response = FillResponse.Builder().apply {
+                dataset.forEach(::addDataset)
+            }.build()
+            callback.onSuccess(response)
+
         }
 
         cancellationSignal.setOnCancelListener {

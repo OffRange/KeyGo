@@ -14,6 +14,8 @@ interface PasswordRepository {
         website: String? = null
     ): List<Password>
 
+    suspend fun findVaultPasswordsByUrl(url: String): List<Password>
+
     suspend fun getVaultPasswordById(vaultId: ItemId): Password?
     fun observeVaultPasswordById(vaultId: ItemId): Flow<Password>
 }

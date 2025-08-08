@@ -48,6 +48,9 @@
             android:name=".autofill.presentation.KeyGoAutofillService"
             android:exported="true"
             android:permission="android.permission.BIND_AUTOFILL_SERVICE">
+            <meta-data
+                android:name="android.autofill"
+                android:resource="@xml/keygo_autofill_service" />
             <intent-filter>
                 <action android:name="android.service.autofill.AutofillService" />
             </intent-filter>
