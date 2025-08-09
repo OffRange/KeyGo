@@ -29,8 +29,8 @@ internal class ClassificationUseCase {
         if (type == null) return FieldType.Undefined
 
         when (type) {
-            "password" -> return FieldType.Password
-            "email" -> return FieldType.Identifier.EMail
+            "password" -> return FieldType.Credentials.Password
+            "email" -> return FieldType.Credentials.EMail
         }
 
         return FieldType.Undefined
@@ -49,11 +49,11 @@ internal class ClassificationUseCase {
 
     private fun classifyToken(token: String): FieldType {
         val type = when (token) {
-            View.AUTOFILL_HINT_USERNAME -> FieldType.Identifier.Username
-            View.AUTOFILL_HINT_PHONE -> FieldType.Identifier.Phone
-            View.AUTOFILL_HINT_EMAIL_ADDRESS -> FieldType.Identifier.EMail
+            View.AUTOFILL_HINT_USERNAME -> FieldType.Credentials.Username
+            View.AUTOFILL_HINT_PHONE -> FieldType.Credentials.Phone
+            View.AUTOFILL_HINT_EMAIL_ADDRESS -> FieldType.Credentials.EMail
 
-            View.AUTOFILL_HINT_PASSWORD -> FieldType.Password
+            View.AUTOFILL_HINT_PASSWORD -> FieldType.Credentials.Password
 
             else -> FieldType.Undefined
         }
@@ -61,8 +61,8 @@ internal class ClassificationUseCase {
         if (type !is FieldType.Undefined)
             return type
 
-        if (USERNAME_REGEX.containsMatchIn(token)) return FieldType.Identifier.Username
-        if (EMAIL_REGEX.containsMatchIn(token)) return FieldType.Identifier.EMail
+        if (USERNAME_REGEX.containsMatchIn(token)) return FieldType.Credentials.Username
+        if (EMAIL_REGEX.containsMatchIn(token)) return FieldType.Credentials.EMail
 
         return FieldType.Undefined
     }
