@@ -10,22 +10,22 @@ import android.widget.inline.InlinePresentationSpec
 import androidx.annotation.RequiresApi
 import de.davis.keygo.R
 import de.davis.keygo.autofill.presentation.dataset.DatasetBuilder
+import de.davis.keygo.autofill.presentation.dataset.SuggestionFinder
 import de.davis.keygo.autofill.presentation.getOnLongClickPendingIntent
 import de.davis.keygo.autofill.presentation.getSelectionPendingIntent
 import de.davis.keygo.autofill.presentation.model.Extraction
 import de.davis.keygo.core.domain.model.Password
-import de.davis.keygo.core.domain.repository.PasswordRepository
 import org.koin.core.annotation.Single
 
-@Single // TODO handle sdk api
-@RequiresApi(Build.VERSION_CODES.R)
+@Single
 internal class InlineDatasetBuilder(
     private val inlineSuggestionFactory: InlineSuggestionFactory,
     private val datasetBuilder: DatasetBuilder,
-    private val passwordRepository: PasswordRepository,
+    private val suggestionFinder: SuggestionFinder,
     private val context: Context,
 ) {
 
+    @RequiresApi(Build.VERSION_CODES.R)
     suspend fun buildInlineDatasets(
         specs: List<InlinePresentationSpec>,
         extraction: Extraction
@@ -33,7 +33,8 @@ internal class InlineDatasetBuilder(
         0 -> emptyList()
         1 -> listOf(buildPinnedInlineSuggestionDataset(specs.first(), extraction))
         else -> {
-            val suggestions = findPasswordsSuggestions(extraction, count = specs.size - 2)
+            val suggestions =
+                suggestionFinder.findPasswordsSuggestions(extraction, count = specs.size - 2)
 
             suggestions.mapIndexed { index, suggestion ->
                 buildInlineSuggestionDataset(
@@ -51,6 +52,7 @@ internal class InlineDatasetBuilder(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.R)
     private fun buildPinnedInlineSuggestionDataset(
         spec: InlinePresentationSpec,
         extraction: Extraction
@@ -64,6 +66,7 @@ internal class InlineDatasetBuilder(
         return presentation.buildDataset(extraction)
     }
 
+    @RequiresApi(Build.VERSION_CODES.R)
     private fun buildAppInlineSuggestionDataset(
         spec: InlinePresentationSpec,
         extraction: Extraction
@@ -78,6 +81,7 @@ internal class InlineDatasetBuilder(
         return presentation.buildDataset(extraction)
     }
 
+    @RequiresApi(Build.VERSION_CODES.R)
     private fun buildInlineSuggestionDataset(
         spec: InlinePresentationSpec,
         extraction: Extraction,
@@ -99,16 +103,6 @@ internal class InlineDatasetBuilder(
             intentSender = context.getSelectionPendingIntent().intentSender,
             extraction = extraction
         )
-
-    private suspend fun findPasswordsSuggestions(
-        extraction: Extraction,
-        count: Int
-    ): List<Password> {
-        if (count == 0) return emptyList()
-        return extraction.urls.flatMap {
-            passwordRepository.findVaultPasswordsByUrl(url = it)
-        }.take(count)
-    }
 
     private fun appIcon(): Icon =
         Icon.createWithResource(context, R.mipmap.ic_launcher_round).apply {

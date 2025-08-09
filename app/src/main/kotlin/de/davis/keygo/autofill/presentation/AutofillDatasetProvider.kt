@@ -5,12 +5,14 @@ import android.service.autofill.Dataset
 import android.service.autofill.FillRequest
 import androidx.annotation.ChecksSdkIntAtLeast
 import de.davis.keygo.autofill.presentation.dataset.inline.InlineDatasetBuilder
+import de.davis.keygo.autofill.presentation.dataset.menu.MenuDatasetBuilder
 import de.davis.keygo.autofill.presentation.model.Extraction
 import org.koin.core.annotation.Single
 
 @Single
 internal class AutofillDatasetProvider(
     private val inlineDatasetBuilder: InlineDatasetBuilder,
+    private val menuDatasetBuilder: MenuDatasetBuilder,
 ) {
 
     suspend fun getAutofillDataset(request: FillRequest, extraction: Extraction): List<Dataset> {
@@ -20,7 +22,7 @@ internal class AutofillDatasetProvider(
                 extraction = extraction
             )
 
-        TODO()
+        return menuDatasetBuilder.buildMenuDatasets(extraction = extraction)
     }
 
     @ChecksSdkIntAtLeast(api = Build.VERSION_CODES.R)

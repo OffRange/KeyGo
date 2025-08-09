@@ -11,9 +11,9 @@ import androidx.autofill.inline.v1.InlineSuggestionUi
 import org.koin.core.annotation.Single
 
 @Single
-@RequiresApi(Build.VERSION_CODES.R)
 class InlineSuggestionFactory {
 
+    @RequiresApi(Build.VERSION_CODES.R)
     fun buildPresentation(
         spec: InlinePresentationSpec,
         pendingIntent: PendingIntent,
@@ -28,6 +28,7 @@ class InlineSuggestionFactory {
         icon = icon
     )
 
+    @RequiresApi(Build.VERSION_CODES.R)
     fun buildPinnedPresentation(
         spec: InlinePresentationSpec,
         pendingIntent: PendingIntent,
@@ -40,6 +41,7 @@ class InlineSuggestionFactory {
     )
 
     @SuppressLint("RestrictedApi")
+    @RequiresApi(Build.VERSION_CODES.R)
     private fun buildUniversalPresentation(
         spec: InlinePresentationSpec,
         pendingIntent: PendingIntent,

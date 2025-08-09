@@ -127,4 +127,6 @@
     <string name="warning">Warning</string>
 
     <string name="multiple_items_same_name">Some items will have identical names.</string>
+
+    <string name="autofill_service">Autofill Service</string>
 </resources>
