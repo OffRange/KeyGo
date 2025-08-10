@@ -45,10 +45,18 @@ internal class Extractor(private val classificationUseCase: ClassificationUseCas
                 return
 
             val isImportant = node.isImportantForAutofill() || manualRequest
-            if (!isImportant && !node.isEditableView()) {
+            if (!isImportant) {
                 Log.d(
                     TAG,
-                    "Skipping node [neither important nor editable]: ${node.className}"
+                    "Skipping node [not important]: ${node.className} - HTML-Tag: ${node.htmlInfo?.tag}"
+                )
+                return
+            }
+
+            if (!node.looksLikeInput()) {
+                Log.d(
+                    TAG,
+                    "Skipping node [not input]: ${node.className} - HTML-Tag: ${node.htmlInfo?.tag}"
                 )
                 return
             }
@@ -99,6 +107,15 @@ internal class Extractor(private val classificationUseCase: ClassificationUseCas
             }
         else true
 
+    private fun AssistStructure.ViewNode.looksLikeInput(): Boolean {
+        // HTML signals (native browsers / WebView with HtmlInfo)
+        val htmlTag = htmlInfo?.tag?.lowercase()
+        val isHtmlInput = htmlTag == "input" || htmlTag == "textarea"
+
+        // Android widget signals
+        val isEditableView = isEditableView()
+        return isHtmlInput || isEditableView
+    }
 
     private fun AssistStructure.ViewNode.isEditableView(): Boolean = isEnabled && when (className) {
         EditText::class.qualifiedName,
