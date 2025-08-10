@@ -6,7 +6,7 @@ sealed interface FieldType {
         data object EMail : Credentials
         data object Phone : Credentials
 
-        data object Password : FieldType
+        data object Password : Credentials
     }
 
     data object Undefined : FieldType
