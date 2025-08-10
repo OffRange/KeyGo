@@ -1,5 +1,7 @@
 package de.davis.keygo.autofill.presentation
 
+import android.app.assist.AssistStructure
+import android.os.Build
 import android.os.CancellationSignal
 import android.service.autofill.AutofillService
 import android.service.autofill.FillCallback
@@ -8,6 +10,9 @@ import android.service.autofill.FillResponse
 import android.service.autofill.SaveCallback
 import android.service.autofill.SaveRequest
 import android.util.Log
+import android.view.autofill.AutofillId
+import androidx.core.os.bundleOf
+import de.davis.keygo.autofill.presentation.dataset.applySaveInfo
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -59,11 +64,21 @@ class KeyGoAutofillService : AutofillService() {
                 return@launch
             }
 
-            Log.d(TAG, "Extracted fields: $extraction")
+            val inCompatibilityMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                (request.flags and FillRequest.FLAG_COMPATIBILITY_MODE_REQUEST) != 0
+            else true
+            Log.d(TAG, "In Compatibility Mode: $inCompatibilityMode")
+            Log.d(TAG, "Extracted fields [${extraction.fields.size}]: $extraction")
 
             val dataset = datasetProvider.getAutofillDataset(request, extraction)
             val response = FillResponse.Builder().apply {
                 dataset.forEach(::addDataset)
+                applySaveInfo(
+                    extraction = extraction,
+                    clientInfo = request.clientState ?: bundleOf(),
+                    requestId = request.id,
+                    inCompatibilityMode = inCompatibilityMode
+                )
             }.build()
             callback.onSuccess(response)
 
@@ -75,7 +90,31 @@ class KeyGoAutofillService : AutofillService() {
     }
 
     override fun onSaveRequest(request: SaveRequest, callback: SaveCallback) {
-        callback.onFailure("[Saving] Not supported yet.")
+        Log.d(TAG, "onSaveRequest called with request: ${request.fillContexts}")
+        val structure = request.fillContexts.lastOrNull()?.structure
+        if (structure == null) {
+            callback.onFailure("No structure found")
+            return
+        }
+
+        val clientState = request.clientState
+        if (clientState == null) {
+            callback.onFailure("No client state found")
+            return
+        }
+
+        // TODO show UI
+
+        callback.onSuccess()
+    }
+
+    private fun AssistStructure.ViewNode.findChildById(id: AutofillId): AssistStructure.ViewNode? {
+        if (autofillId == id) return this
+        for (i in 0 until childCount) {
+            val child = getChildAt(i).findChildById(id)
+            if (child != null) return child
+        }
+        return null
     }
 
     companion object {

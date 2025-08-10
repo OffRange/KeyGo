@@ -7,6 +7,7 @@ import android.content.Intent
 private const val AUTOFILL_PENDING_INTENT_FLAGS =
     PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_UPDATE_CURRENT
 
+// TODO: show UI
 internal fun Context.getSelectionPendingIntent() = PendingIntent.getActivity(
     this,
     1001,
