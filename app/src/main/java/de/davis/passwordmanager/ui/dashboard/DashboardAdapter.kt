@@ -129,7 +129,7 @@ class DashboardAdapter(private val onUpdate: (DashboardAdapter) -> Unit) :
 
         configureRecyclerView()
 
-        if (old.toTypedArray().contentEquals(itemManager.items.toTypedArray()))
+        if (old == itemManager.items)
             return
 
         onUpdate(this)
