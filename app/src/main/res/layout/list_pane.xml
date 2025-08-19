@@ -24,7 +24,6 @@
         android:id="@+id/appbarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fitsSystemWindows="true"
         app:liftOnScroll="false"
         app:liftOnScrollColor="?colorSurface">
 
@@ -50,11 +49,11 @@
 
         <TextView
             android:id="@+id/no_results_search"
-            android:visibility="gone"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="center"
             android:text="@string/no_results_found"
-            android:layout_gravity="center" />
+            android:visibility="gone" />
 
     </com.google.android.material.search.SearchView>
 
