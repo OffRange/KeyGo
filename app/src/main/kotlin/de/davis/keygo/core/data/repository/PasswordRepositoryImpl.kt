@@ -24,20 +24,12 @@ internal class PasswordRepositoryImpl(
             vaultPassword.map { it.toDomain() }
         }
 
-    /**
-     * Finds all [Password] pairs where the username or website
-     * contains the given **substrings** (case-insensitive).
-     */
     override suspend fun searchVaultPasswords(
         username: String?,
         website: String?
     ): List<Password> = passwordDao.searchVaultPassword(username, website)
         .map(VaultPassword::toDomain)
 
-    /**
-     * Retrieves all [Password]s where the stored website
-     * appears **anywhere inside** the provided URL (case-insensitive).
-     */
     override suspend fun findVaultPasswordsByUrl(url: String): List<Password> =
         passwordDao.findVaultPasswordsByUrl(url)
             .map(VaultPassword::toDomain)
