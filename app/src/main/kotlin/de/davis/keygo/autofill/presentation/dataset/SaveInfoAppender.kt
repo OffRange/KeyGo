@@ -6,8 +6,8 @@ import android.service.autofill.FillResponse
 import android.service.autofill.RegexValidator
 import android.service.autofill.SaveInfo
 import android.view.autofill.AutofillId
-import de.davis.keygo.autofill.domain.model.FieldType
 import de.davis.keygo.autofill.presentation.model.Extraction
+import de.davis.keygo.autofill.presentation.model.FieldType
 
 internal fun FillResponse.Builder.applySaveInfo(
     extraction: Extraction,

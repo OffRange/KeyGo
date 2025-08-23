@@ -1,11 +1,13 @@
 package de.davis.keygo.autofill.presentation.model
 
-import de.davis.keygo.autofill.domain.model.FieldType
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
 
+@Parcelize
 data class Extraction(
     val fields: List<ExtractedField>,
     val urls: Set<String>
-) {
+) : Parcelable {
     fun hasFields(): Boolean {
         return fields.isNotEmpty()
     }

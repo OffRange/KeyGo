@@ -1,7 +1,7 @@
 package de.davis.keygo.autofill.presentation.mapper
 
 import android.app.assist.AssistStructure
-import de.davis.keygo.autofill.domain.model.FieldFeatures
+import de.davis.keygo.autofill.presentation.model.FieldFeatures
 
 internal fun AssistStructure.ViewNode.toFieldFeatures(): FieldFeatures {
     val autofillHints = autofillHints

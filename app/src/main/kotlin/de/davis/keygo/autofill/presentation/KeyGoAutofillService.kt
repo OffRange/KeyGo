@@ -70,7 +70,7 @@ class KeyGoAutofillService : AutofillService() {
             Log.d(TAG, "In Compatibility Mode: $inCompatibilityMode")
             Log.d(TAG, "Extracted fields [${extraction.fields.size}]: $extraction")
 
-            val dataset = datasetProvider.getAutofillDataset(request, extraction)
+            val dataset = datasetProvider.getAutofillDatasets(request, extraction)
             val response = FillResponse.Builder().apply {
                 dataset.forEach(::addDataset)
                 applySaveInfo(

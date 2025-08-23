@@ -8,16 +8,14 @@ import android.widget.AutoCompleteTextView
 import android.widget.EditText
 import android.widget.MultiAutoCompleteTextView
 import android.widget.TextView
-import de.davis.keygo.autofill.domain.alias.Handle
-import de.davis.keygo.autofill.domain.model.FieldType
-import de.davis.keygo.autofill.domain.usecase.ClassificationUseCase
 import de.davis.keygo.autofill.presentation.mapper.toFieldFeatures
 import de.davis.keygo.autofill.presentation.model.ExtractedField
 import de.davis.keygo.autofill.presentation.model.Extraction
+import de.davis.keygo.autofill.presentation.model.FieldType
 import org.koin.core.annotation.Single
 
 @Single
-internal class Extractor(private val classificationUseCase: ClassificationUseCase) {
+internal class Extractor() {
 
     fun extractRelevant(
         node: AssistStructure.ViewNode,
@@ -62,7 +60,7 @@ internal class Extractor(private val classificationUseCase: ClassificationUseCas
             }
 
             val features = node.toFieldFeatures()
-            val type = classificationUseCase(features)
+            val type = Classifier.classify(features)
             if (type is FieldType.Undefined) {
                 Log.d(
                     TAG,
@@ -72,7 +70,6 @@ internal class Extractor(private val classificationUseCase: ClassificationUseCas
             }
 
             outFields += ExtractedField(
-                handle = Handle.randomUUID(),
                 autofillId = node.autofillId!!,
                 features = features,
                 type = type,

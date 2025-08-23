@@ -14,6 +14,8 @@ import de.davis.keygo.autofill.presentation.dataset.SuggestionFinder
 import de.davis.keygo.autofill.presentation.getOnLongClickPendingIntent
 import de.davis.keygo.autofill.presentation.getSelectionPendingIntent
 import de.davis.keygo.autofill.presentation.model.Extraction
+import de.davis.keygo.core.domain.alias.ItemId
+import de.davis.keygo.core.domain.alias.ItemIdNone
 import de.davis.keygo.core.domain.model.Password
 import org.koin.core.annotation.Single
 
@@ -63,7 +65,7 @@ internal class InlineDatasetBuilder(
             icon = appIcon()
         )
 
-        return presentation.buildDataset(extraction)
+        return presentation.buildDataset(extraction, vaultId = ItemIdNone)
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
@@ -78,7 +80,7 @@ internal class InlineDatasetBuilder(
             title = context.getString(R.string.app_name)
         )
 
-        return presentation.buildDataset(extraction)
+        return presentation.buildDataset(extraction, vaultId = ItemIdNone)
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
@@ -94,16 +96,21 @@ internal class InlineDatasetBuilder(
             subtitle = suggestion.username ?: "----",
         )
 
-        return presentation.buildDataset(extraction)
+        return presentation.buildDataset(extraction, suggestion.vaultItemId)
     }
 
-    private fun InlinePresentation.buildDataset(extraction: Extraction) =
+    private fun InlinePresentation.buildDataset(extraction: Extraction, vaultId: ItemId) =
         datasetBuilder.buildDataset(
             inlinePresentation = this,
-            intentSender = context.getSelectionPendingIntent().intentSender,
+            intentSender = context.getSelectionPendingIntent(
+                context,
+                extraction,
+                vaultId
+            ).intentSender,
             extraction = extraction
         )
 
+    //TODO: maybe return null for API < 29
     private fun appIcon(): Icon =
         Icon.createWithResource(context, R.mipmap.ic_launcher_round).apply {
             setTintBlendMode(BlendMode.DST)

@@ -1,14 +1,12 @@
-package de.davis.keygo.autofill.domain.usecase
+package de.davis.keygo.autofill.presentation
 
 import android.view.View
-import de.davis.keygo.autofill.domain.model.FieldFeatures
-import de.davis.keygo.autofill.domain.model.FieldType
-import org.koin.core.annotation.Single
+import de.davis.keygo.autofill.presentation.model.FieldFeatures
+import de.davis.keygo.autofill.presentation.model.FieldType
 
-@Single
-internal class ClassificationUseCase {
+internal object Classifier {
 
-    operator fun invoke(features: FieldFeatures): FieldType {
+    fun classify(features: FieldFeatures): FieldType {
         var type = classifyTokens(features.autofillHints)
         if (type !is FieldType.Undefined) return type
 
@@ -67,20 +65,18 @@ internal class ClassificationUseCase {
         return FieldType.Undefined
     }
 
-    companion object {
-        // TODO: use more sophisticated regexes
-        val USERNAME_REGEX = Regex(
-            "\\b(username|login|user|usuario|nombredeusuario|nomd'utilisateur|" +
-                    "benutzername|nomeusuario|nomeutente|imyapolzovatelya|yonghuming|" +
-                    "yūzāmei|ismalmustakhdim)" +
-                    "(\\b|$)", RegexOption.IGNORE_CASE
-        )
+    // TODO: use more sophisticated regexes
+    private val USERNAME_REGEX = Regex(
+        "\\b(username|login|user|usuario|nombredeusuario|nomd'utilisateur|" +
+                "benutzername|nomeusuario|nomeutente|imyapolzovatelya|yonghuming|" +
+                "yūzāmei|ismalmustakhdim)" +
+                "(\\b|$)", RegexOption.IGNORE_CASE
+    )
 
-        val EMAIL_REGEX = Regex(
-            "\\b(email|account|correo|cuenta|adressemail|compte|" +
-                    "emailadresse|konto|conta|uchetnayazapis|elektronnayapochta|" +
-                    "zhanghu|dianziyoujian|akaunto|mēruadoresu|alhisab|albaridal(')?iliktruni)" +
-                    "(\\b|$)", RegexOption.IGNORE_CASE
-        )
-    }
+    private val EMAIL_REGEX = Regex(
+        "\\b(email|account|correo|cuenta|adressemail|compte|" +
+                "emailadresse|konto|conta|uchetnayazapis|elektronnayapochta|" +
+                "zhanghu|dianziyoujian|akaunto|mēruadoresu|alhisab|albaridal(')?iliktruni)" +
+                "(\\b|$)", RegexOption.IGNORE_CASE
+    )
 }

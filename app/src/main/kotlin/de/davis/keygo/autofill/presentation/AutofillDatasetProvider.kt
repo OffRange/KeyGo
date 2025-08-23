@@ -1,21 +1,28 @@
 package de.davis.keygo.autofill.presentation
 
+import android.content.Context
 import android.os.Build
 import android.service.autofill.Dataset
+import android.service.autofill.Field
 import android.service.autofill.FillRequest
+import android.service.autofill.Presentations
+import android.widget.RemoteViews
 import androidx.annotation.ChecksSdkIntAtLeast
 import de.davis.keygo.autofill.presentation.dataset.inline.InlineDatasetBuilder
 import de.davis.keygo.autofill.presentation.dataset.menu.MenuDatasetBuilder
+import de.davis.keygo.autofill.presentation.model.AutofillValue
 import de.davis.keygo.autofill.presentation.model.Extraction
 import org.koin.core.annotation.Single
+import android.view.autofill.AutofillValue as AndroidAutofillValue
 
 @Single
 internal class AutofillDatasetProvider(
+    applicationContext: Context,
     private val inlineDatasetBuilder: InlineDatasetBuilder,
     private val menuDatasetBuilder: MenuDatasetBuilder,
 ) {
 
-    suspend fun getAutofillDataset(request: FillRequest, extraction: Extraction): List<Dataset> {
+    suspend fun getAutofillDatasets(request: FillRequest, extraction: Extraction): List<Dataset> {
         if (systemSupportsInlineSuggestions(request))
             return inlineDatasetBuilder.buildInlineDatasets(
                 specs = request.inlineSuggestionsRequest!!.inlinePresentationSpecs,
@@ -23,6 +30,39 @@ internal class AutofillDatasetProvider(
             )
 
         return menuDatasetBuilder.buildMenuDatasets(extraction = extraction)
+    }
+
+    fun getFillingDataset(values: List<AutofillValue>) = getDefaultDataset()
+        .applyValues(values)
+        .build()
+
+    private fun getDefaultDataset() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        Dataset.Builder(
+            Presentations.Builder()
+                .setMenuPresentation(dummyRemoteViews)
+                .build()
+        )
+    else Dataset.Builder()
+
+    private fun Dataset.Builder.applyValues(values: List<AutofillValue>) = apply {
+        values.forEach {
+            val value = AndroidAutofillValue.forText(it.value)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                setField(
+                    it.autofillId,
+                    Field.Builder()
+                        .setValue(value)
+                        .build()
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                setValue(
+                    it.autofillId,
+                    value,
+                    dummyRemoteViews
+                )
+            }
+        }
     }
 
     @ChecksSdkIntAtLeast(api = Build.VERSION_CODES.R)
@@ -34,4 +74,10 @@ internal class AutofillDatasetProvider(
                 maxSuggestion > 0 && specCount > 0
             } ?: false
         else false
+
+    private val dummyRemoteViews: RemoteViews =
+        RemoteViews(
+            applicationContext.packageName,
+            android.R.layout.simple_list_item_1
+        )
 }
