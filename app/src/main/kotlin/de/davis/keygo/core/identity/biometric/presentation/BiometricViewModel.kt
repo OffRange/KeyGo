@@ -3,17 +3,19 @@ package de.davis.keygo.core.identity.biometric.presentation
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.R
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
 import de.davis.keygo.core.domain.usecase.HasValidAccessUseCase
 import de.davis.keygo.core.identity.biometric.domain.model.BiometricAvailability
 import de.davis.keygo.core.identity.biometric.domain.model.BiometricEvent
-import de.davis.keygo.core.identity.biometric.domain.model.BiometricRequest
 import de.davis.keygo.core.identity.biometric.domain.usecase.GetBiometricCryptoSetupAvailabilityUseCase
 import de.davis.keygo.core.identity.biometric.domain.usecase.GetBiometricHardwareAvailabilityUseCase
 import de.davis.keygo.core.identity.biometric.domain.usecase.PrepareBiometricCipherUseCase
 import de.davis.keygo.core.identity.biometric.domain.usecase.UnlockWithBiometricsUseCase
+import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
 import de.davis.keygo.core.identity.common.domain.model.CryptographicMode
+import de.davis.keygo.core.presentation.UIText
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
@@ -29,7 +31,11 @@ abstract class BiometricViewModel(
     private val biometricRequestChannel = Channel<BiometricRequest>()
     val biometricRequests = biometricRequestChannel.receiveAsFlow()
 
-    fun requestBiometricAuthentication(mode: CryptographicMode = CryptographicMode.Unwrap) {
+    fun requestBiometricAuthentication(
+        mode: CryptographicMode = CryptographicMode.Unwrap,
+        title: UIText = UIText.ResourceString(R.string.authenticate),
+        negativeButton: UIText = UIText.ResourceString(R.string.cancel)
+    ) {
         viewModelScope.launch {
             val hasAccess = hasValidAccess()
 
@@ -46,8 +52,8 @@ abstract class BiometricViewModel(
             prepareBiometricCipher(mode = mode).onSuccess {
                 biometricRequestChannel.send(
                     BiometricRequest.Class3(
-                        title = "Authenticate",
-                        negativeButtonText = "Cancel",
+                        title = title,
+                        negativeButtonText = negativeButton,
                         cipher = it
                     )
                 )

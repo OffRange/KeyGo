@@ -2,6 +2,7 @@ package de.davis.keygo.autofill.presentation.activity
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.R
 import de.davis.keygo.autofill.presentation.AutofillDatasetProvider
 import de.davis.keygo.autofill.presentation.model.AutofillEvent
 import de.davis.keygo.autofill.presentation.model.AutofillInformation
@@ -16,6 +17,7 @@ import de.davis.keygo.core.identity.biometric.domain.usecase.GetBiometricHardwar
 import de.davis.keygo.core.identity.biometric.domain.usecase.PrepareBiometricCipherUseCase
 import de.davis.keygo.core.identity.biometric.domain.usecase.UnlockWithBiometricsUseCase
 import de.davis.keygo.core.identity.biometric.presentation.BiometricViewModel
+import de.davis.keygo.core.presentation.UIText
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
@@ -68,7 +70,9 @@ internal class AutofillViewModel(
         viewModelScope.launch {
             password = passwordRepository.getVaultPasswordById(suggestionInfo.vaultId)
                 ?: throw IllegalArgumentException("Password for vaultId=${suggestionInfo.vaultId} not found")
-            requestBiometricAuthentication()
+            requestBiometricAuthentication(
+                title = UIText.ResourceString(R.string.unlock_item, password.name)
+            )
         }
     }
 

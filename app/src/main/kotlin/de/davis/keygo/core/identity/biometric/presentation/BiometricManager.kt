@@ -4,7 +4,8 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.FragmentActivity
 import de.davis.keygo.core.identity.biometric.domain.model.BiometricEvent
-import de.davis.keygo.core.identity.biometric.domain.model.BiometricRequest
+import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
+import de.davis.keygo.core.presentation.resolve
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.asExecutor
@@ -43,8 +44,8 @@ class BiometricManager(private val activity: FragmentActivity) {
         when (request) {
             is BiometricRequest.Class3 -> prompt.authenticate(
                 BiometricPrompt.PromptInfo.Builder()
-                    .setTitle(request.title)
-                    .setNegativeButtonText(request.negativeButtonText)
+                    .setTitle(request.title.resolve(activity))
+                    .setNegativeButtonText(request.negativeButtonText.resolve(activity))
                     .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
                     .build(),
                 BiometricPrompt.CryptoObject(request.cipher)

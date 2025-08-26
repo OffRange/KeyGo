@@ -10,9 +10,9 @@ import androidx.fragment.app.FragmentActivity
 import de.davis.keygo.autofill.presentation.model.AutofillEvent
 import de.davis.keygo.autofill.presentation.model.AutofillInformation
 import de.davis.keygo.autofill.presentation.model.AutofillIntentData
-import de.davis.keygo.core.identity.biometric.domain.model.BiometricRequest
 import de.davis.keygo.core.identity.biometric.presentation.BiometricPromptSupport
 import de.davis.keygo.core.identity.biometric.presentation.LocalBiometricManager
+import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
 import de.davis.keygo.core.presentation.ObserveAsEvents
 import org.koin.androidx.compose.koinViewModel
 

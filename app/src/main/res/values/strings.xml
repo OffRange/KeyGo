@@ -41,6 +41,7 @@
     <string name="incorrect_password">Password is incorrect!</string>
     <string name="password_does_not_match">Password does not match</string>
     <string name="authenticate">Authenticate</string>
+    <string name="unlock_item">Unlock %s</string>
     <string name="create_access">Create your access</string>
 
     <string name="use_biometrics">Use biometrics</string>
