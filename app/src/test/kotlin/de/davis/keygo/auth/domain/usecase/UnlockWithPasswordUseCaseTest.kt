@@ -1,7 +1,5 @@
 package de.davis.keygo.auth.domain.usecase
 
-import de.davis.keygo.auth.domain.factory.CipherFactory
-import de.davis.keygo.auth.domain.model.CryptographyError
 import de.davis.keygo.auth.domain.model.PasswordWrappedKeyData
 import de.davis.keygo.auth.domain.repository.DeviceInfoRepository
 import de.davis.keygo.auth.domain.repository.KeyDerivationRepository
@@ -11,6 +9,8 @@ import de.davis.keygo.core.domain.Session
 import de.davis.keygo.core.domain.isFailure
 import de.davis.keygo.core.domain.isSuccess
 import de.davis.keygo.core.domain.model.crypto.asAesKey
+import de.davis.keygo.core.identity.common.domain.CipherFactory
+import de.davis.keygo.core.identity.common.domain.model.CryptographyError
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
