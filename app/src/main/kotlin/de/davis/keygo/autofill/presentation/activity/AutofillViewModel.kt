@@ -55,11 +55,7 @@ internal class AutofillViewModel(
     fun start() {
         viewModelScope.launch {
             when (autofillInformation) {
-                is AutofillInformation.App -> {
-                    //TODO implement app autofill
-                    eventChannel.send(AutofillEvent.Abort)
-                }
-
+                is AutofillInformation.App -> eventChannel.send(AutofillEvent.ShowUi)
                 is AutofillInformation.Suggestion -> handleSuggestionRequest(autofillInformation)
             }
         }

@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.service.autofill.Dataset
 import android.view.autofill.AutofillManager
 import androidx.activity.compose.setContent
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.runtime.LaunchedEffect
 import androidx.fragment.app.FragmentActivity
 import de.davis.keygo.autofill.presentation.model.AutofillEvent
@@ -15,6 +16,7 @@ import de.davis.keygo.core.identity.biometric.presentation.BiometricPromptSuppor
 import de.davis.keygo.core.identity.biometric.presentation.LocalBiometricManager
 import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
 import de.davis.keygo.core.presentation.ObserveAsEvents
+import de.davis.keygo.core.presentation.theme.KeyGoTheme
 import org.koin.androidx.compose.koinViewModel
 
 
@@ -28,32 +30,38 @@ import org.koin.androidx.compose.koinViewModel
  */
 internal class AutofillActivity : FragmentActivity() {
 
+    @OptIn(ExperimentalMaterial3AdaptiveApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
-            val viewModel = koinViewModel<AutofillViewModel>()
+            KeyGoTheme {
+                BiometricPromptSupport {
+                    val viewModel = koinViewModel<AutofillViewModel>()
+                    val biometricManager = LocalBiometricManager.current
+                    
+                    ObserveAsEvents(viewModel.events) {
+                        when (it) {
+                            AutofillEvent.Abort -> cancel()
+                            AutofillEvent.ShowUi -> {}
 
-            BiometricPromptSupport {
-                val biometricManager = LocalBiometricManager.current
-
-                LaunchedEffect(Unit) {
-                    viewModel.start()
-                }
-
-                ObserveAsEvents(viewModel.biometricRequests) {
-                    when (it) {
-                        is BiometricRequest.Class3 -> {
-                            val result = biometricManager.authenticate(it)
-                            viewModel.onBiometricResult(result)
+                            is AutofillEvent.Fill -> finishWithResult(it.dataset)
                         }
                     }
-                }
 
-                ObserveAsEvents(viewModel.events) {
-                    when (it) {
-                        AutofillEvent.Abort -> cancel()
-                        is AutofillEvent.Fill -> finishWithResult(it.dataset)
+                    // Request biometric prompt, while the background is transparent (shows the app
+                    // behind it)
+                    ObserveAsEvents(viewModel.biometricRequests) {
+                        when (it) {
+                            is BiometricRequest.Class3 -> {
+                                val result = biometricManager.authenticate(it)
+                                viewModel.onBiometricResult(result)
+                            }
+                        }
+                    }
+
+                    LaunchedEffect(Unit) {
+                        viewModel.start()
                     }
                 }
             }
