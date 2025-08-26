@@ -65,7 +65,11 @@ abstract class BiometricViewModel(
 
     fun onBiometricResult(result: BiometricEvent) {
         when (result) {
-            is BiometricEvent.OnAuthenticationError -> {}
+            is BiometricEvent.OnAuthenticationError -> onBiometricFailed(
+                errorCode = result.errorCode,
+                errString = result.errString
+            )
+
             is BiometricEvent.OnAuthenticationSucceeded -> onBiometricSucceeded(result)
         }
     }
@@ -80,6 +84,10 @@ abstract class BiometricViewModel(
             }
 
         }
+    }
+
+    protected open fun onBiometricFailed(errorCode: Int, errString: String) {
+        Log.d(TAG, "Biometric authentication failed: $errString ($errorCode)")
     }
 
     abstract fun onUnlocked()

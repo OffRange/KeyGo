@@ -76,6 +76,13 @@ internal class AutofillViewModel(
         }
     }
 
+    override fun onBiometricFailed(errorCode: Int, errString: String) {
+        super.onBiometricFailed(errorCode, errString)
+        viewModelScope.launch {
+            eventChannel.send(AutofillEvent.Abort)
+        }
+    }
+
     override fun onUnlocked() {
         viewModelScope.launch {
             val values = autofillInformation.extraction.fields.mapNotNull {
