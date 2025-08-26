@@ -32,6 +32,21 @@ class GetTotpSecretFromUrlUseCaseTest {
     }
 
     @Test
+    fun `valid space-contained totp url returns totp secret information`() {
+        val url = "otpauth://totp/example.com (alice@gmail.com)?secret=JBSWY3DPEHPK3PXP"
+        val result = useCase(url)
+        assertTrue(result is Result.Success)
+        val info = (result as Result.Success).success
+        assertEquals("JBSWY3DPEHPK3PXP", info.secret)
+        //TODO: extract issue and acc name from a string that is not separated by a ":"
+        // --> assertEquals("example.com", info.issuer)
+        assertEquals("example.com (alice@gmail.com)", info.accountName)
+        assertEquals(Algorithm.SHA1, info.algorithm)
+        assertEquals(6, info.digits)
+        assertEquals(30, info.period)
+    }
+
+    @Test
     fun `missing secret returns no secret provided error`() {
         val url = "otpauth://totp/Example:alice@google.com?issuer=Example"
         val result = useCase(url)

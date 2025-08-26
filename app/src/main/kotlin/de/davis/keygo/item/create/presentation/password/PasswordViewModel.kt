@@ -1,5 +1,6 @@
 package de.davis.keygo.item.create.presentation.password
 
+import android.util.Log
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshotFlow
@@ -203,6 +204,7 @@ class PasswordViewModel(
 
     private fun initWithTotpUri(totpUri: String) {
         getTotpSecret(totpUri).onFailure {
+            Log.e(TAG, "Error parsing TOTP URI: $it")
             showTotpParseError()
         }.onSuccess { secret ->
             totpSecretInformation = secret
@@ -314,7 +316,11 @@ class PasswordViewModel(
             }
 
             is PasswordUiEvent.OnCodesScanned -> {
-                event.codes.firstNotNullOfOrNull { getTotpSecret(it).getOrNull() }
+                event.codes.firstNotNullOfOrNull {
+                    getTotpSecret(it).onFailure { failure ->
+                        Log.e(TAG, "Error parsing TOTP URI: $failure")
+                    }.getOrNull()
+                }
                     ?.let {
                         _uiState.update { state ->
                             state.copy(scanning = false)
@@ -511,5 +517,9 @@ class PasswordViewModel(
                 scanning = false
             )
         }
+    }
+
+    companion object {
+        private const val TAG = "PasswordViewModel"
     }
 }

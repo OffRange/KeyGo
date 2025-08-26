@@ -1,6 +1,7 @@
 package de.davis.keygo.totp.domain.usecase
 
 import de.davis.keygo.core.domain.Result
+import de.davis.keygo.core.domain.getOrNull
 import de.davis.keygo.totp.domain.model.Algorithm
 import de.davis.keygo.totp.domain.model.TotpSecretInformation
 import de.davis.keygo.totp.domain.model.TotpSecretUrlParseError
@@ -11,9 +12,15 @@ import java.net.URI
 class GetTotpSecretFromUrlUseCase {
 
     operator fun invoke(url: String): Result<TotpSecretInformation, TotpSecretUrlParseError> {
-        val uri = URI.create(url)
-        if (uri.scheme != "otpauth")
-            return Result.Failure(TotpSecretUrlParseError.SchemeNotSupported(uri.scheme))
+        if (!url.startsWith("otpauth://"))
+            return Result.Failure(
+                TotpSecretUrlParseError.SchemeNotSupported(
+                    url.split("://").firstOrNull()
+                )
+            )
+
+        val uri = sanitizeAndParse(url).getOrNull()
+            ?: return Result.Failure(TotpSecretUrlParseError.CouldNotParseUrl(url))
 
         if (uri.host != "totp")
             return Result.Failure(TotpSecretUrlParseError.HostNotSupported(uri.host))
@@ -33,7 +40,8 @@ class GetTotpSecretFromUrlUseCase {
             }
         }
 
-        val query = uri.query ?: return Result.Failure(TotpSecretUrlParseError.NoQueryProvided)
+        val query = uri.query.ifBlank { null }
+            ?: return Result.Failure(TotpSecretUrlParseError.NoQueryProvided)
         val algorithm = query.getQueryParameter("algorithm").asAlgorithmOrSHA1()
         val digits = query.getQueryParameter("digits")
             ?.toIntOrNull()
@@ -68,6 +76,23 @@ class GetTotpSecretFromUrlUseCase {
 
     private fun String?.asAlgorithmOrSHA1() =
         this?.let { Algorithm.fromString(it) } ?: DefaultTotpValues.DEFAULT_ALGORITHM
+
+    private fun sanitizeAndParse(url: String): Result<URI, Unit> {
+        // - (?<authority>[^/?#]+)  : Named group capturing one or more characters that are not '/', '?', or '#'
+        // - (?<label>[^?#]*)?      : Optional named group capturing zero or more characters that are not '?' or '#'.
+        //                            It includes the leading '/' in the path.
+        // - (?:\\?(?<query>.*))?   : Non-capturing group capturing the query part after '?' if it exists
+        val matches = "^otpauth://(?<authority>[^/?#]+)(?<label>[^?#]*)?(?:\\?(?<query>.*))?$"
+            .toRegex()
+            .matchEntire(url)
+            ?: return Result.Failure(Unit)
+
+        val authority = matches.groups["authority"]?.value
+        val label = matches.groups["label"]?.value
+        val query = matches.groups["query"]?.value
+
+        return Result.Success(URI("otpauth", authority, label, query, null))
+    }
 }
 
 object DefaultTotpValues {

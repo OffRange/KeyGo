@@ -180,6 +180,7 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
             DialogState.TotpParseError -> {
                 TotpParseErrorDialog(
                     onDismiss = { onEvent(PasswordUiEvent.OnTotpParseErrorDismiss) },
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
@@ -230,6 +231,7 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
         }
     }
 
+    // TODO: check permissions
     if (state.scanning) {
         QRScanner(
             onClose = { onEvent(PasswordUiEvent.OnBackClick) },
