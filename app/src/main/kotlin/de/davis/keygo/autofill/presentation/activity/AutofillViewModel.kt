@@ -1,7 +1,6 @@
 package de.davis.keygo.autofill.presentation.activity
 
 import androidx.lifecycle.SavedStateHandle
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.autofill.presentation.AutofillDatasetProvider
 import de.davis.keygo.autofill.presentation.model.AutofillEvent
@@ -9,11 +8,19 @@ import de.davis.keygo.autofill.presentation.model.AutofillInformation
 import de.davis.keygo.autofill.presentation.model.AutofillValue
 import de.davis.keygo.autofill.presentation.model.FieldType
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.core.domain.repository.PasswordRepository
+import de.davis.keygo.core.domain.usecase.HasValidAccessUseCase
+import de.davis.keygo.core.identity.biometric.domain.usecase.GetBiometricCryptoSetupAvailabilityUseCase
+import de.davis.keygo.core.identity.biometric.domain.usecase.GetBiometricHardwareAvailabilityUseCase
+import de.davis.keygo.core.identity.biometric.domain.usecase.PrepareBiometricCipherUseCase
+import de.davis.keygo.core.identity.biometric.domain.usecase.UnlockWithBiometricsUseCase
+import de.davis.keygo.core.identity.biometric.presentation.BiometricViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.koin.android.annotation.KoinViewModel
+
 
 @KoinViewModel
 internal class AutofillViewModel(
@@ -21,7 +28,19 @@ internal class AutofillViewModel(
     private val passwordRepository: PasswordRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val autofillDatasetProvider: AutofillDatasetProvider,
-) : ViewModel() {
+
+    getBiometricCryptoSetupAvailability: GetBiometricCryptoSetupAvailabilityUseCase,
+    getBiometricHardwareAvailability: GetBiometricHardwareAvailabilityUseCase,
+    hasValidAccess: HasValidAccessUseCase,
+    prepareBiometricCipher: PrepareBiometricCipherUseCase,
+    unlockWithBiometrics: UnlockWithBiometricsUseCase,
+) : BiometricViewModel(
+    getBiometricCryptoSetupAvailability,
+    getBiometricHardwareAvailability,
+    hasValidAccess,
+    prepareBiometricCipher,
+    unlockWithBiometrics
+) {
 
     private val autofillInformation =
         savedStateHandle.get<AutofillInformation>(KEY_AUTOFILL_INFORMATION)
@@ -30,21 +49,43 @@ internal class AutofillViewModel(
     private val eventChannel = Channel<AutofillEvent>()
     val events = eventChannel.receiveAsFlow()
 
+    private lateinit var password: Password
+
     init {
         viewModelScope.launch {
-            val password = passwordRepository.getVaultPasswordById(autofillInformation.vaultId)
-                ?: throw IllegalArgumentException("Password for vaultId=${autofillInformation.vaultId} not found")
+            when (autofillInformation) {
+                is AutofillInformation.App -> {
+                    //TODO implement app autofill
+                    eventChannel.send(AutofillEvent.Abort)
+                }
 
+                is AutofillInformation.Suggestion -> handleSuggestionRequest(autofillInformation)
+            }
+        }
+    }
+
+    private fun handleSuggestionRequest(suggestionInfo: AutofillInformation.Suggestion) {
+        viewModelScope.launch {
+            password = passwordRepository.getVaultPasswordById(suggestionInfo.vaultId)
+                ?: throw IllegalArgumentException("Password for vaultId=${suggestionInfo.vaultId} not found")
+            requestBiometricAuthentication()
+        }
+    }
+
+    override fun onUnlocked() {
+        viewModelScope.launch {
             val values = autofillInformation.extraction.fields.mapNotNull {
                 val value = when (it.type) {
-                    FieldType.Credentials.EMail -> password.username
                     FieldType.Credentials.Password -> cryptographicScopeProvider.scope {
                         password.encryptedData.decrypt().decodeToString()
                     }
 
-                    FieldType.Credentials.Phone -> password.username
                     FieldType.Credentials.Username -> password.username
-                    FieldType.Undefined -> return@mapNotNull null
+
+                    // TODO: add support for these field types
+                    FieldType.Credentials.EMail,
+                    FieldType.Credentials.Phone,
+                    FieldType.Undefined -> null
                 }
 
                 if (value.isNullOrBlank()) return@mapNotNull null
@@ -54,8 +95,6 @@ internal class AutofillViewModel(
                     value = value
                 )
             }
-
-
 
             eventChannel.send(AutofillEvent.Fill(autofillDatasetProvider.getFillingDataset(values)))
         }

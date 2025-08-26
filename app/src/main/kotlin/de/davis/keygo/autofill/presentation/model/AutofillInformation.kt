@@ -5,7 +5,33 @@ import de.davis.keygo.core.domain.alias.ItemId
 import kotlinx.parcelize.Parcelize
 
 @Parcelize
-data class AutofillInformation(
-    val extraction: Extraction,
-    val vaultId: ItemId
-) : Parcelable
+sealed interface AutofillInformation : Parcelable {
+
+    val extraction: Extraction
+
+    data class Suggestion(
+        override val extraction: Extraction,
+        val vaultId: ItemId,
+    ) : AutofillInformation
+
+    data class App(
+        override val extraction: Extraction,
+    ) : AutofillInformation
+
+    companion object {
+        fun from(intentData: AutofillIntentData): AutofillInformation = when (intentData) {
+            is AutofillIntentData.Suggestion -> Suggestion(
+                extraction = intentData.extraction,
+                vaultId = intentData.vaultId
+            )
+
+            is AutofillIntentData.App -> App(
+                extraction = intentData.extraction
+            )
+
+            is AutofillIntentData.Pinned -> App(
+                extraction = intentData.extraction
+            )
+        }
+    }
+}

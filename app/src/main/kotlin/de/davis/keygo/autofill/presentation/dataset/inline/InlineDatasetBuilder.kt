@@ -13,9 +13,11 @@ import de.davis.keygo.autofill.presentation.dataset.DatasetBuilder
 import de.davis.keygo.autofill.presentation.dataset.SuggestionFinder
 import de.davis.keygo.autofill.presentation.getOnLongClickPendingIntent
 import de.davis.keygo.autofill.presentation.getSelectionPendingIntent
+import de.davis.keygo.autofill.presentation.model.AutofillIntentData
 import de.davis.keygo.autofill.presentation.model.Extraction
-import de.davis.keygo.core.domain.alias.ItemId
-import de.davis.keygo.core.domain.alias.ItemIdNone
+import de.davis.keygo.autofill.presentation.model.appIntentData
+import de.davis.keygo.autofill.presentation.model.pinnedIntentData
+import de.davis.keygo.autofill.presentation.model.suggestionIntentData
 import de.davis.keygo.core.domain.model.Password
 import org.koin.core.annotation.Single
 
@@ -41,6 +43,7 @@ internal class InlineDatasetBuilder(
             suggestions.mapIndexed { index, suggestion ->
                 buildInlineSuggestionDataset(
                     spec = specs[index],
+                    index = index,
                     extraction = extraction,
                     suggestion = suggestion
                 )
@@ -65,7 +68,7 @@ internal class InlineDatasetBuilder(
             icon = appIcon()
         )
 
-        return presentation.buildDataset(extraction, vaultId = ItemIdNone)
+        return presentation.buildDataset(pinnedIntentData(extraction))
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
@@ -80,12 +83,13 @@ internal class InlineDatasetBuilder(
             title = context.getString(R.string.app_name)
         )
 
-        return presentation.buildDataset(extraction, vaultId = ItemIdNone)
+        return presentation.buildDataset(appIntentData(extraction))
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
     private fun buildInlineSuggestionDataset(
         spec: InlinePresentationSpec,
+        index: Int,
         extraction: Extraction,
         suggestion: Password
     ): Dataset {
@@ -96,18 +100,20 @@ internal class InlineDatasetBuilder(
             subtitle = suggestion.username ?: "----",
         )
 
-        return presentation.buildDataset(extraction, suggestion.vaultItemId)
+        return presentation.buildDataset(
+            suggestionIntentData(
+                extraction,
+                suggestion.vaultItemId,
+                index
+            )
+        )
     }
 
-    private fun InlinePresentation.buildDataset(extraction: Extraction, vaultId: ItemId) =
+    private fun InlinePresentation.buildDataset(autofillIntentData: AutofillIntentData) =
         datasetBuilder.buildDataset(
             inlinePresentation = this,
-            intentSender = context.getSelectionPendingIntent(
-                context,
-                extraction,
-                vaultId
-            ).intentSender,
-            extraction = extraction
+            intentSender = context.getSelectionPendingIntent(autofillIntentData).intentSender,
+            extraction = autofillIntentData.extraction
         )
 
     private fun appIcon(): Icon? =

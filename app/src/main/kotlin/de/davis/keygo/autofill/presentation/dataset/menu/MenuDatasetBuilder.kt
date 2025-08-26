@@ -9,8 +9,8 @@ import de.davis.keygo.autofill.presentation.dataset.DatasetBuilder
 import de.davis.keygo.autofill.presentation.dataset.SuggestionFinder
 import de.davis.keygo.autofill.presentation.getSelectionPendingIntent
 import de.davis.keygo.autofill.presentation.model.Extraction
-import de.davis.keygo.core.domain.alias.ItemId
-import de.davis.keygo.core.domain.alias.ItemIdNone
+import de.davis.keygo.autofill.presentation.model.appIntentData
+import de.davis.keygo.autofill.presentation.model.suggestionIntentData
 import de.davis.keygo.core.domain.model.Password
 import org.koin.core.annotation.Single
 
@@ -28,12 +28,12 @@ internal class MenuDatasetBuilder(
     ): List<Dataset> {
         val suggestions = suggestionFinder.findPasswordsSuggestions(extraction, count = 4)
 
-        return suggestions.map { suggestion ->
-            buildSuggestionDataset(extraction, suggestion)
-        } + listOf(buildAppDataset(extraction, vaultId = ItemIdNone))
+        return suggestions.mapIndexed { index, suggestion ->
+            buildSuggestionDataset(index, extraction, suggestion)
+        } + listOf(buildAppDataset(extraction))
     }
 
-    private fun buildAppDataset(extraction: Extraction, vaultId: ItemId): Dataset {
+    private fun buildAppDataset(extraction: Extraction): Dataset {
         val remoteViews = menuDatasetBuilder.buildMenuSuggestion(
             title = context.getString(R.string.app_name),
             subtitle = context.getString(R.string.autofill_service),
@@ -42,16 +42,13 @@ internal class MenuDatasetBuilder(
 
         return datasetBuilder.buildDataset(
             remoteViews = remoteViews,
-            intentSender = context.getSelectionPendingIntent(
-                context,
-                extraction,
-                vaultId
-            ).intentSender,
+            intentSender = context.getSelectionPendingIntent(appIntentData(extraction)).intentSender,
             extraction = extraction,
         )
     }
 
     private fun buildSuggestionDataset(
+        index: Int,
         extraction: Extraction,
         suggestion: Password
     ): Dataset {
@@ -63,9 +60,11 @@ internal class MenuDatasetBuilder(
         return datasetBuilder.buildDataset(
             remoteViews = remoteViews,
             intentSender = context.getSelectionPendingIntent(
-                context,
-                extraction,
-                suggestion.vaultItemId
+                suggestionIntentData(
+                    extraction,
+                    suggestion.vaultItemId,
+                    index
+                )
             ).intentSender,
             extraction = extraction,
         )
