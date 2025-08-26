@@ -53,7 +53,7 @@ internal class AutofillViewModel(
 
     private lateinit var password: Password
 
-    init {
+    fun start() {
         viewModelScope.launch {
             when (autofillInformation) {
                 is AutofillInformation.App -> {

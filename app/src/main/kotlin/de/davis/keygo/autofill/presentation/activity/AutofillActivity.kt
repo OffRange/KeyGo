@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.service.autofill.Dataset
 import android.view.autofill.AutofillManager
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.LaunchedEffect
 import androidx.fragment.app.FragmentActivity
 import de.davis.keygo.autofill.presentation.model.AutofillEvent
 import de.davis.keygo.autofill.presentation.model.AutofillInformation
@@ -35,6 +36,10 @@ internal class AutofillActivity : FragmentActivity() {
 
             BiometricPromptSupport {
                 val biometricManager = LocalBiometricManager.current
+
+                LaunchedEffect(Unit) {
+                    viewModel.start()
+                }
 
                 ObserveAsEvents(viewModel.biometricRequests) {
                     when (it) {
