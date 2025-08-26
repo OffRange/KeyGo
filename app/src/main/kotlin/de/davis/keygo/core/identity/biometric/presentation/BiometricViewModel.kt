@@ -34,7 +34,8 @@ abstract class BiometricViewModel(
     fun requestBiometricAuthentication(
         mode: CryptographicMode = CryptographicMode.Unwrap,
         title: UIText = UIText.ResourceString(R.string.authenticate),
-        negativeButton: UIText = UIText.ResourceString(R.string.cancel)
+        negativeButton: UIText = UIText.ResourceString(R.string.cancel),
+        reason: BiometricRequest.Reason = BiometricRequest.Reason.UnlockSession
     ) {
         viewModelScope.launch {
             val hasAccess = hasValidAccess()
@@ -54,6 +55,7 @@ abstract class BiometricViewModel(
                     BiometricRequest.Class3(
                         title = title,
                         negativeButtonText = negativeButton,
+                        reason = reason,
                         cipher = it
                     )
                 )
@@ -78,11 +80,10 @@ abstract class BiometricViewModel(
         val cipher = event.cipher ?: return
         viewModelScope.launch {
             unlockWithBiometrics(cipher).onSuccess {
-                onUnlocked()
+                onUnlocked(event.requestReason)
             }.onFailure {
                 Log.e(TAG, "Failed to unlock with biometrics.")
             }
-
         }
     }
 
@@ -90,7 +91,7 @@ abstract class BiometricViewModel(
         Log.d(TAG, "Biometric authentication failed: $errString ($errorCode)")
     }
 
-    abstract fun onUnlocked()
+    abstract fun onUnlocked(requestReason: BiometricRequest.Reason)
 
     companion object {
         private const val TAG = "BiometricViewModel"

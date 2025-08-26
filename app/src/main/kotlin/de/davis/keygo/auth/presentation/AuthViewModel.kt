@@ -21,6 +21,7 @@ import de.davis.keygo.core.identity.biometric.domain.usecase.GetBiometricHardwar
 import de.davis.keygo.core.identity.biometric.domain.usecase.PrepareBiometricCipherUseCase
 import de.davis.keygo.core.identity.biometric.domain.usecase.UnlockWithBiometricsUseCase
 import de.davis.keygo.core.identity.biometric.presentation.BiometricViewModel
+import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
 import de.davis.keygo.core.identity.common.domain.model.CryptographicMode
 import de.davis.keygo.migration.create_access.domain.usecase.ClearMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
@@ -325,7 +326,7 @@ class AuthViewModel(
         }
     }
 
-    override fun onUnlocked() {
+    override fun onUnlocked(requestReason: BiometricRequest.Reason) {
         // Won't be called, as we override the onBiometricSucceeded function
     }
 }

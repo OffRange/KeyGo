@@ -21,7 +21,12 @@ class BiometricManager(private val activity: FragmentActivity) {
             Dispatchers.Main.asExecutor(),
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    c.resume(BiometricEvent.OnAuthenticationSucceeded(result.cryptoObject?.cipher))
+                    c.resume(
+                        BiometricEvent.OnAuthenticationSucceeded(
+                            requestReason = request.reason,
+                            cipher = result.cryptoObject?.cipher
+                        )
+                    )
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {

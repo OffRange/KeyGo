@@ -17,6 +17,7 @@ import de.davis.keygo.core.identity.biometric.domain.usecase.GetBiometricHardwar
 import de.davis.keygo.core.identity.biometric.domain.usecase.PrepareBiometricCipherUseCase
 import de.davis.keygo.core.identity.biometric.domain.usecase.UnlockWithBiometricsUseCase
 import de.davis.keygo.core.identity.biometric.presentation.BiometricViewModel
+import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
 import de.davis.keygo.core.presentation.UIText
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -51,8 +52,6 @@ internal class AutofillViewModel(
     private val eventChannel = Channel<AutofillEvent>()
     val events = eventChannel.receiveAsFlow()
 
-    private lateinit var password: Password
-
     fun start() {
         viewModelScope.launch {
             when (autofillInformation) {
@@ -68,10 +67,11 @@ internal class AutofillViewModel(
 
     private fun handleSuggestionRequest(suggestionInfo: AutofillInformation.Suggestion) {
         viewModelScope.launch {
-            password = passwordRepository.getVaultPasswordById(suggestionInfo.vaultId)
+            val password = passwordRepository.getVaultPasswordById(suggestionInfo.vaultId)
                 ?: throw IllegalArgumentException("Password for vaultId=${suggestionInfo.vaultId} not found")
             requestBiometricAuthentication(
-                title = UIText.ResourceString(R.string.unlock_item, password.name)
+                title = UIText.ResourceString(R.string.unlock_item, password.name),
+                reason = BiometricRequest.Reason.UnlockItem(password)
             )
         }
     }
@@ -83,7 +83,11 @@ internal class AutofillViewModel(
         }
     }
 
-    override fun onUnlocked() {
+    override fun onUnlocked(requestReason: BiometricRequest.Reason) {
+        if (requestReason !is BiometricRequest.Reason.UnlockItem) return
+        if (requestReason.vaultItem !is Password) return
+        val password = requestReason.vaultItem
+
         viewModelScope.launch {
             val values = autofillInformation.extraction.fields.mapNotNull {
                 val value = when (it.type) {
