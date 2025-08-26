@@ -110,9 +110,10 @@ internal class InlineDatasetBuilder(
             extraction = extraction
         )
 
-    //TODO: maybe return null for API < 29
-    private fun appIcon(): Icon =
-        Icon.createWithResource(context, R.mipmap.ic_launcher_round).apply {
-            setTintBlendMode(BlendMode.DST)
-        }
+    private fun appIcon(): Icon? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            Icon.createWithResource(context, R.mipmap.ic_launcher_round).apply {
+                setTintBlendMode(BlendMode.DST)
+            }
+        else null
 }
