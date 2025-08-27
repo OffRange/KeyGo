@@ -91,7 +91,7 @@ abstract class BiometricViewModel(
         Log.d(TAG, "Biometric authentication failed: $errString ($errorCode)")
     }
 
-    abstract fun onUnlocked(requestReason: BiometricRequest.Reason)
+    protected abstract fun onUnlocked(requestReason: BiometricRequest.Reason)
 
     companion object {
         private const val TAG = "BiometricViewModel"

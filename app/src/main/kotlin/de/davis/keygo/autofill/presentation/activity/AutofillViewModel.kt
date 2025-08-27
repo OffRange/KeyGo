@@ -8,6 +8,7 @@ import de.davis.keygo.autofill.presentation.model.AutofillEvent
 import de.davis.keygo.autofill.presentation.model.AutofillInformation
 import de.davis.keygo.autofill.presentation.model.AutofillValue
 import de.davis.keygo.autofill.presentation.model.FieldType
+import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.core.domain.repository.PasswordRepository
@@ -63,7 +64,7 @@ internal class AutofillViewModel(
 
     private fun handleSuggestionRequest(suggestionInfo: AutofillInformation.Suggestion) {
         viewModelScope.launch {
-            val password = passwordRepository.getVaultPasswordById(suggestionInfo.vaultId)
+            val password = getPasswordById(suggestionInfo.vaultId)
                 ?: throw IllegalArgumentException("Password for vaultId=${suggestionInfo.vaultId} not found")
             requestBiometricAuthentication(
                 title = UIText.ResourceString(R.string.unlock_item, password.name),
@@ -85,30 +86,53 @@ internal class AutofillViewModel(
         val password = requestReason.vaultItem
 
         viewModelScope.launch {
-            val values = autofillInformation.extraction.fields.mapNotNull {
-                val value = when (it.type) {
-                    FieldType.Credentials.Password -> cryptographicScopeProvider.scope {
-                        password.encryptedData.decrypt().decodeToString()
-                    }
+            sendPasswordFillEvent(password)
+        }
+    }
 
-                    FieldType.Credentials.Username -> password.username
+    fun onItemSelected(vaultId: ItemId) {
+        viewModelScope.launch {
+            val password = getPasswordById(vaultId) ?: return@launch
+            sendPasswordFillEvent(password)
+        }
+    }
 
-                    // TODO: add support for these field types
-                    FieldType.Credentials.EMail,
-                    FieldType.Credentials.Phone,
-                    FieldType.Undefined -> null
+    private suspend fun getPasswordById(vaultId: ItemId): Password? {
+        return passwordRepository.getVaultPasswordById(vaultId)
+    }
+
+    private suspend fun sendPasswordFillEvent(password: Password) {
+        val values = autofillInformation.extraction.fields.mapNotNull {
+            val value = when (it.type) {
+                FieldType.Credentials.Password -> cryptographicScopeProvider.scope {
+                    password.encryptedData.decrypt().decodeToString()
                 }
 
-                if (value.isNullOrBlank()) return@mapNotNull null
+                FieldType.Credentials.Username -> password.username
 
-                AutofillValue(
-                    autofillId = it.autofillId,
-                    value = value
-                )
+                // TODO: add support for these field types
+                FieldType.Credentials.EMail,
+                FieldType.Credentials.Phone,
+                FieldType.Undefined -> null
             }
 
-            eventChannel.send(AutofillEvent.Fill(autofillDatasetProvider.getFillingDataset(values)))
+            if (value.isNullOrBlank()) return@mapNotNull null
+
+            AutofillValue(
+                autofillId = it.autofillId,
+                value = value
+            )
         }
+
+        // If no values could be extracted, abort the autofill request. This may happen on multi-page
+        // authentication screens. Let's say a screen only has a value for the username/email, but
+        // the user selected a item that des not have a username/email set. In this case we just abort.
+        if (values.isEmpty()) {
+            eventChannel.send(AutofillEvent.Abort)
+            return
+        }
+
+        eventChannel.send(AutofillEvent.Fill(autofillDatasetProvider.getFillingDataset(values)))
     }
 
     companion object {

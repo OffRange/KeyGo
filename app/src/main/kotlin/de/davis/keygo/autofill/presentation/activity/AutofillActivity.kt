@@ -8,7 +8,12 @@ import android.view.autofill.AutofillManager
 import androidx.activity.compose.setContent
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.fragment.app.FragmentActivity
+import de.davis.keygo.autofill.presentation.component.SelectionUi
 import de.davis.keygo.autofill.presentation.model.AutofillEvent
 import de.davis.keygo.autofill.presentation.model.AutofillInformation
 import de.davis.keygo.autofill.presentation.model.AutofillIntentData
@@ -34,16 +39,23 @@ internal class AutofillActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Set default result, that is being sent if the user leaves the activity without making
+        // a selection.
+        setResult(RESULT_CANCELED)
         setContent {
             KeyGoTheme {
                 BiometricPromptSupport {
                     val viewModel = koinViewModel<AutofillViewModel>()
                     val biometricManager = LocalBiometricManager.current
-                    
+
+                    var showUi by rememberSaveable { mutableStateOf(false) }
+
                     ObserveAsEvents(viewModel.events) {
                         when (it) {
                             AutofillEvent.Abort -> cancel()
-                            AutofillEvent.ShowUi -> {}
+                            AutofillEvent.ShowUi -> {
+                                showUi = true
+                            }
 
                             is AutofillEvent.Fill -> finishWithResult(it.dataset)
                         }
@@ -63,6 +75,11 @@ internal class AutofillActivity : FragmentActivity() {
                     LaunchedEffect(Unit) {
                         viewModel.start()
                     }
+
+                    if (showUi)
+                        SelectionUi(
+                            onItemSelected = viewModel::onItemSelected
+                        )
                 }
             }
         }
