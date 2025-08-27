@@ -35,7 +35,7 @@ internal fun FillResponse.Builder.applySaveInfo(
 
         password?.let {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1)
-                RegexValidator(it, "^\\p{ASCII}$".toPattern())
+                RegexValidator(it, "^\\p{ASCII}*$".toPattern())
                     .also(::setValidator)
         }
     }.build()
