@@ -15,8 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.fragment.app.FragmentActivity
 import de.davis.keygo.autofill.presentation.component.SelectionUi
 import de.davis.keygo.autofill.presentation.model.AutofillEvent
-import de.davis.keygo.autofill.presentation.model.AutofillInformation
-import de.davis.keygo.autofill.presentation.model.AutofillIntentData
+import de.davis.keygo.autofill.presentation.model.RequestData
 import de.davis.keygo.core.identity.biometric.presentation.BiometricPromptSupport
 import de.davis.keygo.core.identity.biometric.presentation.LocalBiometricManager
 import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
@@ -102,13 +101,13 @@ internal class AutofillActivity : FragmentActivity() {
 
     companion object {
 
-        fun newIntent(context: Context, autofillIntentData: AutofillIntentData): Intent = Intent(
+        fun newIntent(context: Context, requestData: RequestData): Intent = Intent(
             context,
             AutofillActivity::class.java
         ).apply {
             putExtra(
                 AutofillViewModel.KEY_AUTOFILL_INFORMATION,
-                AutofillInformation.from(autofillIntentData)
+                requestData
             )
         }
     }

@@ -4,17 +4,17 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import de.davis.keygo.autofill.presentation.activity.AutofillActivity
-import de.davis.keygo.autofill.presentation.model.AutofillIntentData
+import de.davis.keygo.autofill.presentation.model.FillRequestData
 
 private const val AUTOFILL_PENDING_INTENT_FLAGS =
     PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_CANCEL_CURRENT
 
 internal fun Context.getSelectionPendingIntent(
-    autofillIntentData: AutofillIntentData
+    fillRequestData: FillRequestData
 ) = PendingIntent.getActivity(
     this,
-    autofillIntentData.requestId,
-    AutofillActivity.newIntent(this, autofillIntentData),
+    fillRequestData.requestId,
+    AutofillActivity.newIntent(this, fillRequestData),
     AUTOFILL_PENDING_INTENT_FLAGS
 )
 

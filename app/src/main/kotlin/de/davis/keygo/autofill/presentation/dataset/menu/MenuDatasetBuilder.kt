@@ -9,8 +9,8 @@ import de.davis.keygo.autofill.presentation.dataset.DatasetBuilder
 import de.davis.keygo.autofill.presentation.dataset.SuggestionFinder
 import de.davis.keygo.autofill.presentation.getSelectionPendingIntent
 import de.davis.keygo.autofill.presentation.model.Extraction
-import de.davis.keygo.autofill.presentation.model.appIntentData
-import de.davis.keygo.autofill.presentation.model.suggestionIntentData
+import de.davis.keygo.autofill.presentation.model.appRequestData
+import de.davis.keygo.autofill.presentation.model.suggestionRequestData
 import de.davis.keygo.core.domain.model.Password
 import org.koin.core.annotation.Single
 
@@ -42,7 +42,7 @@ internal class MenuDatasetBuilder(
 
         return datasetBuilder.buildDataset(
             remoteViews = remoteViews,
-            intentSender = context.getSelectionPendingIntent(appIntentData(extraction)).intentSender,
+            intentSender = context.getSelectionPendingIntent(appRequestData(extraction)).intentSender,
             extraction = extraction,
         )
     }
@@ -60,7 +60,7 @@ internal class MenuDatasetBuilder(
         return datasetBuilder.buildDataset(
             remoteViews = remoteViews,
             intentSender = context.getSelectionPendingIntent(
-                suggestionIntentData(
+                suggestionRequestData(
                     extraction,
                     suggestion.vaultItemId,
                     index

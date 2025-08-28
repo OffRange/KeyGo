@@ -6,7 +6,16 @@ import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
 
 @Parcelize
-sealed interface AutofillIntentData : Parcelable {
+sealed interface RequestData : Parcelable
+
+data class SaveRequestData(
+    val passwordField: SaveInfoField,
+    val usernameField: SaveInfoField?,
+    val emailField: SaveInfoField?,
+) : RequestData
+
+@Parcelize
+sealed interface FillRequestData : RequestData {
 
     val extraction: Extraction
 
@@ -16,7 +25,7 @@ sealed interface AutofillIntentData : Parcelable {
         override val extraction: Extraction,
         val vaultId: ItemId,
         val index: Int
-    ) : AutofillIntentData {
+    ) : FillRequestData {
 
         // We use the index as an offset to ensure unique requestIds for each suggestion. Otherwise
         // the pending intent would be overridden by the last one created, causing only that one to
@@ -27,27 +36,25 @@ sealed interface AutofillIntentData : Parcelable {
 
     data class App(
         override val extraction: Extraction,
-    ) : AutofillIntentData {
+    ) : FillRequestData {
         @IgnoredOnParcel
         override val requestId: Int = 1002
     }
 
     data class Pinned(
         override val extraction: Extraction,
-    ) : AutofillIntentData {
+    ) : FillRequestData {
         @IgnoredOnParcel
         override val requestId: Int = 1001
     }
 }
 
-fun pinnedIntentData(extraction: Extraction) =
-    AutofillIntentData.Pinned(extraction = extraction)
+fun pinnedRequestData(extraction: Extraction) = FillRequestData.Pinned(extraction = extraction)
 
-fun appIntentData(extraction: Extraction) =
-    AutofillIntentData.App(extraction = extraction)
+fun appRequestData(extraction: Extraction) = FillRequestData.App(extraction = extraction)
 
-fun suggestionIntentData(extraction: Extraction, vaultId: ItemId, index: Int) =
-    AutofillIntentData.Suggestion(
+fun suggestionRequestData(extraction: Extraction, vaultId: ItemId, index: Int) =
+    FillRequestData.Suggestion(
         extraction = extraction,
         vaultId = vaultId,
         index = index

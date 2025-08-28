@@ -13,11 +13,11 @@ import de.davis.keygo.autofill.presentation.dataset.DatasetBuilder
 import de.davis.keygo.autofill.presentation.dataset.SuggestionFinder
 import de.davis.keygo.autofill.presentation.getOnLongClickPendingIntent
 import de.davis.keygo.autofill.presentation.getSelectionPendingIntent
-import de.davis.keygo.autofill.presentation.model.AutofillIntentData
 import de.davis.keygo.autofill.presentation.model.Extraction
-import de.davis.keygo.autofill.presentation.model.appIntentData
-import de.davis.keygo.autofill.presentation.model.pinnedIntentData
-import de.davis.keygo.autofill.presentation.model.suggestionIntentData
+import de.davis.keygo.autofill.presentation.model.FillRequestData
+import de.davis.keygo.autofill.presentation.model.appRequestData
+import de.davis.keygo.autofill.presentation.model.pinnedRequestData
+import de.davis.keygo.autofill.presentation.model.suggestionRequestData
 import de.davis.keygo.core.domain.model.Password
 import org.koin.core.annotation.Single
 
@@ -68,7 +68,7 @@ internal class InlineDatasetBuilder(
             icon = appIcon()
         )
 
-        return presentation.buildDataset(pinnedIntentData(extraction))
+        return presentation.buildDataset(pinnedRequestData(extraction))
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
@@ -83,7 +83,7 @@ internal class InlineDatasetBuilder(
             title = context.getString(R.string.app_name)
         )
 
-        return presentation.buildDataset(appIntentData(extraction))
+        return presentation.buildDataset(appRequestData(extraction))
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
@@ -101,7 +101,7 @@ internal class InlineDatasetBuilder(
         )
 
         return presentation.buildDataset(
-            suggestionIntentData(
+            suggestionRequestData(
                 extraction,
                 suggestion.vaultItemId,
                 index
@@ -109,11 +109,11 @@ internal class InlineDatasetBuilder(
         )
     }
 
-    private fun InlinePresentation.buildDataset(autofillIntentData: AutofillIntentData) =
+    private fun InlinePresentation.buildDataset(fillRequestData: FillRequestData) =
         datasetBuilder.buildDataset(
             inlinePresentation = this,
-            intentSender = context.getSelectionPendingIntent(autofillIntentData).intentSender,
-            extraction = autofillIntentData.extraction
+            intentSender = context.getSelectionPendingIntent(fillRequestData).intentSender,
+            extraction = fillRequestData.extraction
         )
 
     private fun appIcon(): Icon? =

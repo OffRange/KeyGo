@@ -5,9 +5,11 @@ import androidx.lifecycle.viewModelScope
 import de.davis.keygo.R
 import de.davis.keygo.autofill.presentation.AutofillDatasetProvider
 import de.davis.keygo.autofill.presentation.model.AutofillEvent
-import de.davis.keygo.autofill.presentation.model.AutofillInformation
 import de.davis.keygo.autofill.presentation.model.AutofillValue
 import de.davis.keygo.autofill.presentation.model.FieldType
+import de.davis.keygo.autofill.presentation.model.FillRequestData
+import de.davis.keygo.autofill.presentation.model.RequestData
+import de.davis.keygo.autofill.presentation.model.SaveRequestData
 import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.model.Password
@@ -46,23 +48,26 @@ internal class AutofillViewModel(
     unlockWithBiometrics
 ) {
 
-    private val autofillInformation =
-        savedStateHandle.get<AutofillInformation>(KEY_AUTOFILL_INFORMATION)
-            ?: throw IllegalArgumentException("Extraction must not be null")
+    private val requestData = savedStateHandle.get<RequestData>(KEY_AUTOFILL_INFORMATION)
+        ?: throw IllegalArgumentException("Extraction must not be null")
 
     private val eventChannel = Channel<AutofillEvent>()
     val events = eventChannel.receiveAsFlow()
 
     fun start() {
         viewModelScope.launch {
-            when (autofillInformation) {
-                is AutofillInformation.App -> eventChannel.send(AutofillEvent.ShowUi)
-                is AutofillInformation.Suggestion -> handleSuggestionRequest(autofillInformation)
+            when (requestData) {
+                is SaveRequestData -> TODO()
+
+                is FillRequestData.Pinned,
+                is FillRequestData.App -> eventChannel.send(AutofillEvent.ShowUi)
+
+                is FillRequestData.Suggestion -> handleSuggestionRequest(requestData)
             }
         }
     }
 
-    private fun handleSuggestionRequest(suggestionInfo: AutofillInformation.Suggestion) {
+    private fun handleSuggestionRequest(suggestionInfo: FillRequestData.Suggestion) {
         viewModelScope.launch {
             val password = getPasswordById(suggestionInfo.vaultId)
                 ?: throw IllegalArgumentException("Password for vaultId=${suggestionInfo.vaultId} not found")
@@ -102,7 +107,12 @@ internal class AutofillViewModel(
     }
 
     private suspend fun sendPasswordFillEvent(password: Password) {
-        val values = autofillInformation.extraction.fields.mapNotNull {
+        if (requestData !is FillRequestData) {
+            eventChannel.send(AutofillEvent.Abort)
+            return
+        }
+
+        val values = requestData.extraction.fields.mapNotNull {
             val value = when (it.type) {
                 FieldType.Credentials.Password -> cryptographicScopeProvider.scope {
                     password.encryptedData.decrypt().decodeToString()
