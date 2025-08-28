@@ -13,6 +13,10 @@ import android.util.Log
 import android.view.autofill.AutofillId
 import androidx.core.os.bundleOf
 import de.davis.keygo.autofill.presentation.dataset.applySaveInfo
+import de.davis.keygo.autofill.presentation.dataset.getEmailField
+import de.davis.keygo.autofill.presentation.dataset.getPasswordField
+import de.davis.keygo.autofill.presentation.dataset.getUsernameField
+import de.davis.keygo.autofill.presentation.model.SaveInfoField
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -90,22 +94,44 @@ class KeyGoAutofillService : AutofillService() {
     }
 
     override fun onSaveRequest(request: SaveRequest, callback: SaveCallback) {
-        Log.d(TAG, "onSaveRequest called with request: ${request.fillContexts}")
-        val structure = request.fillContexts.lastOrNull()?.structure
-        if (structure == null) {
-            callback.onFailure("No structure found")
-            return
-        }
-
         val clientState = request.clientState
         if (clientState == null) {
             callback.onFailure("No client state found")
             return
         }
 
-        // TODO show UI
+        val passwordSaveInfoField = clientState.getPasswordField()
+        val usernameSaveInfoField = clientState.getUsernameField()
+        val emailSaveInfoField = clientState.getEmailField()
+
+        val passwordValue = passwordSaveInfoField?.let {
+            request.find(it)?.autofillValue?.textValue
+        }
+
+        val usernameValue = usernameSaveInfoField?.let {
+            request.find(it)?.autofillValue?.textValue
+        }
+
+        val emailValue = emailSaveInfoField?.let {
+            request.find(it)?.autofillValue?.textValue
+        }
+        Log.d(
+            TAG,
+            "To be saved - Password: $passwordValue, Username: $usernameValue, Email: $emailValue"
+        )
 
         callback.onSuccess()
+    }
+
+    private fun SaveRequest.find(saveInfoField: SaveInfoField): AssistStructure.ViewNode? {
+        val structure = fillContexts.find { it.requestId == saveInfoField.requestId }
+            ?.structure
+            ?: return null
+        return (0 until structure.windowNodeCount).firstNotNullOfOrNull {
+            structure.getWindowNodeAt(it)
+                ?.rootViewNode
+                ?.findChildById(saveInfoField.autofillId)
+        }
     }
 
     private fun AssistStructure.ViewNode.findChildById(id: AutofillId): AssistStructure.ViewNode? {
