@@ -8,6 +8,7 @@ import de.davis.keygo.autofill.presentation.model.AutofillEvent
 import de.davis.keygo.autofill.presentation.model.AutofillValue
 import de.davis.keygo.autofill.presentation.model.FieldType
 import de.davis.keygo.autofill.presentation.model.FillRequestData
+import de.davis.keygo.autofill.presentation.model.FormType
 import de.davis.keygo.autofill.presentation.model.RequestData
 import de.davis.keygo.autofill.presentation.model.SaveRequestData
 import de.davis.keygo.core.domain.alias.ItemId
@@ -57,7 +58,7 @@ internal class AutofillViewModel(
     fun start() {
         viewModelScope.launch {
             when (requestData) {
-                is SaveRequestData -> TODO()
+                is SaveRequestData -> handleSaveRequest(requestData)
 
                 is FillRequestData.Pinned,
                 is FillRequestData.App -> eventChannel.send(AutofillEvent.ShowUi)
@@ -67,15 +68,27 @@ internal class AutofillViewModel(
         }
     }
 
+    private fun handleSaveRequest(requestData: SaveRequestData) {
+        viewModelScope.launch {
+            eventChannel.send(AutofillEvent.Abort)
+        }
+    }
+
     private fun handleSuggestionRequest(suggestionInfo: FillRequestData.Suggestion) {
         viewModelScope.launch {
-            val password = getPasswordById(suggestionInfo.vaultId)
-                ?: throw IllegalArgumentException("Password for vaultId=${suggestionInfo.vaultId} not found")
-            requestBiometricAuthentication(
-                title = UIText.ResourceString(R.string.unlock_item, password.name),
-                reason = BiometricRequest.Reason.UnlockItem(password)
-            )
+            when (suggestionInfo.form.type) {
+                is FormType.Credentials -> handleSuggestPasswordRequest(suggestionInfo)
+            }
         }
+    }
+
+    private suspend fun handleSuggestPasswordRequest(suggestionInfo: FillRequestData.Suggestion) {
+        val password = getPasswordById(suggestionInfo.vaultId)
+            ?: throw IllegalArgumentException("Password for vaultId=${suggestionInfo.vaultId} not found")
+        requestBiometricAuthentication(
+            title = UIText.ResourceString(R.string.unlock_item, password.name),
+            reason = BiometricRequest.Reason.UnlockItem(password)
+        )
     }
 
     override fun onBiometricFailed(errorCode: Int, errString: String) {
@@ -97,6 +110,7 @@ internal class AutofillViewModel(
 
     fun onItemSelected(vaultId: ItemId) {
         viewModelScope.launch {
+            // TODO: check if id is actually a password, and if the form actually represents credentials
             val password = getPasswordById(vaultId) ?: return@launch
             sendPasswordFillEvent(password)
         }
@@ -112,7 +126,13 @@ internal class AutofillViewModel(
             return
         }
 
-        val values = requestData.extraction.fields.mapNotNull {
+        val formInformation = requestData.form
+        if (formInformation.type !is FormType.Credentials) {
+            eventChannel.send(AutofillEvent.Abort)
+            return
+        }
+
+        val values = requestData.form.fields.mapNotNull {
             val value = when (it.type) {
                 FieldType.Credentials.Password -> cryptographicScopeProvider.scope {
                     password.encryptedData.decrypt().decodeToString()

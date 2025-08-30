@@ -5,8 +5,10 @@ import android.view.autofill.AutofillId
 import kotlinx.parcelize.Parcelize
 
 @Parcelize
-data class ExtractedField(
+data class FormField(
     val autofillId: AutofillId,
-    val features: FieldFeatures,
     val type: FieldType,
+    val focused: Boolean,
+    val autofillValue: String? = null,
+    val requestId: Int = -1
 ) : Parcelable

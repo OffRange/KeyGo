@@ -6,23 +6,24 @@ import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
 
 @Parcelize
-sealed interface RequestData : Parcelable
+sealed interface RequestData : Parcelable {
+    val form: Form
+    val requestId: Int
+}
 
 data class SaveRequestData(
-    val passwordField: SaveInfoField,
-    val usernameField: SaveInfoField?,
-    val emailField: SaveInfoField?,
-) : RequestData
+    override val form: Form,
+) : RequestData {
+
+    @IgnoredOnParcel
+    override val requestId: Int = 2001
+}
 
 @Parcelize
 sealed interface FillRequestData : RequestData {
-
-    val extraction: Extraction
-
-    val requestId: Int
-
+    
     data class Suggestion(
-        override val extraction: Extraction,
+        override val form: Form,
         val vaultId: ItemId,
         val index: Int
     ) : FillRequestData {
@@ -35,27 +36,27 @@ sealed interface FillRequestData : RequestData {
     }
 
     data class App(
-        override val extraction: Extraction,
+        override val form: Form,
     ) : FillRequestData {
         @IgnoredOnParcel
         override val requestId: Int = 1002
     }
 
     data class Pinned(
-        override val extraction: Extraction,
+        override val form: Form,
     ) : FillRequestData {
         @IgnoredOnParcel
         override val requestId: Int = 1001
     }
 }
 
-fun pinnedRequestData(extraction: Extraction) = FillRequestData.Pinned(extraction = extraction)
+fun pinnedRequestData(formInformation: Form) = FillRequestData.Pinned(form = formInformation)
 
-fun appRequestData(extraction: Extraction) = FillRequestData.App(extraction = extraction)
+fun appRequestData(formInformation: Form) = FillRequestData.App(form = formInformation)
 
-fun suggestionRequestData(extraction: Extraction, vaultId: ItemId, index: Int) =
+fun suggestionRequestData(formInformation: Form, vaultId: ItemId, index: Int) =
     FillRequestData.Suggestion(
-        extraction = extraction,
+        form = formInformation,
         vaultId = vaultId,
         index = index
     )

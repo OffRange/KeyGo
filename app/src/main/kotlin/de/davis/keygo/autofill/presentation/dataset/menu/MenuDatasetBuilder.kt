@@ -5,13 +5,14 @@ import android.os.Build
 import android.service.autofill.Dataset
 import androidx.annotation.DeprecatedSinceApi
 import de.davis.keygo.R
+import de.davis.keygo.autofill.domain.subtitle
 import de.davis.keygo.autofill.presentation.dataset.DatasetBuilder
 import de.davis.keygo.autofill.presentation.dataset.SuggestionFinder
 import de.davis.keygo.autofill.presentation.getSelectionPendingIntent
-import de.davis.keygo.autofill.presentation.model.Extraction
+import de.davis.keygo.autofill.presentation.model.Form
 import de.davis.keygo.autofill.presentation.model.appRequestData
 import de.davis.keygo.autofill.presentation.model.suggestionRequestData
-import de.davis.keygo.core.domain.model.Password
+import de.davis.keygo.core.domain.model.VaultItem
 import org.koin.core.annotation.Single
 
 @Single
@@ -24,16 +25,16 @@ internal class MenuDatasetBuilder(
 ) {
 
     suspend fun buildMenuDatasets(
-        extraction: Extraction
+        form: Form
     ): List<Dataset> {
-        val suggestions = suggestionFinder.findPasswordsSuggestions(extraction, count = 4)
+        val suggestions = suggestionFinder.findVaultSuggestions(form, count = 4)
 
         return suggestions.mapIndexed { index, suggestion ->
-            buildSuggestionDataset(index, extraction, suggestion)
-        } + listOf(buildAppDataset(extraction))
+            buildSuggestionDataset(index, form, suggestion)
+        } + listOf(buildAppDataset(form))
     }
 
-    private fun buildAppDataset(extraction: Extraction): Dataset {
+    private fun buildAppDataset(formInformation: Form): Dataset {
         val remoteViews = menuDatasetBuilder.buildMenuSuggestion(
             title = context.getString(R.string.app_name),
             subtitle = context.getString(R.string.autofill_service),
@@ -42,31 +43,31 @@ internal class MenuDatasetBuilder(
 
         return datasetBuilder.buildDataset(
             remoteViews = remoteViews,
-            intentSender = context.getSelectionPendingIntent(appRequestData(extraction)).intentSender,
-            extraction = extraction,
+            intentSender = context.getSelectionPendingIntent(appRequestData(formInformation)).intentSender,
+            form = formInformation,
         )
     }
 
     private fun buildSuggestionDataset(
         index: Int,
-        extraction: Extraction,
-        suggestion: Password
+        formInformation: Form,
+        suggestion: VaultItem
     ): Dataset {
         val remoteViews = menuDatasetBuilder.buildMenuSuggestion(
             title = suggestion.name,
-            subtitle = suggestion.username ?: "----",
+            subtitle = suggestion.subtitle(),
         )
 
         return datasetBuilder.buildDataset(
             remoteViews = remoteViews,
             intentSender = context.getSelectionPendingIntent(
                 suggestionRequestData(
-                    extraction,
+                    formInformation,
                     suggestion.vaultItemId,
                     index
                 )
             ).intentSender,
-            extraction = extraction,
+            form = formInformation,
         )
     }
 }

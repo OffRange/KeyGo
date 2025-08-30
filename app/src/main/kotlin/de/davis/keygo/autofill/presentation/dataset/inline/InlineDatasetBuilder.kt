@@ -9,16 +9,17 @@ import android.service.autofill.InlinePresentation
 import android.widget.inline.InlinePresentationSpec
 import androidx.annotation.RequiresApi
 import de.davis.keygo.R
+import de.davis.keygo.autofill.domain.subtitle
 import de.davis.keygo.autofill.presentation.dataset.DatasetBuilder
 import de.davis.keygo.autofill.presentation.dataset.SuggestionFinder
 import de.davis.keygo.autofill.presentation.getOnLongClickPendingIntent
 import de.davis.keygo.autofill.presentation.getSelectionPendingIntent
-import de.davis.keygo.autofill.presentation.model.Extraction
 import de.davis.keygo.autofill.presentation.model.FillRequestData
+import de.davis.keygo.autofill.presentation.model.Form
 import de.davis.keygo.autofill.presentation.model.appRequestData
 import de.davis.keygo.autofill.presentation.model.pinnedRequestData
 import de.davis.keygo.autofill.presentation.model.suggestionRequestData
-import de.davis.keygo.core.domain.model.Password
+import de.davis.keygo.core.domain.model.VaultItem
 import org.koin.core.annotation.Single
 
 @Single
@@ -32,27 +33,30 @@ internal class InlineDatasetBuilder(
     @RequiresApi(Build.VERSION_CODES.R)
     suspend fun buildInlineDatasets(
         specs: List<InlinePresentationSpec>,
-        extraction: Extraction
+        form: Form
     ): List<Dataset> = when (specs.size) {
         0 -> emptyList()
-        1 -> listOf(buildPinnedInlineSuggestionDataset(specs.first(), extraction))
+        1 -> listOf(buildPinnedInlineSuggestionDataset(specs.first(), form))
         else -> {
             val suggestions =
-                suggestionFinder.findPasswordsSuggestions(extraction, count = specs.size - 2)
+                suggestionFinder.findVaultSuggestions(form, count = specs.size - 2)
 
             suggestions.mapIndexed { index, suggestion ->
                 buildInlineSuggestionDataset(
                     spec = specs[index],
                     index = index,
-                    extraction = extraction,
+                    form = form,
                     suggestion = suggestion
                 )
             } + listOf(
                 buildAppInlineSuggestionDataset(
                     spec = specs.dropLast(1).last(),
-                    extraction = extraction,
+                    form = form,
                 ),
-                buildPinnedInlineSuggestionDataset(spec = specs.last(), extraction = extraction)
+                buildPinnedInlineSuggestionDataset(
+                    spec = specs.last(),
+                    form = form
+                )
             )
         }
     }
@@ -60,7 +64,7 @@ internal class InlineDatasetBuilder(
     @RequiresApi(Build.VERSION_CODES.R)
     private fun buildPinnedInlineSuggestionDataset(
         spec: InlinePresentationSpec,
-        extraction: Extraction
+        form: Form
     ): Dataset {
         val presentation = inlineSuggestionFactory.buildPinnedPresentation(
             spec = spec,
@@ -68,13 +72,13 @@ internal class InlineDatasetBuilder(
             icon = appIcon()
         )
 
-        return presentation.buildDataset(pinnedRequestData(extraction))
+        return presentation.buildDataset(pinnedRequestData(form))
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
     private fun buildAppInlineSuggestionDataset(
         spec: InlinePresentationSpec,
-        extraction: Extraction
+        form: Form
     ): Dataset {
         val presentation = inlineSuggestionFactory.buildPresentation(
             spec = spec,
@@ -83,26 +87,26 @@ internal class InlineDatasetBuilder(
             title = context.getString(R.string.app_name)
         )
 
-        return presentation.buildDataset(appRequestData(extraction))
+        return presentation.buildDataset(appRequestData(form))
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
     private fun buildInlineSuggestionDataset(
         spec: InlinePresentationSpec,
         index: Int,
-        extraction: Extraction,
-        suggestion: Password
+        form: Form,
+        suggestion: VaultItem
     ): Dataset {
         val presentation = inlineSuggestionFactory.buildPresentation(
             spec = spec,
             pendingIntent = context.getOnLongClickPendingIntent(),
             title = suggestion.name,
-            subtitle = suggestion.username ?: "----",
+            subtitle = suggestion.subtitle(),
         )
 
         return presentation.buildDataset(
             suggestionRequestData(
-                extraction,
+                form,
                 suggestion.vaultItemId,
                 index
             )
@@ -113,7 +117,7 @@ internal class InlineDatasetBuilder(
         datasetBuilder.buildDataset(
             inlinePresentation = this,
             intentSender = context.getSelectionPendingIntent(fillRequestData).intentSender,
-            extraction = fillRequestData.extraction
+            form = fillRequestData.form
         )
 
     private fun appIcon(): Icon? =

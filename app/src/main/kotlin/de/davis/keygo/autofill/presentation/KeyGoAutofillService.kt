@@ -13,10 +13,10 @@ import android.util.Log
 import android.view.autofill.AutofillId
 import androidx.core.os.bundleOf
 import de.davis.keygo.autofill.presentation.dataset.applySaveInfo
-import de.davis.keygo.autofill.presentation.dataset.getEmailField
-import de.davis.keygo.autofill.presentation.dataset.getPasswordField
-import de.davis.keygo.autofill.presentation.dataset.getUsernameField
-import de.davis.keygo.autofill.presentation.model.SaveInfoField
+import de.davis.keygo.autofill.presentation.dataset.getForm
+import de.davis.keygo.autofill.presentation.model.Form
+import de.davis.keygo.autofill.presentation.model.FormField
+import de.davis.keygo.autofill.presentation.model.SaveRequestData
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -60,10 +60,14 @@ class KeyGoAutofillService : AutofillService() {
         }
 
         val job = CoroutineScope(Dispatchers.IO + handler).launch {
-            val extraction =
-                extractor.extractRelevant(windowNode.rootViewNode, manualRequest = false)
+            val form = extractor.extractRelevant(windowNode.rootViewNode, manualRequest = false)
+                ?: run {
+                    Log.w(TAG, "Could not extract form")
+                    callback.onSuccess(null)
+                    return@launch
+                }
 
-            if (!extraction.hasFields()) {
+            if (!form.hasFields()) {
                 callback.onSuccess(null)
                 return@launch
             }
@@ -72,13 +76,13 @@ class KeyGoAutofillService : AutofillService() {
                 (request.flags and FillRequest.FLAG_COMPATIBILITY_MODE_REQUEST) != 0
             else true
             Log.d(TAG, "In Compatibility Mode: $inCompatibilityMode")
-            Log.d(TAG, "Extracted fields [${extraction.fields.size}]: $extraction")
+            Log.d(TAG, "Extracted form: $form")
 
-            val dataset = datasetProvider.getAutofillDatasets(request, extraction)
+            val dataset = datasetProvider.getAutofillDatasets(request, form)
             val response = FillResponse.Builder().apply {
                 dataset.forEach(::addDataset)
                 applySaveInfo(
-                    extraction = extraction,
+                    form = form,
                     clientInfo = request.clientState ?: bundleOf(),
                     requestId = request.id,
                     inCompatibilityMode = inCompatibilityMode
@@ -94,43 +98,62 @@ class KeyGoAutofillService : AutofillService() {
     }
 
     override fun onSaveRequest(request: SaveRequest, callback: SaveCallback) {
+        Log.d(TAG, "Save request received: $request")
         val clientState = request.clientState
         if (clientState == null) {
             callback.onFailure("No client state found")
             return
         }
 
-        val passwordSaveInfoField = clientState.getPasswordField()
-        val usernameSaveInfoField = clientState.getUsernameField()
-        val emailSaveInfoField = clientState.getEmailField()
+        val form = clientState.getForm()
+            ?.satisfyFields(request) // Fill the form fields with values from the request
+            ?: run {
+                callback.onFailure("No form in client state")
+                return
+            }
 
-        val passwordValue = passwordSaveInfoField?.let {
-            request.find(it)?.autofillValue?.textValue
-        }
-
-        val usernameValue = usernameSaveInfoField?.let {
-            request.find(it)?.autofillValue?.textValue
-        }
-
-        val emailValue = emailSaveInfoField?.let {
-            request.find(it)?.autofillValue?.textValue
-        }
+        val saveRequestData = SaveRequestData(form)
         Log.d(
             TAG,
-            "To be saved - Password: $passwordValue, Username: $usernameValue, Email: $emailValue"
+            "To be saved - $saveRequestData"
         )
 
-        callback.onSuccess()
+        val savePendingIntent = getSavePendingIntent(saveRequestData)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            callback.onSuccess(savePendingIntent.intentSender)
+            return
+        }
+
+        // For older android versions, we just start a new activity
+        runCatching {
+            savePendingIntent.send()
+        }.onFailure {
+            Log.w(TAG, "Error starting save activity", it)
+            callback.onFailure("Error starting save activity")
+            return
+        }.onSuccess {
+            callback.onSuccess()
+        }
     }
 
-    private fun SaveRequest.find(saveInfoField: SaveInfoField): AssistStructure.ViewNode? {
-        val structure = fillContexts.find { it.requestId == saveInfoField.requestId }
+    private fun Form.satisfyFields(request: SaveRequest): Form {
+        val satisfiedFields = fields.mapNotNull { field ->
+            val node = request.find(field) ?: return@mapNotNull null
+            if (node.autofillValue == null) return@mapNotNull null
+            val value = node.autofillValue?.textValue?.toString()
+            field.copy(autofillValue = value)
+        }
+        return copy(fields = satisfiedFields)
+    }
+
+    private fun SaveRequest.find(formField: FormField): AssistStructure.ViewNode? {
+        val structure = fillContexts.find { it.requestId == formField.requestId }
             ?.structure
             ?: return null
         return (0 until structure.windowNodeCount).firstNotNullOfOrNull {
             structure.getWindowNodeAt(it)
                 ?.rootViewNode
-                ?.findChildById(saveInfoField.autofillId)
+                ?.findChildById(formField.autofillId)
         }
     }
 

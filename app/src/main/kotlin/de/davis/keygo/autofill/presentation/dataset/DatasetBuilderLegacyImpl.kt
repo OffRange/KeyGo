@@ -6,7 +6,7 @@ import android.service.autofill.Dataset
 import android.service.autofill.InlinePresentation
 import android.widget.RemoteViews
 import androidx.annotation.DeprecatedSinceApi
-import de.davis.keygo.autofill.presentation.model.Extraction
+import de.davis.keygo.autofill.presentation.model.Form
 
 @Suppress("DEPRECATION")
 @DeprecatedSinceApi(Build.VERSION_CODES.TIRAMISU)
@@ -14,7 +14,7 @@ internal class DatasetBuilderLegacyImpl : DatasetBuilder {
 
     override fun buildDataset(
         intentSender: IntentSender,
-        extraction: Extraction,
+        form: Form,
         inlinePresentation: InlinePresentation?,
         remoteViews: RemoteViews?
     ): Dataset {
@@ -27,13 +27,13 @@ internal class DatasetBuilderLegacyImpl : DatasetBuilder {
                 inlinePresentation?.let { setInlinePresentation(it) }
 
             setAuthentication(intentSender)
-            applyExtraction(extraction)
+            applyExtraction(form)
         }.build()
     }
 
 
-    private fun Dataset.Builder.applyExtraction(extraction: Extraction) {
-        extraction.fields.forEach {
+    private fun Dataset.Builder.applyExtraction(formInformation: Form) {
+        formInformation.fields.forEach {
             setValue(
                 it.autofillId,
                 null

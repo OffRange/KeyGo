@@ -9,30 +9,50 @@ import android.widget.EditText
 import android.widget.MultiAutoCompleteTextView
 import android.widget.TextView
 import de.davis.keygo.autofill.presentation.mapper.toFieldFeatures
-import de.davis.keygo.autofill.presentation.model.ExtractedField
-import de.davis.keygo.autofill.presentation.model.Extraction
+import de.davis.keygo.autofill.presentation.mapper.toFormType
 import de.davis.keygo.autofill.presentation.model.FieldType
+import de.davis.keygo.autofill.presentation.model.Form
+import de.davis.keygo.autofill.presentation.model.FormField
 import org.koin.core.annotation.Single
 
 @Single
 internal class Extractor() {
 
+    /**
+     * Extracts relevant form fields from the provided [AssistStructure.ViewNode].
+     * It traverses the view hierarchy, identifying input fields that are important for autofill.
+     *
+     * @param node The root view node of the assist structure to extract from.
+     * @param manualRequest Indicates if the extraction is triggered by a manual user request.
+     * @return A [Form] containing the extracted fields and associated URLs, or null if no focused
+     * field is found or the focused field could not be classified.
+     */
     fun extractRelevant(
         node: AssistStructure.ViewNode,
         manualRequest: Boolean
-    ): Extraction {
-        val result = mutableListOf<ExtractedField>()
+    ): Form? {
+        val result = mutableListOf<FormField>()
         val urls = mutableSetOf<String>()
         traverse(node, manualRequest, urls, result)
 
-        return Extraction(urls = urls, fields = result)
+        // We filter out the fields that are not in the same group as the focused field
+        // This forces us to only fill one type at a time (e.g. credentials or credit cards).
+        Log.d(TAG, "Extracted fields: $result")
+        val focusedFieldType = result.firstOrNull { it.focused }?.type ?: return null
+        if (focusedFieldType is FieldType.Undefined) return null
+
+        return Form(
+            urls = urls,
+            fields = result.filter { it.type.group == focusedFieldType.group },
+            type = focusedFieldType.toFormType()
+        )
     }
 
     private fun traverse(
         node: AssistStructure.ViewNode,
         manualRequest: Boolean,
         outUrls: MutableSet<String>,
-        outFields: MutableList<ExtractedField>
+        outFields: MutableList<FormField>
     ) {
         node.getUrl()?.let {
             outUrls += it
@@ -69,10 +89,10 @@ internal class Extractor() {
                 return
             }
 
-            outFields += ExtractedField(
+            outFields += FormField(
                 autofillId = node.autofillId!!,
-                features = features,
                 type = type,
+                focused = node.isFocused
             )
             return
         }

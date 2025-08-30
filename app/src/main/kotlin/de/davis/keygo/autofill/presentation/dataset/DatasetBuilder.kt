@@ -4,12 +4,12 @@ import android.content.IntentSender
 import android.service.autofill.Dataset
 import android.service.autofill.InlinePresentation
 import android.widget.RemoteViews
-import de.davis.keygo.autofill.presentation.model.Extraction
+import de.davis.keygo.autofill.presentation.model.Form
 
 internal interface DatasetBuilder {
     fun buildDataset(
         intentSender: IntentSender,
-        extraction: Extraction,
+        form: Form,
         inlinePresentation: InlinePresentation? = null,
         remoteViews: RemoteViews? = null,
     ): Dataset

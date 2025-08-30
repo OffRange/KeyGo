@@ -7,37 +7,39 @@ import android.service.autofill.RegexValidator
 import android.service.autofill.SaveInfo
 import android.util.Log
 import androidx.core.os.BundleCompat
-import de.davis.keygo.autofill.presentation.model.Extraction
 import de.davis.keygo.autofill.presentation.model.FieldType
-import de.davis.keygo.autofill.presentation.model.SaveInfoField
+import de.davis.keygo.autofill.presentation.model.Form
+import de.davis.keygo.autofill.presentation.model.FormField
+import de.davis.keygo.autofill.presentation.model.FormType
 
 private const val TAG = "SaveInfoAppender"
 
 internal fun FillResponse.Builder.applySaveInfo(
-    extraction: Extraction,
+    form: Form,
     clientInfo: Bundle,
     requestId: Int,
     inCompatibilityMode: Boolean,
 ) {
-    val (updatedClientState, saveType) = clientInfo.updateState(requestId, extraction)
-    val password = updatedClientState.getPasswordField()
-    val username = updatedClientState.getUsernameField()
-    val email = updatedClientState.getEmailField()
+    val (updatedClientState, saveType) = clientInfo.updateState(requestId, form)
 
-    val requiredIds = listOfNotNull(password, username, email).map { it.autofillId }.toTypedArray()
+    val updatedForm = updatedClientState.getForm()
+        ?: throw IllegalStateException("No form in client state")
+
+    val requiredIds = updatedForm.fields.map { it.autofillId }.toTypedArray()
 
     Log.d(
         TAG,
-        "Applying Save Info:\n" +
+        "Applied Save Info:\n" +
                 "- Request ID: $requestId\n" +
-                "- Password ID: $password, Username ID: $username, Email ID: $email\n" +
+                "- Current Form: $updatedForm\n" +
                 "- Save type: $saveType"
     )
 
 
     val saveInfo = SaveInfo.Builder(saveType, requiredIds).apply {
+        val password = updatedForm.getPasswordField()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            var flag = if (password == null) SaveInfo.FLAG_DELAY_SAVE else 0
+            var flag = password?.let { 0 } ?: SaveInfo.FLAG_DELAY_SAVE
 
             if (inCompatibilityMode)
                 flag = flag or SaveInfo.FLAG_SAVE_ON_ALL_VIEWS_INVISIBLE
@@ -57,47 +59,67 @@ internal fun FillResponse.Builder.applySaveInfo(
     setClientState(updatedClientState)
 }
 
-private const val KEY_PASSWORD_ID = "passwordId"
-private const val KEY_USERNAME_ID = "usernameId"
-private const val KEY_EMAIL_ID = "emailID"
-private const val KEY_URL = "url"
+private fun Form.getPasswordField(): FormField? {
+    if (type != FormType.Credentials) return null
+
+    return fields.find { it.type == FieldType.Credentials.Password }
+}
+
+private const val KEY_FORM = "form"
 private const val KEY_SAVE_TYPE = "saveType"
 
 internal fun Bundle.updateState(
     requestId: Int,
-    extraction: Extraction,
+    form: Form,
 ): Pair<Bundle, Int> {
-    classLoader = SaveInfoField::class.java.classLoader
-    var saveType = getInt(KEY_SAVE_TYPE, 0)
+    classLoader = Form::class.java.classLoader
+    var saveType = getInt(KEY_SAVE_TYPE, SaveInfo.SAVE_DATA_TYPE_GENERIC)
+
+    val satisfiedForm = form.mapFields { it.copy(requestId = requestId) }
+    val existingForm = getForm()
+    val mergedForm = existingForm?.merge(satisfiedForm) ?: satisfiedForm
 
     return Bundle(this).apply {
-        val credentialFields = extraction.getCredentialFields()
-        credentialFields.find { it.type == FieldType.Credentials.Password }?.let {
-            putParcelable(KEY_PASSWORD_ID, SaveInfoField(it.autofillId, requestId))
-            saveType = saveType or SaveInfo.SAVE_DATA_TYPE_PASSWORD
-        }
-        credentialFields.find { it.type == FieldType.Credentials.Username }?.let {
-            putParcelable(KEY_USERNAME_ID, SaveInfoField(it.autofillId, requestId))
-            saveType = saveType or SaveInfo.SAVE_DATA_TYPE_USERNAME
-        }
-        credentialFields.find { it.type == FieldType.Credentials.EMail }?.let {
-            putParcelable(KEY_EMAIL_ID, SaveInfoField(it.autofillId, requestId))
-            saveType = saveType or SaveInfo.SAVE_DATA_TYPE_EMAIL_ADDRESS
-        }
+        putParcelable(
+            KEY_FORM,
+            mergedForm
+        )
 
-        extraction.urls.firstOrNull()?.let {
-            putString(KEY_URL, it)
+        satisfiedForm.fields.forEach {
+            if (it.requestId != requestId) return@forEach
+
+            saveType = saveType or when (it.type) {
+                FieldType.Credentials.Password -> SaveInfo.SAVE_DATA_TYPE_PASSWORD
+
+                FieldType.Credentials.Username -> SaveInfo.SAVE_DATA_TYPE_USERNAME
+
+                FieldType.Credentials.EMail -> SaveInfo.SAVE_DATA_TYPE_EMAIL_ADDRESS
+
+                FieldType.Credentials.Phone,
+                FieldType.Undefined -> SaveInfo.SAVE_DATA_TYPE_GENERIC
+            }
         }
 
         putInt(KEY_SAVE_TYPE, saveType)
     } to saveType
 }
 
-internal fun Bundle.getPasswordField(): SaveInfoField? = getKeyGoParcelable(KEY_PASSWORD_ID)
+private fun Form.merge(other: Form): Form {
+    if (this.type != other.type)
+        throw IllegalArgumentException("Cannot merge forms of different type")
 
-internal fun Bundle.getUsernameField(): SaveInfoField? = getKeyGoParcelable(KEY_USERNAME_ID)
+    val mergedFields = (this.fields + other.fields)
+        .distinctBy { it.autofillId }
 
-internal fun Bundle.getEmailField(): SaveInfoField? = getKeyGoParcelable(KEY_EMAIL_ID)
+    val mergedUrls = (this.urls + other.urls)
+
+    return copy(
+        fields = mergedFields,
+        urls = mergedUrls
+    )
+}
+
+internal fun Bundle.getForm(): Form? = getKeyGoParcelable(KEY_FORM)
 
 private inline fun <reified T> Bundle.getKeyGoParcelable(key: String): T? {
     classLoader = T::class.java.classLoader
