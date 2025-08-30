@@ -28,8 +28,8 @@ import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.dashboard.presentation.model.DashboardEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
-import de.davis.keygo.item.create.presentation.password.PasswordScreen
-import de.davis.keygo.item.viewing.presentation.password.ViewPasswordScreen
+import de.davis.keygo.item.create.presentation.EditVaultItemScreen
+import de.davis.keygo.item.viewing.data.ViewVaultItemScreen
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
@@ -117,8 +117,8 @@ fun NavGraphBuilder.dashboardGraph(
                                     CompositionLocalProvider(
                                         LocalViewModelStoreOwner provides storeOwner
                                     ) {
-                                        PasswordScreen(
-                                            getBy = detailItem.getBy,
+                                        EditVaultItemScreen(
+                                            editItem = detailItem,
                                             navigate = {
                                                 when (it) {
                                                     NavigationEvent.NavigateBack -> scope.launch {
@@ -137,8 +137,8 @@ fun NavGraphBuilder.dashboardGraph(
                                 }
 
                                 is DetailItem.View -> {
-                                    ViewPasswordScreen(
-                                        itemId = detailItem.itemId,
+                                    ViewVaultItemScreen(
+                                        viewItem = detailItem,
                                         navigate = {
                                             when (it) {
                                                 NavigationEvent.NavigateBack -> scope.launch {
