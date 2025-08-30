@@ -40,7 +40,7 @@ class GetTotpSecretFromUrlUseCase {
             }
         }
 
-        val query = uri.query.ifBlank { null }
+        val query = uri.query?.ifBlank { null }
             ?: return Result.Failure(TotpSecretUrlParseError.NoQueryProvided)
         val algorithm = query.getQueryParameter("algorithm").asAlgorithmOrSHA1()
         val digits = query.getQueryParameter("digits")
