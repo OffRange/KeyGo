@@ -20,6 +20,7 @@ import de.davis.keygo.core.identity.biometric.presentation.BiometricPromptSuppor
 import de.davis.keygo.core.identity.biometric.presentation.LocalBiometricManager
 import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
 import de.davis.keygo.core.presentation.ObserveAsEvents
+import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.presentation.theme.KeyGoTheme
 import org.koin.androidx.compose.koinViewModel
 
@@ -47,13 +48,13 @@ internal class AutofillActivity : FragmentActivity() {
                     val viewModel = koinViewModel<AutofillViewModel>()
                     val biometricManager = LocalBiometricManager.current
 
-                    var showUi by rememberSaveable { mutableStateOf(false) }
+                    var showUi by rememberSaveable { mutableStateOf<AutofillEvent?>(null) }
 
                     ObserveAsEvents(viewModel.events) {
                         when (it) {
                             AutofillEvent.Abort -> cancel()
                             AutofillEvent.ShowUi -> {
-                                showUi = true
+                                showUi = it
                             }
 
                             is AutofillEvent.Fill -> finishWithResult(it.dataset)
@@ -75,10 +76,17 @@ internal class AutofillActivity : FragmentActivity() {
                         viewModel.start()
                     }
 
-                    if (showUi)
+                    // TODO: decouple from event channel and crate a dedicated ui state for it
+                    showUi?.let {
                         SelectionUi(
-                            onItemSelected = viewModel::onItemSelected
+                            onItemSelected = viewModel::onItemSelected,
+                            onSaved = ::finishWithNoResult,
+                            startDestination = when (it) {
+                                AutofillEvent.ShowUi -> RouteDestination.Auth()
+                                else -> throw IllegalStateException("Unhandled state")
+                            }
                         )
+                    }
                 }
             }
         }
@@ -96,6 +104,11 @@ internal class AutofillActivity : FragmentActivity() {
                 putExtra(AutofillManager.EXTRA_AUTHENTICATION_RESULT, dataset)
             }
         )
+        finish()
+    }
+
+    private fun finishWithNoResult() {
+        setResult(RESULT_OK)
         finish()
     }
 
