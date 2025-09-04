@@ -56,8 +56,8 @@ import de.davis.keygo.core.presentation.component.KeyGoCard
 import de.davis.keygo.core.presentation.component.KeyGoCardProp
 import de.davis.keygo.dashboard.presentation.component.KeyGoLazyColumn
 import de.davis.keygo.dashboard.presentation.component.SearchResult
+import de.davis.keygo.dashboard.presentation.model.DashboardListUIState
 import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
-import de.davis.keygo.dashboard.presentation.model.DashboardUIState
 import de.davis.keygo.generated.item.VaultItemType
 import de.davis.keygo.generated.item.getString
 import kotlinx.collections.immutable.ImmutableList
@@ -68,7 +68,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardContent(uiState: DashboardUIState, onEvent: (DashboardUIEvent) -> Unit) {
+fun DashboardList(uiState: DashboardListUIState, onEvent: (DashboardUIEvent) -> Unit) {
     val scrollBehavior = SearchBarDefaults.enterAlwaysSearchBarScrollBehavior()
 
     val searchBarState = rememberSearchBarState()
@@ -265,8 +265,8 @@ private fun DashboardSearchResult(
 
 @Composable
 private fun PreviewContent(empty: Boolean = false) {
-    DashboardContent(
-        uiState = DashboardUIState(
+    DashboardList(
+        uiState = DashboardListUIState(
             textFieldState = TextFieldState(),
             items = buildList {
                 repeat(25.takeIf { !empty } ?: 0) {

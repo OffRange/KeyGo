@@ -18,8 +18,8 @@ import de.davis.keygo.core.presentation.snackbar.ItemDeletedMessage
 import de.davis.keygo.dashboard.domain.model.Filter
 import de.davis.keygo.dashboard.domain.usecase.FilterUseCase
 import de.davis.keygo.dashboard.presentation.model.DashboardEvent
+import de.davis.keygo.dashboard.presentation.model.DashboardListUIState
 import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
-import de.davis.keygo.dashboard.presentation.model.DashboardUIState
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.Dispatchers
@@ -94,13 +94,13 @@ class DashboardViewModel(
 
     private val openedItemId = MutableStateFlow(ItemIdNone)
 
-    val uiState = combine(
+    val listUiState = combine(
         mainViewItems,
         selectedItemIds,
         openedItemId,
         nonDeletedSearchResult,
     ) { items, selectedItemIds, openedItemId, searchResult ->
-        DashboardUIState(
+        DashboardListUIState(
             textFieldState = textFieldState,
             items = items.toImmutableList(),
             searchResult = searchResult.toImmutableList(),
@@ -113,7 +113,7 @@ class DashboardViewModel(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = DashboardUIState(textFieldState)
+        initialValue = DashboardListUIState(textFieldState)
     )
 
     private val eventChannel = Channel<DashboardEvent>()

@@ -44,7 +44,7 @@ fun NavGraphBuilder.dashboardGraph(
             }
         }
         val viewModel = koinViewModel<DashboardViewModel>()
-        val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+        val uiState by viewModel.listUiState.collectAsStateWithLifecycle()
         val scope = rememberCoroutineScope()
 
         ObserveAsEvents(viewModel.eventFlow) {
@@ -92,7 +92,7 @@ fun NavGraphBuilder.dashboardGraph(
                 defaultBackBehavior = BackNavigationBehavior.PopUntilContentChange,
                 listPane = {
                     AnimatedPane {
-                        DashboardContent(uiState = uiState, onEvent = viewModel::onEvent)
+                        DashboardList(uiState = uiState, onEvent = viewModel::onEvent)
                     }
                 },
                 detailPane = {

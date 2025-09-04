@@ -10,7 +10,7 @@ import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentSetOf
 
-data class DashboardUIState(
+data class DashboardListUIState(
     val textFieldState: TextFieldState,
     val items: ImmutableList<VaultItem> = persistentListOf(),
     val searchResult: ImmutableList<VaultSearchResult> = persistentListOf(),
