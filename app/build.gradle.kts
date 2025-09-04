@@ -4,6 +4,7 @@ import io.github.z4kn4fein.semver.Version
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.androidx.room)
+    alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)

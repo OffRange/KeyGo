@@ -11,7 +11,8 @@ import de.davis.keygo.core.domain.alias.ItemIdNone
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.domain.getOrNull
-import de.davis.keygo.core.domain.model.navigation.DetailItem
+import de.davis.keygo.core.domain.model.Password
+import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.core.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
@@ -25,6 +26,7 @@ import de.davis.keygo.item.core.domain.model.PasswordError
 import de.davis.keygo.item.core.domain.model.Upsert
 import de.davis.keygo.item.core.domain.model.fieldUpdate
 import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePasswordUseCase
+import de.davis.keygo.item.core.presentation.model.DetailType
 import de.davis.keygo.item.core.presentation.password.model.FieldType
 import de.davis.keygo.item.create.domain.PasswordGenerator
 import de.davis.keygo.item.create.presentation.password.model.DialogState
@@ -150,10 +152,22 @@ class PasswordViewModel(
         }
     }
 
-    fun init(getBy: DetailItem.Edit.GetBy) {
-        when (getBy) {
-            is DetailItem.Edit.GetBy.Id -> initWithId(getBy.itemId)
-            is DetailItem.Edit.GetBy.TotpUri -> initWithTotpUri(getBy.uri)
+    fun init(information: DetailPaneInformation) {
+        when (information) {
+            is DetailPaneInformation.InitByDetailType -> when (val type = information.detailType) {
+                is DetailType.Modify.Edit -> initWithId(type.itemId)
+                is DetailType.Modify.Totp -> initWithTotpUri(type.uri)
+                is DetailType.Modify.CreateNew -> {} // Don't init anything
+                is DetailType.View -> throw IllegalArgumentException("This VM cannot be used to view an item")
+            }
+
+            is DetailPaneInformation.CreateRaw -> when (information.vaultItem) {
+                is Password -> initWithId(ItemIdNone)
+                else -> {
+                    Log.e(TAG, "Unsupported vault item type: ${information.vaultItem}")
+                    navigateUp()
+                }
+            }
         }
     }
 

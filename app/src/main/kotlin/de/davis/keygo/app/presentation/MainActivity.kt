@@ -27,13 +27,13 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
 import de.davis.keygo.app.presentation.component.KeyGoNavigationWrapper
 import de.davis.keygo.auth.presentation.authGraph
-import de.davis.keygo.core.domain.model.navigation.DetailItem
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.presentation.snackbar.LocalSnackbarManager
 import de.davis.keygo.core.presentation.snackbar.SnackbarHandler
 import de.davis.keygo.core.presentation.theme.KeyGoTheme
 import de.davis.keygo.dashboard.presentation.dashboardGraph
+import de.davis.keygo.item.core.presentation.model.DetailType
 import de.davis.keygo.item.create.presentation.dialog.SelectItemContent
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -61,7 +61,7 @@ class MainActivity : FragmentActivity() {
 @Preview(wallpaper = Wallpapers.RED_DOMINATED_EXAMPLE, device = "id:desktop_large")
 @Composable
 private fun App() {
-    val listNavigator = rememberListDetailPaneScaffoldNavigator<DetailItem>()
+    val listNavigator = rememberListDetailPaneScaffoldNavigator<DetailType>()
     val navController = rememberNavController()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -136,7 +136,7 @@ private fun App() {
                                     scope.launch {
                                         listNavigator.navigateTo(
                                             ThreePaneScaffoldRole.Primary,
-                                            DetailItem.Edit(it)
+                                            DetailType.Modify.CreateNew(it)
                                         )
                                     }
                                 }

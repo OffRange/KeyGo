@@ -1,6 +1,5 @@
 package de.davis.keygo.dashboard.presentation
 
-import androidx.compose.material3.Surface
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.AnimatedPane
 import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldRole
@@ -21,13 +20,14 @@ import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import de.davis.keygo.core.domain.alias.ItemIdNone
-import de.davis.keygo.core.domain.model.navigation.DetailItem
 import de.davis.keygo.core.presentation.LocalIsInSinglePaneMode
 import de.davis.keygo.core.presentation.ObserveAsEvents
 import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.dashboard.presentation.model.DashboardEvent
 import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
+import de.davis.keygo.item.core.presentation.model.DetailType
+import de.davis.keygo.item.core.presentation.model.asDetailPaneInformation
 import de.davis.keygo.item.create.presentation.EditVaultItemScreen
 import de.davis.keygo.item.viewing.data.ViewVaultItemScreen
 import kotlinx.coroutines.launch
@@ -35,7 +35,7 @@ import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 fun NavGraphBuilder.dashboardGraph(
-    listNavigator: ThreePaneScaffoldNavigator<DetailItem>
+    listNavigator: ThreePaneScaffoldNavigator<DetailType>
 ) {
     composable<RouteDestination.Home.Root> {
         val isSinglePaneMode by remember(listNavigator.scaffoldDirective) {
@@ -52,14 +52,14 @@ fun NavGraphBuilder.dashboardGraph(
                 is DashboardEvent.CreateNewItemRequest -> {
                     listNavigator.navigateTo(
                         ThreePaneScaffoldRole.Primary,
-                        DetailItem.Edit(it.itemType)
+                        DetailType.Modify.CreateNew(it.itemType)
                     )
                 }
 
                 is DashboardEvent.CreateOrUpdate -> {
                     listNavigator.navigateTo(
                         ThreePaneScaffoldRole.Primary,
-                        DetailItem.Edit.byTotpUri(it.totpUri)
+                        DetailType.Modify.Totp(it.totpUri)
                     )
                 }
             }
@@ -70,7 +70,7 @@ fun NavGraphBuilder.dashboardGraph(
             if (uiState.openedItemId != ItemIdNone)
                 listNavigator.navigateTo(
                     ThreePaneScaffoldRole.Primary,
-                    DetailItem.View(uiState.openedItemId)
+                    DetailType.View(uiState.openedItemId)
                 )
         }
 
@@ -97,70 +97,68 @@ fun NavGraphBuilder.dashboardGraph(
                 },
                 detailPane = {
                     AnimatedPane {
-                        Surface {
-                            when (val detailItem = listNavigator.currentDestination?.contentKey) {
-                                is DetailItem.Edit -> {
-                                    val store = remember { ViewModelStore() }
-
-                                    DisposableEffect(detailItem) {
-                                        onDispose {
-                                            store.clear()
-                                        }
-                                    }
-
-                                    val storeOwner = remember(store) {
-                                        object : ViewModelStoreOwner {
-                                            override val viewModelStore: ViewModelStore = store
-                                        }
-                                    }
-
-                                    CompositionLocalProvider(
-                                        LocalViewModelStoreOwner provides storeOwner
-                                    ) {
-                                        EditVaultItemScreen(
-                                            editItem = detailItem,
-                                            navigate = {
-                                                when (it) {
-                                                    NavigationEvent.NavigateBack -> scope.launch {
-                                                        // We don't want to pop the detail pane entirely,
-                                                        // Just until the content changes
-                                                        listNavigator.navigateBack(
-                                                            BackNavigationBehavior.PopUntilContentChange
-                                                        )
-                                                    }
-
-                                                    is NavigationEvent.NavigateToEdit -> {}
-                                                }
+                        when (val detailItem = listNavigator.currentDestination?.contentKey) {
+                            is DetailType.View -> {
+                                ViewVaultItemScreen(
+                                    viewItem = detailItem,
+                                    navigate = {
+                                        when (it) {
+                                            NavigationEvent.NavigateBack -> scope.launch {
+                                                listNavigator.navigateBack()
                                             }
-                                        )
+
+                                            is NavigationEvent.NavigateToEdit -> scope.launch {
+                                                listNavigator.navigateTo(
+                                                    ThreePaneScaffoldRole.Primary,
+                                                    DetailType.Modify.Edit(
+                                                        it.vaultType,
+                                                        it.itemId
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+
+                            is DetailType.Modify -> {
+                                val store = remember { ViewModelStore() }
+
+                                DisposableEffect(detailItem) {
+                                    onDispose {
+                                        store.clear()
                                     }
                                 }
 
-                                is DetailItem.View -> {
-                                    ViewVaultItemScreen(
-                                        viewItem = detailItem,
+                                val storeOwner = remember(store) {
+                                    object : ViewModelStoreOwner {
+                                        override val viewModelStore: ViewModelStore = store
+                                    }
+                                }
+
+                                CompositionLocalProvider(
+                                    LocalViewModelStoreOwner provides storeOwner
+                                ) {
+                                    EditVaultItemScreen(
+                                        detailPaneInformation = detailItem.asDetailPaneInformation(),
                                         navigate = {
                                             when (it) {
                                                 NavigationEvent.NavigateBack -> scope.launch {
-                                                    listNavigator.navigateBack()
-                                                }
-
-                                                is NavigationEvent.NavigateToEdit -> scope.launch {
-                                                    listNavigator.navigateTo(
-                                                        ThreePaneScaffoldRole.Primary,
-                                                        DetailItem.Edit.byId(
-                                                            it.vaultType,
-                                                            it.itemId
-                                                        )
+                                                    // We don't want to pop the detail pane entirely,
+                                                    // Just until the content changes
+                                                    listNavigator.navigateBack(
+                                                        BackNavigationBehavior.PopUntilContentChange
                                                     )
                                                 }
+
+                                                is NavigationEvent.NavigateToEdit -> {}
                                             }
                                         }
                                     )
                                 }
-
-                                else -> {}
                             }
+
+                            else -> {}
                         }
                     }
                 }
