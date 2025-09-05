@@ -38,7 +38,7 @@ import org.koin.androidx.compose.koinViewModel
 fun NavGraphBuilder.dashboardGraph(
     listNavigator: ThreePaneScaffoldNavigator<DetailType>,
     onItemClicked: suspend (ItemId) -> Unit = { id ->
-        listNavigator.navigateTo(ThreePaneScaffoldRole.Primary, DetailType.View(uiState.openedItemId))
+        listNavigator.navigateTo(ThreePaneScaffoldRole.Primary, DetailType.View(id))
     },
     autoSelect: Boolean = true
 ) {
