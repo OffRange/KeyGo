@@ -80,7 +80,6 @@ internal class AutofillActivity : FragmentActivity() {
                     showUi?.let {
                         SelectionUi(
                             onItemSelected = viewModel::onItemSelected,
-                            onSaved = ::finishWithNoResult,
                             startDestination = when (it) {
                                 AutofillEvent.ShowUi -> RouteDestination.Auth()
                                 else -> throw IllegalStateException("Unhandled state")
@@ -104,11 +103,6 @@ internal class AutofillActivity : FragmentActivity() {
                 putExtra(AutofillManager.EXTRA_AUTHENTICATION_RESULT, dataset)
             }
         )
-        finish()
-    }
-
-    private fun finishWithNoResult() {
-        setResult(RESULT_OK)
         finish()
     }
 

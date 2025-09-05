@@ -8,25 +8,22 @@ import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaf
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import de.davis.keygo.auth.presentation.authGraph
 import de.davis.keygo.core.domain.alias.ItemId
-import de.davis.keygo.core.domain.model.navigation.DetailItem
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.dashboard.presentation.dashboardGraph
-import de.davis.keygo.item.create.presentation.EditVaultItemScreen
+import de.davis.keygo.item.core.presentation.model.DetailType
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun SelectionUi(
     onItemSelected: (ItemId) -> Unit,
-    onSaved: () -> Unit,
     startDestination: RouteDestination = RouteDestination.Auth()
 ) {
     Scaffold { innerPadding ->
         val navController = rememberNavController()
-        val listPaneNavigator = rememberListDetailPaneScaffoldNavigator<DetailItem>()
+        val listPaneNavigator = rememberListDetailPaneScaffoldNavigator<DetailType>()
 
         NavHost(
             navController = navController,
@@ -48,15 +45,6 @@ fun SelectionUi(
                 onItemClicked = onItemSelected,
                 autoSelect = false
             )
-
-            composable<RouteDestination.Home.Root> {
-                EditVaultItemScreen(
-                    editItem = TODO(),
-                    navigate = {
-                        onSaved()
-                    }
-                )
-            }
         }
     }
 }
