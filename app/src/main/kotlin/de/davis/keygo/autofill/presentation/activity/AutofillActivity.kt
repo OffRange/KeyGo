@@ -9,18 +9,15 @@ import androidx.activity.compose.setContent
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.fragment.app.FragmentActivity
-import de.davis.keygo.autofill.presentation.component.SelectionUi
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.autofill.presentation.model.AutofillEvent
+import de.davis.keygo.autofill.presentation.model.Request
 import de.davis.keygo.autofill.presentation.model.RequestData
 import de.davis.keygo.core.identity.biometric.presentation.BiometricPromptSupport
 import de.davis.keygo.core.identity.biometric.presentation.LocalBiometricManager
 import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
 import de.davis.keygo.core.presentation.ObserveAsEvents
-import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.presentation.theme.KeyGoTheme
 import org.koin.androidx.compose.koinViewModel
 
@@ -46,17 +43,13 @@ internal class AutofillActivity : FragmentActivity() {
             KeyGoTheme {
                 BiometricPromptSupport {
                     val viewModel = koinViewModel<AutofillViewModel>()
-                    val biometricManager = LocalBiometricManager.current
+                    val request by viewModel.request.collectAsStateWithLifecycle()
 
-                    var showUi by rememberSaveable { mutableStateOf<AutofillEvent?>(null) }
+                    val biometricManager = LocalBiometricManager.current
 
                     ObserveAsEvents(viewModel.events) {
                         when (it) {
                             AutofillEvent.Abort -> cancel()
-                            AutofillEvent.ShowUi -> {
-                                showUi = it
-                            }
-
                             is AutofillEvent.Fill -> finishWithResult(it.dataset)
                         }
                     }
@@ -76,16 +69,12 @@ internal class AutofillActivity : FragmentActivity() {
                         viewModel.start()
                     }
 
-                    // TODO: decouple from event channel and crate a dedicated ui state for it
-                    showUi?.let {
-                        SelectionUi(
+                    if (request !is Request.None)
+                        AutofillUi(
+                            request = request,
                             onItemSelected = viewModel::onItemSelected,
-                            startDestination = when (it) {
-                                AutofillEvent.ShowUi -> RouteDestination.Auth()
-                                else -> throw IllegalStateException("Unhandled state")
-                            }
+                            onSaved = ::finishWithResult
                         )
-                    }
                 }
             }
         }
@@ -96,11 +85,13 @@ internal class AutofillActivity : FragmentActivity() {
         finish()
     }
 
-    private fun finishWithResult(dataset: Dataset) {
+    private fun finishWithResult(dataset: Dataset? = null) {
         setResult(
             RESULT_OK,
-            Intent().apply {
-                putExtra(AutofillManager.EXTRA_AUTHENTICATION_RESULT, dataset)
+            dataset?.let {
+                Intent().apply {
+                    putExtra(AutofillManager.EXTRA_AUTHENTICATION_RESULT, it)
+                }
             }
         )
         finish()

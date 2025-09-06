@@ -7,7 +7,6 @@ import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.item.core.presentation.model.DetailPaneInformation.CreateRaw
 import de.davis.keygo.item.core.presentation.model.DetailPaneInformation.InitByDetailType
 import de.davis.keygo.item.core.presentation.model.DetailType
-import de.davis.keygo.item.core.presentation.model.RawItem
 import de.davis.keygo.item.create.presentation.password.PasswordScreen
 
 @Composable
@@ -21,7 +20,7 @@ fun EditVaultItemScreen(
             navigate
         )
 
-        is CreateRaw -> ForVaultItemInstance(
+        is CreateRaw -> ForRawItem(
             detailPaneInformation,
             navigate
         )
@@ -43,9 +42,9 @@ private fun ForType(info: InitByDetailType, navigate: (NavigationEvent) -> Unit)
 }
 
 @Composable
-private fun ForVaultItemInstance(item: CreateRaw, navigate: (NavigationEvent) -> Unit) {
-    when (item.rawItem) {
-        is RawItem.Password -> PasswordScreen(
+private fun ForRawItem(item: CreateRaw, navigate: (NavigationEvent) -> Unit) {
+    when (item) {
+        is CreateRaw.Password -> PasswordScreen(
             detailPaneInformation = item,
             navigate = navigate
         )

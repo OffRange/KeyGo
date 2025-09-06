@@ -8,7 +8,9 @@ import de.davis.keygo.autofill.presentation.model.AutofillEvent
 import de.davis.keygo.autofill.presentation.model.AutofillValue
 import de.davis.keygo.autofill.presentation.model.FieldType
 import de.davis.keygo.autofill.presentation.model.FillRequestData
+import de.davis.keygo.autofill.presentation.model.Form
 import de.davis.keygo.autofill.presentation.model.FormType
+import de.davis.keygo.autofill.presentation.model.Request
 import de.davis.keygo.autofill.presentation.model.RequestData
 import de.davis.keygo.autofill.presentation.model.SaveRequestData
 import de.davis.keygo.core.domain.alias.ItemId
@@ -23,8 +25,12 @@ import de.davis.keygo.core.identity.biometric.domain.usecase.UnlockWithBiometric
 import de.davis.keygo.core.identity.biometric.presentation.BiometricViewModel
 import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
 import de.davis.keygo.core.presentation.UIText
+import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.android.annotation.KoinViewModel
 
@@ -55,22 +61,39 @@ internal class AutofillViewModel(
     private val eventChannel = Channel<AutofillEvent>()
     val events = eventChannel.receiveAsFlow()
 
+    private val _request = MutableStateFlow<Request<*>>(Request.None)
+    val request = _request.asStateFlow()
+
     fun start() {
         viewModelScope.launch {
             when (requestData) {
                 is SaveRequestData -> handleSaveRequest(requestData)
 
                 is FillRequestData.Pinned,
-                is FillRequestData.App -> eventChannel.send(AutofillEvent.ShowUi)
+                is FillRequestData.App -> _request.update { Request.SelectItem }
 
                 is FillRequestData.Suggestion -> handleSuggestionRequest(requestData)
             }
         }
     }
 
+    private fun Form.toRawItem() = when (type) {
+        // TODO: maybe find suitable names
+        is FormType.Credentials -> DetailPaneInformation.CreateRaw.Password(
+            name = "",
+            password = fields.find { it.type == FieldType.Credentials.Password }?.autofillValue
+                ?: "",
+            username = fields.find { it.type == FieldType.Credentials.Username }?.autofillValue
+                ?: fields.find { it.type == FieldType.Credentials.EMail }?.autofillValue
+                ?: fields.find { it.type == FieldType.Credentials.Phone }?.autofillValue
+                ?: "",
+            url = urls.firstOrNull() ?: "",
+        )
+    }
+
     private fun handleSaveRequest(requestData: SaveRequestData) {
         viewModelScope.launch {
-            eventChannel.send(AutofillEvent.Abort)
+            _request.update { Request.SaveItem(requestData.form.toRawItem()) }
         }
     }
 

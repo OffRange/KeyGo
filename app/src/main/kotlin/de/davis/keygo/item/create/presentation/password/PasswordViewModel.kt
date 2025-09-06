@@ -11,8 +11,6 @@ import de.davis.keygo.core.domain.alias.ItemIdNone
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.domain.getOrNull
-import de.davis.keygo.core.domain.model.Password
-import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.core.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.domain.onFailure
 import de.davis.keygo.core.domain.onSuccess
@@ -26,6 +24,7 @@ import de.davis.keygo.item.core.domain.model.PasswordError
 import de.davis.keygo.item.core.domain.model.Upsert
 import de.davis.keygo.item.core.domain.model.fieldUpdate
 import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePasswordUseCase
+import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.item.core.presentation.model.DetailType
 import de.davis.keygo.item.core.presentation.password.model.FieldType
 import de.davis.keygo.item.create.domain.PasswordGenerator
@@ -161,11 +160,21 @@ class PasswordViewModel(
                 is DetailType.View -> throw IllegalArgumentException("This VM cannot be used to view an item")
             }
 
-            is DetailPaneInformation.CreateRaw -> when (information.vaultItem) {
-                is Password -> initWithId(ItemIdNone)
-                else -> {
-                    Log.e(TAG, "Unsupported vault item type: ${information.vaultItem}")
-                    navigateUp()
+            is DetailPaneInformation.CreateRaw -> initWithRawItem(information)
+        }
+    }
+
+    private fun initWithRawItem(createRaw: DetailPaneInformation.CreateRaw) {
+        nameTextFieldState.setTextAndPlaceCursorAtEnd(createRaw.name)
+
+        when (createRaw) {
+            is DetailPaneInformation.CreateRaw.Password -> {
+                passwordTextFieldState.setTextAndPlaceCursorAtEnd(createRaw.password)
+                _uiState.update {
+                    it.copy(
+                        usernameTextFieldState = TextFieldState(createRaw.username),
+                        updating = false
+                    )
                 }
             }
         }
