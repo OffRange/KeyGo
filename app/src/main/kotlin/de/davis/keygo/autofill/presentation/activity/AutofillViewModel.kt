@@ -134,6 +134,7 @@ internal class AutofillViewModel(
     fun onItemSelected(vaultId: ItemId) {
         viewModelScope.launch {
             // TODO: check if id is actually a password, and if the form actually represents credentials
+            //  also show an dialog to ask the user if he wants to use this password always for this app/website, etc.
             val password = getPasswordById(vaultId) ?: return@launch
             sendPasswordFillEvent(password)
         }
