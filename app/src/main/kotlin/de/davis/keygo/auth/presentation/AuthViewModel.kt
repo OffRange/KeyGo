@@ -2,7 +2,9 @@ package de.davis.keygo.auth.presentation
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.snapshotFlow
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.toRoute
 import de.davis.keygo.auth.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.auth.domain.usecase.UnlockWithPasswordUseCase
 import de.davis.keygo.auth.presentation.model.AuthState
@@ -23,6 +25,7 @@ import de.davis.keygo.core.identity.biometric.domain.usecase.UnlockWithBiometric
 import de.davis.keygo.core.identity.biometric.presentation.BiometricViewModel
 import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
 import de.davis.keygo.core.identity.common.domain.model.CryptographicMode
+import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.migration.create_access.domain.usecase.ClearMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.ValidateMainPassword
@@ -47,6 +50,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
 class AuthViewModel(
+    savedStateHandle: SavedStateHandle,
     getBiometricCryptoSetupAvailability: GetBiometricCryptoSetupAvailabilityUseCase,
     getBiometricHardwareAvailability: GetBiometricHardwareAvailabilityUseCase,
     hasValidAccess: HasValidAccessUseCase,
@@ -70,6 +74,8 @@ class AuthViewModel(
     unlockWithBiometrics
 ) {
 
+    private val authRoute = savedStateHandle.toRoute<RouteDestination.Auth>()
+
     private val passwordTextFieldState = TextFieldState()
     private val confirmPasswordTextFieldState = TextFieldState()
 
@@ -90,7 +96,7 @@ class AuthViewModel(
             else false
 
             val biometricsUsable = isBiometricHardwareAvailable && isBiometricCryptoSetupAvailable
-            if (biometricsUsable) requestBiometricAuthentication()
+            if (biometricsUsable && authRoute.showBiometricPromptIfPossible) requestBiometricAuthentication()
 
 
             _uiState.update {
