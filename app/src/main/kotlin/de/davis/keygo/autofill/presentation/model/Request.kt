@@ -16,6 +16,11 @@ sealed interface Request<T : Any> {
             get() = SaveItemDestination(createRaw)
     }
 
+    data object JustAuthenticateWithPwd : Request<Nothing> {
+        override val destination: Nothing
+            get() = throw NotImplementedError("This should never be called")
+    }
+
     data object None : Request<Nothing> {
         override val destination: Nothing
             get() = throw NotImplementedError("This should never be called")

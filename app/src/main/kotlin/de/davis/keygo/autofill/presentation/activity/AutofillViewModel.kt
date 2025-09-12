@@ -1,5 +1,6 @@
 package de.davis.keygo.autofill.presentation.activity
 
+import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.R
@@ -23,7 +24,6 @@ import de.davis.keygo.core.identity.biometric.domain.usecase.GetBiometricHardwar
 import de.davis.keygo.core.identity.biometric.domain.usecase.PrepareBiometricCipherUseCase
 import de.davis.keygo.core.identity.biometric.domain.usecase.UnlockWithBiometricsUseCase
 import de.davis.keygo.core.identity.biometric.presentation.BiometricViewModel
-import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
 import de.davis.keygo.core.presentation.UIText
 import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
 import kotlinx.coroutines.channels.Channel
@@ -106,37 +106,52 @@ internal class AutofillViewModel(
     }
 
     private suspend fun handleSuggestPasswordRequest(suggestionInfo: FillRequestData.Suggestion) {
-        val password = getPasswordById(suggestionInfo.vaultId)
+        val item = getPasswordById(suggestionInfo.vaultId)
             ?: throw IllegalArgumentException("Password for vaultId=${suggestionInfo.vaultId} not found")
         requestBiometricAuthentication(
-            title = UIText.ResourceString(R.string.unlock_item, password.name),
-            reason = BiometricRequest.Reason.UnlockItem(password)
+            title = UIText.ResourceString(R.string.unlock_item, item.name),
+            negativeButton = UIText.ResourceString(R.string.password)
         )
     }
 
     override fun onBiometricFailed(errorCode: Int, errString: String) {
         super.onBiometricFailed(errorCode, errString)
+        if (errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+            viewModelScope.launch {
+                eventChannel.send(AutofillEvent.Abort)
+            }
+            return
+        }
+
         viewModelScope.launch {
-            eventChannel.send(AutofillEvent.Abort)
+            _request.update { Request.JustAuthenticateWithPwd }
         }
     }
 
-    override fun onUnlocked(requestReason: BiometricRequest.Reason) {
-        if (requestReason !is BiometricRequest.Reason.UnlockItem) return
-        if (requestReason.vaultItem !is Password) return
-        val password = requestReason.vaultItem
-
+    override fun onUnlocked() {
         viewModelScope.launch {
-            sendPasswordFillEvent(password)
+            if (requestData is FillRequestData.Suggestion) {
+                sendFillEvent(requestData.vaultId)
+                return@launch
+            }
         }
     }
 
     fun onItemSelected(vaultId: ItemId) {
         viewModelScope.launch {
-            // TODO: check if id is actually a password, and if the form actually represents credentials
-            //  also show an dialog to ask the user if he wants to use this password always for this app/website, etc.
-            val password = getPasswordById(vaultId) ?: return@launch
-            sendPasswordFillEvent(password)
+            // TODO: show an dialog to ask the user if he wants to use this password always for this app/website, etc.
+            sendFillEvent(vaultId)
+        }
+    }
+
+    fun onAuthenticated() {
+        viewModelScope.launch {
+            if (requestData is FillRequestData.Suggestion) {
+                sendFillEvent(requestData.vaultId)
+                return@launch
+            }
+
+            eventChannel.send(AutofillEvent.Abort)
         }
     }
 
@@ -144,18 +159,26 @@ internal class AutofillViewModel(
         return passwordRepository.getVaultPasswordById(vaultId)
     }
 
-    private suspend fun sendPasswordFillEvent(password: Password) {
+    private suspend fun sendFillEvent(vaultId: ItemId) {
         if (requestData !is FillRequestData) {
             eventChannel.send(AutofillEvent.Abort)
             return
         }
 
         val formInformation = requestData.form
-        if (formInformation.type !is FormType.Credentials) {
-            eventChannel.send(AutofillEvent.Abort)
-            return
-        }
+        when (formInformation.type) {
+            is FormType.Credentials -> {
+                val password = getPasswordById(vaultId) ?: run {
+                    eventChannel.send(AutofillEvent.Abort)
+                    return
+                }
 
+                sendPasswordFillEvent(password)
+            }
+        }
+    }
+
+    private suspend fun sendPasswordFillEvent(password: Password) {
         val values = requestData.form.fields.mapNotNull {
             val value = when (it.type) {
                 FieldType.Credentials.Password -> cryptographicScopeProvider.scope {

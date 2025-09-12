@@ -11,6 +11,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.compose.rememberNavController
 import de.davis.keygo.autofill.presentation.model.AutofillEvent
 import de.davis.keygo.autofill.presentation.model.Request
 import de.davis.keygo.autofill.presentation.model.RequestData
@@ -18,6 +19,7 @@ import de.davis.keygo.core.identity.biometric.presentation.BiometricPromptSuppor
 import de.davis.keygo.core.identity.biometric.presentation.LocalBiometricManager
 import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
 import de.davis.keygo.core.presentation.ObserveAsEvents
+import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.presentation.theme.KeyGoTheme
 import org.koin.androidx.compose.koinViewModel
 
@@ -69,12 +71,25 @@ internal class AutofillActivity : FragmentActivity() {
                         viewModel.start()
                     }
 
-                    if (request !is Request.None)
+                    if (request !is Request.None) {
+                        val navController = rememberNavController()
                         AutofillUi(
-                            request = request,
+                            navController = navController,
                             onItemSelected = viewModel::onItemSelected,
-                            onSaved = ::finishWithResult
+                            onSaved = ::finishWithResult,
+                            onAuthenticationSucceeded = {
+                                when (request) {
+                                    is Request.JustAuthenticateWithPwd -> viewModel.onAuthenticated()
+                                    else -> {
+                                        navController.navigate(request.destination) {
+                                            popUpTo<RouteDestination.Auth> { inclusive = true }
+                                        }
+                                    }
+                                }
+                            },
+                            showBiometricPromptIfPossible = request !is Request.JustAuthenticateWithPwd
                         )
+                    }
                 }
             }
         }

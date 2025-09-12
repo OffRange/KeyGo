@@ -9,13 +9,12 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import de.davis.keygo.auth.presentation.authGraph
-import de.davis.keygo.autofill.presentation.model.Request
 import de.davis.keygo.autofill.presentation.model.SaveItemDestination
 import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.core.presentation.model.RouteDestination
@@ -31,26 +30,25 @@ import kotlin.reflect.typeOf
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun AutofillUi(
-    request: Request<*>,
+    navController: NavHostController,
     onItemSelected: (ItemId) -> Unit,
-    onSaved: () -> Unit
+    onSaved: () -> Unit,
+    onAuthenticationSucceeded: () -> Unit,
+    showBiometricPromptIfPossible: Boolean
 ) {
     Scaffold { innerPadding ->
-        val navController = rememberNavController()
         val listPaneNavigator = rememberListDetailPaneScaffoldNavigator<DetailType>()
 
         NavHost(
             navController = navController,
-            startDestination = RouteDestination.Auth(),
+            startDestination = RouteDestination.Auth(showBiometricPromptIfPossible = showBiometricPromptIfPossible),
             modifier = Modifier.Companion
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)
         ) {
             authGraph(
                 onSuccess = {
-                    navController.navigate(request.destination) {
-                        popUpTo<RouteDestination.Auth> { inclusive = true }
-                    }
+                    onAuthenticationSucceeded()
                 }
             )
 

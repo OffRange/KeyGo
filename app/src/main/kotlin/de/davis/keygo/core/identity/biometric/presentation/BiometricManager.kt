@@ -23,7 +23,6 @@ class BiometricManager(private val activity: FragmentActivity) {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                     c.resume(
                         BiometricEvent.OnAuthenticationSucceeded(
-                            requestReason = request.reason,
                             cipher = result.cryptoObject?.cipher
                         )
                     )
