@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import de.davis.keygo.R
 import de.davis.keygo.autofill.presentation.AutofillDatasetProvider
 import de.davis.keygo.autofill.presentation.model.AutofillEvent
+import de.davis.keygo.autofill.presentation.model.AutofillUiEvent
+import de.davis.keygo.autofill.presentation.model.AutofillUiState
 import de.davis.keygo.autofill.presentation.model.AutofillValue
 import de.davis.keygo.autofill.presentation.model.FieldType
 import de.davis.keygo.autofill.presentation.model.FillRequestData
@@ -61,8 +63,8 @@ internal class AutofillViewModel(
     private val eventChannel = Channel<AutofillEvent>()
     val events = eventChannel.receiveAsFlow()
 
-    private val _request = MutableStateFlow<Request<*>>(Request.None)
-    val request = _request.asStateFlow()
+    private val _uiState = MutableStateFlow(AutofillUiState())
+    val uiState = _uiState.asStateFlow()
 
     fun start() {
         viewModelScope.launch {
@@ -70,7 +72,7 @@ internal class AutofillViewModel(
                 is SaveRequestData -> handleSaveRequest(requestData)
 
                 is FillRequestData.Pinned,
-                is FillRequestData.App -> _request.update { Request.SelectItem }
+                is FillRequestData.App -> _uiState.update { it.copy(request = Request.SelectItem) }
 
                 is FillRequestData.Suggestion -> handleSuggestionRequest(requestData)
             }
@@ -93,11 +95,12 @@ internal class AutofillViewModel(
 
     private fun handleSaveRequest(requestData: SaveRequestData) {
         viewModelScope.launch {
-            _request.update { Request.SaveItem(requestData.form.toRawItem()) }
+            _uiState.update { it.copy(request = Request.SaveItem(requestData.form.toRawItem())) }
         }
     }
 
     private fun handleSuggestionRequest(suggestionInfo: FillRequestData.Suggestion) {
+        _uiState.update { it.copy(vaultId = suggestionInfo.vaultId) }
         viewModelScope.launch {
             when (suggestionInfo.form.type) {
                 is FormType.Credentials -> handleSuggestPasswordRequest(suggestionInfo)
@@ -106,6 +109,7 @@ internal class AutofillViewModel(
     }
 
     private suspend fun handleSuggestPasswordRequest(suggestionInfo: FillRequestData.Suggestion) {
+        // TODO: only fetch name of the item here, or make it generic for all item types
         val item = getPasswordById(suggestionInfo.vaultId)
             ?: throw IllegalArgumentException("Password for vaultId=${suggestionInfo.vaultId} not found")
         requestBiometricAuthentication(
@@ -124,7 +128,7 @@ internal class AutofillViewModel(
         }
 
         viewModelScope.launch {
-            _request.update { Request.JustAuthenticateWithPwd }
+            _uiState.update { it.copy(request = Request.JustAuthenticateWithPwd) }
         }
     }
 
@@ -137,14 +141,13 @@ internal class AutofillViewModel(
         }
     }
 
-    fun onItemSelected(vaultId: ItemId) {
+    private fun onItemSelected(vaultId: ItemId) {
         viewModelScope.launch {
-            // TODO: show an dialog to ask the user if he wants to use this password always for this app/website, etc.
-            sendFillEvent(vaultId)
+            _uiState.update { it.copy(showAssociationDialog = true, vaultId = vaultId) }
         }
     }
 
-    fun onAuthenticated() {
+    private fun onAuthenticated() {
         viewModelScope.launch {
             if (requestData is FillRequestData.Suggestion) {
                 sendFillEvent(requestData.vaultId)
@@ -152,6 +155,27 @@ internal class AutofillViewModel(
             }
 
             eventChannel.send(AutofillEvent.Abort)
+        }
+    }
+
+    fun onEvent(event: AutofillUiEvent) {
+        when (event) {
+            AutofillUiEvent.OnAssociate -> associateItem()
+            AutofillUiEvent.OnAuthenticated -> onAuthenticated()
+            AutofillUiEvent.OnCancelAssociation -> hideAssociationDialog()
+            is AutofillUiEvent.OnItemSelected -> onItemSelected(event.itemId)
+        }
+    }
+
+    private fun associateItem() {
+        val vaultId = uiState.value.vaultId
+        hideAssociationDialog()
+    }
+
+    private fun hideAssociationDialog() {
+        _uiState.update { it.copy(showAssociationDialog = false) }
+        viewModelScope.launch {
+            sendFillEvent(_uiState.value.vaultId)
         }
     }
 

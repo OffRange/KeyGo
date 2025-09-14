@@ -13,6 +13,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import de.davis.keygo.autofill.presentation.model.AutofillEvent
+import de.davis.keygo.autofill.presentation.model.AutofillUiEvent
 import de.davis.keygo.autofill.presentation.model.Request
 import de.davis.keygo.autofill.presentation.model.RequestData
 import de.davis.keygo.core.identity.biometric.presentation.BiometricPromptSupport
@@ -45,7 +46,7 @@ internal class AutofillActivity : FragmentActivity() {
             KeyGoTheme {
                 BiometricPromptSupport {
                     val viewModel = koinViewModel<AutofillViewModel>()
-                    val request by viewModel.request.collectAsStateWithLifecycle()
+                    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
                     val biometricManager = LocalBiometricManager.current
 
@@ -71,23 +72,26 @@ internal class AutofillActivity : FragmentActivity() {
                         viewModel.start()
                     }
 
-                    if (request !is Request.None) {
+                    if (uiState.request !is Request.None) {
                         val navController = rememberNavController()
                         AutofillUi(
                             navController = navController,
-                            onItemSelected = viewModel::onItemSelected,
+                            onItemSelected = { viewModel.onEvent(AutofillUiEvent.OnItemSelected(it)) },
                             onSaved = ::finishWithResult,
                             onAuthenticationSucceeded = {
-                                when (request) {
-                                    is Request.JustAuthenticateWithPwd -> viewModel.onAuthenticated()
+                                when (uiState.request) {
+                                    is Request.JustAuthenticateWithPwd -> viewModel.onEvent(
+                                        AutofillUiEvent.OnAuthenticated
+                                    )
+
                                     else -> {
-                                        navController.navigate(request.destination) {
+                                        navController.navigate(uiState.request.destination) {
                                             popUpTo<RouteDestination.Auth> { inclusive = true }
                                         }
                                     }
                                 }
                             },
-                            showBiometricPromptIfPossible = request !is Request.JustAuthenticateWithPwd
+                            showBiometricPromptIfPossible = uiState.request !is Request.JustAuthenticateWithPwd
                         )
                     }
                 }
