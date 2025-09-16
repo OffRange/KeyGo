@@ -12,6 +12,7 @@ value class Options(private val options: Map<String, String>) {
     fun require(key: String) = options[key] ?: throw NotFoundException("Option $key not found")
 
     companion object {
-        const val KEY_GENERATED_AUTOMATION_PACKAGE = "automation.packageName"
+        const val KEY_AUTOMATION_ANDROID_NAMESPACE = "automation.android_namespace"
+        const val KEY_AUTOMATION_ANDROID_NAMESPACE_SUFFIX = "automation.android_namespace_suffix"
     }
 }
