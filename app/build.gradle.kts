@@ -78,6 +78,8 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
+    implementation(projects.core.util)
+
     // Automation
     implementation(projects.automation)
     ksp(projects.automationProcessor)

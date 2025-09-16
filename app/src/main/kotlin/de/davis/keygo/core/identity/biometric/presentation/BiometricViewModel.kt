@@ -4,8 +4,6 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.R
-import de.davis.keygo.core.domain.onFailure
-import de.davis.keygo.core.domain.onSuccess
 import de.davis.keygo.core.domain.usecase.HasValidAccessUseCase
 import de.davis.keygo.core.identity.biometric.domain.model.BiometricAvailability
 import de.davis.keygo.core.identity.biometric.domain.model.BiometricEvent
@@ -16,6 +14,8 @@ import de.davis.keygo.core.identity.biometric.domain.usecase.UnlockWithBiometric
 import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
 import de.davis.keygo.core.identity.common.domain.model.CryptographicMode
 import de.davis.keygo.core.presentation.UIText
+import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.core.util.onSuccess
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch

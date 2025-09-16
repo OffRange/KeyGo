@@ -1,10 +1,10 @@
 package de.davis.keygo.auth.data.repository
 
-import de.davis.keygo.core.domain.getOrNull
-import de.davis.keygo.core.domain.isFailure
-import de.davis.keygo.core.domain.isSuccess
 import de.davis.keygo.core.identity.biometric.data.repository.BiometricKekRepositoryImpl
 import de.davis.keygo.core.identity.biometric.domain.model.KeyStoreError
+import de.davis.keygo.core.util.getOrNull
+import de.davis.keygo.core.util.isFailure
+import de.davis.keygo.core.util.isSuccess
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify

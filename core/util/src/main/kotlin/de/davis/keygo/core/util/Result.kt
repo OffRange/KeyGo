@@ -1,4 +1,4 @@
-package de.davis.keygo.core.domain
+package de.davis.keygo.core.util
 
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract

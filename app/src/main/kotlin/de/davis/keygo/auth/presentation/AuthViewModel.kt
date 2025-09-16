@@ -10,11 +10,7 @@ import de.davis.keygo.auth.domain.usecase.UnlockWithPasswordUseCase
 import de.davis.keygo.auth.presentation.model.AuthState
 import de.davis.keygo.auth.presentation.model.AuthUIEvent
 import de.davis.keygo.auth.presentation.model.UIPasswordError
-import de.davis.keygo.core.domain.Result
-import de.davis.keygo.core.domain.asResult
 import de.davis.keygo.core.domain.estimator.PasswordStrengthEstimator
-import de.davis.keygo.core.domain.onFailure
-import de.davis.keygo.core.domain.onSuccess
 import de.davis.keygo.core.domain.usecase.HasValidAccessUseCase
 import de.davis.keygo.core.identity.biometric.domain.model.BiometricAvailability
 import de.davis.keygo.core.identity.biometric.domain.model.BiometricEvent
@@ -25,6 +21,10 @@ import de.davis.keygo.core.identity.biometric.domain.usecase.UnlockWithBiometric
 import de.davis.keygo.core.identity.biometric.presentation.BiometricViewModel
 import de.davis.keygo.core.identity.common.domain.model.CryptographicMode
 import de.davis.keygo.core.presentation.model.RouteDestination
+import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.asResult
+import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.migration.create_access.domain.usecase.ClearMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.ValidateMainPassword

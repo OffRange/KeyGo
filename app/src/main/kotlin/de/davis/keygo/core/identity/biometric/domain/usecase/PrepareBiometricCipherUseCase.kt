@@ -1,13 +1,13 @@
 package de.davis.keygo.core.identity.biometric.domain.usecase
 
 import de.davis.keygo.core.di.annotation.BiometricQualifier
-import de.davis.keygo.core.domain.Result
-import de.davis.keygo.core.domain.getOrNull
 import de.davis.keygo.core.identity.biometric.domain.repository.BiometricKekRepository
 import de.davis.keygo.core.identity.common.domain.CipherFactory
 import de.davis.keygo.core.identity.common.domain.model.CryptographicMode
 import de.davis.keygo.core.identity.common.domain.model.CryptographyError
 import de.davis.keygo.core.identity.common.domain.repository.BiometricWrappedKeyRepository
+import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.getOrNull
 import org.koin.core.annotation.Single
 import javax.crypto.Cipher
 

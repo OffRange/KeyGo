@@ -1,13 +1,13 @@
 package de.davis.keygo.item.core.domain.usecase
 
-import de.davis.keygo.core.domain.Result
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.estimator.PasswordStrengthEstimator
-import de.davis.keygo.core.domain.mapFailure
 import de.davis.keygo.core.domain.model.Password
 import de.davis.keygo.core.domain.model.asTotpSecret
 import de.davis.keygo.core.domain.repository.PasswordRepository
 import de.davis.keygo.core.domain.usecase.UpsertVaultItem
+import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.mapFailure
 import de.davis.keygo.item.core.domain.model.FieldUpdate
 import de.davis.keygo.item.core.domain.model.PasswordError
 import de.davis.keygo.item.core.domain.model.Upsert

@@ -4,16 +4,16 @@ import de.davis.keygo.auth.domain.repository.DeviceInfoRepository
 import de.davis.keygo.auth.domain.repository.KeyDerivationRepository
 import de.davis.keygo.auth.domain.repository.PasswordWrappedKeyRepository
 import de.davis.keygo.core.di.annotation.PasswordQualifier
-import de.davis.keygo.core.domain.Result
 import de.davis.keygo.core.domain.Session
-import de.davis.keygo.core.domain.asResult
-import de.davis.keygo.core.domain.asUnitResult
 import de.davis.keygo.core.domain.model.crypto.asAesKey
-import de.davis.keygo.core.domain.onSuccess
-import de.davis.keygo.core.domain.zip
 import de.davis.keygo.core.identity.common.domain.CipherFactory
 import de.davis.keygo.core.identity.common.domain.model.CryptographicMode
 import de.davis.keygo.core.identity.common.domain.model.CryptographyError
+import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.asResult
+import de.davis.keygo.core.util.asUnitResult
+import de.davis.keygo.core.util.onSuccess
+import de.davis.keygo.core.util.zip
 import org.koin.core.annotation.Single
 
 @Single

@@ -1,12 +1,12 @@
 package de.davis.keygo.core.identity.common.data
 
-import de.davis.keygo.core.domain.Result
 import de.davis.keygo.core.domain.crypto.CryptographicConstants
 import de.davis.keygo.core.domain.model.crypto.AesKey
 import de.davis.keygo.core.domain.model.crypto.asAesKey
 import de.davis.keygo.core.identity.common.domain.CipherFactory
 import de.davis.keygo.core.identity.common.domain.model.CryptographicMode
 import de.davis.keygo.core.identity.common.domain.model.CryptographyError
+import de.davis.keygo.core.util.Result
 import kotlinx.coroutines.withContext
 import org.koin.core.annotation.Single
 import java.security.InvalidKeyException

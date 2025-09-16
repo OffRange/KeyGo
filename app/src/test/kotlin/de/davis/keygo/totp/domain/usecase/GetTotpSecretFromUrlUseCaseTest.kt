@@ -1,6 +1,6 @@
 package de.davis.keygo.totp.domain.usecase
 
-import de.davis.keygo.core.domain.Result
+import de.davis.keygo.core.util.Result
 import de.davis.keygo.totp.domain.model.Algorithm
 import de.davis.keygo.totp.domain.model.TotpSecretUrlParseError
 import org.junit.Assert.assertEquals

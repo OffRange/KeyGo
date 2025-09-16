@@ -1,15 +1,15 @@
 package de.davis.keygo.core.identity.biometric.usecase
 
-import de.davis.keygo.core.domain.Result
 import de.davis.keygo.core.domain.Session
-import de.davis.keygo.core.domain.isFailure
-import de.davis.keygo.core.domain.isSuccess
 import de.davis.keygo.core.domain.model.crypto.asAesKey
 import de.davis.keygo.core.identity.biometric.domain.usecase.UnlockWithBiometricsUseCase
 import de.davis.keygo.core.identity.common.domain.CipherFactory
 import de.davis.keygo.core.identity.common.domain.model.BiometricWrappedKeyData
 import de.davis.keygo.core.identity.common.domain.model.CryptographyError
 import de.davis.keygo.core.identity.common.domain.repository.BiometricWrappedKeyRepository
+import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.isFailure
+import de.davis.keygo.core.util.isSuccess
 import io.mockk.coEvery
 import io.mockk.mockk
 import io.mockk.verify

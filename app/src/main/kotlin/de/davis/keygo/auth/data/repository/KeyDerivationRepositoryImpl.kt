@@ -4,8 +4,8 @@ import com.lambdapioneer.argon2kt.Argon2Kt
 import com.lambdapioneer.argon2kt.Argon2Mode
 import com.lambdapioneer.argon2kt.Argon2Version
 import de.davis.keygo.auth.domain.repository.KeyDerivationRepository
-import de.davis.keygo.core.domain.Result
 import de.davis.keygo.core.identity.common.domain.model.CryptographyError
+import de.davis.keygo.core.util.Result
 import org.koin.core.annotation.Single
 
 @Single
