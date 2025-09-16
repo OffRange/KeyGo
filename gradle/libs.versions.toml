@@ -1,4 +1,7 @@
 [versions]
+compileSdk = "36"
+minSdk = "26"
+
 agp = "8.11.1"
 argon2kt = "1.6.0"
 autofill = "1.3.0"
