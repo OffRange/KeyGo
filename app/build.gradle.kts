@@ -64,6 +64,13 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+
+        freeCompilerArgs.add("-Xcontext-parameters")
+    }
+}
+
 dependencies {
 
     // Koin DI
