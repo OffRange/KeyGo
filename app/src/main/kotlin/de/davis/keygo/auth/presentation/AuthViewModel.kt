@@ -290,7 +290,7 @@ class AuthViewModel(
             return
         }
 
-        requestBiometricAuthentication(mode = CryptographicMode.Wrap)
+        requestBiometricAuthentication(mode = CryptographicMode.Wrap, creatingAccess = true)
     }
 
     private fun loading(

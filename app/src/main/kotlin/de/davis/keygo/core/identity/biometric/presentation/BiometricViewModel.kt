@@ -33,6 +33,7 @@ abstract class BiometricViewModel(
 
     fun requestBiometricAuthentication(
         mode: CryptographicMode = CryptographicMode.Unwrap,
+        creatingAccess: Boolean = false,
         title: UIText = UIText.ResourceString(R.string.authenticate),
         negativeButton: UIText = UIText.ResourceString(R.string.cancel),
     ) {
@@ -45,7 +46,8 @@ abstract class BiometricViewModel(
                 getBiometricCryptoSetupAvailability() == BiometricAvailability.Available
             else false
 
-            val biometricsUsable = isBiometricHardwareAvailable && isBiometricCryptoSetupAvailable
+            val biometricsUsable =
+                isBiometricHardwareAvailable && (isBiometricCryptoSetupAvailable || creatingAccess)
 
             if (!biometricsUsable) return@launch
 
