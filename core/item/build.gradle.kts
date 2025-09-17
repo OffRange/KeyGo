@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.androidx.room)
     alias(libs.plugins.google.ksp)
+    alias(libs.plugins.kotlin.compose)
 }
 
 android {
@@ -30,6 +31,11 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    // Required for the generated composable functions
+    buildFeatures {
+        compose = true
     }
 }
 
