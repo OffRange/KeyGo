@@ -6,14 +6,15 @@ import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.R
-import de.davis.keygo.core.domain.alias.ItemId
-import de.davis.keygo.core.domain.alias.ItemIdNone
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.core.domain.crypto.decryptSecretData
 import de.davis.keygo.core.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.domain.model.snackbar.SnackbarMessage
-import de.davis.keygo.core.domain.repository.PasswordRepository
-import de.davis.keygo.core.domain.repository.VaultItemRepository
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
+import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.ItemIdNone
+import de.davis.keygo.core.item.domain.repository.PasswordRepository
+import de.davis.keygo.core.item.domain.repository.VaultItemRepository
 import de.davis.keygo.core.presentation.UIText
 import de.davis.keygo.core.presentation.model.InputFieldError
 import de.davis.keygo.core.presentation.model.NavigationEvent
@@ -102,8 +103,7 @@ class PasswordViewModel(
         snapshotFlow { nameTextFieldState.text }
             .debounce(150.milliseconds)
             .mapLatest { input ->
-                vaultItemRepository.searchVaultItem(input.toString())
-                    .any { it.vaultItemId != itemId && it.name == input.toString() }
+                vaultItemRepository.doesNameExist(input.toString(), excludeId = itemId)
             }
             .distinctUntilChanged()
             .onEach { exists ->
@@ -184,19 +184,19 @@ class PasswordViewModel(
         this.itemId = itemId
         if (itemId == ItemIdNone) return
 
-        passwordRepository.observeVaultPasswordById(itemId)
+        passwordRepository.observePasswordById(itemId)
             .onEach { password ->
                 coroutineScope {
                     val pwdDeferred = async {
                         cryptographicScopeProvider.scope {
-                            password.encryptedData.decrypt().decodeToString()
+                            password.encryptedData.decryptSecretData()
                         }
                     }
 
                     val totpSecret = password.totpSecret?.let { totpSecret ->
                         async {
                             cryptographicScopeProvider.scope {
-                                totpSecret.encodedSecret.decrypt().decodeToString()
+                                totpSecret.decryptSecretData()
                             }
                         }
                     }
@@ -208,7 +208,7 @@ class PasswordViewModel(
                         it.copy(
                             totpTextFieldState = TextFieldState(totpSecret?.await() ?: ""),
                             usernameTextFieldState = TextFieldState(password.username ?: ""),
-                            websiteTextFieldState = TextFieldState(password.website ?: ""),
+                            // TODO websiteTextFieldState = TextFieldState(password.website ?: ""),
                             notesTextFieldState = TextFieldState(password.note ?: ""),
                             dialogState = DialogState.None,
                             updating = true
@@ -232,12 +232,12 @@ class PasswordViewModel(
         }.onSuccess { secret ->
             totpSecretInformation = secret
             viewModelScope.launch {
-                val matchedItems = passwordRepository.searchVaultPasswords(
-                    username = secret.accountName,
-                    website = secret.issuer
-                )
+                // TODO: introduce a usecase to get the eTLD+1
+                val matchedItems = secret.issuer?.let {
+                    passwordRepository.getVaultPasswordsByTLD(etld1 = it)
+                }
 
-                if (matchedItems.isEmpty()) {
+                if (matchedItems.isNullOrEmpty()) {
                     updateUiWithTotpSecretInfo(secret)
                     return@launch
                 }
@@ -263,7 +263,7 @@ class PasswordViewModel(
                             true -> Upsert.Create(
                                 name = fieldUpdate(state.nameTextFieldState.text.toString()),
                                 username = fieldUpdate(state.usernameTextFieldState.text.toString()),
-                                website = fieldUpdate(state.websiteTextFieldState.text.toString()),
+                                // TODO website = fieldUpdate(state.websiteTextFieldState.text.toString()),
                                 password = fieldUpdate(state.passwordTextFieldState.text.toString()),
                                 totpSecret = fieldUpdate(state.totpTextFieldState.text.toString()),
                                 note = fieldUpdate(state.notesTextFieldState.text.toString())
@@ -273,7 +273,7 @@ class PasswordViewModel(
                                 vaultId = itemId,
                                 name = fieldUpdate(state.nameTextFieldState.text.toString()),
                                 username = fieldUpdate(state.usernameTextFieldState.text.toString()),
-                                website = fieldUpdate(state.websiteTextFieldState.text.toString()),
+                                // TODO website = fieldUpdate(state.websiteTextFieldState.text.toString()),
                                 password = fieldUpdate(state.passwordTextFieldState.text.toString()),
                                 totpSecret = fieldUpdate(state.totpTextFieldState.text.toString()),
                                 note = fieldUpdate(state.notesTextFieldState.text.toString())
@@ -431,7 +431,7 @@ class PasswordViewModel(
     private fun requestTotpSecretUpdate(secretInformation: TotpSecretInformation) {
         val currentState = _uiState.value
         val currentTotpSecret = currentState.totpTextFieldState.text.toString()
-        val currentIssuer = currentState.websiteTextFieldState.text.toString()
+        // TODO val currentIssuer = currentState.websiteTextFieldState.text.toString()
         val currentAccountName = currentState.usernameTextFieldState.text.toString()
 
         val newTotpSecret = secretInformation.secret
@@ -439,17 +439,17 @@ class PasswordViewModel(
         val newAccountName = secretInformation.accountName
 
         val isCurrentSecretSet = currentTotpSecret.isNotBlank()
-        val isCurrentIssuerSet = currentIssuer.isNotBlank()
+        // TODO val isCurrentIssuerSet = currentIssuer.isNotBlank()
         val isCurrentAccountNameSet = currentAccountName.isNotBlank()
 
         val isCurrentTotpSecretSame = currentTotpSecret == newTotpSecret
-        val isCurrentIssuerSame = newIssuer.isBlank() || currentIssuer == newIssuer
+        val isCurrentIssuerSame = newIssuer.isBlank() // TODO || currentIssuer == newIssuer
         val isCurrentAccountNameSame = currentAccountName == newAccountName
 
         val overridingFields = mutableSetOf<OverrideTotpField>()
 
         val isOverridingTotpSecret = isCurrentSecretSet && !isCurrentTotpSecretSame
-        val isOverridingIssuer = isCurrentIssuerSet && !isCurrentIssuerSame
+        val isOverridingIssuer = /*isCurrentIssuerSet &&*/ !isCurrentIssuerSame
         val isOverridingAccountName = isCurrentAccountNameSet && !isCurrentAccountNameSame
 
         if (isOverridingTotpSecret) {
@@ -466,7 +466,7 @@ class PasswordViewModel(
             overridingFields.add(
                 OverrideTotpField(
                     fieldType = FieldType.Website,
-                    before = currentIssuer,
+                    before = "!", // TODO currentIssuer,
                     after = newIssuer
                 )
             )
@@ -517,9 +517,9 @@ class PasswordViewModel(
             currentState.totpTextFieldState.setTextAndPlaceCursorAtEnd(it)
         }
 
-        issuer?.let {
+        /* TODO issuer?.let {
             currentState.websiteTextFieldState.setTextAndPlaceCursorAtEnd(it)
-        }
+        }*/
 
         accountName?.let {
             currentState.usernameTextFieldState.setTextAndPlaceCursorAtEnd(it)

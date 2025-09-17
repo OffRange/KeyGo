@@ -1,7 +1,7 @@
 package de.davis.keygo.core.presentation.model
 
-import de.davis.keygo.core.domain.alias.ItemId
-import de.davis.keygo.generated.item.VaultItemType
+import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 
 sealed interface NavigationEvent {
 

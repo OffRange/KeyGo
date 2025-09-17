@@ -34,7 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
-import de.davis.keygo.core.domain.model.Score
+import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.presentation.LocalIsInSinglePaneMode
 import de.davis.keygo.core.presentation.component.KeyGoFormField
 import de.davis.keygo.core.presentation.component.StrengthIndicator
@@ -163,11 +163,11 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                         label = { Text(text = stringResource(R.string.username)) },
                         placeholder = { Text(text = stringResource(R.string.username)) },
                     )
-                    KeyGoFormField(
+                    /*TODO KeyGoFormField(
                         state = state.websiteTextFieldState,
                         label = { Text(text = stringResource(R.string.website)) },
                         placeholder = { Text(text = stringResource(R.string.website)) },
-                    )
+                    )*/
                 }
             }
         }
@@ -249,7 +249,7 @@ private fun PasswordContentPreview() {
     KeyGoTheme {
         PasswordContent(
             state = PasswordUiState(
-                strengthScore = Score.Weak,
+                strengthScore = Password.Score.Weak,
                 nameExists = true
             ),
             onEvent = {}

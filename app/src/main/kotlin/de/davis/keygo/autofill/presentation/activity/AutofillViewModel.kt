@@ -16,16 +16,17 @@ import de.davis.keygo.autofill.presentation.model.FormType
 import de.davis.keygo.autofill.presentation.model.Request
 import de.davis.keygo.autofill.presentation.model.RequestData
 import de.davis.keygo.autofill.presentation.model.SaveRequestData
-import de.davis.keygo.core.domain.alias.ItemId
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
-import de.davis.keygo.core.domain.model.Password
-import de.davis.keygo.core.domain.repository.PasswordRepository
+import de.davis.keygo.core.domain.crypto.decryptSecretData
 import de.davis.keygo.core.domain.usecase.HasValidAccessUseCase
 import de.davis.keygo.core.identity.biometric.domain.usecase.GetBiometricCryptoSetupAvailabilityUseCase
 import de.davis.keygo.core.identity.biometric.domain.usecase.GetBiometricHardwareAvailabilityUseCase
 import de.davis.keygo.core.identity.biometric.domain.usecase.PrepareBiometricCipherUseCase
 import de.davis.keygo.core.identity.biometric.domain.usecase.UnlockWithBiometricsUseCase
 import de.davis.keygo.core.identity.biometric.presentation.BiometricViewModel
+import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.presentation.UIText
 import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
 import kotlinx.coroutines.channels.Channel
@@ -180,7 +181,7 @@ internal class AutofillViewModel(
     }
 
     private suspend fun getPasswordById(vaultId: ItemId): Password? {
-        return passwordRepository.getVaultPasswordById(vaultId)
+        return passwordRepository.getPasswordById(vaultId)
     }
 
     private suspend fun sendFillEvent(vaultId: ItemId) {
@@ -206,7 +207,7 @@ internal class AutofillViewModel(
         val values = requestData.form.fields.mapNotNull {
             val value = when (it.type) {
                 FieldType.Credentials.Password -> cryptographicScopeProvider.scope {
-                    password.encryptedData.decrypt().decodeToString()
+                    password.encryptedData.decryptSecretData()
                 }
 
                 FieldType.Credentials.Username -> password.username

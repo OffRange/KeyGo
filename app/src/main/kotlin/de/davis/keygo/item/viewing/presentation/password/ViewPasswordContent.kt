@@ -61,7 +61,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
-import de.davis.keygo.core.domain.model.Score
+import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.presentation.LocalIsInSinglePaneMode
 import de.davis.keygo.core.presentation.component.KeyGoCard
 import de.davis.keygo.core.presentation.component.KeyGoFormField
@@ -218,7 +218,7 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                 entry(
                     title = website,
                     leadingIcon = Icons.Default.Link,
-                    trailingContent = if (state.canOpenWebsite) {
+                    trailingContent = if (false /*TODO state.canOpenWebsite*/) {
                         {
                             IconButton(onClick = { onEvent(ViewPasswordUiEvent.OpenWebsite) }) {
                                 Icon(
@@ -392,7 +392,7 @@ private fun ViewPasswordContentPreview() {
                 state = ViewPasswordState(
                     name = "Password 1",
                     password = ObfuscatedString("Password"),
-                    passwordStrengthScore = Score.Ridiculous,
+                    passwordStrengthScore = Password.Score.Ridiculous,
                     totpInformation = TotpInformation(
                         code = "123456",
                         validUntil = System.currentTimeMillis() + 30_000L,
@@ -401,7 +401,6 @@ private fun ViewPasswordContentPreview() {
                     username = "Username 1",
                     website = "example.com",
                     note = "Note about the password or any additional information that might be useful.",
-                    canOpenWebsite = true,
                 ),
                 onEvent = {}
             )
@@ -420,10 +419,9 @@ private fun ViewPasswordContentModificationDialogPreview() {
                 state = ViewPasswordState(
                     name = "Password 1",
                     password = ObfuscatedString("Password"),
-                    passwordStrengthScore = Score.Ridiculous,
+                    passwordStrengthScore = Password.Score.Ridiculous,
                     username = "Username 1",
                     website = "example.com",
-                    canOpenWebsite = true,
                     modificationDialog = ModificationDialog(
                         fieldType = FieldType.Name,
                         textFieldState = rememberTextFieldState()

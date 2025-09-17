@@ -1,8 +1,8 @@
 package de.davis.keygo.item.create.presentation
 
 import androidx.compose.runtime.Composable
+import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.presentation.model.NavigationEvent
-import de.davis.keygo.generated.item.VaultItemType
 import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.item.core.presentation.model.DetailPaneInformation.CreateRaw
 import de.davis.keygo.item.core.presentation.model.DetailPaneInformation.InitByDetailType

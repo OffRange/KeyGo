@@ -1,6 +1,6 @@
 package de.davis.keygo.item.create.presentation.password.model
 
-import de.davis.keygo.core.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.item.core.presentation.password.model.FieldType
 
 sealed interface PasswordUiEvent {

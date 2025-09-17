@@ -16,7 +16,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import de.davis.keygo.auth.presentation.authGraph
 import de.davis.keygo.autofill.presentation.model.SaveItemDestination
-import de.davis.keygo.core.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.dashboard.presentation.dashboardGraph
 import de.davis.keygo.item.core.presentation.model.DetailPaneInformation

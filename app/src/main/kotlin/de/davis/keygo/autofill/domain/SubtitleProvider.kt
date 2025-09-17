@@ -1,11 +1,8 @@
 package de.davis.keygo.autofill.domain
 
-import de.davis.keygo.core.domain.model.Password
-import de.davis.keygo.core.domain.model.VaultItem
-import de.davis.keygo.core.domain.model.VaultSearchResult
+import de.davis.keygo.core.item.domain.model.lite.LitePassword
+import de.davis.keygo.core.item.domain.model.lite.LiteVaultItem
 
-internal fun VaultItem.subtitle() = when (this) {
-    is Password -> this.username ?: "----"
-    is VaultItem.Basic,
-    is VaultSearchResult -> "<unsupported>"
+internal fun LiteVaultItem.subtitle() = when (this) {
+    is LitePassword -> username ?: "----"
 }

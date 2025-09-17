@@ -22,16 +22,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
-import de.davis.keygo.core.domain.model.VaultItem
-import de.davis.keygo.core.domain.model.VaultSearchResult
-import de.davis.keygo.core.domain.model.crypto.CryptographicData
+import de.davis.keygo.core.item.domain.model.lite.LiteVaultItemSearchResult
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
 @Composable
 fun SearchResult(
-    searchResult: ImmutableList<VaultSearchResult>,
-    onClick: (VaultItem) -> Unit,
+    searchResult: ImmutableList<LiteVaultItemSearchResult>,
+    onClick: (LiteVaultItemSearchResult) -> Unit,
     modifier: Modifier = Modifier,
     cardColors: CardColors = CardDefaults.cardColors()
 ) {
@@ -70,8 +68,8 @@ private fun EmptySearchResult() {
 
 @Composable
 private fun SearchResultContent(
-    searchResult: ImmutableList<VaultSearchResult>,
-    onClick: (VaultItem) -> Unit,
+    searchResult: ImmutableList<LiteVaultItemSearchResult>,
+    onClick: (LiteVaultItemSearchResult) -> Unit,
     cardColors: CardColors
 ) {
     LazyColumn(
@@ -113,19 +111,15 @@ private fun SearchResultPreview() {
         Surface(modifier = Modifier.fillMaxSize()) {
             SearchResult(
                 searchResult = persistentListOf(
-                    VaultSearchResult(
+                    LiteVaultItemSearchResult(
                         vaultItemId = 1,
                         name = "Test",
-                        note = "Test",
-                        encryptedData = CryptographicData.EMPTY,
                         matchedName = true,
                         matchedNote = false
                     ),
-                    VaultSearchResult(
+                    LiteVaultItemSearchResult(
                         vaultItemId = 2,
                         name = "Test2",
-                        note = "Test2",
-                        encryptedData = CryptographicData.EMPTY,
                         matchedName = true,
                         matchedNote = true
                     ),

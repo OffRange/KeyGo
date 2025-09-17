@@ -1,7 +1,7 @@
 package de.davis.keygo.autofill.presentation.model
 
 import android.os.Parcelable
-import de.davis.keygo.core.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.ItemId
 import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
 
@@ -21,7 +21,7 @@ data class SaveRequestData(
 
 @Parcelize
 sealed interface FillRequestData : RequestData {
-    
+
     data class Suggestion(
         override val form: Form,
         val vaultId: ItemId,

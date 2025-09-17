@@ -1,11 +1,11 @@
 package de.davis.keygo.item.core.domain.usecase
 
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.core.domain.crypto.encryptSecretData
 import de.davis.keygo.core.domain.estimator.PasswordStrengthEstimator
-import de.davis.keygo.core.domain.model.Password
-import de.davis.keygo.core.domain.model.asTotpSecret
-import de.davis.keygo.core.domain.repository.PasswordRepository
-import de.davis.keygo.core.domain.usecase.UpsertVaultItem
+import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.repository.PasswordRepository
+import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.mapFailure
 import de.davis.keygo.item.core.domain.model.FieldUpdate
@@ -24,7 +24,7 @@ import kotlin.contracts.ExperimentalContracts
 class CreateNewOrUpdatePasswordUseCase(
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passwordRepository: PasswordRepository,
-    private val upsertVaultItem: UpsertVaultItem,
+    private val upsertVaultItem: UpsertVaultItemUseCase,
     private val passwordStrengthEstimator: PasswordStrengthEstimator
 ) {
 
@@ -49,66 +49,65 @@ class CreateNewOrUpdatePasswordUseCase(
         return errors
     }
 
-    suspend operator fun invoke(upsert: Upsert): Result<Unit, Set<PasswordError>> =
-        coroutineScope {
-            val errors = validate(upsert)
-            if (errors.isNotEmpty())
-                return@coroutineScope Result.Failure(errors)
+    suspend operator fun invoke(upsert: Upsert): Result<Unit, Set<PasswordError>> = coroutineScope {
+        val errors = validate(upsert)
+        if (errors.isNotEmpty())
+            return@coroutineScope Result.Failure(errors)
 
 
-            val encryptedPassword = upsert.password.onSet { password ->
-                async {
-                    cryptographicScopeProvider.scope {
-                        password.encodeToByteArray().encrypt()
-                    }
+        val encryptedPassword = upsert.password.onSet { password ->
+            async {
+                cryptographicScopeProvider.scope {
+                    password.encryptSecretData()
                 }
-            }
-
-            val passwordStrength = upsert.password.onSet { password ->
-                async { passwordStrengthEstimator(password) }
-            }
-
-
-            val totpSecret = upsert.totpSecret.onSet { totpSecret ->
-                async {
-                    cryptographicScopeProvider.scope {
-                        totpSecret.encodeToByteArray().encrypt()
-                    }.asTotpSecret()
-                }
-            }
-
-            val updatedPassword = when (upsert) {
-                is Upsert.Create -> {
-                    // Validation ensures that the values are not null
-                    Password(
-                        name = upsert.name.getValue() ?: "",
-                        username = upsert.username.getValue(),
-                        website = upsert.website.getValue(),
-                        encryptedData = encryptedPassword!!.await(),
-                        totpSecret = totpSecret?.await(),
-                        score = passwordStrength!!.await(),
-                        note = upsert.note.getValue(),
-                    )
-                }
-
-                is Upsert.Update -> {
-                    val dbPassword = passwordRepository.getVaultPasswordById(upsert.vaultId)
-                        ?: return@coroutineScope Result.Failure(setOf(PasswordError.InvalidVaultId))
-
-                    dbPassword.copy(
-                        name = upsert.name.withoutClearingOn(dbPassword.name),
-                        username = upsert.username.on(dbPassword.username),
-                        website = upsert.website.on(dbPassword.website),
-                        encryptedData = encryptedPassword?.await() ?: dbPassword.encryptedData,
-                        totpSecret = upsert.totpSecret.on(dbPassword.totpSecret, totpSecret),
-                        score = passwordStrength?.await() ?: dbPassword.score,
-                        note = upsert.note.on(dbPassword.note),
-                    )
-                }
-            }
-
-            upsertVaultItem(updatedPassword).mapFailure {
-                setOf(PasswordError.DatabaseError(it))
             }
         }
+
+        val passwordStrength = upsert.password.onSet { password ->
+            async { passwordStrengthEstimator(password) }
+        }
+
+
+        val totpSecret = upsert.totpSecret.onSet { totpSecret ->
+            async {
+                cryptographicScopeProvider.scope {
+                    totpSecret.encryptSecretData()
+                }
+            }
+        }
+
+        val updatedPassword = when (upsert) {
+            is Upsert.Create -> {
+                // Validation ensures that the values are not null
+                Password(
+                    name = upsert.name.getValue() ?: "",
+                    username = upsert.username.getValue(),
+                    domainInfos = emptyList(), // TODO upsert.website.getValue(),
+                    encryptedData = encryptedPassword!!.await(),
+                    totpSecret = totpSecret?.await(),
+                    score = passwordStrength!!.await(),
+                    note = upsert.note.getValue(),
+                )
+            }
+
+            is Upsert.Update -> {
+                val dbPassword = passwordRepository.getPasswordById(upsert.vaultId)
+                    ?: return@coroutineScope Result.Failure(setOf(PasswordError.InvalidVaultId))
+
+                dbPassword.copy(
+                    name = upsert.name.withoutClearingOn(dbPassword.name),
+                    username = upsert.username.on(dbPassword.username),
+                    domainInfos = emptyList(), // TODO upsert.website.on(dbPassword.website),
+                    encryptedData = encryptedPassword?.await() ?: dbPassword.encryptedData,
+                    totpSecret = upsert.totpSecret.on(dbPassword.totpSecret, totpSecret),
+                    score = passwordStrength?.await() ?: dbPassword.score,
+                    note = upsert.note.on(dbPassword.note),
+                )
+            }
+        }
+
+        upsertVaultItem(updatedPassword).mapFailure {
+            setOf(PasswordError.DatabaseError(it))
+        }
+    }
 }

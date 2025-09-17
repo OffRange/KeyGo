@@ -19,7 +19,7 @@ import de.davis.keygo.autofill.presentation.model.Form
 import de.davis.keygo.autofill.presentation.model.appRequestData
 import de.davis.keygo.autofill.presentation.model.pinnedRequestData
 import de.davis.keygo.autofill.presentation.model.suggestionRequestData
-import de.davis.keygo.core.domain.model.VaultItem
+import de.davis.keygo.core.item.domain.model.lite.LiteVaultItem
 import org.koin.core.annotation.Single
 
 @Single
@@ -95,7 +95,7 @@ internal class InlineDatasetBuilder(
         spec: InlinePresentationSpec,
         index: Int,
         form: Form,
-        suggestion: VaultItem
+        suggestion: LiteVaultItem
     ): Dataset {
         val presentation = inlineSuggestionFactory.buildPresentation(
             spec = spec,

@@ -1,13 +1,14 @@
 package de.davis.keygo.item.core.domain.model
 
-import de.davis.keygo.core.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.ItemId
 
 sealed interface Upsert {
     val name: FieldUpdate<String>
     val password: FieldUpdate<String>
     val totpSecret: FieldUpdate<String>
     val username: FieldUpdate<String>
-    val website: FieldUpdate<String>
+
+    // TODO val website: FieldUpdate<String>
     val note: FieldUpdate<String>
 
     data class Create(
@@ -15,7 +16,7 @@ sealed interface Upsert {
         override val password: FieldUpdate<String>,
         override val totpSecret: FieldUpdate<String>,
         override val username: FieldUpdate<String>,
-        override val website: FieldUpdate<String>,
+        // TODO override val website: FieldUpdate<String>,
         override val note: FieldUpdate<String>,
     ) : Upsert
 
@@ -25,7 +26,7 @@ sealed interface Upsert {
         override val password: FieldUpdate<String> = keep(),
         override val totpSecret: FieldUpdate<String> = keep(),
         override val username: FieldUpdate<String> = keep(),
-        override val website: FieldUpdate<String> = keep(),
+        // TODO override val website: FieldUpdate<String> = keep(),
         override val note: FieldUpdate<String> = keep(),
     ) : Upsert
 }

@@ -1,8 +1,8 @@
 package de.davis.keygo.item.core.presentation.model
 
 import android.os.Parcelable
-import de.davis.keygo.core.domain.alias.ItemId
-import de.davis.keygo.generated.item.VaultItemType
+import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
 

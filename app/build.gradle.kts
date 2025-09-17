@@ -3,7 +3,6 @@ import io.github.z4kn4fein.semver.Version
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.androidx.room)
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
@@ -80,17 +79,8 @@ dependencies {
     implementation(libs.koin.annotations)
     ksp(libs.koin.ksp.compiler)
 
-    // Room
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
-
     implementation(projects.core.item)
     implementation(projects.core.util)
-
-    // Automation
-    implementation(projects.automation)
-    ksp(projects.automationProcessor)
 
     // Datastore
     implementation(libs.androidx.datastore)
@@ -161,12 +151,4 @@ protobuf {
 composeCompiler {
     reportsDestination = layout.buildDirectory.dir("compose_compiler")
     metricsDestination = layout.buildDirectory.dir("compose_compiler")
-}
-
-room {
-    schemaDirectory("$projectDir/schemas")
-}
-
-ksp {
-    arg("automation.packageName", "de.davis.keygo.generated")
 }

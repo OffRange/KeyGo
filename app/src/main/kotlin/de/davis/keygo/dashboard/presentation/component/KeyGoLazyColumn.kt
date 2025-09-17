@@ -34,22 +34,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import de.davis.keygo.core.domain.alias.ItemId
-import de.davis.keygo.core.domain.alias.ItemIdNone
-import de.davis.keygo.core.domain.model.Password
-import de.davis.keygo.core.domain.model.Score
-import de.davis.keygo.core.domain.model.VaultItem
-import de.davis.keygo.core.domain.model.crypto.CryptographicData
+import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.ItemIdNone
+import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.SecretData
+import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toPersistentList
 
-private fun headerProducer(item: VaultItem) = item.name.firstOrNull() ?: ' '
+private fun headerProducer(item: LiteItem) = item.name.firstOrNull() ?: ' '
 
 @Composable
 fun KeyGoLazyColumn(
-    items: ImmutableList<VaultItem>,
+    items: ImmutableList<LiteItem>,
     selectedItemIds: ImmutableSet<ItemId>,
     openedItemId: ItemId,
     onDeleteRequest: (ItemId) -> Unit,
@@ -177,7 +177,7 @@ fun KeyGoLazyColumn(
 
 @Composable
 private fun LazyItemScope.KeyGoLazyItem(
-    item: VaultItem,
+    item: LiteItem,
     header: @Composable () -> Unit,
     onDeleteRequest: () -> Unit,
     modifier: Modifier = Modifier,
@@ -216,13 +216,19 @@ private fun KeyGoLazyColumnPreview() {
             items = buildList {
                 repeat(25) {
                     val p = Password(
-                        passwordId = it.toLong(),
+                        id = it.toLong(),
                         username = "User $it",
-                        website = "Website",
-                        score = Score.Weak,
+                        domainInfos = listOf(
+                            DomainInfo(
+                                passwordId = it.toLong(),
+                                value = "www.example.com",
+                                eTLD1 = "example.com"
+                            )
+                        ),
+                        score = Password.Score.Weak,
                         vaultItemId = it.toLong(),
                         name = "${if (it >= 5) 'A' else 'B'} Item $it",
-                        encryptedData = CryptographicData.EMPTY,
+                        encryptedData = SecretData.EMPTY_STRING,
                         note = "This is a note for item $it",
                         totpSecret = null
                     )

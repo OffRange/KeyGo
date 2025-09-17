@@ -37,8 +37,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
-import de.davis.keygo.generated.item.VaultItemType
-import de.davis.keygo.generated.item.getString
+import de.davis.keygo.core.item.generated.domain.model.VaultItemType
+import de.davis.keygo.core.item.generated.presentation.presentation
 
 @Composable
 fun SelectItemContent(onSelect: (VaultItemType) -> Unit) {
@@ -66,11 +66,12 @@ fun SelectItemContent(onSelect: (VaultItemType) -> Unit) {
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        val (text, icon) = it.presentation
                         Icon(
-                            imageVector = it.icon,
+                            imageVector = icon,
                             contentDescription = null
                         )
-                        Text(text = it.getString())
+                        Text(text = text)
                     }
                 }
             }

@@ -1,7 +1,7 @@
 package de.davis.keygo.auth.presentation.model
 
 import androidx.compose.foundation.text.input.TextFieldState
-import de.davis.keygo.core.domain.model.Score
+import de.davis.keygo.core.item.domain.model.Password
 
 sealed interface AuthState {
 
@@ -54,7 +54,7 @@ sealed interface AuthState {
         override val useBiometrics: Boolean = true,
         val confirmPasswordTextFieldState: TextFieldState = TextFieldState(),
         val confirmPasswordError: UIPasswordError = UIPasswordError.None,
-        val score: Score = Score.None,
+        val score: Password.Score = Password.Score.None,
     ) : AuthState, BiometricAuthState
 
     fun copyDefaultState(

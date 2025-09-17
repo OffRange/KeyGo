@@ -2,9 +2,9 @@ package de.davis.keygo.autofill.presentation.dataset
 
 import de.davis.keygo.autofill.presentation.model.Form
 import de.davis.keygo.autofill.presentation.model.FormType
-import de.davis.keygo.core.domain.model.Password
-import de.davis.keygo.core.domain.model.VaultItem
-import de.davis.keygo.core.domain.repository.PasswordRepository
+import de.davis.keygo.core.item.domain.model.lite.LitePassword
+import de.davis.keygo.core.item.domain.model.lite.LiteVaultItem
+import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import org.koin.core.annotation.Single
 
 @Single
@@ -15,7 +15,7 @@ internal class SuggestionFinder(
     internal suspend fun findVaultSuggestions(
         form: Form,
         count: Int
-    ): List<VaultItem> {
+    ): List<LiteVaultItem> {
         if (count == 0) return emptyList()
 
         return when (form.type) {
@@ -26,7 +26,8 @@ internal class SuggestionFinder(
     private suspend fun findPasswordSuggestions(
         form: Form,
         count: Int
-    ): List<Password> = form.urls.flatMap {
-        passwordRepository.findVaultPasswordsByUrl(url = it)
+    ): List<LitePassword> = form.urls.flatMap {
+        // TODO: introduce use case to get right eTLD+1, also migrate to use limit
+        passwordRepository.getVaultPasswordsByTLDs(etld1s = form.urls)
     }.take(count)
 }

@@ -3,13 +3,14 @@ package de.davis.keygo.item.viewing.presentation.password
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import de.davis.keygo.core.domain.alias.ItemId
-import de.davis.keygo.core.domain.alias.ItemIdNone
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
-import de.davis.keygo.core.domain.repository.PasswordRepository
+import de.davis.keygo.core.domain.crypto.decryptSecretData
+import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.ItemIdNone
+import de.davis.keygo.core.item.domain.repository.PasswordRepository
+import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.presentation.model.InputFieldError
 import de.davis.keygo.core.presentation.model.NavigationEvent
-import de.davis.keygo.generated.item.VaultItemType
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.item.core.domain.model.PasswordError
@@ -63,18 +64,18 @@ class ViewPasswordViewModel(
         .filter { it != ItemIdNone }
         .distinctUntilChanged()
         .flatMapLatest { id ->
-            passwordRepository.observeVaultPasswordById(id).flatMapLatest { password ->
+            passwordRepository.observePasswordById(id).flatMapLatest { password ->
                 coroutineScope {
                     val obfuscatedString = async {
                         cryptographicScopeProvider.scope {
-                            password.encryptedData.decrypt().decodeToString()
+                            password.encryptedData.decryptSecretData()
                         }.asObfuscatedString()
                     }
 
                     val totpSecret = password.totpSecret?.let { totpSecret ->
                         async {
                             cryptographicScopeProvider.scope {
-                                totpSecret.encodedSecret.decrypt()
+                                totpSecret.decryptSecretData().encodeToByteArray()
                             }
                         }
                     }
@@ -85,9 +86,8 @@ class ViewPasswordViewModel(
                         password = obfuscatedString.await(),
                         passwordStrengthScore = password.score,
                         username = password.username.orEmpty(),
-                        website = password.website.orEmpty(),
+                        // TODO website = password.website.orEmpty(),
                         note = password.note.orEmpty(),
-                        canOpenWebsite = isValidUrl(password.website.orEmpty()),
                         totpInformation = TotpInformation("", 0, 0),
                     )
 
@@ -127,11 +127,11 @@ class ViewPasswordViewModel(
             }
 
             ViewPasswordUiEvent.OpenWebsite -> {
-                val url = state.value.website
+                /* TODO val url = state.value.website
                 if (!isValidUrl(url))
                     return
 
-                websiteHandler.openWebsite(url)
+                websiteHandler.openWebsite(url)*/
             }
 
             ViewPasswordUiEvent.OnEditRequest -> {
@@ -157,7 +157,7 @@ class ViewPasswordViewModel(
                     FieldType.Password -> state.password.raw
                     FieldType.Totp -> "" // TOTP is not editable in this context
                     FieldType.Username -> state.username
-                    FieldType.Website -> state.website
+                    FieldType.Website -> "" // TODO state.website
                     FieldType.Note -> state.note
                 }
 
@@ -199,7 +199,7 @@ class ViewPasswordViewModel(
 
                             FieldType.Website -> Upsert.Update(
                                 vaultId = itemId,
-                                website = newText
+                                // TODO website = newText
                             )
 
                             FieldType.Note -> Upsert.Update(

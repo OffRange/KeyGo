@@ -1,18 +1,18 @@
 package de.davis.keygo.dashboard.domain.usecase
 
-import de.davis.keygo.core.domain.model.VaultItem
+import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.dashboard.domain.model.Filter
 import org.koin.core.annotation.Single
 
 @Single
 class FilterUseCase {
 
-    operator fun <I : VaultItem> invoke(filter: Filter, vaultItems: List<I>): List<I> {
+    operator fun <I : LiteItem> invoke(filter: Filter, namedItems: List<I>): List<I> {
         return when (filter) {
             is Filter.Alphanumerical -> {
                 when (filter.direction) {
-                    is Filter.Direction.Ascending -> vaultItems.sortedWith(compareByAlphanumeric { it.name })
-                    is Filter.Direction.Descending -> vaultItems.sortedWith(
+                    is Filter.Direction.Ascending -> namedItems.sortedWith(compareByAlphanumeric { it.name })
+                    is Filter.Direction.Descending -> namedItems.sortedWith(
                         compareByDescendingAlphanumeric { it.name }
                     )
                 }

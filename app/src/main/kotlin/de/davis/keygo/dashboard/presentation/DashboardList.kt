@@ -46,11 +46,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import androidx.window.core.layout.WindowSizeClass
 import de.davis.keygo.R
-import de.davis.keygo.core.domain.alias.ItemIdNone
-import de.davis.keygo.core.domain.model.Password
-import de.davis.keygo.core.domain.model.Score
-import de.davis.keygo.core.domain.model.VaultSearchResult
-import de.davis.keygo.core.domain.model.crypto.CryptographicData
+import de.davis.keygo.core.item.domain.alias.ItemIdNone
+import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.SecretData
+import de.davis.keygo.core.item.domain.model.lite.LiteVaultItemSearchResult
+import de.davis.keygo.core.item.generated.domain.model.VaultItemType
+import de.davis.keygo.core.item.generated.presentation.presentation
 import de.davis.keygo.core.presentation.LocalIsInSinglePaneMode
 import de.davis.keygo.core.presentation.component.KeyGoCard
 import de.davis.keygo.core.presentation.component.KeyGoCardProp
@@ -58,8 +60,6 @@ import de.davis.keygo.dashboard.presentation.component.KeyGoLazyColumn
 import de.davis.keygo.dashboard.presentation.component.SearchResult
 import de.davis.keygo.dashboard.presentation.model.DashboardListUIState
 import de.davis.keygo.dashboard.presentation.model.DashboardUIEvent
-import de.davis.keygo.generated.item.VaultItemType
-import de.davis.keygo.generated.item.getString
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toPersistentList
@@ -214,7 +214,7 @@ fun DashboardList(uiState: DashboardListUIState, onEvent: (DashboardUIEvent) -> 
                                         },
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        Text(text = it.getString())
+                                        Text(text = it.presentation.first)
                                     }
                                 }
                             }
@@ -248,7 +248,7 @@ fun DashboardList(uiState: DashboardListUIState, onEvent: (DashboardUIEvent) -> 
 
 @Composable
 private fun DashboardSearchResult(
-    searchResult: ImmutableList<VaultSearchResult>,
+    searchResult: ImmutableList<LiteVaultItemSearchResult>,
     onCollapse: suspend () -> Unit,
     onEvent: (DashboardUIEvent) -> Unit
 ) {
@@ -271,13 +271,19 @@ private fun PreviewContent(empty: Boolean = false) {
             items = buildList {
                 repeat(25.takeIf { !empty } ?: 0) {
                     val p = Password(
-                        passwordId = it.toLong(),
+                        id = it.toLong(),
                         username = "User $it",
-                        website = "Website",
-                        score = Score.Weak,
+                        domainInfos = listOf(
+                            DomainInfo(
+                                passwordId = it.toLong(),
+                                value = "www.example.com",
+                                eTLD1 = "example.com"
+                            )
+                        ),
+                        score = Password.Score.Weak,
                         vaultItemId = it.toLong(),
                         name = "${if (it >= 5) 'A' else 'B'} Item $it",
-                        encryptedData = CryptographicData.EMPTY,
+                        encryptedData = SecretData.EMPTY_STRING,
                         note = "This is a note for item $it",
                         totpSecret = null
                     )
