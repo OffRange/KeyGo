@@ -10,6 +10,9 @@ sealed interface PasswordUiEvent {
     data object OnCloseBottomSheet : PasswordUiEvent
     data object OnScanCodeRequest : PasswordUiEvent
 
+    data class OnDeleteDomain(val value: String) : PasswordUiEvent
+    data class OnAddDomains(val domains: List<String>) : PasswordUiEvent
+
     data object OnTotpParseErrorDismiss : PasswordUiEvent
 
     data class OnCodesScanned(val codes: List<String>) : PasswordUiEvent

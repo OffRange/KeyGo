@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -17,6 +18,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -31,14 +33,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
+import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.presentation.LocalIsInSinglePaneMode
 import de.davis.keygo.core.presentation.component.KeyGoFormField
 import de.davis.keygo.core.presentation.component.StrengthIndicator
 import de.davis.keygo.core.presentation.theme.KeyGoTheme
+import de.davis.keygo.item.core.presentation.component.ChipFormGroup
 import de.davis.keygo.item.create.presentation.component.FormGroup
 import de.davis.keygo.item.create.presentation.component.KeyGoItemForm
 import de.davis.keygo.item.create.presentation.component.OverrideTotpDialog
@@ -48,6 +54,7 @@ import de.davis.keygo.item.create.presentation.password.model.DialogState
 import de.davis.keygo.item.create.presentation.password.model.PasswordUiEvent
 import de.davis.keygo.item.create.presentation.password.model.PasswordUiState
 import de.davis.keygo.totp.presentation.component.QRScanner
+import kotlinx.collections.immutable.persistentListOf
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -163,11 +170,35 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                         label = { Text(text = stringResource(R.string.username)) },
                         placeholder = { Text(text = stringResource(R.string.username)) },
                     )
-                    /*TODO KeyGoFormField(
-                        state = state.websiteTextFieldState,
-                        label = { Text(text = stringResource(R.string.website)) },
-                        placeholder = { Text(text = stringResource(R.string.website)) },
-                    )*/
+                }
+            }
+
+            item(key = "domain_information") {
+                ChipFormGroup(
+                    title = stringResource(R.string.domain_information),
+                    items = state.domains,
+                    onSubmit = {
+                        onEvent(PasswordUiEvent.OnAddDomains(it))
+                    },
+                    onDelete = {
+                        onEvent(PasswordUiEvent.OnDeleteDomain(it.value))
+                    },
+                    label = {
+                        Text(text = stringResource(R.string.add_domains))
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Uri,
+                        imeAction = ImeAction.Next
+                    ),
+                    prefix = {
+                        Text(text = "https://")
+                    }
+                ) { item, selected ->
+                    InputChip(
+                        selected = selected,
+                        onClick = { /* TODO: maybe allow editing? */ },
+                        label = { Text(text = item.value) }
+                    )
                 }
             }
         }
@@ -250,6 +281,13 @@ private fun PasswordContentPreview() {
         PasswordContent(
             state = PasswordUiState(
                 strengthScore = Password.Score.Weak,
+                domains = persistentListOf(
+                    DomainInfo(
+                        passwordId = 0,
+                        value = "example.com",
+                        eTLD1 = "example.com"
+                    )
+                ),
                 nameExists = true
             ),
             onEvent = {}

@@ -16,13 +16,15 @@ import de.davis.keygo.core.item.domain.alias.ItemIdNone
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.domain.repository.VaultItemRepository
 import de.davis.keygo.core.presentation.UIText
+import de.davis.keygo.core.presentation.UIText.ResourceString
 import de.davis.keygo.core.presentation.model.InputFieldError
 import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.item.core.domain.model.PasswordError
-import de.davis.keygo.item.core.domain.model.Upsert
+import de.davis.keygo.item.core.domain.model.Upsert.Create
+import de.davis.keygo.item.core.domain.model.Upsert.Update
 import de.davis.keygo.item.core.domain.model.fieldUpdate
 import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePasswordUseCase
 import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
@@ -208,7 +210,7 @@ class PasswordViewModel(
                         it.copy(
                             totpTextFieldState = TextFieldState(totpSecret?.await() ?: ""),
                             usernameTextFieldState = TextFieldState(password.username ?: ""),
-                            // TODO websiteTextFieldState = TextFieldState(password.website ?: ""),
+                            domains = password.domainInfos.toImmutableList(),
                             notesTextFieldState = TextFieldState(password.note ?: ""),
                             dialogState = DialogState.None,
                             updating = true
@@ -260,7 +262,7 @@ class PasswordViewModel(
                     val state = _uiState.value
                     createNewOrUpdatePassword(
                         upsert = when (itemId == ItemIdNone) {
-                            true -> Upsert.Create(
+                            true -> Create(
                                 name = fieldUpdate(state.nameTextFieldState.text.toString()),
                                 username = fieldUpdate(state.usernameTextFieldState.text.toString()),
                                 // TODO website = fieldUpdate(state.websiteTextFieldState.text.toString()),
@@ -269,7 +271,7 @@ class PasswordViewModel(
                                 note = fieldUpdate(state.notesTextFieldState.text.toString())
                             )
 
-                            false -> Upsert.Update(
+                            false -> Update(
                                 vaultId = itemId,
                                 name = fieldUpdate(state.nameTextFieldState.text.toString()),
                                 username = fieldUpdate(state.usernameTextFieldState.text.toString()),
@@ -292,7 +294,7 @@ class PasswordViewModel(
                         if (failure.any { it is PasswordError.InvalidVaultId }) {
                             snackbarManager.sendMessage(
                                 message = SnackbarMessage(
-                                    message = UIText.ResourceString(R.string.invalid_vault_id)
+                                    message = ResourceString(R.string.invalid_vault_id)
                                 )
                             )
                         }
@@ -412,6 +414,10 @@ class PasswordViewModel(
                     )
                 }
             }
+
+            is PasswordUiEvent.OnAddDomains -> TODO()
+
+            is PasswordUiEvent.OnDeleteDomain -> TODO()
         }
     }
 
