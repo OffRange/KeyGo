@@ -19,6 +19,7 @@ import de.davis.keygo.core.presentation.UIText
 import de.davis.keygo.core.presentation.UIText.ResourceString
 import de.davis.keygo.core.presentation.model.InputFieldError
 import de.davis.keygo.core.presentation.model.NavigationEvent
+import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
@@ -71,6 +72,7 @@ class PasswordViewModel(
     private val createNewOrUpdatePassword: CreateNewOrUpdatePasswordUseCase,
     private val snackbarManager: SnackbarManager,
     private val getTotpSecret: GetTotpSecretFromUrlUseCase,
+    private val registrableDomainResolver: RegistrableDomainResolver
 ) : GeneratePasswordViewModel(passwordGenerator, passwordStrengthEstimator) {
 
     private val nameTextFieldState = TextFieldState()
@@ -234,8 +236,9 @@ class PasswordViewModel(
         }.onSuccess { secret ->
             totpSecretInformation = secret
             viewModelScope.launch {
-                // TODO: introduce a usecase to get the eTLD+1
                 val matchedItems = secret.issuer?.let {
+                    registrableDomainResolver.resolve(it)
+                }?.let {
                     passwordRepository.getVaultPasswordsByTLD(etld1 = it)
                 }
 
