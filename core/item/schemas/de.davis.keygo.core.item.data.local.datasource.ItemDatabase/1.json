@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "583a56d4713189afd5c4c6f00a33e2b9",
+    "identityHash": "68bfdbbb3e9972ed90593269d8aa4622",
     "entities": [
       {
         "tableName": "VaultItemEntity",
@@ -105,7 +105,7 @@
       },
       {
         "tableName": "DomainInfoEntity",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`password_id` INTEGER NOT NULL, `value` TEXT NOT NULL, `eTLD1` TEXT NOT NULL, PRIMARY KEY(`password_id`, `value`), FOREIGN KEY(`password_id`) REFERENCES `PasswordEntity`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`password_id` INTEGER NOT NULL, `value` TEXT NOT NULL, `eTLD1` TEXT, PRIMARY KEY(`password_id`, `value`), FOREIGN KEY(`password_id`) REFERENCES `PasswordEntity`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "passwordId",
@@ -122,8 +122,7 @@
           {
             "fieldPath": "eTLD1",
             "columnName": "eTLD1",
-            "affinity": "TEXT",
-            "notNull": true
+            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -161,7 +160,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '583a56d4713189afd5c4c6f00a33e2b9')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '68bfdbbb3e9972ed90593269d8aa4622')"
     ]
   }
 }

@@ -23,5 +23,5 @@ internal data class DomainInfoEntity(
     @ColumnInfo("password_id")
     val passwordId: Long,
     val value: String,
-    val eTLD1: String,
+    val eTLD1: String?,
 )
