@@ -24,8 +24,7 @@ import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.item.core.domain.model.PasswordError
-import de.davis.keygo.item.core.domain.model.Upsert.Create
-import de.davis.keygo.item.core.domain.model.Upsert.Update
+import de.davis.keygo.item.core.domain.model.UpsertPassword
 import de.davis.keygo.item.core.domain.model.fieldUpdate
 import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePasswordUseCase
 import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
@@ -265,16 +264,16 @@ class PasswordViewModel(
                     val state = _uiState.value
                     createNewOrUpdatePassword(
                         upsert = when (itemId == ItemIdNone) {
-                            true -> Create(
-                                name = fieldUpdate(state.nameTextFieldState.text.toString()),
-                                username = fieldUpdate(state.usernameTextFieldState.text.toString()),
                                 // TODO website = fieldUpdate(state.websiteTextFieldState.text.toString()),
-                                password = fieldUpdate(state.passwordTextFieldState.text.toString()),
-                                totpSecret = fieldUpdate(state.totpTextFieldState.text.toString()),
-                                note = fieldUpdate(state.notesTextFieldState.text.toString())
+                            true -> UpsertPassword.create(
+                                name = state.nameTextFieldState.text.toString(),
+                                username = state.usernameTextFieldState.text.toString(),
+                                password = state.passwordTextFieldState.text.toString(),
+                                totpSecret = state.totpTextFieldState.text.toString(),
+                                note = state.notesTextFieldState.text.toString()
                             )
 
-                            false -> Update(
+                            false -> UpsertPassword.update(
                                 vaultId = itemId,
                                 name = fieldUpdate(state.nameTextFieldState.text.toString()),
                                 username = fieldUpdate(state.usernameTextFieldState.text.toString()),

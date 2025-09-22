@@ -10,7 +10,8 @@ import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.mapFailure
 import de.davis.keygo.item.core.domain.model.FieldUpdate
 import de.davis.keygo.item.core.domain.model.PasswordError
-import de.davis.keygo.item.core.domain.model.Upsert
+import de.davis.keygo.item.core.domain.model.UpsertPassword
+import de.davis.keygo.item.core.domain.model.UpsertType
 import de.davis.keygo.item.core.domain.model.getValue
 import de.davis.keygo.item.core.domain.model.on
 import de.davis.keygo.item.core.domain.model.onSet
@@ -36,9 +37,9 @@ class CreateNewOrUpdatePasswordUseCase(
             is FieldUpdate.Set<String> -> field.value.isNotBlank()
         }
 
-    private fun validate(upsert: Upsert): Set<PasswordError> {
+    private fun validate(upsert: UpsertPassword): Set<PasswordError> {
         val errors = mutableSetOf<PasswordError>()
-        val allowKeep = upsert is Upsert.Update
+        val allowKeep = upsert.upsertType is UpsertType.Update
 
         if (!isValid(field = upsert.name, allowKeep = allowKeep))
             errors.add(PasswordError.BlankName)
@@ -49,65 +50,67 @@ class CreateNewOrUpdatePasswordUseCase(
         return errors
     }
 
-    suspend operator fun invoke(upsert: Upsert): Result<Unit, Set<PasswordError>> = coroutineScope {
-        val errors = validate(upsert)
-        if (errors.isNotEmpty())
-            return@coroutineScope Result.Failure(errors)
+    suspend operator fun invoke(upsert: UpsertPassword): Result<Unit, Set<PasswordError>> =
+        coroutineScope {
+            val errors = validate(upsert)
+            if (errors.isNotEmpty())
+                return@coroutineScope Result.Failure(errors)
 
 
-        val encryptedPassword = upsert.password.onSet { password ->
-            async {
-                cryptographicScopeProvider.scope {
-                    password.encryptSecretData()
+            val encryptedPassword = upsert.password.onSet { password ->
+                async {
+                    cryptographicScopeProvider.scope {
+                        password.encryptSecretData()
+                    }
                 }
             }
-        }
 
-        val passwordStrength = upsert.password.onSet { password ->
-            async { passwordStrengthEstimator(password) }
-        }
+            val passwordStrength = upsert.password.onSet { password ->
+                async { passwordStrengthEstimator(password) }
+            }
 
 
-        val totpSecret = upsert.totpSecret.onSet { totpSecret ->
-            async {
-                cryptographicScopeProvider.scope {
-                    totpSecret.encryptSecretData()
+            val totpSecret = upsert.totpSecret.onSet { totpSecret ->
+                async {
+                    cryptographicScopeProvider.scope {
+                        totpSecret.encryptSecretData()
+                    }
                 }
             }
-        }
 
-        val updatedPassword = when (upsert) {
-            is Upsert.Create -> {
-                // Validation ensures that the values are not null
-                Password(
-                    name = upsert.name.getValue() ?: "",
-                    username = upsert.username.getValue(),
                     domainInfos = emptyList(), // TODO upsert.website.getValue(),
-                    encryptedData = encryptedPassword!!.await(),
-                    totpSecret = totpSecret?.await(),
-                    score = passwordStrength!!.await(),
-                    note = upsert.note.getValue(),
-                )
-            }
+            val updatedPassword = when (upsert.upsertType) {
+                UpsertType.Create -> {
+                    // Validation ensures that the values are not null
+                    Password(
+                        name = upsert.name.getValue() ?: "",
+                        username = upsert.username.getValue(),
+                        encryptedData = encryptedPassword!!.await(),
+                        totpSecret = totpSecret?.await(),
+                        score = passwordStrength!!.await(),
+                        note = upsert.note.getValue(),
+                    )
+                }
 
-            is Upsert.Update -> {
-                val dbPassword = passwordRepository.getPasswordById(upsert.vaultId)
-                    ?: return@coroutineScope Result.Failure(setOf(PasswordError.InvalidVaultId))
+                is UpsertType.Update -> {
+                    val dbPassword =
+                        passwordRepository.getPasswordById(upsert.upsertType.vaultItemId)
+                            ?: return@coroutineScope Result.Failure(setOf(PasswordError.InvalidVaultId))
 
-                dbPassword.copy(
-                    name = upsert.name.withoutClearingOn(dbPassword.name),
-                    username = upsert.username.on(dbPassword.username),
                     domainInfos = emptyList(), // TODO upsert.website.on(dbPassword.website),
-                    encryptedData = encryptedPassword?.await() ?: dbPassword.encryptedData,
-                    totpSecret = upsert.totpSecret.on(dbPassword.totpSecret, totpSecret),
-                    score = passwordStrength?.await() ?: dbPassword.score,
-                    note = upsert.note.on(dbPassword.note),
-                )
+                    dbPassword.copy(
+                        name = upsert.name.withoutClearingOn(dbPassword.name),
+                        username = upsert.username.on(dbPassword.username),
+                        encryptedData = encryptedPassword?.await() ?: dbPassword.encryptedData,
+                        totpSecret = upsert.totpSecret.on(dbPassword.totpSecret, totpSecret),
+                        score = passwordStrength?.await() ?: dbPassword.score,
+                        note = upsert.note.on(dbPassword.note),
+                    )
+                }
+            }
+
+            upsertVaultItem(updatedPassword).mapFailure {
+                setOf(PasswordError.DatabaseError(it))
             }
         }
-
-        upsertVaultItem(updatedPassword).mapFailure {
-            setOf(PasswordError.DatabaseError(it))
-        }
-    }
 }

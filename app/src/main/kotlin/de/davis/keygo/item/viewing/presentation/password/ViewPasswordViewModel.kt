@@ -14,7 +14,7 @@ import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.item.core.domain.model.PasswordError
-import de.davis.keygo.item.core.domain.model.Upsert
+import de.davis.keygo.item.core.domain.model.UpsertPassword
 import de.davis.keygo.item.core.domain.model.fieldUpdate
 import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePasswordUseCase
 import de.davis.keygo.item.core.presentation.password.model.FieldType
@@ -177,32 +177,32 @@ class ViewPasswordViewModel(
                 viewModelScope.launch {
                     updatePassword(
                         when (dialog.fieldType) {
-                            FieldType.Name -> Upsert.Update(
+                            FieldType.Name -> UpsertPassword.update(
                                 vaultId = itemId,
                                 name = newText
                             )
 
-                            FieldType.Password -> Upsert.Update(
+                            FieldType.Password -> UpsertPassword.update(
                                 vaultId = itemId,
                                 password = newText
                             )
 
-                            FieldType.Totp -> Upsert.Update(
+                            FieldType.Totp -> UpsertPassword.update(
                                 vaultId = itemId,
                                 totpSecret = newText
                             )
 
-                            FieldType.Username -> Upsert.Update(
+                            FieldType.Username -> UpsertPassword.update(
                                 vaultId = itemId,
                                 username = newText
                             )
 
-                            FieldType.Website -> Upsert.Update(
+                            FieldType.Website -> UpsertPassword.update(
                                 vaultId = itemId,
                                 // TODO website = newText
                             )
 
-                            FieldType.Note -> Upsert.Update(
+                            FieldType.Note -> UpsertPassword.update(
                                 vaultId = itemId,
                                 note = newText
                             )
