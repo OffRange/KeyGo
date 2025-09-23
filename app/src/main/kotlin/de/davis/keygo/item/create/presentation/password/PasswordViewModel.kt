@@ -26,6 +26,7 @@ import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.item.core.domain.model.PasswordError
 import de.davis.keygo.item.core.domain.model.UpsertPassword
 import de.davis.keygo.item.core.domain.model.fieldUpdate
+import de.davis.keygo.item.core.domain.model.set
 import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePasswordUseCase
 import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.item.core.presentation.model.DetailType
@@ -264,10 +265,10 @@ class PasswordViewModel(
                     val state = _uiState.value
                     createNewOrUpdatePassword(
                         upsert = when (itemId == ItemIdNone) {
-                                // TODO website = fieldUpdate(state.websiteTextFieldState.text.toString()),
                             true -> UpsertPassword.create(
                                 name = state.nameTextFieldState.text.toString(),
                                 username = state.usernameTextFieldState.text.toString(),
+                                domains = state.domains,
                                 password = state.passwordTextFieldState.text.toString(),
                                 totpSecret = state.totpTextFieldState.text.toString(),
                                 note = state.notesTextFieldState.text.toString()
@@ -277,7 +278,7 @@ class PasswordViewModel(
                                 vaultId = itemId,
                                 name = fieldUpdate(state.nameTextFieldState.text.toString()),
                                 username = fieldUpdate(state.usernameTextFieldState.text.toString()),
-                                // TODO website = fieldUpdate(state.websiteTextFieldState.text.toString()),
+                                domains = set(state.domains),
                                 password = fieldUpdate(state.passwordTextFieldState.text.toString()),
                                 totpSecret = fieldUpdate(state.totpTextFieldState.text.toString()),
                                 note = fieldUpdate(state.notesTextFieldState.text.toString())

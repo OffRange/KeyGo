@@ -78,13 +78,13 @@ class CreateNewOrUpdatePasswordUseCase(
                 }
             }
 
-                    domainInfos = emptyList(), // TODO upsert.website.getValue(),
             val updatedPassword = when (upsert.upsertType) {
                 UpsertType.Create -> {
                     // Validation ensures that the values are not null
                     Password(
                         name = upsert.name.getValue() ?: "",
                         username = upsert.username.getValue(),
+                        domainInfos = upsert.domains.getValue().orEmpty(),
                         encryptedData = encryptedPassword!!.await(),
                         totpSecret = totpSecret?.await(),
                         score = passwordStrength!!.await(),
@@ -97,10 +97,10 @@ class CreateNewOrUpdatePasswordUseCase(
                         passwordRepository.getPasswordById(upsert.upsertType.vaultItemId)
                             ?: return@coroutineScope Result.Failure(setOf(PasswordError.InvalidVaultId))
 
-                    domainInfos = emptyList(), // TODO upsert.website.on(dbPassword.website),
                     dbPassword.copy(
                         name = upsert.name.withoutClearingOn(dbPassword.name),
                         username = upsert.username.on(dbPassword.username),
+                        domainInfos = upsert.domains.on(dbPassword.domainInfos).orEmpty(),
                         encryptedData = encryptedPassword?.await() ?: dbPassword.encryptedData,
                         totpSecret = upsert.totpSecret.on(dbPassword.totpSecret, totpSecret),
                         score = passwordStrength?.await() ?: dbPassword.score,

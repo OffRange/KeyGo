@@ -27,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -40,6 +41,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.item.create.presentation.component.FormGroup
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
 
 @Composable
 fun <T> ChipFormGroup(
@@ -60,6 +64,8 @@ fun <T> ChipFormGroup(
     val state = rememberTextFieldState()
     var lastSelected by rememberSaveable { mutableStateOf(false) }
 
+    val currentOnSubmit by rememberUpdatedState(onSubmit)
+
     fun handleText(text: String, keepLast: Boolean = true) {
         lastSelected = false
         if (keepLast && text.none { it in delimiters })
@@ -71,14 +77,19 @@ fun <T> ChipFormGroup(
         val (itemsToSubmit, keep) = if (!keepLast || text.last() in delimiters) items to ""
         else items.dropLast(1) to items.last()
 
-        onSubmit(itemsToSubmit)
+        currentOnSubmit(itemsToSubmit)
         state.setTextAndPlaceCursorAtEnd(keep)
     }
 
     val focused by interactionSource.collectIsFocusedAsState()
-    LaunchedEffect(focused) {
-        if (focused) return@LaunchedEffect
-        handleText(state.text.toString(), keepLast = false)
+    LaunchedEffect(Unit) {
+        snapshotFlow { focused }
+            .distinctUntilChanged()
+            .drop(1)
+            .filter { !it }
+            .collectLatest {
+                handleText(state.text.toString(), keepLast = false)
+            }
     }
 
 
