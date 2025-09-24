@@ -1,6 +1,11 @@
 package de.davis.keygo.item.core.presentation.component
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +29,7 @@ import androidx.compose.material3.TextFieldLabelScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +46,8 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.item.create.presentation.component.FormGroup
+import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.collections.immutable.toPersistentSet
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
@@ -48,8 +56,9 @@ import kotlinx.coroutines.flow.filter
 @Composable
 fun <T> ChipFormGroup(
     title: String,
-    items: List<T>,
-    onSubmit: (List<String>) -> Unit,
+    items: ImmutableSet<T>,
+    containsForInput: (String) -> Boolean,
+    onSubmit: (Set<String>) -> Unit,
     onDelete: (T) -> Unit,
     modifier: Modifier = Modifier,
     label: @Composable (TextFieldLabelScope.() -> Unit)? = null,
@@ -65,6 +74,7 @@ fun <T> ChipFormGroup(
     var lastSelected by rememberSaveable { mutableStateOf(false) }
 
     val currentOnSubmit by rememberUpdatedState(onSubmit)
+    val currentContainsForInput by rememberUpdatedState(containsForInput)
 
     fun handleText(text: String, keepLast: Boolean = true) {
         lastSelected = false
@@ -77,7 +87,11 @@ fun <T> ChipFormGroup(
         val (itemsToSubmit, keep) = if (!keepLast || text.last() in delimiters) items to ""
         else items.dropLast(1) to items.last()
 
-        currentOnSubmit(itemsToSubmit)
+        val submissionSet = itemsToSubmit
+            .filterNot { currentContainsForInput(it) }
+            .toSet()
+        if (submissionSet.isNotEmpty()) currentOnSubmit(submissionSet)
+
         state.setTextAndPlaceCursorAtEnd(keep)
     }
 
@@ -110,12 +124,19 @@ fun <T> ChipFormGroup(
     FormGroup(
         title = title
     ) {
-        AnimatedVisibility(items.isNotEmpty()) {
+        AnimatedContent(
+            targetState = items.isNotEmpty(),
+            transitionSpec = { (fadeIn() + expandVertically()) togetherWith (fadeOut() + shrinkVertically()) }
+        ) { hasItems ->
+            if (!hasItems) return@AnimatedContent
             FlowRow(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items.forEachIndexed { index, item ->
-                    chipBuilder(item, if (index == items.size - 1) lastSelected else false)
+                    key(item.hashCode()) {
+                        chipBuilder(item, if (index == items.size - 1) lastSelected else false)
+                    }
                 }
             }
         }
@@ -155,7 +176,10 @@ private fun ChipFormGroupPreview() {
         Surface(modifier = Modifier.fillMaxWidth()) {
             ChipFormGroup(
                 title = "Chips",
-                items = items,
+                items = items.toPersistentSet(),
+                containsForInput = {
+                    it in items
+                },
                 onSubmit = {
                     items += it
                 },

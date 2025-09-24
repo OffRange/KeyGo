@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -54,7 +55,7 @@ import de.davis.keygo.item.create.presentation.password.model.DialogState
 import de.davis.keygo.item.create.presentation.password.model.PasswordUiEvent
 import de.davis.keygo.item.create.presentation.password.model.PasswordUiState
 import de.davis.keygo.totp.presentation.component.QRScanner
-import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -106,6 +107,7 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)
                 .padding(8.dp)
+                .imePadding()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             nameError = state.nameError,
             nameExists = state.nameExists,
@@ -177,6 +179,9 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                 ChipFormGroup(
                     title = stringResource(R.string.domain_information),
                     items = state.domains,
+                    containsForInput = {
+                        state.domains.any { domain -> domain.value == it }
+                    },
                     onSubmit = {
                         onEvent(PasswordUiEvent.OnAddDomains(it))
                     },
@@ -281,7 +286,7 @@ private fun PasswordContentPreview() {
         PasswordContent(
             state = PasswordUiState(
                 strengthScore = Password.Score.Weak,
-                domains = persistentListOf(
+                domains = persistentSetOf(
                     DomainInfo(
                         passwordId = 0,
                         value = "example.com",

@@ -5,8 +5,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.presentation.model.InputFieldError
-import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.collections.immutable.persistentSetOf
 
 data class PasswordUiState(
     val nameTextFieldState: TextFieldState = TextFieldState(),
@@ -14,7 +14,7 @@ data class PasswordUiState(
     val passwordTextFieldState: TextFieldState = TextFieldState(),
     val totpTextFieldState: TextFieldState = TextFieldState(),
     val usernameTextFieldState: TextFieldState = TextFieldState(),
-    val domains: ImmutableList<DomainInfo> = persistentListOf(),
+    val domains: ImmutableSet<DomainInfo> = persistentSetOf(),
     val nameExists: Boolean = false,
     val strengthScore: Password.Score = Password.Score.None,
     val generatePasswordBottomSheetVisible: Boolean = false,

@@ -13,6 +13,7 @@ import de.davis.keygo.core.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.ItemIdNone
+import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.domain.repository.VaultItemRepository
 import de.davis.keygo.core.presentation.UIText
@@ -40,6 +41,7 @@ import de.davis.keygo.item.create.presentation.password.model.PasswordUiState
 import de.davis.keygo.totp.domain.model.TotpSecretInformation
 import de.davis.keygo.totp.domain.usecase.GetTotpSecretFromUrlUseCase
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -212,7 +214,7 @@ class PasswordViewModel(
                         it.copy(
                             totpTextFieldState = TextFieldState(totpSecret?.await() ?: ""),
                             usernameTextFieldState = TextFieldState(password.username ?: ""),
-                            domains = password.domainInfos.toImmutableList(),
+                            domains = password.domainInfos.toImmutableSet(),
                             notesTextFieldState = TextFieldState(password.note ?: ""),
                             dialogState = DialogState.None,
                             updating = true
@@ -418,9 +420,27 @@ class PasswordViewModel(
                 }
             }
 
-            is PasswordUiEvent.OnAddDomains -> TODO()
+            is PasswordUiEvent.OnAddDomains -> {
+                event.domains.forEach { domain ->
+                    val registrableDomain = registrableDomainResolver.resolve(domain)
+                    val info = DomainInfo(
+                        passwordId = itemId,
+                        value = domain,
+                        eTLD1 = registrableDomain
+                    )
+                    _uiState.update {
+                        val newList = it.domains + info
+                        it.copy(domains = newList.toImmutableSet())
+                    }
+                }
+            }
 
-            is PasswordUiEvent.OnDeleteDomain -> TODO()
+            is PasswordUiEvent.OnDeleteDomain -> {
+                _uiState.update {
+                    val newList = it.domains.filterNot { info -> info.value == event.value }
+                    it.copy(domains = newList.toImmutableSet())
+                }
+            }
         }
     }
 
