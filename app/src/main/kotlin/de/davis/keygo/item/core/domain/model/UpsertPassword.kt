@@ -10,7 +10,7 @@ data class UpsertPassword private constructor(
     val password: FieldUpdate<String>,
     val totpSecret: FieldUpdate<String>,
     val username: FieldUpdate<String>,
-    val domains: FieldUpdate<List<DomainInfo>>,
+    val domains: FieldUpdate<Set<DomainInfo>>,
     val note: FieldUpdate<String>,
 ) {
     companion object {
@@ -19,7 +19,7 @@ data class UpsertPassword private constructor(
             password: String,
             totpSecret: String? = null,
             username: String? = null,
-            domains: List<DomainInfo> = emptyList(),
+            domains: Set<DomainInfo> = emptySet(),
             note: String? = null,
         ) = UpsertPassword(
             upsertType = UpsertType.Create,
@@ -37,7 +37,7 @@ data class UpsertPassword private constructor(
             password: FieldUpdate<String> = keep(),
             totpSecret: FieldUpdate<String> = keep(),
             username: FieldUpdate<String> = keep(),
-            domains: FieldUpdate<List<DomainInfo>> = keep(),
+            domains: FieldUpdate<Set<DomainInfo>> = keep(),
             note: FieldUpdate<String> = keep(),
         ) = UpsertPassword(
             upsertType = UpsertType.Update(vaultId),

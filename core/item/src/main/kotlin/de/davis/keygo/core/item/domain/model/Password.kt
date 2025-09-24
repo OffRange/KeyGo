@@ -8,7 +8,7 @@ import de.davis.keygo.processor.annotation.VaultEntity
 data class Password(
     val id: ItemId = 0,
     val username: String?,
-    val domainInfos: List<DomainInfo>,
+    val domainInfos: Set<DomainInfo>,
     val score: Score,
     val totpSecret: SecretData<String>?,
     override val vaultItemId: ItemId = 0,

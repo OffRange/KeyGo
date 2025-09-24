@@ -273,7 +273,7 @@ private fun PreviewContent(empty: Boolean = false) {
                     val p = Password(
                         id = it.toLong(),
                         username = "User $it",
-                        domainInfos = listOf(
+                        domainInfos = setOf(
                             DomainInfo(
                                 passwordId = it.toLong(),
                                 value = "www.example.com",
