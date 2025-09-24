@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import de.davis.keygo.core.item.data.local.converter.SecretDataConverter
+import de.davis.keygo.core.item.data.local.dao.DomainInfoDao
 import de.davis.keygo.core.item.data.local.dao.PasswordDao
 import de.davis.keygo.core.item.data.local.dao.VaultDao
 import de.davis.keygo.core.item.data.local.entity.DomainInfoEntity
@@ -27,6 +28,7 @@ abstract class ItemDatabase : RoomDatabase() {
 
     internal abstract fun vaultDao(): VaultDao
     internal abstract fun passwordDao(): PasswordDao
+    internal abstract fun domainInfoDao(): DomainInfoDao
 
     companion object {
         val koinModule = module {
@@ -34,6 +36,7 @@ abstract class ItemDatabase : RoomDatabase() {
 
             singleOf(ItemDatabase::vaultDao)
             singleOf(ItemDatabase::passwordDao)
+            singleOf(ItemDatabase::domainInfoDao)
         }
 
         private fun create(applicationContext: Context) = Room.databaseBuilder(
