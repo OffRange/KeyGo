@@ -20,7 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.automirrored.filled.Notes
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddLink
@@ -48,6 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -61,6 +61,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
+import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.presentation.LocalIsInSinglePaneMode
 import de.davis.keygo.core.presentation.component.KeyGoCard
@@ -116,7 +117,7 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
         val password = stringResource(R.string.password)
         val totp = stringResource(R.string.totp)
         val username = stringResource(R.string.username)
-        val website = stringResource(R.string.website)
+        val domains = stringResource(R.string.domains)
         val note = stringResource(R.string.note)
 
         var isPasswordHidden by rememberSaveable { mutableStateOf(true) }
@@ -214,22 +215,25 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                 }
             }
 
-            if (state.website.isNotBlank()) {
+            if (state.domains.isNotEmpty()) {
                 entry(
-                    title = website,
+                    title = domains,
                     leadingIcon = Icons.Default.Link,
-                    trailingContent = if (false /*TODO state.canOpenWebsite*/) {
-                        {
-                            IconButton(onClick = { onEvent(ViewPasswordUiEvent.OpenWebsite) }) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Default.OpenInNew,
-                                    contentDescription = stringResource(R.string.open_website_content_description)
+                ) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        state.domains.forEach {
+                            key(it.value) {
+                                AssistChip(
+                                    onClick = {
+                                        onEvent(ViewPasswordUiEvent.OpenWebsite(it.value))
+                                    },
+                                    label = { Text(text = it.value) }
                                 )
                             }
                         }
-                    } else null
-                ) {
-                    Text(text = state.website)
+                    }
                 }
             }
 
@@ -260,12 +264,11 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                             onClick = { onEvent(ViewPasswordUiEvent.OnModifyFieldRequest(it)) }
                         )
                     }
-                    if (state.website.isBlank()) {
-                        AddChip(
-                            fieldType = FieldType.Website,
-                            onClick = { onEvent(ViewPasswordUiEvent.OnModifyFieldRequest(it)) }
-                        )
-                    }
+
+                    AddChip(
+                        fieldType = FieldType.Website,
+                        onClick = { onEvent(ViewPasswordUiEvent.OnModifyFieldRequest(it)) }
+                    )
 
                     if (state.note.isBlank()) {
                         AddChip(
@@ -399,7 +402,13 @@ private fun ViewPasswordContentPreview() {
                         maxLifetime = 30_000L
                     ),
                     username = "Username 1",
-                    website = "example.com",
+                    domains = setOf(
+                        DomainInfo(
+                            passwordId = 1,
+                            value = "login.example.com",
+                            eTLD1 = "example.com"
+                        )
+                    ),
                     note = "Note about the password or any additional information that might be useful.",
                 ),
                 onEvent = {}
@@ -421,7 +430,13 @@ private fun ViewPasswordContentModificationDialogPreview() {
                     password = ObfuscatedString("Password"),
                     passwordStrengthScore = Password.Score.Ridiculous,
                     username = "Username 1",
-                    website = "example.com",
+                    domains = setOf(
+                        DomainInfo(
+                            passwordId = 1,
+                            value = "login.example.com",
+                            eTLD1 = "example.com"
+                        )
+                    ),
                     modificationDialog = ModificationDialog(
                         fieldType = FieldType.Name,
                         textFieldState = rememberTextFieldState()

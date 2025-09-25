@@ -84,7 +84,7 @@
     <string name="note_placeholder">Write your Note</string>
 
     <string name="username">Username</string>
-    <string name="website">Website</string>
+    <string name="domains">Domains</string>
     <string name="add_domains">Add domains</string>
 
     <string name="password_strength_ridiculous">Ridiculous</string>

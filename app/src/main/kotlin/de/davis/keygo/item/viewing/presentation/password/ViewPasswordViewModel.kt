@@ -86,7 +86,7 @@ class ViewPasswordViewModel(
                         password = obfuscatedString.await(),
                         passwordStrengthScore = password.score,
                         username = password.username.orEmpty(),
-                        // TODO website = password.website.orEmpty(),
+                        domains = password.domainInfos,
                         note = password.note.orEmpty(),
                         totpInformation = TotpInformation("", 0, 0),
                     )
@@ -126,12 +126,12 @@ class ViewPasswordViewModel(
                 navigationEventChannel.send(NavigationEvent.NavigateBack)
             }
 
-            ViewPasswordUiEvent.OpenWebsite -> {
-                /* TODO val url = state.value.website
+            is ViewPasswordUiEvent.OpenWebsite -> {
+                val url = event.domain
                 if (!isValidUrl(url))
                     return
 
-                websiteHandler.openWebsite(url)*/
+                websiteHandler.openWebsite(url)
             }
 
             ViewPasswordUiEvent.OnEditRequest -> {

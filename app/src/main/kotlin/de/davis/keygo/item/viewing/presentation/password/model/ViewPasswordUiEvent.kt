@@ -4,7 +4,7 @@ import de.davis.keygo.item.core.presentation.password.model.FieldType
 
 sealed interface ViewPasswordUiEvent {
 
-    data object OpenWebsite : ViewPasswordUiEvent
+    data class OpenWebsite(val domain: String) : ViewPasswordUiEvent
     data object OnBackClick : ViewPasswordUiEvent
 
     data object OnEditRequest : ViewPasswordUiEvent
