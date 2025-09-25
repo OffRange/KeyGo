@@ -5,11 +5,13 @@ import de.davis.keygo.autofill.presentation.model.FormType
 import de.davis.keygo.core.item.domain.model.lite.LitePassword
 import de.davis.keygo.core.item.domain.model.lite.LiteVaultItem
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
+import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
 import org.koin.core.annotation.Single
 
 @Single
 internal class SuggestionFinder(
     private val passwordRepository: PasswordRepository,
+    private val registrableDomainResolver: RegistrableDomainResolver
 ) {
 
     internal suspend fun findVaultSuggestions(
@@ -26,8 +28,9 @@ internal class SuggestionFinder(
     private suspend fun findPasswordSuggestions(
         form: Form,
         count: Int
-    ): List<LitePassword> = form.urls.flatMap {
-        // TODO: introduce use case to get right eTLD+1, also migrate to use limit
-        passwordRepository.getVaultPasswordsByTLDs(etld1s = form.urls)
-    }.take(count)
+    ): List<LitePassword> = form.urls.mapNotNull {
+        registrableDomainResolver.resolve(it)
+    }.toSet().let {
+        passwordRepository.getVaultPasswordsByTLDs(etld1s = it, limit = count)
+    }
 }
