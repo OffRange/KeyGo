@@ -7,15 +7,19 @@ import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.crypto.decryptSecretData
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.ItemIdNone
+import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.presentation.model.InputFieldError
 import de.davis.keygo.core.presentation.model.NavigationEvent
+import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.item.core.domain.model.PasswordError
 import de.davis.keygo.item.core.domain.model.UpsertPassword
 import de.davis.keygo.item.core.domain.model.fieldUpdate
+import de.davis.keygo.item.core.domain.model.onSet
+import de.davis.keygo.item.core.domain.model.set
 import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePasswordUseCase
 import de.davis.keygo.item.core.presentation.password.model.FieldType
 import de.davis.keygo.item.viewing.domain.WebsiteHandler
@@ -53,7 +57,8 @@ class ViewPasswordViewModel(
     private val updatePassword: CreateNewOrUpdatePasswordUseCase,
     private val isValidUrl: IsValidUrlUseCase,
     private val websiteHandler: WebsiteHandler,
-    private val totpGenerator: TotpGenerator
+    private val totpGenerator: TotpGenerator,
+    private val registrableDomainResolver: RegistrableDomainResolver
 ) : ViewModel() {
 
     private val _modificationDialogState = MutableStateFlow<ModificationDialog?>(null)
@@ -157,7 +162,7 @@ class ViewPasswordViewModel(
                     FieldType.Password -> state.password.raw
                     FieldType.Totp -> "" // TOTP is not editable in this context
                     FieldType.Username -> state.username
-                    FieldType.Website -> "" // TODO state.website
+                    FieldType.Domain -> "" // Only allow adding new domains, not editing existing ones
                     FieldType.Note -> state.note
                 }
 
@@ -197,10 +202,19 @@ class ViewPasswordViewModel(
                                 username = newText
                             )
 
-                            FieldType.Website -> UpsertPassword.update(
-                                vaultId = itemId,
-                                // TODO website = newText
-                            )
+                            FieldType.Domain -> newText.onSet {
+                                val eTLD1 = registrableDomainResolver.resolve(it)
+                                val updatedDomains = state.value.domains + DomainInfo(
+                                    itemId,
+                                    it,
+                                    eTLD1
+                                )
+
+                                UpsertPassword.update(
+                                    vaultId = itemId,
+                                    domains = set(updatedDomains)
+                                )
+                            } ?: return@launch
 
                             FieldType.Note -> UpsertPassword.update(
                                 vaultId = itemId,
