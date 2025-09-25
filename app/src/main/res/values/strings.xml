@@ -118,6 +118,7 @@
     <string name="database_error">An unexpected database error has occurred: %s</string>
     <string name="invalid_vault_id">Vault item ID can not be found</string>
 
+    <string name="n_more">%d more</string>
     <string name="list_entry">\u2022 %s</string>
     <string name="list_before">\u2022 Before: %s</string>
     <string name="list_after">\u2022 After: %s</string>

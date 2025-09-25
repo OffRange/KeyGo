@@ -460,7 +460,7 @@ class PasswordViewModel(
     private fun requestTotpSecretUpdate(secretInformation: TotpSecretInformation) {
         val currentState = _uiState.value
         val currentTotpSecret = currentState.totpTextFieldState.text.toString()
-        // TODO val currentIssuer = currentState.websiteTextFieldState.text.toString()
+        val currentIssuers = currentState.domains
         val currentAccountName = currentState.usernameTextFieldState.text.toString()
 
         val newTotpSecret = secretInformation.secret
@@ -468,17 +468,16 @@ class PasswordViewModel(
         val newAccountName = secretInformation.accountName
 
         val isCurrentSecretSet = currentTotpSecret.isNotBlank()
-        // TODO val isCurrentIssuerSet = currentIssuer.isNotBlank()
         val isCurrentAccountNameSet = currentAccountName.isNotBlank()
 
         val isCurrentTotpSecretSame = currentTotpSecret == newTotpSecret
-        val isCurrentIssuerSame = newIssuer.isBlank() // TODO || currentIssuer == newIssuer
         val isCurrentAccountNameSame = currentAccountName == newAccountName
 
         val overridingFields = mutableSetOf<OverrideTotpField>()
 
         val isOverridingTotpSecret = isCurrentSecretSet && !isCurrentTotpSecretSame
-        val isOverridingIssuer = /*isCurrentIssuerSet &&*/ !isCurrentIssuerSame
+        val isAddingNewIssuer = currentIssuers
+            .none { it.value.contains(newIssuer, ignoreCase = true) }
         val isOverridingAccountName = isCurrentAccountNameSet && !isCurrentAccountNameSame
 
         if (isOverridingTotpSecret) {
@@ -487,16 +486,6 @@ class PasswordViewModel(
                     fieldType = FieldType.Totp,
                     before = currentTotpSecret,
                     after = newTotpSecret
-                )
-            )
-        }
-
-        if (isOverridingIssuer) {
-            overridingFields.add(
-                OverrideTotpField(
-                    fieldType = FieldType.Website,
-                    before = "!", // TODO currentIssuer,
-                    after = newIssuer
                 )
             )
         }
@@ -513,7 +502,7 @@ class PasswordViewModel(
 
         updateUiWithSpecificTotpSecretInfo(
             secret = if (!isOverridingTotpSecret) newTotpSecret else null,
-            issuer = if (!isOverridingIssuer) newIssuer else null,
+            issuer = if (isAddingNewIssuer) newIssuer else null,
             accountName = if (!isOverridingAccountName) newAccountName else null,
             closeDialog = false
         )
@@ -546,9 +535,9 @@ class PasswordViewModel(
             currentState.totpTextFieldState.setTextAndPlaceCursorAtEnd(it)
         }
 
-        /* TODO issuer?.let {
-            currentState.websiteTextFieldState.setTextAndPlaceCursorAtEnd(it)
-        }*/
+        issuer?.let {
+            onEvent(PasswordUiEvent.OnAddDomains(setOf(it)))
+        }
 
         accountName?.let {
             currentState.usernameTextFieldState.setTextAndPlaceCursorAtEnd(it)

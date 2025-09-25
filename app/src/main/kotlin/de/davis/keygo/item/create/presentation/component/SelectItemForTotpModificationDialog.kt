@@ -20,6 +20,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
@@ -83,13 +87,26 @@ fun SelectItemForTotpModificationDialog(
                                         Text(text = stringResource(R.string.list_entry, it))
                                     }
 
-                                    // TODO: improve domain display
-                                    //  - just display some and add a text btn to show all in a dialog?
-                                    //  - or display them in a scrollable view?
-                                    //  - Currently https://example.com is not the same as example.com --> replacement dialog is shown
-                                    item.domains.forEach {
-                                        Text(text = stringResource(R.string.list_entry, it))
-                                    }
+                                    Text(
+                                        text = buildAnnotatedString {
+                                            item.domains.take(3).joinToString { it.value }.also {
+                                                append(stringResource(R.string.list_entry, it))
+                                            }
+
+                                            if (item.domains.size <= 3)
+                                                return@buildAnnotatedString
+
+                                            append(", ")
+                                            withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                                                append(
+                                                    stringResource(
+                                                        R.string.n_more,
+                                                        item.domains.size - 3
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    )
                                 }
                             )
                         }

@@ -201,7 +201,7 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                 ) { item, selected ->
                     InputChip(
                         selected = selected,
-                        onClick = { /* TODO: maybe allow editing? */ },
+                        onClick = { /* TODO: maybe allow editing? but definitely removing */ },
                         label = { Text(text = item.value) }
                     )
                 }
