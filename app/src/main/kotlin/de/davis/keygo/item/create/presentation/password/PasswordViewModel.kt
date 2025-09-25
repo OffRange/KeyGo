@@ -447,12 +447,12 @@ class PasswordViewModel(
     private fun List<OverrideTotpField>.applyToUi(overrideWith: OverrideTotpField.() -> String) {
         val secretField = find { field -> field.fieldType == FieldType.Totp }
         val usernameField = find { field -> field.fieldType == FieldType.Username }
-        val websiteField = find { field -> field.fieldType == FieldType.Website }
+        val domainField = find { field -> field.fieldType == FieldType.Domain }
 
 
         updateUiWithSpecificTotpSecretInfo(
             secret = secretField?.overrideWith(),
-            issuer = websiteField?.overrideWith(),
+            issuer = domainField?.overrideWith(),
             accountName = usernameField?.overrideWith()
         )
     }

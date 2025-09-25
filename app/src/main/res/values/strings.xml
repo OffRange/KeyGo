@@ -23,7 +23,7 @@
     <string name="add">Add</string>
     <string name="add_totp">Add TOTP Secret</string>
     <string name="add_username">Add Username</string>
-    <string name="add_website">Add Website</string>
+    <string name="add_domain">Add Domain</string>
     <string name="add_note">Add Note</string>
     <string name="add_new_element">Add new Element</string>
 

@@ -266,7 +266,7 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                     }
 
                     AddChip(
-                        fieldType = FieldType.Website,
+                        fieldType = FieldType.Domain,
                         onClick = { onEvent(ViewPasswordUiEvent.OnModifyFieldRequest(it)) }
                     )
 
@@ -341,7 +341,7 @@ private fun FieldType.addLabel(): String {
         FieldType.Password -> stringResource(R.string.password)
         FieldType.Totp -> stringResource(R.string.add_totp)
         FieldType.Username -> stringResource(R.string.add_username)
-        FieldType.Website -> stringResource(R.string.add_website)
+        FieldType.Domain -> stringResource(R.string.add_domain)
         FieldType.Note -> stringResource(R.string.add_note)
     }
 }
@@ -353,7 +353,7 @@ private fun FieldType.addIcon(): ImageVector {
         FieldType.Password -> Icons.Default.Password
         FieldType.Totp -> Icons.Default.MoreTime
         FieldType.Username -> Icons.Default.PersonAdd
-        FieldType.Website -> Icons.Default.AddLink
+        FieldType.Domain -> Icons.Default.AddLink
         FieldType.Note -> Icons.AutoMirrored.Default.NoteAdd
     }
 }

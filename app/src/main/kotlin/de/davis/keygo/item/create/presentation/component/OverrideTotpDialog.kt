@@ -147,7 +147,7 @@ private fun SelectItemForTotpModificationDialogPreview() {
                         selected = false
                     ),
                     OverrideTotpField(
-                        fieldType = FieldType.Website,
+                        fieldType = FieldType.Domain,
                         before = "oldWebsite",
                         after = "newWebsite",
                         selected = true
