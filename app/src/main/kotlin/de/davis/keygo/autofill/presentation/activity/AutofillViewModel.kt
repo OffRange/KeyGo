@@ -4,7 +4,10 @@ import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.R
+import de.davis.keygo.autofill.domain.usecase.AddRegistrableDomainsToPasswordUseCase
+import de.davis.keygo.autofill.domain.usecase.DoesItemHaveDomainReferencesUseCase
 import de.davis.keygo.autofill.presentation.AutofillDatasetProvider
+import de.davis.keygo.autofill.presentation.model.AssociationDialogVisibility
 import de.davis.keygo.autofill.presentation.model.AutofillEvent
 import de.davis.keygo.autofill.presentation.model.AutofillUiEvent
 import de.davis.keygo.autofill.presentation.model.AutofillUiState
@@ -27,8 +30,10 @@ import de.davis.keygo.core.identity.biometric.presentation.BiometricViewModel
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
+import de.davis.keygo.core.item.domain.repository.VaultItemRepository
 import de.davis.keygo.core.presentation.UIText
 import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
+import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,8 +47,11 @@ import org.koin.android.annotation.KoinViewModel
 internal class AutofillViewModel(
     savedStateHandle: SavedStateHandle,
     private val passwordRepository: PasswordRepository,
+    private val vaultItemRepository: VaultItemRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val autofillDatasetProvider: AutofillDatasetProvider,
+    private val doesItemHaveDomainReferences: DoesItemHaveDomainReferencesUseCase,
+    private val addRegistrableDomainToPassword: AddRegistrableDomainsToPasswordUseCase,
 
     getBiometricCryptoSetupAvailability: GetBiometricCryptoSetupAvailabilityUseCase,
     getBiometricHardwareAvailability: GetBiometricHardwareAvailabilityUseCase,
@@ -103,18 +111,16 @@ internal class AutofillViewModel(
     private fun handleSuggestionRequest(suggestionInfo: FillRequestData.Suggestion) {
         _uiState.update { it.copy(vaultId = suggestionInfo.vaultId) }
         viewModelScope.launch {
-            when (suggestionInfo.form.type) {
-                is FormType.Credentials -> handleSuggestPasswordRequest(suggestionInfo)
-            }
+            handleSuggestRequest(suggestionInfo)
         }
     }
 
-    private suspend fun handleSuggestPasswordRequest(suggestionInfo: FillRequestData.Suggestion) {
-        // TODO: only fetch name of the item here, or make it generic for all item types
-        val item = getPasswordById(suggestionInfo.vaultId)
-            ?: throw IllegalArgumentException("Password for vaultId=${suggestionInfo.vaultId} not found")
+    private suspend fun handleSuggestRequest(suggestionInfo: FillRequestData.Suggestion) {
+        val itemName = vaultItemRepository.getItemName(suggestionInfo.vaultId)
+            ?: throw IllegalArgumentException("Name for vaultId=${suggestionInfo.vaultId} not found")
+
         requestBiometricAuthentication(
-            title = UIText.ResourceString(R.string.unlock_item, item.name),
+            title = UIText.ResourceString(R.string.unlock_item, itemName),
             negativeButton = UIText.ResourceString(R.string.password)
         )
     }
@@ -144,7 +150,28 @@ internal class AutofillViewModel(
 
     private fun onItemSelected(vaultId: ItemId) {
         viewModelScope.launch {
-            _uiState.update { it.copy(showAssociationDialog = true, vaultId = vaultId) }
+            val fillRightAway = doesItemHaveDomainReferences(
+                itemVaultId = vaultId,
+                domains = requestData.form.urls
+            )
+
+            if (fillRightAway) {
+                sendFillEvent(vaultId)
+                return@launch
+            }
+
+            val itemName = vaultItemRepository.getItemName(vaultId)
+                ?: throw IllegalArgumentException("Name for vaultId=$vaultId not found")
+
+            _uiState.update {
+                it.copy(
+                    associationDialogVisibility = AssociationDialogVisibility.Visible(
+                        itemName = itemName,
+                        domains = requestData.form.urls.toImmutableSet()
+                    ),
+                    vaultId = vaultId
+                )
+            }
         }
     }
 
@@ -169,19 +196,21 @@ internal class AutofillViewModel(
     }
 
     private fun associateItem() {
-        val vaultId = uiState.value.vaultId
+        val vaultItemId = uiState.value.vaultId
+        viewModelScope.launch {
+            addRegistrableDomainToPassword(
+                vaultItemId = vaultItemId,
+                domains = requestData.form.urls.toSet()
+            )
+        }
         hideAssociationDialog()
     }
 
     private fun hideAssociationDialog() {
-        _uiState.update { it.copy(showAssociationDialog = false) }
+        _uiState.update { it.copy(associationDialogVisibility = AssociationDialogVisibility.Hidden) }
         viewModelScope.launch {
             sendFillEvent(_uiState.value.vaultId)
         }
-    }
-
-    private suspend fun getPasswordById(vaultId: ItemId): Password? {
-        return passwordRepository.getPasswordById(vaultId)
     }
 
     private suspend fun sendFillEvent(vaultId: ItemId) {
@@ -193,7 +222,7 @@ internal class AutofillViewModel(
         val formInformation = requestData.form
         when (formInformation.type) {
             is FormType.Credentials -> {
-                val password = getPasswordById(vaultId) ?: run {
+                val password = passwordRepository.getPasswordById(vaultId) ?: run {
                     eventChannel.send(AutofillEvent.Abort)
                     return
                 }

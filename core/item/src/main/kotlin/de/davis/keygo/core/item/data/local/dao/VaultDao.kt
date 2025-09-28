@@ -18,6 +18,9 @@ internal interface VaultDao {
     @Query("DELETE FROM VaultItemEntity WHERE id = :id")
     suspend fun delete(id: ItemId)
 
+    @Query("SELECT name FROM VaultItemEntity WHERE id = :itemId")
+    suspend fun getNameById(itemId: ItemId): String?
+
     @Query("SELECT EXISTS(SELECT 1 FROM VaultItemEntity WHERE name = :name AND (:excludeId IS NULL OR id != :excludeId))")
     suspend fun existsName(name: String, excludeId: ItemId? = null): Boolean
 

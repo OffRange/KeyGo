@@ -16,7 +16,7 @@ internal abstract class DomainInfoDao {
     )
 
     @Upsert
-    protected abstract suspend fun upsertAll(domains: Set<DomainInfoEntity>): List<Long>
+    abstract suspend fun upsertAll(domains: Set<DomainInfoEntity>): List<Long>
 
     @Transaction
     open suspend fun syncForPassword(passwordId: Long, domains: Set<DomainInfoEntity>) {

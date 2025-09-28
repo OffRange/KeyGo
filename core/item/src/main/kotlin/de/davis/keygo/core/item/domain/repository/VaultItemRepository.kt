@@ -12,6 +12,7 @@ interface VaultItemRepository {
 
     suspend fun createOrUpdateVaultItem(item: VaultItem): ItemId
 
+    suspend fun getItemName(itemId: ItemId): String?
     suspend fun doesNameExist(name: String, excludeId: ItemId? = null): Boolean
 
     suspend fun searchVaultItem(query: String): List<LiteVaultItemSearchResult>

@@ -11,6 +11,7 @@ import de.davis.keygo.core.item.data.maper.toData
 import de.davis.keygo.core.item.data.maper.toDataDomainInfos
 import de.davis.keygo.core.item.data.maper.toDomain
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.model.VaultItem
 import de.davis.keygo.core.item.domain.model.lite.LitePassword
@@ -48,6 +49,22 @@ internal class PasswordRepositoryImpl(
             onSuccess = { Result.Success(it) },
             onFailure = { Result.Failure(it) }
         )
+
+    override suspend fun updatePasswordWithDomainInfo(
+        vaultItemId: ItemId,
+        domainInfos: Set<DomainInfo>
+    ): Result<Unit, Throwable> = runCatching {
+        database.withTransaction {
+            val password = passwordDao.getVaultPassword(vaultItemId)
+                ?: throw IllegalArgumentException("No password found with vault id $vaultItemId")
+
+            val dataDomains = domainInfos.map { it.toData(password.passwordEntity.id) }.toSet()
+            domainInfoDao.upsertAll(dataDomains)
+        }
+    }.fold(
+        onSuccess = { Result.Success(Unit) },
+        onFailure = { Result.Failure(it) }
+    )
 
     override suspend fun getVaultPasswordsByTLD(etld1: String, limit: Int): List<LitePassword> =
         getVaultPasswordsByTLDs(setOf(etld1), limit)

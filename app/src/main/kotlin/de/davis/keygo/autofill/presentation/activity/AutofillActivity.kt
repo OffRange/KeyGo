@@ -12,6 +12,8 @@ import androidx.compose.runtime.getValue
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
+import de.davis.keygo.autofill.presentation.activity.component.AssociationDialog
+import de.davis.keygo.autofill.presentation.model.AssociationDialogVisibility
 import de.davis.keygo.autofill.presentation.model.AutofillEvent
 import de.davis.keygo.autofill.presentation.model.AutofillUiEvent
 import de.davis.keygo.autofill.presentation.model.Request
@@ -47,6 +49,7 @@ internal class AutofillActivity : FragmentActivity() {
                 BiometricPromptSupport {
                     val viewModel = koinViewModel<AutofillViewModel>()
                     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+                    val dialogVisibility = uiState.associationDialogVisibility
 
                     val biometricManager = LocalBiometricManager.current
 
@@ -94,6 +97,15 @@ internal class AutofillActivity : FragmentActivity() {
                             showBiometricPromptIfPossible = uiState.request !is Request.JustAuthenticateWithPwd
                         )
                     }
+
+                    if (dialogVisibility is AssociationDialogVisibility.Visible)
+                        AssociationDialog(
+                            itemName = dialogVisibility.itemName,
+                            domains = dialogVisibility.domains,
+                            onDismissRequest = {},
+                            onConfirm = { viewModel.onEvent(AutofillUiEvent.OnAssociate) },
+                            onDismiss = { viewModel.onEvent(AutofillUiEvent.OnCancelAssociation) }
+                        )
                 }
             }
         }

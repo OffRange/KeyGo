@@ -24,6 +24,8 @@ internal class VaultItemRepositoryImpl(
     override suspend fun createOrUpdateVaultItem(item: VaultItem): ItemId =
         vaultDao.upsert(item.toData())
 
+    override suspend fun getItemName(itemId: ItemId): String? = vaultDao.getNameById(itemId)
+
     override suspend fun doesNameExist(
         name: String,
         excludeId: ItemId?

@@ -5,6 +5,6 @@ import de.davis.keygo.core.item.domain.alias.ItemIdNone
 
 data class AutofillUiState(
     val request: Request<*> = Request.None,
-    val showAssociationDialog: Boolean = false,
+    val associationDialogVisibility: AssociationDialogVisibility = AssociationDialogVisibility.Hidden,
     val vaultId: ItemId = ItemIdNone
 )
