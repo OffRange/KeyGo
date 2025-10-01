@@ -1,6 +1,8 @@
 package de.davis.keygo.autofill.presentation.activity
 
+import android.util.Patterns
 import androidx.biometric.BiometricPrompt
+import androidx.core.util.PatternsCompat
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.R
@@ -241,9 +243,20 @@ internal class AutofillViewModel(
 
                 FieldType.Credentials.Username -> password.username
 
-                // TODO: add support for these field types
-                FieldType.Credentials.EMail,
-                FieldType.Credentials.Phone,
+                FieldType.Credentials.EMail -> {
+                    password.username?.let { potentialEmail ->
+                        val isEmail = PatternsCompat.EMAIL_ADDRESS.matcher(potentialEmail).matches()
+                        if (isEmail) potentialEmail else null
+                    }
+                }
+
+                FieldType.Credentials.Phone -> {
+                    password.username?.let { potentialPhone ->
+                        val isPhone = Patterns.PHONE.matcher(potentialPhone).matches()
+                        if (isPhone) potentialPhone else null
+                    }
+                }
+
                 FieldType.Undefined -> null
             }
 
