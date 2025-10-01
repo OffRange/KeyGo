@@ -169,8 +169,8 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
 
                     KeyGoFormField(
                         state = state.usernameTextFieldState,
-                        label = { Text(text = stringResource(R.string.username)) },
-                        placeholder = { Text(text = stringResource(R.string.username)) },
+                        label = { Text(text = stringResource(R.string.login_identifier)) },
+                        placeholder = { Text(text = stringResource(R.string.login_identifier)) },
                     )
                 }
             }

@@ -116,7 +116,7 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
         val name = stringResource(R.string.name)
         val password = stringResource(R.string.password)
         val totp = stringResource(R.string.totp)
-        val username = stringResource(R.string.username)
+        val username = stringResource(R.string.login_identifier)
         val domains = stringResource(R.string.domains)
         val note = stringResource(R.string.note)
 

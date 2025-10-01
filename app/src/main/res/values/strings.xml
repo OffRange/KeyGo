@@ -27,7 +27,7 @@
         <item quantity="one">“%1$s” will be suggested next time you sign in on %2$s. This choice is stored on your device and can be changed on the item\'s detail screen.</item>
         <item quantity="other">“%1$s” will be suggested next time you sign in on %2$s and %3$d more. This choice is stored on your device and can be changed on the item\'s detail screen.</item>
     </plurals>
-    
+
     <string name="not_now">Not now</string>
 
     <string name="add">Add</string>
@@ -93,7 +93,7 @@
     <string name="note">Note</string>
     <string name="note_placeholder">Write your Note</string>
 
-    <string name="username">Username</string>
+    <string name="login_identifier">Email, phone, or username</string>
     <string name="domains">Domains</string>
     <string name="add_domains">Add domains</string>
 
