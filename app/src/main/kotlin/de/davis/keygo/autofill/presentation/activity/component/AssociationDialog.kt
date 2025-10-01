@@ -13,6 +13,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import de.davis.keygo.R
@@ -47,8 +48,15 @@ fun AssociationDialog(
             Text(text = stringResource(R.string.suggest_for_this_app))
         },
         text = {
-            // TODO only show some
-            Text(text = stringResource(R.string.suggest_text, itemName, domains.joinToString()))
+            Text(
+                text = pluralStringResource(
+                    R.plurals.suggest_text,
+                    domains.size,
+                    itemName,
+                    domains.first(),
+                    domains.size - 1
+                )
+            )
         },
         icon = {
             Icon(imageVector = Icons.Default.AutoMode, contentDescription = null)

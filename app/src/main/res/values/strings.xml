@@ -22,7 +22,12 @@
 
     <string name="suggest">Suggest</string>
     <string name="suggest_for_this_app">Suggest this item</string>
-    <string name="suggest_text">“%s” will be suggested next time you sign in on %s. This choice is stored on your device and can be changed on the item\'s detail screen.</string>
+
+    <plurals name="suggest_text">
+        <item quantity="one">“%1$s” will be suggested next time you sign in on %2$s. This choice is stored on your device and can be changed on the item\'s detail screen.</item>
+        <item quantity="other">“%1$s” will be suggested next time you sign in on %2$s and %3$d more. This choice is stored on your device and can be changed on the item\'s detail screen.</item>
+    </plurals>
+    
     <string name="not_now">Not now</string>
 
     <string name="add">Add</string>
