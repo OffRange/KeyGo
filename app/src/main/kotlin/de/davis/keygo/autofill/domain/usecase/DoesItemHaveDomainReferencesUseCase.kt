@@ -12,6 +12,8 @@ class DoesItemHaveDomainReferencesUseCase(
 ) {
 
     suspend operator fun invoke(itemVaultId: ItemId, domains: Set<String>): Boolean {
+        if (domains.isEmpty()) return false
+
         val passwordDomains = passwordRepository.getPasswordById(itemVaultId)
             ?.domainInfos
             ?: return false
