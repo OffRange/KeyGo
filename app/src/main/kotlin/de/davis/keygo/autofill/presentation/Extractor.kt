@@ -38,7 +38,9 @@ internal class Extractor() {
         // We filter out the fields that are not in the same group as the focused field
         // This forces us to only fill one type at a time (e.g. credentials or credit cards).
         Log.d(TAG, "Extracted fields: $result")
-        val focusedFieldType = result.firstOrNull { it.focused }?.type ?: return null
+        val focusedFieldType = result.firstOrNull { it.focused }?.type
+            ?: result.firstOrNull()?.type
+            ?: return null
         if (focusedFieldType is FieldType.Undefined) return null
 
         return Form(
