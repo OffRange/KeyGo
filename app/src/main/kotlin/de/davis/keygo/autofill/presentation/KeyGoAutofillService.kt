@@ -68,7 +68,8 @@ class KeyGoAutofillService : AutofillService() {
                 return@launch
             }
 
-            val form = extractor.extractRelevant(windowNode.rootViewNode, manualRequest = false)
+            val isManual = request.flags and FillRequest.FLAG_MANUAL_REQUEST != 0
+            val form = extractor.extractRelevant(windowNode.rootViewNode, manualRequest = isManual)
                 ?: run {
                     Log.w(TAG, "Could not extract form")
                     callback.onSuccess(null)
