@@ -17,6 +17,7 @@ import de.davis.keygo.autofill.presentation.dataset.getForm
 import de.davis.keygo.autofill.presentation.model.Form
 import de.davis.keygo.autofill.presentation.model.FormField
 import de.davis.keygo.autofill.presentation.model.SaveRequestData
+import de.davis.keygo.core.domain.usecase.HasValidAccessUseCase
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,37 +30,44 @@ class KeyGoAutofillService : AutofillService() {
 
     private val extractor by inject<Extractor>()
     private val datasetProvider by inject<AutofillDatasetProvider>()
+    private val hasValidAccess by inject<HasValidAccessUseCase>()
 
     override fun onFillRequest(
         request: FillRequest,
         cancellationSignal: CancellationSignal,
         callback: FillCallback
     ) {
-        val structure = request.fillContexts.lastOrNull()?.structure
-        if (structure == null) {
-            callback.onSuccess(null)
-            return
-        }
-
-        val windowNode = (0 until structure.windowNodeCount).mapNotNull {
-            structure.getWindowNodeAt(it)
-        }.lastOrNull()
-        if (windowNode == null) {
-            callback.onSuccess(null)
-            return
-        }
-
-        if (windowNode.title.split("/").first() == packageName) {
-            callback.onSuccess(null)
-            return
-        }
-
         val handler = CoroutineExceptionHandler { _, exception ->
             Log.w(TAG, "Error during autofill extraction", exception)
             callback.onSuccess(null)
         }
 
         val job = CoroutineScope(Dispatchers.IO + handler).launch {
+            if (!hasValidAccess()) {
+                Log.w(TAG, "No valid access - not filling")
+                callback.onSuccess(null)
+                return@launch
+            }
+
+            val structure = request.fillContexts.lastOrNull()?.structure
+            if (structure == null) {
+                callback.onSuccess(null)
+                return@launch
+            }
+
+            val windowNode = (0 until structure.windowNodeCount).mapNotNull {
+                structure.getWindowNodeAt(it)
+            }.lastOrNull()
+            if (windowNode == null) {
+                callback.onSuccess(null)
+                return@launch
+            }
+
+            if (windowNode.title.split("/").first() == packageName) {
+                callback.onSuccess(null)
+                return@launch
+            }
+
             val form = extractor.extractRelevant(windowNode.rootViewNode, manualRequest = false)
                 ?: run {
                     Log.w(TAG, "Could not extract form")
