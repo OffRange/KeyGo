@@ -13,11 +13,13 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import de.davis.keygo.autofill.presentation.activity.component.AssociationDialog
+import de.davis.keygo.autofill.presentation.activity.component.SuspicionDialog
 import de.davis.keygo.autofill.presentation.model.AssociationDialogVisibility
 import de.davis.keygo.autofill.presentation.model.AutofillEvent
 import de.davis.keygo.autofill.presentation.model.AutofillUiEvent
 import de.davis.keygo.autofill.presentation.model.Request
 import de.davis.keygo.autofill.presentation.model.RequestData
+import de.davis.keygo.autofill.presentation.model.SuspicionDialogVisibility
 import de.davis.keygo.core.identity.biometric.presentation.BiometricPromptSupport
 import de.davis.keygo.core.identity.biometric.presentation.LocalBiometricManager
 import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
@@ -50,6 +52,7 @@ internal class AutofillActivity : FragmentActivity() {
                     val viewModel = koinViewModel<AutofillViewModel>()
                     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                     val dialogVisibility = uiState.associationDialogVisibility
+                    val suspicionDialogVisibility = uiState.suspicionDialogVisibility
 
                     val biometricManager = LocalBiometricManager.current
 
@@ -105,6 +108,14 @@ internal class AutofillActivity : FragmentActivity() {
                             onDismissRequest = {},
                             onConfirm = { viewModel.onEvent(AutofillUiEvent.OnAssociate) },
                             onDismiss = { viewModel.onEvent(AutofillUiEvent.OnCancelAssociation) }
+                        )
+
+                    if (suspicionDialogVisibility is SuspicionDialogVisibility.Visible)
+                        SuspicionDialog(
+                            onContinue = { viewModel.onEvent(AutofillUiEvent.OnContinueInSuspicion) },
+                            onAbort = { viewModel.onEvent(AutofillUiEvent.OnAbortInSuspicion) },
+                            appPackageName = suspicionDialogVisibility.appPackageName,
+                            website = suspicionDialogVisibility.website
                         )
                 }
             }

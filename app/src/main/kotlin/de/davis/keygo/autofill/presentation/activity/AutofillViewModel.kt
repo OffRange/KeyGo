@@ -21,6 +21,7 @@ import de.davis.keygo.autofill.presentation.model.FormType
 import de.davis.keygo.autofill.presentation.model.Request
 import de.davis.keygo.autofill.presentation.model.RequestData
 import de.davis.keygo.autofill.presentation.model.SaveRequestData
+import de.davis.keygo.autofill.presentation.model.SuspicionDialogVisibility
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.domain.crypto.decryptSecretData
 import de.davis.keygo.core.domain.usecase.HasValidAccessUseCase
@@ -78,16 +79,7 @@ internal class AutofillViewModel(
     val uiState = _uiState.asStateFlow()
 
     fun start() {
-        viewModelScope.launch {
-            when (requestData) {
-                is SaveRequestData -> handleSaveRequest(requestData)
-
-                is FillRequestData.Pinned,
-                is FillRequestData.App -> _uiState.update { it.copy(request = Request.SelectItem) }
-
-                is FillRequestData.Suggestion -> handleSuggestionRequest(requestData)
-            }
-        }
+        handleRequestDate()
     }
 
     private fun Form.toRawItem() = when (type) {
@@ -107,6 +99,31 @@ internal class AutofillViewModel(
     private fun handleSaveRequest(requestData: SaveRequestData) {
         viewModelScope.launch {
             _uiState.update { it.copy(request = Request.SaveItem(requestData.form.toRawItem())) }
+        }
+    }
+
+    private fun handleRequestDate(ignoreSuspicion: Boolean = false) {
+        val showSuspicionDialog = !ignoreSuspicion && requestData.form.isSuspicious
+        _uiState.update {
+            it.copy(
+                suspicionDialogVisibility = if (showSuspicionDialog)
+                    SuspicionDialogVisibility.Visible(
+                        appPackageName = requestData.form.appPackageName,
+                        website = requestData.form.urls.firstOrNull() ?: ""
+                    )
+                else SuspicionDialogVisibility.Hidden
+            )
+        }
+
+        if (showSuspicionDialog) return
+
+        when (requestData) {
+            is SaveRequestData -> handleSaveRequest(requestData)
+
+            is FillRequestData.Pinned,
+            is FillRequestData.App -> _uiState.update { it.copy(request = Request.SelectItem) }
+
+            is FillRequestData.Suggestion -> handleSuggestionRequest(requestData)
         }
     }
 
@@ -194,6 +211,15 @@ internal class AutofillViewModel(
             AutofillUiEvent.OnAuthenticated -> onAuthenticated()
             AutofillUiEvent.OnCancelAssociation -> hideAssociationDialog()
             is AutofillUiEvent.OnItemSelected -> onItemSelected(event.itemId)
+
+            AutofillUiEvent.OnContinueInSuspicion -> {
+                _uiState.update { it.copy(suspicionDialogVisibility = SuspicionDialogVisibility.Hidden) }
+                handleRequestDate(ignoreSuspicion = true)
+            }
+
+            AutofillUiEvent.OnAbortInSuspicion -> viewModelScope.launch {
+                eventChannel.send(AutofillEvent.Abort)
+            }
         }
     }
 

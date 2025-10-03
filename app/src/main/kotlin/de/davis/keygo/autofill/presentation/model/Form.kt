@@ -7,7 +7,10 @@ import kotlinx.parcelize.Parcelize
 data class Form(
     val type: FormType,
     val fields: List<FormField>,
-    val urls: Set<String>
+    val urls: Set<String>,
+    val isBrowser: Boolean,
+    val appPackageName: String,
+    val isSuspicious: Boolean
 ) : Parcelable {
 
     fun hasFields() = fields.isNotEmpty()

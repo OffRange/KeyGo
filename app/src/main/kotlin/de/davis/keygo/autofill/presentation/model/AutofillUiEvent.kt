@@ -7,4 +7,7 @@ sealed interface AutofillUiEvent {
     data class OnItemSelected(val itemId: ItemId) : AutofillUiEvent
     data object OnAssociate : AutofillUiEvent
     data object OnCancelAssociation : AutofillUiEvent
+
+    data object OnContinueInSuspicion : AutofillUiEvent
+    data object OnAbortInSuspicion : AutofillUiEvent
 }

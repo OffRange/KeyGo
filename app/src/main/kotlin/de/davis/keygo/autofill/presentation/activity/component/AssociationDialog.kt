@@ -21,7 +21,7 @@ import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.toImmutableSet
 
 @Composable
-fun AssociationDialog(
+internal fun AssociationDialog(
     itemName: String,
     domains: ImmutableSet<String>,
     onDismissRequest: () -> Unit,

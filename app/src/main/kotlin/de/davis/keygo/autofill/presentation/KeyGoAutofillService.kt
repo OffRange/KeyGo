@@ -1,6 +1,8 @@
 package de.davis.keygo.autofill.presentation
 
 import android.app.assist.AssistStructure
+import android.content.ComponentName
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.CancellationSignal
 import android.service.autofill.AutofillService
@@ -23,6 +25,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
+import org.xmlpull.v1.XmlPullParser
 
 // TODO: handle authentication settings
 //  implement smart authentication --> use Digital Asset Links to verify a app - fail should warn user
@@ -31,6 +34,35 @@ class KeyGoAutofillService : AutofillService() {
     private val extractor by inject<Extractor>()
     private val datasetProvider by inject<AutofillDatasetProvider>()
     private val hasValidAccess by inject<HasValidAccessUseCase>()
+
+    private val browsers by lazy {
+        val service = packageManager.getServiceInfo(
+            ComponentName(this, javaClass),
+            PackageManager.GET_META_DATA
+        )
+
+        val parser = service.loadXmlMetaData(packageManager, SERVICE_META_DATA)
+            ?: return@lazy emptySet<String>()
+
+        parser.use {
+            var type = it.eventType
+            buildSet {
+                while (type != XmlPullParser.END_DOCUMENT) {
+                    if (type != XmlPullParser.START_TAG || it.name != "compatibility-package") {
+                        type = it.next()
+                        continue
+                    }
+
+                    val packageName = it.getAttributeValue(
+                        "http://schemas.android.com/apk/res/android",
+                        "name"
+                    )
+                    add(packageName)
+                    type = it.next()
+                }
+            }
+        }
+    }
 
     override fun onFillRequest(
         request: FillRequest,
@@ -63,13 +95,13 @@ class KeyGoAutofillService : AutofillService() {
                 return@launch
             }
 
-            if (windowNode.title.split("/").first() == packageName) {
+            if (windowNode.packageName == packageName) {
                 callback.onSuccess(null)
                 return@launch
             }
 
             val isManual = request.flags and FillRequest.FLAG_MANUAL_REQUEST != 0
-            val form = extractor.extractRelevant(windowNode.rootViewNode, manualRequest = isManual)
+            val form = extractor.extractRelevant(windowNode, manualRequest = isManual)
                 ?: run {
                     Log.w(TAG, "Could not extract form")
                     callback.onSuccess(null)
@@ -98,7 +130,6 @@ class KeyGoAutofillService : AutofillService() {
                 )
             }.build()
             callback.onSuccess(response)
-
         }
 
         cancellationSignal.setOnCancelListener {

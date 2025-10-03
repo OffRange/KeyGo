@@ -1,7 +1,11 @@
 package de.davis.keygo.autofill.presentation
 
 import android.app.assist.AssistStructure
+import android.content.ComponentName
+import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
+import android.service.autofill.AutofillService.SERVICE_META_DATA
 import android.util.Log
 import android.view.View
 import android.widget.AutoCompleteTextView
@@ -14,26 +18,58 @@ import de.davis.keygo.autofill.presentation.model.FieldType
 import de.davis.keygo.autofill.presentation.model.Form
 import de.davis.keygo.autofill.presentation.model.FormField
 import org.koin.core.annotation.Single
+import org.xmlpull.v1.XmlPullParser
 
 @Single
-internal class Extractor() {
+internal class Extractor(
+    private val applicationContext: Context
+) {
+
+    private val browsers by lazy {
+        val service = applicationContext.packageManager.getServiceInfo(
+            ComponentName(applicationContext, KeyGoAutofillService::class.java),
+            PackageManager.GET_META_DATA
+        )
+
+        val parser = service.loadXmlMetaData(applicationContext.packageManager, SERVICE_META_DATA)
+            ?: return@lazy emptySet<String>()
+
+        parser.use {
+            var type = it.eventType
+            buildSet {
+                while (type != XmlPullParser.END_DOCUMENT) {
+                    if (type != XmlPullParser.START_TAG || it.name != "compatibility-package") {
+                        type = it.next()
+                        continue
+                    }
+
+                    val packageName = it.getAttributeValue(
+                        "http://schemas.android.com/apk/res/android",
+                        "name"
+                    )
+                    add(packageName)
+                    type = it.next()
+                }
+            }
+        }
+    }
 
     /**
      * Extracts relevant form fields from the provided [AssistStructure.ViewNode].
      * It traverses the view hierarchy, identifying input fields that are important for autofill.
      *
-     * @param node The root view node of the assist structure to extract from.
+     * @param windowNode The window node of the assist structure to extract from.
      * @param manualRequest Indicates if the extraction is triggered by a manual user request.
      * @return A [Form] containing the extracted fields and associated URLs, or null if no focused
      * field is found or the focused field could not be classified.
      */
     fun extractRelevant(
-        node: AssistStructure.ViewNode,
+        windowNode: AssistStructure.WindowNode,
         manualRequest: Boolean
     ): Form? {
         val result = mutableListOf<FormField>()
         val urls = mutableSetOf<String>()
-        traverse(node, manualRequest, urls, result)
+        traverse(windowNode.rootViewNode, manualRequest, urls, result)
 
         // We filter out the fields that are not in the same group as the focused field
         // This forces us to only fill one type at a time (e.g. credentials or credit cards).
@@ -43,10 +79,23 @@ internal class Extractor() {
             ?: return null
         if (focusedFieldType is FieldType.Undefined) return null
 
+        val windowPackageName = windowNode.packageName
+        val isBrowser = windowPackageName in browsers
+        val isSuspicious = !isBrowser && urls.isNotEmpty()
+
+        if (isSuspicious)
+            Log.w(
+                TAG,
+                "Window package name $windowPackageName is not a browser but has web URLs: $urls"
+            )
+
         return Form(
             urls = urls,
             fields = result.filter { it.type.group == focusedFieldType.group },
-            type = focusedFieldType.toFormType()
+            type = focusedFieldType.toFormType(),
+            isBrowser = isBrowser,
+            appPackageName = windowPackageName,
+            isSuspicious = isSuspicious
         )
     }
 

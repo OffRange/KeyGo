@@ -143,4 +143,8 @@
     <string name="multiple_items_same_name">Some items will have identical names.</string>
 
     <string name="autofill_service">Autofill Service</string>
+    <string name="fill_anyway">Fill anyway</string>
+
+    <string name="suspicious_activity">Suspicious Activity</string>
+    <string name="suspicious_activity_description">This app (<b>%1$s</b>) isn\'t a recognized browser. It is showing a website (<b>%2$s</b>). Autofilling here may give your credentials to this app. Only continue if you trust this app and the site.</string>
 </resources>
