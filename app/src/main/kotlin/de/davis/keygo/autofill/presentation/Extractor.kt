@@ -68,30 +68,30 @@ internal class Extractor(
         manualRequest: Boolean
     ): Form? {
         val result = mutableListOf<FormField>()
-        val urls = mutableSetOf<String>()
-        traverse(windowNode.rootViewNode, manualRequest, urls, result)
+        traverse(windowNode.rootViewNode, manualRequest, result)
 
         // We filter out the fields that are not in the same group as the focused field
         // This forces us to only fill one type at a time (e.g. credentials or credit cards).
         Log.d(TAG, "Extracted fields: $result")
-        val focusedFieldType = result.firstOrNull { it.focused }?.type
-            ?: result.firstOrNull()?.type
+        val (focusedFieldType, focusedDomain) = result.firstOrNull { it.focused }
+            ?.let { it.type to it.url }
+            ?: result.firstOrNull()?.let { it.type to it.url }
             ?: return null
         if (focusedFieldType is FieldType.Undefined) return null
 
         val windowPackageName = windowNode.packageName
         val isBrowser = windowPackageName in browsers
-        val isSuspicious = !isBrowser && urls.isNotEmpty()
+        val isSuspicious = !isBrowser && !focusedDomain.isNullOrBlank()
 
         if (isSuspicious)
             Log.w(
                 TAG,
-                "Window package name $windowPackageName is not a browser but has web URLs: $urls"
+                "Window package name $windowPackageName is not a browser but has web URL: $focusedDomain"
             )
 
         return Form(
-            urls = urls,
-            fields = result.filter { it.type.group == focusedFieldType.group },
+            url = focusedDomain,
+            fields = result.filter { it.type.group == focusedFieldType.group && it.url == focusedDomain },
             type = focusedFieldType.toFormType(),
             isBrowser = isBrowser,
             appPackageName = windowPackageName,
@@ -102,12 +102,10 @@ internal class Extractor(
     private fun traverse(
         node: AssistStructure.ViewNode,
         manualRequest: Boolean,
-        outUrls: MutableSet<String>,
-        outFields: MutableList<FormField>
+        outFields: MutableList<FormField>,
+        currentUrl: String? = null
     ) {
-        node.getUrl()?.let {
-            outUrls += it
-        }
+        val currentUrl = node.getUrl() ?: currentUrl
 
         if (isSignalLeaf(node)) {
             if (node.autofillId == null)
@@ -143,13 +141,14 @@ internal class Extractor(
             outFields += FormField(
                 autofillId = node.autofillId!!,
                 type = type,
-                focused = node.isFocused
+                focused = node.isFocused,
+                url = currentUrl
             )
             return
         }
 
         (0 until node.childCount).forEach {
-            traverse(node.getChildAt(it), manualRequest, outUrls, outFields)
+            traverse(node.getChildAt(it), manualRequest, outFields, currentUrl)
         }
     }
 

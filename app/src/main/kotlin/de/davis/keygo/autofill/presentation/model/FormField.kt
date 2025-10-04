@@ -9,6 +9,7 @@ data class FormField(
     val autofillId: AutofillId,
     val type: FieldType,
     val focused: Boolean,
+    val url: String? = null,
     val autofillValue: String? = null,
     val requestId: Int = -1
 ) : Parcelable

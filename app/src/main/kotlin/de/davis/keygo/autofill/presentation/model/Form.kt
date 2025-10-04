@@ -7,7 +7,9 @@ import kotlinx.parcelize.Parcelize
 data class Form(
     val type: FormType,
     val fields: List<FormField>,
-    val urls: Set<String>,
+    val url: String?,
+    @Deprecated("Use url instead")
+    val urls: Set<String> = setOfNotNull(url),
     val isBrowser: Boolean,
     val appPackageName: String,
     val isSuspicious: Boolean
