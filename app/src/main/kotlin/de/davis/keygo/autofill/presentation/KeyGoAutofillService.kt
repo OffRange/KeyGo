@@ -35,35 +35,6 @@ class KeyGoAutofillService : AutofillService() {
     private val datasetProvider by inject<AutofillDatasetProvider>()
     private val hasValidAccess by inject<HasValidAccessUseCase>()
 
-    private val browsers by lazy {
-        val service = packageManager.getServiceInfo(
-            ComponentName(this, javaClass),
-            PackageManager.GET_META_DATA
-        )
-
-        val parser = service.loadXmlMetaData(packageManager, SERVICE_META_DATA)
-            ?: return@lazy emptySet<String>()
-
-        parser.use {
-            var type = it.eventType
-            buildSet {
-                while (type != XmlPullParser.END_DOCUMENT) {
-                    if (type != XmlPullParser.START_TAG || it.name != "compatibility-package") {
-                        type = it.next()
-                        continue
-                    }
-
-                    val packageName = it.getAttributeValue(
-                        "http://schemas.android.com/apk/res/android",
-                        "name"
-                    )
-                    add(packageName)
-                    type = it.next()
-                }
-            }
-        }
-    }
-
     override fun onFillRequest(
         request: FillRequest,
         cancellationSignal: CancellationSignal,
