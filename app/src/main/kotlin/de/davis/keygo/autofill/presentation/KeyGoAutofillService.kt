@@ -1,8 +1,6 @@
 package de.davis.keygo.autofill.presentation
 
 import android.app.assist.AssistStructure
-import android.content.ComponentName
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.CancellationSignal
 import android.service.autofill.AutofillService
@@ -25,7 +23,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
-import org.xmlpull.v1.XmlPullParser
 
 // TODO: handle authentication settings
 //  implement smart authentication --> use Digital Asset Links to verify a app - fail should warn user

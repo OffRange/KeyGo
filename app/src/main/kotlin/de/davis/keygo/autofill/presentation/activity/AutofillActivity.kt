@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.service.autofill.Dataset
 import android.view.autofill.AutofillManager
 import androidx.activity.compose.setContent
-import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.fragment.app.FragmentActivity
@@ -39,7 +38,6 @@ import org.koin.androidx.compose.koinViewModel
  */
 internal class AutofillActivity : FragmentActivity() {
 
-    @OptIn(ExperimentalMaterial3AdaptiveApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 

@@ -71,6 +71,7 @@ kotlin {
 }
 
 dependencies {
+    implementation(libs.okhttp)
 
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))

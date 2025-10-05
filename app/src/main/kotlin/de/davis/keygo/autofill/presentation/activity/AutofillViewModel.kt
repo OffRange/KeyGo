@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import de.davis.keygo.R
 import de.davis.keygo.autofill.domain.usecase.AddRegistrableDomainsToPasswordUseCase
 import de.davis.keygo.autofill.domain.usecase.DoesItemHaveDomainReferencesUseCase
+import de.davis.keygo.autofill.domain.usecase.IsAppLinkedToWebsiteUseCase
 import de.davis.keygo.autofill.presentation.AutofillDatasetProvider
 import de.davis.keygo.autofill.presentation.model.AssociationDialogVisibility
 import de.davis.keygo.autofill.presentation.model.AutofillEvent
@@ -55,6 +56,7 @@ internal class AutofillViewModel(
     private val autofillDatasetProvider: AutofillDatasetProvider,
     private val doesItemHaveDomainReferences: DoesItemHaveDomainReferencesUseCase,
     private val addRegistrableDomainToPassword: AddRegistrableDomainsToPasswordUseCase,
+    private val isAppLinkedToWebsite: IsAppLinkedToWebsiteUseCase,
 
     getBiometricCryptoSetupAvailability: GetBiometricCryptoSetupAvailabilityUseCase,
     getBiometricHardwareAvailability: GetBiometricHardwareAvailabilityUseCase,
@@ -97,41 +99,46 @@ internal class AutofillViewModel(
     }
 
     private fun handleSaveRequest(requestData: SaveRequestData) {
+        _uiState.update { it.copy(request = Request.SaveItem(requestData.form.toRawItem())) }
+    }
+
+    private fun handleRequestDate(ignoreSuspicion: Boolean = false) =
         viewModelScope.launch {
-            _uiState.update { it.copy(request = Request.SaveItem(requestData.form.toRawItem())) }
+            val linked = requestData.form.url?.let {
+                isAppLinkedToWebsite(
+                    packageName = requestData.form.appPackageName,
+                    domain = it
+                )
+            } == true
+
+            val showSuspicionDialog = !linked && !ignoreSuspicion && requestData.form.isSuspicious
+
+            _uiState.update {
+                it.copy(
+                    suspicionDialogVisibility = if (showSuspicionDialog)
+                        SuspicionDialogVisibility.Visible(
+                            appPackageName = requestData.form.appPackageName,
+                            website = requestData.form.url.orEmpty()
+                        )
+                    else SuspicionDialogVisibility.Hidden
+                )
+            }
+
+            if (showSuspicionDialog) return@launch
+
+            when (requestData) {
+                is SaveRequestData -> handleSaveRequest(requestData)
+
+                is FillRequestData.Pinned,
+                is FillRequestData.App -> _uiState.update { it.copy(request = Request.SelectItem) }
+
+                is FillRequestData.Suggestion -> handleSuggestionRequest(requestData)
+            }
         }
-    }
 
-    private fun handleRequestDate(ignoreSuspicion: Boolean = false) {
-        val showSuspicionDialog = !ignoreSuspicion && requestData.form.isSuspicious
-        _uiState.update {
-            it.copy(
-                suspicionDialogVisibility = if (showSuspicionDialog)
-                    SuspicionDialogVisibility.Visible(
-                        appPackageName = requestData.form.appPackageName,
-                        website = requestData.form.urls.firstOrNull() ?: ""
-                    )
-                else SuspicionDialogVisibility.Hidden
-            )
-        }
-
-        if (showSuspicionDialog) return
-
-        when (requestData) {
-            is SaveRequestData -> handleSaveRequest(requestData)
-
-            is FillRequestData.Pinned,
-            is FillRequestData.App -> _uiState.update { it.copy(request = Request.SelectItem) }
-
-            is FillRequestData.Suggestion -> handleSuggestionRequest(requestData)
-        }
-    }
-
-    private fun handleSuggestionRequest(suggestionInfo: FillRequestData.Suggestion) {
+    private suspend fun handleSuggestionRequest(suggestionInfo: FillRequestData.Suggestion) {
         _uiState.update { it.copy(vaultId = suggestionInfo.vaultId) }
-        viewModelScope.launch {
-            handleSuggestRequest(suggestionInfo)
-        }
+        handleSuggestRequest(suggestionInfo)
     }
 
     private suspend fun handleSuggestRequest(suggestionInfo: FillRequestData.Suggestion) {
