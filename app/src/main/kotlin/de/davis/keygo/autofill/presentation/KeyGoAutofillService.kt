@@ -24,8 +24,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 
-// TODO: handle authentication settings
-//  implement smart authentication --> use Digital Asset Links to verify a app - fail should warn user
 class KeyGoAutofillService : AutofillService() {
 
     private val extractor by inject<Extractor>()
