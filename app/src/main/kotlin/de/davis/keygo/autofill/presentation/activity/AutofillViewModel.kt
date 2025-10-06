@@ -104,14 +104,19 @@ internal class AutofillViewModel(
 
     private fun handleRequestDate(ignoreSuspicion: Boolean = false) =
         viewModelScope.launch {
-            val linked = requestData.form.url?.let {
-                isAppLinkedToWebsite(
-                    packageName = requestData.form.appPackageName,
-                    domain = it
-                )
-            } == true
+            val handleSuspicion = !ignoreSuspicion && requestData.form.isSuspicious
+            val linked = when {
+                handleSuspicion -> requestData.form.url?.let {
+                    isAppLinkedToWebsite(
+                        packageName = requestData.form.appPackageName,
+                        domain = it
+                    )
+                } == true
 
-            val showSuspicionDialog = !linked && !ignoreSuspicion && requestData.form.isSuspicious
+                else -> false
+            }
+
+            val showSuspicionDialog = !linked && handleSuspicion
 
             _uiState.update {
                 it.copy(
