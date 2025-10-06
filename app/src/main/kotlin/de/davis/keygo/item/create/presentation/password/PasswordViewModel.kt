@@ -175,10 +175,19 @@ class PasswordViewModel(
 
         when (createRaw) {
             is DetailPaneInformation.CreateRaw.Password -> {
+                val domainInfo = createRaw.url?.let {
+                    val eTLD1 = registrableDomainResolver.resolve(it)
+                    DomainInfo(
+                        value = it,
+                        eTLD1 = eTLD1
+                    )
+                }
+
                 passwordTextFieldState.setTextAndPlaceCursorAtEnd(createRaw.password)
                 _uiState.update {
                     it.copy(
                         usernameTextFieldState = TextFieldState(createRaw.username),
+                        domains = setOfNotNull(domainInfo).toImmutableSet(),
                         updating = false
                     )
                 }
