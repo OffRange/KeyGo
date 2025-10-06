@@ -14,7 +14,7 @@ sealed interface DetailPaneInformation {
             override val name: String,
             val password: String,
             val username: String,
-            val url: String,
+            val url: String?,
         ) : CreateRaw
     }
 }

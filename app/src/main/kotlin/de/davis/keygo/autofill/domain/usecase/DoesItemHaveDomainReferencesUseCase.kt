@@ -11,15 +11,15 @@ class DoesItemHaveDomainReferencesUseCase(
     private val registrableDomainResolver: RegistrableDomainResolver
 ) {
 
-    suspend operator fun invoke(itemVaultId: ItemId, domains: Set<String>): Boolean {
-        if (domains.isEmpty()) return false
+    suspend operator fun invoke(itemVaultId: ItemId, domain: String): Boolean {
+        if (domain.isBlank()) return false
 
         val passwordDomains = passwordRepository.getPasswordById(itemVaultId)
             ?.domainInfos
             ?: return false
 
-        val eTLD1sToCheck = domains.mapNotNull { registrableDomainResolver.resolve(it) }
+        val eTLD1ToCheck = registrableDomainResolver.resolve(domain)
 
-        return passwordDomains.any { it.value in domains || it.eTLD1 in eTLD1sToCheck }
+        return passwordDomains.any { it.value == domain || it.eTLD1 == eTLD1ToCheck }
     }
 }

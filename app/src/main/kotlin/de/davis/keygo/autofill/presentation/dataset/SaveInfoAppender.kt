@@ -109,14 +109,10 @@ private fun Form.merge(other: Form): Form {
         throw IllegalArgumentException("Cannot merge forms of different type")
 
     val mergedFields = (this.fields + other.fields)
+        .filter { it.url == this.url } // only keep fields from the same URL
         .distinctBy { it.autofillId }
 
-    val mergedUrls = (this.urls + other.urls)
-
-    return copy(
-        fields = mergedFields,
-        urls = mergedUrls
-    )
+    return copy(fields = mergedFields)
 }
 
 internal fun Bundle.getForm(): Form? = getKeyGoParcelable(KEY_FORM)

@@ -37,7 +37,6 @@ import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.domain.repository.VaultItemRepository
 import de.davis.keygo.core.presentation.UIText
 import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
-import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -94,7 +93,7 @@ internal class AutofillViewModel(
                 ?: fields.find { it.type == FieldType.Credentials.EMail }?.autofillValue
                 ?: fields.find { it.type == FieldType.Credentials.Phone }?.autofillValue
                 ?: "",
-            url = urls.firstOrNull() ?: "",
+            url = url,
         )
     }
 
@@ -183,7 +182,7 @@ internal class AutofillViewModel(
         viewModelScope.launch {
             val fillRightAway = doesItemHaveDomainReferences(
                 itemVaultId = vaultId,
-                domains = requestData.form.urls
+                domain = requestData.form.url.orEmpty()
             )
 
             if (fillRightAway) {
@@ -198,7 +197,7 @@ internal class AutofillViewModel(
                 it.copy(
                     associationDialogVisibility = AssociationDialogVisibility.Visible(
                         itemName = itemName,
-                        domains = requestData.form.urls.toImmutableSet()
+                        domain = requestData.form.url
                     ),
                     vaultId = vaultId
                 )
@@ -237,11 +236,13 @@ internal class AutofillViewModel(
 
     private fun associateItem() {
         val vaultItemId = uiState.value.vaultId
-        viewModelScope.launch {
-            addRegistrableDomainToPassword(
-                vaultItemId = vaultItemId,
-                domains = requestData.form.urls.toSet()
-            )
+        requestData.form.url?.let {
+            viewModelScope.launch {
+                addRegistrableDomainToPassword(
+                    vaultItemId = vaultItemId,
+                    domain = it
+                )
+            }
         }
         hideAssociationDialog()
     }

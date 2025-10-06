@@ -28,9 +28,9 @@ internal class SuggestionFinder(
     private suspend fun findPasswordSuggestions(
         form: Form,
         count: Int
-    ): List<LitePassword> = form.urls.mapNotNull {
+    ): List<LitePassword> = form.url?.let {
         registrableDomainResolver.resolve(it)
-    }.toSet().let {
-        passwordRepository.getVaultPasswordsByTLDs(etld1s = it, limit = count)
-    }
+    }?.let {
+        passwordRepository.getVaultPasswordsByTLD(etld1 = it, limit = count)
+    } ?: emptyList()
 }

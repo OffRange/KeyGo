@@ -102,7 +102,7 @@ internal class AutofillActivity : FragmentActivity() {
                     if (dialogVisibility is AssociationDialogVisibility.Visible)
                         AssociationDialog(
                             itemName = dialogVisibility.itemName,
-                            domains = dialogVisibility.domains,
+                            domain = dialogVisibility.domain,
                             onDismissRequest = {},
                             onConfirm = { viewModel.onEvent(AutofillUiEvent.OnAssociate) },
                             onDismiss = { viewModel.onEvent(AutofillUiEvent.OnCancelAssociation) }

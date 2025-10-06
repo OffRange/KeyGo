@@ -17,13 +17,11 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import de.davis.keygo.R
-import kotlinx.collections.immutable.ImmutableSet
-import kotlinx.collections.immutable.toImmutableSet
 
 @Composable
 internal fun AssociationDialog(
     itemName: String,
-    domains: ImmutableSet<String>,
+    domain: String?,
     onDismissRequest: () -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
@@ -51,10 +49,9 @@ internal fun AssociationDialog(
             Text(
                 text = pluralStringResource(
                     R.plurals.suggest_text,
-                    domains.size,
+                    if (domain.isNullOrBlank()) 0 else 1,
                     itemName,
-                    domains.first(),
-                    domains.size - 1
+                    domain.orEmpty(),
                 )
             )
         },
@@ -72,12 +69,7 @@ private fun AssociationDialogPreview() {
         Surface(modifier = Modifier.fillMaxSize()) {
             AssociationDialog(
                 itemName = "My Item",
-                domains = setOf(
-                    "example.com",
-                    "anotherdomain.com",
-                    "aasas",
-                    "asas"
-                ).toImmutableSet(),
+                domain = "example.com",
                 onDismissRequest = {},
                 onConfirm = {},
                 onDismiss = {}
