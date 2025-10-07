@@ -30,6 +30,8 @@ internal class InlineDatasetBuilder(
     private val context: Context,
 ) {
 
+    // TODO: include a option to generate a secure password -> make the generate UI a standalone
+    //  composable like a TextField
     @RequiresApi(Build.VERSION_CODES.R)
     suspend fun buildInlineDatasets(
         specs: List<InlinePresentationSpec>,
