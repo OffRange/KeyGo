@@ -29,7 +29,7 @@ navigation = "2.9.1"
 kotlinpoet = "2.2.0"
 nbvcxz = "1.5.1"
 totp = "2.4.1"
-passGen = "v0.0.3-beta"
+passGen = "0.1.0-beta"
 
 [libraries]
 argon2kt = { module = "com.lambdapioneer.argon2kt:argon2kt", version.ref = "argon2kt" }
