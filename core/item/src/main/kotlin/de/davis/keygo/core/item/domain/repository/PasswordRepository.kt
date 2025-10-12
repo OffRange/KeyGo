@@ -15,8 +15,17 @@ interface PasswordRepository {
         domainInfos: Set<DomainInfo>
     ): Result<Unit, Throwable>
 
-    suspend fun getVaultPasswordsByTLD(etld1: String, limit: Int = -1): List<LitePassword>
-    suspend fun getVaultPasswordsByTLDs(etld1s: Set<String>, limit: Int = -1): List<LitePassword>
+    suspend fun getVaultPasswordsByTLD(
+        etld1: String,
+        requireTotp: Boolean = false,
+        limit: Int = -1
+    ): List<LitePassword>
+
+    suspend fun getVaultPasswordsByTLDs(
+        etld1s: Set<String>,
+        requireTotp: Boolean = false,
+        limit: Int = -1
+    ): List<LitePassword>
 
     suspend fun getPasswordById(vaultId: ItemId): Password?
 

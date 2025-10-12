@@ -28,7 +28,8 @@ internal interface PasswordDao {
         SELECT vault.id vault_item_id, vault.name name, password.id password_id, password.username username
         FROM VaultItemEntity vault
         JOIN PasswordEntity password ON vault.id = password.vault_item_id
-        WHERE EXISTS (
+        WHERE (NOT :requireTotp OR password.totp_secret IS NOT NULL)
+        AND EXISTS (
             SELECT 1 FROM DomainInfoEntity domain
             WHERE domain.password_id = password.id
             AND domain.eTLD1 in (:etld1s) COLLATE NOCASE
@@ -36,7 +37,11 @@ internal interface PasswordDao {
         LIMIT :limit
         """
     )
-    suspend fun getByTLDs(etld1s: Set<String>, limit: Int): List<LightweightPassword>
+    suspend fun getByTLDs(
+        etld1s: Set<String>,
+        requireTotp: Boolean,
+        limit: Int
+    ): List<LightweightPassword>
 
     @Transaction
     @Query("SELECT * FROM PasswordEntity WHERE vault_item_id = :vaultId")

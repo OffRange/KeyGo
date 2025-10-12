@@ -66,14 +66,19 @@ internal class PasswordRepositoryImpl(
         onFailure = { Result.Failure(it) }
     )
 
-    override suspend fun getVaultPasswordsByTLD(etld1: String, limit: Int): List<LitePassword> =
-        getVaultPasswordsByTLDs(setOf(etld1), limit)
+    override suspend fun getVaultPasswordsByTLD(
+        etld1: String,
+        requireTotp: Boolean,
+        limit: Int
+    ): List<LitePassword> =
+        getVaultPasswordsByTLDs(setOf(etld1), requireTotp, limit)
 
     override suspend fun getVaultPasswordsByTLDs(
         etld1s: Set<String>,
+        requireTotp: Boolean,
         limit: Int
     ): List<LitePassword> =
-        passwordDao.getByTLDs(etld1s, limit).map(LightweightPassword::toDomain)
+        passwordDao.getByTLDs(etld1s, requireTotp, limit).map(LightweightPassword::toDomain)
 
     override suspend fun getPasswordById(vaultId: ItemId): Password? =
         passwordDao.getVaultPassword(vaultId)?.toDomain()
