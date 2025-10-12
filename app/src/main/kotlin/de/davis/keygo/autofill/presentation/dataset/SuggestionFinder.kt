@@ -22,15 +22,17 @@ internal class SuggestionFinder(
 
         return when (form.type) {
             is FormType.Credentials -> findPasswordSuggestions(form, count)
+            is FormType.TOTP -> findPasswordSuggestions(form, count, withTOTP = true)
         }
     }
 
     private suspend fun findPasswordSuggestions(
         form: Form,
-        count: Int
+        count: Int,
+        withTOTP: Boolean = false
     ): List<LitePassword> = form.url?.let {
         registrableDomainResolver.resolve(it)
     }?.let {
-        passwordRepository.getVaultPasswordsByTLD(etld1 = it, limit = count)
+        passwordRepository.getVaultPasswordsByTLD(etld1 = it, requireTotp = withTOTP, limit = count)
     } ?: emptyList()
 }

@@ -7,4 +7,5 @@ import kotlinx.parcelize.Parcelize
 sealed interface FormType : Parcelable {
 
     data object Credentials : FormType
+    data object TOTP : FormType
 }

@@ -22,7 +22,6 @@ internal object Classifier {
     }
 
     private fun classifyHtmlAttributes(htmlAttributes: Map<String, String>): FieldType {
-        // TODO: handle computed-autofill-hints (only Chromium) --> components/autofill/core/browser/field_types.h
         val type = htmlAttributes["type"]
         if (type == null) return FieldType.Undefined
 
@@ -31,7 +30,16 @@ internal object Classifier {
             "email" -> return FieldType.Credentials.EMail
         }
 
-        return FieldType.Undefined
+        // Chromium only
+        htmlAttributes["computed-autofill-hints"]?.let { computedAutofillHints ->
+            CHROMIUM_AUTOFILL_HINTS[computedAutofillHints]?.let {
+                return it
+            }
+        }
+
+        return htmlAttributes["name"]?.let {
+            classifyToken(it)
+        } ?: FieldType.Undefined
     }
 
     private fun classifyTokens(tokens: Set<String>): FieldType {
@@ -53,6 +61,10 @@ internal object Classifier {
 
             View.AUTOFILL_HINT_PASSWORD -> FieldType.Credentials.Password
 
+            // Token for the autocomplete parameter for html form inputs, see: http://is.gd/whatwg_autocomplete
+            // or https://html.spec.whatwg.org/multipage/form-control-infrastructure.html#autofilling-form-controls:-the-autocomplete-attribute
+            "one-time-code" -> FieldType.TOTP
+
             else -> FieldType.Undefined
         }
 
@@ -61,9 +73,29 @@ internal object Classifier {
 
         if (USERNAME_REGEX.containsMatchIn(token)) return FieldType.Credentials.Username
         if (EMAIL_REGEX.containsMatchIn(token)) return FieldType.Credentials.EMail
+        if (TOTP_REGEX.containsMatchIn(token)) return FieldType.TOTP
 
         return FieldType.Undefined
     }
+
+    private val TOTP_REGEX = Regex(
+        pattern = """
+        (?xi)                                                                           # ignore case; allow comments/whitespace
+        ^(?!.*\b(?:sms|text(?:\s?message)?|email|e-?mail|mail|phone|call|voice)\b)      # not SMS/email/phone
+         (?!.*\b(?:backup|recovery)\s+codes?\b)                                         # not backup/recovery codes
+        .*?
+        (?:                                                                             # signals of a TOTP-style field
+            (?<![A-Z0-9])totp(?![A-Z0-9])
+          | (?<![A-Z0-9])(?:2fa|mfa)(?![A-Z0-9])
+          | two[-_\s]?factor(?:\s+(?:auth(?:entication|enticator)?|verification))?(?:\s+(?:code|token|passcode|password))?
+          | authenticator(?:\s*app)?(?:\s+(?:code|token|passcode|verification\s+code))?
+          | (?<![A-Z0-9])(?:one[-_\s]?time|otp)(?![A-Z0-9])(?:\s+(?:password|passcode|code))?
+          | (?<![A-Z0-9])[68](?![A-Z0-9])\s*[-_\s]?\s*digit\s+(?:code|token|passcode)\b(?=.*\b(?:app|authenticator|2fa|two[-_\s]?factor|mfa)\b)
+          | (?<![A-Z0-9])(?:verification|login|security)\s+code(?![A-Z0-9])(?=.*\b(?:authenticator|2fa|two[-_\s]?factor|mfa|app)\b)
+        )
+        """.trimIndent(),
+        setOf(RegexOption.IGNORE_CASE, RegexOption.COMMENTS)
+    )
 
     // TODO: use more sophisticated regexes
     private val USERNAME_REGEX = Regex(

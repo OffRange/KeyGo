@@ -8,6 +8,8 @@ import kotlin.reflect.KClass
 sealed interface FieldType : Parcelable {
 
     val group: KClass<out FieldType>
+    val includeInSaveInfo: Boolean
+        get() = true
 
     @Parcelize
     sealed interface Credentials : FieldType {
@@ -21,6 +23,17 @@ sealed interface FieldType : Parcelable {
         data object Password : Credentials
     }
 
+
+    @Parcelize
+    data object TOTP : FieldType {
+        override val group: KClass<out FieldType>
+            get() = TOTP::class
+
+        override val includeInSaveInfo: Boolean
+            get() = false
+    }
+
+    @Parcelize
     data object Undefined : FieldType {
 
         override val group: KClass<out FieldType>

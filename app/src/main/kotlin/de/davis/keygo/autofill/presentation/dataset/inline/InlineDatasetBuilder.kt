@@ -9,16 +9,17 @@ import android.service.autofill.InlinePresentation
 import android.widget.inline.InlinePresentationSpec
 import androidx.annotation.RequiresApi
 import de.davis.keygo.R
-import de.davis.keygo.autofill.domain.subtitle
 import de.davis.keygo.autofill.presentation.dataset.DatasetBuilder
 import de.davis.keygo.autofill.presentation.dataset.SuggestionFinder
 import de.davis.keygo.autofill.presentation.getOnLongClickPendingIntent
 import de.davis.keygo.autofill.presentation.getSelectionPendingIntent
 import de.davis.keygo.autofill.presentation.model.FillRequestData
 import de.davis.keygo.autofill.presentation.model.Form
+import de.davis.keygo.autofill.presentation.model.FormType
 import de.davis.keygo.autofill.presentation.model.appRequestData
 import de.davis.keygo.autofill.presentation.model.pinnedRequestData
 import de.davis.keygo.autofill.presentation.model.suggestionRequestData
+import de.davis.keygo.autofill.presentation.subtitle
 import de.davis.keygo.core.item.domain.model.lite.LiteVaultItem
 import org.koin.core.annotation.Single
 
@@ -36,7 +37,37 @@ internal class InlineDatasetBuilder(
     suspend fun buildInlineDatasets(
         specs: List<InlinePresentationSpec>,
         form: Form
-    ): List<Dataset> = when (specs.size) {
+    ): List<Dataset> = when (form.type) {
+        is FormType.TOTP -> buildTotpInlineDataset(specs, form)
+        else -> buildDefaultInlineDatasets(specs, form)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    private suspend fun buildTotpInlineDataset(
+        specs: List<InlinePresentationSpec>,
+        form: Form
+    ) = when (specs.size) {
+        0 -> emptyList()
+        else -> {
+            val suggestions =
+                suggestionFinder.findVaultSuggestions(form, count = 1)
+
+            suggestions.mapIndexed { index, suggestion ->
+                buildInlineSuggestionDataset(
+                    spec = specs[index],
+                    index = index,
+                    form = form,
+                    suggestion = suggestion
+                )
+            }
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    private suspend fun buildDefaultInlineDatasets(
+        specs: List<InlinePresentationSpec>,
+        form: Form
+    ) = when (specs.size) {
         0 -> emptyList()
         1 -> listOf(buildPinnedInlineSuggestionDataset(specs.first(), form))
         else -> {
@@ -103,7 +134,7 @@ internal class InlineDatasetBuilder(
             spec = spec,
             pendingIntent = context.getOnLongClickPendingIntent(),
             title = suggestion.name,
-            subtitle = suggestion.subtitle(),
+            subtitle = suggestion.subtitle(context = context, formType = form.type),
         )
 
         return presentation.buildDataset(

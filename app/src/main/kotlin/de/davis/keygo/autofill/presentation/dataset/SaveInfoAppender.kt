@@ -95,6 +95,7 @@ internal fun Bundle.updateState(
 
                 FieldType.Credentials.EMail -> SaveInfo.SAVE_DATA_TYPE_EMAIL_ADDRESS
 
+                FieldType.TOTP,
                 FieldType.Credentials.Phone,
                 FieldType.Undefined -> SaveInfo.SAVE_DATA_TYPE_GENERIC
             }
@@ -110,6 +111,7 @@ private fun Form.merge(other: Form): Form {
 
     val mergedFields = (this.fields + other.fields)
         .filter { it.url == this.url } // only keep fields from the same URL
+        .filter { it.type.includeInSaveInfo }
         .distinctBy { it.autofillId }
 
     return copy(fields = mergedFields)

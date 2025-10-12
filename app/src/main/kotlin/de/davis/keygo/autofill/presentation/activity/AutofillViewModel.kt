@@ -37,9 +37,11 @@ import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.domain.repository.VaultItemRepository
 import de.davis.keygo.core.presentation.UIText
 import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
+import de.davis.keygo.totp.domain.repository.TotpGenerator
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -56,6 +58,7 @@ internal class AutofillViewModel(
     private val doesItemHaveDomainReferences: DoesItemHaveDomainReferencesUseCase,
     private val addRegistrableDomainToPassword: AddRegistrableDomainsToPasswordUseCase,
     private val isAppLinkedToWebsite: IsAppLinkedToWebsiteUseCase,
+    private val totpGenerator: TotpGenerator,
 
     getBiometricCryptoSetupAvailability: GetBiometricCryptoSetupAvailabilityUseCase,
     getBiometricHardwareAvailability: GetBiometricHardwareAvailabilityUseCase,
@@ -95,6 +98,8 @@ internal class AutofillViewModel(
                 ?: "",
             url = url,
         )
+
+        is FormType.TOTP -> throw IllegalArgumentException("TOTP not supported for saving")
     }
 
     private fun handleSaveRequest(requestData: SaveRequestData) {
@@ -267,12 +272,51 @@ internal class AutofillViewModel(
 
                 sendPasswordFillEvent(password)
             }
+
+            is FormType.TOTP -> {
+                val totpField = formInformation.fields.firstOrNull {
+                    it.type == FieldType.TOTP
+                } ?: run {
+                    eventChannel.send(AutofillEvent.Abort)
+                    return
+                }
+
+                val password = passwordRepository.getPasswordById(vaultId) ?: run {
+                    eventChannel.send(AutofillEvent.Abort)
+                    return
+                }
+
+                val totp = password.totpSecret?.let {
+                    val secret = cryptographicScopeProvider.scope {
+                        it.decryptSecretData().encodeToByteArray()
+                    }
+                    totpGenerator.observeTotp(secret).first()
+                } ?: run {
+                    eventChannel.send(AutofillEvent.Abort)
+                    return
+                }
+
+                val value = AutofillValue(
+                    autofillId = totpField.autofillId,
+                    value = totp.code
+                )
+
+                eventChannel.send(
+                    AutofillEvent.Fill(
+                        autofillDatasetProvider.getFillingDataset(
+                            listOf(value)
+                        )
+                    )
+                )
+            }
         }
     }
 
     private suspend fun sendPasswordFillEvent(password: Password) {
         val values = requestData.form.fields.mapNotNull {
-            val value = when (it.type) {
+            val type = it.type
+            if (type !is FieldType.Credentials) return@mapNotNull null
+            val value = when (type) {
                 FieldType.Credentials.Password -> cryptographicScopeProvider.scope {
                     password.encryptedData.decryptSecretData()
                 }

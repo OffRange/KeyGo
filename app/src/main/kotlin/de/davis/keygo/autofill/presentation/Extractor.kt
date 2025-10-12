@@ -142,7 +142,7 @@ internal class Extractor(
                 autofillId = node.autofillId!!,
                 type = type,
                 focused = node.isFocused,
-                url = currentUrl
+                url = currentUrl,
             )
             return
         }

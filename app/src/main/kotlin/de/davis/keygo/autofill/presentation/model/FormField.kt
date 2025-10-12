@@ -11,5 +11,5 @@ data class FormField(
     val focused: Boolean,
     val url: String? = null,
     val autofillValue: String? = null,
-    val requestId: Int = -1
+    val requestId: Int = -1,
 ) : Parcelable
