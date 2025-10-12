@@ -142,10 +142,7 @@ internal class AutofillViewModel(
 
     private suspend fun handleSuggestionRequest(suggestionInfo: FillRequestData.Suggestion) {
         _uiState.update { it.copy(vaultId = suggestionInfo.vaultId) }
-        handleSuggestRequest(suggestionInfo)
-    }
 
-    private suspend fun handleSuggestRequest(suggestionInfo: FillRequestData.Suggestion) {
         val itemName = vaultItemRepository.getItemName(suggestionInfo.vaultId)
             ?: throw IllegalArgumentException("Name for vaultId=${suggestionInfo.vaultId} not found")
 
