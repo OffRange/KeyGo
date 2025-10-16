@@ -1,5 +1,6 @@
 import de.davis.gradle.plugin.versioning.versionedBy
 import io.github.z4kn4fein.semver.Version
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
@@ -41,10 +42,7 @@ android {
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_21
-    }
-    kotlinOptions {
-        jvmTarget = "21"
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
         compose = true
@@ -65,8 +63,8 @@ android {
 
 kotlin {
     compilerOptions {
-
         freeCompilerArgs.add("-Xcontext-parameters")
+        jvmTarget = JvmTarget.JVM_17
     }
 }
 
