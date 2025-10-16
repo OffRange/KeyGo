@@ -4,5 +4,5 @@ import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Module
 
 @Module
-@ComponentScan("de.davis.keygo.core_item.**")
+@ComponentScan("de.davis.keygo.core.item.**")
 object CoreItemModule
