@@ -19,7 +19,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
-import de.davis.keygo.core.domain.alias.ItemIdNone
+import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.ItemIdNone
 import de.davis.keygo.core.presentation.LocalIsInSinglePaneMode
 import de.davis.keygo.core.presentation.ObserveAsEvents
 import de.davis.keygo.core.presentation.model.NavigationEvent
@@ -35,7 +36,11 @@ import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 fun NavGraphBuilder.dashboardGraph(
-    listNavigator: ThreePaneScaffoldNavigator<DetailType>
+    listNavigator: ThreePaneScaffoldNavigator<DetailType>,
+    onItemClicked: suspend (ItemId) -> Unit = { id ->
+        listNavigator.navigateTo(ThreePaneScaffoldRole.Primary, DetailType.View(id))
+    },
+    autoSelect: Boolean = true
 ) {
     composable<RouteDestination.Home.Root> {
         val isSinglePaneMode by remember(listNavigator.scaffoldDirective) {
@@ -68,13 +73,12 @@ fun NavGraphBuilder.dashboardGraph(
 
         LaunchedEffect(uiState.openedItemId) {
             if (uiState.openedItemId != ItemIdNone)
-                listNavigator.navigateTo(
-                    ThreePaneScaffoldRole.Primary,
-                    DetailType.View(uiState.openedItemId)
-                )
+                onItemClicked(uiState.openedItemId)
         }
 
-        LaunchedEffect(isSinglePaneMode, listNavigator.currentDestination) {
+        LaunchedEffect(autoSelect, isSinglePaneMode, listNavigator.currentDestination) {
+            if (!autoSelect) return@LaunchedEffect
+
             if (!isSinglePaneMode && uiState.openedItemId == ItemIdNone) {
                 // If we are in multi pane mode and no item is opened, we request to open the first item
                 viewModel.onEvent(DashboardUIEvent.OpenFirstItem)

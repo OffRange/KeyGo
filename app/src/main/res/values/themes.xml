@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <style name="Theme.KeyGo.Auth.Transparent" parent="android:Theme.Material.NoActionBar">
+        <!-- Make the window see-through so the underlying app stays visible -->
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <!--item name="android:colorBackgroundCacheHint">@null</item-->
+    </style>
+
     <style name="Theme.KeyGoV2" parent="android:Theme.Material.NoActionBar" />
 </resources>

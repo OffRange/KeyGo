@@ -36,7 +36,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
-import de.davis.keygo.core.domain.model.Score
+import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.presentation.component.KeyGoCard
 import de.davis.keygo.core.presentation.component.KeyGoCardProp
 import de.davis.keygo.core.presentation.component.StrengthIndicator
@@ -264,7 +264,7 @@ private fun GeneratePasswordBottomSheetPreview() {
             GeneratePasswordContent(
                 state = GeneratePasswordUiState(
                     generatedPassword = "p@ssw0rd".asUiPassword(),
-                    passwordStrength = Score.Ridiculous,
+                    passwordStrength = Password.Score.Ridiculous,
                     showCaution = true,
                 )
             )

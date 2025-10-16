@@ -21,8 +21,3 @@ data class CryptographicData(val data: ByteArray) {
         val EMPTY: CryptographicData get() = CryptographicData(byteArrayOf())
     }
 }
-
-@OptIn(ExperimentalStdlibApi::class)
-fun String.asCryptographicData(): CryptographicData {
-    return CryptographicData(hexToByteArray())
-}

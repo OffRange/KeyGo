@@ -1,6 +1,6 @@
 package de.davis.keygo.item.create.presentation.password.model
 
-import de.davis.keygo.core.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.item.core.presentation.password.model.FieldType
 
 sealed interface PasswordUiEvent {
@@ -9,6 +9,9 @@ sealed interface PasswordUiEvent {
     data object OnBackClick : PasswordUiEvent
     data object OnCloseBottomSheet : PasswordUiEvent
     data object OnScanCodeRequest : PasswordUiEvent
+
+    data class OnDeleteDomain(val value: String) : PasswordUiEvent
+    data class OnAddDomains(val domains: Set<String>) : PasswordUiEvent
 
     data object OnTotpParseErrorDismiss : PasswordUiEvent
 

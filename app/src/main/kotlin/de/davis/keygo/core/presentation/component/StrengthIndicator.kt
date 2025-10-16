@@ -24,22 +24,22 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
-import de.davis.keygo.core.domain.model.Score
+import de.davis.keygo.core.item.domain.model.Password
 
 @SuppressLint("UnusedTransitionTargetStateParameter")
 @Composable
 fun StrengthIndicator(
-    score: Score,
+    score: Password.Score,
     forceCompact: Boolean = false,
 ) {
     val targetTrackColor =
-        if (score.isNone || score == Score.Excellent)
+        if (score.isNone || score == Password.Score.Excellent)
             MaterialTheme.colorScheme.secondaryContainer
         else
             MaterialTheme.colorScheme.errorContainer
 
     val targetIndicatorColor =
-        if (score.isNone || score == Score.Excellent)
+        if (score.isNone || score == Password.Score.Excellent)
             MaterialTheme.colorScheme.onSecondaryContainer
         else
             MaterialTheme.colorScheme.error
@@ -80,13 +80,13 @@ fun StrengthIndicator(
                 exit = shrinkVertically(),
             ) {
                 val text = when (score) {
-                    Score.None,
-                    Score.Ridiculous -> stringResource(R.string.password_strength_ridiculous)
+                    Password.Score.None,
+                    Password.Score.Ridiculous -> stringResource(R.string.password_strength_ridiculous)
 
-                    Score.Weak -> stringResource(R.string.password_strength_weak)
-                    Score.Moderate -> stringResource(R.string.password_strength_moderate)
-                    Score.Strong -> stringResource(R.string.password_strength_strong)
-                    Score.Excellent -> stringResource(R.string.password_strength_excellent)
+                    Password.Score.Weak -> stringResource(R.string.password_strength_weak)
+                    Password.Score.Moderate -> stringResource(R.string.password_strength_moderate)
+                    Password.Score.Strong -> stringResource(R.string.password_strength_strong)
+                    Password.Score.Excellent -> stringResource(R.string.password_strength_excellent)
                 }
 
                 Text(text = text)

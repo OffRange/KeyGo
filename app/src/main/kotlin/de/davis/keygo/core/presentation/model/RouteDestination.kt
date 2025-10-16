@@ -38,7 +38,11 @@ sealed interface RouteDestination {
     }
 
     @Serializable
-    data class Auth(val totpInfo: String? = null, val queries: String? = null) : RouteDestination {
+    data class Auth(
+        val totpInfo: String? = null,
+        val queries: String? = null,
+        val showBiometricPromptIfPossible: Boolean = true
+    ) : RouteDestination {
         val uri
             get() = if (!totpInfo.isNullOrBlank() && !queries.isNullOrBlank())
                 "otpauth://totp/$totpInfo?$queries"

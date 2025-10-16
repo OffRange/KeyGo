@@ -20,12 +20,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
-import de.davis.keygo.core.domain.model.Password
-import de.davis.keygo.core.domain.model.Score
-import de.davis.keygo.core.domain.model.crypto.CryptographicData
+import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.model.lite.LitePassword
 import de.davis.keygo.core.presentation.theme.KeyGoTheme
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -33,8 +36,8 @@ import kotlinx.collections.immutable.persistentListOf
 @Composable
 fun SelectItemForTotpModificationDialog(
     onDismissRequest: () -> Unit,
-    items: ImmutableList<Password>,
-    onItemClicked: (Password) -> Unit,
+    items: ImmutableList<LitePassword>,
+    onItemClicked: (LitePassword) -> Unit,
     onCreateNew: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -84,9 +87,26 @@ fun SelectItemForTotpModificationDialog(
                                         Text(text = stringResource(R.string.list_entry, it))
                                     }
 
-                                    item.website?.let {
-                                        Text(text = stringResource(R.string.list_entry, it))
-                                    }
+                                    Text(
+                                        text = buildAnnotatedString {
+                                            item.domains.take(3).joinToString { it.value }.also {
+                                                append(stringResource(R.string.list_entry, it))
+                                            }
+
+                                            if (item.domains.size <= 3)
+                                                return@buildAnnotatedString
+
+                                            append(", ")
+                                            withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                                                append(
+                                                    stringResource(
+                                                        R.string.n_more,
+                                                        item.domains.size - 3
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    )
                                 }
                             )
                         }
@@ -108,26 +128,19 @@ private fun SelectItemForTotpModificationDialogPreview() {
                 onItemClicked = {},
                 onCreateNew = {},
                 items = persistentListOf(
-                    Password(
-                        passwordId = 1,
-                        username = "User 1",
-                        website = "Website",
-                        score = Score.Weak,
+                    LitePassword(
                         vaultItemId = 1,
+                        passwordId = 1,
                         name = "${if (1 >= 5) 'A' else 'B'} Item 1",
-                        encryptedData = CryptographicData.EMPTY,
-                        note = "This is a note for item 1",
-                        totpSecret = null
-                    ), Password(
-                        passwordId = 2,
-                        username = "User 2",
-                        website = "Website",
-                        score = Score.Weak,
+                        username = "User 1",
+                        domains = listOf(DomainInfo(1, "Website", "website.com")),
+                    ),
+                    LitePassword(
                         vaultItemId = 2,
+                        passwordId = 2,
                         name = "${if (2 >= 5) 'A' else 'B'} Item 2",
-                        encryptedData = CryptographicData.EMPTY,
-                        note = "This is a note for item 2",
-                        totpSecret = null
+                        username = "User 2",
+                        domains = listOf(DomainInfo(12, "Website", "website.com")),
                     )
                 )
             )

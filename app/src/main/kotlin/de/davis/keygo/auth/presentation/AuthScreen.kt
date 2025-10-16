@@ -3,7 +3,9 @@ package de.davis.keygo.auth.presentation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import de.davis.keygo.auth.presentation.model.AuthUIEvent
+import de.davis.keygo.core.identity.biometric.presentation.BiometricPromptSupport
+import de.davis.keygo.core.identity.biometric.presentation.LocalBiometricManager
+import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
 import de.davis.keygo.core.presentation.ObserveAsEvents
 import org.koin.androidx.compose.koinViewModel
 
@@ -16,18 +18,18 @@ fun AuthScreen(onSuccess: () -> Unit) {
         onSuccess()
     }
 
-    BiometricAuthHandler(
-        flow = viewModel.biometricRequests,
-        onAuthenticationSucceeded = {
-            viewModel.onEvent(AuthUIEvent.BiometricSuccess(it))
-        },
-        onAuthenticationError = { _, _ ->
-            viewModel.onEvent(AuthUIEvent.BiometricError)
-        },
-        onAuthenticationFailed = {
-            viewModel.onEvent(AuthUIEvent.BiometricFailure)
-        }
-    )
+    BiometricPromptSupport {
+        val biometricManager = LocalBiometricManager.current
 
-    AuthContent(state = state, onEvent = viewModel::onEvent)
+        ObserveAsEvents(viewModel.biometricRequests) {
+            when (it) {
+                is BiometricRequest.Class3 -> {
+                    val result = biometricManager.authenticate(it)
+                    viewModel.onBiometricResult(result)
+                }
+            }
+        }
+
+        AuthContent(state = state, onEvent = viewModel::onEvent)
+    }
 }

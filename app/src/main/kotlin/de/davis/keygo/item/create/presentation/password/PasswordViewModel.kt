@@ -6,26 +6,30 @@ import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.R
-import de.davis.keygo.core.domain.alias.ItemId
-import de.davis.keygo.core.domain.alias.ItemIdNone
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.core.domain.crypto.decryptSecretData
 import de.davis.keygo.core.domain.estimator.PasswordStrengthEstimator
-import de.davis.keygo.core.domain.getOrNull
-import de.davis.keygo.core.domain.model.Password
-import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.core.domain.model.snackbar.SnackbarMessage
-import de.davis.keygo.core.domain.onFailure
-import de.davis.keygo.core.domain.onSuccess
-import de.davis.keygo.core.domain.repository.PasswordRepository
-import de.davis.keygo.core.domain.repository.VaultItemRepository
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
+import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.ItemIdNone
+import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.repository.PasswordRepository
+import de.davis.keygo.core.item.domain.repository.VaultItemRepository
 import de.davis.keygo.core.presentation.UIText
+import de.davis.keygo.core.presentation.UIText.ResourceString
 import de.davis.keygo.core.presentation.model.InputFieldError
 import de.davis.keygo.core.presentation.model.NavigationEvent
+import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
+import de.davis.keygo.core.util.getOrNull
+import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.item.core.domain.model.PasswordError
-import de.davis.keygo.item.core.domain.model.Upsert
+import de.davis.keygo.item.core.domain.model.UpsertPassword
 import de.davis.keygo.item.core.domain.model.fieldUpdate
+import de.davis.keygo.item.core.domain.model.set
 import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePasswordUseCase
+import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.item.core.presentation.model.DetailType
 import de.davis.keygo.item.core.presentation.password.model.FieldType
 import de.davis.keygo.item.create.domain.PasswordGenerator
@@ -37,6 +41,7 @@ import de.davis.keygo.item.create.presentation.password.model.PasswordUiState
 import de.davis.keygo.totp.domain.model.TotpSecretInformation
 import de.davis.keygo.totp.domain.usecase.GetTotpSecretFromUrlUseCase
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -69,6 +74,7 @@ class PasswordViewModel(
     private val createNewOrUpdatePassword: CreateNewOrUpdatePasswordUseCase,
     private val snackbarManager: SnackbarManager,
     private val getTotpSecret: GetTotpSecretFromUrlUseCase,
+    private val registrableDomainResolver: RegistrableDomainResolver
 ) : GeneratePasswordViewModel(passwordGenerator, passwordStrengthEstimator) {
 
     private val nameTextFieldState = TextFieldState()
@@ -103,8 +109,7 @@ class PasswordViewModel(
         snapshotFlow { nameTextFieldState.text }
             .debounce(150.milliseconds)
             .mapLatest { input ->
-                vaultItemRepository.searchVaultItem(input.toString())
-                    .any { it.vaultItemId != itemId && it.name == input.toString() }
+                vaultItemRepository.doesNameExist(input.toString(), excludeId = itemId)
             }
             .distinctUntilChanged()
             .onEach { exists ->
@@ -161,11 +166,30 @@ class PasswordViewModel(
                 is DetailType.View -> throw IllegalArgumentException("This VM cannot be used to view an item")
             }
 
-            is DetailPaneInformation.CreateRaw -> when (information.vaultItem) {
-                is Password -> initWithId(ItemIdNone)
-                else -> {
-                    Log.e(TAG, "Unsupported vault item type: ${information.vaultItem}")
-                    navigateUp()
+            is DetailPaneInformation.CreateRaw -> initWithRawItem(information)
+        }
+    }
+
+    private fun initWithRawItem(createRaw: DetailPaneInformation.CreateRaw) {
+        nameTextFieldState.setTextAndPlaceCursorAtEnd(createRaw.name)
+
+        when (createRaw) {
+            is DetailPaneInformation.CreateRaw.Password -> {
+                val domainInfo = createRaw.url?.let {
+                    val eTLD1 = registrableDomainResolver.resolve(it)
+                    DomainInfo(
+                        value = it,
+                        eTLD1 = eTLD1
+                    )
+                }
+
+                passwordTextFieldState.setTextAndPlaceCursorAtEnd(createRaw.password)
+                _uiState.update {
+                    it.copy(
+                        usernameTextFieldState = TextFieldState(createRaw.username),
+                        domains = setOfNotNull(domainInfo).toImmutableSet(),
+                        updating = false
+                    )
                 }
             }
         }
@@ -175,19 +199,19 @@ class PasswordViewModel(
         this.itemId = itemId
         if (itemId == ItemIdNone) return
 
-        passwordRepository.observeVaultPasswordById(itemId)
+        passwordRepository.observePasswordById(itemId)
             .onEach { password ->
                 coroutineScope {
                     val pwdDeferred = async {
                         cryptographicScopeProvider.scope {
-                            password.encryptedData.decrypt().decodeToString()
+                            password.encryptedData.decryptSecretData()
                         }
                     }
 
                     val totpSecret = password.totpSecret?.let { totpSecret ->
                         async {
                             cryptographicScopeProvider.scope {
-                                totpSecret.encodedSecret.decrypt().decodeToString()
+                                totpSecret.decryptSecretData()
                             }
                         }
                     }
@@ -199,7 +223,7 @@ class PasswordViewModel(
                         it.copy(
                             totpTextFieldState = TextFieldState(totpSecret?.await() ?: ""),
                             usernameTextFieldState = TextFieldState(password.username ?: ""),
-                            websiteTextFieldState = TextFieldState(password.website ?: ""),
+                            domains = password.domainInfos.toImmutableSet(),
                             notesTextFieldState = TextFieldState(password.note ?: ""),
                             dialogState = DialogState.None,
                             updating = true
@@ -223,12 +247,13 @@ class PasswordViewModel(
         }.onSuccess { secret ->
             totpSecretInformation = secret
             viewModelScope.launch {
-                val matchedItems = passwordRepository.searchVaultPasswords(
-                    username = secret.accountName,
-                    website = secret.issuer
-                )
+                val matchedItems = secret.issuer?.let {
+                    registrableDomainResolver.resolve(it)
+                }?.let {
+                    passwordRepository.getVaultPasswordsByTLD(etld1 = it)
+                }
 
-                if (matchedItems.isEmpty()) {
+                if (matchedItems.isNullOrEmpty()) {
                     updateUiWithTotpSecretInfo(secret)
                     return@launch
                 }
@@ -251,20 +276,20 @@ class PasswordViewModel(
                     val state = _uiState.value
                     createNewOrUpdatePassword(
                         upsert = when (itemId == ItemIdNone) {
-                            true -> Upsert.Create(
-                                name = fieldUpdate(state.nameTextFieldState.text.toString()),
-                                username = fieldUpdate(state.usernameTextFieldState.text.toString()),
-                                website = fieldUpdate(state.websiteTextFieldState.text.toString()),
-                                password = fieldUpdate(state.passwordTextFieldState.text.toString()),
-                                totpSecret = fieldUpdate(state.totpTextFieldState.text.toString()),
-                                note = fieldUpdate(state.notesTextFieldState.text.toString())
+                            true -> UpsertPassword.create(
+                                name = state.nameTextFieldState.text.toString(),
+                                username = state.usernameTextFieldState.text.toString(),
+                                domains = state.domains,
+                                password = state.passwordTextFieldState.text.toString(),
+                                totpSecret = state.totpTextFieldState.text.toString(),
+                                note = state.notesTextFieldState.text.toString()
                             )
 
-                            false -> Upsert.Update(
+                            false -> UpsertPassword.update(
                                 vaultId = itemId,
                                 name = fieldUpdate(state.nameTextFieldState.text.toString()),
                                 username = fieldUpdate(state.usernameTextFieldState.text.toString()),
-                                website = fieldUpdate(state.websiteTextFieldState.text.toString()),
+                                domains = set(state.domains),
                                 password = fieldUpdate(state.passwordTextFieldState.text.toString()),
                                 totpSecret = fieldUpdate(state.totpTextFieldState.text.toString()),
                                 note = fieldUpdate(state.notesTextFieldState.text.toString())
@@ -283,7 +308,7 @@ class PasswordViewModel(
                         if (failure.any { it is PasswordError.InvalidVaultId }) {
                             snackbarManager.sendMessage(
                                 message = SnackbarMessage(
-                                    message = UIText.ResourceString(R.string.invalid_vault_id)
+                                    message = ResourceString(R.string.invalid_vault_id)
                                 )
                             )
                         }
@@ -403,18 +428,40 @@ class PasswordViewModel(
                     )
                 }
             }
+
+            is PasswordUiEvent.OnAddDomains -> {
+                event.domains.forEach { domain ->
+                    val registrableDomain = registrableDomainResolver.resolve(domain)
+                    val info = DomainInfo(
+                        passwordId = itemId,
+                        value = domain,
+                        eTLD1 = registrableDomain
+                    )
+                    _uiState.update {
+                        val newList = it.domains + info
+                        it.copy(domains = newList.toImmutableSet())
+                    }
+                }
+            }
+
+            is PasswordUiEvent.OnDeleteDomain -> {
+                _uiState.update {
+                    val newList = it.domains.filterNot { info -> info.value == event.value }
+                    it.copy(domains = newList.toImmutableSet())
+                }
+            }
         }
     }
 
     private fun List<OverrideTotpField>.applyToUi(overrideWith: OverrideTotpField.() -> String) {
         val secretField = find { field -> field.fieldType == FieldType.Totp }
         val usernameField = find { field -> field.fieldType == FieldType.Username }
-        val websiteField = find { field -> field.fieldType == FieldType.Website }
+        val domainField = find { field -> field.fieldType == FieldType.Domain }
 
 
         updateUiWithSpecificTotpSecretInfo(
             secret = secretField?.overrideWith(),
-            issuer = websiteField?.overrideWith(),
+            issuer = domainField?.overrideWith(),
             accountName = usernameField?.overrideWith()
         )
     }
@@ -422,7 +469,7 @@ class PasswordViewModel(
     private fun requestTotpSecretUpdate(secretInformation: TotpSecretInformation) {
         val currentState = _uiState.value
         val currentTotpSecret = currentState.totpTextFieldState.text.toString()
-        val currentIssuer = currentState.websiteTextFieldState.text.toString()
+        val currentIssuers = currentState.domains
         val currentAccountName = currentState.usernameTextFieldState.text.toString()
 
         val newTotpSecret = secretInformation.secret
@@ -430,17 +477,16 @@ class PasswordViewModel(
         val newAccountName = secretInformation.accountName
 
         val isCurrentSecretSet = currentTotpSecret.isNotBlank()
-        val isCurrentIssuerSet = currentIssuer.isNotBlank()
         val isCurrentAccountNameSet = currentAccountName.isNotBlank()
 
         val isCurrentTotpSecretSame = currentTotpSecret == newTotpSecret
-        val isCurrentIssuerSame = newIssuer.isBlank() || currentIssuer == newIssuer
         val isCurrentAccountNameSame = currentAccountName == newAccountName
 
         val overridingFields = mutableSetOf<OverrideTotpField>()
 
         val isOverridingTotpSecret = isCurrentSecretSet && !isCurrentTotpSecretSame
-        val isOverridingIssuer = isCurrentIssuerSet && !isCurrentIssuerSame
+        val isAddingNewIssuer = currentIssuers
+            .none { it.value.contains(newIssuer, ignoreCase = true) }
         val isOverridingAccountName = isCurrentAccountNameSet && !isCurrentAccountNameSame
 
         if (isOverridingTotpSecret) {
@@ -449,16 +495,6 @@ class PasswordViewModel(
                     fieldType = FieldType.Totp,
                     before = currentTotpSecret,
                     after = newTotpSecret
-                )
-            )
-        }
-
-        if (isOverridingIssuer) {
-            overridingFields.add(
-                OverrideTotpField(
-                    fieldType = FieldType.Website,
-                    before = currentIssuer,
-                    after = newIssuer
                 )
             )
         }
@@ -475,7 +511,7 @@ class PasswordViewModel(
 
         updateUiWithSpecificTotpSecretInfo(
             secret = if (!isOverridingTotpSecret) newTotpSecret else null,
-            issuer = if (!isOverridingIssuer) newIssuer else null,
+            issuer = if (isAddingNewIssuer) newIssuer else null,
             accountName = if (!isOverridingAccountName) newAccountName else null,
             closeDialog = false
         )
@@ -509,7 +545,7 @@ class PasswordViewModel(
         }
 
         issuer?.let {
-            currentState.websiteTextFieldState.setTextAndPlaceCursorAtEnd(it)
+            onEvent(PasswordUiEvent.OnAddDomains(setOf(it)))
         }
 
         accountName?.let {

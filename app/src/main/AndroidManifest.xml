@@ -43,6 +43,24 @@
                     android:scheme="otpauth" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".autofill.presentation.KeyGoAutofillService"
+            android:exported="true"
+            android:permission="android.permission.BIND_AUTOFILL_SERVICE">
+            <meta-data
+                android:name="android.autofill"
+                android:resource="@xml/keygo_autofill_service" />
+            <intent-filter>
+                <action android:name="android.service.autofill.AutofillService" />
+            </intent-filter>
+        </service>
+
+        <activity
+            android:name=".autofill.presentation.activity.AutofillActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:theme="@style/Theme.KeyGo.Auth.Transparent" />
     </application>
 
 </manifest>

@@ -1,7 +1,7 @@
 package de.davis.keygo.auth.domain.repository
 
-import de.davis.keygo.auth.domain.model.CryptographyError
-import de.davis.keygo.core.domain.Result
+import de.davis.keygo.core.identity.common.domain.model.CryptographyError
+import de.davis.keygo.core.util.Result
 
 interface KeyDerivationRepository {
 

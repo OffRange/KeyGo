@@ -1,8 +1,8 @@
 package de.davis.keygo.dashboard.presentation.model
 
-import de.davis.keygo.core.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.dashboard.domain.model.Filter
-import de.davis.keygo.generated.item.VaultItemType
 
 sealed interface DashboardUIEvent {
 

@@ -1,7 +1,7 @@
 package de.davis.keygo.dashboard.domain.usecase
 
-import de.davis.keygo.core.domain.model.VaultItem
-import de.davis.keygo.core.domain.model.crypto.CryptographicData
+import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.dashboard.domain.model.Filter
 import de.davis.keygo.dashboard.domain.model.Filter.Direction
 import kotlin.test.Test
@@ -13,17 +13,22 @@ class FilterUseCaseTest {
     private var filterAsc: Filter = Filter.Alphanumerical(direction = Direction.Ascending)
     private var filterDesc: Filter = Filter.Alphanumerical(direction = Direction.Descending)
 
+    data class TestLiteItem(
+        override val vaultItemId: ItemId = 0,
+        override val name: String,
+    ) : LiteItem
+
     @Test
     fun `sorts items with numeric suffixes alphanumerically`() {
         val input = listOf(
-            VaultItem.Basic(name = "AAA 10", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "AAA 8", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "AAA 9", encryptedData = CryptographicData.EMPTY, note = null),
+            TestLiteItem(name = "AAA 10"),
+            TestLiteItem(name = "AAA 8"),
+            TestLiteItem(name = "AAA 9"),
         )
         val expected = listOf(
-            VaultItem.Basic(name = "AAA 8", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "AAA 9", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "AAA 10", encryptedData = CryptographicData.EMPTY, note = null),
+            TestLiteItem(name = "AAA 8"),
+            TestLiteItem(name = "AAA 9"),
+            TestLiteItem(name = "AAA 10"),
         )
 
         val actual = useCase(filterAsc, input)
@@ -33,14 +38,14 @@ class FilterUseCaseTest {
     @Test
     fun `sorts items with numeric suffixes alphanumerically desc`() {
         val input = listOf(
-            VaultItem.Basic(name = "AAA 10", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "AAA 8", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "AAA 9", encryptedData = CryptographicData.EMPTY, note = null),
+            TestLiteItem(name = "AAA 10"),
+            TestLiteItem(name = "AAA 8"),
+            TestLiteItem(name = "AAA 9"),
         )
         val expected = listOf(
-            VaultItem.Basic(name = "AAA 10", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "AAA 9", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "AAA 8", encryptedData = CryptographicData.EMPTY, note = null),
+            TestLiteItem(name = "AAA 10"),
+            TestLiteItem(name = "AAA 9"),
+            TestLiteItem(name = "AAA 8"),
         )
 
         val actual = useCase(filterDesc, input)
@@ -50,16 +55,16 @@ class FilterUseCaseTest {
     @Test
     fun `sorts items with leading zeros and multi-digit numbers`() {
         val input = listOf(
-            VaultItem.Basic(name = "file2", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "file10", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "file1", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "file02", encryptedData = CryptographicData.EMPTY, note = null),
+            TestLiteItem(name = "file2"),
+            TestLiteItem(name = "file10"),
+            TestLiteItem(name = "file1"),
+            TestLiteItem(name = "file02"),
         )
         val expected = listOf(
-            VaultItem.Basic(name = "file1", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "file2", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "file02", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "file10", encryptedData = CryptographicData.EMPTY, note = null)
+            TestLiteItem(name = "file1"),
+            TestLiteItem(name = "file2"),
+            TestLiteItem(name = "file02"),
+            TestLiteItem(name = "file10")
         )
 
         val actual = useCase(filterAsc, input)
@@ -69,16 +74,16 @@ class FilterUseCaseTest {
     @Test
     fun `sorts items with leading numbers`() {
         val input = listOf(
-            VaultItem.Basic(name = "2file", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "10file", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "1file", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "02file", encryptedData = CryptographicData.EMPTY, note = null),
+            TestLiteItem(name = "2file"),
+            TestLiteItem(name = "10file"),
+            TestLiteItem(name = "1file"),
+            TestLiteItem(name = "02file"),
         )
         val expected = listOf(
-            VaultItem.Basic(name = "1file", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "2file", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "02file", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "10file", encryptedData = CryptographicData.EMPTY, note = null)
+            TestLiteItem(name = "1file"),
+            TestLiteItem(name = "2file"),
+            TestLiteItem(name = "02file"),
+            TestLiteItem(name = "10file")
         )
 
         val actual = useCase(filterAsc, input)
@@ -88,24 +93,24 @@ class FilterUseCaseTest {
     @Test
     fun `empty list returns empty list`() {
         val actual = useCase(filterAsc, emptyList())
-        assertEquals(emptyList<VaultItem.Basic>(), actual)
+        assertEquals(emptyList<TestLiteItem>(), actual)
     }
 
     @Test
     fun `items without numeric parts are sorted lexically`() {
         val input = listOf(
-            VaultItem.Basic(name = "banana", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "Apple", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "apple", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "Banana", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "cherry", encryptedData = CryptographicData.EMPTY, note = null)
+            TestLiteItem(name = "banana"),
+            TestLiteItem(name = "Apple"),
+            TestLiteItem(name = "apple"),
+            TestLiteItem(name = "Banana"),
+            TestLiteItem(name = "cherry")
         )
         val expected = listOf(
-            VaultItem.Basic(name = "Apple", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "apple", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "banana", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "Banana", encryptedData = CryptographicData.EMPTY, note = null),
-            VaultItem.Basic(name = "cherry", encryptedData = CryptographicData.EMPTY, note = null)
+            TestLiteItem(name = "Apple"),
+            TestLiteItem(name = "apple"),
+            TestLiteItem(name = "banana"),
+            TestLiteItem(name = "Banana"),
+            TestLiteItem(name = "cherry")
         )
 
         val actual = useCase(filterAsc, input)

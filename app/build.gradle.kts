@@ -4,7 +4,6 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.androidx.room)
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
@@ -64,11 +63,13 @@ android {
 
 kotlin {
     compilerOptions {
+        freeCompilerArgs.add("-Xcontext-parameters")
         jvmTarget = JvmTarget.JVM_17
     }
 }
 
 dependencies {
+    implementation(libs.okhttp)
 
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))
@@ -77,14 +78,7 @@ dependencies {
     implementation(libs.koin.annotations)
     ksp(libs.koin.ksp.compiler)
 
-    // Room
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
-
-    // Automation
-    implementation(projects.automation)
-    ksp(projects.automationProcessor)
+    implementation(projects.core.item)
 
     // Datastore
     implementation(libs.androidx.datastore)
@@ -95,6 +89,8 @@ dependencies {
 
     implementation(libs.offrange.passgen)
     implementation(libs.argon2kt)
+
+    implementation(libs.androidx.autofill)
 
     // Use GMS ML Kit for barcode scanning on the Play Store to minimize app size; use ZXing for F-Droid builds.
     "playStoreImplementation"(libs.gms.mlkit.barcode.scanning)
@@ -153,12 +149,4 @@ protobuf {
 composeCompiler {
     reportsDestination = layout.buildDirectory.dir("compose_compiler")
     metricsDestination = layout.buildDirectory.dir("compose_compiler")
-}
-
-room {
-    schemaDirectory("$projectDir/schemas")
-}
-
-ksp {
-    arg("automation.packageName", "de.davis.keygo.generated")
 }

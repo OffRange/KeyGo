@@ -1,16 +1,17 @@
 package de.davis.keygo.item.core.domain.usecase
 
-import de.davis.keygo.core.domain.Result
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.core.domain.crypto.encryptSecretData
 import de.davis.keygo.core.domain.estimator.PasswordStrengthEstimator
-import de.davis.keygo.core.domain.mapFailure
-import de.davis.keygo.core.domain.model.Password
-import de.davis.keygo.core.domain.model.asTotpSecret
-import de.davis.keygo.core.domain.repository.PasswordRepository
-import de.davis.keygo.core.domain.usecase.UpsertVaultItem
+import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.repository.PasswordRepository
+import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
+import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.mapFailure
 import de.davis.keygo.item.core.domain.model.FieldUpdate
 import de.davis.keygo.item.core.domain.model.PasswordError
-import de.davis.keygo.item.core.domain.model.Upsert
+import de.davis.keygo.item.core.domain.model.UpsertPassword
+import de.davis.keygo.item.core.domain.model.UpsertType
 import de.davis.keygo.item.core.domain.model.getValue
 import de.davis.keygo.item.core.domain.model.on
 import de.davis.keygo.item.core.domain.model.onSet
@@ -24,7 +25,7 @@ import kotlin.contracts.ExperimentalContracts
 class CreateNewOrUpdatePasswordUseCase(
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passwordRepository: PasswordRepository,
-    private val upsertVaultItem: UpsertVaultItem,
+    private val upsertVaultItem: UpsertVaultItemUseCase,
     private val passwordStrengthEstimator: PasswordStrengthEstimator
 ) {
 
@@ -36,9 +37,9 @@ class CreateNewOrUpdatePasswordUseCase(
             is FieldUpdate.Set<String> -> field.value.isNotBlank()
         }
 
-    private fun validate(upsert: Upsert): Set<PasswordError> {
+    private fun validate(upsert: UpsertPassword): Set<PasswordError> {
         val errors = mutableSetOf<PasswordError>()
-        val allowKeep = upsert is Upsert.Update
+        val allowKeep = upsert.upsertType is UpsertType.Update
 
         if (!isValid(field = upsert.name, allowKeep = allowKeep))
             errors.add(PasswordError.BlankName)
@@ -49,7 +50,7 @@ class CreateNewOrUpdatePasswordUseCase(
         return errors
     }
 
-    suspend operator fun invoke(upsert: Upsert): Result<Unit, Set<PasswordError>> =
+    suspend operator fun invoke(upsert: UpsertPassword): Result<Unit, Set<PasswordError>> =
         coroutineScope {
             val errors = validate(upsert)
             if (errors.isNotEmpty())
@@ -59,7 +60,7 @@ class CreateNewOrUpdatePasswordUseCase(
             val encryptedPassword = upsert.password.onSet { password ->
                 async {
                     cryptographicScopeProvider.scope {
-                        password.encodeToByteArray().encrypt()
+                        password.encryptSecretData()
                     }
                 }
             }
@@ -72,18 +73,18 @@ class CreateNewOrUpdatePasswordUseCase(
             val totpSecret = upsert.totpSecret.onSet { totpSecret ->
                 async {
                     cryptographicScopeProvider.scope {
-                        totpSecret.encodeToByteArray().encrypt()
-                    }.asTotpSecret()
+                        totpSecret.encryptSecretData()
+                    }
                 }
             }
 
-            val updatedPassword = when (upsert) {
-                is Upsert.Create -> {
+            val updatedPassword = when (upsert.upsertType) {
+                UpsertType.Create -> {
                     // Validation ensures that the values are not null
                     Password(
                         name = upsert.name.getValue() ?: "",
                         username = upsert.username.getValue(),
-                        website = upsert.website.getValue(),
+                        domainInfos = upsert.domains.getValue().orEmpty(),
                         encryptedData = encryptedPassword!!.await(),
                         totpSecret = totpSecret?.await(),
                         score = passwordStrength!!.await(),
@@ -91,14 +92,15 @@ class CreateNewOrUpdatePasswordUseCase(
                     )
                 }
 
-                is Upsert.Update -> {
-                    val dbPassword = passwordRepository.getVaultPasswordById(upsert.vaultId)
-                        ?: return@coroutineScope Result.Failure(setOf(PasswordError.InvalidVaultId))
+                is UpsertType.Update -> {
+                    val dbPassword =
+                        passwordRepository.getPasswordById(upsert.upsertType.vaultItemId)
+                            ?: return@coroutineScope Result.Failure(setOf(PasswordError.InvalidVaultId))
 
                     dbPassword.copy(
                         name = upsert.name.withoutClearingOn(dbPassword.name),
                         username = upsert.username.on(dbPassword.username),
-                        website = upsert.website.on(dbPassword.website),
+                        domainInfos = upsert.domains.on(dbPassword.domainInfos).orEmpty(),
                         encryptedData = encryptedPassword?.await() ?: dbPassword.encryptedData,
                         totpSecret = upsert.totpSecret.on(dbPassword.totpSecret, totpSecret),
                         score = passwordStrength?.await() ?: dbPassword.score,

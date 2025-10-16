@@ -5,6 +5,6 @@ enum class FieldType(val isSensitive: Boolean = false) {
     Password(isSensitive = true),
     Totp,
     Username,
-    Website,
+    Domain,
     Note
 }

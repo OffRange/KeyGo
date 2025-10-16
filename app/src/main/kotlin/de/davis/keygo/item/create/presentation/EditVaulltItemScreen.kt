@@ -1,14 +1,11 @@
 package de.davis.keygo.item.create.presentation
 
 import androidx.compose.runtime.Composable
-import de.davis.keygo.core.domain.model.Password
-import de.davis.keygo.core.domain.model.VaultItem
-import de.davis.keygo.core.domain.model.VaultSearchResult
+import de.davis.keygo.core.item.generated.domain.model.VaultItemType
+import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.item.core.presentation.model.DetailPaneInformation.CreateRaw
 import de.davis.keygo.item.core.presentation.model.DetailPaneInformation.InitByDetailType
-import de.davis.keygo.core.presentation.model.NavigationEvent
-import de.davis.keygo.generated.item.VaultItemType
 import de.davis.keygo.item.core.presentation.model.DetailType
 import de.davis.keygo.item.create.presentation.password.PasswordScreen
 
@@ -23,7 +20,7 @@ fun EditVaultItemScreen(
             navigate
         )
 
-        is CreateRaw -> ForVaultItemInstance(
+        is CreateRaw -> ForRawItem(
             detailPaneInformation,
             navigate
         )
@@ -45,14 +42,11 @@ private fun ForType(info: InitByDetailType, navigate: (NavigationEvent) -> Unit)
 }
 
 @Composable
-private fun ForVaultItemInstance(item: CreateRaw, navigate: (NavigationEvent) -> Unit) {
-    when (item.vaultItem) {
-        is Password -> PasswordScreen(
+private fun ForRawItem(item: CreateRaw, navigate: (NavigationEvent) -> Unit) {
+    when (item) {
+        is CreateRaw.Password -> PasswordScreen(
             detailPaneInformation = item,
             navigate = navigate
         )
-
-        is VaultItem.Basic,
-        is VaultSearchResult -> throw IllegalArgumentException("Not supported")
     }
 }

@@ -8,11 +8,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
-import de.davis.keygo.core.domain.alias.ItemId
-import de.davis.keygo.core.domain.alias.ItemIdNone
-import de.davis.keygo.core.domain.model.VaultSearchResult
-import de.davis.keygo.core.domain.repository.VaultItemRepository
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
+import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.ItemIdNone
+import de.davis.keygo.core.item.domain.model.lite.LiteVaultItemSearchResult
+import de.davis.keygo.core.item.domain.repository.VaultItemRepository
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.presentation.snackbar.ItemDeletedMessage
 import de.davis.keygo.dashboard.domain.model.Filter
@@ -55,7 +55,7 @@ class DashboardViewModel(
 
     private val submittedSearchQuery = MutableStateFlow("")
 
-    private val searchResult = MutableStateFlow(emptyList<VaultSearchResult>())
+    private val searchResult = MutableStateFlow(emptyList<LiteVaultItemSearchResult>())
 
     private val filter = MutableStateFlow<Filter>(Filter.Alphanumerical())
     private val flaggedForDeletion = MutableStateFlow(setOf<ItemId>())
@@ -66,18 +66,18 @@ class DashboardViewModel(
     ) { flaggedForDeletion, searchResult ->
         filterItems(
             filter = Filter.Alphanumerical(),
-            vaultItems = searchResult.filterNot { it.vaultItemId in flaggedForDeletion }
+            namedItems = searchResult.filterNot { it.vaultItemId in flaggedForDeletion }
         )
     }
 
     private val repoFilteredItems = combine(
-        vaultItemRepository.observeVaultItems(),
+        vaultItemRepository.observeLiteVaultItems(),
         filter,
         flaggedForDeletion
     ) { items, filter, flaggedForDeletion ->
         filterItems(
             filter = filter,
-            vaultItems = items.filterNot { it.vaultItemId in flaggedForDeletion }
+            namedItems = items.filterNot { it.vaultItemId in flaggedForDeletion }
         )
     }
 
@@ -144,7 +144,7 @@ class DashboardViewModel(
             .launchIn(viewModelScope)
     }
 
-    private suspend fun performSearch(query: String): List<VaultSearchResult> {
+    private suspend fun performSearch(query: String): List<LiteVaultItemSearchResult> {
         return vaultItemRepository.searchVaultItem(query)
     }
 
@@ -199,7 +199,7 @@ class DashboardViewModel(
                             },
                             onDismiss = {
                                 viewModelScope.launch {
-                                    vaultItemRepository.deleteVaultItem(id)
+                                    vaultItemRepository.deleteItem(id)
 
                                     // Inside this coroutine to ensure it only runs after the deletion
                                     updateDeletionFlag(id = id, flag = false)

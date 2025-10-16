@@ -3,18 +3,23 @@ package de.davis.keygo.item.viewing.presentation.password
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import de.davis.keygo.core.domain.alias.ItemId
-import de.davis.keygo.core.domain.alias.ItemIdNone
 import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
-import de.davis.keygo.core.domain.onFailure
-import de.davis.keygo.core.domain.onSuccess
-import de.davis.keygo.core.domain.repository.PasswordRepository
+import de.davis.keygo.core.domain.crypto.decryptSecretData
+import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.ItemIdNone
+import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.repository.PasswordRepository
+import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.presentation.model.InputFieldError
 import de.davis.keygo.core.presentation.model.NavigationEvent
-import de.davis.keygo.generated.item.VaultItemType
+import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
+import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.item.core.domain.model.PasswordError
-import de.davis.keygo.item.core.domain.model.Upsert
+import de.davis.keygo.item.core.domain.model.UpsertPassword
 import de.davis.keygo.item.core.domain.model.fieldUpdate
+import de.davis.keygo.item.core.domain.model.onSet
+import de.davis.keygo.item.core.domain.model.set
 import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePasswordUseCase
 import de.davis.keygo.item.core.presentation.password.model.FieldType
 import de.davis.keygo.item.viewing.domain.WebsiteHandler
@@ -52,7 +57,8 @@ class ViewPasswordViewModel(
     private val updatePassword: CreateNewOrUpdatePasswordUseCase,
     private val isValidUrl: IsValidUrlUseCase,
     private val websiteHandler: WebsiteHandler,
-    private val totpGenerator: TotpGenerator
+    private val totpGenerator: TotpGenerator,
+    private val registrableDomainResolver: RegistrableDomainResolver
 ) : ViewModel() {
 
     private val _modificationDialogState = MutableStateFlow<ModificationDialog?>(null)
@@ -63,18 +69,18 @@ class ViewPasswordViewModel(
         .filter { it != ItemIdNone }
         .distinctUntilChanged()
         .flatMapLatest { id ->
-            passwordRepository.observeVaultPasswordById(id).flatMapLatest { password ->
+            passwordRepository.observePasswordById(id).flatMapLatest { password ->
                 coroutineScope {
                     val obfuscatedString = async {
                         cryptographicScopeProvider.scope {
-                            password.encryptedData.decrypt().decodeToString()
+                            password.encryptedData.decryptSecretData()
                         }.asObfuscatedString()
                     }
 
                     val totpSecret = password.totpSecret?.let { totpSecret ->
                         async {
                             cryptographicScopeProvider.scope {
-                                totpSecret.encodedSecret.decrypt()
+                                totpSecret.decryptSecretData().encodeToByteArray()
                             }
                         }
                     }
@@ -85,9 +91,8 @@ class ViewPasswordViewModel(
                         password = obfuscatedString.await(),
                         passwordStrengthScore = password.score,
                         username = password.username.orEmpty(),
-                        website = password.website.orEmpty(),
+                        domains = password.domainInfos,
                         note = password.note.orEmpty(),
-                        canOpenWebsite = isValidUrl(password.website.orEmpty()),
                         totpInformation = TotpInformation("", 0, 0),
                     )
 
@@ -126,8 +131,8 @@ class ViewPasswordViewModel(
                 navigationEventChannel.send(NavigationEvent.NavigateBack)
             }
 
-            ViewPasswordUiEvent.OpenWebsite -> {
-                val url = state.value.website
+            is ViewPasswordUiEvent.OpenWebsite -> {
+                val url = event.domain
                 if (!isValidUrl(url))
                     return
 
@@ -157,7 +162,7 @@ class ViewPasswordViewModel(
                     FieldType.Password -> state.password.raw
                     FieldType.Totp -> "" // TOTP is not editable in this context
                     FieldType.Username -> state.username
-                    FieldType.Website -> state.website
+                    FieldType.Domain -> "" // Only allow adding new domains, not editing existing ones
                     FieldType.Note -> state.note
                 }
 
@@ -177,32 +182,41 @@ class ViewPasswordViewModel(
                 viewModelScope.launch {
                     updatePassword(
                         when (dialog.fieldType) {
-                            FieldType.Name -> Upsert.Update(
+                            FieldType.Name -> UpsertPassword.update(
                                 vaultId = itemId,
                                 name = newText
                             )
 
-                            FieldType.Password -> Upsert.Update(
+                            FieldType.Password -> UpsertPassword.update(
                                 vaultId = itemId,
                                 password = newText
                             )
 
-                            FieldType.Totp -> Upsert.Update(
+                            FieldType.Totp -> UpsertPassword.update(
                                 vaultId = itemId,
                                 totpSecret = newText
                             )
 
-                            FieldType.Username -> Upsert.Update(
+                            FieldType.Username -> UpsertPassword.update(
                                 vaultId = itemId,
                                 username = newText
                             )
 
-                            FieldType.Website -> Upsert.Update(
-                                vaultId = itemId,
-                                website = newText
-                            )
+                            FieldType.Domain -> newText.onSet {
+                                val eTLD1 = registrableDomainResolver.resolve(it)
+                                val updatedDomains = state.value.domains + DomainInfo(
+                                    itemId,
+                                    it,
+                                    eTLD1
+                                )
 
-                            FieldType.Note -> Upsert.Update(
+                                UpsertPassword.update(
+                                    vaultId = itemId,
+                                    domains = set(updatedDomains)
+                                )
+                            } ?: return@launch
+
+                            FieldType.Note -> UpsertPassword.update(
                                 vaultId = itemId,
                                 note = newText
                             )
