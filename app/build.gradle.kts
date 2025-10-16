@@ -79,7 +79,6 @@ dependencies {
     ksp(libs.koin.ksp.compiler)
 
     implementation(projects.core.item)
-    implementation(projects.core.util)
 
     // Datastore
     implementation(libs.androidx.datastore)

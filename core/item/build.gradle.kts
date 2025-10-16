@@ -19,15 +19,6 @@ android {
         consumerProguardFiles("consumer-rules.pro")
     }
 
-    buildTypes {
-        release {
-            isMinifyEnabled = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
-    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -56,7 +47,7 @@ dependencies {
     implementation(projects.automation)
     ksp(projects.automationProcessor)
 
-    implementation(projects.core.util)
+    api(projects.core.util)
 
     // Jetpack Compose
     implementation(platform(libs.androidx.compose.bom))
