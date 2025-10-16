@@ -23,7 +23,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "de.davis.passwordmanager.v2_new" // TODO: Change the applicationId
+        applicationId = "de.davis.passwordmanager"
         minSdk = 26
         targetSdk = 36
 
@@ -38,6 +38,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+
+        debug {
+            applicationIdSuffix = ".debug"
         }
     }
     compileOptions {
