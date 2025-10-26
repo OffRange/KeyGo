@@ -1,0 +1,20 @@
+[package]
+name = "keygo-rust-lib"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "keygo_rust"
+crate-type = ["cdylib"]
+
+[dependencies]
+jni = "0.21.1"
+serde_json = "1.0.145"
+tokio = { version = "1.48.0", features = ["rt", "macros"] }
+passkey = "0.4.0"
+url = "2.5.7"
+thiserror = "2.0.17"
+async-trait = "0.1.89"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_cbor = "0.11.2"
+coset = "0.3.8"
