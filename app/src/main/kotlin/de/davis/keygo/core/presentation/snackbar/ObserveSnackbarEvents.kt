@@ -6,8 +6,8 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
-import de.davis.keygo.core.presentation.ObserveAsEvents
 import de.davis.keygo.core.presentation.resolve
+import de.davis.keygo.core.util.presentation.ObserveAsEvents
 
 @Composable
 fun SnackbarHandler(

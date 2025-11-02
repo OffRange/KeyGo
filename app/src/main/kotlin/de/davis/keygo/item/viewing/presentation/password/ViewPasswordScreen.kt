@@ -6,8 +6,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.presentation.ObserveAsEvents
 import de.davis.keygo.core.presentation.model.NavigationEvent
+import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import org.koin.androidx.compose.koinViewModel
 
 @Composable

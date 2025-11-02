@@ -1,4 +1,4 @@
-package de.davis.keygo.core.presentation
+package de.davis.keygo.core.util.presentation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect

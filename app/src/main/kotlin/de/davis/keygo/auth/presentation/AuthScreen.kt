@@ -6,7 +6,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.identity.biometric.presentation.BiometricPromptSupport
 import de.davis.keygo.core.identity.biometric.presentation.LocalBiometricManager
 import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
-import de.davis.keygo.core.presentation.ObserveAsEvents
+import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
