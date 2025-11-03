@@ -117,7 +117,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material3.adaptive.navigation)
     implementation(libs.androidx.material3.adaptive.navigation.suite)
-    implementation(libs.androidx.biometric)
+    implementation(libs.androidx.biometric) // TODO remove
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.collections.immutable)

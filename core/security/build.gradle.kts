@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "de.davis.keygo.feature.credentials"
+    namespace = "de.davis.keygo.core.security"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
@@ -38,6 +38,7 @@ kotlin {
         jvmTarget = JvmTarget.JVM_17
     }
 }
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -49,10 +50,10 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
 
-    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.biometric)
 
-    implementation(projects.rust)
-    implementation(projects.core.security)
+    implementation(projects.core.util)
+
 
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))
