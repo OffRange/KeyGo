@@ -21,5 +21,16 @@ object PasskeyManager {
             )
         }
 
+    suspend fun getExcludedCredentialIds(requestJson: String): Result<Array<ByteArray>, Unit> =
+        withContext(Dispatchers.Default) {
+            runCatching {
+                getExcludedCredentials(requestJson)
+            }.fold(
+                onSuccess = { Result.Success(it) },
+                onFailure = { Result.Failure(Unit) }
+            )
+        }
+
     private external fun registerPasskey(requestJson: String): KeyGoRegistrationResponse
+    private external fun getExcludedCredentials(requestJson: String): Array<ByteArray>
 }

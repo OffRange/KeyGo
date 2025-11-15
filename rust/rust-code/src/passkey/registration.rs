@@ -8,12 +8,17 @@ use thiserror::Error;
 
 pub(crate) struct KeyGoRegistrationResponse {
     response: String,
+    credential_id: Vec<u8>,
     private_key: Vec<u8>,
 }
 
 impl KeyGoRegistrationResponse {
     pub(crate) fn response(&self) -> &str {
         &self.response
+    }
+
+    pub(crate) fn credential_id(&self) -> &[u8] {
+        &self.credential_id
     }
 
     pub(crate) fn private_key(&self) -> &[u8] {
@@ -29,6 +34,18 @@ pub(crate) enum RegistrationError {
     InvalidDomain,
     #[error("webauthn error: {0:?}")]
     WebauthnError(WebauthnError),
+}
+
+pub(crate) async fn get_exclusion_list(json_request: &str) -> Result<Vec<Vec<u8>>, RegistrationError> {
+    let creation_options: PublicKeyCredentialCreationOptions = serde_json::from_str(json_request)
+        .map_err(|_| InvalidJsonFormat)?;
+
+    let list = creation_options.exclude_credentials.unwrap_or_default();
+    let ids = list.iter()
+        .map(|desc| desc.id.clone().into())
+        .collect();
+
+    Ok(ids)
 }
 
 pub(crate) async fn register_passkey(json_request: &str) -> Result<KeyGoRegistrationResponse, RegistrationError> {
@@ -51,8 +68,10 @@ pub(crate) async fn register_passkey(json_request: &str) -> Result<KeyGoRegistra
         .clone()
         .unwrap();
 
+    let credential_id = response.credential_id.clone().into();
     let keygo_registration_response = KeyGoRegistrationResponse {
         response: response_json,
+        credential_id,
         private_key: to_bytes(response),
     };
 
