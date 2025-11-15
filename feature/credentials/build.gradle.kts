@@ -53,6 +53,7 @@ dependencies {
 
     implementation(projects.rust)
     implementation(projects.core.security)
+    implementation(projects.core.item)
 
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))

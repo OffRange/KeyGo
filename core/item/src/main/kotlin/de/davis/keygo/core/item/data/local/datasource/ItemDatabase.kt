@@ -7,9 +7,11 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import de.davis.keygo.core.item.data.local.converter.SecretDataConverter
 import de.davis.keygo.core.item.data.local.dao.DomainInfoDao
+import de.davis.keygo.core.item.data.local.dao.PasskeyDao
 import de.davis.keygo.core.item.data.local.dao.PasswordDao
 import de.davis.keygo.core.item.data.local.dao.VaultDao
 import de.davis.keygo.core.item.data.local.entity.DomainInfoEntity
+import de.davis.keygo.core.item.data.local.entity.PasskeyEntity
 import de.davis.keygo.core.item.data.local.entity.PasswordEntity
 import de.davis.keygo.core.item.data.local.entity.VaultItemEntity
 import org.koin.core.module.dsl.singleOf
@@ -19,7 +21,8 @@ import org.koin.dsl.module
     entities = [
         VaultItemEntity::class,
         PasswordEntity::class,
-        DomainInfoEntity::class
+        DomainInfoEntity::class,
+        PasskeyEntity::class
     ],
     version = 1
 )
@@ -29,6 +32,7 @@ abstract class ItemDatabase : RoomDatabase() {
     internal abstract fun vaultDao(): VaultDao
     internal abstract fun passwordDao(): PasswordDao
     internal abstract fun domainInfoDao(): DomainInfoDao
+    internal abstract fun passkeyDao(): PasskeyDao
 
     companion object {
         val koinModule = module {
@@ -37,6 +41,7 @@ abstract class ItemDatabase : RoomDatabase() {
             singleOf(ItemDatabase::vaultDao)
             singleOf(ItemDatabase::passwordDao)
             singleOf(ItemDatabase::domainInfoDao)
+            singleOf(ItemDatabase::passkeyDao)
         }
 
         private fun create(applicationContext: Context) = Room.databaseBuilder(

@@ -1,0 +1,20 @@
+package de.davis.keygo.core.item.data.local.dao
+
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.Query
+import de.davis.keygo.core.item.data.local.entity.PasskeyEntity
+import de.davis.keygo.core.item.domain.alias.ItemId
+
+@Dao
+internal interface PasskeyDao {
+
+    @Query("SELECT * FROM PasskeyEntity WHERE password_id = :passwordId")
+    fun getPasskeysForPassword(passwordId: ItemId): List<PasskeyEntity>
+
+    @Insert
+    fun insertPasskey(passkey: PasskeyEntity)
+
+    @Query("SELECT EXISTS (SELECT 1 FROM PasskeyEntity WHERE credential_id = :credentialId)")
+    fun doesCredentialIdExist(credentialId: ByteArray): Boolean
+}

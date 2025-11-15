@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "68bfdbbb3e9972ed90593269d8aa4622",
+    "identityHash": "3f9f6fb0ee78da85b13dc566ae822033",
     "entities": [
       {
         "tableName": "VaultItemEntity",
@@ -156,11 +156,65 @@
             ]
           }
         ]
+      },
+      {
+        "tableName": "PasskeyEntity",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`credential_id` TEXT NOT NULL, `private_key` BLOB NOT NULL, `password_id` INTEGER NOT NULL, PRIMARY KEY(`credential_id`), FOREIGN KEY(`password_id`) REFERENCES `PasswordEntity`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "credentialId",
+            "columnName": "credential_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "privateKey",
+            "columnName": "private_key",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "passwordId",
+            "columnName": "password_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "credential_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_PasskeyEntity_password_id",
+            "unique": false,
+            "columnNames": [
+              "password_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_PasskeyEntity_password_id` ON `${TABLE_NAME}` (`password_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "PasswordEntity",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "password_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '68bfdbbb3e9972ed90593269d8aa4622')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3f9f6fb0ee78da85b13dc566ae822033')"
     ]
   }
 }
