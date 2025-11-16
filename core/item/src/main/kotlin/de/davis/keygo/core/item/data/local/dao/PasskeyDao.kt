@@ -15,6 +15,6 @@ internal interface PasskeyDao {
     @Insert
     fun insertPasskey(passkey: PasskeyEntity)
 
-    @Query("SELECT EXISTS (SELECT 1 FROM PasskeyEntity WHERE credential_id = :credentialId)")
-    fun doesCredentialIdExist(credentialId: ByteArray): Boolean
+    @Query("SELECT EXISTS (SELECT 1 FROM PasskeyEntity WHERE credential_id in (:credentialIds))")
+    fun doesCredentialIdsExist(credentialIds: Set<ByteArray>): Boolean
 }
