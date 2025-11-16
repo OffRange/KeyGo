@@ -60,7 +60,7 @@
             android:name=".autofill.presentation.activity.AutofillActivity"
             android:excludeFromRecents="true"
             android:exported="false"
-            android:theme="@style/Theme.KeyGo.Auth.Transparent" />
+            android:theme="@style/Theme.KeyGo.Transparent" />
     </application>
 
 </manifest>

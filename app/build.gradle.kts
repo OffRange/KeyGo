@@ -84,6 +84,7 @@ dependencies {
 
     implementation(projects.core.item)
     implementation(projects.feature.credentials)
+    implementation(projects.core.ui)
 
     // Datastore
     implementation(libs.androidx.datastore)

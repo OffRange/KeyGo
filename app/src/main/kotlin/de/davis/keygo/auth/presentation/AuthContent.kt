@@ -53,7 +53,7 @@ import de.davis.keygo.auth.presentation.model.AuthUIEvent
 import de.davis.keygo.auth.presentation.model.UIPasswordError
 import de.davis.keygo.core.presentation.component.StrengthIndicator
 import de.davis.keygo.core.presentation.component.VisibilityButton
-import de.davis.keygo.core.presentation.theme.KeyGoTheme
+import de.davis.keygo.core.ui.theme.KeyGoTheme
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable

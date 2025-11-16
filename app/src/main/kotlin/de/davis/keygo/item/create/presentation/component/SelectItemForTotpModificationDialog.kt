@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.lite.LitePassword
-import de.davis.keygo.core.presentation.theme.KeyGoTheme
+import de.davis.keygo.core.ui.theme.KeyGoTheme
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 

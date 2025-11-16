@@ -1,4 +1,4 @@
-package de.davis.keygo.core.presentation.theme
+package de.davis.keygo.core.ui.theme
 
 import android.app.UiModeManager
 import android.content.Context
@@ -11,8 +11,6 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
-import de.davis.keygo.app.di.init
-import org.koin.compose.KoinApplication
 
 
 fun isContrastAvailable(): Boolean {
@@ -61,17 +59,9 @@ fun KeyGoTheme(
         else -> selectSchemeForContrast(isDarkMode)
     }
 
-    val context = LocalContext.current
-
-    KoinApplication(
-        application = {
-            init(context)
-        }
-    ) {
-        MaterialTheme(
-            colorScheme = colorScheme,
-            typography = KeyGoTypography,
-            content = content
-        )
-    }
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = KeyGoTypography,
+        content = content
+    )
 }

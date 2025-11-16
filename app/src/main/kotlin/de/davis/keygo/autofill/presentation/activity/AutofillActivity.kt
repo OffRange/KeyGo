@@ -23,7 +23,7 @@ import de.davis.keygo.core.identity.biometric.presentation.BiometricPromptSuppor
 import de.davis.keygo.core.identity.biometric.presentation.LocalBiometricManager
 import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
 import de.davis.keygo.core.presentation.model.RouteDestination
-import de.davis.keygo.core.presentation.theme.KeyGoTheme
+import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import org.koin.androidx.compose.koinViewModel
 

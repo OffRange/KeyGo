@@ -31,7 +31,7 @@ import de.davis.keygo.core.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.presentation.snackbar.LocalSnackbarManager
 import de.davis.keygo.core.presentation.snackbar.SnackbarHandler
-import de.davis.keygo.core.presentation.theme.KeyGoTheme
+import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.dashboard.presentation.dashboardGraph
 import de.davis.keygo.item.core.presentation.model.DetailType
 import de.davis.keygo.item.create.presentation.dialog.SelectItemContent
