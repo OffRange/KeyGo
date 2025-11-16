@@ -9,7 +9,7 @@ sealed interface BiometricAuthError {
         val errString: String
     ) : BiometricAuthError
 
-    data object NoHardware : BiometricAuthError
+    data class CanNotAuthenticate(val code: Int) : BiometricAuthError
 
     data object NoCipher : BiometricAuthError
 }

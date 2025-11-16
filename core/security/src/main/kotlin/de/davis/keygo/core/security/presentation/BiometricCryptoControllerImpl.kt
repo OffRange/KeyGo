@@ -57,13 +57,13 @@ internal class BiometricCryptoControllerImpl(
         policy: BiometricPolicy,
         onSuccess: (Cipher) -> T
     ): Result<T, BiometricAuthError> = suspendCancellableCoroutine { c ->
-        when (biometricManager.canAuthenticate(AUTHENTICATORS)) {
-            BiometricManager.BIOMETRIC_SUCCESS -> {
-                c.resume(Result.Failure(BiometricAuthError.NoHardware))
+        when (val code = biometricManager.canAuthenticate(AUTHENTICATORS)) {
+            BiometricManager.BIOMETRIC_SUCCESS -> {}
+
+            else -> {
+                c.resume(Result.Failure(BiometricAuthError.CanNotAuthenticate(code)))
                 return@suspendCancellableCoroutine
             }
-
-            else -> {}
         }
 
         val prompt = BiometricPrompt(
@@ -101,8 +101,6 @@ internal class BiometricCryptoControllerImpl(
 
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle(policy.title.resolve(activity))
-            .setSubtitle("Using biometric authentication") // TODO
-            .setDescription("Please authenticate to proceed")
             .setNegativeButtonText(policy.negativeButton.resolve(activity))
             .setAllowedAuthenticators(AUTHENTICATORS)
             .build()
