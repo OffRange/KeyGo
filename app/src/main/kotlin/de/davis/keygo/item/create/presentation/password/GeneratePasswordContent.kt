@@ -37,9 +37,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
 import de.davis.keygo.core.item.domain.model.Password
-import de.davis.keygo.core.presentation.component.KeyGoCard
-import de.davis.keygo.core.presentation.component.KeyGoCardProp
 import de.davis.keygo.core.presentation.component.StrengthIndicator
+import de.davis.keygo.core.ui.components.KeyGoCard
+import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.item.create.presentation.password.model.GeneratePasswordUiEvent
 import de.davis.keygo.item.create.presentation.password.model.GeneratePasswordUiState
 import de.davis.keygo.item.create.presentation.password.model.UiCharacterSet
@@ -53,7 +53,7 @@ fun GeneratePasswordContent(
     onEvent: (GeneratePasswordUiEvent) -> Unit = {},
     containerColor: Color = MaterialTheme.colorScheme.surface,
 ) {
-    val cardProp = KeyGoCardProp.outlined(containerColor = containerColor)
+    val cardProp = KeyGoCardProperties.outlined(containerColor = containerColor)
 
     LazyColumn(
         modifier = Modifier
@@ -75,7 +75,7 @@ fun GeneratePasswordContent(
                 enter = expandVertically() + fadeIn(),
                 exit = shrinkVertically() + fadeOut(),
                 modifier = Modifier
-                    .clip(KeyGoCardProp.elevated().shape)
+                    .clip(KeyGoCardProperties.elevated().shape)
             ) {
                 KeyGoCard(
                     title = {
@@ -83,7 +83,7 @@ fun GeneratePasswordContent(
                     },
                     modifier = Modifier
                         .fillMaxWidth(),
-                    prop = KeyGoCardProp.elevated(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                    properties = KeyGoCardProperties.elevated(containerColor = MaterialTheme.colorScheme.primaryContainer),
                     leadingItem = {
                         Icon(
                             imageVector = Icons.Default.Warning,
@@ -103,7 +103,7 @@ fun GeneratePasswordContent(
                 },
                 modifier = Modifier
                     .fillMaxWidth(),
-                prop = cardProp,
+                properties = cardProp,
                 trailingItem = {
                     IconButton(
                         onClick = { onEvent(GeneratePasswordUiEvent.OnGeneratePasswordClick) }
@@ -148,7 +148,7 @@ fun GeneratePasswordContent(
                 },
                 modifier = Modifier
                     .fillMaxWidth(),
-                prop = cardProp,
+                properties = cardProp,
             ) {
                 Slider(state = state.sliderState)
             }
@@ -161,7 +161,7 @@ fun GeneratePasswordContent(
                 },
                 modifier = Modifier
                     .fillMaxWidth(),
-                prop = cardProp,
+                properties = cardProp,
             ) {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)

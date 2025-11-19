@@ -1,4 +1,4 @@
-package de.davis.keygo.core.presentation.component
+package de.davis.keygo.core.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -24,7 +24,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 
 @Immutable
-data class KeyGoCardProp(
+data class KeyGoCardProperties(
     val shape: Shape,
     val colors: CardColors,
     val elevation: CardElevation,
@@ -34,7 +34,7 @@ data class KeyGoCardProp(
     companion object {
 
         @Composable
-        fun outlined(containerColor: Color = Color.Unspecified) = KeyGoCardProp(
+        fun outlined(containerColor: Color = Color.Unspecified) = KeyGoCardProperties(
             shape = CardDefaults.outlinedShape,
             colors = CardDefaults.outlinedCardColors(containerColor = containerColor),
             elevation = CardDefaults.outlinedCardElevation(),
@@ -42,7 +42,7 @@ data class KeyGoCardProp(
         )
 
         @Composable
-        fun elevated(containerColor: Color = Color.Unspecified) = KeyGoCardProp(
+        fun elevated(containerColor: Color = Color.Unspecified) = KeyGoCardProperties(
             shape = CardDefaults.elevatedShape,
             colors = CardDefaults.elevatedCardColors(containerColor = containerColor),
             elevation = CardDefaults.elevatedCardElevation(),
@@ -55,12 +55,12 @@ data class KeyGoCardProp(
 fun KeyGoCard(
     title: @Composable () -> Unit,
     modifier: Modifier = Modifier,
-    prop: KeyGoCardProp = KeyGoCardProp.outlined(),
+    properties: KeyGoCardProperties = KeyGoCardProperties.outlined(),
     leadingItem: @Composable (() -> Unit)? = null,
     trailingItem: @Composable (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    with(prop) {
+    with(properties) {
         Card(
             modifier = modifier,
             shape = shape,

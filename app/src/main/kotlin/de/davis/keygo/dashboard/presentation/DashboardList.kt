@@ -54,8 +54,8 @@ import de.davis.keygo.core.item.domain.model.lite.LiteVaultItemSearchResult
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
 import de.davis.keygo.core.presentation.LocalIsInSinglePaneMode
-import de.davis.keygo.core.presentation.component.KeyGoCard
-import de.davis.keygo.core.presentation.component.KeyGoCardProp
+import de.davis.keygo.core.ui.components.KeyGoCard
+import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.dashboard.presentation.component.KeyGoLazyColumn
 import de.davis.keygo.dashboard.presentation.component.SearchResult
 import de.davis.keygo.dashboard.presentation.model.DashboardListUIState
@@ -205,7 +205,7 @@ fun DashboardList(uiState: DashboardListUIState, onEvent: (DashboardUIEvent) -> 
                                     Text(text = stringResource(R.string.create_new_item))
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                                prop = KeyGoCardProp.elevated()
+                                properties = KeyGoCardProperties.elevated()
                             ) {
                                 VaultItemType.entries.forEach {
                                     FilledTonalButton(

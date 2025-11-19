@@ -1,4 +1,4 @@
-package de.davis.keygo.dashboard.presentation.component
+package de.davis.keygo.core.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
@@ -21,23 +21,21 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 @Composable
 fun DeletableVaultItem(
     title: String,
     description: String,
-    onDeleteRequested: () -> Boolean,
+    onDeleteRequested: suspend () -> Boolean,
     modifier: Modifier = Modifier,
     cardColors: CardColors = CardDefaults.cardColors(),
     leadingContent: @Composable (() -> Unit)? = null,
@@ -49,22 +47,7 @@ fun DeletableVaultItem(
     )
 
     val currentOnDeleteRequested by rememberUpdatedState(onDeleteRequested)
-
-    var prev by remember { mutableStateOf(state.currentValue) }
-
-    LaunchedEffect(Unit) {
-        state.reset()
-    }
-
-    LaunchedEffect(state.currentValue) {
-        if (prev != state.currentValue &&
-            state.currentValue == SwipeToDismissBoxValue.EndToStart
-        ) {
-            val deleted = currentOnDeleteRequested()
-            if (!deleted) state.reset()
-        }
-        prev = state.currentValue
-    }
+    val scope = rememberCoroutineScope()
 
     HapticSwipeToDismissBox(
         backgroundContent = {
@@ -76,7 +59,15 @@ fun DeletableVaultItem(
         modifier = Modifier
             .clip(CardDefaults.shape)
             .then(modifier),
-        state = state
+        state = state,
+        onDismiss = {
+            scope.launch {
+                val shouldDelete = currentOnDeleteRequested()
+                if (!shouldDelete) {
+                    state.reset()
+                }
+            }
+        }
     ) {
         VaultItem(
             headlineContent = {

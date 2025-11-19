@@ -1,34 +1,29 @@
-package de.davis.keygo.dashboard.presentation.component
+package de.davis.keygo.core.ui.components
 
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxState
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 
 @Composable
-fun HapticSwipeToDismissBox(
+internal fun HapticSwipeToDismissBox(
     backgroundContent: @Composable RowScope.() -> Unit,
     modifier: Modifier = Modifier,
     state: SwipeToDismissBoxState = rememberSwipeToDismissBoxState(),
+    onDismiss: (SwipeToDismissBoxValue) -> Unit = {},
     content: @Composable RowScope.() -> Unit,
 ) {
     val hapticFeedback = LocalHapticFeedback.current
-    var initialized by remember { mutableStateOf(false) }
-
-    LaunchedEffect(key1 = state.targetValue) {
-        if (initialized)
-            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-        else
-            initialized = true
+    LaunchedEffect(state.targetValue) {
+        if (state.targetValue != SwipeToDismissBoxValue.Settled) {
+            hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+        }
     }
 
     SwipeToDismissBox(
@@ -36,6 +31,7 @@ fun HapticSwipeToDismissBox(
         state = state,
         enableDismissFromStartToEnd = false,
         backgroundContent = backgroundContent,
+        onDismiss = onDismiss,
         content = content
     )
 }

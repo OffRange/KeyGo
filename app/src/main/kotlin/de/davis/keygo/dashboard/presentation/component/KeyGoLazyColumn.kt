@@ -40,6 +40,7 @@ import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.model.SecretData
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
+import de.davis.keygo.core.ui.components.DeletableVaultItem
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentSetOf

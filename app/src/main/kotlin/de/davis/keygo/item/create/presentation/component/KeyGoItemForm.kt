@@ -27,10 +27,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
-import de.davis.keygo.core.presentation.component.KeyGoCard
-import de.davis.keygo.core.presentation.component.KeyGoCardProp
 import de.davis.keygo.core.presentation.component.KeyGoFormField
 import de.davis.keygo.core.presentation.model.InputFieldError
+import de.davis.keygo.core.ui.components.KeyGoCard
+import de.davis.keygo.core.ui.components.KeyGoCardProperties
 
 
 @Composable
@@ -58,7 +58,7 @@ fun KeyGoItemForm(
                             title = {
                                 Text(text = stringResource(R.string.warning))
                             },
-                            prop = KeyGoCardProp.elevated(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                            properties = KeyGoCardProperties.elevated(containerColor = MaterialTheme.colorScheme.secondaryContainer),
 
                             // We use a padding modifier and not a verticalArrangement, as verticalArrangement
                             // causes the layout to snap when disappearing. That is also why we use
@@ -121,7 +121,7 @@ internal fun FormGroup(
             Text(text = title)
         },
         modifier = modifier,
-        prop = KeyGoCardProp.elevated(),
+        properties = KeyGoCardProperties.elevated(),
         content = content
     )
 }
