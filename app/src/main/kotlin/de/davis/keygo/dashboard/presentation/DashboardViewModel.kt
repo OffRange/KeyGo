@@ -144,7 +144,7 @@ class DashboardViewModel(
             .launchIn(viewModelScope)
     }
 
-    private suspend fun performSearch(query: String): List<LiteVaultItemSearchResult> {
+    suspend fun performSearch(query: String): List<LiteVaultItemSearchResult> {
         return vaultItemRepository.searchVaultItem(query)
     }
 

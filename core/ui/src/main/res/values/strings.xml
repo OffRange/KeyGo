@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="create_new_item">Create new Item</string>
+    <string name="search_your_vault">Search your Vault</string>
+
+
+    <string name="match_name">Matched name</string>
+    <string name="match_note">Matched note</string>
+    <string name="match_name_and_note">Matched name and note</string>
+    <string name="match_not_found">No matches found</string>
+</resources>
