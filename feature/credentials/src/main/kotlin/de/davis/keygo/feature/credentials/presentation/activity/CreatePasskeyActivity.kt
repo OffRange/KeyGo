@@ -36,7 +36,7 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                     when (it) {
                         is CreatePasskeyBiometricRequestEvent.UnwrapPasskeyEncryptionKey -> {
                             biometricCryptoController.requestUnwrap(
-                                keyInfo = it.keyInfo,
+                                keyId = it.keyId,
                                 wrappedKey = it.wrappedKey,
                                 policy = it.policy
                             ).onSuccess(viewModel::passkeyEncryptionKeyUnwrapped)

@@ -11,7 +11,8 @@ import de.davis.keygo.core.security.domain.KeyStoreManager
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.CryptographicMode
-import de.davis.keygo.core.security.domain.model.KeyInfo
+import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.WrappedKey
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import kotlinx.coroutines.Dispatchers
@@ -34,27 +35,32 @@ internal class BiometricCryptoControllerImpl(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override suspend fun requestWrap(
-        keyInfo: KeyInfo,
+        keyId: KeyId,
         key: Key,
         policy: BiometricPolicy
-    ): Result<ByteArray, BiometricAuthError> = request(
-        keyInfo = keyInfo,
+    ): Result<WrappedKey, BiometricAuthError> = request(
+        keyId = keyId,
         policy = policy,
-    ) { it.wrap(key) }
+        mode = CryptographicMode.Wrap
+    ) { WrappedKey(it.wrap(key), it.iv) }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override suspend fun requestUnwrap(
-        keyInfo: KeyInfo,
-        wrappedKey: ByteArray,
+        keyId: KeyId,
+        wrappedKey: WrappedKey,
         policy: BiometricPolicy
     ): Result<Key, BiometricAuthError> = request(
-        keyInfo = keyInfo,
+        keyId = keyId,
         policy = policy,
-    ) { it.unwrap(wrappedKey, "AES", Cipher.SECRET_KEY) }
+        mode = CryptographicMode.Unwrap,
+        iv = wrappedKey.iv
+    ) { it.unwrap(wrappedKey.bytes, "AES", Cipher.SECRET_KEY) }
 
     private suspend fun <T> request(
-        keyInfo: KeyInfo,
+        keyId: KeyId,
         policy: BiometricPolicy,
+        mode: CryptographicMode,
+        iv: ByteArray? = null,
         onSuccess: (Cipher) -> T
     ): Result<T, BiometricAuthError> = suspendCancellableCoroutine { c ->
         when (val code = biometricManager.canAuthenticate(AUTHENTICATORS)) {
@@ -105,7 +111,7 @@ internal class BiometricCryptoControllerImpl(
             .setAllowedAuthenticators(AUTHENTICATORS)
             .build()
 
-        val cipher = keyStoreManager.getOrCreateCipherFor(keyInfo, CryptographicMode.Wrap)
+        val cipher = keyStoreManager.getOrCreateCipherFor(keyId, mode, iv)
         val cryptoObj = BiometricPrompt.CryptoObject(cipher)
 
         prompt.authenticate(promptInfo, cryptoObj)
