@@ -13,6 +13,6 @@ internal class PasskeyRepositoryImpl(
 
     override fun createPasskey(passkey: Passkey) = passkeyDao.insertPasskey(passkey.toData())
 
-    override fun doesCredentialIdsExist(credentialIds: Set<ByteArray>): Boolean =
+    override fun doCredentialIdsExist(credentialIds: Set<ByteArray>): Boolean =
         passkeyDao.doesCredentialIdsExist(credentialIds)
 }

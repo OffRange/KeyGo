@@ -33,7 +33,7 @@ internal class CreatePasskeyViewModel(
                     ?.toSet()
                     ?: return@launch abort()
 
-            val shouldAbort = passkeyRepository.doesCredentialIdsExist(idsToExclude)
+            val shouldAbort = passkeyRepository.doCredentialIdsExist(idsToExclude)
             if (shouldAbort) return@launch abort()
 
             biometricChannel.send(

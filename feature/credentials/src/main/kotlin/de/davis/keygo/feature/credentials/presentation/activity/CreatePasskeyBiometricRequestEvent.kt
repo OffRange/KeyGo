@@ -6,11 +6,11 @@ import de.davis.keygo.core.security.domain.model.KeyInfo
 sealed interface CreatePasskeyBiometricRequestEvent {
     data class UnwrapPasskeyEncryptionKey(
         val wrappedKey: ByteArray,
-        val policy: BiometricPolicy = BiometricPolicy.Companion.Default
+        val policy: BiometricPolicy = BiometricPolicy.Default
     ) : CreatePasskeyBiometricRequestEvent {
-        val keyInfo: KeyInfo = KeyInfo.Companion.PasskeyEncryptionKey
+        val keyInfo: KeyInfo = KeyInfo.PasskeyEncryptionKey
 
-        
+
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (javaClass != other?.javaClass) return false
