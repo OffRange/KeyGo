@@ -129,6 +129,7 @@ fun <SR, ID : Any> ItemListScreen(
     onItemLongClick: (ID) -> Unit,
     noItemsSuggestions: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    enableSwipeToDelete: Boolean = true,
     dockedSearchResults: Boolean = false,
     openedItemId: ID? = null,
     selectedItemIds: Set<ID> = emptySet(),
@@ -245,6 +246,7 @@ fun <SR, ID : Any> ItemListScreen(
                     onItemClick = onItemClick,
                     onItemLongClick = onItemLongClick,
                     modifier = Modifier.padding(horizontal = 8.dp),
+                    enableSwipeToDelete = enableSwipeToDelete,
                     openedItemId = openedItemId,
                     selectedItemIds = selectedItemIds
                 )

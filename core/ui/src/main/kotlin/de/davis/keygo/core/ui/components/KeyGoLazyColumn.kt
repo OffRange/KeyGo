@@ -45,6 +45,7 @@ fun <ID : Any> KeyGoColumn(
     onItemClick: (ID) -> Unit,
     onItemLongClick: (ID) -> Unit,
     modifier: Modifier = Modifier,
+    enableSwipeToDelete: Boolean = true,
     openedItemId: ID? = null,
     selectedItemIds: Set<ID> = emptySet(),
 ) {
@@ -96,6 +97,7 @@ fun <ID : Any> KeyGoColumn(
                             onLongClick = { onItemLongClick(id) }
                         )
                         .animateItem(),
+                    enableSwipeToDelete = enableSwipeToDelete,
                     cardColors = CardDefaults.cardColors(
                         containerColor = containerColorForId(id),
                     ),

@@ -37,6 +37,7 @@ fun DeletableVaultItem(
     description: String,
     onDeleteRequested: suspend () -> Boolean,
     modifier: Modifier = Modifier,
+    enableSwipeToDelete: Boolean = true,
     cardColors: CardColors = CardDefaults.cardColors(),
     leadingContent: @Composable (() -> Unit)? = null,
 ) {
@@ -59,6 +60,7 @@ fun DeletableVaultItem(
         modifier = Modifier
             .clip(CardDefaults.shape)
             .then(modifier),
+        allowSwipe = enableSwipeToDelete,
         state = state,
         onDismiss = {
             scope.launch {

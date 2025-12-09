@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 internal fun HapticSwipeToDismissBox(
     backgroundContent: @Composable RowScope.() -> Unit,
     modifier: Modifier = Modifier,
+    allowSwipe: Boolean = true,
     state: SwipeToDismissBoxState = rememberSwipeToDismissBoxState(),
     onDismiss: (SwipeToDismissBoxValue) -> Unit = {},
     content: @Composable RowScope.() -> Unit,
@@ -30,6 +31,7 @@ internal fun HapticSwipeToDismissBox(
         modifier = modifier,
         state = state,
         enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = allowSwipe,
         backgroundContent = backgroundContent,
         onDismiss = onDismiss,
         content = content
