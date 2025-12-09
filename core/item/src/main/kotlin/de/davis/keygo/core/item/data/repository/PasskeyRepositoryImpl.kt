@@ -11,8 +11,9 @@ internal class PasskeyRepositoryImpl(
     private val passkeyDao: PasskeyDao
 ) : PasskeyRepository {
 
-    override fun createPasskey(passkey: Passkey) = passkeyDao.insertPasskey(passkey.toData())
+    override suspend fun createPasskey(passkey: Passkey) =
+        passkeyDao.insertPasskey(passkey.toData())
 
-    override fun doCredentialIdsExist(credentialIds: Set<ByteArray>): Boolean =
+    override suspend fun doCredentialIdsExist(credentialIds: Set<ByteArray>): Boolean =
         passkeyDao.doesCredentialIdsExist(credentialIds)
 }

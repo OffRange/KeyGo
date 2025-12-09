@@ -10,11 +10,11 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 internal interface PasskeyDao {
 
     @Query("SELECT * FROM PasskeyEntity WHERE password_id = :passwordId")
-    fun getPasskeysForPassword(passwordId: ItemId): List<PasskeyEntity>
+    suspend fun getPasskeysForPassword(passwordId: ItemId): List<PasskeyEntity>
 
     @Insert
-    fun insertPasskey(passkey: PasskeyEntity)
+    suspend fun insertPasskey(passkey: PasskeyEntity)
 
     @Query("SELECT EXISTS (SELECT 1 FROM PasskeyEntity WHERE credential_id in (:credentialIds))")
-    fun doesCredentialIdsExist(credentialIds: Set<ByteArray>): Boolean
+    suspend fun doesCredentialIdsExist(credentialIds: Set<ByteArray>): Boolean
 }

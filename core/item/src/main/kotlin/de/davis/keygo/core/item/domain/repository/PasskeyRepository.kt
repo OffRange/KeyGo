@@ -4,6 +4,6 @@ import de.davis.keygo.core.item.domain.model.Passkey
 
 interface PasskeyRepository {
 
-    fun createPasskey(passkey: Passkey)
-    fun doCredentialIdsExist(credentialIds: Set<ByteArray>): Boolean
+    suspend fun createPasskey(passkey: Passkey)
+    suspend fun doCredentialIdsExist(credentialIds: Set<ByteArray>): Boolean
 }
