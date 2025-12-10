@@ -10,9 +10,9 @@ import de.davis.keygo.core.security.data.resolve
 import de.davis.keygo.core.security.domain.KeyStoreManager
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
+import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
-import de.davis.keygo.core.security.domain.model.WrappedKey
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import kotlinx.coroutines.Dispatchers
@@ -38,23 +38,44 @@ internal class BiometricCryptoControllerImpl(
         keyId: KeyId,
         key: Key,
         policy: BiometricPolicy
-    ): Result<WrappedKey, BiometricAuthError> = request(
+    ): Result<CiphertextData, BiometricAuthError> = request(
         keyId = keyId,
         policy = policy,
         mode = CryptographicMode.Wrap
-    ) { WrappedKey(it.wrap(key), it.iv) }
+    ) { CiphertextData(it.wrap(key), it.iv) }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override suspend fun requestUnwrap(
         keyId: KeyId,
-        wrappedKey: WrappedKey,
+        ciphertextData: CiphertextData,
         policy: BiometricPolicy
     ): Result<Key, BiometricAuthError> = request(
         keyId = keyId,
         policy = policy,
         mode = CryptographicMode.Unwrap,
-        iv = wrappedKey.iv
-    ) { it.unwrap(wrappedKey.bytes, "AES", Cipher.SECRET_KEY) }
+        iv = ciphertextData.iv
+    ) { it.unwrap(ciphertextData.bytes, "AES", Cipher.SECRET_KEY) }
+
+    override suspend fun requestEncryption(
+        keyId: KeyId,
+        byteArray: ByteArray,
+        policy: BiometricPolicy
+    ): Result<CiphertextData, BiometricAuthError> = request(
+        keyId = keyId,
+        policy = policy,
+        mode = CryptographicMode.Encrypt
+    ) { CiphertextData(it.doFinal(byteArray), it.iv) }
+
+    override suspend fun requestDecryption(
+        keyId: KeyId,
+        ciphertextData: CiphertextData,
+        policy: BiometricPolicy
+    ): Result<ByteArray, BiometricAuthError> = request(
+        keyId = keyId,
+        policy = policy,
+        mode = CryptographicMode.Decrypt,
+        iv = ciphertextData.iv
+    ) { it.doFinal(ciphertextData.bytes) }
 
     private suspend fun <T> request(
         keyId: KeyId,

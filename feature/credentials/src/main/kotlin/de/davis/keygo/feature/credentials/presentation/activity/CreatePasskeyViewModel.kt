@@ -4,13 +4,14 @@ import androidx.credentials.CreatePublicKeyCredentialRequest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
+import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.rust.passkey.PasskeyManager
+import de.davis.keygo.rust.passkey.model.KeyGoRegistrationResponse
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.koin.android.annotation.KoinViewModel
-import java.security.Key
 
 @KoinViewModel
 internal class CreatePasskeyViewModel(
@@ -24,6 +25,7 @@ internal class CreatePasskeyViewModel(
     val event = _event.receiveAsFlow()
 
     lateinit var request: CreatePublicKeyCredentialRequest
+    lateinit var registrationResponse: KeyGoRegistrationResponse
 
     fun updateCreatePublicKeyCredentialRequest(request: CreatePublicKeyCredentialRequest) {
         this.request = request
@@ -36,16 +38,19 @@ internal class CreatePasskeyViewModel(
             val shouldAbort = passkeyRepository.doCredentialIdsExist(idsToExclude)
             if (shouldAbort) return@launch abort()
 
+            registrationResponse = PasskeyManager.register(request.requestJson)
+                .getOrNull() ?: return@launch abort()
+
             biometricChannel.send(
-                CreatePasskeyBiometricRequestEvent.UnwrapPasskeyEncryptionKey(
-                    wrappedKey = byteArrayOf(),
+                CreatePasskeyBiometricRequestEvent.EncryptPasskeyEncryptionKey(
+                    key = registrationResponse.privateKey
                 )
             )
         }
     }
 
-    fun passkeyEncryptionKeyUnwrapped(unwrappedKey: Key) {
         // TODO
+    fun passkeyEncrypted(ciphertextData: CiphertextData) {
     }
 
     private suspend fun abort() {

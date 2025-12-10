@@ -1,6 +1,6 @@
 package de.davis.keygo.core.security.domain.model
 
-data class WrappedKey(
+data class CiphertextData(
     val bytes: ByteArray,
     val iv: ByteArray
 ) {
@@ -8,7 +8,7 @@ data class WrappedKey(
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
 
-        other as WrappedKey
+        other as CiphertextData
 
         if (!bytes.contentEquals(other.bytes)) return false
         if (!iv.contentEquals(other.iv)) return false

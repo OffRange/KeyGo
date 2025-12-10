@@ -42,7 +42,10 @@ internal class KeyStoreManagerImpl(
         val cipher = Cipher.getInstance("$ALGORITHM/$BLOCK_MODE/$PADDING_MODE")
         val cipherMode = when (cryptographicMode) {
             CryptographicMode.Wrap -> Cipher.WRAP_MODE
-            is CryptographicMode.Unwrap -> Cipher.UNWRAP_MODE
+            CryptographicMode.Unwrap -> Cipher.UNWRAP_MODE
+
+            CryptographicMode.Encrypt -> Cipher.ENCRYPT_MODE
+            CryptographicMode.Decrypt -> Cipher.DECRYPT_MODE
         }
 
         val params = iv?.let {

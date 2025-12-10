@@ -10,6 +10,7 @@ import androidx.credentials.provider.PendingIntentHandler
 import androidx.fragment.app.FragmentActivity
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
 import de.davis.keygo.core.ui.theme.KeyGoTheme
+import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import org.koin.androidx.viewmodel.ext.android.viewModel
@@ -34,13 +35,16 @@ internal class CreatePasskeyActivity : FragmentActivity() {
 
                 ObserveAsEvents(flow = viewModel.biometricRequest) {
                     when (it) {
-                        is CreatePasskeyBiometricRequestEvent.UnwrapPasskeyEncryptionKey -> {
-                            biometricCryptoController.requestUnwrap(
+                        is CreatePasskeyBiometricRequestEvent.EncryptPasskeyEncryptionKey -> {
+                            biometricCryptoController.requestEncryption(
                                 keyId = it.keyId,
-                                wrappedKey = it.wrappedKey,
+                                byteArray = it.key,
                                 policy = it.policy
-                            ).onSuccess(viewModel::passkeyEncryptionKeyUnwrapped)
+                            ).onSuccess(viewModel::passkeyEncrypted)
+                                .onFailure { error -> cancel("Biometric Failed: $error") }
                         }
+
+                        else -> cancel("Unsupported Biometric Request")
                     }
                 }
 
