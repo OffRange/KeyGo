@@ -1,3 +1,4 @@
+use bincode::error::EncodeError;
 use coset::CborSerializable;
 use passkey::types::Passkey;
 use serde::{Deserialize, Serialize};
@@ -24,13 +25,11 @@ impl From<Passkey> for KeyGoPasskey {
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(tag = "version")]
 pub(crate) enum KeyGoPasskeyWire {
-    #[serde(rename = "v1")]
     V1(KeyGoPasskey)
 }
 
-pub(crate) fn to_bytes(passkey: Passkey) -> Vec<u8> {
+pub(crate) fn to_bytes(passkey: Passkey) -> Result<Vec<u8>, EncodeError> {
     let wire = KeyGoPasskeyWire::V1(KeyGoPasskey::from(passkey));
-    serde_cbor::to_vec(&wire).unwrap()
+    bincode::serde::encode_to_vec(&wire, bincode::config::standard())
 }

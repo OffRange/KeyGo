@@ -1,6 +1,6 @@
 use crate::passkey::authenticator::keygo_authenticator;
 use crate::passkey::keygo_passkey::to_bytes;
-use crate::passkey::registration::RegistrationError::{InvalidDomain, InvalidJsonFormat};
+use crate::passkey::registration::RegistrationError::{InvalidDomain, InvalidJsonFormat, KeyEncodeError};
 use crate::url::sanitize_to_https_url;
 use passkey::client::{Client, DefaultClientData, WebauthnError};
 use passkey::types::webauthn::{CredentialCreationOptions, PublicKeyCredentialCreationOptions};
@@ -34,6 +34,8 @@ pub(crate) enum RegistrationError {
     InvalidDomain,
     #[error("webauthn error: {0:?}")]
     WebauthnError(WebauthnError),
+    #[error("key encode error: {0:?}")]
+    KeyEncodeError(bincode::error::EncodeError),
 }
 
 pub(crate) async fn get_exclusion_list(json_request: &str) -> Result<Vec<Vec<u8>>, RegistrationError> {
@@ -72,7 +74,7 @@ pub(crate) async fn register_passkey(json_request: &str) -> Result<KeyGoRegistra
     let keygo_registration_response = KeyGoRegistrationResponse {
         response: response_json,
         credential_id,
-        private_key: to_bytes(response),
+        private_key: to_bytes(response).map_err(KeyEncodeError)?,
     };
 
     Ok(keygo_registration_response)
