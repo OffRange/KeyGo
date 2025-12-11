@@ -1,4 +1,4 @@
-package de.davis.keygo.dashboard.presentation.component
+package de.davis.keygo.feature.list_screen.presentation.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.clickable
@@ -21,15 +21,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import de.davis.keygo.R
-import de.davis.keygo.core.item.domain.model.lite.LiteVaultItemSearchResult
-import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.persistentListOf
+import de.davis.keygo.core.ui.R
+import de.davis.keygo.core.ui.components.ItemVerticalPadding
+import de.davis.keygo.core.ui.components.VaultItem
 
 @Composable
-fun SearchResult(
-    searchResult: ImmutableList<LiteVaultItemSearchResult>,
-    onClick: (LiteVaultItemSearchResult) -> Unit,
+internal fun <I> SearchResult(
+    searchResult: List<I>,
+    idOf: (I) -> Any,
+    nameOf: (I) -> String,
+    matchedInName: (I) -> Boolean,
+    matchedInNote: (I) -> Boolean,
+    onClick: (I) -> Unit,
     modifier: Modifier = Modifier,
     cardColors: CardColors = CardDefaults.cardColors()
 ) {
@@ -45,6 +48,10 @@ fun SearchResult(
                 false -> {
                     SearchResultContent(
                         onClick = onClick,
+                        idOf = idOf,
+                        nameOf = nameOf,
+                        matchedInName = matchedInName,
+                        matchedInNote = matchedInNote,
                         searchResult = searchResult,
                         cardColors = cardColors
                     )
@@ -67,30 +74,34 @@ private fun EmptySearchResult() {
 }
 
 @Composable
-private fun SearchResultContent(
-    searchResult: ImmutableList<LiteVaultItemSearchResult>,
-    onClick: (LiteVaultItemSearchResult) -> Unit,
+private fun <I> SearchResultContent(
+    searchResult: List<I>,
+    idOf: (I) -> Any,
+    nameOf: (I) -> String,
+    matchedInName: (I) -> Boolean,
+    matchedInNote: (I) -> Boolean,
+    onClick: (I) -> Unit,
     cardColors: CardColors
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(ItemVerticalPadding)
     ) {
-        items(searchResult, key = { it.vaultItemId }) { item ->
+        items(searchResult, key = { idOf(it) }) { item ->
             VaultItem(
                 headlineContent = {
-                    Text(text = item.name)
+                    Text(text = nameOf(item))
                 },
                 supportingContent = {
                     when {
-                        item.matchedName && item.matchedNote -> {
+                        matchedInName(item) && matchedInNote(item) -> {
                             Text(text = stringResource(R.string.match_name_and_note))
                         }
 
-                        item.matchedName -> {
+                        matchedInName(item) -> {
                             Text(text = stringResource(R.string.match_name))
                         }
 
-                        item.matchedNote -> {
+                        matchedInNote(item) -> {
                             Text(text = stringResource(R.string.match_note))
                         }
                     }
@@ -107,23 +118,15 @@ private fun SearchResultContent(
 @Preview
 @Composable
 private fun SearchResultPreview() {
+    val items = listOf("Example Item 1", "Example Item 2")
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             SearchResult(
-                searchResult = persistentListOf(
-                    LiteVaultItemSearchResult(
-                        vaultItemId = 1,
-                        name = "Test",
-                        matchedName = true,
-                        matchedNote = false
-                    ),
-                    LiteVaultItemSearchResult(
-                        vaultItemId = 2,
-                        name = "Test2",
-                        matchedName = true,
-                        matchedNote = true
-                    ),
-                ),
+                searchResult = items,
+                idOf = { it },
+                nameOf = { it },
+                matchedInName = { true },
+                matchedInNote = { it == items.first() },
                 onClick = {}
             )
         }
@@ -136,7 +139,11 @@ private fun NoMatchPreview() {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             SearchResult(
-                searchResult = persistentListOf(),
+                searchResult = listOf<String>(),
+                idOf = { it },
+                nameOf = { "" },
+                matchedInName = { true },
+                matchedInNote = { false },
                 onClick = {}
             )
         }
