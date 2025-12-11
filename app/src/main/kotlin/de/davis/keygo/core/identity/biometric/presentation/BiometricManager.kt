@@ -12,6 +12,7 @@ import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
+@Deprecated("Migrate to :core:security")
 class BiometricManager(private val activity: FragmentActivity) {
 
     @OptIn(ExperimentalCoroutinesApi::class)

@@ -3,6 +3,7 @@ package de.davis.keygo.core.identity.biometric.presentation.model
 import de.davis.keygo.core.presentation.UIText
 import javax.crypto.Cipher
 
+@Deprecated("Migrate to :core:security")
 sealed interface BiometricRequest {
 
     val title: UIText

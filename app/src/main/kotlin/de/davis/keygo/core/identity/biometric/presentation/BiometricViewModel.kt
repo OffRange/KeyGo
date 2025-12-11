@@ -20,6 +20,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
+@Deprecated("Migrate to :core:security")
 abstract class BiometricViewModel(
     private val getBiometricCryptoSetupAvailability: GetBiometricCryptoSetupAvailabilityUseCase,
     private val getBiometricHardwareAvailability: GetBiometricHardwareAvailabilityUseCase,

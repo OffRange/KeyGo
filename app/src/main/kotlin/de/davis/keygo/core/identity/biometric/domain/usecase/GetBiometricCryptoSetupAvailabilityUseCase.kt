@@ -7,6 +7,7 @@ import de.davis.keygo.core.identity.common.domain.repository.BiometricWrappedKey
 import org.koin.core.annotation.Single
 
 @Single
+@Deprecated("Migrate to :core:security")
 class GetBiometricCryptoSetupAvailabilityUseCase(
     private val biometricKekRepository: BiometricKekRepository,
     @BiometricQualifier

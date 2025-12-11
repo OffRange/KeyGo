@@ -17,6 +17,7 @@ import java.security.KeyStore
 import javax.crypto.KeyGenerator
 
 @Single
+@Deprecated("Migrate to :core:security")
 class BiometricKekRepositoryImpl(
     private val keyStore: KeyStore,
 ) : BiometricKekRepository {

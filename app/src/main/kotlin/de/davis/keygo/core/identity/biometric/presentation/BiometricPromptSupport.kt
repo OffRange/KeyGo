@@ -8,6 +8,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.fragment.app.FragmentActivity
 
 @Composable
+@Deprecated("Migrate to :core:security")
 fun BiometricPromptSupport(content: @Composable () -> Unit) {
     val activity = LocalActivity.current as? FragmentActivity
     requireNotNull(activity) { "BiometricPromptSupport must be used within a FragmentActivity context." }
@@ -20,6 +21,7 @@ fun BiometricPromptSupport(content: @Composable () -> Unit) {
     )
 }
 
+@Deprecated("Migrate to :core:security")
 val LocalBiometricManager = staticCompositionLocalOf<BiometricManager> {
     error("No LocalBiometricManager provided")
 }

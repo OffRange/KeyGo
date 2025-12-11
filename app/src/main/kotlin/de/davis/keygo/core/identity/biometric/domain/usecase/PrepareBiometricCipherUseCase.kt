@@ -12,6 +12,7 @@ import org.koin.core.annotation.Single
 import javax.crypto.Cipher
 
 @Single
+@Deprecated("Migrate to :core:security")
 class PrepareBiometricCipherUseCase(
     private val kekRepository: BiometricKekRepository,
     @BiometricQualifier

@@ -6,6 +6,7 @@ import de.davis.keygo.core.identity.biometric.domain.repository.BiometricAvailab
 import org.koin.core.annotation.Single
 
 @Single
+@Deprecated("Migrate to :core:security")
 class GetBiometricHardwareAvailabilityUseCase(
     private val biometricAvailabilityRepository: BiometricAvailabilityRepository
 ) {

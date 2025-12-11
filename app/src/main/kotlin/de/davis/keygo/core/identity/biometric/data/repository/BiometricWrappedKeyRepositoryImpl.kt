@@ -13,6 +13,7 @@ import org.koin.core.annotation.Single
 @Suppress("FunctionName")
 @Single(binds = [WrappedKeyRepository::class])
 @BiometricQualifier
+@Deprecated("Migrate to :core:security")
 fun BiometricWrappedKeyRepositoryImpl(@BiometricQualifier dataStore: DataStore<ProtoBiometricKeyData>) =
     DefaultWrappedKeyRepository(
         dataStore = dataStore,
