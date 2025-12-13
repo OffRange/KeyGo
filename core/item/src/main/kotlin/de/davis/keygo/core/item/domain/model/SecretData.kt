@@ -2,6 +2,7 @@ package de.davis.keygo.core.item.domain.model
 
 data class SecretData<T>(
     val data: ByteArray,
+    val iv: ByteArray,
     val decryptedDataType: DecryptedDataType<T>
 ) {
 
@@ -34,6 +35,7 @@ data class SecretData<T>(
         val EMPTY_STRING: SecretData<String>
             get() = SecretData(
                 byteArrayOf(),
+                byteArrayOf(),
                 DecryptedDataType.StringType
             )
     }
@@ -45,6 +47,7 @@ data class SecretData<T>(
         other as SecretData<*>
 
         if (!data.contentEquals(other.data)) return false
+        if (!iv.contentEquals(other.iv)) return false
         if (decryptedDataType != other.decryptedDataType) return false
 
         return true
@@ -52,6 +55,7 @@ data class SecretData<T>(
 
     override fun hashCode(): Int {
         var result = data.contentHashCode()
+        result = 31 * result + iv.contentHashCode()
         result = 31 * result + decryptedDataType.hashCode()
         return result
     }

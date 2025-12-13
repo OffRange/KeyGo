@@ -13,29 +13,28 @@ internal class CryptographicScopeImpl(private val aesKey: AesKey) : Cryptographi
 
     override suspend fun ByteArray.encrypt(
         context: CoroutineContext
-    ): CryptographicData =
-        withContext(context) {
-            if (isEmpty()) return@withContext CryptographicData(this@encrypt)
-            val cipher = getCipher()
+    ): CryptographicData = withContext(context) {
+        if (isEmpty()) return@withContext CryptographicData(this@encrypt, byteArrayOf())
+        val cipher = getCipher()
 
-            cipher.init(Cipher.ENCRYPT_MODE, aesKey.key)
-            val encrypted = cipher.doFinal(this@encrypt) + cipher.iv
+        cipher.init(Cipher.ENCRYPT_MODE, aesKey.key)
+        val encrypted = cipher.doFinal(this@encrypt)
 
-            CryptographicData(encrypted)
-        }
+        CryptographicData(encrypted, cipher.iv)
+    }
 
     override suspend fun CryptographicData.decrypt(
         context: CoroutineContext
     ): ByteArray = withContext(context) {
         if (data.isEmpty()) return@withContext data
+
+        // If data is set, we require a valid IV
+        require(iv.size == IV_LENGTH) { "Invalid IV length: ${iv.size}, expected: $IV_LENGTH" }
+
         val cipher = getCipher()
-
-        val iv = data.takeLast(IV_LENGTH).toByteArray()
-        val encrypted = data.dropLast(IV_LENGTH).toByteArray()
-
         cipher.init(Cipher.DECRYPT_MODE, aesKey.key, GCMParameterSpec(T_LEN, iv))
 
-        cipher.doFinal(encrypted)
+        cipher.doFinal(data)
     }
 
     companion object {

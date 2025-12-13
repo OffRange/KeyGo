@@ -9,7 +9,7 @@ context(scope: CryptographicScope)
 suspend fun <T> SecretData<T>.decryptSecretData(ctx: CoroutineContext = Dispatchers.Default): T =
     with(scope) {
         decryptedDataType.decode(
-            data.asCryptographicData().decrypt(ctx)
+            CryptographicData(data, iv).decrypt(ctx)
         )
     }
 
@@ -19,11 +19,10 @@ suspend inline fun <reified T> T.encryptSecretData(ctx: CoroutineContext = Dispa
         val decryptedDataType = SecretData.DecryptedDataType.getDecryptedDataType<T>()
         val encoded = decryptedDataType.encode(this@encryptSecretData)
 
+        val encryptedData = encoded.encrypt(ctx)
         SecretData(
-            data = encoded.encrypt(ctx).data,
+            data = encryptedData.data,
+            iv = encryptedData.iv,
             decryptedDataType = decryptedDataType
         )
     }
-
-
-private fun ByteArray.asCryptographicData() = CryptographicData(this)
