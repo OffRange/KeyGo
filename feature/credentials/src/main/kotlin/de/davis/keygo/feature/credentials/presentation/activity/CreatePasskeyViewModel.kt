@@ -3,19 +3,33 @@ package de.davis.keygo.feature.credentials.presentation.activity
 import androidx.credentials.CreatePublicKeyCredentialRequest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.model.Passkey
+import de.davis.keygo.core.item.domain.model.SecretData
+import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
+import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.rust.passkey.PasskeyManager
 import de.davis.keygo.rust.passkey.model.KeyGoRegistrationResponse
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.koin.android.annotation.KoinViewModel
 
 @KoinViewModel
 internal class CreatePasskeyViewModel(
-    private val passkeyRepository: PasskeyRepository
+    private val passkeyRepository: PasskeyRepository,
+    private val passwordRepository: PasswordRepository,
 ) : ViewModel() {
 
     private val biometricChannel = Channel<CreatePasskeyBiometricRequestEvent>()
@@ -24,11 +38,24 @@ internal class CreatePasskeyViewModel(
     private val _event = Channel<CreatePasskeyEvent>()
     val event = _event.receiveAsFlow()
 
-    lateinit var request: CreatePublicKeyCredentialRequest
-    lateinit var registrationResponse: KeyGoRegistrationResponse
+    private val allItems = passwordRepository.observeLitePasswords()
+
+    private val submittedSearchQuery = MutableStateFlow("")
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val itemSource = submittedSearchQuery.flatMapLatest(::queryToItems)
+
+    val listItemState = itemSource.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList()
+    )
+
+    private var registrationResponse: KeyGoRegistrationResponse? = null
+    private var key: CiphertextData? = null
+
 
     fun updateCreatePublicKeyCredentialRequest(request: CreatePublicKeyCredentialRequest) {
-        this.request = request
         viewModelScope.launch {
             val idsToExclude =
                 PasskeyManager.getExcludedCredentialIds(request.requestJson).getOrNull()
@@ -41,16 +68,54 @@ internal class CreatePasskeyViewModel(
             registrationResponse = PasskeyManager.register(request.requestJson)
                 .getOrNull() ?: return@launch abort()
 
-            biometricChannel.send(
-                CreatePasskeyBiometricRequestEvent.EncryptPasskeyEncryptionKey(
-                    key = registrationResponse.privateKey
+            // Request authentication
+            registrationResponse?.let {
+                biometricChannel.send(
+                    CreatePasskeyBiometricRequestEvent.EncryptPasskeyEncryptionKey(
+                        key = it.privateKey
+                    )
                 )
-            )
+            }
         }
     }
 
-        // TODO
-    fun passkeyEncrypted(ciphertextData: CiphertextData) {
+
+    private suspend fun queryToItems(query: String): Flow<List<LiteItem>> =
+        if (query.isBlank()) allItems
+        else flowOf(passwordRepository.searchPasswordItem(query))
+
+    fun onSearchSubmit(query: String) {
+        submittedSearchQuery.value = query
+    }
+
+    suspend fun searcher(query: String): List<LiteItem> = queryToItems(query).first()
+
+    fun passkeyEncrypted(key: CiphertextData) {
+        this.key = key
+        _event.trySend(CreatePasskeyEvent.ShowList)
+    }
+
+    fun onItemClick(itemId: ItemId) {
+        viewModelScope.launch {
+            val registrationResponse = registrationResponse ?: return@launch
+            val key = key ?: return@launch
+
+            val passwordId = passwordRepository.getPasswordIdByVaultId(itemId)
+                ?: return@launch abort()
+
+            val passkey = Passkey(
+                credentialId = registrationResponse.credentialId,
+                privateKey = SecretData(
+                    data = key.bytes,
+                    iv = key.iv,
+                    decryptedDataType = SecretData.DecryptedDataType.StringType
+                ),
+                passwordId = passwordId
+            )
+
+            passkeyRepository.createPasskey(passkey)
+            _event.send(CreatePasskeyEvent.Finish(registrationResponse.responseJson))
+        }
     }
 
     private suspend fun abort() {

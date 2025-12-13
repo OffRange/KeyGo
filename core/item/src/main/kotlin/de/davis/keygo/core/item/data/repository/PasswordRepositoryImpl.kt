@@ -6,6 +6,7 @@ import de.davis.keygo.core.item.data.local.dao.PasswordDao
 import de.davis.keygo.core.item.data.local.dao.VaultDao
 import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
 import de.davis.keygo.core.item.data.local.pojo.LightweightPassword
+import de.davis.keygo.core.item.data.local.pojo.LightweightVaultItem
 import de.davis.keygo.core.item.data.local.pojo.VaultPassword
 import de.davis.keygo.core.item.data.maper.toData
 import de.davis.keygo.core.item.data.maper.toDataDomainInfos
@@ -14,7 +15,9 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.model.VaultItem
+import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.model.lite.LitePassword
+import de.davis.keygo.core.item.domain.model.lite.LiteVaultItemSearchResult
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.util.Result
 import kotlinx.coroutines.flow.Flow
@@ -90,4 +93,15 @@ internal class PasswordRepositoryImpl(
     override fun observePasswords(): Flow<List<Password>> = passwordDao.getAllPasswords().map {
         it.map(VaultPassword::toDomain)
     }
+
+    override fun observeLitePasswords(): Flow<List<LiteItem>> =
+        passwordDao.getLitePasswords().map {
+            it.map(LightweightVaultItem::toDomain)
+        }
+
+    override suspend fun searchPasswordItem(query: String): List<LiteVaultItemSearchResult> =
+        passwordDao.searchPasswordItem(query).map { it.toDomain() }
+
+    override suspend fun getPasswordIdByVaultId(vaultId: ItemId): ItemId? =
+        passwordDao.getPasswordIdByVaultId(vaultId)
 }
