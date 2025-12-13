@@ -15,5 +15,5 @@ internal class PasskeyRepositoryImpl(
         passkeyDao.insertPasskey(passkey.toData())
 
     override suspend fun doCredentialIdsExist(credentialIds: Set<ByteArray>): Boolean =
-        passkeyDao.doesCredentialIdsExist(credentialIds)
+        passkeyDao.doesCredentialIdsExist(credentialIds.map { it.toHexString() }.toSet())
 }
