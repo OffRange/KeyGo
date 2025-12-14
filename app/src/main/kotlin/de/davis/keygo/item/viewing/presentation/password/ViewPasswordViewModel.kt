@@ -88,6 +88,7 @@ class ViewPasswordViewModel(
 
                     val base = ViewPasswordState(
                         name = password.name,
+                        passkeyRPs = password.passkeyRPs,
                         password = obfuscatedString.await(),
                         passwordStrengthScore = password.score,
                         username = password.username.orEmpty(),

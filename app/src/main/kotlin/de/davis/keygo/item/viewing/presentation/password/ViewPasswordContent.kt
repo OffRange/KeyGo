@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddLink
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.MoreTime
 import androidx.compose.material.icons.filled.Password
@@ -114,6 +115,7 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
         }
     ) { innerPadding ->
         val name = stringResource(R.string.name)
+        val passkey = stringResource(R.string.passkey)
         val password = stringResource(R.string.password)
         val totp = stringResource(R.string.totp)
         val username = stringResource(R.string.login_identifier)
@@ -152,6 +154,16 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
             ) {
                 Text(text = state.name)
             }
+
+            if (state.passkeyRPs.isNotEmpty()) {
+                entry(
+                    title = passkey,
+                    leadingIcon = Icons.Default.Key,
+                ) {
+                    Text(text = state.passkeyRPs.joinToString(", "))
+                }
+            }
+
             entry(
                 title = password,
                 leadingIcon = Icons.Default.Password,
@@ -395,6 +407,7 @@ private fun ViewPasswordContentPreview() {
             ViewPasswordContent(
                 state = ViewPasswordState(
                     name = "Password 1",
+                    passkeyRPs = setOf("example.com", "example.org"),
                     password = ObfuscatedString("Password"),
                     passwordStrengthScore = Password.Score.Ridiculous,
                     totpInformation = TotpInformation(

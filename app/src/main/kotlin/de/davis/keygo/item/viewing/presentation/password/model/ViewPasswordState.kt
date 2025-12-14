@@ -7,6 +7,7 @@ import de.davis.keygo.totp.domain.model.TotpInformation
 
 data class ViewPasswordState(
     val name: String = "",
+    val passkeyRPs: Set<String> = emptySet(),
     val password: ObfuscatedString = ObfuscatedString(""),
     val passwordStrengthScore: Password.Score = Password.Score.None,
     val totpInformation: TotpInformation = TotpInformation("", 0, 0),

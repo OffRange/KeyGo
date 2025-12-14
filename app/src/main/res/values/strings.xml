@@ -37,6 +37,8 @@
     <string name="add_note">Add Note</string>
     <string name="add_new_element">Add new Element</string>
 
+    <string name="passkey">Passkey</string>
+
     <string name="password">Password</string>
     <string name="confirm_password">Confirm Password</string>
 
