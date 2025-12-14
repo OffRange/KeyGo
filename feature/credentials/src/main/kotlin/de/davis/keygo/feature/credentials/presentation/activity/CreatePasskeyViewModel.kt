@@ -110,6 +110,7 @@ internal class CreatePasskeyViewModel(
                     iv = key.iv,
                     decryptedDataType = SecretData.DecryptedDataType.StringType
                 ),
+                rp = registrationResponse.rpId,
                 passwordId = passwordId
             )
 

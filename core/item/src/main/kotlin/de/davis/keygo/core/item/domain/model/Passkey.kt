@@ -4,6 +4,7 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 
 data class Passkey(
     val credentialId: ByteArray,
+    val rp: String,
     val privateKey: SecretData<String>,
     val passwordId: ItemId,
 ) {
@@ -13,17 +14,19 @@ data class Passkey(
 
         other as Passkey
 
-        if (!credentialId.contentEquals(other.credentialId)) return false
-        if (privateKey != other.privateKey) return false
         if (passwordId != other.passwordId) return false
+        if (!credentialId.contentEquals(other.credentialId)) return false
+        if (rp != other.rp) return false
+        if (privateKey != other.privateKey) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        var result = credentialId.contentHashCode()
+        var result = passwordId.hashCode()
+        result = 31 * result + credentialId.contentHashCode()
+        result = 31 * result + rp.hashCode()
         result = 31 * result + privateKey.hashCode()
-        result = 31 * result + passwordId.hashCode()
         return result
     }
 }

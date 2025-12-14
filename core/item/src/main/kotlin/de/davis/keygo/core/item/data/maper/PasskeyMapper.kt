@@ -4,13 +4,15 @@ import de.davis.keygo.core.item.data.local.entity.PasskeyEntity
 import de.davis.keygo.core.item.domain.model.Passkey
 
 internal fun Passkey.toData() = PasskeyEntity(
-    credentialId = credentialId.decodeToString(),
+    credentialId = credentialId,
+    rp = rp,
     privateKey = privateKey,
     passwordId = passwordId,
 )
 
 internal fun PasskeyEntity.toDomain() = Passkey(
-    credentialId = credentialId.encodeToByteArray(),
+    credentialId = credentialId,
+    rp = rp,
     privateKey = privateKey,
     passwordId = passwordId,
 )

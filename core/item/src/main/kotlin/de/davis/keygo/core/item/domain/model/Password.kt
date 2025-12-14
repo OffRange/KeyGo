@@ -11,6 +11,7 @@ data class Password(
     val domainInfos: Set<DomainInfo>,
     val score: Score,
     val totpSecret: SecretData<String>?,
+    val passkeyRPs: Set<String> = emptySet(),
     override val vaultItemId: ItemId = 0,
     override val name: String,
     override val encryptedData: SecretData<String>,

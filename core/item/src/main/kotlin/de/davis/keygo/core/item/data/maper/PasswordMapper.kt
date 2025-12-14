@@ -23,6 +23,8 @@ internal fun VaultPassword.toDomain(): Password = Password(
     score = passwordEntity.score,
     totpSecret = passwordEntity.totpSecret,
 
+    passkeyRPs = rpEntity.map { it.rp }.toSet(),
+
     domainInfos = domains.map(DomainInfoEntity::toDomain).toSet(),
 
     vaultItemId = vaultItemEntity.id,

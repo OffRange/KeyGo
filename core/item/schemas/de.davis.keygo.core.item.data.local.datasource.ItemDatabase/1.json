@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "3f9f6fb0ee78da85b13dc566ae822033",
+    "identityHash": "132886c965b22be6b8a23187dd514e77",
     "entities": [
       {
         "tableName": "VaultItemEntity",
@@ -159,11 +159,17 @@
       },
       {
         "tableName": "PasskeyEntity",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`credential_id` TEXT NOT NULL, `private_key` BLOB NOT NULL, `password_id` INTEGER NOT NULL, PRIMARY KEY(`credential_id`), FOREIGN KEY(`password_id`) REFERENCES `PasswordEntity`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`credential_id` BLOB NOT NULL, `rp` TEXT NOT NULL, `private_key` BLOB NOT NULL, `password_id` INTEGER NOT NULL, PRIMARY KEY(`credential_id`), FOREIGN KEY(`password_id`) REFERENCES `PasswordEntity`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "credentialId",
             "columnName": "credential_id",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rp",
+            "columnName": "rp",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -214,7 +220,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3f9f6fb0ee78da85b13dc566ae822033')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '132886c965b22be6b8a23187dd514e77')"
     ]
   }
 }
