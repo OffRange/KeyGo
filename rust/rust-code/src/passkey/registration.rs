@@ -10,11 +10,16 @@ pub(crate) struct KeyGoRegistrationResponse {
     response: String,
     credential_id: Vec<u8>,
     private_key: Vec<u8>,
+    rp: String,
 }
 
 impl KeyGoRegistrationResponse {
     pub(crate) fn response(&self) -> &str {
         &self.response
+    }
+
+    pub(crate) fn rp(&self) -> &str {
+        &self.rp
     }
 
     pub(crate) fn credential_id(&self) -> &[u8] {
@@ -74,6 +79,7 @@ pub(crate) async fn register_passkey(json_request: &str) -> Result<KeyGoRegistra
     let keygo_registration_response = KeyGoRegistrationResponse {
         response: response_json,
         credential_id,
+        rp: response.rp_id.clone(),
         private_key: to_bytes(response).map_err(KeyEncodeError)?,
     };
 

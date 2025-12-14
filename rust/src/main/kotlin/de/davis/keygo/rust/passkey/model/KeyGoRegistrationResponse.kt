@@ -2,6 +2,7 @@ package de.davis.keygo.rust.passkey.model
 
 data class KeyGoRegistrationResponse(
     val responseJson: String,
+    val rpId: String,
     val credentialId: ByteArray,
     val privateKey: ByteArray
 ) {
@@ -12,6 +13,7 @@ data class KeyGoRegistrationResponse(
         other as KeyGoRegistrationResponse
 
         if (responseJson != other.responseJson) return false
+        if (rpId != other.rpId) return false
         if (!credentialId.contentEquals(other.credentialId)) return false
         if (!privateKey.contentEquals(other.privateKey)) return false
 
@@ -20,6 +22,7 @@ data class KeyGoRegistrationResponse(
 
     override fun hashCode(): Int {
         var result = responseJson.hashCode()
+        result = 31 * result + rpId.hashCode()
         result = 31 * result + credentialId.contentHashCode()
         result = 31 * result + privateKey.contentHashCode()
         return result
