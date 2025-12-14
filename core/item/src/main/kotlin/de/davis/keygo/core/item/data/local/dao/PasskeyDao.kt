@@ -16,5 +16,5 @@ internal interface PasskeyDao {
     suspend fun insertPasskey(passkey: PasskeyEntity)
 
     @Query("SELECT EXISTS (SELECT 1 FROM PasskeyEntity WHERE credential_id in (:credentialIds))")
-    suspend fun doesCredentialIdsExist(credentialIds: Set<String>): Boolean
+    suspend fun doesCredentialIdsExist(credentialIds: Set<ByteArray>): Boolean
 }
