@@ -9,6 +9,7 @@ import androidx.credentials.exceptions.ClearCredentialException
 import androidx.credentials.exceptions.ClearCredentialUnknownException
 import androidx.credentials.exceptions.CreateCredentialException
 import androidx.credentials.exceptions.CreateCredentialUnknownException
+import androidx.credentials.exceptions.CreateCredentialUnsupportedException
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.GetCredentialUnknownException
 import androidx.credentials.provider.BeginCreateCredentialRequest
@@ -38,7 +39,9 @@ internal class KeyGoCredentialProviderService : CredentialProviderService() {
     ) {
         val handler = CoroutineExceptionHandler { _, exception ->
             Log.w(TAG, "Error during credential creation", exception)
-            callback.onError(CreateCredentialUnknownException())
+            val error = exception as? CreateCredentialException
+                ?: CreateCredentialUnknownException()
+            callback.onError(error)
         }
 
         val job = CoroutineScope(Dispatchers.Default + handler).launch {
@@ -46,7 +49,7 @@ internal class KeyGoCredentialProviderService : CredentialProviderService() {
                 is BeginCreatePublicKeyCredentialRequest,
                 is BeginCreatePasswordCredentialRequest -> credentialCreator.create()
 
-                else -> throw CreateCredentialUnknownException("Unsupported credential type: ${request::class.java.simpleName}")
+                else -> throw CreateCredentialUnsupportedException("Unsupported credential type: ${request::class.java.simpleName}")
             }.let(::listOf)
 
             val response = BeginCreateCredentialResponse(createEntries)
