@@ -70,7 +70,7 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                     when (it) {
                         CreatePasskeyEvent.Abort -> cancel()
                         CreatePasskeyEvent.ShowList -> navController.navigate(ListDest) {
-                            popUpTo<Unit>()
+                            popUpTo<Unit> { inclusive = true }
                         }
 
                         is CreatePasskeyEvent.Finish -> finishWithSuccess(it.responseJson)
