@@ -1,8 +1,11 @@
 package de.davis.keygo.core.item.data.repository
 
 import de.davis.keygo.core.item.data.local.dao.PasskeyDao
+import de.davis.keygo.core.item.data.local.pojo.PasskeyMetadataPojo
 import de.davis.keygo.core.item.data.maper.toData
+import de.davis.keygo.core.item.data.maper.toDomain
 import de.davis.keygo.core.item.domain.model.Passkey
+import de.davis.keygo.core.item.domain.model.PasskeyMetadata
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
 import org.koin.core.annotation.Single
 
@@ -16,4 +19,11 @@ internal class PasskeyRepositoryImpl(
 
     override suspend fun doCredentialIdsExist(credentialIds: Set<ByteArray>): Boolean =
         passkeyDao.doesCredentialIdsExist(credentialIds)
+
+    override suspend fun getPasskeysForRP(rpId: String): List<PasskeyMetadata> =
+        passkeyDao.getPasskeysForRP(rpId)
+            .map(PasskeyMetadataPojo::toDomain)
+
+    override suspend fun getPasskey(credentialId: ByteArray): Passkey? =
+        passkeyDao.getPasskey(credentialId)?.toDomain()
 }

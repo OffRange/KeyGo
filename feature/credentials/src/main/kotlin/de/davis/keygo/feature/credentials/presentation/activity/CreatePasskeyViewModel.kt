@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Passkey
+import de.davis.keygo.core.item.domain.model.PasskeyUser
 import de.davis.keygo.core.item.domain.model.SecretData
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
@@ -97,8 +98,8 @@ internal class CreatePasskeyViewModel(
 
     fun onItemClick(itemId: ItemId) {
         viewModelScope.launch {
-            val registrationResponse = registrationResponse ?: return@launch
-            val key = key ?: return@launch
+            val registrationResponse = registrationResponse ?: return@launch abort()
+            val key = key ?: return@launch abort()
 
             val passwordId = passwordRepository.getPasswordIdByVaultId(itemId)
                 ?: return@launch abort()
@@ -111,7 +112,11 @@ internal class CreatePasskeyViewModel(
                     decryptedDataType = SecretData.DecryptedDataType.StringType
                 ),
                 rp = registrationResponse.rpId,
-                passwordId = passwordId
+                passwordId = passwordId,
+                user = PasskeyUser(
+                    name = registrationResponse.userName,
+                    displayName = registrationResponse.userDisplayName
+                )
             )
 
             passkeyRepository.createPasskey(passkey)

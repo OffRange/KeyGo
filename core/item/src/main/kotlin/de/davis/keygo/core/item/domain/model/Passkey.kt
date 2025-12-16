@@ -7,6 +7,7 @@ data class Passkey(
     val rp: String,
     val privateKey: SecretData<String>,
     val passwordId: ItemId,
+    val user: PasskeyUser
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -18,6 +19,7 @@ data class Passkey(
         if (!credentialId.contentEquals(other.credentialId)) return false
         if (rp != other.rp) return false
         if (privateKey != other.privateKey) return false
+        if (user != other.user) return false
 
         return true
     }
@@ -27,6 +29,7 @@ data class Passkey(
         result = 31 * result + credentialId.contentHashCode()
         result = 31 * result + rp.hashCode()
         result = 31 * result + privateKey.hashCode()
+        result = 31 * result + user.hashCode()
         return result
     }
 }
