@@ -32,6 +32,10 @@ pub extern "system" fn Java_de_davis_keygo_rust_passkey_PasskeyManager_registerP
 
     let j_response_json = env.new_string(response.response()).expect("Couldn't create java string!");
     let j_rp_id = env.new_string(response.rp()).expect("Couldn't create java string!");
+
+    let j_user_name = env.new_string(response.user_name()).expect("Couldn't create java string!");
+    let j_user_display_name = env.new_string(response.user_display_name()).expect("Couldn't create java string!");
+
     let j_cred_id = env.byte_array_from_slice(response.credential_id()).expect("Couldn't create java byte array!");
     let j_bytes = env.byte_array_from_slice(response.private_key()).expect("Couldn't create java byte array!");
 
@@ -39,10 +43,12 @@ pub extern "system" fn Java_de_davis_keygo_rust_passkey_PasskeyManager_registerP
     let obj = env
         .new_object(
             cls,
-            "(Ljava/lang/String;Ljava/lang/String;[B[B)V",
+            "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;[B[B)V",
             &[
                 JValueGen::Object(&j_response_json),
                 JValueGen::Object(&j_rp_id),
+                JValueGen::Object(&j_user_name),
+                JValueGen::Object(&j_user_display_name),
                 JValueGen::Object(&j_cred_id),
                 JValueGen::Object(&j_bytes)
             ],

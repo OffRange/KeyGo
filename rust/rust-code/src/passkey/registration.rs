@@ -8,6 +8,8 @@ use thiserror::Error;
 
 pub(crate) struct KeyGoRegistrationResponse {
     response: String,
+    user_name: String,
+    user_display_name: String,
     credential_id: Vec<u8>,
     private_key: Vec<u8>,
     rp: String,
@@ -16,6 +18,14 @@ pub(crate) struct KeyGoRegistrationResponse {
 impl KeyGoRegistrationResponse {
     pub(crate) fn response(&self) -> &str {
         &self.response
+    }
+
+    pub(crate) fn user_name(&self) -> &str {
+        &self.user_name
+    }
+
+    pub(crate) fn user_display_name(&self) -> &str {
+        &self.user_display_name
     }
 
     pub(crate) fn rp(&self) -> &str {
@@ -60,6 +70,8 @@ pub(crate) async fn register_passkey(json_request: &str) -> Result<KeyGoRegistra
         .map_err(|_| InvalidJsonFormat)?;
 
     let domain = creation_options.rp.id.as_deref().unwrap_or_default();
+    let user_name = creation_options.rp.name.clone();
+    let user_display_name = creation_options.user.display_name.clone();
 
     let authenticator = keygo_authenticator(None);
     let mut client = Client::new(authenticator);
@@ -78,6 +90,8 @@ pub(crate) async fn register_passkey(json_request: &str) -> Result<KeyGoRegistra
     let credential_id = response.credential_id.clone().into();
     let keygo_registration_response = KeyGoRegistrationResponse {
         response: response_json,
+        user_name,
+        user_display_name,
         credential_id,
         rp: response.rp_id.clone(),
         private_key: to_bytes(response).map_err(KeyEncodeError)?,
