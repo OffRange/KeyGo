@@ -1,7 +1,8 @@
 #![allow(non_snake_case)]
 
+use crate::passkey::provider::provide_passkey;
 use crate::passkey::registration::{get_exclusion_list, register_passkey};
-use jni::objects::{JClass, JObject, JString, JValueGen};
+use jni::objects::{JByteArray, JClass, JObject, JString, JValueGen};
 use jni::sys::{jobject, jobjectArray};
 use jni::JNIEnv;
 use tokio::runtime::Builder;
@@ -92,4 +93,35 @@ pub extern "system" fn Java_de_davis_keygo_rust_passkey_PasskeyManager_getExclud
     }
 
     array.into_raw()
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_de_davis_keygo_rust_passkey_PasskeyManager_authenticatePasskey(
+    mut env: JNIEnv,
+    _cls: JClass,
+    request_json: JString,
+    passkey: JByteArray,
+    client_data_hash: JByteArray,
+) -> jobject {
+    let request_json: String = env.get_string(&request_json).expect("Couldn't get java string!").into();
+    let passkey: Vec<u8> = env.convert_byte_array(&passkey).expect("Couldn't get java byte array!");
+    let client_data_hash: Vec<u8> = env.convert_byte_array(&client_data_hash).expect("Couldn't get java byte array!");
+
+
+    let rt = Builder::new_current_thread().build().unwrap();
+    let response = rt.block_on(async move {
+        provide_passkey(&request_json, &passkey, Some(client_data_hash)).await
+    });
+
+    let response = match response {
+        Ok(response) => response,
+        Err(e) => {
+            let _ = env.throw_new("java/lang/RuntimeException", format!("Error occurred while getting excluded credential list: {e}"));
+            return JObject::null().into_raw();
+        }
+    };
+
+    let j_response_json = env.new_string(response).expect("Couldn't create java string!");
+
+    j_response_json.into_raw()
 }

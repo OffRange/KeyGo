@@ -11,25 +11,44 @@ object PasskeyManager {
         System.loadLibrary("keygo_rust")
     }
 
-    suspend fun register(requestJson: String): Result<KeyGoRegistrationResponse, Unit> =
+    suspend fun authenticate(
+        requestJson: String,
+        passkey: ByteArray,
+        clientDataHash: ByteArray
+    ): Result<String, Throwable> = withContext(Dispatchers.Default) {
+        runCatching {
+            authenticatePasskey(requestJson, passkey, clientDataHash)
+        }.fold(
+            onSuccess = { Result.Success(it) },
+            onFailure = { Result.Failure(it) }
+        )
+    }
+
+    suspend fun register(requestJson: String): Result<KeyGoRegistrationResponse, Throwable> =
         withContext(Dispatchers.Default) {
             runCatching {
                 registerPasskey(requestJson)
             }.fold(
                 onSuccess = { Result.Success(it) },
-                onFailure = { Result.Failure(Unit) }
+                onFailure = { Result.Failure(it) }
             )
         }
 
-    suspend fun getExcludedCredentialIds(requestJson: String): Result<Array<ByteArray>, Unit> =
+    suspend fun getExcludedCredentialIds(requestJson: String): Result<Array<ByteArray>, Throwable> =
         withContext(Dispatchers.Default) {
             runCatching {
                 getExcludedCredentials(requestJson)
             }.fold(
                 onSuccess = { Result.Success(it) },
-                onFailure = { Result.Failure(Unit) }
+                onFailure = { Result.Failure(it) }
             )
         }
+
+    private external fun authenticatePasskey(
+        requestJson: String,
+        passkey: ByteArray,
+        clientDataHash: ByteArray
+    ): String
 
     private external fun registerPasskey(requestJson: String): KeyGoRegistrationResponse
     private external fun getExcludedCredentials(requestJson: String): Array<ByteArray>

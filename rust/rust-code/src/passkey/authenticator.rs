@@ -1,4 +1,4 @@
-use passkey::authenticator::{Authenticator, UserCheck, UserValidationMethod};
+use passkey::authenticator::{Authenticator, CredentialStore, UserCheck, UserValidationMethod};
 use passkey::types::ctap2::{Aaguid, Ctap2Error};
 use passkey::types::Passkey;
 
@@ -32,8 +32,8 @@ impl UserValidationMethod for KeyGoUserValidation {
     }
 }
 
-pub(crate) fn keygo_authenticator() -> Authenticator<Option<Passkey>, KeyGoUserValidation> {
+pub(crate) fn keygo_authenticator<S: CredentialStore>(store: S) -> Authenticator<S, KeyGoUserValidation> {
     let aaguid = Aaguid::new_empty();
 
-    Authenticator::new(aaguid, None, KeyGoUserValidation {})
+    Authenticator::new(aaguid, store, KeyGoUserValidation {})
 }

@@ -61,7 +61,7 @@ pub(crate) async fn register_passkey(json_request: &str) -> Result<KeyGoRegistra
 
     let domain = creation_options.rp.id.as_deref().unwrap_or_default();
 
-    let authenticator = keygo_authenticator();
+    let authenticator = keygo_authenticator(None);
     let mut client = Client::new(authenticator);
 
     let domain = sanitize_to_https_url(domain).map_err(|_| InvalidDomain)?;
