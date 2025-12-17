@@ -22,6 +22,7 @@ import androidx.credentials.provider.BeginGetCredentialResponse
 import androidx.credentials.provider.BeginGetPublicKeyCredentialOption
 import androidx.credentials.provider.CredentialProviderService
 import androidx.credentials.provider.ProviderClearCredentialStateRequest
+import de.davis.keygo.feature.credentials.di.annotation.PasskeyQualifier
 import de.davis.keygo.feature.credentials.presentation.create.CredentialCreator
 import de.davis.keygo.feature.credentials.presentation.provide.CredentialProvider
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -29,12 +30,15 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
+import org.koin.core.qualifier.named
 
 @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
 internal class KeyGoCredentialProviderService : CredentialProviderService() {
 
     private val credentialCreator by inject<CredentialCreator>()
-    private val credentialProvider by inject<CredentialProvider<BeginGetPublicKeyCredentialOption>>()
+    private val passkeyProvider by inject<CredentialProvider<BeginGetPublicKeyCredentialOption>>(
+        qualifier = named<PasskeyQualifier>()
+    )
 
     override fun onBeginCreateCredentialRequest(
         request: BeginCreateCredentialRequest,
@@ -50,8 +54,10 @@ internal class KeyGoCredentialProviderService : CredentialProviderService() {
 
         val job = CoroutineScope(Dispatchers.Default + handler).launch {
             val createEntries = when (request) {
-                is BeginCreatePublicKeyCredentialRequest,
-                is BeginCreatePasswordCredentialRequest -> credentialCreator.create()
+                is BeginCreatePublicKeyCredentialRequest -> credentialCreator.create()
+                is BeginCreatePasswordCredentialRequest -> throw CreateCredentialUnsupportedException(
+                    "Password creation is not supported yet"
+                )
 
                 else -> throw CreateCredentialUnsupportedException("Unsupported credential type: ${request::class.java.simpleName}")
             }.let(::listOf)
@@ -80,8 +86,10 @@ internal class KeyGoCredentialProviderService : CredentialProviderService() {
         val job = CoroutineScope(Dispatchers.Default + handler).launch {
             val passkeyResults = request.beginGetCredentialOptions
                 .filterIsInstance<BeginGetPublicKeyCredentialOption>()
-                .ifEmpty { throw GetCredentialUnsupportedException("No supported credential options found") }
-                .flatMap { credentialProvider.provideFor(it) }
+                .flatMap { passkeyProvider.provideFor(it) }
+
+            if (passkeyResults.isEmpty())
+                throw GetCredentialUnsupportedException("No supported credential options found")
 
             callback.onResult(BeginGetCredentialResponse(passkeyResults))
         }

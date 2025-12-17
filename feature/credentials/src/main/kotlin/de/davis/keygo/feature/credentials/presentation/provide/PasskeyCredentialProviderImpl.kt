@@ -3,19 +3,22 @@ package de.davis.keygo.feature.credentials.presentation.provide
 import android.app.PendingIntent
 import android.content.Context
 import androidx.credentials.provider.BeginGetPublicKeyCredentialOption
+import androidx.credentials.provider.CredentialEntry
 import androidx.credentials.provider.PublicKeyCredentialEntry
 import de.davis.keygo.core.item.domain.model.PasskeyMetadata
+import de.davis.keygo.feature.credentials.di.annotation.PasskeyQualifier
 import de.davis.keygo.feature.credentials.domain.usecase.GetPasskeys
 import de.davis.keygo.feature.credentials.presentation.provide.activity.ProvidePasskeyActivity
 import org.koin.core.annotation.Single
 
 @Single
+@PasskeyQualifier
 internal class PasskeyCredentialProviderImpl(
     private val applicationContext: Context,
     private val getPasskeys: GetPasskeys
 ) : CredentialProvider<BeginGetPublicKeyCredentialOption> {
 
-    override suspend fun provideFor(option: BeginGetPublicKeyCredentialOption): List<PublicKeyCredentialEntry> {
+    override suspend fun provideFor(option: BeginGetPublicKeyCredentialOption): List<CredentialEntry> {
         return getPasskeys(option.requestJson).map {
             PublicKeyCredentialEntry.Builder(
                 context = applicationContext,
