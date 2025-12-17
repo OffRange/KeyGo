@@ -5,5 +5,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal data class PublicKeyCredentialRequestOptions(
     internal val rpId: String,
-    internal val allowCredentials: List<PasskeyAllowedCredential>
+    internal val allowCredentials: List<PasskeyAllowedCredential> = emptyList()
 )
