@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.credentials.presentation.activity
+package de.davis.keygo.feature.credentials.presentation.create.activity
 
 internal sealed interface CreatePasskeyEvent {
     data object Abort : CreatePasskeyEvent

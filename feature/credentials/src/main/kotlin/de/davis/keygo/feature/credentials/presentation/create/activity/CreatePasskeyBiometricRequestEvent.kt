@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.credentials.presentation.activity
+package de.davis.keygo.feature.credentials.presentation.create.activity
 
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.CiphertextData

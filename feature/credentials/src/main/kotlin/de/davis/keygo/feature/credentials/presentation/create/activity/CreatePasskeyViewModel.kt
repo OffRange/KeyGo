@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.credentials.presentation.activity
+package de.davis.keygo.feature.credentials.presentation.create.activity
 
 import android.util.Log
 import androidx.credentials.CreatePublicKeyCredentialRequest
