@@ -53,6 +53,8 @@ dependencies {
 
     implementation(libs.androidx.credentials)
 
+    implementation(libs.kotlinx.serialization.json)
+
     implementation(projects.rust)
     implementation(projects.core.security)
     implementation(projects.core.item)

@@ -12,15 +12,18 @@ import androidx.credentials.exceptions.CreateCredentialUnknownException
 import androidx.credentials.exceptions.CreateCredentialUnsupportedException
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.GetCredentialUnknownException
+import androidx.credentials.exceptions.GetCredentialUnsupportedException
 import androidx.credentials.provider.BeginCreateCredentialRequest
 import androidx.credentials.provider.BeginCreateCredentialResponse
 import androidx.credentials.provider.BeginCreatePasswordCredentialRequest
 import androidx.credentials.provider.BeginCreatePublicKeyCredentialRequest
 import androidx.credentials.provider.BeginGetCredentialRequest
 import androidx.credentials.provider.BeginGetCredentialResponse
+import androidx.credentials.provider.BeginGetPublicKeyCredentialOption
 import androidx.credentials.provider.CredentialProviderService
 import androidx.credentials.provider.ProviderClearCredentialStateRequest
 import de.davis.keygo.feature.credentials.presentation.create.CredentialCreator
+import de.davis.keygo.feature.credentials.presentation.provide.CredentialProvider
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +34,7 @@ import org.koin.android.ext.android.inject
 internal class KeyGoCredentialProviderService : CredentialProviderService() {
 
     private val credentialCreator by inject<CredentialCreator>()
+    private val credentialProvider by inject<CredentialProvider<BeginGetPublicKeyCredentialOption>>()
 
     override fun onBeginCreateCredentialRequest(
         request: BeginCreateCredentialRequest,
@@ -66,8 +70,25 @@ internal class KeyGoCredentialProviderService : CredentialProviderService() {
         cancellationSignal: CancellationSignal,
         callback: OutcomeReceiver<BeginGetCredentialResponse, GetCredentialException>
     ) {
-        // TODO: Implement credential retrieval
-        callback.onError(GetCredentialUnknownException())
+        val handler = CoroutineExceptionHandler { _, exception ->
+            Log.w(TAG, "Error during get credential", exception)
+            val error = exception as? GetCredentialException
+                ?: GetCredentialUnknownException()
+            callback.onError(error)
+        }
+
+        val job = CoroutineScope(Dispatchers.Default + handler).launch {
+            val passkeyResults = request.beginGetCredentialOptions
+                .filterIsInstance<BeginGetPublicKeyCredentialOption>()
+                .ifEmpty { throw GetCredentialUnsupportedException("No supported credential options found") }
+                .flatMap { credentialProvider.provideFor(it) }
+
+            callback.onResult(BeginGetCredentialResponse(passkeyResults))
+        }
+
+        cancellationSignal.setOnCancelListener {
+            job.cancel()
+        }
     }
 
     override fun onClearCredentialStateRequest(
