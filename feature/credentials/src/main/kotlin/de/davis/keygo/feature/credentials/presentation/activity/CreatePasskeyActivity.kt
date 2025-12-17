@@ -40,7 +40,7 @@ internal class CreatePasskeyActivity : FragmentActivity() {
 
         val request = PendingIntentHandler.retrieveProviderCreateCredentialRequest(intent)
         val callingRequest = request?.callingRequest as? CreatePublicKeyCredentialRequest
-            ?: return cancel()
+            ?: return cancel("Invalid CreatePublicKeyCredentialRequest")
 
         viewModel.updateCreatePublicKeyCredentialRequest(callingRequest)
         setResult(RESULT_CANCELED)

@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.credentials.presentation.activity
 
+import android.util.Log
 import androidx.credentials.CreatePublicKeyCredentialRequest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -61,13 +62,13 @@ internal class CreatePasskeyViewModel(
             val idsToExclude =
                 PasskeyManager.getExcludedCredentialIds(request.requestJson).getOrNull()
                     ?.toSet()
-                    ?: return@launch abort()
+                    ?: return@launch abort("Failed to get excluded IDs")
 
             val shouldAbort = passkeyRepository.doCredentialIdsExist(idsToExclude)
-            if (shouldAbort) return@launch abort()
+            if (shouldAbort) return@launch abort("Credential ID already exists")
 
             registrationResponse = PasskeyManager.register(request.requestJson)
-                .getOrNull() ?: return@launch abort()
+                .getOrNull() ?: return@launch abort("Failed to register passkey")
 
             // Request authentication
             registrationResponse?.let {
@@ -98,11 +99,12 @@ internal class CreatePasskeyViewModel(
 
     fun onItemClick(itemId: ItemId) {
         viewModelScope.launch {
-            val registrationResponse = registrationResponse ?: return@launch abort()
-            val key = key ?: return@launch abort()
+            val registrationResponse =
+                registrationResponse ?: return@launch abort("Response was null")
+            val key = key ?: return@launch abort("Key was null")
 
             val passwordId = passwordRepository.getPasswordIdByVaultId(itemId)
-                ?: return@launch abort()
+                ?: return@launch abort("No password found for vault ID")
 
             val passkey = Passkey(
                 credentialId = registrationResponse.credentialId,
@@ -124,7 +126,12 @@ internal class CreatePasskeyViewModel(
         }
     }
 
-    private suspend fun abort() {
+    private suspend fun abort(msg: String? = null) {
+        msg?.let { Log.w(TAG, "Aborting: $it") }
         _event.send(CreatePasskeyEvent.Abort)
+    }
+
+    companion object {
+        private const val TAG = "CreatePasskeyViewModel"
     }
 }
