@@ -56,6 +56,7 @@ dependencies {
     // Jetpack Compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.material.icons.extended)
+    implementation(libs.androidx.material3)
 
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))

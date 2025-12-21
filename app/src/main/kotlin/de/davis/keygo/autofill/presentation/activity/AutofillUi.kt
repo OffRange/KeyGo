@@ -21,7 +21,7 @@ import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.dashboard.presentation.DetailType
 import de.davis.keygo.dashboard.presentation.dashboardGraph
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
-import de.davis.keygo.item.create.presentation.EditVaultItemScreen
+import de.davis.keygo.feature.item.create.presentation.EditVaultItemScreen
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlin.reflect.typeOf

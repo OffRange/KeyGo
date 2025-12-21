@@ -56,6 +56,7 @@ android {
     productFlavors {
         create("playStore") {
             dimension = "store"
+            isDefault = true
         }
 
         create("fdroid") {
@@ -86,6 +87,8 @@ dependencies {
     implementation(projects.feature.listScreen)
     implementation(projects.feature.credentials)
     implementation(projects.feature.item.core)
+    implementation(projects.feature.item.create)
+    implementation(projects.feature.totp)
     implementation(projects.core.security)
     implementation(projects.core.ui)
 
@@ -93,19 +96,9 @@ dependencies {
     implementation(libs.androidx.datastore)
     implementation(libs.google.protobuf.kotlin.lite)
 
-    implementation(libs.turingcomplete.totp)
-
-    implementation(libs.offrange.passgen)
     implementation(libs.argon2kt)
 
     implementation(libs.androidx.autofill)
-
-    // Use GMS ML Kit for barcode scanning on the Play Store to minimize app size; use ZXing for F-Droid builds.
-    "playStoreImplementation"(libs.gms.mlkit.barcode.scanning)
-    "fdroidImplementation"(libs.zxing.barcode.scanning)
-    implementation(libs.androidx.camera.camera2)
-    implementation(libs.androidx.camera.compose)
-    implementation(libs.androidx.camera.lifecycle)
 
     implementation(projects.migrationCreateAccess)
 

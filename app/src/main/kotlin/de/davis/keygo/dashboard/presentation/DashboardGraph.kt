@@ -23,12 +23,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.ItemIdNone
-import de.davis.keygo.core.presentation.LocalIsInSinglePaneMode
-import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.core.presentation.model.RouteDestination
+import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
+import de.davis.keygo.feature.item.core.presentation.model.NavigationEvent
+import de.davis.keygo.feature.item.create.presentation.EditVaultItemScreen
 import de.davis.keygo.feature.list_screen.presentation.ItemListScreen
 import de.davis.keygo.feature.list_screen.presentation.rememberItemListScreenSearchState
-import de.davis.keygo.item.create.presentation.EditVaultItemScreen
 import de.davis.keygo.item.viewing.data.ViewVaultItemScreen
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel

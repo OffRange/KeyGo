@@ -37,7 +37,7 @@ import de.davis.keygo.core.item.domain.repository.VaultItemRepository
 import de.davis.keygo.core.presentation.UIText
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
-import de.davis.keygo.totp.domain.repository.TotpGenerator
+import de.davis.keygo.feature.totp.domain.repository.TotpGenerator
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.android.annotation.KoinViewModel
+import de.davis.keygo.core.item.R as CoreItemR
 
 
 @KoinViewModel
@@ -153,7 +154,7 @@ internal class AutofillViewModel(
 
         requestBiometricAuthentication(
             title = UIText.ResourceString(R.string.unlock_item, itemName),
-            negativeButton = UIText.ResourceString(R.string.password)
+            negativeButton = UIText.ResourceString(CoreItemR.string.password)
         )
     }
 

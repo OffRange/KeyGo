@@ -2,11 +2,10 @@ package de.davis.keygo.dashboard.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import de.davis.keygo.core.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.repository.VaultItemRepository
-import de.davis.keygo.core.presentation.snackbar.ItemDeletedMessage
+import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.dashboard.domain.model.Filter
 import de.davis.keygo.dashboard.domain.usecase.FilterUseCase
 import de.davis.keygo.feature.list_screen.presentation.model.ListItemState

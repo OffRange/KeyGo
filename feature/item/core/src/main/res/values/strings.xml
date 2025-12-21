@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="name">Name</string>
+    <string name="note">Note</string>
+
+    <string name="passkey">Passkey</string>
+    <string name="totp">TOTP</string>
+    <string name="domains">Domains</string>
+
+    <string name="back_content_description">Back</string>
+    <string name="edit_content_description">Edit</string>
+
+    <string name="login_identifier">Email, phone, or username</string>
+
+    <string name="field_blank">This field can not be blank</string>
+</resources>

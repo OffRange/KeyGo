@@ -6,17 +6,11 @@
     <string name="create_access_access">Create an access to</string>
     <string name="your_vault">your vault</string>
 
-    <string name="show_password_content_description">Show password</string>
-    <string name="hide_password_content_description">Hide password</string>
     <string name="request_biometric_authentication_content_description">Request biometric authentication</string>
     <string name="open_navigation_drawer_content_description">Open Navigation Drawer</string>
     <string name="close_content_description">Close</string>
     <string name="add_content_description">Add</string>
-    <string name="edit_content_description">Edit</string>
     <string name="search_content_description">Search</string>
-    <string name="back_content_description">Back</string>
-    <string name="generate_password_content_description">Generate Password</string>
-    <string name="submit_content_description">Submit</string>
     <string name="open_website_content_description">Open website</string>
     <string name="copy_to_clipboard_content_description">Copy to clipboard</string>
 
@@ -37,17 +31,7 @@
     <string name="add_note">Add Note</string>
     <string name="add_new_element">Add new Element</string>
 
-    <string name="passkey">Passkey</string>
-
-    <string name="password">Password</string>
     <string name="confirm_password">Confirm Password</string>
-
-    <string name="totp_parse_error">TOTP Parse Error</string>
-    <string name="totp_parse_error_description">The TOTP code could not be parsed.</string>
-    <string name="totp_secret">TOTP Secret</string>
-    <string name="totp">TOTP</string>
-
-    <string name="scan_qr_code">Scan QR Code</string>
 
     <string name="blank_password">You must set a password</string>
     <string name="incorrect_password">Password is incorrect!</string>
@@ -82,67 +66,6 @@
     <string name="match_note">Matched note</string>
     <string name="match_name_and_note">Matched name and note</string>
     <string name="match_not_found">No matches found</string>
-
-    <string name="select_item">Select an Item</string>
-
-    <string name="general_information">General Information</string>
-    <string name="additional_information">Additional Information</string>
-    <string name="password_information">Password Information</string>
-    <string name="domain_information">Domain Information</string>
-
-    <string name="name">Name</string>
-    <string name="name_placeholder">Enter Name</string>
-    <string name="note">Note</string>
-    <string name="note_placeholder">Write your Note</string>
-
-    <string name="login_identifier">Email, phone, or username</string>
-    <string name="domains">Domains</string>
-    <string name="add_domains">Add domains</string>
-
-    <string name="password_strength_ridiculous">Ridiculous</string>
-    <string name="password_strength_weak">Weak</string>
-    <string name="password_strength_moderate">Moderate</string>
-    <string name="password_strength_strong">Strong</string>
-    <string name="password_strength_excellent">Excellent</string>
-
-    <string name="create_new">Create New</string>
-    <string name="existing_entries_found">Existing Entries found</string>
-    <string name="existing_entries_found_description">One or more entries match the issuer or account name from the totp code. Would you like to update an existing entry or create a new one?</string>
-    <string name="overriding_totp_fields_description">The current item has the following TOTP fields that differ from the fields specified in the totp information. Select fields you want to override.</string>
-
-    <string name="update_item">Update your Item</string>
-    <string name="create_new_item">Create new Item</string>
-    <string name="generate_password">Generate Password</string>
-    <string name="use_generated_password">Use generated Password</string>
-
-    <string name="caution">Caution</string>
-    <string name="character_sets">Character Sets</string>
-    <string name="lowercase">Lowercase</string>
-    <string name="uppercase">Uppercase</string>
-    <string name="digits">Digits</string>
-    <string name="punctuations">Punctuations</string>
-    <string name="consider_all_char_sets">For strongest protection, include lowercase, uppercase, numbers, and symbols.</string>
-
-    <string name="length">Length [%d]</string>
-
-    <string name="field_blank">This field can not be blank</string>
-
-    <string name="database_error">An unexpected database error has occurred: %s</string>
-    <string name="invalid_vault_id">Vault item ID can not be found</string>
-
-    <string name="n_more"><i>%d more</i></string>
-    <string name="list_entry">\u2022 %s</string>
-    <string name="list_before">\u2022 Before: %s</string>
-    <string name="list_after">\u2022 After: %s</string>
-
-    <string name="override_totp_fields">Override TOTP fields?</string>
-    <string name="override">Override</string>
-    <string name="keep">Keep</string>
-
-    <string name="ok">OK</string>
-    <string name="warning">Warning</string>
-
-    <string name="multiple_items_same_name">Some items will have identical names.</string>
 
     <string name="autofill_service">Autofill Service</string>
     <string name="fill_anyway">Fill anyway</string>

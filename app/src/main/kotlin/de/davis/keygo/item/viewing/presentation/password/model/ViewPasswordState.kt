@@ -2,7 +2,7 @@ package de.davis.keygo.item.viewing.presentation.password.model
 
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
-import de.davis.keygo.totp.domain.model.TotpInformation
+import de.davis.keygo.feature.totp.domain.model.TotpInformation
 
 
 data class ViewPasswordState(

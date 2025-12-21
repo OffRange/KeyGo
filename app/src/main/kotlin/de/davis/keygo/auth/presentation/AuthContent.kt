@@ -51,9 +51,10 @@ import de.davis.keygo.R
 import de.davis.keygo.auth.presentation.model.AuthState
 import de.davis.keygo.auth.presentation.model.AuthUIEvent
 import de.davis.keygo.auth.presentation.model.UIPasswordError
-import de.davis.keygo.core.presentation.component.StrengthIndicator
-import de.davis.keygo.core.presentation.component.VisibilityButton
+import de.davis.keygo.core.item.presentation.StrengthIndicator
+import de.davis.keygo.core.ui.components.VisibilityButton
 import de.davis.keygo.core.ui.theme.KeyGoTheme
+import de.davis.keygo.core.item.R as CoreItemR
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -108,7 +109,7 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
                                     forceCompact = !it.hasFocus
                                 },
                             label = {
-                                Text(text = stringResource(R.string.password))
+                                Text(text = stringResource(CoreItemR.string.password))
                             },
                             isError = passwordError !is UIPasswordError.None,
                             supportingText = when (passwordError) {

@@ -1,0 +1,10 @@
+package de.davis.keygo.feature.item.create.presentation.password.model
+
+import de.davis.keygo.feature.item.core.presentation.password.model.FieldType
+
+data class OverrideTotpField(
+    val fieldType: FieldType,
+    val before: String,
+    val after: String,
+    val selected: Boolean = true
+)

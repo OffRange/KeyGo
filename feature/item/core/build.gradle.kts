@@ -54,8 +54,7 @@ dependencies {
     implementation(projects.core.item)
     implementation(projects.core.security)
     implementation(projects.core.ui)
-
-
+    
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))
     implementation(project.dependencies.platform(libs.koin.annotations.bom))

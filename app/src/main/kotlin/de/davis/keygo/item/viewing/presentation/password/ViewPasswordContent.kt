@@ -64,18 +64,20 @@ import androidx.compose.ui.unit.dp
 import de.davis.keygo.R
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
-import de.davis.keygo.core.presentation.LocalIsInSinglePaneMode
-import de.davis.keygo.core.presentation.component.KeyGoFormField
-import de.davis.keygo.core.presentation.component.StrengthIndicator
-import de.davis.keygo.core.presentation.transformation.TrimTransformation
+import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.core.ui.components.KeyGoCard
+import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
 import de.davis.keygo.feature.item.core.presentation.component.CopyToClipboardButton
+import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.password.model.FieldType
+import de.davis.keygo.feature.item.core.presentation.transformation.TrimTransformation
+import de.davis.keygo.feature.totp.domain.model.TotpInformation
 import de.davis.keygo.item.viewing.presentation.password.model.ModificationDialog
 import de.davis.keygo.item.viewing.presentation.password.model.ObfuscatedString
 import de.davis.keygo.item.viewing.presentation.password.model.ViewPasswordState
 import de.davis.keygo.item.viewing.presentation.password.model.ViewPasswordUiEvent
-import de.davis.keygo.totp.domain.model.TotpInformation
+import de.davis.keygo.core.item.R as CoreItemR
+import de.davis.keygo.feature.item.core.R as ItemCoreR
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -88,14 +90,14 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                     Text(text = state.name)
                 },
                 subtitle = {
-                    Text(text = stringResource(R.string.password))
+                    Text(text = stringResource(CoreItemR.string.password))
                 },
                 navigationIcon = {
                     if (LocalIsInSinglePaneMode.current) {
                         IconButton(onClick = { onEvent(ViewPasswordUiEvent.OnBackClick) }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Default.ArrowBack,
-                                contentDescription = stringResource(R.string.back_content_description)
+                                contentDescription = stringResource(ItemCoreR.string.back_content_description)
                             )
                         }
                     }
@@ -106,7 +108,7 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Edit,
-                            contentDescription = stringResource(R.string.edit_content_description)
+                            contentDescription = stringResource(ItemCoreR.string.edit_content_description)
                         )
                     }
                 },
@@ -114,13 +116,13 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
             )
         }
     ) { innerPadding ->
-        val name = stringResource(R.string.name)
-        val passkey = stringResource(R.string.passkey)
-        val password = stringResource(R.string.password)
-        val totp = stringResource(R.string.totp)
-        val username = stringResource(R.string.login_identifier)
-        val domains = stringResource(R.string.domains)
-        val note = stringResource(R.string.note)
+        val name = stringResource(ItemCoreR.string.name)
+        val passkey = stringResource(ItemCoreR.string.passkey)
+        val password = stringResource(CoreItemR.string.password)
+        val totp = stringResource(ItemCoreR.string.totp)
+        val username = stringResource(ItemCoreR.string.login_identifier)
+        val domains = stringResource(ItemCoreR.string.domains)
+        val note = stringResource(ItemCoreR.string.note)
 
         var isPasswordHidden by rememberSaveable { mutableStateOf(true) }
 
@@ -350,8 +352,8 @@ private fun AddChip(fieldType: FieldType, onClick: (FieldType) -> Unit) {
 @Composable
 private fun FieldType.addLabel(): String {
     return when (this) {
-        FieldType.Name -> stringResource(R.string.name)
-        FieldType.Password -> stringResource(R.string.password)
+        FieldType.Name -> stringResource(ItemCoreR.string.name)
+        FieldType.Password -> stringResource(CoreItemR.string.password)
         FieldType.Totp -> stringResource(R.string.add_totp)
         FieldType.Username -> stringResource(R.string.add_username)
         FieldType.Domain -> stringResource(R.string.add_domain)

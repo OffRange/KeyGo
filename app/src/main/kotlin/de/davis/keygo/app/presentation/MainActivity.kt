@@ -27,14 +27,14 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
 import de.davis.keygo.app.presentation.component.KeyGoNavigationWrapper
 import de.davis.keygo.auth.presentation.authGraph
-import de.davis.keygo.core.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.presentation.model.RouteDestination
-import de.davis.keygo.core.presentation.snackbar.LocalSnackbarManager
-import de.davis.keygo.core.presentation.snackbar.SnackbarHandler
 import de.davis.keygo.core.ui.theme.KeyGoTheme
+import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
+import de.davis.keygo.core.util.presentation.snackbar.LocalSnackbarManager
+import de.davis.keygo.core.util.presentation.snackbar.SnackbarHandler
 import de.davis.keygo.dashboard.presentation.DetailType
 import de.davis.keygo.dashboard.presentation.dashboardGraph
-import de.davis.keygo.item.create.presentation.dialog.SelectItemContent
+import de.davis.keygo.item.dialog.SelectItemContent
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
