@@ -85,13 +85,14 @@ dependencies {
     implementation(projects.core.item)
     implementation(projects.feature.listScreen)
     implementation(projects.feature.credentials)
+    implementation(projects.feature.item.core)
+    implementation(projects.core.security)
     implementation(projects.core.ui)
 
     // Datastore
     implementation(libs.androidx.datastore)
     implementation(libs.google.protobuf.kotlin.lite)
 
-    implementation(libs.gosimple.nbvcxz)
     implementation(libs.turingcomplete.totp)
 
     implementation(libs.offrange.passgen)

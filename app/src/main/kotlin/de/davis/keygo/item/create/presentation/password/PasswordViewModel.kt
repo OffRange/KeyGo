@@ -6,13 +6,12 @@ import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.R
-import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
-import de.davis.keygo.core.domain.crypto.decryptSecretData
-import de.davis.keygo.core.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.ItemIdNone
+import de.davis.keygo.core.item.domain.crypto.decryptSecretData
+import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.domain.repository.VaultItemRepository
@@ -20,18 +19,18 @@ import de.davis.keygo.core.presentation.UIText
 import de.davis.keygo.core.presentation.UIText.ResourceString
 import de.davis.keygo.core.presentation.model.InputFieldError
 import de.davis.keygo.core.presentation.model.NavigationEvent
+import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
-import de.davis.keygo.item.core.domain.model.PasswordError
-import de.davis.keygo.item.core.domain.model.UpsertPassword
-import de.davis.keygo.item.core.domain.model.fieldUpdate
-import de.davis.keygo.item.core.domain.model.set
-import de.davis.keygo.item.core.domain.usecase.CreateNewOrUpdatePasswordUseCase
-import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
-import de.davis.keygo.item.core.presentation.model.DetailType
-import de.davis.keygo.item.core.presentation.password.model.FieldType
+import de.davis.keygo.feature.item.core.domain.model.PasswordError
+import de.davis.keygo.feature.item.core.domain.model.UpsertPassword
+import de.davis.keygo.feature.item.core.domain.model.fieldUpdate
+import de.davis.keygo.feature.item.core.domain.model.set
+import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdatePasswordUseCase
+import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
+import de.davis.keygo.feature.item.core.presentation.password.model.FieldType
 import de.davis.keygo.item.create.domain.PasswordGenerator
 import de.davis.keygo.item.create.presentation.password.model.DialogState
 import de.davis.keygo.item.create.presentation.password.model.GeneratePasswordUiEvent
@@ -159,12 +158,9 @@ class PasswordViewModel(
 
     fun init(information: DetailPaneInformation) {
         when (information) {
-            is DetailPaneInformation.InitByDetailType -> when (val type = information.detailType) {
-                is DetailType.Modify.Edit -> initWithId(type.itemId)
-                is DetailType.Modify.Totp -> initWithTotpUri(type.uri)
-                is DetailType.Modify.CreateNew -> {} // Don't init anything
-                is DetailType.View -> throw IllegalArgumentException("This VM cannot be used to view an item")
-            }
+            is DetailPaneInformation.Init.Existing -> initWithId(information.vaultItemId)
+            is DetailPaneInformation.Init.TOTP -> initWithTotpUri(information.uri)
+            is DetailPaneInformation.Init.New -> {} // Don't init anything
 
             is DetailPaneInformation.CreateRaw -> initWithRawItem(information)
         }

@@ -5,7 +5,7 @@ import androidx.compose.material3.SliderState
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import de.davis.keygo.core.domain.estimator.PasswordStrengthEstimator
+import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.item.create.domain.PasswordGenerator
 import de.davis.keygo.item.create.presentation.password.model.GeneratePasswordUiEvent
 import de.davis.keygo.item.create.presentation.password.model.GeneratePasswordUiState

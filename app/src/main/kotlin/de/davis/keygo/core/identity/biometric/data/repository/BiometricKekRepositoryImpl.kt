@@ -5,11 +5,11 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import androidx.annotation.RequiresApi
 import androidx.annotation.VisibleForTesting
-import de.davis.keygo.core.domain.crypto.CryptographicConstants
-import de.davis.keygo.core.domain.model.crypto.AesKey
-import de.davis.keygo.core.domain.model.crypto.asAesKey
 import de.davis.keygo.core.identity.biometric.domain.model.KeyStoreError
 import de.davis.keygo.core.identity.biometric.domain.repository.BiometricKekRepository
+import de.davis.keygo.core.security.domain.crypto.CryptographicConstants
+import de.davis.keygo.core.security.domain.crypto.model.AesKey
+import de.davis.keygo.core.security.domain.crypto.model.asAesKey
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import org.koin.core.annotation.Single

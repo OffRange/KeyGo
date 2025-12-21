@@ -32,6 +32,7 @@ android {
 
 kotlin {
     compilerOptions {
+        freeCompilerArgs.add("-Xcontext-parameters")
         jvmTarget = JvmTarget.JVM_17
     }
 }
@@ -48,6 +49,9 @@ dependencies {
     ksp(projects.automationProcessor)
 
     api(projects.core.util)
+    implementation(projects.core.security)
+
+    implementation(libs.gosimple.nbvcxz)
 
     // Jetpack Compose
     implementation(platform(libs.androidx.compose.bom))

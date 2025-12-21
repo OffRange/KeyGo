@@ -1,6 +1,6 @@
 package de.davis.keygo.item.create.presentation.password.model
 
-import de.davis.keygo.item.core.presentation.password.model.FieldType
+import de.davis.keygo.feature.item.core.presentation.password.model.FieldType
 
 data class OverrideTotpField(
     val fieldType: FieldType,

@@ -23,8 +23,6 @@ import de.davis.keygo.autofill.presentation.model.Request
 import de.davis.keygo.autofill.presentation.model.RequestData
 import de.davis.keygo.autofill.presentation.model.SaveRequestData
 import de.davis.keygo.autofill.presentation.model.SuspicionDialogVisibility
-import de.davis.keygo.core.domain.crypto.CryptographicScopeProvider
-import de.davis.keygo.core.domain.crypto.decryptSecretData
 import de.davis.keygo.core.domain.usecase.HasValidAccessUseCase
 import de.davis.keygo.core.identity.biometric.domain.usecase.GetBiometricCryptoSetupAvailabilityUseCase
 import de.davis.keygo.core.identity.biometric.domain.usecase.GetBiometricHardwareAvailabilityUseCase
@@ -32,11 +30,13 @@ import de.davis.keygo.core.identity.biometric.domain.usecase.PrepareBiometricCip
 import de.davis.keygo.core.identity.biometric.domain.usecase.UnlockWithBiometricsUseCase
 import de.davis.keygo.core.identity.biometric.presentation.BiometricViewModel
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.crypto.decryptSecretData
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.domain.repository.VaultItemRepository
 import de.davis.keygo.core.presentation.UIText
-import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
+import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.totp.domain.repository.TotpGenerator
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -6,7 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
-import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
+import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import org.koin.androidx.compose.koinViewModel
 
 @Composable

@@ -4,10 +4,10 @@ import de.davis.keygo.auth.domain.model.PasswordWrappedKeyData
 import de.davis.keygo.auth.domain.repository.DeviceInfoRepository
 import de.davis.keygo.auth.domain.repository.KeyDerivationRepository
 import de.davis.keygo.auth.domain.repository.PasswordWrappedKeyRepository
-import de.davis.keygo.core.domain.Session
-import de.davis.keygo.core.domain.model.crypto.asAesKey
 import de.davis.keygo.core.identity.common.domain.CipherFactory
 import de.davis.keygo.core.identity.common.domain.model.CryptographyError
+import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.crypto.model.asAesKey
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess

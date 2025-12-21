@@ -45,7 +45,7 @@ import de.davis.keygo.core.presentation.LocalIsInSinglePaneMode
 import de.davis.keygo.core.presentation.component.KeyGoFormField
 import de.davis.keygo.core.presentation.component.StrengthIndicator
 import de.davis.keygo.core.ui.theme.KeyGoTheme
-import de.davis.keygo.item.core.presentation.component.ChipFormGroup
+import de.davis.keygo.feature.item.core.presentation.component.ChipFormGroup
 import de.davis.keygo.item.create.presentation.component.FormGroup
 import de.davis.keygo.item.create.presentation.component.KeyGoItemForm
 import de.davis.keygo.item.create.presentation.component.OverrideTotpDialog

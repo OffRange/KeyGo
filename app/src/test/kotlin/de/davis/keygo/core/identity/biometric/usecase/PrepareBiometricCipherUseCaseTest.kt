@@ -1,6 +1,5 @@
 package de.davis.keygo.core.identity.biometric.usecase
 
-import de.davis.keygo.core.domain.model.crypto.asAesKey
 import de.davis.keygo.core.identity.biometric.domain.model.KeyStoreError
 import de.davis.keygo.core.identity.biometric.domain.repository.BiometricKekRepository
 import de.davis.keygo.core.identity.biometric.domain.usecase.PrepareBiometricCipherUseCase
@@ -9,6 +8,7 @@ import de.davis.keygo.core.identity.common.domain.model.BiometricWrappedKeyData
 import de.davis.keygo.core.identity.common.domain.model.CryptographicMode
 import de.davis.keygo.core.identity.common.domain.model.CryptographyError
 import de.davis.keygo.core.identity.common.domain.repository.BiometricWrappedKeyRepository
+import de.davis.keygo.core.security.domain.crypto.model.asAesKey
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess

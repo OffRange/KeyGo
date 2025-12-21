@@ -1,8 +1,8 @@
 package de.davis.keygo.core.identity.common.domain
 
-import de.davis.keygo.core.domain.model.crypto.AesKey
 import de.davis.keygo.core.identity.common.domain.model.CryptographicMode
 import de.davis.keygo.core.identity.common.domain.model.CryptographyError
+import de.davis.keygo.core.security.domain.crypto.model.AesKey
 import de.davis.keygo.core.util.Result
 import kotlinx.coroutines.Dispatchers
 import javax.crypto.Cipher

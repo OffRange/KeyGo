@@ -1,7 +1,7 @@
 package de.davis.keygo.autofill.presentation.model
 
 import de.davis.keygo.core.presentation.model.RouteDestination
-import de.davis.keygo.item.core.presentation.model.DetailPaneInformation
+import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 
 sealed interface Request<T : Any> {
     val destination: T

@@ -1,10 +1,10 @@
 package de.davis.keygo.core.identity.biometric.domain.usecase
 
 import de.davis.keygo.core.di.annotation.BiometricQualifier
-import de.davis.keygo.core.domain.Session
 import de.davis.keygo.core.identity.common.domain.CipherFactory
 import de.davis.keygo.core.identity.common.domain.model.CryptographyError
 import de.davis.keygo.core.identity.common.domain.repository.BiometricWrappedKeyRepository
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.asUnitResult

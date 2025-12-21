@@ -28,8 +28,6 @@ import de.davis.keygo.core.presentation.model.NavigationEvent
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.feature.list_screen.presentation.ItemListScreen
 import de.davis.keygo.feature.list_screen.presentation.rememberItemListScreenSearchState
-import de.davis.keygo.item.core.presentation.model.DetailType
-import de.davis.keygo.item.core.presentation.model.asDetailPaneInformation
 import de.davis.keygo.item.create.presentation.EditVaultItemScreen
 import de.davis.keygo.item.viewing.data.ViewVaultItemScreen
 import kotlinx.coroutines.launch
@@ -137,7 +135,7 @@ fun NavGraphBuilder.dashboardGraph(
                         when (val detailItem = listNavigator.currentDestination?.contentKey) {
                             is DetailType.View -> {
                                 ViewVaultItemScreen(
-                                    viewItem = detailItem,
+                                    itemId = detailItem.itemId,
                                     navigate = {
                                         when (it) {
                                             NavigationEvent.NavigateBack -> scope.launch {

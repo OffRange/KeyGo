@@ -6,13 +6,13 @@ import de.davis.keygo.auth.domain.repository.KeyDerivationRepository
 import de.davis.keygo.auth.domain.repository.PasswordWrappedKeyRepository
 import de.davis.keygo.core.di.annotation.BiometricQualifier
 import de.davis.keygo.core.di.annotation.PasswordQualifier
-import de.davis.keygo.core.domain.Session
-import de.davis.keygo.core.domain.model.crypto.asAesKey
 import de.davis.keygo.core.identity.common.domain.CipherFactory
 import de.davis.keygo.core.identity.common.domain.model.BiometricWrappedKeyData
 import de.davis.keygo.core.identity.common.domain.model.CryptographicMode
 import de.davis.keygo.core.identity.common.domain.model.CryptographyError
 import de.davis.keygo.core.identity.common.domain.repository.BiometricWrappedKeyRepository
+import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.crypto.model.asAesKey
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asUnitResult
 import de.davis.keygo.core.util.onSuccess

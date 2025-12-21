@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.datastore.dataStore
 import de.davis.keygo.auth.data.local.model.ProtoBiometricKeyData
 import de.davis.keygo.core.di.annotation.BiometricQualifier
-import me.gosimple.nbvcxz.Nbvcxz
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Module
 import org.koin.core.annotation.Single
@@ -17,9 +16,6 @@ object CoreModule {
     @Single
     internal fun provideKeyStore(): KeyStore =
         KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-
-    @Single
-    internal fun provideNbvcxz() = Nbvcxz()
 
 
     private val Context.protoBiometricKeyDataStore by dataStore(

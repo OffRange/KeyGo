@@ -10,7 +10,6 @@ import de.davis.keygo.auth.domain.usecase.UnlockWithPasswordUseCase
 import de.davis.keygo.auth.presentation.model.AuthState
 import de.davis.keygo.auth.presentation.model.AuthUIEvent
 import de.davis.keygo.auth.presentation.model.UIPasswordError
-import de.davis.keygo.core.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.domain.usecase.HasValidAccessUseCase
 import de.davis.keygo.core.identity.biometric.domain.model.BiometricAvailability
 import de.davis.keygo.core.identity.biometric.domain.model.BiometricEvent
@@ -20,6 +19,7 @@ import de.davis.keygo.core.identity.biometric.domain.usecase.PrepareBiometricCip
 import de.davis.keygo.core.identity.biometric.domain.usecase.UnlockWithBiometricsUseCase
 import de.davis.keygo.core.identity.biometric.presentation.BiometricViewModel
 import de.davis.keygo.core.identity.common.domain.model.CryptographicMode
+import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
