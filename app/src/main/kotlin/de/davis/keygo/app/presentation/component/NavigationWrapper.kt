@@ -83,6 +83,7 @@ import de.davis.keygo.app.presentation.AppDestinations
 import de.davis.keygo.core.presentation.model.RouteDestination
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import de.davis.keygo.core.ui.R as CoreUiR
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -460,7 +461,7 @@ fun DrawerContent(
                     contentDescription = stringResource(R.string.add_content_description),
                 )
                 Text(
-                    text = stringResource(R.string.add),
+                    text = stringResource(CoreUiR.string.add),
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center
                 )

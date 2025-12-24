@@ -1,4 +1,4 @@
-package de.davis.keygo.item.viewing.presentation.password.model
+package de.davis.keygo.feature.item.view.password.model
 
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password

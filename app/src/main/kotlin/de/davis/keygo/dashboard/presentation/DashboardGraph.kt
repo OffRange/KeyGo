@@ -27,9 +27,9 @@ import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
 import de.davis.keygo.feature.item.core.presentation.model.NavigationEvent
 import de.davis.keygo.feature.item.create.presentation.EditVaultItemScreen
+import de.davis.keygo.feature.item.view.ViewVaultItemScreen
 import de.davis.keygo.feature.list_screen.presentation.ItemListScreen
 import de.davis.keygo.feature.list_screen.presentation.rememberItemListScreenSearchState
-import de.davis.keygo.item.viewing.data.ViewVaultItemScreen
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
@@ -136,8 +136,8 @@ fun NavGraphBuilder.dashboardGraph(
                             is DetailType.View -> {
                                 ViewVaultItemScreen(
                                     itemId = detailItem.itemId,
-                                    navigate = {
-                                        when (it) {
+                                    navigate = { event ->
+                                        when (event) {
                                             NavigationEvent.NavigateBack -> scope.launch {
                                                 listNavigator.navigateBack()
                                             }
@@ -146,8 +146,8 @@ fun NavGraphBuilder.dashboardGraph(
                                                 listNavigator.navigateTo(
                                                     ListDetailPaneScaffoldRole.Detail,
                                                     DetailType.Modify.Edit(
-                                                        it.vaultType,
-                                                        it.itemId
+                                                        event.vaultType,
+                                                        event.itemId
                                                     )
                                                 )
                                             }

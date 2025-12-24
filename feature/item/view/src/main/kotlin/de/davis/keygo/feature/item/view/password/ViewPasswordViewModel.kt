@@ -1,4 +1,4 @@
-package de.davis.keygo.item.viewing.presentation.password
+package de.davis.keygo.feature.item.view.password
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.lifecycle.ViewModel
@@ -22,14 +22,14 @@ import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdatePassword
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
 import de.davis.keygo.feature.item.core.presentation.model.NavigationEvent
 import de.davis.keygo.feature.item.core.presentation.password.model.FieldType
+import de.davis.keygo.feature.item.view.domain.WebsiteHandler
+import de.davis.keygo.feature.item.view.domain.usecase.IsValidUrlUseCase
+import de.davis.keygo.feature.item.view.password.model.ModificationDialog
+import de.davis.keygo.feature.item.view.password.model.ViewPasswordState
+import de.davis.keygo.feature.item.view.password.model.ViewPasswordUiEvent
+import de.davis.keygo.feature.item.view.password.model.asObfuscatedString
 import de.davis.keygo.feature.totp.domain.model.TotpInformation
 import de.davis.keygo.feature.totp.domain.repository.TotpGenerator
-import de.davis.keygo.item.viewing.domain.WebsiteHandler
-import de.davis.keygo.item.viewing.domain.usecase.IsValidUrlUseCase
-import de.davis.keygo.item.viewing.presentation.password.model.ModificationDialog
-import de.davis.keygo.item.viewing.presentation.password.model.ViewPasswordState
-import de.davis.keygo.item.viewing.presentation.password.model.ViewPasswordUiEvent
-import de.davis.keygo.item.viewing.presentation.password.model.asObfuscatedString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -51,7 +51,7 @@ import kotlinx.coroutines.launch
 import org.koin.android.annotation.KoinViewModel
 
 @KoinViewModel
-class ViewPasswordViewModel(
+internal class ViewPasswordViewModel(
     private val passwordRepository: PasswordRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val updatePassword: CreateNewOrUpdatePasswordUseCase,

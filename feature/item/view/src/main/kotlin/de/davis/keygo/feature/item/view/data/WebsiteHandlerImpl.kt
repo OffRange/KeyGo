@@ -1,13 +1,13 @@
-package de.davis.keygo.item.viewing.data
+package de.davis.keygo.feature.item.view.data
 
 import android.content.Context
 import android.content.Intent
 import androidx.core.net.toUri
-import de.davis.keygo.item.viewing.domain.WebsiteHandler
+import de.davis.keygo.feature.item.view.domain.WebsiteHandler
 import org.koin.core.annotation.Single
 
 @Single
-class WebsiteHandlerImpl(
+internal class WebsiteHandlerImpl(
     private val context: Context
 ) : WebsiteHandler {
 

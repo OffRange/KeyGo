@@ -1,9 +1,9 @@
-package de.davis.keygo.item.viewing.domain.usecase
+package de.davis.keygo.feature.item.view.domain.usecase
 
 import org.koin.core.annotation.Single
 
 @Single
-class IsValidUrlUseCase {
+internal class IsValidUrlUseCase {
 
     operator fun invoke(url: String): Boolean = url.matches(URL_REGEX)
 

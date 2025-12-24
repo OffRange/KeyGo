@@ -1,4 +1,4 @@
-package de.davis.keygo.item.viewing.domain
+package de.davis.keygo.feature.item.view.domain
 
 interface WebsiteHandler {
 

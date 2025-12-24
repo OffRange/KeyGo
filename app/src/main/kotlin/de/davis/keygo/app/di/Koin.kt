@@ -10,6 +10,7 @@ import de.davis.keygo.dashboard.di.DashboardModule
 import de.davis.keygo.feature.credentials.di.FeatureCredentialsModule
 import de.davis.keygo.feature.item.core.di.FeatureItemCoreModule
 import de.davis.keygo.feature.item.create.di.FeatureItemCreateModule
+import de.davis.keygo.feature.item.view.di.FeatureItemViewModule
 import de.davis.keygo.feature.list_screen.di.FeatureListScreenModule
 import de.davis.keygo.feature.totp.di.FeatureTotpModule
 import de.davis.keygo.item.di.ItemModule
@@ -30,6 +31,7 @@ fun KoinApplication.init(androidContext: Context) {
         FeatureCredentialsModule.module,
         FeatureItemCoreModule.module,
         FeatureItemCreateModule.module,
+        FeatureItemViewModule.module,
         FeatureTotpModule.module,
         AuthModule.module,
         DashboardModule.module,

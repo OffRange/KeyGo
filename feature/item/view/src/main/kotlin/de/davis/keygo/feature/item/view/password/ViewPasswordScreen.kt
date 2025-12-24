@@ -1,4 +1,4 @@
-package de.davis.keygo.item.viewing.presentation.password
+package de.davis.keygo.feature.item.view.password
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect

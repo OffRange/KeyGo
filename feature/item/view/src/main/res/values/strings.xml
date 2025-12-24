@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="add_totp">Add TOTP Secret</string>
+    <string name="add_username">Add Username</string>
+    <string name="add_domain">Add Domain</string>
+    <string name="add_note">Add Note</string>
+</resources>

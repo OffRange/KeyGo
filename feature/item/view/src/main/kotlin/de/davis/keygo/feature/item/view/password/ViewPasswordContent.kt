@@ -1,4 +1,4 @@
-package de.davis.keygo.item.viewing.presentation.password
+package de.davis.keygo.feature.item.view.password
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -61,7 +61,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import de.davis.keygo.R
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.presentation.StrengthIndicator
@@ -71,12 +70,14 @@ import de.davis.keygo.feature.item.core.presentation.component.CopyToClipboardBu
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.password.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.transformation.TrimTransformation
+import de.davis.keygo.feature.item.view.R
+import de.davis.keygo.feature.item.view.password.model.ModificationDialog
+import de.davis.keygo.feature.item.view.password.model.ObfuscatedString
+import de.davis.keygo.feature.item.view.password.model.ViewPasswordState
+import de.davis.keygo.feature.item.view.password.model.ViewPasswordUiEvent
 import de.davis.keygo.feature.totp.domain.model.TotpInformation
-import de.davis.keygo.item.viewing.presentation.password.model.ModificationDialog
-import de.davis.keygo.item.viewing.presentation.password.model.ObfuscatedString
-import de.davis.keygo.item.viewing.presentation.password.model.ViewPasswordState
-import de.davis.keygo.item.viewing.presentation.password.model.ViewPasswordUiEvent
 import de.davis.keygo.core.item.R as CoreItemR
+import de.davis.keygo.core.ui.R as CoreUiR
 import de.davis.keygo.feature.item.core.R as ItemCoreR
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
@@ -302,7 +303,7 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                     TextButton(
                         onClick = { onEvent(ViewPasswordUiEvent.OnSubmitModification) }
                     ) {
-                        Text(text = stringResource(R.string.add))
+                        Text(text = stringResource(CoreUiR.string.add))
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -313,7 +314,7 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                     )
                 },
                 title = {
-                    Text(text = stringResource(R.string.add))
+                    Text(text = stringResource(CoreUiR.string.add))
                 },
                 text = {
                     KeyGoFormField(
