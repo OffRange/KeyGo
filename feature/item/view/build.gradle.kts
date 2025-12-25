@@ -65,7 +65,7 @@ dependencies {
     implementation(projects.core.ui)
     implementation(projects.core.item)
     implementation(projects.core.security)
-    implementation(projects.feature.item.core)
+    api(projects.feature.item.core)
     implementation(projects.feature.totp)
 
     // Koin DI
