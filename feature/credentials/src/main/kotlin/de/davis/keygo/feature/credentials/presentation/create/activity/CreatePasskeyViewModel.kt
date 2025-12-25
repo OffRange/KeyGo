@@ -97,7 +97,7 @@ internal class CreatePasskeyViewModel(
         _event.trySend(CreatePasskeyEvent.ShowList)
     }
 
-    fun onItemClick(itemId: ItemId) {
+    fun onItemSelected(itemId: ItemId) {
         viewModelScope.launch {
             val registrationResponse =
                 registrationResponse ?: return@launch abort("Response was null")
@@ -124,6 +124,16 @@ internal class CreatePasskeyViewModel(
             passkeyRepository.createPasskey(passkey)
             _event.send(CreatePasskeyEvent.Finish(registrationResponse.responseJson))
         }
+    }
+
+    fun onItemClicked(itemId: ItemId) {
+        _event.trySend(
+            CreatePasskeyEvent.OpenConfirmationDialog(
+                itemId = itemId,
+                itemName = "N/A",
+                rp = registrationResponse?.rpId ?: "N/A"
+            )
+        )
     }
 
     private suspend fun abort(msg: String? = null) {

@@ -4,9 +4,19 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.credentials.CreatePublicKeyCredentialRequest
 import androidx.credentials.CreatePublicKeyCredentialResponse
 import androidx.credentials.exceptions.CreateCredentialUnknownException
@@ -21,6 +31,7 @@ import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
+import de.davis.keygo.feature.credentials.R
 import de.davis.keygo.feature.list_screen.presentation.ItemListScreen
 import de.davis.keygo.feature.list_screen.presentation.NoItemStrategy
 import de.davis.keygo.feature.list_screen.presentation.rememberItemListScreenSearchState
@@ -66,6 +77,10 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                     }
                 }
 
+                var confirmationEvent by rememberSaveable {
+                    mutableStateOf<CreatePasskeyEvent.OpenConfirmationDialog?>(null)
+                }
+
                 ObserveAsEvents(flow = viewModel.event) {
                     when (it) {
                         CreatePasskeyEvent.Abort -> cancel()
@@ -74,7 +89,48 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                         }
 
                         is CreatePasskeyEvent.Finish -> finishWithSuccess(it.responseJson)
+
+                        is CreatePasskeyEvent.OpenConfirmationDialog -> {
+                            confirmationEvent = it
+                        }
                     }
+                }
+
+                confirmationEvent?.let { event ->
+                    AlertDialog(
+                        onDismissRequest = { confirmationEvent = null },
+                        title = {
+                            Text(stringResource(R.string.link_passkey))
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    viewModel.onItemSelected(event.itemId)
+                                    confirmationEvent = null
+                                }
+                            ) {
+                                Text(stringResource(R.string.yes))
+                            }
+                        },
+                        text = {
+                            Text(
+                                stringResource(
+                                    R.string.link_passkey_confirmation_message,
+                                    event.rp
+                                )
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        dismissButton = {
+                            TextButton(
+                                onClick = {
+                                    confirmationEvent = null
+                                }
+                            ) {
+                                Text(stringResource(R.string.no))
+                            }
+                        }
+                    )
                 }
 
                 NavHost(
@@ -108,8 +164,8 @@ internal class CreatePasskeyActivity : FragmentActivity() {
             items = passwords,
             searchState = searchState,
             onDelete = { },
-            onItemClick = viewModel::onItemClick,
-            onSearchResultClick = viewModel::onItemClick,
+            onItemClick = viewModel::onItemClicked,
+            onSearchResultClick = viewModel::onItemSelected,
             onItemLongClick = { },
             onCreateItemRequest = { },
             enableSwipeToDelete = false,
