@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.item.core.domain.usecase
 
+import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.crypto.encryptSecretData
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.Password
@@ -50,7 +51,7 @@ class CreateNewOrUpdatePasswordUseCase(
         return errors
     }
 
-    suspend operator fun invoke(upsert: UpsertPassword): Result<Unit, Set<PasswordError>> =
+    suspend operator fun invoke(upsert: UpsertPassword): Result<ItemId, Set<PasswordError>> =
         coroutineScope {
             val errors = validate(upsert)
             if (errors.isNotEmpty())

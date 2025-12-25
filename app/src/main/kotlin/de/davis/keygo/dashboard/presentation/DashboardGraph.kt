@@ -176,17 +176,20 @@ fun NavGraphBuilder.dashboardGraph(
                                 ) {
                                     EditVaultItemScreen(
                                         detailPaneInformation = detailItem.asDetailPaneInformation(),
-                                        navigate = {
-                                            when (it) {
-                                                NavigationEvent.NavigateBack -> scope.launch {
-                                                    // We don't want to pop the detail pane entirely,
-                                                    // Just until the content changes
-                                                    listNavigator.navigateBack(
-                                                        BackNavigationBehavior.PopUntilContentChange
-                                                    )
-                                                }
-
-                                                is NavigationEvent.NavigateToEdit -> {}
+                                        onCreated = {
+                                            scope.launch {
+                                                // We don't want to pop the detail pane entirely,
+                                                // Just until the content changes
+                                                listNavigator.navigateBack(
+                                                    BackNavigationBehavior.PopUntilContentChange
+                                                )
+                                            }
+                                        },
+                                        navigateBack = {
+                                            scope.launch {
+                                                listNavigator.navigateBack(
+                                                    BackNavigationBehavior.PopUntilContentChange
+                                                )
                                             }
                                         }
                                     )

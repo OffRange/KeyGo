@@ -33,6 +33,7 @@ fun AutofillUi(
     navController: NavHostController,
     onItemSelected: (ItemId) -> Unit,
     onSaved: () -> Unit,
+    abort: () -> Unit,
     onAuthenticationSucceeded: () -> Unit,
     showBiometricPromptIfPossible: Boolean
 ) {
@@ -68,9 +69,8 @@ fun AutofillUi(
                 val destination = s.toRoute<SaveItemDestination>()
                 EditVaultItemScreen(
                     detailPaneInformation = destination.createRaw,
-                    navigate = {
-                        onSaved()
-                    }
+                    onCreated = { onSaved() },
+                    navigateBack = { abort() }
                 )
             }
         }

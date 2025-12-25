@@ -82,6 +82,7 @@ internal class AutofillActivity : FragmentActivity() {
                             navController = navController,
                             onItemSelected = { viewModel.onEvent(AutofillUiEvent.OnItemSelected(it)) },
                             onSaved = ::finishWithResult,
+                            abort = ::finishWithResult,
                             onAuthenticationSucceeded = {
                                 when (uiState.request) {
                                     is Request.JustAuthenticateWithPwd -> viewModel.onEvent(

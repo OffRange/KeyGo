@@ -27,7 +27,6 @@ import de.davis.keygo.feature.item.core.domain.model.set
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdatePasswordUseCase
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
-import de.davis.keygo.feature.item.core.presentation.model.NavigationEvent
 import de.davis.keygo.feature.item.core.presentation.password.model.FieldType
 import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.domain.PasswordGenerator
@@ -94,8 +93,8 @@ class PasswordViewModel(
             initialValue = _uiState.value
         )
 
-    private val navigationEventChannel = Channel<NavigationEvent>()
-    val navigationEvent = navigationEventChannel.receiveAsFlow()
+    private val itemCreatedEventChannel = Channel<ItemId?>()
+    val itemCreatedEvent = itemCreatedEventChannel.receiveAsFlow()
 
     private var itemId = ItemIdNone
     private var totpSecretInformation: TotpSecretInformation? = null
@@ -147,9 +146,9 @@ class PasswordViewModel(
         }.launchIn(viewModelScope)
     }
 
-    private fun navigateUp() {
+    private fun navigateUp(itemId: ItemId? = null) {
         viewModelScope.launch {
-            navigationEventChannel.send(NavigationEvent.NavigateBack)
+            itemCreatedEventChannel.send(itemId)
         }
     }
 
@@ -289,7 +288,7 @@ class PasswordViewModel(
                             )
                         }
                     ).onSuccess {
-                        navigateUp()
+                        navigateUp(it)
                     }.onFailure { failure ->
                         _uiState.update {
                             it.copy(

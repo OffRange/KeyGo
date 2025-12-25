@@ -1,25 +1,28 @@
 package de.davis.keygo.feature.item.create.presentation
 
 import androidx.compose.runtime.Composable
+import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
-import de.davis.keygo.feature.item.core.presentation.model.NavigationEvent
 import de.davis.keygo.feature.item.create.presentation.password.PasswordScreen
 
 @Composable
 fun EditVaultItemScreen(
     detailPaneInformation: DetailPaneInformation,
-    navigate: (NavigationEvent) -> Unit
+    onCreated: (ItemId) -> Unit,
+    navigateBack: () -> Unit
 ) {
     when (detailPaneInformation) {
         is DetailPaneInformation.Init -> ForInit(
             detailPaneInformation,
-            navigate
+            onCreated,
+            navigateBack
         )
 
         is DetailPaneInformation.CreateRaw -> ForRawItem(
             detailPaneInformation,
-            navigate
+            onCreated,
+            navigateBack
         )
     }
 }
@@ -27,22 +30,29 @@ fun EditVaultItemScreen(
 @Composable
 private fun ForInit(
     info: DetailPaneInformation.Init,
-    navigate: (NavigationEvent) -> Unit
+    onCreated: (ItemId) -> Unit,
+    navigateBack: () -> Unit
 ) {
     when (info.itemType) {
         VaultItemType.Password -> PasswordScreen(
             detailPaneInformation = info,
-            navigate = navigate
+            passwordCreated = onCreated,
+            navigateBack = navigateBack
         )
     }
 }
 
 @Composable
-private fun ForRawItem(item: DetailPaneInformation.CreateRaw, navigate: (NavigationEvent) -> Unit) {
+private fun ForRawItem(
+    item: DetailPaneInformation.CreateRaw,
+    onCreated: (ItemId) -> Unit,
+    navigateBack: () -> Unit
+) {
     when (item) {
         is DetailPaneInformation.CreateRaw.Password -> PasswordScreen(
             detailPaneInformation = item,
-            navigate = navigate
+            passwordCreated = onCreated,
+            navigateBack = navigateBack
         )
     }
 }
