@@ -32,6 +32,18 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+
+    flavorDimensions += listOf("store")
+    productFlavors {
+        create("playStore") {
+            dimension = "store"
+        }
+
+        create("fdroid") {
+            dimension = "store"
+        }
+    }
 }
 
 kotlin {
@@ -59,6 +71,7 @@ dependencies {
     implementation(projects.core.security)
     implementation(projects.core.item)
     implementation(projects.core.ui)
+    implementation(projects.feature.item.create)
     implementation(projects.feature.listScreen)
 
     // Koin DI

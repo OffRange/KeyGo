@@ -4,10 +4,17 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,6 +39,7 @@ import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.credentials.R
+import de.davis.keygo.feature.item.create.presentation.password.PasswordScreen
 import de.davis.keygo.feature.list_screen.presentation.ItemListScreen
 import de.davis.keygo.feature.list_screen.presentation.NoItemStrategy
 import de.davis.keygo.feature.list_screen.presentation.rememberItemListScreenSearchState
@@ -41,6 +49,9 @@ import org.koin.androidx.viewmodel.ext.android.viewModel
 
 @Serializable
 private data object ListDest
+
+@Serializable
+private data object CreateItem
 
 internal class CreatePasskeyActivity : FragmentActivity() {
 
@@ -144,6 +155,18 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                     composable<ListDest> {
                         PasskeyItemListScreen(
                             viewModel = viewModel,
+                            onCreateClicked = {
+                                navController.navigate(CreateItem)
+                            }
+                        )
+                    }
+
+                    composable<CreateItem> {
+                        PasswordScreen(
+                            passwordCreated = {
+                                viewModel.onItemSelected(it)
+                            },
+                            navigateBack = { cancel("User cancelled passkey creation") }
                         )
                     }
                 }
@@ -153,25 +176,41 @@ internal class CreatePasskeyActivity : FragmentActivity() {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    private fun PasskeyItemListScreen(viewModel: CreatePasskeyViewModel) {
+    private fun PasskeyItemListScreen(
+        viewModel: CreatePasskeyViewModel,
+        onCreateClicked: () -> Unit
+    ) {
         val passwords by viewModel.listItemState.collectAsStateWithLifecycle()
         val searchState = rememberItemListScreenSearchState(
             searcher = viewModel::searcher,
             onQuerySubmitted = viewModel::onSearchSubmit,
         )
 
-        ItemListScreen(
-            items = passwords,
-            searchState = searchState,
-            onDelete = { },
-            onItemClick = viewModel::onItemClicked,
-            onSearchResultClick = viewModel::onItemSelected,
-            onItemLongClick = { },
-            onCreateItemRequest = { },
-            enableSwipeToDelete = false,
-            notFoundStrategy = NoItemStrategy.ShowMessage,
-            dockedSearchResults = false,
-        )
+        Scaffold(
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = onCreateClicked
+                ) {
+                    Icon(imageVector = Icons.Default.Add, contentDescription = null)
+                }
+            }
+        ) { innerPadding ->
+            ItemListScreen(
+                items = passwords,
+                searchState = searchState,
+                onDelete = { },
+                onItemClick = viewModel::onItemClicked,
+                onSearchResultClick = viewModel::onItemSelected,
+                onItemLongClick = { },
+                onCreateItemRequest = { },
+                enableSwipeToDelete = false,
+                modifier = Modifier
+                    .consumeWindowInsets(innerPadding)
+                    .padding(innerPadding),
+                notFoundStrategy = NoItemStrategy.ShowMessage,
+                dockedSearchResults = false,
+            )
+        }
     }
 
     private fun finishWithSuccess(responseJson: String) {
