@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package de.davis.keygo.core.identity.data.local.model;
+option java_multiple_files = true;
+
+message ProtoBiometricKeyData {
+  bytes key = 1;
+  bytes keyIV = 2;
+}

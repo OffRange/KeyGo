@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package de.davis.keygo.core.identity.data.local.model;
+option java_multiple_files = true;
+
+message ProtoPasswordKeyData {
+  bytes key = 1;
+  bytes keyIV = 2;
+  bytes salt = 3;
+}
