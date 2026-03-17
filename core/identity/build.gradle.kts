@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.google.ksp)
     alias(libs.plugins.google.protobuf)
+    alias(libs.plugins.kotlin.compose)
 }
 
 android {
@@ -41,12 +42,20 @@ kotlin {
 }
 
 dependencies {
-    implementation(projects.core.util)
+    implementation(libs.androidx.core.ktx)
+
+    implementation(projects.core.security)
 
     // Datastore
     implementation(libs.androidx.datastore)
     implementation(libs.google.protobuf.kotlin.lite)
 
+    // Jetpack Compose
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.material3)
+
+    implementation(libs.argon2kt)
+    
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))
     implementation(project.dependencies.platform(libs.koin.annotations.bom))

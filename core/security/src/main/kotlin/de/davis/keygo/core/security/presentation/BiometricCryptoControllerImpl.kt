@@ -33,16 +33,15 @@ internal class BiometricCryptoControllerImpl(
         BiometricManager.from(activity)
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    override suspend fun requestWrap(
+    override suspend fun requestCipher(
         keyId: KeyId,
-        key: Key,
-        policy: BiometricPolicy
-    ): Result<CiphertextData, BiometricAuthError> = request(
+        mode: CryptographicMode,
+        policy: BiometricPolicy,
+    ): Result<Cipher, BiometricAuthError> = request(
         keyId = keyId,
         policy = policy,
-        mode = CryptographicMode.Wrap
-    ) { CiphertextData(it.wrap(key), it.iv) }
+        mode = mode
+    ) { it }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override suspend fun requestUnwrap(

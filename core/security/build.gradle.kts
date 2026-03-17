@@ -53,7 +53,7 @@ dependencies {
 
     implementation(libs.androidx.biometric)
 
-    implementation(projects.core.util)
+    api(projects.core.util)
 
 
     // Koin DI
@@ -62,7 +62,7 @@ dependencies {
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.annotations)
     ksp(libs.koin.ksp.compiler)
-    
+
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
 

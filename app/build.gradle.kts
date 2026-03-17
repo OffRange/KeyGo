@@ -84,6 +84,7 @@ dependencies {
     ksp(libs.koin.ksp.compiler)
 
     implementation(projects.core.item)
+    implementation(projects.core.identity)
     implementation(projects.feature.listScreen)
     implementation(projects.feature.credentials)
     implementation(projects.feature.item.core)
