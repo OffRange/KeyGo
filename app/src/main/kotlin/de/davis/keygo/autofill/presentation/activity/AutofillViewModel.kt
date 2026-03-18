@@ -1,15 +1,15 @@
 package de.davis.keygo.autofill.presentation.activity
 
 import android.util.Patterns
-import androidx.biometric.BiometricPrompt
 import androidx.core.util.PatternsCompat
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import de.davis.keygo.R
 import de.davis.keygo.autofill.domain.usecase.AddRegistrableDomainsToPasswordUseCase
 import de.davis.keygo.autofill.domain.usecase.DoesItemHaveDomainReferencesUseCase
 import de.davis.keygo.autofill.domain.usecase.IsAppLinkedToWebsiteUseCase
 import de.davis.keygo.autofill.presentation.AutofillDatasetProvider
+import de.davis.keygo.autofill.presentation.activity.model.AutofillBiometricRequest
 import de.davis.keygo.autofill.presentation.model.AssociationDialogVisibility
 import de.davis.keygo.autofill.presentation.model.AutofillEvent
 import de.davis.keygo.autofill.presentation.model.AutofillUiEvent
@@ -23,18 +23,11 @@ import de.davis.keygo.autofill.presentation.model.Request
 import de.davis.keygo.autofill.presentation.model.RequestData
 import de.davis.keygo.autofill.presentation.model.SaveRequestData
 import de.davis.keygo.autofill.presentation.model.SuspicionDialogVisibility
-import de.davis.keygo.core.domain.usecase.HasValidAccessUseCase
-import de.davis.keygo.core.identity.biometric.domain.usecase.GetBiometricCryptoSetupAvailabilityUseCase
-import de.davis.keygo.core.identity.biometric.domain.usecase.GetBiometricHardwareAvailabilityUseCase
-import de.davis.keygo.core.identity.biometric.domain.usecase.PrepareBiometricCipherUseCase
-import de.davis.keygo.core.identity.biometric.domain.usecase.UnlockWithBiometricsUseCase
-import de.davis.keygo.core.identity.biometric.presentation.BiometricViewModel
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.crypto.decryptSecretData
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.domain.repository.VaultItemRepository
-import de.davis.keygo.core.presentation.UIText
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.totp.domain.repository.TotpGenerator
@@ -46,8 +39,6 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.android.annotation.KoinViewModel
-import de.davis.keygo.core.item.R as CoreItemR
-
 
 @KoinViewModel
 internal class AutofillViewModel(
@@ -60,22 +51,13 @@ internal class AutofillViewModel(
     private val addRegistrableDomainToPassword: AddRegistrableDomainsToPasswordUseCase,
     private val isAppLinkedToWebsite: IsAppLinkedToWebsiteUseCase,
     private val totpGenerator: TotpGenerator,
-
-    getBiometricCryptoSetupAvailability: GetBiometricCryptoSetupAvailabilityUseCase,
-    getBiometricHardwareAvailability: GetBiometricHardwareAvailabilityUseCase,
-    hasValidAccess: HasValidAccessUseCase,
-    prepareBiometricCipher: PrepareBiometricCipherUseCase,
-    unlockWithBiometrics: UnlockWithBiometricsUseCase,
-) : BiometricViewModel(
-    getBiometricCryptoSetupAvailability,
-    getBiometricHardwareAvailability,
-    hasValidAccess,
-    prepareBiometricCipher,
-    unlockWithBiometrics
-) {
+) : ViewModel() {
 
     private val requestData = savedStateHandle.get<RequestData>(KEY_AUTOFILL_INFORMATION)
         ?: throw IllegalArgumentException("Extraction must not be null")
+
+    private val biometricChannel = Channel<AutofillBiometricRequest>()
+    val biometricFlow = biometricChannel.receiveAsFlow()
 
     private val eventChannel = Channel<AutofillEvent>()
     val events = eventChannel.receiveAsFlow()
@@ -152,27 +134,16 @@ internal class AutofillViewModel(
         val itemName = vaultItemRepository.getItemName(suggestionInfo.vaultId)
             ?: throw IllegalArgumentException("Name for vaultId=${suggestionInfo.vaultId} not found")
 
-        requestBiometricAuthentication(
-            title = UIText.ResourceString(R.string.unlock_item, itemName),
-            negativeButton = UIText.ResourceString(CoreItemR.string.password)
-        )
+        biometricChannel.send(AutofillBiometricRequest.UnlockItem(itemName))
     }
 
-    override fun onBiometricFailed(errorCode: Int, errString: String) {
-        super.onBiometricFailed(errorCode, errString)
-        if (errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
-            viewModelScope.launch {
-                eventChannel.send(AutofillEvent.Abort)
-            }
-            return
-        }
-
+    fun onBiometricLoginFailed() {
         viewModelScope.launch {
             _uiState.update { it.copy(request = Request.JustAuthenticateWithPwd) }
         }
     }
 
-    override fun onUnlocked() {
+    fun onBiometricLoginSucceeded() {
         viewModelScope.launch {
             if (requestData is FillRequestData.Suggestion) {
                 sendFillEvent(requestData.vaultId)

@@ -21,7 +21,9 @@ internal class BiometricUnlockAdapterImpl(
     private val wrappedKeyRepository: WrappedKeyRepository
 ) : BiometricUnlockAdapter {
 
-    override suspend fun BiometricCryptoController.requestUnlockVault(): Result<Unit, UnlockError> {
+    override suspend fun BiometricCryptoController.requestUnlockVault(
+        policy: BiometricPolicy
+    ): Result<Unit, UnlockError> {
         val wrappedKey = wrappedKeyRepository.getBiometricWrappedKey().getOrNull()
             ?: return Result.Failure(UnlockError.WrappedKeyNotFound)
 
@@ -31,7 +33,7 @@ internal class BiometricUnlockAdapterImpl(
                 bytes = wrappedKey.key,
                 iv = wrappedKey.keyIV
             ),
-            policy = BiometricPolicy.Default
+            policy = policy
         ).getOrNull() ?: return Result.Failure(UnlockError.UnwrappingFailed)
 
         session.startSession(result.asAesKey())

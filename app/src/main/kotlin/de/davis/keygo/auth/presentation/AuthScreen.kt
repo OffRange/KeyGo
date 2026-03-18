@@ -3,9 +3,12 @@ package de.davis.keygo.auth.presentation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import de.davis.keygo.core.identity.biometric.presentation.BiometricPromptSupport
-import de.davis.keygo.core.identity.biometric.presentation.LocalBiometricManager
-import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
+import de.davis.keygo.auth.presentation.model.BiometricRequest
+import de.davis.keygo.core.identity.presentation.rememberBiometricUnlockAdapter
+import de.davis.keygo.core.identity.presentation.useAdapter
+import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
+import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import org.koin.androidx.compose.koinViewModel
 
@@ -18,18 +21,30 @@ fun AuthScreen(onSuccess: () -> Unit) {
         onSuccess()
     }
 
-    BiometricPromptSupport {
-        val biometricManager = LocalBiometricManager.current
+    val biometricCryptoController = rememberBiometricCryptoController()
+    val biometricUnlockAdapter = rememberBiometricUnlockAdapter()
 
-        ObserveAsEvents(viewModel.biometricRequests) {
-            when (it) {
-                is BiometricRequest.Class3 -> {
-                    val result = biometricManager.authenticate(it)
-                    viewModel.onBiometricResult(result)
+
+    ObserveAsEvents(viewModel.biometricFlow) { request ->
+        when (request) {
+            is BiometricRequest.CreateAccess -> {
+                biometricCryptoController.requestCipher(
+                    keyId = KeyId.BiometricVaultKek,
+                    mode = request.cryptoMode
+                ).onSuccess {
+                    viewModel.createAccessWithUnwrappingCipher(request, it)
+                } // TODO: handle errors
+            }
+
+            BiometricRequest.Login -> {
+                biometricUnlockAdapter.useAdapter {
+                    biometricCryptoController.requestUnlockVault()
+                }.onSuccess {
+                    onSuccess()
                 }
             }
         }
 
-        AuthContent(state = state, onEvent = viewModel::onEvent)
     }
+    AuthContent(state = state, onEvent = viewModel::onEvent)
 }

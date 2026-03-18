@@ -3,26 +3,22 @@ package de.davis.keygo.auth.presentation
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
-import de.davis.keygo.auth.domain.usecase.CreateAccessUseCase
-import de.davis.keygo.auth.domain.usecase.UnlockWithPasswordUseCase
 import de.davis.keygo.auth.presentation.model.AuthState
 import de.davis.keygo.auth.presentation.model.AuthUIEvent
+import de.davis.keygo.auth.presentation.model.BiometricRequest
 import de.davis.keygo.auth.presentation.model.UIPasswordError
-import de.davis.keygo.core.domain.usecase.HasValidAccessUseCase
-import de.davis.keygo.core.identity.biometric.domain.model.BiometricAvailability
-import de.davis.keygo.core.identity.biometric.domain.model.BiometricEvent
-import de.davis.keygo.core.identity.biometric.domain.usecase.GetBiometricCryptoSetupAvailabilityUseCase
-import de.davis.keygo.core.identity.biometric.domain.usecase.GetBiometricHardwareAvailabilityUseCase
-import de.davis.keygo.core.identity.biometric.domain.usecase.PrepareBiometricCipherUseCase
-import de.davis.keygo.core.identity.biometric.domain.usecase.UnlockWithBiometricsUseCase
-import de.davis.keygo.core.identity.biometric.presentation.BiometricViewModel
-import de.davis.keygo.core.identity.common.domain.model.CryptographicMode
+import de.davis.keygo.core.identity.domain.repository.WrappedKeyRepository
+import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
+import de.davis.keygo.core.identity.domain.usecase.UnlockWithPasswordUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.presentation.model.RouteDestination
+import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
+import de.davis.keygo.core.util.isSuccess
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.migration.create_access.domain.usecase.ClearMainPasswordUseCase
@@ -45,33 +41,27 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.android.annotation.KoinViewModel
+import javax.crypto.Cipher
 import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
-class AuthViewModel(
+internal class AuthViewModel(
     savedStateHandle: SavedStateHandle,
-    getBiometricCryptoSetupAvailability: GetBiometricCryptoSetupAvailabilityUseCase,
-    getBiometricHardwareAvailability: GetBiometricHardwareAvailabilityUseCase,
-    hasValidAccess: HasValidAccessUseCase,
-    prepareBiometricCipher: PrepareBiometricCipherUseCase,
-    unlockWithBiometrics: UnlockWithBiometricsUseCase,
+    biometricAvailabilityRepository: BiometricAvailabilityRepository,
+    wrappedKeyRepository: WrappedKeyRepository,
 
     // ---- Migration ----
-    hasMainPassword: HasMainPasswordUseCase,
+    hasV1MainPassword: HasMainPasswordUseCase,
     private val validateMainPassword: ValidateMainPassword,
     private val clearMainPasswordUseCase: ClearMainPasswordUseCase,
     // -------------------
 
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
-    private val unlockWithPasswordUseCase: UnlockWithPasswordUseCase,
-    private val createAccess: CreateAccessUseCase
-) : BiometricViewModel(
-    getBiometricCryptoSetupAvailability,
-    getBiometricHardwareAvailability,
-    hasValidAccess,
-    prepareBiometricCipher,
-    unlockWithBiometrics
-) {
+    private val unlockWithPassword: UnlockWithPasswordUseCase,
+    private val createAllAccesses: CreateAccessUseCase,
+) : ViewModel() {
+    private val biometricChannel = Channel<BiometricRequest>()
+    val biometricFlow = biometricChannel.receiveAsFlow()
 
     private val authRoute = savedStateHandle.toRoute<RouteDestination.Auth>()
 
@@ -84,18 +74,16 @@ class AuthViewModel(
 
     init {
         viewModelScope.launch {
-            val hasAccess = hasValidAccess()
-            val hasAccessButShouldMigrate = if (!hasAccess) hasMainPassword()
+            val hasAccess = wrappedKeyRepository.getPasswordWrappedKey().isSuccess()
+            val hasAccessButShouldMigrate = if (!hasAccess) hasV1MainPassword()
             else false
 
-            val isBiometricHardwareAvailable =
-                getBiometricHardwareAvailability() == BiometricAvailability.Available
-            val isBiometricCryptoSetupAvailable = if (hasAccess)
-                getBiometricCryptoSetupAvailability() == BiometricAvailability.Available
-            else false
+            val isBiometricHardwareAvailable = biometricAvailabilityRepository.availability()
+            val isBiometricCryptoSetupAvailable =
+                hasAccess && wrappedKeyRepository.getBiometricWrappedKey().isSuccess()
 
             val biometricsUsable = isBiometricHardwareAvailable && isBiometricCryptoSetupAvailable
-            if (biometricsUsable && authRoute.showBiometricPromptIfPossible) requestBiometricAuthentication()
+            if (biometricsUsable && authRoute.showBiometricPromptIfPossible) requestBiometricLogin()
 
 
             _uiState.update {
@@ -185,7 +173,7 @@ class AuthViewModel(
 
     fun onEvent(event: AuthUIEvent) {
         when (event) {
-            is AuthUIEvent.RequestBiometricAuthentication -> if (uiState.value is AuthState.Login) requestBiometricAuthentication()
+            is AuthUIEvent.RequestBiometricAuthentication -> if (uiState.value is AuthState.Login) requestBiometricLogin()
 
             AuthUIEvent.Submit -> {
                 val state = _uiState.value
@@ -193,7 +181,7 @@ class AuthViewModel(
                 when (state) {
                     is AuthState.Login -> {
                         loading(setLoading = password.isNotBlank()) {
-                            unlockWithPasswordUseCase(
+                            unlockWithPassword(
                                 password = password
                             ).handleAuthenticationResult {
                                 state.copyDefaultState(passwordError = UIPasswordError.Incorrect)
@@ -248,27 +236,6 @@ class AuthViewModel(
                 }
             }
 
-            AuthUIEvent.BiometricError -> {}
-            AuthUIEvent.BiometricFailure -> {}
-            is AuthUIEvent.BiometricSuccess -> {
-                val cipher = event.result.cryptoObject?.cipher ?: return
-                loading {
-                    when (val state = uiState.value) {
-                        is AuthState.Migrating,
-                        is AuthState.CreateAccess -> {
-                            createAccess(
-                                password = state.passwordTextFieldState.text.toString(),
-                                biometricCipher = cipher
-                            ).handleAuthenticationResult()
-                        }
-
-                        is AuthState.Login -> {
-                            unlockWithBiometrics(cipher).handleAuthenticationResult()
-                        }
-                    }
-                }
-            }
-
             is AuthUIEvent.ToggleUseBiometrics -> {
                 _uiState.update {
                     if (it !is AuthState.BiometricAuthState) return@update it
@@ -284,13 +251,17 @@ class AuthViewModel(
     ) {
         if (!authState.biometricsAvailable || !authState.useBiometrics) {
             loading {
-                createAccess(password = password).handleAuthenticationResult()
+                createAllAccesses(password = password).handleAuthenticationResult()
             }
 
             return
         }
 
-        requestBiometricAuthentication(mode = CryptographicMode.Wrap, creatingAccess = true)
+        biometricChannel.trySend(BiometricRequest.CreateAccess(password))
+    }
+
+    private fun requestBiometricLogin() {
+        biometricChannel.trySend(BiometricRequest.Login)
     }
 
     private fun loading(
@@ -312,27 +283,16 @@ class AuthViewModel(
         }
     }
 
-    override fun onBiometricSucceeded(event: BiometricEvent.OnAuthenticationSucceeded) {
-        val cipher = event.cipher ?: return
+    fun createAccessWithUnwrappingCipher(
+        createAccessRequest: BiometricRequest.CreateAccess,
+        cipher: Cipher
+    ) {
         loading {
-            when (val state = uiState.value) {
-                is AuthState.Migrating,
-                is AuthState.CreateAccess -> {
-                    createAccess(
-                        password = state.passwordTextFieldState.text.toString(),
-                        biometricCipher = cipher
-                    ).handleAuthenticationResult()
-                }
-
-                is AuthState.Login -> {
-                    unlockWithBiometrics(cipher).handleAuthenticationResult()
-                }
-            }
+            createAllAccesses(
+                password = createAccessRequest.password,
+                biometricCipher = cipher
+            ).handleAuthenticationResult()
         }
-    }
-
-    override fun onUnlocked() {
-        // Won't be called, as we override the onBiometricSucceeded function
     }
 }
 

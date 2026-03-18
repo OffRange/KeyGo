@@ -17,7 +17,8 @@ import de.davis.keygo.autofill.presentation.dataset.getForm
 import de.davis.keygo.autofill.presentation.model.Form
 import de.davis.keygo.autofill.presentation.model.FormField
 import de.davis.keygo.autofill.presentation.model.SaveRequestData
-import de.davis.keygo.core.domain.usecase.HasValidAccessUseCase
+import de.davis.keygo.core.identity.domain.repository.WrappedKeyRepository
+import de.davis.keygo.core.util.isSuccess
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,7 +29,7 @@ class KeyGoAutofillService : AutofillService() {
 
     private val extractor by inject<Extractor>()
     private val datasetProvider by inject<AutofillDatasetProvider>()
-    private val hasValidAccess by inject<HasValidAccessUseCase>()
+    private val wrappedKeyRepository by inject<WrappedKeyRepository>()
 
     override fun onFillRequest(
         request: FillRequest,
@@ -41,7 +42,7 @@ class KeyGoAutofillService : AutofillService() {
         }
 
         val job = CoroutineScope(Dispatchers.IO + handler).launch {
-            if (!hasValidAccess()) {
+            if (!wrappedKeyRepository.getPasswordWrappedKey().isSuccess()) {
                 Log.w(TAG, "No valid access - not filling")
                 callback.onSuccess(null)
                 return@launch

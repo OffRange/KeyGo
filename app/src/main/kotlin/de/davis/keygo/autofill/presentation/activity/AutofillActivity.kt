@@ -19,11 +19,14 @@ import de.davis.keygo.autofill.presentation.model.AutofillUiEvent
 import de.davis.keygo.autofill.presentation.model.Request
 import de.davis.keygo.autofill.presentation.model.RequestData
 import de.davis.keygo.autofill.presentation.model.SuspicionDialogVisibility
-import de.davis.keygo.core.identity.biometric.presentation.BiometricPromptSupport
-import de.davis.keygo.core.identity.biometric.presentation.LocalBiometricManager
-import de.davis.keygo.core.identity.biometric.presentation.model.BiometricRequest
+import de.davis.keygo.core.identity.presentation.rememberBiometricUnlockAdapter
+import de.davis.keygo.core.identity.presentation.useAdapter
 import de.davis.keygo.core.presentation.model.RouteDestination
+import de.davis.keygo.core.security.domain.model.BiometricPolicy
+import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
 import de.davis.keygo.core.ui.theme.KeyGoTheme
+import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import org.koin.androidx.compose.koinViewModel
 
@@ -46,77 +49,80 @@ internal class AutofillActivity : FragmentActivity() {
         setResult(RESULT_CANCELED)
         setContent {
             KeyGoTheme {
-                BiometricPromptSupport {
-                    val viewModel = koinViewModel<AutofillViewModel>()
-                    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-                    val dialogVisibility = uiState.associationDialogVisibility
-                    val suspicionDialogVisibility = uiState.suspicionDialogVisibility
+                val viewModel = koinViewModel<AutofillViewModel>()
+                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+                val dialogVisibility = uiState.associationDialogVisibility
+                val suspicionDialogVisibility = uiState.suspicionDialogVisibility
 
-                    val biometricManager = LocalBiometricManager.current
+                val biometricCryptoController = rememberBiometricCryptoController()
+                val biometricUnlockAdapter = rememberBiometricUnlockAdapter()
 
-                    ObserveAsEvents(viewModel.events) {
-                        when (it) {
-                            AutofillEvent.Abort -> cancel()
-                            is AutofillEvent.Fill -> finishWithResult(it.dataset)
-                        }
+                ObserveAsEvents(viewModel.events) {
+                    when (it) {
+                        AutofillEvent.Abort -> cancel()
+                        is AutofillEvent.Fill -> finishWithResult(it.dataset)
                     }
+                }
 
-                    // Request biometric prompt, while the background is transparent (shows the app
-                    // behind it)
-                    ObserveAsEvents(viewModel.biometricRequests) {
-                        when (it) {
-                            is BiometricRequest.Class3 -> {
-                                val result = biometricManager.authenticate(it)
-                                viewModel.onBiometricResult(result)
-                            }
-                        }
+                ObserveAsEvents(viewModel.biometricFlow) { request ->
+                    biometricUnlockAdapter.useAdapter {
+                        biometricCryptoController.requestUnlockVault(
+                            policy = BiometricPolicy(
+                                title = request.title,
+                                negativeButton = request.negativeButton
+                            )
+                        )
+                    }.onSuccess {
+                        viewModel.onBiometricLoginSucceeded()
+                    }.onFailure {
+                        viewModel.onBiometricLoginFailed()
                     }
+                }
 
-                    LaunchedEffect(Unit) {
-                        viewModel.start()
-                    }
+                LaunchedEffect(Unit) {
+                    viewModel.start()
+                }
 
-                    if (uiState.request !is Request.None) {
-                        val navController = rememberNavController()
-                        AutofillUi(
-                            navController = navController,
-                            onItemSelected = { viewModel.onEvent(AutofillUiEvent.OnItemSelected(it)) },
-                            onSaved = ::finishWithResult,
-                            abort = ::finishWithResult,
-                            onAuthenticationSucceeded = {
-                                when (uiState.request) {
-                                    is Request.JustAuthenticateWithPwd -> viewModel.onEvent(
-                                        AutofillUiEvent.OnAuthenticated
-                                    )
+                if (uiState.request !is Request.None) {
+                    val navController = rememberNavController()
+                    AutofillUi(
+                        navController = navController,
+                        onItemSelected = { viewModel.onEvent(AutofillUiEvent.OnItemSelected(it)) },
+                        onSaved = ::finishWithResult,
+                        abort = ::finishWithResult,
+                        onAuthenticationSucceeded = {
+                            when (uiState.request) {
+                                is Request.JustAuthenticateWithPwd -> viewModel.onEvent(
+                                    AutofillUiEvent.OnAuthenticated
+                                )
 
-                                    else -> {
-                                        navController.navigate(uiState.request.destination) {
-                                            popUpTo<RouteDestination.Auth> { inclusive = true }
-                                        }
+                                else -> {
+                                    navController.navigate(uiState.request.destination) {
+                                        popUpTo<RouteDestination.Auth> { inclusive = true }
                                     }
                                 }
-                            },
-                            showBiometricPromptIfPossible = uiState.request !is Request.JustAuthenticateWithPwd
-                        )
-                    }
-
-                    if (dialogVisibility is AssociationDialogVisibility.Visible)
-                        AssociationDialog(
-                            itemName = dialogVisibility.itemName,
-                            domain = dialogVisibility.domain,
-                            onDismissRequest = {},
-                            onConfirm = { viewModel.onEvent(AutofillUiEvent.OnAssociate) },
-                            onDismiss = { viewModel.onEvent(AutofillUiEvent.OnCancelAssociation) }
-                        )
-
-                    if (suspicionDialogVisibility is SuspicionDialogVisibility.Visible)
-                        SuspicionDialog(
-                            onContinue = { viewModel.onEvent(AutofillUiEvent.OnContinueInSuspicion) },
-                            onAbort = { viewModel.onEvent(AutofillUiEvent.OnAbortInSuspicion) },
-                            appPackageName = suspicionDialogVisibility.appPackageName,
-                            website = suspicionDialogVisibility.website
-                        )
+                            }
+                        },
+                        showBiometricPromptIfPossible = uiState.request !is Request.JustAuthenticateWithPwd
+                    )
                 }
+
+                if (dialogVisibility is AssociationDialogVisibility.Visible)
+                    AssociationDialog(
+                        itemName = dialogVisibility.itemName,
+                        domain = dialogVisibility.domain,
+                        onDismissRequest = {},
+                        onConfirm = { viewModel.onEvent(AutofillUiEvent.OnAssociate) },
+                        onDismiss = { viewModel.onEvent(AutofillUiEvent.OnCancelAssociation) }
+                    )
+
+                if (suspicionDialogVisibility is SuspicionDialogVisibility.Visible)
+                    SuspicionDialog(
+                        onContinue = { viewModel.onEvent(AutofillUiEvent.OnContinueInSuspicion) },
+                        onAbort = { viewModel.onEvent(AutofillUiEvent.OnAbortInSuspicion) },
+                        appPackageName = suspicionDialogVisibility.appPackageName,
+                        website = suspicionDialogVisibility.website
+                    )
             }
         }
     }

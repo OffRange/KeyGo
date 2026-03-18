@@ -1,12 +1,15 @@
 package de.davis.keygo.core.identity.presentation
 
 import de.davis.keygo.core.identity.domain.model.UnlockError
+import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.presentation.BiometricCryptoController
 import de.davis.keygo.core.util.Result
 
 interface BiometricUnlockAdapter {
 
-    suspend fun BiometricCryptoController.requestUnlockVault(): Result<Unit, UnlockError>
+    suspend fun BiometricCryptoController.requestUnlockVault(
+        policy: BiometricPolicy = BiometricPolicy.Default
+    ): Result<Unit, UnlockError>
 }
 
 inline fun BiometricUnlockAdapter.useAdapter(
