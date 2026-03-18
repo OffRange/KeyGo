@@ -1,4 +1,4 @@
-package de.davis.keygo.totp.data.qr
+package de.davis.keygo.feature.totp.data.qr
 
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
