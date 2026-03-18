@@ -1,15 +1,19 @@
 package de.davis.keygo.app
 
 import android.app.Application
-import de.davis.keygo.app.di.init
-import org.koin.core.context.startKoin
+import org.koin.android.ext.koin.androidContext
+import org.koin.android.ext.koin.androidLogger
+import org.koin.core.annotation.KoinApplication
+import org.koin.plugin.module.dsl.startKoin
 
+@KoinApplication
 class KeyGoApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        startKoin {
-            init(this@KeyGoApplication)
+        startKoin<KeyGoApplication> {
+            androidLogger()
+            androidContext(this@KeyGoApplication)
         }
     }
 }

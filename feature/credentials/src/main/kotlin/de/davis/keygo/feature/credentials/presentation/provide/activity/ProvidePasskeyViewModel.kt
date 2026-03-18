@@ -12,7 +12,7 @@ import de.davis.keygo.rust.passkey.PasskeyManager
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import org.koin.android.annotation.KoinViewModel
+import org.koin.core.annotation.KoinViewModel
 
 @KoinViewModel
 internal class ProvidePasskeyViewModel(

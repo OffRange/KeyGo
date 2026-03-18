@@ -5,11 +5,13 @@ import androidx.datastore.dataStore
 import de.davis.keygo.migration.create_access.data.local.datasource.datastore.MainPasswordSerializer
 import de.davis.keygo.migration.create_access.di.annotation.MainPasswordQualifier
 import org.koin.core.annotation.ComponentScan
+import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Module
 import org.koin.core.annotation.Single
 
 @Module
-@ComponentScan("de.davis.keygo.migration.create_access.**")
+@Configuration
+@ComponentScan("de.davis.keygo.migration.create_access")
 object MigrationCreateAccessModule {
 
     private const val DATA_STORE_NAME = "main-password.db"

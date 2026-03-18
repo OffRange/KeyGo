@@ -12,6 +12,7 @@ okhttp = "5.1.0"
 zxingBarcodeScanning = "3.5.3"
 kotlin = "2.2.20"
 kotlinSerializationJson = "1.9.0"
+kotlin = "2.3.20"
 collectionsImmutable = "0.4.0"
 coreKtx = "1.17.0"
 junitVersion = "1.3.0"
@@ -28,6 +29,9 @@ ksp = "2.2.20-2.0.2"
 datastore = "1.1.7"
 protobuf = "0.9.5"
 protoc = "4.32.1"
+koinBOM = "4.2.0"
+koin-plugin = "0.4.1"
+ksp = "2.3.6"
 coroutinesTest = "1.10.2"
 bcrypt = "0.10.2"
 biometric = "1.4.0-alpha04"
@@ -75,10 +79,8 @@ androidx-camera-compose = { module = "androidx.camera:camera-compose", version.r
 androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camera" }
 
 koin-bom = { group = "io.insert-koin", name = "koin-bom", version.ref = "koinBOM" }
-koin-annotations-bom = { group = "io.insert-koin", name = "koin-annotations-bom", version.ref = "koinAnnotationsBOM" }
 koin-core = { group = "io.insert-koin", name = "koin-core" }
 koin-annotations = { group = "io.insert-koin", name = "koin-annotations" }
-koin-ksp-compiler = { group = "io.insert-koin", name = "koin-ksp-compiler", version.ref = "koinAnnotationsBOM" }
 koin-androidx-compose = { group = "io.insert-koin", name = "koin-androidx-compose" }
 
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
@@ -113,6 +115,7 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+koin-compiler = { id = "io.insert-koin.compiler.plugin", version.ref = "koin-plugin" }
 git-semantic-versioning = { id = "io.github.offrange.git-semantic-versioning", version.ref = "semver" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 

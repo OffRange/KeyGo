@@ -37,7 +37,7 @@ internal class KeyGoCredentialProviderService : CredentialProviderService() {
 
     private val credentialCreator by inject<CredentialCreator>()
     private val passkeyProvider by inject<CredentialProvider<BeginGetPublicKeyCredentialOption>>(
-        qualifier = named<PasskeyQualifier>()
+        named(PasskeyQualifier::class.simpleName.orEmpty())
     )
 
     override fun onBeginCreateCredentialRequest(

@@ -11,5 +11,5 @@ internal class CryptographicScopeProviderImpl(
 ) : CryptographicScopeProvider {
 
     override suspend fun <R> scope(block: suspend CryptographicScope.() -> R): R =
-        CryptographicScopeImpl(session.scope.get()).block()
+        CryptographicScopeImpl(session.dek).block()
 }

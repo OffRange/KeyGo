@@ -4,11 +4,11 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.google.ksp)
+    alias(libs.plugins.koin.compiler)
 }
 
 android {
-    namespace = "de.davis.keygo.feature.credentials"
+    namespace = "de.davis.keygo.core.util"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
@@ -54,10 +54,8 @@ dependencies {
 
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))
-    implementation(project.dependencies.platform(libs.koin.annotations.bom))
     implementation(libs.koin.annotations)
     implementation(libs.koin.core)
-    ksp(libs.koin.ksp.compiler)
 
     testImplementation(libs.kotlin.test)
 }

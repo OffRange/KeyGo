@@ -8,8 +8,8 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.koin.compiler)
     alias(libs.plugins.git.semantic.versioning)
-    alias(libs.plugins.google.ksp)
     alias(libs.plugins.google.protobuf)
 }
 
@@ -78,21 +78,19 @@ dependencies {
 
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))
-    implementation(project.dependencies.platform(libs.koin.annotations.bom))
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.annotations)
-    ksp(libs.koin.ksp.compiler)
 
     implementation(projects.core.item)
     implementation(projects.core.identity)
+    implementation(projects.core.security)
+    implementation(projects.core.ui)
     implementation(projects.feature.listScreen)
     implementation(projects.feature.credentials)
     implementation(projects.feature.item.core)
     implementation(projects.feature.item.create)
     implementation(projects.feature.item.view)
     implementation(projects.feature.totp)
-    implementation(projects.core.security)
-    implementation(projects.core.ui)
 
     // Datastore
     implementation(libs.androidx.datastore)
@@ -152,4 +150,8 @@ protobuf {
 composeCompiler {
     reportsDestination = layout.buildDirectory.dir("compose_compiler")
     metricsDestination = layout.buildDirectory.dir("compose_compiler")
+}
+
+koinCompiler {
+    userLogs = true
 }

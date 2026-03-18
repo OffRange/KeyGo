@@ -14,8 +14,8 @@ import de.davis.keygo.core.item.data.local.entity.DomainInfoEntity
 import de.davis.keygo.core.item.data.local.entity.PasskeyEntity
 import de.davis.keygo.core.item.data.local.entity.PasswordEntity
 import de.davis.keygo.core.item.data.local.entity.VaultItemEntity
-import org.koin.core.module.dsl.singleOf
-import org.koin.dsl.module
+import org.koin.core.annotation.Module
+import org.koin.core.annotation.Single
 
 @Database(
     entities = [
@@ -27,27 +27,37 @@ import org.koin.dsl.module
     version = 1
 )
 @TypeConverters(SecretDataConverter::class)
-abstract class ItemDatabase : RoomDatabase() {
+internal abstract class ItemDatabase : RoomDatabase() {
 
-    internal abstract fun vaultDao(): VaultDao
-    internal abstract fun passwordDao(): PasswordDao
-    internal abstract fun domainInfoDao(): DomainInfoDao
-    internal abstract fun passkeyDao(): PasskeyDao
+    abstract fun vaultDao(): VaultDao
 
-    companion object {
-        val koinModule = module {
-            single { create(get()) }
+    abstract fun passwordDao(): PasswordDao
 
-            singleOf(ItemDatabase::vaultDao)
-            singleOf(ItemDatabase::passwordDao)
-            singleOf(ItemDatabase::domainInfoDao)
-            singleOf(ItemDatabase::passkeyDao)
-        }
+    abstract fun domainInfoDao(): DomainInfoDao
 
-        private fun create(applicationContext: Context) = Room.databaseBuilder(
-            applicationContext,
+    abstract fun passkeyDao(): PasskeyDao
+}
+
+@Module
+internal class DatabaseModule {
+
+    @Single
+    fun provideDatabase(context: Context): ItemDatabase =
+        Room.databaseBuilder(
+            context,
             ItemDatabase::class.java,
-            name = "secure_element_database"
+            "secure_element_database"
         ).fallbackToDestructiveMigration(false).build()
-    }
+
+    @Single
+    fun provideVaultDao(db: ItemDatabase) = db.vaultDao()
+
+    @Single
+    fun providePasswordDao(db: ItemDatabase) = db.passwordDao()
+
+    @Single
+    fun provideDomainInfoDao(db: ItemDatabase) = db.domainInfoDao()
+
+    @Single
+    fun providePasskeyDao(db: ItemDatabase) = db.passkeyDao()
 }

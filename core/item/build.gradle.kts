@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.androidx.room)
     alias(libs.plugins.google.ksp)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.koin.compiler)
 }
 
 android {
@@ -48,7 +49,6 @@ dependencies {
     implementation(projects.automation)
     ksp(projects.automationProcessor)
 
-    api(projects.core.util)
     implementation(projects.core.security)
 
     implementation(libs.gosimple.nbvcxz)
@@ -60,10 +60,8 @@ dependencies {
 
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))
-    implementation(project.dependencies.platform(libs.koin.annotations.bom))
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.annotations)
-    ksp(libs.koin.ksp.compiler)
 }
 
 room {

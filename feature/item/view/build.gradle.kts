@@ -4,7 +4,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.google.ksp)
+    alias(libs.plugins.koin.compiler)
 }
 
 android {
@@ -65,15 +65,13 @@ dependencies {
     implementation(projects.core.ui)
     implementation(projects.core.item)
     implementation(projects.core.security)
-    api(projects.feature.item.core)
+    implementation(projects.feature.item.core)
     implementation(projects.feature.totp)
 
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))
-    implementation(project.dependencies.platform(libs.koin.annotations.bom))
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.annotations)
-    ksp(libs.koin.ksp.compiler)
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
