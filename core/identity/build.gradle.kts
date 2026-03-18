@@ -62,6 +62,10 @@ dependencies {
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.annotations)
     ksp(libs.koin.ksp.compiler)
+
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.io.mockk)
 }
 
 protobuf {

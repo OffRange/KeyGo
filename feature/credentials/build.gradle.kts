@@ -81,6 +81,10 @@ dependencies {
     implementation(libs.koin.annotations)
     ksp(libs.koin.ksp.compiler)
 
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.io.mockk)
+
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
