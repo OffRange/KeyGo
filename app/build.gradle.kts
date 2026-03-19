@@ -84,12 +84,14 @@ dependencies {
     implementation(projects.core.identity)
     implementation(projects.core.security)
     implementation(projects.core.ui)
+    implementation(projects.feature.auth)
     implementation(projects.feature.listScreen)
     implementation(projects.feature.credentials)
     implementation(projects.feature.item.core)
     implementation(projects.feature.item.create)
     implementation(projects.feature.item.view)
     implementation(projects.feature.totp)
+    implementation(projects.migrationCreateAccess)
 
     // Datastore
     implementation(libs.androidx.datastore)
@@ -98,8 +100,6 @@ dependencies {
     implementation(libs.argon2kt)
 
     implementation(libs.androidx.autofill)
-
-    implementation(projects.migrationCreateAccess)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

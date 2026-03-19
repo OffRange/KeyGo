@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="confirm_password">Confirm Password</string>
+    <string name="blank_password">You must set a password</string>
+    <string name="incorrect_password">Password is incorrect!</string>
+    <string name="password_does_not_match">Password does not match</string>
+    <string name="authenticate">Authenticate</string>
+    <string name="unlock_item">Unlock %s</string>
+    <string name="create_access">Create your access</string>
+
+    <string name="use_biometrics">Use biometrics</string>
+
+    <string name="migrate_to_access">Migrate to access</string>
+    <string name="authenticate_to_access">Authenticate to access</string>
+    <string name="create_access_access">Create an access to</string>
+    <string name="your_vault">your vault</string>
+
+    <string name="migrating">Migrating</string>
+    <string name="migrate">Migrate</string>
+    <string name="migrate_to_access_description">To ensure the integrity of your data, please migrate your access credentials. You will be prompted to enter your master password.</string>
+
+    <string name="request_biometric_authentication_content_description">Request biometric authentication</string>
+</resources>

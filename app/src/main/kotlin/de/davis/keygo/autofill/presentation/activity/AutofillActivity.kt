@@ -21,13 +21,13 @@ import de.davis.keygo.autofill.presentation.model.RequestData
 import de.davis.keygo.autofill.presentation.model.SuspicionDialogVisibility
 import de.davis.keygo.core.identity.presentation.rememberBiometricUnlockAdapter
 import de.davis.keygo.core.identity.presentation.useAdapter
-import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
+import de.davis.keygo.feature.auth.presentation.AuthRoute
 import org.koin.androidx.compose.koinViewModel
 
 
@@ -98,7 +98,7 @@ internal class AutofillActivity : FragmentActivity() {
 
                                 else -> {
                                     navController.navigate(uiState.request.destination) {
-                                        popUpTo<RouteDestination.Auth> { inclusive = true }
+                                        popUpTo<AuthRoute> { inclusive = true }
                                     }
                                 }
                             }

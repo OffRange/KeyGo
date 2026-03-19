@@ -14,12 +14,12 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
-import de.davis.keygo.auth.presentation.authGraph
 import de.davis.keygo.autofill.presentation.model.SaveItemDestination
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.dashboard.presentation.DetailType
 import de.davis.keygo.dashboard.presentation.dashboardGraph
+import de.davis.keygo.feature.auth.presentation.AuthRoute
+import de.davis.keygo.feature.auth.presentation.authGraph
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.item.create.presentation.EditVaultItemScreen
 import kotlinx.serialization.KSerializer
@@ -42,7 +42,7 @@ fun AutofillUi(
 
         NavHost(
             navController = navController,
-            startDestination = RouteDestination.Auth(showBiometricPromptIfPossible = showBiometricPromptIfPossible),
+            startDestination = AuthRoute(showBiometricPromptIfPossible = showBiometricPromptIfPossible),
             modifier = Modifier.Companion
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)

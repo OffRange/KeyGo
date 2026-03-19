@@ -1,4 +1,4 @@
-package de.davis.keygo.auth.presentation.model
+package de.davis.keygo.feature.auth.presentation.model
 
 import androidx.compose.foundation.text.input.TextFieldState
 import de.davis.keygo.core.item.domain.model.Password

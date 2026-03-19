@@ -1,6 +1,6 @@
-package de.davis.keygo.auth.presentation.model
+package de.davis.keygo.feature.auth.presentation.model
 
-sealed interface AuthEvent {
+internal sealed interface AuthEvent {
 
     data object Success : AuthEvent
     data object Failure : AuthEvent

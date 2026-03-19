@@ -1,10 +1,9 @@
-package de.davis.keygo.auth.presentation
+package de.davis.keygo.feature.auth.presentation
 
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import de.davis.keygo.auth.presentation.model.BiometricRequest
 import de.davis.keygo.core.identity.presentation.rememberBiometricUnlockAdapter
 import de.davis.keygo.core.identity.presentation.useAdapter
 import de.davis.keygo.core.security.domain.model.KeyId
@@ -15,6 +14,7 @@ import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.core.util.presentation.asUIText
 import de.davis.keygo.core.util.presentation.snackbar.LocalSnackbarManager
+import de.davis.keygo.feature.auth.presentation.model.BiometricRequest
 import org.koin.androidx.compose.koinViewModel
 
 @Composable

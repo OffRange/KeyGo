@@ -7,12 +7,13 @@ import de.davis.keygo.core.identity.data.local.model.ProtoBiometricKeyData
 import de.davis.keygo.core.identity.data.local.model.ProtoPasswordKeyData
 import de.davis.keygo.core.identity.di.annotation.BiometricQualifier
 import de.davis.keygo.core.identity.di.annotation.PasswordQualifier
+import de.davis.keygo.core.security.di.CoreSecurityModule
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Module
 import org.koin.core.annotation.Single
 
-@Module
+@Module(includes = [CoreSecurityModule::class])
 @Configuration
 @ComponentScan("de.davis.keygo.core.identity")
 object CoreIdentityModule {

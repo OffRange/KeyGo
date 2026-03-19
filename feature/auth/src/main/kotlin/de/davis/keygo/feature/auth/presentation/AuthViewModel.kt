@@ -1,4 +1,4 @@
-package de.davis.keygo.auth.presentation
+package de.davis.keygo.feature.auth.presentation
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.snapshotFlow
@@ -6,21 +6,20 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
-import de.davis.keygo.auth.presentation.model.AuthState
-import de.davis.keygo.auth.presentation.model.AuthUIEvent
-import de.davis.keygo.auth.presentation.model.BiometricRequest
-import de.davis.keygo.auth.presentation.model.UIPasswordError
 import de.davis.keygo.core.identity.domain.repository.WrappedKeyRepository
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockWithPasswordUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
-import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.isSuccess
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
+import de.davis.keygo.feature.auth.presentation.model.AuthState
+import de.davis.keygo.feature.auth.presentation.model.AuthUIEvent
+import de.davis.keygo.feature.auth.presentation.model.BiometricRequest
+import de.davis.keygo.feature.auth.presentation.model.UIPasswordError
 import de.davis.keygo.migration.create_access.domain.usecase.ClearMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.ValidateMainPassword
@@ -63,7 +62,7 @@ internal class AuthViewModel(
     private val biometricChannel = Channel<BiometricRequest>()
     val biometricFlow = biometricChannel.receiveAsFlow()
 
-    private val authRoute = savedStateHandle.toRoute<RouteDestination.Auth>()
+    private val authRoute = savedStateHandle.toRoute<AuthRoute>()
 
     private val passwordTextFieldState = TextFieldState()
     private val confirmPasswordTextFieldState = TextFieldState()

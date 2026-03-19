@@ -1,5 +1,6 @@
-package de.davis.keygo.auth.presentation
+package de.davis.keygo.feature.auth.presentation
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,13 +48,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import de.davis.keygo.R
-import de.davis.keygo.auth.presentation.model.AuthState
-import de.davis.keygo.auth.presentation.model.AuthUIEvent
-import de.davis.keygo.auth.presentation.model.UIPasswordError
 import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.core.ui.components.VisibilityButton
 import de.davis.keygo.core.ui.theme.KeyGoTheme
+import de.davis.keygo.feature.auth.R
+import de.davis.keygo.feature.auth.presentation.model.AuthState
+import de.davis.keygo.feature.auth.presentation.model.AuthUIEvent
+import de.davis.keygo.feature.auth.presentation.model.UIPasswordError
 import de.davis.keygo.core.item.R as CoreItemR
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
@@ -289,7 +290,7 @@ private val AuthState.buttonText: String
 @Composable
 @Preview
 @Preview(
-    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES
+    uiMode = Configuration.UI_MODE_NIGHT_YES
 )
 private fun AuthContentPreview() {
     KeyGoTheme {

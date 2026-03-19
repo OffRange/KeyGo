@@ -26,7 +26,6 @@ import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
 import de.davis.keygo.app.presentation.component.KeyGoNavigationWrapper
-import de.davis.keygo.auth.presentation.authGraph
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
@@ -34,6 +33,8 @@ import de.davis.keygo.core.util.presentation.snackbar.LocalSnackbarManager
 import de.davis.keygo.core.util.presentation.snackbar.SnackbarHandler
 import de.davis.keygo.dashboard.presentation.DetailType
 import de.davis.keygo.dashboard.presentation.dashboardGraph
+import de.davis.keygo.feature.auth.presentation.AuthRoute
+import de.davis.keygo.feature.auth.presentation.authGraph
 import de.davis.keygo.item.dialog.SelectItemContent
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -116,7 +117,7 @@ private fun App() {
     ) {
         NavHost(
             navController = navController,
-            startDestination = RouteDestination.Auth(),
+            startDestination = AuthRoute(),
         ) {
             authGraph(
                 onSuccess = { totpUri ->
@@ -125,7 +126,7 @@ private fun App() {
                     } ?: RouteDestination.TopLevelAppGraph
 
                     navController.navigate(dest) {
-                        popUpTo<RouteDestination.Auth> { inclusive = true }
+                        popUpTo<AuthRoute> { inclusive = true }
                     }
                 }
             )

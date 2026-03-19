@@ -1,4 +1,4 @@
-package de.davis.keygo.auth.presentation.model
+package de.davis.keygo.feature.auth.presentation.model
 
 sealed interface UIPasswordError {
 

@@ -1,12 +1,6 @@
 <resources>
     <string name="app_name">KeyGo</string>
 
-    <string name="migrate_to_access">Migrate to access</string>
-    <string name="authenticate_to_access">Authenticate to access</string>
-    <string name="create_access_access">Create an access to</string>
-    <string name="your_vault">your vault</string>
-
-    <string name="request_biometric_authentication_content_description">Request biometric authentication</string>
     <string name="open_navigation_drawer_content_description">Open Navigation Drawer</string>
     <string name="close_content_description">Close</string>
     <string name="add_element_content_description">Add Element</string>
@@ -26,23 +20,7 @@
 
     <string name="add_new_element">Add new Element</string>
 
-    <string name="confirm_password">Confirm Password</string>
-
-    <string name="blank_password">You must set a password</string>
-    <string name="incorrect_password">Password is incorrect!</string>
-    <string name="password_does_not_match">Password does not match</string>
-    <string name="authenticate">Authenticate</string>
-    <string name="unlock_item">Unlock %s</string>
-    <string name="create_access">Create your access</string>
-
-    <string name="use_biometrics">Use biometrics</string>
-
     <string name="cancel">Cancel</string>
-
-    <string name="migrating">Migrating</string>
-    <string name="migrate">Migrate</string>
-    <string name="migrate_to_access_description">To ensure the integrity of your data, please migrate your access credentials. You will be prompted to enter your master password.</string>
-
 
     <string name="home">Home</string>
     <string name="connectivity">Connectivity</string>
