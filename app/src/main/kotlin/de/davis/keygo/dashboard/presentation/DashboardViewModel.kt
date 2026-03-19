@@ -9,6 +9,7 @@ import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.dashboard.domain.model.Filter
 import de.davis.keygo.dashboard.domain.usecase.FilterUseCase
 import de.davis.keygo.feature.list_screen.presentation.model.ListItemState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,10 +19,12 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.koin.core.annotation.KoinViewModel
 
 @KoinViewModel
@@ -139,6 +142,17 @@ class DashboardViewModel(
         flaggedForDeletion.update { currentDeletedIds ->
             if (deleted) currentDeletedIds + id
             else currentDeletedIds - id
+        }
+    }
+
+    override fun onCleared() {
+        val pendingDeletions = flaggedForDeletion.getAndUpdate { emptySet() }
+        if (pendingDeletions.isNotEmpty()) {
+            runBlocking(Dispatchers.IO) {
+                pendingDeletions.forEach { itemId ->
+                    vaultItemRepository.deleteItem(itemId)
+                }
+            }
         }
     }
 }
