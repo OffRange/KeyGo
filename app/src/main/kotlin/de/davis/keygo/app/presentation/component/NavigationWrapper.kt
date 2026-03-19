@@ -26,15 +26,18 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuOpen
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.BottomAppBarScrollBehavior
 import androidx.compose.material3.DrawerDefaults
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.FloatingActionButtonMenu
+import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,28 +51,42 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailDefaults
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.PermanentDrawerSheet
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleFloatingActionButton
+import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.currentWindowSize
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
+import androidx.compose.material3.animateFloatingActionButton
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -80,18 +97,21 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.window.core.layout.WindowSizeClass
 import de.davis.keygo.R
 import de.davis.keygo.app.presentation.AppDestinations
+import de.davis.keygo.core.item.generated.domain.model.VaultItemType
+import de.davis.keygo.core.item.generated.presentation.presentation
 import de.davis.keygo.core.presentation.model.RouteDestination
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import de.davis.keygo.core.ui.R as CoreUiR
 
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun KeyGoNavigationWrapper(
     currentDestination: NavDestination?,
     navigateToTopLevelDestination: (RouteDestination) -> Unit,
     onButtonClicked: () -> Unit,
+    onItemSelected: (VaultItemType) -> Unit,
     showChrome: Boolean = true,
     showPrimaryActionButton: Boolean = true,
     containerColor: Color = NavigationSuiteScaffoldDefaults.containerColor,
@@ -181,36 +201,67 @@ fun KeyGoNavigationWrapper(
                 },
                 navigationSuiteType = layoutType,
                 primaryActionContent = {
-                    AnimatedVisibility(
-                        visible = showChrome && showPrimaryActionButton,
-                        exit = fadeOut(),
-                        enter = fadeIn()
-                    ) {
-                        var lastOffset by remember { mutableFloatStateOf(0f) }
-                        val extend by remember {
-                            derivedStateOf {
-                                val offset = scrollBehavior.state.heightOffset
-                                offset >= lastOffset.also {
-                                    lastOffset = offset
+                    var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
+                    val focusRequester = remember { FocusRequester() }
+
+                    FloatingActionButtonMenu(
+                        expanded = fabMenuExpanded,
+                        button = {
+                            TooltipBox(
+                                positionProvider =
+                                    TooltipDefaults.rememberTooltipPositionProvider(
+                                        if (fabMenuExpanded) {
+                                            TooltipAnchorPosition.Start
+                                        } else {
+                                            TooltipAnchorPosition.Above
+                                        }
+                                    ),
+                                tooltip = { PlainTooltip { Text(stringResource(R.string.add_element_content_description)) } },
+                                state = rememberTooltipState(),
+                            ) {
+                                ToggleFloatingActionButton(
+                                    checked = fabMenuExpanded,
+                                    onCheckedChange = { fabMenuExpanded = !fabMenuExpanded },
+                                    modifier = Modifier
+                                        .semantics {
+                                            traversalIndex = -1f
+                                        }
+                                        .animateFloatingActionButton(
+                                            visible = (showChrome && showPrimaryActionButton) || fabMenuExpanded,
+                                            alignment = Alignment.BottomEnd,
+                                        )
+                                        .focusRequester(focusRequester),
+                                ) {
+                                    val imageVector by remember {
+                                        derivedStateOf {
+                                            if (checkedProgress > 0.5f) Icons.Filled.Close else Icons.Filled.Add
+                                        }
+                                    }
+                                    Icon(
+                                        painter = rememberVectorPainter(imageVector),
+                                        contentDescription = null,
+                                        modifier = Modifier.animateIcon({ checkedProgress }),
+                                    )
                                 }
                             }
                         }
-
-                        ExtendedFloatingActionButton(
-                            onClick = onButtonClicked,
-                            expanded = extend,
-                            containerColor = buttonContainerColor,
-                            contentColor = buttonContentColor,
-                            text = {
-                                Text(text = stringResource(R.string.add_new_element))
-                            },
-                            icon = {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = stringResource(R.string.add_content_description)
-                                )
-                            }
-                        )
+                    ) {
+                        VaultItemType.entries.forEach { type ->
+                            val (text, icon) = type.presentation
+                            FloatingActionButtonMenuItem(
+                                onClick = {
+                                    fabMenuExpanded = false
+                                    onItemSelected(type)
+                                },
+                                icon = {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = null
+                                    )
+                                },
+                                text = { Text(text = text) }
+                            )
+                        }
                     }
                 },
                 snackbarHost = snackbarHost,
@@ -354,7 +405,7 @@ fun KeyGoNavigationRail(
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(R.string.add_content_description),
+                    contentDescription = stringResource(R.string.add_element_content_description),
                 )
             }
         }
@@ -458,7 +509,7 @@ fun DrawerContent(
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(R.string.add_content_description),
+                    contentDescription = stringResource(R.string.add_element_content_description),
                 )
                 Text(
                     text = stringResource(CoreUiR.string.add),
@@ -497,7 +548,7 @@ fun NavDestination?.hasRoute(dest: RouteDestination): Boolean {
 }
 
 @Suppress("VisualLintOverlap")
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Preview(name = "Default")
 @Preview(device = "spec:width=673dp,height=841dp", name = "Medium Tablet")
 @Preview(device = "spec:width=1920dp,height=1080dp,dpi=160", name = "Desktop")
@@ -509,6 +560,7 @@ private fun KeyGoNavigationWrapperPreview() {
                 currentDestination = null,
                 navigateToTopLevelDestination = {},
                 onButtonClicked = {},
+                onItemSelected = {},
             ) {
                 Text("ASASASASAS")
             }

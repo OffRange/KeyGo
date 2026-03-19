@@ -100,6 +100,14 @@ private fun App() {
         onButtonClicked = {
             navController.navigate(RouteDestination.Home.SelectItem)
         },
+        onItemSelected = { type ->
+            scope.launch {
+                listNavigator.navigateTo(
+                    ThreePaneScaffoldRole.Primary,
+                    DetailType.Modify.CreateNew(type)
+                )
+            }
+        },
         showChrome = showChrome,
         showPrimaryActionButton = showPrimaryActionButton,
         snackbarHost = {
