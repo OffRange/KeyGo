@@ -3,6 +3,7 @@ package de.davis.keygo.feature.auth.presentation
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.identity.presentation.rememberBiometricUnlockAdapter
 import de.davis.keygo.core.identity.presentation.useAdapter
@@ -19,8 +20,10 @@ fun AuthScreen(onSuccess: () -> Unit) {
     val viewModel = koinViewModel<AuthViewModel>()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
+    val currentOnSuccess by rememberUpdatedState(onSuccess)
+
     ObserveAsEvents(viewModel.navigationEvent) {
-        onSuccess()
+        currentOnSuccess()
     }
 
     val biometricCryptoController = rememberBiometricCryptoController()
@@ -44,7 +47,7 @@ fun AuthScreen(onSuccess: () -> Unit) {
                 biometricUnlockAdapter.useAdapter {
                     biometricCryptoController.requestUnlockVault()
                 }.onSuccess {
-                    onSuccess()
+                    currentOnSuccess()
                 }
             }
         }
