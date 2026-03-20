@@ -1,6 +1,4 @@
 <resources>
-    <string name="app_name">KeyGo</string>
-
     <string name="open_navigation_drawer_content_description">Open Navigation Drawer</string>
     <string name="close_content_description">Close</string>
     <string name="add_element_content_description">Add Element</string>
@@ -8,19 +6,7 @@
     <string name="open_website_content_description">Open website</string>
     <string name="copy_to_clipboard_content_description">Copy to clipboard</string>
 
-    <string name="suggest">Suggest</string>
-    <string name="suggest_for_this_app">Suggest this item</string>
-
-    <plurals name="suggest_text">
-        <item quantity="zero">“%1$s” will be suggested next time you sign in. This choice is stored on your device and can be changed on the item\'s detail screen.</item>
-        <item quantity="other">“%1$s” will be suggested next time you sign in on %2$s. This choice is stored on your device and can be changed on the item\'s detail screen.</item>
-    </plurals>
-
-    <string name="not_now">Not now</string>
-
     <string name="add_new_element">Add new Element</string>
-
-    <string name="cancel">Cancel</string>
 
     <string name="home">Home</string>
     <string name="connectivity">Connectivity</string>
@@ -39,10 +25,4 @@
     <string name="match_note">Matched note</string>
     <string name="match_name_and_note">Matched name and note</string>
     <string name="match_not_found">No matches found</string>
-
-    <string name="autofill_service">Autofill Service</string>
-    <string name="fill_anyway">Fill anyway</string>
-
-    <string name="suspicious_activity">Suspicious Activity</string>
-    <string name="suspicious_activity_description">This app (<b>%1$s</b>) isn\'t a recognized browser. It is showing a website (<b>%2$s</b>). Autofilling here may give your credentials to this app. Only continue if you trust this app and the site.</string>
 </resources>

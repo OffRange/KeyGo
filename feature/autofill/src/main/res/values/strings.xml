@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="autofill_service">Autofill Service</string>
+    <string name="fill_anyway">Fill anyway</string>
+
+    <string name="suspicious_activity">Suspicious Activity</string>
+    <string name="suspicious_activity_description">This app (<b>%1$s</b>) isn\'t a recognized browser. It is showing a website (<b>%2$s</b>). Autofilling here may give your credentials to this app. Only continue if you trust this app and the site.</string>
+
+    <string name="suggest">Suggest</string>
+    <string name="suggest_for_this_app">Suggest this item</string>
+
+    <plurals name="suggest_text">
+        <item quantity="zero">“%1$s” will be suggested next time you sign in. This choice is stored on your device and can be changed on the item\'s detail screen.</item>
+        <item quantity="other">“%1$s” will be suggested next time you sign in on %2$s. This choice is stored on your device and can be changed on the item\'s detail screen.</item>
+    </plurals>
+
+    <string name="not_now">Not now</string>
+
+    <string name="cancel">Cancel</string>
+</resources>

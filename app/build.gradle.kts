@@ -73,8 +73,6 @@ kotlin {
 }
 
 dependencies {
-    implementation(libs.okhttp)
-
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))
     implementation(libs.koin.androidx.compose)
@@ -91,6 +89,7 @@ dependencies {
     implementation(projects.feature.item.create)
     implementation(projects.feature.item.view)
     implementation(projects.feature.totp)
+    implementation(projects.feature.autofill)
     implementation(projects.migrationCreateAccess)
 
     // Datastore
@@ -98,8 +97,6 @@ dependencies {
     implementation(libs.google.protobuf.kotlin.lite)
 
     implementation(libs.argon2kt)
-
-    implementation(libs.androidx.autofill)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -113,7 +110,6 @@ dependencies {
     implementation(libs.androidx.material3.adaptive.navigation)
     implementation(libs.androidx.material3.adaptive.navigation.suite)
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.collections.immutable)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)

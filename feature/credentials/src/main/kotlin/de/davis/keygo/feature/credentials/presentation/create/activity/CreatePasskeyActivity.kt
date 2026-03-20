@@ -202,7 +202,7 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                 onItemClick = viewModel::onItemClicked,
                 onSearchResultClick = viewModel::onItemSelected,
                 onItemLongClick = { },
-                onCreateItemRequest = { },
+                onCreateItemRequest = { /* TODO */ },
                 enableSwipeToDelete = false,
                 modifier = Modifier
                     .consumeWindowInsets(innerPadding)
