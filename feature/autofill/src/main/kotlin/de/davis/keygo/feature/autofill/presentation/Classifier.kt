@@ -96,18 +96,17 @@ internal object Classifier {
         setOf(RegexOption.IGNORE_CASE, RegexOption.COMMENTS)
     )
 
-    // TODO: use more sophisticated regexes
     private val USERNAME_REGEX = Regex(
-        "\\b(username|login|user|usuario|nombredeusuario|nomd'utilisateur|" +
+        "(?<![A-Za-z0-9])(username|login|user|usuario|nombredeusuario|nomd'utilisateur|" +
                 "benutzername|nomeusuario|nomeutente|imyapolzovatelya|yonghuming|" +
                 "yūzāmei|ismalmustakhdim)" +
-                "(\\b|$)", RegexOption.IGNORE_CASE
+                "(?![A-Za-z0-9])", RegexOption.IGNORE_CASE
     )
 
     private val EMAIL_REGEX = Regex(
-        "\\b(email|account|correo|cuenta|adressemail|compte|" +
+        "(?<![A-Za-z0-9])(email|account|correo|cuenta|adressemail|compte|" +
                 "emailadresse|konto|conta|uchetnayazapis|elektronnayapochta|" +
                 "zhanghu|dianziyoujian|akaunto|mēruadoresu|alhisab|albaridal(')?iliktruni)" +
-                "(\\b|$)", RegexOption.IGNORE_CASE
+                "(?![A-Za-z0-9])", RegexOption.IGNORE_CASE
     )
 }
