@@ -92,12 +92,6 @@ dependencies {
     implementation(projects.feature.autofill)
     implementation(projects.migrationCreateAccess)
 
-    // Datastore
-    implementation(libs.androidx.datastore)
-    implementation(libs.google.protobuf.kotlin.lite)
-
-    implementation(libs.argon2kt)
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -110,12 +104,13 @@ dependencies {
     implementation(libs.androidx.material3.adaptive.navigation)
     implementation(libs.androidx.material3.adaptive.navigation.suite)
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.kotlinx.collections.immutable)
+
     testImplementation(libs.kotlin.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
+
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }
