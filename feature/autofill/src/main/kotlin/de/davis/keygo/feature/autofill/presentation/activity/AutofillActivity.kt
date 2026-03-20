@@ -38,7 +38,7 @@ import org.koin.androidx.compose.koinViewModel
  * request biometrics to authenticate the user.
  *
  * The transparency allows us to have a more integrated user experience, as the user doesn't see a
- * dedicated UI just to authenticate themself or to show a dialog.
+ * dedicated UI just to authenticate themselves or to show a dialog.
  */
 internal class AutofillActivity : FragmentActivity() {
 
