@@ -16,6 +16,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
+
+        missingDimensionStrategy("store", "playStore")
     }
 
     buildTypes {
@@ -30,18 +32,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-
-    flavorDimensions += listOf("store")
-    productFlavors {
-        create("playStore") {
-            dimension = "store"
-        }
-
-        create("fdroid") {
-            dimension = "store"
-        }
     }
 }
 
