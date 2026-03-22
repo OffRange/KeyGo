@@ -16,18 +16,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.koin.core.annotation.KoinViewModel
 
 @KoinViewModel
+@Deprecated("Use ListItemScreen", level = DeprecationLevel.HIDDEN)
 class DashboardViewModel(
     private val snackbarManager: SnackbarManager,
     private val vaultItemRepository: VaultItemRepository,
@@ -62,12 +61,10 @@ class DashboardViewModel(
     val listItemState = combine(
         filteredItems,
         selectedItemIds,
-        openItemId
-    ) { items, selectedIds, openItemId ->
+    ) { items, selectedIds ->
         ListItemState(
             items = items,
             selectedItemIds = selectedIds,
-            openedItemId = openItemId
         )
     }.stateIn(
         scope = viewModelScope,
@@ -80,31 +77,6 @@ class DashboardViewModel(
         if (query.isBlank()) allItems
         else flowOf(vaultItemRepository.searchVaultItem(query))
 
-    suspend fun searcher(query: String): List<LiteItem> = queryToItems(query).first()
-
-    fun onDelete(itemId: ItemId) {
-        updateItemSelectionState(itemId, selected = false)
-
-        updateItemDeletionState(itemId, deleted = true)
-        viewModelScope.launch {
-            snackbarManager.sendMessage(
-                ItemDeletedMessage(
-                    onClick = {
-                        updateItemDeletionState(itemId, deleted = false)
-                    },
-                    onDismiss = {
-                        viewModelScope.launch {
-                            vaultItemRepository.deleteItem(itemId)
-
-                            // Inside this coroutine to ensure it only runs after the deletion
-                            updateItemDeletionState(itemId, deleted = false)
-                        }
-                    }
-                )
-            )
-        }
-    }
-
     fun onItemClick(itemId: ItemId) {
         if (selectedItemIds.value.isNotEmpty()) {
             val isSelected = itemId in selectedItemIds.value
@@ -112,10 +84,6 @@ class DashboardViewModel(
         } else {
             openItemId.update { itemId }
         }
-    }
-
-    fun onSearchResultClick(id: ItemId) {
-        openItemId.update { id }
     }
 
     fun onItemLongClick(itemId: ItemId) {
@@ -126,22 +94,11 @@ class DashboardViewModel(
         openItemId.update { null }
     }
 
-    fun onSearchSubmit(query: String) {
-        submittedSearchQuery.update { query }
-    }
-
 
     private fun updateItemSelectionState(id: ItemId, selected: Boolean) {
         selectedItemIds.update { currentSelectedIds ->
             if (selected) currentSelectedIds + id
             else currentSelectedIds - id
-        }
-    }
-
-    private fun updateItemDeletionState(id: ItemId, deleted: Boolean) {
-        flaggedForDeletion.update { currentDeletedIds ->
-            if (deleted) currentDeletedIds + id
-            else currentDeletedIds - id
         }
     }
 

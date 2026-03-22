@@ -126,6 +126,7 @@ internal class CreatePasskeyViewModel(
         }
     }
 
+    // TODO: why onItemClicked and onItemSelected???
     fun onItemClicked(itemId: ItemId) {
         _event.trySend(
             CreatePasskeyEvent.OpenConfirmationDialog(

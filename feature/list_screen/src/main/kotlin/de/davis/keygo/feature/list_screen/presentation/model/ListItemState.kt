@@ -5,6 +5,7 @@ import de.davis.keygo.core.item.domain.model.lite.LiteItem
 
 data class ListItemState(
     val items: List<LiteItem> = emptyList(),
-    val openedItemId: ItemId? = null,
+    val searchResults: List<LiteItem> = emptyList(),
+    val hasSearchQuery: Boolean = false,
     val selectedItemIds: Set<ItemId> = emptySet()
 )

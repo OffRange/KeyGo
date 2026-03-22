@@ -1,10 +1,11 @@
-package de.davis.keygo.dashboard.presentation
+package de.davis.keygo.feature.list_screen.presentation
 
-import de.davis.keygo.R
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarAction
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.presentation.UIText
+import de.davis.keygo.feature.list_screen.R
 
+@Suppress("FunctionName")
 fun ItemDeletedMessage(
     onClick: () -> Unit,
     onDismiss: () -> Unit,

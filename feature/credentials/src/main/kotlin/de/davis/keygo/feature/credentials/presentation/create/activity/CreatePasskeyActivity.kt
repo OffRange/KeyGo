@@ -29,10 +29,10 @@ import androidx.credentials.CreatePublicKeyCredentialResponse
 import androidx.credentials.exceptions.CreateCredentialUnknownException
 import androidx.credentials.provider.PendingIntentHandler
 import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.onFailure
@@ -42,7 +42,6 @@ import de.davis.keygo.feature.credentials.R
 import de.davis.keygo.feature.item.create.presentation.password.PasswordScreen
 import de.davis.keygo.feature.list_screen.presentation.ItemListScreen
 import de.davis.keygo.feature.list_screen.presentation.NoItemStrategy
-import de.davis.keygo.feature.list_screen.presentation.rememberItemListScreenSearchState
 import kotlinx.serialization.Serializable
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
@@ -154,7 +153,7 @@ internal class CreatePasskeyActivity : FragmentActivity() {
 
                     composable<ListDest> {
                         PasskeyItemListScreen(
-                            viewModel = viewModel,
+                            onItemClick = viewModel::onItemClicked,
                             onCreateClicked = {
                                 navController.navigate(CreateItem)
                             }
@@ -177,15 +176,9 @@ internal class CreatePasskeyActivity : FragmentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun PasskeyItemListScreen(
-        viewModel: CreatePasskeyViewModel,
+        onItemClick: (ItemId) -> Unit,
         onCreateClicked: () -> Unit
     ) {
-        val passwords by viewModel.listItemState.collectAsStateWithLifecycle()
-        val searchState = rememberItemListScreenSearchState(
-            searcher = viewModel::searcher,
-            onQuerySubmitted = viewModel::onSearchSubmit,
-        )
-
         Scaffold(
             floatingActionButton = {
                 FloatingActionButton(
@@ -196,14 +189,11 @@ internal class CreatePasskeyActivity : FragmentActivity() {
             }
         ) { innerPadding ->
             ItemListScreen(
-                items = passwords,
-                searchState = searchState,
-                onDelete = { },
-                onItemClick = viewModel::onItemClicked,
-                onSearchResultClick = viewModel::onItemSelected,
+                onItemClick = onItemClick,
                 onItemLongClick = { },
                 onCreateItemRequest = { /* TODO */ },
-                enableSwipeToDelete = false,
+                enableDeletion = false,
+                enableSelection = false,
                 modifier = Modifier
                     .consumeWindowInsets(innerPadding)
                     .padding(innerPadding),

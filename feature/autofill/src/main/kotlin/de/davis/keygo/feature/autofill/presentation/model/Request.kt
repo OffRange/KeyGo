@@ -1,7 +1,7 @@
 package de.davis.keygo.feature.autofill.presentation.model
 
-import de.davis.keygo.feature.autofill.presentation.activity.ItemListRoute
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
+import de.davis.keygo.feature.list_screen.presentation.ItemListRoute
 
 internal sealed interface Request<T : Any> {
     val destination: T

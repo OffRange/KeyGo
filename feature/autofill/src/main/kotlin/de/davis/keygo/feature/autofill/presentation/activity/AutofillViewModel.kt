@@ -8,7 +8,6 @@ import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.crypto.decryptSecretData
 import de.davis.keygo.core.item.domain.model.Password
-import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.domain.repository.VaultItemRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
@@ -32,17 +31,11 @@ import de.davis.keygo.feature.autofill.presentation.model.SaveRequestData
 import de.davis.keygo.feature.autofill.presentation.model.SuspicionDialogVisibility
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.totp.domain.repository.TotpGenerator
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
@@ -73,29 +66,8 @@ internal class AutofillViewModel(
     val uiState = _uiState.asStateFlow()
 
 
-    private val allItems = passwordRepository.observeLitePasswords()
-    private val submittedSearchQuery = MutableStateFlow("")
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val itemSource = submittedSearchQuery.flatMapLatest(::queryToItems)
-    val listItemState = itemSource.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = emptyList()
-    )
-
     fun start() {
         handleRequestData()
-    }
-
-    private suspend fun queryToItems(query: String): Flow<List<LiteItem>> =
-        if (query.isBlank()) allItems
-        else flowOf(passwordRepository.searchPasswordItem(query))
-
-    suspend fun searcher(query: String): List<LiteItem> = queryToItems(query).first()
-
-    fun onSearchSubmit(query: String) {
-        submittedSearchQuery.update { query }
     }
 
     private fun Form.toRawItem() = when (type) {

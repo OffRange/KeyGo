@@ -7,10 +7,6 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.input.clearText
-import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
@@ -18,7 +14,6 @@ import androidx.compose.material3.AppBarWithSearch
 import androidx.compose.material3.ExpandedDockedSearchBar
 import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,18 +21,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SearchBarScrollBehavior
-import androidx.compose.material3.SearchBarState
 import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,10 +39,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.model.lite.LiteItem
-import de.davis.keygo.core.item.domain.model.lite.LitePassword
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
 import de.davis.keygo.core.ui.R
@@ -58,97 +49,65 @@ import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.core.ui.components.KeyGoColumn
 import de.davis.keygo.core.ui.components.KeyGoColumnItem
+import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.list_screen.presentation.components.SearchResult
+import de.davis.keygo.feature.list_screen.presentation.model.Event
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
-
-fun interface ItemScreenSearcher<T> {
-    suspend fun search(query: String): List<T>
-}
+import org.koin.androidx.compose.koinViewModel
+import org.koin.core.parameter.parametersOf
 
 @Stable
-class ItemListScreenSearchState<T> @OptIn(ExperimentalMaterial3Api::class)
-internal constructor(
-    val searchTextFieldState: TextFieldState,
-    val searchBarState: SearchBarState,
-    val searcher: ItemScreenSearcher<T>,
-    private val onQuerySubmitted: (String) -> Unit = { }
-) {
-    var submittedQuery by mutableStateOf("")
-        private set
+sealed interface NoItemStrategy {
+    object ShowCreateNewItemCard : NoItemStrategy
+    object ShowMessage : NoItemStrategy
+}
 
-    var items by mutableStateOf<List<T>>(emptyList())
-        private set
+@Immutable
+@JvmInline
+value class ItemTypeWhitelist(val allowedTypes: Array<VaultItemType>? = null) {
 
-    val searchQuery: String
-        get() = searchTextFieldState.text.toString()
-
-    internal suspend fun performSearch(query: String) {
-        this.items = searcher.search(query)
-    }
-
-    internal fun clearSearch() {
-        searchTextFieldState.clearText()
-        submitQuery("")
-    }
-
-    internal fun submitQuery(query: String) {
-        submittedQuery = query
-        onQuerySubmitted(query)
-    }
-
-    internal fun resetToMatchSubmittedQuery() {
-        searchTextFieldState.setTextAndPlaceCursorAtEnd(submittedQuery)
+    companion object {
+        val ALL = ItemTypeWhitelist()
     }
 }
 
-@OptIn(FlowPreview::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun <T> rememberItemListScreenSearchState(
-    searcher: ItemScreenSearcher<T>,
-    onQuerySubmitted: (String) -> Unit = { },
-    searchTextFieldState: TextFieldState = rememberTextFieldState(),
-    searchBarState: SearchBarState = rememberSearchBarState(),
-    searchDebounce: Duration = 300.milliseconds
-): ItemListScreenSearchState<T> {
-    val state = remember(searchTextFieldState, searchBarState, searcher, onQuerySubmitted) {
-        ItemListScreenSearchState(
-            searchTextFieldState = searchTextFieldState,
-            searchBarState = searchBarState,
-            searcher = searcher,
-            onQuerySubmitted = onQuerySubmitted
-        )
+fun ItemListScreen(
+    onItemClick: (ItemId) -> Unit,
+    onCreateItemRequest: (VaultItemType) -> Unit,
+    modifier: Modifier = Modifier,
+    onItemLongClick: (ItemId) -> Unit = {},
+    itemTypeWhitelist: ItemTypeWhitelist = ItemTypeWhitelist.ALL,
+    notFoundStrategy: NoItemStrategy = NoItemStrategy.ShowCreateNewItemCard,
+    enableDeletion: Boolean = true,
+    enableSelection: Boolean = true,
+    autoSelectFirst: Boolean = false,
+    openedItemId: ItemId? = null,
+    dockedSearchResults: Boolean = false,
+    scrollBehavior: SearchBarScrollBehavior = SearchBarDefaults.enterAlwaysSearchBarScrollBehavior(),
+) {
+    val viewModel = koinViewModel<ItemListViewModel> {
+        parametersOf(enableSelection, itemTypeWhitelist)
     }
+    val uiState by viewModel.listItemState.collectAsStateWithLifecycle()
 
+    val searchBarState = rememberSearchBarState()
+
+    // In case the user types something, but does not submit the search, we rollback to the last
+    // submitted search query.
     val lifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(lifecycleOwner, state) {
+    LaunchedEffect(lifecycleOwner, searchBarState) {
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
             withContext(Dispatchers.Main.immediate) {
-                snapshotFlow { state.searchQuery }
-                    .debounce(searchDebounce)
-                    .distinctUntilChanged()
-                    .collect {
-                        state.performSearch(it)
-                    }
-            }
-        }
-    }
-
-    LaunchedEffect(lifecycleOwner, state) {
-        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            withContext(Dispatchers.Main.immediate) {
-                snapshotFlow { state.searchBarState.targetValue }
+                snapshotFlow { searchBarState.targetValue }
                     .collectLatest {
                         when (it) {
                             SearchBarValue.Collapsed -> {
-                                state.resetToMatchSubmittedQuery()
+                                viewModel.resetToMatchSubmittedQuery()
                             }
 
                             else -> {}
@@ -158,46 +117,46 @@ fun <T> rememberItemListScreenSearchState(
         }
     }
 
-    return state
-}
+    // Auto-select the first item when requested (e.g. multi-pane mode) and nothing is
+    // currently opened or selected. Reacts to autoSelectFirst changing (pane mode transitions)
+    // and to the item list updating (initial load, deletions).
+    val items = uiState.items
+    val selectedItemIds = uiState.selectedItemIds
+    LaunchedEffect(autoSelectFirst, items, openedItemId, selectedItemIds) {
+        if (autoSelectFirst
+            && items.isNotEmpty()
+            && openedItemId == null
+            && selectedItemIds.isEmpty()
+        ) {
+            viewModel.onItemClick(items.first().vaultItemId)
+        }
+    }
 
-sealed interface NoItemStrategy {
-    object ShowCreateNewItemCard : NoItemStrategy
-    object ShowMessage : NoItemStrategy
-}
+    ObserveAsEvents(flow = viewModel.event) {
+        when (it) {
+            is Event.ItemSelected -> {
+                onItemClick(it.itemId)
+            }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun ItemListScreen(
-    items: List<LiteItem>,
-    searchState: ItemListScreenSearchState<LiteItem>,
-    onDelete: (ItemId) -> Unit,
-    onItemClick: (ItemId) -> Unit,
-    onSearchResultClick: (ItemId) -> Unit,
-    onItemLongClick: (ItemId) -> Unit,
-    onCreateItemRequest: (VaultItemType) -> Unit,
-    modifier: Modifier = Modifier,
-    notFoundStrategy: NoItemStrategy = NoItemStrategy.ShowCreateNewItemCard,
-    enableSwipeToDelete: Boolean = true,
-    dockedSearchResults: Boolean = false,
-    openedItemId: ItemId? = null,
-    selectedItemIds: Set<ItemId> = emptySet(),
-    scrollBehavior: SearchBarScrollBehavior = SearchBarDefaults.enterAlwaysSearchBarScrollBehavior(),
-) {
+            is Event.ItemLongClicked -> {
+                onItemLongClick(it.itemId)
+            }
+        }
+    }
+
     val scope = rememberCoroutineScope()
-
     val searchInputField = @Composable {
         SearchBarDefaults.InputField(
-            textFieldState = searchState.searchTextFieldState,
-            searchBarState = searchState.searchBarState,
+            textFieldState = viewModel.searchTextFieldState,
+            searchBarState = searchBarState,
             onSearch = {
-                searchState.submitQuery(it)
-                scope.launch { searchState.searchBarState.animateToCollapsed() }
+                viewModel.onSubmitQuery()
+                scope.launch { searchBarState.animateToCollapsed() }
             },
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = {
                 AnimatedContent(
-                    targetState = searchState.searchQuery.isEmpty() && searchState.searchBarState.targetValue == SearchBarValue.Collapsed
+                    targetState = !uiState.hasSearchQuery && searchBarState.targetValue == SearchBarValue.Collapsed
                 ) {
                     when (it) {
                         true -> Icon(
@@ -207,8 +166,8 @@ fun ItemListScreen(
 
                         false -> IconButton(
                             onClick = {
-                                searchState.clearSearch()
-                                scope.launch { searchState.searchBarState.animateToCollapsed() }
+                                viewModel.onClearQuery()
+                                scope.launch { searchBarState.animateToCollapsed() }
                             }
                         ) {
                             Icon(
@@ -229,7 +188,7 @@ fun ItemListScreen(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             AppBarWithSearch(
-                state = searchState.searchBarState,
+                state = searchBarState,
                 inputField = searchInputField,
                 scrollBehavior = scrollBehavior
             )
@@ -237,27 +196,30 @@ fun ItemListScreen(
             val searchResultContent: @Composable ColumnScope.() -> Unit = {
                 val scope = rememberCoroutineScope()
                 SearchResult(
-                    searchResult = searchState.items,
+                    searchResult = uiState.searchResults,
                     idOf = { it.vaultItemId },
                     nameOf = { it.name },
                     matchedInName = { true },
                     matchedInNote = { false },
                     onClick = { item ->
-                        scope.launch { searchState.searchBarState.animateToCollapsed() }
-                        onSearchResultClick(item.vaultItemId)
+                        scope.launch { searchBarState.animateToCollapsed() }
+
+                        // Clicking a search result should not select the item when currently
+                        // other items are selected.
+                        viewModel.onItemClick(item.vaultItemId, forceSkipSelection = true)
                     },
                     modifier = Modifier.padding(8.dp)
                 )
             }
             when (dockedSearchResults) {
                 true -> ExpandedDockedSearchBar(
-                    state = searchState.searchBarState,
+                    state = searchBarState,
                     inputField = searchInputField,
                     content = searchResultContent
                 )
 
                 false -> ExpandedFullScreenSearchBar(
-                    state = searchState.searchBarState,
+                    state = searchBarState,
                     inputField = searchInputField,
                     content = searchResultContent
                 )
@@ -265,7 +227,7 @@ fun ItemListScreen(
         }
     ) { innerPadding ->
         AnimatedContent(
-            targetState = items.isEmpty(),
+            targetState = uiState.items.isEmpty(),
             modifier = Modifier
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)
@@ -280,7 +242,7 @@ fun ItemListScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         val showCreateCard =
-                            searchState.submittedQuery.isBlank() && notFoundStrategy is NoItemStrategy.ShowCreateNewItemCard
+                            !uiState.hasSearchQuery && notFoundStrategy is NoItemStrategy.ShowCreateNewItemCard
                         when (showCreateCard) {
                             true -> KeyGoCard(
                                 title = {
@@ -305,20 +267,20 @@ fun ItemListScreen(
                 }
 
                 false -> KeyGoColumn(
-                    items = items.map {
+                    items = uiState.items.map {
                         KeyGoColumnItem(
                             header = it.name.first(),
                             title = it.name,
                             id = it.vaultItemId
                         )
                     },
-                    onDelete = onDelete,
-                    onItemClick = onItemClick,
-                    onItemLongClick = onItemLongClick,
+                    onDelete = viewModel::onDelete,
+                    onItemClick = viewModel::onItemClick,
+                    onItemLongClick = viewModel::onItemLongClick,
                     modifier = Modifier.padding(horizontal = 8.dp),
-                    enableSwipeToDelete = enableSwipeToDelete,
+                    enableSwipeToDelete = enableDeletion,
                     openedItemId = openedItemId,
-                    selectedItemIds = selectedItemIds
+                    selectedItemIds = uiState.selectedItemIds
                 )
             }
         }
@@ -330,45 +292,8 @@ fun ItemListScreen(
 @Composable
 private fun ItemListScreenPreview() {
     MaterialTheme {
-        val items = remember {
-            buildList {
-                repeat(20) {
-                    add(
-                        LitePassword(
-                            vaultItemId = it.toLong(),
-                            passwordId = it.toLong(),
-                            name = "A_Item #$it",
-                            username = "username#$it",
-                            domains = emptyList(),
-                        )
-                    )
-                }
-                repeat(20) {
-                    LitePassword(
-                        vaultItemId = it.toLong(),
-                        passwordId = it.toLong(),
-                        name = "Z_Item #$it",
-                        username = "username#$it",
-                        domains = emptyList(),
-                    )
-                }
-            }
-        }
         ItemListScreen(
-            items = items,
-            searchState = rememberItemListScreenSearchState(
-                searcher = { query ->
-                    items.filter {
-                        it.name.startsWith(
-                            query,
-                            ignoreCase = true
-                        )
-                    }
-                }
-            ),
-            onDelete = { },
             onItemClick = { },
-            onSearchResultClick = {},
             onItemLongClick = { },
             onCreateItemRequest = {},
         )

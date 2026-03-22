@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="items_deleted">
+        <item quantity="one">1 item deleted</item>
+        <item quantity="other">%d items deleted</item>
+    </plurals>
+
+    <string name="undo">Undo</string>
+</resources>

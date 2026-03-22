@@ -28,7 +28,6 @@ import de.davis.keygo.feature.autofill.presentation.model.AutofillUiEvent
 import de.davis.keygo.feature.autofill.presentation.model.Request
 import de.davis.keygo.feature.autofill.presentation.model.RequestData
 import de.davis.keygo.feature.autofill.presentation.model.SuspicionDialogVisibility
-import kotlinx.collections.immutable.toPersistentList
 import org.koin.androidx.compose.koinViewModel
 
 
@@ -51,7 +50,6 @@ internal class AutofillActivity : FragmentActivity() {
         setContent {
             KeyGoTheme {
                 val viewModel = koinViewModel<AutofillViewModel>()
-                val items by viewModel.listItemState.collectAsStateWithLifecycle()
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                 val dialogVisibility = uiState.associationDialogVisibility
                 val suspicionDialogVisibility = uiState.suspicionDialogVisibility
@@ -89,9 +87,6 @@ internal class AutofillActivity : FragmentActivity() {
                 if (uiState.request !is Request.None) {
                     AutofillUi(
                         navController = navController,
-                        items = items.toPersistentList(),
-                        searcher = viewModel::searcher,
-                        onQuerySubmitted = viewModel::onSearchSubmit,
                         onItemSelected = { viewModel.onEvent(AutofillUiEvent.OnItemSelected(it)) },
                         onSaved = ::finishWithResult,
                         abort = ::finishWithResult,

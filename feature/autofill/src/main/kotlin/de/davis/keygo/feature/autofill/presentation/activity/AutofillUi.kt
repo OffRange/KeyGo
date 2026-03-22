@@ -14,17 +14,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.model.lite.LiteItem
+import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.auth.presentation.authGraph
 import de.davis.keygo.feature.autofill.presentation.model.SaveItemDestination
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.item.create.presentation.EditVaultItemScreen
-import de.davis.keygo.feature.list_screen.presentation.ItemListScreen
-import de.davis.keygo.feature.list_screen.presentation.ItemScreenSearcher
+import de.davis.keygo.feature.list_screen.presentation.ItemTypeWhitelist
 import de.davis.keygo.feature.list_screen.presentation.NoItemStrategy
-import de.davis.keygo.feature.list_screen.presentation.rememberItemListScreenSearchState
-import kotlinx.collections.immutable.ImmutableList
+import de.davis.keygo.feature.list_screen.presentation.itemListGraph
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlin.reflect.typeOf
@@ -34,9 +32,6 @@ import kotlin.reflect.typeOf
 @Composable
 fun AutofillUi(
     navController: NavHostController,
-    items: ImmutableList<LiteItem>,
-    searcher: ItemScreenSearcher<LiteItem>,
-    onQuerySubmitted: (String) -> Unit,
     onItemSelected: (ItemId) -> Unit,
     onSaved: () -> Unit,
     abort: () -> Unit,
@@ -57,24 +52,14 @@ fun AutofillUi(
                 }
             )
 
-            composable<ItemListRoute> {
-                val searchState = rememberItemListScreenSearchState(
-                    searcher = searcher,
-                    onQuerySubmitted = onQuerySubmitted
-                )
-                ItemListScreen(
-                    items = items,
-                    searchState = searchState,
-                    onDelete = { },
-                    onItemClick = onItemSelected,
-                    onSearchResultClick = onItemSelected,
-                    onItemLongClick = { },
-                    onCreateItemRequest = { },
-                    dockedSearchResults = false,
-                    enableSwipeToDelete = false,
-                    notFoundStrategy = NoItemStrategy.ShowMessage,
-                )
-            }
+            itemListGraph(
+                onItemClick = onItemSelected,
+                itemTypeWhitelist = ItemTypeWhitelist(arrayOf(VaultItemType.Password)),
+                dockedSearchResults = false,
+                enableDeletion = false,
+                onCreateRequest = {},
+                notFoundStrategy = NoItemStrategy.ShowMessage
+            )
 
             composable<SaveItemDestination>(
                 typeMap = mapOf(
