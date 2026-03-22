@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
@@ -58,6 +59,7 @@ fun <T> ChipFormGroup(
     onSubmit: (Set<String>) -> Unit,
     onDelete: (T) -> Unit,
     modifier: Modifier = Modifier,
+    state: TextFieldState = rememberTextFieldState(),
     label: @Composable (TextFieldLabelScope.() -> Unit)? = null,
     prefix: @Composable (() -> Unit)? = null,
     placeholder: @Composable (() -> Unit)? = null,
@@ -67,7 +69,6 @@ fun <T> ChipFormGroup(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     chipBuilder: @Composable (T, Boolean) -> Unit
 ) {
-    val state = rememberTextFieldState()
     var lastSelected by rememberSaveable { mutableStateOf(false) }
 
     val currentOnSubmit by rememberUpdatedState(onSubmit)

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -63,6 +64,7 @@ import de.davis.keygo.feature.item.core.R as ItemCoreR
 @Composable
 fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val domainTextFieldState = rememberTextFieldState()
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -91,7 +93,16 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                     }
                 },
                 actions = {
-                    IconButton(onClick = { onEvent(PasswordUiEvent.OnSubmit) }) {
+                    IconButton(onClick = {
+                        val pending = domainTextFieldState.text.toString()
+                            .split(delimiters = DELIMITERS.toCharArray())
+                            .filter { it.isNotBlank() }
+                            .toSet()
+                        if (pending.isNotEmpty()) {
+                            onEvent(PasswordUiEvent.OnAddDomains(pending))
+                        }
+                        onEvent(PasswordUiEvent.OnSubmit)
+                    }) {
                         Icon(
                             imageVector = Icons.Default.Done,
                             contentDescription = stringResource(R.string.submit_content_description)
@@ -181,6 +192,7 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                 ChipFormGroup(
                     title = stringResource(R.string.domain_information),
                     items = state.domains,
+                    state = domainTextFieldState,
                     containsForInput = {
                         state.domains.any { domain -> domain.value == it }
                     },
@@ -197,6 +209,7 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                         keyboardType = KeyboardType.Uri,
                         imeAction = ImeAction.Next
                     ),
+                    delimiters = DELIMITERS,
                     prefix = {
                         Text(text = "https://")
                     }
@@ -279,6 +292,8 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
         )
     }
 }
+
+private val DELIMITERS = setOf(',', ' ')
 
 @Preview
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
