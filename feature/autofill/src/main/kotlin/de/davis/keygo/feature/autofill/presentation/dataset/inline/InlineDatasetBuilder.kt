@@ -74,23 +74,32 @@ internal class InlineDatasetBuilder(
             val suggestions =
                 suggestionFinder.findVaultSuggestions(form, count = specs.size - 2)
 
-            suggestions.mapIndexed { index, suggestion ->
-                buildInlineSuggestionDataset(
-                    spec = specs[index],
-                    index = index,
-                    form = form,
-                    suggestion = suggestion
+            buildList {
+                addAll(
+                    suggestions.mapIndexed { index, suggestion ->
+                        buildInlineSuggestionDataset(
+                            spec = specs[index],
+                            index = index,
+                            form = form,
+                            suggestion = suggestion
+                        )
+                    }
                 )
-            } + listOf(
-                buildAppInlineSuggestionDataset(
-                    spec = specs.dropLast(1).last(),
-                    form = form,
-                ),
-                buildPinnedInlineSuggestionDataset(
-                    spec = specs.last(),
-                    form = form
+
+                add(
+                    buildAppInlineSuggestionDataset(
+                        spec = specs[specs.size - 2], // second to last spec
+                        form = form,
+                    )
                 )
-            )
+
+                add(
+                    buildPinnedInlineSuggestionDataset(
+                        spec = specs.last(),
+                        form = form
+                    )
+                )
+            }
         }
     }
 

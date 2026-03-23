@@ -29,6 +29,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -267,22 +268,28 @@ fun ItemListScreen(
                     }
                 }
 
-                false -> KeyGoColumn(
-                    items = uiState.items.map {
-                        KeyGoColumnItem(
-                            header = it.name.first(),
-                            title = it.name,
-                            id = it.vaultItemId
-                        )
-                    },
-                    onDelete = viewModel::onDelete,
-                    onItemClick = viewModel::onItemClick,
-                    onItemLongClick = viewModel::onItemLongClick,
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                    enableSwipeToDelete = enableDeletion,
-                    openedItemId = openedItemId,
-                    selectedItemIds = uiState.selectedItemIds
-                )
+                false -> {
+                    val items = remember(uiState.items) {
+                        uiState.items.map {
+                            KeyGoColumnItem(
+                                header = it.name.first(),
+                                title = it.name,
+                                id = it.vaultItemId
+                            )
+                        }
+                    }
+
+                    KeyGoColumn(
+                        items = items,
+                        onDelete = viewModel::onDelete,
+                        onItemClick = viewModel::onItemClick,
+                        onItemLongClick = viewModel::onItemLongClick,
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        enableSwipeToDelete = enableDeletion,
+                        openedItemId = openedItemId,
+                        selectedItemIds = uiState.selectedItemIds
+                    )
+                }
             }
         }
     }

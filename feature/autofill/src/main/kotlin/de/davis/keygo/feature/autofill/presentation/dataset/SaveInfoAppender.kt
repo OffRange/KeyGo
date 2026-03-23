@@ -50,7 +50,7 @@ internal fun FillResponse.Builder.applySaveInfo(
 
         password?.let {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1)
-                RegexValidator(it.autofillId, "^\\p{ASCII}*$".toPattern())
+                RegexValidator(it.autofillId, PASSWORD_REGEX)
                     .also(::setValidator)
         }
     }.build()
@@ -65,6 +65,7 @@ private fun Form.getPasswordField(): FormField? {
     return fields.find { it.type == FieldType.Credentials.Password }
 }
 
+private val PASSWORD_REGEX = "^\\p{ASCII}*$".toPattern()
 private const val KEY_FORM = "form"
 private const val KEY_SAVE_TYPE = "saveType"
 
@@ -110,8 +111,7 @@ private fun Form.merge(other: Form): Form {
         throw IllegalArgumentException("Cannot merge forms of different type")
 
     val mergedFields = (this.fields + other.fields)
-        .filter { it.url == this.url } // only keep fields from the same URL
-        .filter { it.type.includeInSaveInfo }
+        .filter { it.url == this.url /* only keep fields from the same URL */ && it.type.includeInSaveInfo }
         .distinctBy { it.autofillId }
 
     return copy(fields = mergedFields)

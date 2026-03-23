@@ -54,9 +54,9 @@ internal class KeyGoAutofillService : AutofillService() {
                 return@launch
             }
 
-            val windowNode = (0 until structure.windowNodeCount).mapNotNull {
+            val windowNode = (0 until structure.windowNodeCount).lastOrNull()?.let {
                 structure.getWindowNodeAt(it)
-            }.lastOrNull()
+            }
             if (windowNode == null) {
                 callback.onSuccess(null)
                 return@launch

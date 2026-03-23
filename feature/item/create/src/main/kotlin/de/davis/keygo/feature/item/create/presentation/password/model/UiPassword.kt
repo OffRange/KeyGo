@@ -11,8 +11,7 @@ data class UiPassword(val value: String) {
     }
 
     private fun String.splitByCharClassRegex(): List<Part> {
-        val pattern = Regex("""\p{L}+|\d+|[^\p{L}\d]+""")
-        return pattern.findAll(this)
+        return PATTERN.findAll(this)
             .map {
                 when {
                     it.value.all { char -> char.isLetter() } -> Part.Letter(it.value)
@@ -24,6 +23,8 @@ data class UiPassword(val value: String) {
     }
 
     internal companion object {
+
+        val PATTERN = Regex("""\p{L}+|\d+|[^\p{L}\d]+""")
         fun String.asUiPassword() = UiPassword(this)
     }
 }

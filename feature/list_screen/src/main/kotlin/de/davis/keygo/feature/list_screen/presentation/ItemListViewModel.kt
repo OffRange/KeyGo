@@ -12,9 +12,11 @@ import de.davis.keygo.core.item.domain.repository.VaultItemRepository
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.feature.list_screen.presentation.model.Event
 import de.davis.keygo.feature.list_screen.presentation.model.ListItemState
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +36,6 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
 import kotlin.time.Duration.Companion.milliseconds
@@ -187,7 +188,7 @@ internal class ItemListViewModel(
         // Delete all flagged items, once the viewmodel is being cleared
         val pendingDeletions = flaggedForDeletion.getAndUpdate { emptySet() }
         if (pendingDeletions.isNotEmpty()) {
-            runBlocking(Dispatchers.IO) {
+            CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
                 pendingDeletions.forEach { itemId ->
                     vaultItemRepository.deleteItem(itemId)
                 }
