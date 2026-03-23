@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="scan_qr_code">Scan QR Code</string>
+
+    <string name="camera_permission_rationale">Camera access is required to scan TOTP-setup QR codes.</string>
+    <string name="grant">Grant</string>
+    <string name="cancel">Cancel</string>
+
+    <string name="permission_title">Camera permission</string>
+    <string name="permission_denied_permanently">Camera permission was denied. To scan QR codes, please enable it in your app settings.</string>
+    <string name="open_settings">Open Settings</string>
 </resources>

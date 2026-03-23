@@ -1,5 +1,9 @@
 package de.davis.keygo.feature.totp.presentation.component
 
+import android.Manifest
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.camera.compose.CameraXViewfinder
 import androidx.camera.core.CameraSelector
@@ -10,11 +14,16 @@ import androidx.camera.core.SurfaceRequest
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Camera
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -32,6 +41,10 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.accompanist.permissions.shouldShowRationale
 import de.davis.keygo.feature.totp.R
 import de.davis.keygo.feature.totp.domain.model.camera.Frame
 import de.davis.keygo.feature.totp.domain.qr.QRScanner
@@ -40,7 +53,7 @@ import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun QRScanner(
     onClose: () -> Unit,
@@ -57,6 +70,129 @@ fun QRScanner(
         focusManager.clearFocus()
     }
 
+    var permissionRequested by remember { mutableStateOf(false) }
+    val permissionState = rememberPermissionState(Manifest.permission.CAMERA) {
+        permissionRequested = true
+    }
+
+    when {
+        permissionState.status.isGranted -> {
+            ScannerContent(onClose = onClose, success = success)
+        }
+
+        permissionState.status.shouldShowRationale -> {
+            ExplainPermissionDialog(
+                onGrant = { permissionState.launchPermissionRequest() },
+                onClose = onClose
+            )
+        }
+
+        permissionRequested -> {
+            // Permission was denied permanently (no rationale, not granted, already requested)
+            val context = LocalContext.current
+            PermissionDeniedDialog(
+                onOpenSettings = {
+                    context.startActivity(
+                        Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.fromParts("package", context.packageName, null)
+                        )
+                    )
+                },
+                onClose = onClose
+            )
+        }
+
+        else -> {
+            // First time — request immediately
+            LaunchedEffect(Unit) {
+                permissionState.launchPermissionRequest()
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExplainPermissionDialog(
+    onGrant: () -> Unit,
+    onClose: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = {},
+        modifier = Modifier.fillMaxWidth(),
+        confirmButton = {
+            Button(
+                onClick = onGrant
+            ) {
+                Text(text = stringResource(R.string.grant))
+            }
+        },
+        dismissButton = {
+            OutlinedButton(
+                onClick = onClose
+            ) {
+                Text(text = stringResource(R.string.cancel))
+            }
+        },
+        title = {
+            Text(text = stringResource(R.string.permission_title))
+        },
+        text = {
+            Text(text = stringResource(R.string.camera_permission_rationale))
+        },
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Camera,
+                contentDescription = null,
+            )
+        }
+    )
+}
+
+@Composable
+private fun PermissionDeniedDialog(
+    onOpenSettings: () -> Unit,
+    onClose: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = {},
+        modifier = Modifier.fillMaxWidth(),
+        confirmButton = {
+            Button(
+                onClick = onOpenSettings
+            ) {
+                Text(text = stringResource(R.string.open_settings))
+            }
+        },
+        dismissButton = {
+            OutlinedButton(
+                onClick = onClose
+            ) {
+                Text(text = stringResource(R.string.cancel))
+            }
+        },
+        title = {
+            Text(text = stringResource(R.string.permission_title))
+        },
+        text = {
+            Text(text = stringResource(R.string.permission_denied_permanently))
+        },
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Camera,
+                contentDescription = null,
+            )
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ScannerContent(
+    onClose: () -> Unit,
+    success: (List<String>) -> Unit
+) {
+    val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val cameraProvider = remember(context) {
         ProcessCameraProvider.getInstance(context).get()
@@ -64,7 +200,6 @@ fun QRScanner(
 
     val scanner = koinInject<QRScanner>()
 
-    val scope = rememberCoroutineScope()
     val preview = remember { Preview.Builder().build() }
     val imageAnalysis = remember {
         ImageAnalysis.Builder()

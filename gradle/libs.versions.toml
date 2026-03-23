@@ -5,6 +5,7 @@ minSdk = "26"
 agp = "9.1.0"
 autofill = "1.3.0"
 argon2kt = "1.6.0"
+accompanist = "0.37.3"
 camera = "1.5.3"
 credentials = "1.6.0-rc02"
 gmsMlkitBarcodeScanning = "18.3.1"
@@ -73,6 +74,8 @@ androidx-credentials = { group = "androidx.credentials", name = "credentials", v
 androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "camera" }
 androidx-camera-compose = { module = "androidx.camera:camera-compose", version.ref = "camera" }
 androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camera" }
+
+com-google-accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist" }
 
 koin-bom = { group = "io.insert-koin", name = "koin-bom", version.ref = "koinBOM" }
 koin-core = { group = "io.insert-koin", name = "koin-core" }

@@ -60,6 +60,8 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
 
+    implementation(libs.com.google.accompanist.permissions)
+
     implementation(projects.core.util)
     implementation(libs.turingcomplete.totp)
 
