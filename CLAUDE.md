@@ -73,6 +73,13 @@ prompt flow, or persistence semantics without explicit instruction.
 - **Rust FFI** — preserve type/memory-safety across JNI boundary
 - **Room schema** — check migration implications before changing entities
 
+## Code Style
+
+- **Brace-less `if`/`else`** for single-expression branches — even if the expression spans multiple
+  lines (e.g. a `viewModelScope.launch { … }` block). Only use braces when a branch contains
+  multiple statements.
+- **Trailing commas** on multi-line parameter lists and collection literals.
+
 ## Testing
 
 - kotlin-test + MockK + kotlinx-coroutines-test; Compose UI tests with Espresso
