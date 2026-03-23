@@ -81,8 +81,7 @@ private fun App() {
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
-    val snackbarManager = LocalSnackbarManager.current
-    SnackbarHandler(snackbarManager, snackbarHostState)
+    SnackbarHandler(snackbarHostState)
 
     val scope = rememberCoroutineScope()
 

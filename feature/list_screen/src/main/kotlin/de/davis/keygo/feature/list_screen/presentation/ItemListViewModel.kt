@@ -134,23 +134,21 @@ internal class ItemListViewModel(
         updateItemDeletionState(itemId, deleted = true)
 
 
-        viewModelScope.launch {
-            snackbarManager.sendMessage(
-                ItemDeletedMessage(
-                    onClick = {
-                        updateItemDeletionState(itemId, deleted = false)
-                    },
-                    onDismiss = {
-                        viewModelScope.launch {
-                            vaultItemRepository.deleteItem(itemId)
+        snackbarManager.sendMessage(
+            ItemDeletedMessage(
+                onClick = {
+                    updateItemDeletionState(itemId, deleted = false)
+                },
+                onDismiss = {
+                    viewModelScope.launch {
+                        vaultItemRepository.deleteItem(itemId)
 
-                            // Inside this coroutine to ensure it only runs after the deletion
-                            updateItemDeletionState(itemId, deleted = false)
-                        }
+                        // Inside this coroutine to ensure it only runs after the deletion
+                        updateItemDeletionState(itemId, deleted = false)
                     }
-                )
+                }
             )
-        }
+        )
     }
 
 

@@ -2,35 +2,32 @@ package de.davis.keygo.core.util.data.snackbar
 
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import org.koin.core.annotation.Single
 
 @Single
 internal class SnackbarManagerImpl : SnackbarManager {
 
-    private val stickyFlow = MutableSharedFlow<SnackbarMessage>(replay = 1, extraBufferCapacity = 1)
-    private val oneShotFlow =
-        MutableSharedFlow<SnackbarMessage>(replay = 0, extraBufferCapacity = 1)
+    private val oneShotChannel = Channel<SnackbarMessage>(Channel.BUFFERED)
+    private val _stickyMessage = MutableStateFlow<SnackbarMessage?>(null)
 
-    override val events: Flow<SnackbarMessage> = merge(stickyFlow, oneShotFlow)
+    override val oneShotEvents = oneShotChannel.receiveAsFlow()
 
-    override suspend fun sendMessage(message: SnackbarMessage) {
-        when (message.action) {
-            null -> {
-                oneShotFlow.emit(message)
-            }
+    override val stickyMessage: StateFlow<SnackbarMessage?> = _stickyMessage.asStateFlow()
 
-            else -> {
-                stickyFlow.emit(message)
-            }
+    override fun sendMessage(message: SnackbarMessage) {
+        if (message.action != null) {
+            _stickyMessage.value = message
+        } else {
+            oneShotChannel.trySend(message)
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    override suspend fun reset() {
-        stickyFlow.resetReplayCache()
+    override fun reset() {
+        _stickyMessage.value = null
     }
 }

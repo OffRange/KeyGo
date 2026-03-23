@@ -4,10 +4,10 @@ import de.davis.keygo.core.util.domain.model.snackbar.SnackbarAction
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.presentation.UIText
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class SnackbarManagerImplTest {
 
@@ -22,52 +22,49 @@ class SnackbarManagerImplTest {
     )
 
     @Test
-    fun `sendMessage emits one-shot message without action`() = runTest {
+    fun `sendMessage buffers one-shot message without action`() = runTest {
         val msg = message("hello")
 
-        launch {
-            manager.sendMessage(msg)
-        }
+        manager.sendMessage(msg)
 
-        val received = manager.events.first()
+        val received = manager.oneShotEvents.first()
         assertEquals(msg, received)
     }
 
     @Test
-    fun `sendMessage emits sticky message with action`() = runTest {
+    fun `sendMessage sets sticky message with action`() {
         val msg = message("hello", withAction = true)
 
-        launch {
-            manager.sendMessage(msg)
-        }
+        manager.sendMessage(msg)
 
-        val received = manager.events.first()
-        assertEquals(msg, received)
+        assertEquals(msg, manager.stickyMessage.value)
     }
 
     @Test
-    fun `sticky message is replayed to new collectors`() = runTest {
+    fun `sticky message survives new collectors`() {
         val msg = message("sticky", withAction = true)
         manager.sendMessage(msg)
 
-        // New collector should receive the replayed sticky message
-        val received = manager.events.first()
-        assertEquals(msg, received)
+        // StateFlow replays to new collectors
+        assertEquals(msg, manager.stickyMessage.value)
     }
 
     @Test
-    fun `reset clears sticky replay cache`() = runTest {
+    fun `reset clears sticky message`() {
         val msg = message("sticky", withAction = true)
         manager.sendMessage(msg)
         manager.reset()
 
-        // After reset, send a new message to verify flow still works
-        val newMsg = message("new", withAction = true)
-        launch {
-            manager.sendMessage(newMsg)
-        }
+        assertNull(manager.stickyMessage.value)
+    }
 
-        val received = manager.events.first()
-        assertEquals(newMsg, received)
+    @Test
+    fun `reset does not affect one-shot messages`() = runTest {
+        val msg = message("error")
+        manager.sendMessage(msg)
+        manager.reset()
+
+        val received = manager.oneShotEvents.first()
+        assertEquals(msg, received)
     }
 }
