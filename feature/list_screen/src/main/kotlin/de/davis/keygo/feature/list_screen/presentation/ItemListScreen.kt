@@ -153,6 +153,7 @@ fun ItemListScreen(
                 viewModel.onSubmitQuery()
                 scope.launch { searchBarState.animateToCollapsed() }
             },
+            enabled = false, // TODO: remove when b/464761441 is fixed
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = {
                 AnimatedContent(
