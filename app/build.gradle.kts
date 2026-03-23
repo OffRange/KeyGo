@@ -21,6 +21,15 @@ android {
     namespace = "de.davis.keygo"
     compileSdk = 36
 
+    signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "debug"
+            keyPassword = "android"
+        }
+    }
+
     defaultConfig {
         applicationId = "de.davis.passwordmanager"
         minSdk = 26
