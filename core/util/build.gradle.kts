@@ -56,6 +56,7 @@ dependencies {
     implementation(libs.koin.annotations)
     implementation(libs.koin.core)
 
+    testImplementation(libs.okhttp.jvm)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
 }

@@ -92,6 +92,7 @@ io-mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 squareup-kotlinpoet = { group = "com.squareup", name = "kotlinpoet-ksp", version.ref = "kotlinpoet" }
 
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-jvm = { group = "com.squareup.okhttp3", name = "okhttp-jvm", version.ref = "okhttp" }
 
 gosimple-nbvcxz = { group = "me.gosimple", name = "nbvcxz", version.ref = "nbvcxz" }
 turingcomplete-totp = { group = "dev.turingcomplete", name = "kotlin-onetimepassword", version.ref = "totp" }
