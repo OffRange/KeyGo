@@ -10,6 +10,7 @@ import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
+import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.item.core.domain.model.PasswordError
@@ -29,6 +30,7 @@ import de.davis.keygo.feature.item.view.password.model.ViewPasswordUiEvent
 import de.davis.keygo.feature.item.view.password.model.asObfuscatedString
 import de.davis.keygo.feature.totp.domain.model.TotpInformation
 import de.davis.keygo.feature.totp.domain.repository.TotpGenerator
+import de.davis.keygo.feature.totp.domain.usecase.GetTotpSecretFromUrlUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -57,10 +59,12 @@ internal class ViewPasswordViewModel(
     private val isValidUrl: IsValidUrlUseCase,
     private val websiteHandler: WebsiteHandler,
     private val totpGenerator: TotpGenerator,
-    private val registrableDomainResolver: RegistrableDomainResolver
+    private val registrableDomainResolver: RegistrableDomainResolver,
+    private val getTotpSecret: GetTotpSecretFromUrlUseCase
 ) : ViewModel() {
 
     private val _modificationDialogState = MutableStateFlow<ModificationDialog?>(null)
+    private val _scanning = MutableStateFlow(false)
     private val _itemId = MutableStateFlow(ItemIdNone)
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -108,8 +112,12 @@ internal class ViewPasswordViewModel(
 
 
     val state =
-        combine(stateWithoutModification, _modificationDialogState) { state, modificationDialog ->
-            state.copy(modificationDialog = modificationDialog)
+        combine(
+            stateWithoutModification,
+            _modificationDialogState,
+            _scanning
+        ) { state, modificationDialog, scanning ->
+            state.copy(modificationDialog = modificationDialog, scanning = scanning)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -127,8 +135,11 @@ internal class ViewPasswordViewModel(
 
     fun onEvent(event: ViewPasswordUiEvent) {
         when (event) {
-            ViewPasswordUiEvent.OnBackClick -> viewModelScope.launch {
-                navigationEventChannel.send(NavigationEvent.NavigateBack)
+            ViewPasswordUiEvent.OnBackClick -> {
+                if (_scanning.value) _scanning.update { false }
+                else viewModelScope.launch {
+                    navigationEventChannel.send(NavigationEvent.NavigateBack)
+                }
             }
 
             is ViewPasswordUiEvent.OpenWebsite -> {
@@ -170,6 +181,28 @@ internal class ViewPasswordViewModel(
                     ModificationDialog(
                         fieldType = fieldType,
                         initialValue = initialValue
+                    )
+                }
+            }
+
+            ViewPasswordUiEvent.OnScanCodeRequest -> {
+                _modificationDialogState.update { null }
+                _scanning.update { true }
+            }
+
+            is ViewPasswordUiEvent.OnCodesScanned -> {
+                _scanning.update { false }
+                val secret = event.codes.firstNotNullOfOrNull {
+                    getTotpSecret(it).getOrNull()
+                }?.secret ?: return
+
+                val itemId = _itemId.value
+                viewModelScope.launch {
+                    updatePassword(
+                        UpsertPassword.update(
+                            vaultId = itemId,
+                            totpSecret = fieldUpdate(secret)
+                        )
                     )
                 }
             }

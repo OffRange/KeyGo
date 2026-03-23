@@ -12,4 +12,7 @@ sealed interface ViewPasswordUiEvent {
     data object OnCloseDialog : ViewPasswordUiEvent
     data class OnSubmitModification(val input: String) : ViewPasswordUiEvent
     data class OnModifyFieldRequest(val fieldType: FieldType) : ViewPasswordUiEvent
+
+    data object OnScanCodeRequest : ViewPasswordUiEvent
+    data class OnCodesScanned(val codes: List<String>) : ViewPasswordUiEvent
 }

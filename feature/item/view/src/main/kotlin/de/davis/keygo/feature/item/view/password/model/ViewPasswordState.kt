@@ -15,4 +15,5 @@ data class ViewPasswordState(
     val domains: Set<DomainInfo> = emptySet(),
     val note: String = "",
     val modificationDialog: ModificationDialog? = null,
+    val scanning: Boolean = false,
 )

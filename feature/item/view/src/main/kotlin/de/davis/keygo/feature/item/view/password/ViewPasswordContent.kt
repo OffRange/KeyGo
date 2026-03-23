@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.MoreTime
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -78,6 +79,7 @@ import de.davis.keygo.feature.item.view.password.model.ObfuscatedString
 import de.davis.keygo.feature.item.view.password.model.ViewPasswordState
 import de.davis.keygo.feature.item.view.password.model.ViewPasswordUiEvent
 import de.davis.keygo.feature.totp.domain.model.TotpInformation
+import de.davis.keygo.feature.totp.presentation.component.QRScanner
 import de.davis.keygo.core.item.R as CoreItemR
 import de.davis.keygo.core.ui.R as CoreUiR
 import de.davis.keygo.feature.item.core.R as ItemCoreR
@@ -346,12 +348,33 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                         prefix = if (dialog.fieldType == FieldType.Domain) {
                             { Text(text = detectedScheme ?: "https://") }
                         } else null,
+                        outsideTrailingContent = if (dialog.fieldType == FieldType.Totp) {
+                            {
+                                IconButton(
+                                    onClick = { onEvent(ViewPasswordUiEvent.OnScanCodeRequest) }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.QrCodeScanner,
+                                        contentDescription = null
+                                    )
+                                }
+                            }
+                        } else null,
                         isSecure = dialog.fieldType.isSensitive,
                         inputTransformation = transformation,
                     )
                 },
             )
         }
+    }
+
+    if (state.scanning) {
+        QRScanner(
+            onClose = { onEvent(ViewPasswordUiEvent.OnBackClick) },
+            success = {
+                onEvent(ViewPasswordUiEvent.OnCodesScanned(it))
+            }
+        )
     }
 }
 
