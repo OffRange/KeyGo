@@ -46,6 +46,7 @@ import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.item.core.presentation.component.ChipFormGroup
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
+import de.davis.keygo.feature.item.core.presentation.transformation.rememberSchemeStrippingTransformation
 import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.presentation.component.FormGroup
 import de.davis.keygo.feature.item.create.presentation.component.KeyGoItemForm
@@ -65,6 +66,8 @@ import de.davis.keygo.feature.item.core.R as ItemCoreR
 fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val domainTextFieldState = rememberTextFieldState()
+    val schemeTransformation = rememberSchemeStrippingTransformation()
+    val detectedScheme by schemeTransformation.detectedScheme
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -210,8 +213,9 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
                         imeAction = ImeAction.Next
                     ),
                     delimiters = DELIMITERS,
+                    inputTransformation = schemeTransformation,
                     prefix = {
-                        Text(text = "https://")
+                        Text(text = detectedScheme ?: "https://")
                     }
                 ) { item, selected ->
                     InputChip(

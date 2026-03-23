@@ -18,12 +18,12 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.foundation.text.input.then
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldLabelScope
@@ -66,6 +66,7 @@ fun <T> ChipFormGroup(
     lineLimits: TextFieldLineLimits = TextFieldLineLimits.SingleLine,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     delimiters: Set<Char> = setOf(',', ' '),
+    inputTransformation: InputTransformation? = null,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     chipBuilder: @Composable (T, Boolean) -> Unit
 ) {
@@ -139,8 +140,13 @@ fun <T> ChipFormGroup(
             }
         }
 
-        OutlinedTextField(
+        val combinedTransformation = remember(inputTransformation, noLeadingDelimiters) {
+            inputTransformation?.then(noLeadingDelimiters) ?: noLeadingDelimiters
+        }
+
+        KeyGoFormField(
             state = state,
+            label = label,
             modifier = modifier
                 .fillMaxWidth()
                 .onPreviewKeyEvent {
@@ -153,12 +159,11 @@ fun <T> ChipFormGroup(
                         true
                     } else false
                 },
-            label = label,
             prefix = prefix,
             placeholder = placeholder,
             lineLimits = lineLimits,
             keyboardOptions = keyboardOptions,
-            inputTransformation = noLeadingDelimiters,
+            inputTransformation = combinedTransformation,
             interactionSource = interactionSource
         )
     }

@@ -1,6 +1,5 @@
 package de.davis.keygo.feature.item.view.password
 
-import androidx.compose.foundation.text.input.TextFieldState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
@@ -158,7 +157,7 @@ internal class ViewPasswordViewModel(
             is ViewPasswordUiEvent.OnModifyFieldRequest -> {
                 val fieldType = event.fieldType
                 val state = state.value
-                val textFieldState = when (fieldType) {
+                val initialValue = when (fieldType) {
                     FieldType.Name -> state.name
                     FieldType.Password -> state.password.raw
                     FieldType.Totp -> "" // TOTP is not editable in this context
@@ -170,15 +169,15 @@ internal class ViewPasswordViewModel(
                 _modificationDialogState.update {
                     ModificationDialog(
                         fieldType = fieldType,
-                        textFieldState = TextFieldState(textFieldState),
+                        initialValue = initialValue
                     )
                 }
             }
 
-            ViewPasswordUiEvent.OnSubmitModification -> {
+            is ViewPasswordUiEvent.OnSubmitModification -> {
                 val dialog = _modificationDialogState.value ?: return
                 val itemId = _itemId.value
-                val newText = fieldUpdate(dialog.textFieldState.text.toString())
+                val newText = fieldUpdate(event.input)
 
                 viewModelScope.launch {
                     updatePassword(

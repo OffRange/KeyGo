@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.item.core.presentation.component
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -37,16 +38,18 @@ import de.davis.keygo.feature.item.core.presentation.transformation.TrimTransfor
 @Composable
 fun KeyGoFormField(
     state: TextFieldState,
-    label: @Composable TextFieldLabelScope.() -> Unit,
     modifier: Modifier = Modifier,
     isSecure: Boolean = false,
+    label: @Composable (TextFieldLabelScope.() -> Unit)? = null,
+    prefix: @Composable (() -> Unit)? = null,
     placeholder: @Composable (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null,
     outsideTrailingContent: @Composable (() -> Unit)? = null,
     error: InputFieldError? = null,
     lineLimits: TextFieldLineLimits = TextFieldLineLimits.SingleLine,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Companion.Default.copy(imeAction = ImeAction.Companion.Next),
-    inputTransformation: InputTransformation? = TrimTransformation
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next),
+    inputTransformation: InputTransformation? = TrimTransformation,
+    interactionSource: MutableInteractionSource? = null
 ) {
     val supportingText: @Composable (() -> Unit)? = error?.let {
         {
@@ -59,7 +62,7 @@ fun KeyGoFormField(
 
     Row(
         modifier = modifier,
-        verticalAlignment = Alignment.Companion.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         when (isSecure) {
@@ -67,15 +70,16 @@ fun KeyGoFormField(
                 var passwordHidden by rememberSaveable { mutableStateOf(true) }
                 OutlinedSecureTextField(
                     state = state,
-                    modifier = Modifier.Companion
+                    modifier = Modifier
                         .weight(1f)
                         .trimOnFocusLost(state, inputTransformation is TrimTransformation),
                     label = label,
                     placeholder = placeholder,
+                    prefix = prefix,
                     textObfuscationMode = if (passwordHidden) {
-                        TextObfuscationMode.Companion.RevealLastTyped
+                        TextObfuscationMode.RevealLastTyped
                     } else {
-                        TextObfuscationMode.Companion.Visible
+                        TextObfuscationMode.Visible
                     },
                     trailingIcon = {
                         VisibilityButton(
@@ -86,28 +90,31 @@ fun KeyGoFormField(
                     supportingText = supportingText,
                     isError = supportingText != null,
                     keyboardOptions = keyboardOptions,
-                    inputTransformation = inputTransformation
+                    inputTransformation = inputTransformation,
+                    interactionSource = interactionSource
                 )
             }
 
             else -> OutlinedTextField(
                 state = state,
-                modifier = Modifier.Companion
+                modifier = Modifier
                     .weight(1f)
                     .trimOnFocusLost(state, inputTransformation is TrimTransformation),
                 label = label,
                 placeholder = placeholder,
+                prefix = prefix,
                 trailingIcon = trailingContent,
                 lineLimits = lineLimits,
                 supportingText = supportingText,
                 isError = supportingText != null,
                 keyboardOptions = keyboardOptions,
-                inputTransformation = inputTransformation
+                inputTransformation = inputTransformation,
+                interactionSource = interactionSource
             )
         }
 
         outsideTrailingContent?.let {
-            Box(modifier = Modifier.Companion.padding(top = minimizedLabelHalfHeight())) {
+            Box(modifier = Modifier.padding(top = minimizedLabelHalfHeight())) {
                 it()
             }
         }

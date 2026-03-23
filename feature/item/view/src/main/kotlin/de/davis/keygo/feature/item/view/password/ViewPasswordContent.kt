@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.then
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
@@ -70,6 +71,7 @@ import de.davis.keygo.feature.item.core.presentation.component.CopyToClipboardBu
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.password.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.transformation.TrimTransformation
+import de.davis.keygo.feature.item.core.presentation.transformation.rememberSchemeStrippingTransformation
 import de.davis.keygo.feature.item.view.R
 import de.davis.keygo.feature.item.view.password.model.ModificationDialog
 import de.davis.keygo.feature.item.view.password.model.ObfuscatedString
@@ -297,11 +299,18 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
         }
 
         state.modificationDialog?.let { dialog ->
+            val textFieldInputState = rememberTextFieldState(dialog.initialValue)
             AlertDialog(
                 onDismissRequest = { onEvent(ViewPasswordUiEvent.OnCloseDialog) },
                 confirmButton = {
                     TextButton(
-                        onClick = { onEvent(ViewPasswordUiEvent.OnSubmitModification) }
+                        onClick = {
+                            onEvent(
+                                ViewPasswordUiEvent.OnSubmitModification(
+                                    textFieldInputState.text.toString()
+                                )
+                            )
+                        }
                     ) {
                         Text(text = stringResource(CoreUiR.string.add))
                     }
@@ -317,16 +326,28 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                     Text(text = stringResource(CoreUiR.string.add))
                 },
                 text = {
+                    val schemeTransformation = rememberSchemeStrippingTransformation()
+                    val detectedScheme by schemeTransformation.detectedScheme
+
+                    val transformation = when {
+                        dialog.fieldType == FieldType.Domain ->
+                            TrimTransformation.then(schemeTransformation)
+
+                        !dialog.fieldType.isSensitive -> TrimTransformation
+                        else -> null
+                    }
+
                     KeyGoFormField(
-                        state = dialog.textFieldState,
+                        state = textFieldInputState,
                         label = {
                             Text(text = dialog.fieldType.addLabel())
                         },
                         modifier = Modifier.fillMaxWidth(),
+                        prefix = if (dialog.fieldType == FieldType.Domain) {
+                            { Text(text = detectedScheme ?: "https://") }
+                        } else null,
                         isSecure = dialog.fieldType.isSensitive,
-                        inputTransformation = if (!dialog.fieldType.isSensitive)
-                            TrimTransformation
-                        else null,
+                        inputTransformation = transformation,
                     )
                 },
             )
@@ -456,7 +477,7 @@ private fun ViewPasswordContentModificationDialogPreview() {
                     ),
                     modificationDialog = ModificationDialog(
                         fieldType = FieldType.Name,
-                        textFieldState = rememberTextFieldState()
+                        initialValue = "Password"
                     )
                 ),
                 onEvent = {}

@@ -10,6 +10,6 @@ sealed interface ViewPasswordUiEvent {
     data object OnEditRequest : ViewPasswordUiEvent
 
     data object OnCloseDialog : ViewPasswordUiEvent
-    data object OnSubmitModification : ViewPasswordUiEvent
+    data class OnSubmitModification(val input: String) : ViewPasswordUiEvent
     data class OnModifyFieldRequest(val fieldType: FieldType) : ViewPasswordUiEvent
 }
