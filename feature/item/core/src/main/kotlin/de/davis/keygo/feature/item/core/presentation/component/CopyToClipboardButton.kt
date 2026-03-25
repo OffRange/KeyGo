@@ -32,7 +32,6 @@ fun CopyToClipboardButton(data: String) {
                             }
                     }
             scope.launch {
-                data
                 clipboard.setClipEntry(clipData.toClipEntry())
             }
         },
