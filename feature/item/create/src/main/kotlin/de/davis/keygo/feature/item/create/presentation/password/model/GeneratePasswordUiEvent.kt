@@ -1,6 +1,6 @@
 package de.davis.keygo.feature.item.create.presentation.password.model
 
-sealed interface GeneratePasswordUiEvent : PasswordUiEvent {
+internal sealed interface GeneratePasswordUiEvent {
     data class OnCharacterSetClick(val uiCharacterSet: UiCharacterSet) : GeneratePasswordUiEvent
 
     data object OnGeneratePasswordClick : GeneratePasswordUiEvent

@@ -15,14 +15,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MediumFlexibleTopAppBar
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -63,7 +61,7 @@ import de.davis.keygo.feature.item.core.R as ItemCoreR
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) {
+internal fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val domainTextFieldState = rememberTextFieldState()
     val schemeTransformation = rememberSchemeStrippingTransformation()
@@ -275,15 +273,10 @@ fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) 
     }
 
     if (state.generatePasswordBottomSheetVisible) {
-        ModalBottomSheet(
-            onDismissRequest = { onEvent(PasswordUiEvent.OnCloseBottomSheet) },
-        ) {
-            GeneratePasswordContent(
-                state = state.generatePasswordState,
-                onEvent = onEvent,
-                containerColor = BottomSheetDefaults.ContainerColor,
-            )
-        }
+        GeneratePasswordModalBottomSheet(
+            onGenerated = { onEvent(PasswordUiEvent.OnPasswordGenerated(it)) },
+            onDismiss = { onEvent(PasswordUiEvent.OnCloseBottomSheet) }
+        )
     }
 
     if (state.scanning) {

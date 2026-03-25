@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshotFlow
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.ItemIdNone
@@ -29,9 +30,7 @@ import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
 import de.davis.keygo.feature.item.core.presentation.password.model.FieldType
 import de.davis.keygo.feature.item.create.R
-import de.davis.keygo.feature.item.create.domain.PasswordGenerator
 import de.davis.keygo.feature.item.create.presentation.password.model.DialogState
-import de.davis.keygo.feature.item.create.presentation.password.model.GeneratePasswordUiEvent
 import de.davis.keygo.feature.item.create.presentation.password.model.OverrideTotpField
 import de.davis.keygo.feature.item.create.presentation.password.model.PasswordUiEvent
 import de.davis.keygo.feature.item.create.presentation.password.model.PasswordUiState
@@ -60,8 +59,7 @@ import org.koin.core.annotation.KoinViewModel
 import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
-class PasswordViewModel(
-    passwordGenerator: PasswordGenerator,
+internal class PasswordViewModel(
     private val vaultItemRepository: VaultItemRepository,
     private val passwordRepository: PasswordRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
@@ -70,7 +68,7 @@ class PasswordViewModel(
     private val snackbarManager: SnackbarManager,
     private val getTotpSecret: GetTotpSecretFromUrlUseCase,
     private val registrableDomainResolver: RegistrableDomainResolver
-) : GeneratePasswordViewModel(passwordGenerator, passwordStrengthEstimator) {
+) : ViewModel() {
 
     private val nameTextFieldState = TextFieldState()
     private val passwordTextFieldState = TextFieldState()
@@ -85,7 +83,6 @@ class PasswordViewModel(
         .onStart {
             observeNameTextField()
             observePasswordTextField()
-            observeGenerator()
         }
         .stateIn(
             scope = viewModelScope,
@@ -129,21 +126,6 @@ class PasswordViewModel(
             }
             .flowOn(Dispatchers.Default)
             .launchIn(viewModelScope)
-    }
-
-    private fun observeGenerator() {
-        generationState.onEach { state ->
-            _uiState.update {
-                it.copy(generatePasswordState = state)
-            }
-        }.launchIn(viewModelScope)
-
-        finalPassword.onEach { password ->
-            passwordTextFieldState.setTextAndPlaceCursorAtEnd(password)
-            _uiState.update {
-                it.copy(generatePasswordBottomSheetVisible = false)
-            }
-        }.launchIn(viewModelScope)
     }
 
     private fun navigateUp(itemId: ItemId? = null) {
@@ -340,8 +322,6 @@ class PasswordViewModel(
                 _uiState.update { it.copy(generatePasswordBottomSheetVisible = false) }
             }
 
-            is GeneratePasswordUiEvent -> super.onEvent(event)
-
             is PasswordUiEvent.OnScanCodeRequest -> {
                 _uiState.update { it.copy(scanning = true) }
             }
@@ -439,6 +419,13 @@ class PasswordViewModel(
                 _uiState.update {
                     val newList = it.domains.filterNot { info -> info.value == event.value }.toSet()
                     it.copy(domains = newList)
+                }
+            }
+
+            is PasswordUiEvent.OnPasswordGenerated -> {
+                passwordTextFieldState.setTextAndPlaceCursorAtEnd(event.password)
+                _uiState.update {
+                    it.copy(generatePasswordBottomSheetVisible = false)
                 }
             }
         }

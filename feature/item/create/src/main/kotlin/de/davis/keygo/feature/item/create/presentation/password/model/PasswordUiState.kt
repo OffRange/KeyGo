@@ -1,12 +1,11 @@
 package de.davis.keygo.feature.item.create.presentation.password.model
 
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.material3.ExperimentalMaterial3Api
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
 
-data class PasswordUiState(
+internal data class PasswordUiState(
     val nameTextFieldState: TextFieldState = TextFieldState(),
     val notesTextFieldState: TextFieldState = TextFieldState(),
     val passwordTextFieldState: TextFieldState = TextFieldState(),
@@ -16,8 +15,6 @@ data class PasswordUiState(
     val nameExists: Boolean = false,
     val strengthScore: Password.Score = Password.Score.None,
     val generatePasswordBottomSheetVisible: Boolean = false,
-    @OptIn(ExperimentalMaterial3Api::class)
-    val generatePasswordState: GeneratePasswordUiState = GeneratePasswordUiState(),
     val dialogState: DialogState = DialogState.None,
     val nameError: InputFieldError? = null,
     val passwordError: InputFieldError? = null,

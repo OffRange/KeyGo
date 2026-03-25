@@ -33,20 +33,18 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
-open class GeneratePasswordViewModel(
+internal class GeneratePasswordViewModel(
     private val passwordGenerator: PasswordGenerator,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
 ) : ViewModel() {
 
     @OptIn(ExperimentalMaterial3Api::class)
-    private val sliderState = SliderState(value = 10f, valueRange = 8f..100f)
+    val sliderState = SliderState(value = 10f, valueRange = 8f..100f)
 
     private val finalPasswordChannel = Channel<String>()
     val finalPassword = finalPasswordChannel.receiveAsFlow()
 
-    @OptIn(ExperimentalMaterial3Api::class)
-    private val _generationState =
-        MutableStateFlow(GeneratePasswordUiState(sliderState = sliderState))
+    private val _generationState = MutableStateFlow(GeneratePasswordUiState())
     val generationState = _generationState
         .onStart {
             observeLength()
@@ -55,7 +53,7 @@ open class GeneratePasswordViewModel(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = GeneratePasswordUiState(sliderState = sliderState)
+            initialValue = GeneratePasswordUiState()
         )
 
     private fun observeLength() {

@@ -8,7 +8,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,9 +21,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,28 +32,33 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import de.davis.keygo.core.item.domain.model.Password
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
+import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.presentation.password.model.GeneratePasswordUiEvent
-import de.davis.keygo.feature.item.create.presentation.password.model.GeneratePasswordUiState
 import de.davis.keygo.feature.item.create.presentation.password.model.UiCharacterSet
 import de.davis.keygo.feature.item.create.presentation.password.model.UiPassword
-import de.davis.keygo.feature.item.create.presentation.password.model.UiPassword.Companion.asUiPassword
+import org.koin.androidx.compose.koinViewModel
 import de.davis.keygo.core.item.R as CoreItemR
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GeneratePasswordContent(
-    state: GeneratePasswordUiState,
-    onEvent: (GeneratePasswordUiEvent) -> Unit = {},
+    onGenerated: (String) -> Unit,
     containerColor: Color = MaterialTheme.colorScheme.surface,
 ) {
+    val viewModel = koinViewModel<GeneratePasswordViewModel>()
+    val state by viewModel.generationState.collectAsStateWithLifecycle()
+
     val cardProp = KeyGoCardProperties.outlined(containerColor = containerColor)
+
+    ObserveAsEvents(viewModel.finalPassword) {
+        onGenerated(it)
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -107,7 +111,7 @@ fun GeneratePasswordContent(
                 properties = cardProp,
                 trailingItem = {
                     IconButton(
-                        onClick = { onEvent(GeneratePasswordUiEvent.OnGeneratePasswordClick) }
+                        onClick = { viewModel.onEvent(GeneratePasswordUiEvent.OnGeneratePasswordClick) }
                     ) {
                         Icon(imageVector = Icons.Default.Refresh, contentDescription = null)
                     }
@@ -143,7 +147,7 @@ fun GeneratePasswordContent(
                     Text(
                         text = stringResource(
                             R.string.length,
-                            state.sliderState.value.toInt()
+                            viewModel.sliderState.value.toInt()
                         )
                     )
                 },
@@ -151,7 +155,7 @@ fun GeneratePasswordContent(
                     .fillMaxWidth(),
                 properties = cardProp,
             ) {
-                Slider(state = state.sliderState)
+                Slider(state = viewModel.sliderState)
             }
         }
 
@@ -171,7 +175,7 @@ fun GeneratePasswordContent(
                         selectedCharacterSet = state.characterSet,
                         characterSet = UiCharacterSet.LOWERCASE,
                         onClick = {
-                            onEvent(
+                            viewModel.onEvent(
                                 GeneratePasswordUiEvent.OnCharacterSetClick(
                                     UiCharacterSet.LOWERCASE
                                 )
@@ -185,7 +189,7 @@ fun GeneratePasswordContent(
                         selectedCharacterSet = state.characterSet,
                         characterSet = UiCharacterSet.UPPERCASE,
                         onClick = {
-                            onEvent(
+                            viewModel.onEvent(
                                 GeneratePasswordUiEvent.OnCharacterSetClick(
                                     UiCharacterSet.UPPERCASE
                                 )
@@ -199,7 +203,7 @@ fun GeneratePasswordContent(
                         selectedCharacterSet = state.characterSet,
                         characterSet = UiCharacterSet.DIGITS,
                         onClick = {
-                            onEvent(
+                            viewModel.onEvent(
                                 GeneratePasswordUiEvent.OnCharacterSetClick(
                                     UiCharacterSet.DIGITS
                                 )
@@ -213,7 +217,7 @@ fun GeneratePasswordContent(
                         selectedCharacterSet = state.characterSet,
                         characterSet = UiCharacterSet.PUNCTUATIONS,
                         onClick = {
-                            onEvent(
+                            viewModel.onEvent(
                                 GeneratePasswordUiEvent.OnCharacterSetClick(
                                     UiCharacterSet.PUNCTUATIONS
                                 )
@@ -233,7 +237,7 @@ fun GeneratePasswordContent(
                 contentAlignment = Alignment.CenterEnd,
             ) {
                 Button(
-                    onClick = { onEvent(GeneratePasswordUiEvent.OnUseClick) }
+                    onClick = { viewModel.onEvent(GeneratePasswordUiEvent.OnUseClick) }
                 ) {
                     Text(text = stringResource(R.string.use_generated_password))
                 }
@@ -254,21 +258,4 @@ fun CharacterSetChip(
         label = label,
         onClick = onClick,
     )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview
-@Composable
-private fun GeneratePasswordBottomSheetPreview() {
-    MaterialTheme {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            GeneratePasswordContent(
-                state = GeneratePasswordUiState(
-                    generatedPassword = "p@ssw0rd".asUiPassword(),
-                    passwordStrength = Password.Score.Ridiculous,
-                    showCaution = true,
-                )
-            )
-        }
-    }
 }
