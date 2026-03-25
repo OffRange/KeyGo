@@ -73,7 +73,7 @@ fun NavGraphBuilder.dashboardGraph(
         ) {
             NavigableListDetailPaneScaffold(
                 navigator = listNavigator,
-                defaultBackBehavior = BackNavigationBehavior.PopUntilContentChange,
+                defaultBackBehavior = BackNavigationBehavior.PopUntilScaffoldValueChange,
                 listPane = {
                     AnimatedPane {
                         ItemListScreen(
