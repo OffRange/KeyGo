@@ -52,6 +52,12 @@ fun NavGraphBuilder.dashboardGraph(
             }
         }
 
+        val isModifyScreenActive by remember(listNavigator) {
+            derivedStateOf {
+                listNavigator.currentDestination?.contentKey is DetailType.Modify
+            }
+        }
+
         val route = it.toRoute<RouteDestination.Home.Root>()
         LaunchedEffect(route) {
             route.totpUri?.let { totpUri ->
@@ -90,7 +96,7 @@ fun NavGraphBuilder.dashboardGraph(
                             dockedSearchResults = !LocalIsInSinglePaneMode.current,
                             enableDeletion = true,
                             enableSelection = true,
-                            autoSelectFirst = !isSinglePaneMode,
+                            autoSelectFirst = !isSinglePaneMode && !isModifyScreenActive,
                             openedItemId = openedItemId,
                         )
                     }
