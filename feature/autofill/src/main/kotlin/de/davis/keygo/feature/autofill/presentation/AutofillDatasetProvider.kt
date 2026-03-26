@@ -11,6 +11,7 @@ import androidx.annotation.ChecksSdkIntAtLeast
 import de.davis.keygo.feature.autofill.presentation.dataset.inline.InlineDatasetBuilder
 import de.davis.keygo.feature.autofill.presentation.dataset.menu.MenuDatasetBuilder
 import de.davis.keygo.feature.autofill.presentation.model.AutofillValue
+import de.davis.keygo.feature.autofill.presentation.model.Form
 import org.koin.core.annotation.Single
 import android.view.autofill.AutofillValue as AndroidAutofillValue
 
@@ -23,7 +24,7 @@ internal class AutofillDatasetProvider(
 
     suspend fun getAutofillDatasets(
         request: FillRequest,
-        form: de.davis.keygo.feature.autofill.presentation.model.Form
+        form: Form
     ): List<Dataset> {
         if (systemSupportsInlineSuggestions(request))
             return inlineDatasetBuilder.buildInlineDatasets(

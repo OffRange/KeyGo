@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.autofill.presentation.model
+package de.davis.keygo.feature.autofill.presentation.activity.model
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 

@@ -22,12 +22,12 @@ import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.autofill.presentation.activity.component.AssociationDialog
 import de.davis.keygo.feature.autofill.presentation.activity.component.SuspicionDialog
-import de.davis.keygo.feature.autofill.presentation.model.AssociationDialogVisibility
-import de.davis.keygo.feature.autofill.presentation.model.AutofillEvent
-import de.davis.keygo.feature.autofill.presentation.model.AutofillUiEvent
+import de.davis.keygo.feature.autofill.presentation.activity.model.AssociationDialogVisibility
+import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillEvent
+import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillUiEvent
+import de.davis.keygo.feature.autofill.presentation.activity.model.SuspicionDialogVisibility
 import de.davis.keygo.feature.autofill.presentation.model.Request
 import de.davis.keygo.feature.autofill.presentation.model.RequestData
-import de.davis.keygo.feature.autofill.presentation.model.SuspicionDialogVisibility
 import org.koin.androidx.compose.koinViewModel
 
 

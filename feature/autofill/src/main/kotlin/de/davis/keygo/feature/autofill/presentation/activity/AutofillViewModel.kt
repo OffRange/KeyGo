@@ -15,10 +15,11 @@ import de.davis.keygo.feature.autofill.domain.usecase.AddRegistrableDomainsToPas
 import de.davis.keygo.feature.autofill.domain.usecase.DoesItemHaveDomainReferencesUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.IsAppLinkedToWebsiteUseCase
 import de.davis.keygo.feature.autofill.presentation.AutofillDatasetProvider
+import de.davis.keygo.feature.autofill.presentation.activity.model.AssociationDialogVisibility
 import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillBiometricRequest
-import de.davis.keygo.feature.autofill.presentation.model.AssociationDialogVisibility
-import de.davis.keygo.feature.autofill.presentation.model.AutofillEvent
-import de.davis.keygo.feature.autofill.presentation.model.AutofillUiEvent
+import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillEvent
+import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillUiEvent
+import de.davis.keygo.feature.autofill.presentation.activity.model.SuspicionDialogVisibility
 import de.davis.keygo.feature.autofill.presentation.model.AutofillUiState
 import de.davis.keygo.feature.autofill.presentation.model.AutofillValue
 import de.davis.keygo.feature.autofill.presentation.model.FieldType
@@ -28,7 +29,6 @@ import de.davis.keygo.feature.autofill.presentation.model.FormType
 import de.davis.keygo.feature.autofill.presentation.model.Request
 import de.davis.keygo.feature.autofill.presentation.model.RequestData
 import de.davis.keygo.feature.autofill.presentation.model.SaveRequestData
-import de.davis.keygo.feature.autofill.presentation.model.SuspicionDialogVisibility
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.totp.domain.repository.TotpGenerator
 import kotlinx.coroutines.channels.Channel
