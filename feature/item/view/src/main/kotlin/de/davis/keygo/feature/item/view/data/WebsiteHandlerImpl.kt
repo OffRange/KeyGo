@@ -12,7 +12,10 @@ internal class WebsiteHandlerImpl(
 ) : WebsiteHandler {
 
     override fun openWebsite(url: String) {
-        Intent(Intent.ACTION_VIEW, url.ensureProtocol().toUri()).let {
+        Intent(
+            Intent.ACTION_VIEW,
+            url.ensureProtocol().toUri()
+        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).let {
             runCatching {
                 context.startActivity(it)
             }
