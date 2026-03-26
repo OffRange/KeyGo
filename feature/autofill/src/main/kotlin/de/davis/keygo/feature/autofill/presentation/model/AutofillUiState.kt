@@ -9,5 +9,6 @@ internal data class AutofillUiState(
     val request: Request<*> = Request.None,
     val associationDialogVisibility: AssociationDialogVisibility = AssociationDialogVisibility.Hidden,
     val suspicionDialogVisibility: SuspicionDialogVisibility = SuspicionDialogVisibility.Hidden,
+    val showGeneratePassword: Boolean = false,
     val vaultId: ItemId = ItemIdNone
 )

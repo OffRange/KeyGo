@@ -125,6 +125,10 @@ internal class AutofillViewModel(
                 is FillRequestData.Pinned,
                 is FillRequestData.App -> _uiState.update { it.copy(request = Request.SelectItem) }
 
+                is FillRequestData.GeneratePassword -> _uiState.update {
+                    it.copy(showGeneratePassword = true)
+                }
+
                 is FillRequestData.Suggestion -> handleSuggestionRequest(requestData)
             }
         }
@@ -205,6 +209,14 @@ internal class AutofillViewModel(
 
             AutofillUiEvent.OnAbortInSuspicion -> viewModelScope.launch {
                 eventChannel.send(AutofillEvent.Abort)
+            }
+
+            AutofillUiEvent.OnDismissGeneratePassword -> viewModelScope.launch {
+                eventChannel.send(AutofillEvent.Abort)
+            }
+
+            is AutofillUiEvent.OnGeneratedPassword -> viewModelScope.launch {
+                sendGeneratedPasswordFillEvent(event.password)
             }
         }
     }
@@ -330,6 +342,29 @@ internal class AutofillViewModel(
         }
 
         eventChannel.send(AutofillEvent.Fill(autofillDatasetProvider.getFillingDataset(values)))
+    }
+
+    private suspend fun sendGeneratedPasswordFillEvent(password: String) {
+        val values = requestData.form.fields
+            .filter { it.type is FieldType.Credentials.Password }
+            .map {
+                AutofillValue(
+                    autofillId = it.autofillId,
+                    value = password
+                )
+            }
+
+        if (values.isEmpty()) {
+            eventChannel.send(AutofillEvent.Abort)
+            return
+        }
+
+        eventChannel.send(
+            AutofillEvent.Fill(
+                autofillDatasetProvider.getFillingDataset(values),
+                copyToClipboard = password
+            )
+        )
     }
 
     companion object {

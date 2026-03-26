@@ -32,10 +32,17 @@ internal sealed interface FillRequestData : RequestData {
         // the pending intent would be overridden by the last one created, causing only that one to
         // be received.
         @IgnoredOnParcel
-        override val requestId: Int = 1003 + index
+        override val requestId: Int = 1010 + index
     }
 
     data class App(
+        override val form: Form,
+    ) : FillRequestData {
+        @IgnoredOnParcel
+        override val requestId: Int = 1003
+    }
+
+    data class GeneratePassword(
         override val form: Form,
     ) : FillRequestData {
         @IgnoredOnParcel
@@ -54,6 +61,12 @@ internal fun pinnedRequestData(formInformation: Form) =
     FillRequestData.Pinned(form = formInformation)
 
 internal fun appRequestData(formInformation: Form) = FillRequestData.App(form = formInformation)
+internal fun generatePasswordRequestData(formInformation: Form) =
+    FillRequestData.GeneratePassword(
+        form = formInformation.copy(
+            fields = formInformation.fields.filter { it.type is FieldType.Credentials.Password }
+        )
+    )
 
 internal fun suggestionRequestData(formInformation: Form, vaultId: ItemId, index: Int) =
     FillRequestData.Suggestion(

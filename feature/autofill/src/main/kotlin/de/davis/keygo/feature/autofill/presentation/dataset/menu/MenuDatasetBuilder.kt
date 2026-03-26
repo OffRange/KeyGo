@@ -9,9 +9,11 @@ import de.davis.keygo.feature.autofill.R
 import de.davis.keygo.feature.autofill.presentation.dataset.DatasetBuilder
 import de.davis.keygo.feature.autofill.presentation.dataset.SuggestionFinder
 import de.davis.keygo.feature.autofill.presentation.getSelectionPendingIntent
+import de.davis.keygo.feature.autofill.presentation.model.FieldType
 import de.davis.keygo.feature.autofill.presentation.model.Form
 import de.davis.keygo.feature.autofill.presentation.model.FormType
 import de.davis.keygo.feature.autofill.presentation.model.appRequestData
+import de.davis.keygo.feature.autofill.presentation.model.generatePasswordRequestData
 import de.davis.keygo.feature.autofill.presentation.model.suggestionRequestData
 import de.davis.keygo.feature.autofill.presentation.subtitle
 import org.koin.core.annotation.Single
@@ -43,13 +45,29 @@ internal class MenuDatasetBuilder(
 
             suggestions.mapIndexed { index, suggestion ->
                 buildSuggestionDataset(index, form, suggestion)
-            } + listOf(buildAppDataset(form))
+            } + listOfNotNull(buildGeneratePasswordDataset(form), buildAppDataset(form))
         }
+    }
+
+    private fun buildGeneratePasswordDataset(form: Form): Dataset? {
+        if (form.fields.none { it.type is FieldType.Credentials.Password }) return null
+
+        val remoteViews = menuDatasetBuilder.buildMenuSuggestion(
+            title = context.getString(de.davis.keygo.feature.item.create.R.string.generate_password),
+            icon = R.drawable.baseline_auto_awesome_24
+        )
+
+        val requestData = generatePasswordRequestData(form)
+        return datasetBuilder.buildDataset(
+            remoteViews = remoteViews,
+            intentSender = context.getSelectionPendingIntent(requestData).intentSender,
+            form = requestData.form,
+        )
     }
 
     private fun buildAppDataset(form: Form): Dataset {
         val remoteViews = menuDatasetBuilder.buildMenuSuggestion(
-            title = context.getString(CoreUiR.string.app_name),
+            title = context.getString(R.string.open_app),
             subtitle = context.getString(R.string.autofill_service),
             icon = CoreUiR.mipmap.ic_launcher_round
         )

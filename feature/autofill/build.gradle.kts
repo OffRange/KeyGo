@@ -79,4 +79,8 @@ dependencies {
     implementation(project.dependencies.platform(libs.koin.bom))
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.annotations)
+
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.io.mockk)
 }

@@ -10,4 +10,7 @@ internal sealed interface AutofillUiEvent {
 
     data object OnContinueInSuspicion : AutofillUiEvent
     data object OnAbortInSuspicion : AutofillUiEvent
+
+    data object OnDismissGeneratePassword : AutofillUiEvent
+    data class OnGeneratedPassword(val password: String) : AutofillUiEvent
 }

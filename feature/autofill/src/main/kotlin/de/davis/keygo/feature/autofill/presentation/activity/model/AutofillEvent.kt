@@ -6,5 +6,5 @@ internal sealed interface AutofillEvent {
 
     data object Abort : AutofillEvent
 
-    data class Fill(val dataset: Dataset) : AutofillEvent
+    data class Fill(val dataset: Dataset, val copyToClipboard: String? = null) : AutofillEvent
 }

@@ -9,19 +9,23 @@ import android.service.autofill.InlinePresentation
 import android.widget.inline.InlinePresentationSpec
 import androidx.annotation.RequiresApi
 import de.davis.keygo.core.item.domain.model.lite.LiteVaultItem
+import de.davis.keygo.feature.autofill.R
 import de.davis.keygo.feature.autofill.presentation.dataset.DatasetBuilder
 import de.davis.keygo.feature.autofill.presentation.dataset.SuggestionFinder
 import de.davis.keygo.feature.autofill.presentation.getOnLongClickPendingIntent
 import de.davis.keygo.feature.autofill.presentation.getSelectionPendingIntent
+import de.davis.keygo.feature.autofill.presentation.model.FieldType
 import de.davis.keygo.feature.autofill.presentation.model.FillRequestData
 import de.davis.keygo.feature.autofill.presentation.model.Form
 import de.davis.keygo.feature.autofill.presentation.model.FormType
 import de.davis.keygo.feature.autofill.presentation.model.appRequestData
+import de.davis.keygo.feature.autofill.presentation.model.generatePasswordRequestData
 import de.davis.keygo.feature.autofill.presentation.model.pinnedRequestData
 import de.davis.keygo.feature.autofill.presentation.model.suggestionRequestData
 import de.davis.keygo.feature.autofill.presentation.subtitle
 import org.koin.core.annotation.Single
 import de.davis.keygo.core.ui.R as CoreUiR
+import de.davis.keygo.feature.item.create.R as FeatureItemCreateR
 
 @Single
 internal class InlineDatasetBuilder(
@@ -31,8 +35,6 @@ internal class InlineDatasetBuilder(
     private val context: Context,
 ) {
 
-    // TODO: include a option to generate a secure password -> make the generate UI a standalone
-    //  composable like a TextField
     @RequiresApi(Build.VERSION_CODES.R)
     suspend fun buildInlineDatasets(
         specs: List<InlinePresentationSpec>,
@@ -71,8 +73,20 @@ internal class InlineDatasetBuilder(
         0 -> emptyList()
         1 -> listOf(buildPinnedInlineSuggestionDataset(specs.first(), form))
         else -> {
-            val suggestions =
-                suggestionFinder.findVaultSuggestions(form, count = specs.size - 2)
+            // Reserve 1 spec for "Pinned" (always last). Suggestions get remaining specs.
+            val suggestions = suggestionFinder.findVaultSuggestions(
+                form = form,
+                count = specs.size - 1
+            )
+
+            val hasNoSuggestions = suggestions.isEmpty()
+            var remaining = specs.size - 1 - suggestions.size
+
+            val showOpenApp = hasNoSuggestions && remaining > 0
+            if (showOpenApp) remaining--
+
+            val showGeneratePassword = remaining > 0 &&
+                    form.fields.any { it.type is FieldType.Credentials.Password }
 
             buildList {
                 addAll(
@@ -86,19 +100,19 @@ internal class InlineDatasetBuilder(
                     }
                 )
 
-                add(
-                    buildAppInlineSuggestionDataset(
-                        spec = specs[specs.size - 2], // second to last spec
-                        form = form,
+                var specIndex = suggestions.size
+                if (showGeneratePassword)
+                    add(
+                        buildGeneratePasswordInlineSuggestionDataset(
+                            spec = specs[specIndex++],
+                            form = form
+                        )
                     )
-                )
 
-                add(
-                    buildPinnedInlineSuggestionDataset(
-                        spec = specs.last(),
-                        form = form
-                    )
-                )
+                if (showOpenApp)
+                    add(buildAppInlineSuggestionDataset(spec = specs[specIndex], form = form))
+
+                add(buildPinnedInlineSuggestionDataset(spec = specs.last(), form = form))
             }
         }
     }
@@ -126,10 +140,25 @@ internal class InlineDatasetBuilder(
             spec = spec,
             pendingIntent = context.getOnLongClickPendingIntent(),
             icon = appIcon(),
-            title = context.getString(CoreUiR.string.app_name)
+            title = context.getString(R.string.open_app)
         )
 
         return presentation.buildDataset(appRequestData(form))
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    private fun buildGeneratePasswordInlineSuggestionDataset(
+        spec: InlinePresentationSpec,
+        form: Form
+    ): Dataset {
+        val presentation = inlineSuggestionFactory.buildPresentation(
+            spec = spec,
+            pendingIntent = context.getOnLongClickPendingIntent(),
+            icon = Icon.createWithResource(context, R.drawable.baseline_auto_awesome_24),
+            title = context.getString(FeatureItemCreateR.string.generate_password)
+        )
+
+        return presentation.buildDataset(generatePasswordRequestData(form))
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
