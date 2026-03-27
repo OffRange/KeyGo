@@ -1,4 +1,4 @@
-package de.davis.keygo.dashboard.domain.model
+package de.davis.keygo.feature.list_screen.domain.model
 
 sealed interface Filter {
 
