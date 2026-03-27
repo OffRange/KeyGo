@@ -57,7 +57,10 @@
     <string name="generate_password_content_description">Generate Password</string>
 
     <string name="add_domains">Add domains</string>
-    
+
     <string name="database_error">An unexpected database error has occurred: %s</string>
     <string name="invalid_vault_id">Vault item ID can not be found</string>
+
+    <string name="delete">Delete</string>
+    <string name="edit">Edit</string>
 </resources>

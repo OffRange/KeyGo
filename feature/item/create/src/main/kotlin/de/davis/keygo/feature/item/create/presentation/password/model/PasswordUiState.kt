@@ -1,10 +1,12 @@
 package de.davis.keygo.feature.item.create.presentation.password.model
 
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.runtime.Immutable
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
 
+@Immutable
 internal data class PasswordUiState(
     val nameTextFieldState: TextFieldState = TextFieldState(),
     val notesTextFieldState: TextFieldState = TextFieldState(),
