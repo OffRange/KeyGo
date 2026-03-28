@@ -9,6 +9,8 @@
 
     <string name="back_content_description">Back</string>
     <string name="edit_content_description">Edit</string>
+    <string name="edit">Edit</string>
+    <string name="delete">Delete</string>
 
     <string name="login_identifier">Email, phone, or username</string>
 
