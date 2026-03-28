@@ -20,9 +20,6 @@ import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.text.input.then
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -30,14 +27,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldLabelScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
@@ -45,17 +40,16 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.filter
 
 @Composable
 fun <T> ChipFormGroup(
     title: String,
     items: Set<T>,
+    textOf: (T) -> String,
     containsForInput: (String) -> Boolean,
     onSubmit: (Set<String>) -> Unit,
     onDelete: (T) -> Unit,
@@ -70,15 +64,18 @@ fun <T> ChipFormGroup(
     delimiters: Set<Char> = setOf(',', ' '),
     inputTransformation: InputTransformation? = null,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-    chipBuilder: @Composable (T, Boolean) -> Unit
+    chipBuilder: @Composable (T) -> Unit
 ) {
-    var lastSelected by rememberSaveable { mutableStateOf(false) }
-
     val currentOnSubmit by rememberUpdatedState(onSubmit)
     val currentContainsForInput by rememberUpdatedState(containsForInput)
 
+    /** Splits [text] on [delimiters] and submits completed items via [onSubmit].
+     *
+     * @param keepLast If set to **true (default)**, the segment after the last delimiter stays in the field
+     * (used during typing so the in-progress token isn't submitted prematurely).
+     * If set to **false**, submits everything (used on focus loss and keyboard action).
+     */
     fun handleText(text: String, keepLast: Boolean = true) {
-        lastSelected = false
         if (keepLast && text.none { it in delimiters })
             return
 
@@ -96,18 +93,14 @@ fun <T> ChipFormGroup(
         state.setTextAndPlaceCursorAtEnd(keep)
     }
 
+    // Submit any remaining text when the field loses focus.
     val focused by interactionSource.collectIsFocusedAsState()
-    LaunchedEffect(Unit) {
-        snapshotFlow { focused }
-            .distinctUntilChanged()
-            .drop(1)
-            .filter { !it }
-            .collectLatest {
-                handleText(state.text.toString(), keepLast = false)
-            }
+    LaunchedEffect(focused) {
+        if (!focused)
+            handleText(state.text.toString(), keepLast = false)
     }
 
-
+    // React to text changes as the user types (delimiter-based splitting).
     LaunchedEffect(state) {
         snapshotFlow { state.text.toString() }.collectLatest { text ->
             handleText(text)
@@ -135,9 +128,9 @@ fun <T> ChipFormGroup(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items.forEachIndexed { index, item ->
+                items.forEach { item ->
                     key(item.hashCode()) {
-                        chipBuilder(item, if (index == items.size - 1) lastSelected else false)
+                        chipBuilder(item)
                     }
                 }
             }
@@ -147,26 +140,37 @@ fun <T> ChipFormGroup(
             inputTransformation?.then(noLeadingDelimiters) ?: noLeadingDelimiters
         }
 
+        // Dynamically switch IME action: Send to submit text as chips, Next to move focus.
         val hasText by remember { derivedStateOf { state.text.isNotBlank() } }
+        val effectiveKeyboardOptions = remember(keyboardOptions, hasText) {
+            keyboardOptions.copy(
+                imeAction = if (hasText) ImeAction.Send else ImeAction.Next
+            )
+        }
+
         KeyGoFormField(
             state = state,
             label = label,
             modifier = modifier
                 .fillMaxWidth()
                 .onPreviewKeyEvent {
+                    if (it.key != Key.Backspace) return@onPreviewKeyEvent false
+                    if (it.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+
+                    // Only trigger "un-chip" logic if the field is empty and there are items to remove
                     if (state.text.isNotBlank() || items.isEmpty()) return@onPreviewKeyEvent false
 
-                    if (it.type == KeyEventType.KeyDown && it.key == Key.Backspace) {
-                        if (lastSelected) onDelete(items.last())
-                        lastSelected = !lastSelected
-
-                        true
-                    } else false
+                    // Pop the last item and restore its text representation to the field
+                    val lastItem = items.last()
+                    val text = textOf(lastItem)
+                    onDelete(lastItem)
+                    state.setTextAndPlaceCursorAtEnd(text)
+                    true
                 },
             prefix = prefix,
             placeholder = placeholder,
             lineLimits = lineLimits,
-            keyboardOptions = keyboardOptions,
+            keyboardOptions = effectiveKeyboardOptions,
             // Flush pending text as chips before forwarding the keyboard action.
             onKeyboardAction = KeyboardActionHandler { defaultAction ->
                 if (hasText)
@@ -191,6 +195,7 @@ private fun ChipFormGroupPreview() {
             ChipFormGroup(
                 title = "Chips",
                 items = items,
+                textOf = { it },
                 containsForInput = {
                     it in items
                 },
@@ -209,14 +214,11 @@ private fun ChipFormGroupPreview() {
                 placeholder = {
                     Text("example.com")
                 }
-            ) { item, selected ->
+            ) { item ->
                 InputChip(
-                    selected = selected,
+                    selected = false,
                     onClick = { },
                     label = { Text(text = item) },
-                    trailingIcon = if (selected) {
-                        { Icon(imageVector = Icons.Default.Close, contentDescription = null) }
-                    } else null
                 )
             }
         }

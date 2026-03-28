@@ -46,7 +46,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -206,6 +205,7 @@ internal fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) 
                 ChipFormGroup(
                     title = stringResource(R.string.domain_information),
                     items = state.domains,
+                    textOf = { it.value },
                     state = domainTextFieldState,
                     containsForInput = {
                         state.domains.any { domain -> domain.value == it }
@@ -221,23 +221,21 @@ internal fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) 
                     },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Uri,
-                        imeAction = ImeAction.Next
                     ),
                     delimiters = DELIMITERS,
                     inputTransformation = schemeTransformation,
                     prefix = {
                         Text(text = detectedScheme ?: "https://")
                     }
-                ) { item, selected ->
+                ) { item ->
                     MenuChip(
                         chipText = item.value,
-                        chipSelected = selected,
                         onDeleteClick = {
                             onEvent(PasswordUiEvent.OnDeleteDomain(item.value))
                         },
                         onModifyClick = {
                             // TODO:
-                            //  1. when the user does not submit the new domain, rollback to the old domaine
+                            //  1. when the user does not submit the new domain, rollback to the old domain
                             //  2. when the user clears the text-field and the focus is lost, rollback to old domain
                             onEvent(PasswordUiEvent.OnDeleteDomain(item.value))
                             domainTextFieldState.setTextAndPlaceCursorAtEnd(item.value)
@@ -316,7 +314,6 @@ internal fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) 
 @Composable
 private fun MenuChip(
     chipText: String,
-    chipSelected: Boolean,
     onDeleteClick: () -> Unit,
     onModifyClick: () -> Unit
 ) {
@@ -326,7 +323,7 @@ private fun MenuChip(
         modifier = Modifier.wrapContentSize(Alignment.TopStart)
     ) {
         InputChip(
-            selected = chipSelected,
+            selected = false,
             onClick = { expanded = !expanded },
             label = { Text(text = chipText) }
         )
