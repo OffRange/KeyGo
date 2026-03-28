@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.KeyboardActionHandler
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.delete
@@ -65,6 +66,7 @@ fun <T> ChipFormGroup(
     placeholder: @Composable (() -> Unit)? = null,
     lineLimits: TextFieldLineLimits = TextFieldLineLimits.SingleLine,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    onKeyboardAction: KeyboardActionHandler? = null,
     delimiters: Set<Char> = setOf(',', ' '),
     inputTransformation: InputTransformation? = null,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
@@ -145,6 +147,7 @@ fun <T> ChipFormGroup(
             inputTransformation?.then(noLeadingDelimiters) ?: noLeadingDelimiters
         }
 
+        val hasText by remember { derivedStateOf { state.text.isNotBlank() } }
         KeyGoFormField(
             state = state,
             label = label,
@@ -164,6 +167,13 @@ fun <T> ChipFormGroup(
             placeholder = placeholder,
             lineLimits = lineLimits,
             keyboardOptions = keyboardOptions,
+            // Flush pending text as chips before forwarding the keyboard action.
+            onKeyboardAction = KeyboardActionHandler { defaultAction ->
+                if (hasText)
+                    handleText(state.text.toString(), keepLast = false)
+
+                onKeyboardAction?.onKeyboardAction(defaultAction) ?: defaultAction()
+            },
             inputTransformation = combinedTransformation,
             interactionSource = interactionSource
         )
