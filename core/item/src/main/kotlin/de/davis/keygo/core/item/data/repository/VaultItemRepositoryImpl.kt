@@ -10,6 +10,7 @@ import de.davis.keygo.core.item.domain.model.VaultItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.model.lite.LiteVaultItemSearchResult
 import de.davis.keygo.core.item.domain.repository.VaultItemRepository
+import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.koin.core.annotation.Single
@@ -31,8 +32,11 @@ internal class VaultItemRepositoryImpl(
         excludeId: ItemId?
     ): Boolean = vaultDao.existsName(name, excludeId)
 
-    override suspend fun searchVaultItem(query: String): List<LiteVaultItemSearchResult> =
-        vaultDao.searchVaultItem(query).map(LightweightVaultItemSearchResult::toDomain)
+    override suspend fun searchVaultItem(
+        query: String,
+        itemType: VaultItemType?
+    ): List<LiteVaultItemSearchResult> = vaultDao.searchVaultItem(query, itemType)
+        .map(LightweightVaultItemSearchResult::toDomain)
 
     override fun observeLiteVaultItems(): Flow<List<LiteItem>> =
         vaultDao.observeLiteVaultItems().map {

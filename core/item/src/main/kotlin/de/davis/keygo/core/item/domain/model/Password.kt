@@ -2,6 +2,7 @@ package de.davis.keygo.core.item.domain.model
 
 import androidx.annotation.IntRange
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.processor.annotation.VaultEntity
 
 @VaultEntity(resString = "password", defaultIconType = "Password")
@@ -17,6 +18,9 @@ data class Password(
     override val encryptedData: SecretData<String>,
     override val note: String?
 ) : VaultItem {
+
+    override val itemType: VaultItemType
+        get() = VaultItemType.Password
 
     enum class Score {
         None,
