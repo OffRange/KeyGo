@@ -285,7 +285,7 @@ fun ItemListScreen(
                     val items = remember(uiState.items) {
                         uiState.items.map {
                             KeyGoColumnItem(
-                                header = it.name.first(),
+                                header = it.name.first().uppercaseChar(),
                                 title = it.name,
                                 id = it.vaultItemId
                             )
