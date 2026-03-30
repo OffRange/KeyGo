@@ -20,7 +20,6 @@ import de.davis.keygo.feature.auth.presentation.authGraph
 import de.davis.keygo.feature.autofill.presentation.model.SaveItemDestination
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.item.create.presentation.EditVaultItemScreen
-import de.davis.keygo.feature.list_screen.presentation.ItemTypeWhitelist
 import de.davis.keygo.feature.list_screen.presentation.NoItemStrategy
 import de.davis.keygo.feature.list_screen.presentation.itemListGraph
 import kotlinx.serialization.KSerializer
@@ -54,7 +53,7 @@ fun AutofillUi(
 
             itemListGraph(
                 onItemClick = onItemSelected,
-                itemTypeWhitelist = ItemTypeWhitelist(arrayOf(VaultItemType.Password)),
+                restrictedItemType = VaultItemType.Password,
                 dockedSearchResults = false,
                 enableDeletion = false,
                 onCreateRequest = {},

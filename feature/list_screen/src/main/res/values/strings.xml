@@ -6,4 +6,17 @@
     </plurals>
 
     <string name="undo">Undo</string>
+    <string name="filter">Filter</string>
+    <string name="sort_order">Sort order</string>
+
+    <string name="ascending">Ascending</string>
+    <string name="descending">Descending</string>
+
+    <string name="password_strength">Password strength</string>
+    <string name="reset">Reset</string>
+
+    <string name="item">Item</string>
+    <string name="item_type">Item Type</string>
+
+    <string name="labels">Labels</string>
 </resources>
