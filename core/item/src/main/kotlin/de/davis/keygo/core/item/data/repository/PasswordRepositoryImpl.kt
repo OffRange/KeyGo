@@ -102,6 +102,11 @@ internal class PasswordRepositoryImpl(
     override suspend fun searchPasswordItem(query: String): List<LiteVaultItemSearchResult> =
         passwordDao.searchPasswordItem(query).map { it.toDomain() }
 
+    override fun observePasswordScores(): Flow<Map<ItemId, Password.Score>> =
+        passwordDao.observePasswordScores().map { entries ->
+            entries.associate { it.vaultItemId to it.score }
+        }
+
     override suspend fun getPasswordIdByVaultId(vaultId: ItemId): ItemId? =
         passwordDao.getPasswordIdByVaultId(vaultId)
 }

@@ -65,6 +65,9 @@ internal interface PasswordDao {
     @Deprecated("Use VaultItemDao.searchVaultItem instead")
     suspend fun searchPasswordItem(query: String): List<LightweightVaultItemSearchResult>
 
+    @Query("SELECT vault_item_id, score FROM PasswordEntity")
+    fun observePasswordScores(): Flow<List<PasswordScoreEntry>>
+
     @Query("SELECT id FROM PasswordEntity WHERE vault_item_id = :vaultId")
     suspend fun getPasswordIdByVaultId(vaultId: ItemId): ItemId?
 
