@@ -18,7 +18,6 @@ import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -144,7 +143,7 @@ private fun ItemSection(
 ) {
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = DefaultHorizontalArrangement,
     ) {
         SectionHeader(
             icon = Icons.Default.Category,
@@ -158,7 +157,7 @@ private fun ItemSection(
                 },
                 properties = KeyGoCardProperties.outlined(),
             ) {
-                FlowRow(horizontalArrangement = FilterChipDefaults.horizontalArrangement()) {
+                FlowRow(horizontalArrangement = DefaultHorizontalArrangement) {
                     state.itemTypeChips.forEach { chip ->
                         FilterChip(
                             selected = chip.selected,
@@ -185,7 +184,7 @@ private fun ItemSection(
                 },
                 properties = KeyGoCardProperties.outlined(),
             ) {
-                FlowRow(horizontalArrangement = FilterChipDefaults.horizontalArrangement()) {
+                FlowRow(horizontalArrangement = DefaultHorizontalArrangement) {
                     state.labelChips.forEach { chip ->
                         FilterChip(
                             selected = chip.selected,
@@ -254,7 +253,7 @@ private fun PasswordSection(
 ) {
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = DefaultHorizontalArrangement,
     ) {
         SectionHeader(
             icon = Icons.Default.Password,
@@ -266,7 +265,7 @@ private fun PasswordSection(
                 Text(text = stringResource(R.string.password_strength))
             },
         ) {
-            FlowRow(horizontalArrangement = FilterChipDefaults.horizontalArrangement()) {
+            FlowRow(horizontalArrangement = DefaultHorizontalArrangement) {
                 state.scoreChips.forEach { chip ->
                     FilterChip(
                         selected = chip.selected,
@@ -287,7 +286,7 @@ private fun SectionHeader(
     title: String,
 ) {
     Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = DefaultHorizontalArrangement,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -324,6 +323,9 @@ private fun SortDirection.icon(): ImageVector = when (this) {
     SortDirection.Ascending -> Icons.Default.ArrowUpward
     SortDirection.Descending -> Icons.Default.ArrowDownward
 }
+
+private val DefaultHorizontalArrangement
+    get() = Arrangement.spacedBy(8.dp)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview
