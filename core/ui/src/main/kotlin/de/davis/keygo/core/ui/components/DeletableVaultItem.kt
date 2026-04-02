@@ -12,6 +12,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBoxState
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
@@ -67,7 +68,7 @@ fun DeletableVaultItem(
             scope.launch {
                 val shouldDelete = currentOnDeleteRequested()
                 if (!shouldDelete) {
-                    state.reset()
+                    state.snapTo(SwipeToDismissBoxValue.Settled)
                 }
             }
         }
