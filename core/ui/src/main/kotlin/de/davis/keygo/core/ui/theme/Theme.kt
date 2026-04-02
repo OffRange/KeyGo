@@ -3,6 +3,7 @@ package de.davis.keygo.core.ui.theme
 import android.app.UiModeManager
 import android.content.Context
 import android.os.Build
+import androidx.annotation.ChecksSdkIntAtLeast
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
@@ -10,9 +11,9 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalInspectionMode
 
 
+@ChecksSdkIntAtLeast(api = Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
 fun isContrastAvailable(): Boolean {
     return Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
 }
@@ -21,10 +22,8 @@ fun isContrastAvailable(): Boolean {
 fun selectSchemeForContrast(isDark: Boolean): ColorScheme {
     val context = LocalContext.current
     var colorScheme = if (isDark) darkScheme else lightScheme
-    val isPreview = LocalInspectionMode.current
 
-    // TODO(b/336693596): UIModeManager is not yet supported in preview
-    if (!isPreview && isContrastAvailable()) {
+    if (isContrastAvailable()) {
         val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
         val contrastLevel = uiModeManager.contrast
 
@@ -38,7 +37,7 @@ fun selectSchemeForContrast(isDark: Boolean): ColorScheme {
             in 0.67f..1.0f -> if (isDark)
                 highContrastDarkColorScheme else highContrastLightColorScheme
 
-            else -> if (isDark) darkScheme else lightScheme
+            else -> colorScheme
         }
         return colorScheme
     } else return colorScheme
