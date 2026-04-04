@@ -115,7 +115,7 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                         confirmButton = {
                             Button(
                                 onClick = {
-                                    viewModel.onItemSelected(event.itemId)
+                                    viewModel.associatePasskeyAndFinish(event.itemId)
                                     confirmationEvent = null
                                 }
                             ) {
@@ -163,7 +163,7 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                     composable<CreateItem> {
                         PasswordScreen(
                             passwordCreated = {
-                                viewModel.onItemSelected(it)
+                                viewModel.associatePasskeyAndFinish(it)
                             },
                             navigateBack = { cancel("User cancelled passkey creation") }
                         )

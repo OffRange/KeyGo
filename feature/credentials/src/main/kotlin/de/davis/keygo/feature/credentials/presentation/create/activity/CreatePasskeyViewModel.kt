@@ -8,23 +8,14 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasskeyUser
 import de.davis.keygo.core.item.domain.model.SecretData
-import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.rust.passkey.PasskeyManager
 import de.davis.keygo.rust.passkey.model.KeyGoRegistrationResponse
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
 
@@ -39,19 +30,6 @@ internal class CreatePasskeyViewModel(
 
     private val _event = Channel<CreatePasskeyEvent>()
     val event = _event.receiveAsFlow()
-
-    private val allItems = passwordRepository.observeLitePasswords()
-
-    private val submittedSearchQuery = MutableStateFlow("")
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val itemSource = submittedSearchQuery.flatMapLatest(::queryToItems)
-
-    val listItemState = itemSource.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = emptyList()
-    )
 
     private var registrationResponse: KeyGoRegistrationResponse? = null
     private var key: CiphertextData? = null
@@ -82,22 +60,12 @@ internal class CreatePasskeyViewModel(
     }
 
 
-    private suspend fun queryToItems(query: String): Flow<List<LiteItem>> =
-        if (query.isBlank()) allItems
-        else flowOf(passwordRepository.searchPasswordItem(query))
-
-    fun onSearchSubmit(query: String) {
-        submittedSearchQuery.value = query
-    }
-
-    suspend fun searcher(query: String): List<LiteItem> = queryToItems(query).first()
-
     fun passkeyEncrypted(key: CiphertextData) {
         this.key = key
         _event.trySend(CreatePasskeyEvent.ShowList)
     }
 
-    fun onItemSelected(itemId: ItemId) {
+    fun associatePasskeyAndFinish(itemId: ItemId) {
         viewModelScope.launch {
             val registrationResponse =
                 registrationResponse ?: return@launch abort("Response was null")
@@ -126,7 +94,6 @@ internal class CreatePasskeyViewModel(
         }
     }
 
-    // TODO: why onItemClicked and onItemSelected???
     fun onItemClicked(itemId: ItemId) {
         _event.trySend(
             CreatePasskeyEvent.OpenConfirmationDialog(
