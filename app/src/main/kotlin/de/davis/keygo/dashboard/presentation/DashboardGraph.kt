@@ -41,8 +41,8 @@ fun NavGraphBuilder.dashboardGraph(
         val scope = rememberCoroutineScope()
 
         LaunchedEffect(isSinglePaneMode) {
-            if (isSinglePaneMode && listNavigator.canNavigateBack()) {
-                listNavigator.navigateBack(BackNavigationBehavior.PopUntilScaffoldValueChange)
+            if (isSinglePaneMode && listNavigator.canNavigateBack(BackNavigationBehavior.PopUntilCurrentDestinationChange)) {
+                listNavigator.navigateBack(BackNavigationBehavior.PopUntilCurrentDestinationChange)
             }
         }
 
@@ -85,6 +85,21 @@ fun NavGraphBuilder.dashboardGraph(
                                     )
                                 }
                             },
+                            onItemDelete = { deleted, firstItemId ->
+                                if (openedItemId == deleted) {
+                                    scope.launch {
+                                        if (!isSinglePaneMode && !isModifyScreenActive)
+                                            firstItemId?.let {
+                                                listNavigator.navigateTo(
+                                                    ListDetailPaneScaffoldRole.Detail,
+                                                    DetailType.View(firstItemId)
+                                                )
+                                            }
+                                            // Navigate back if there is no item, so the deleted item's content is not being shown in the detail pane
+                                                ?: listNavigator.navigateBack(BackNavigationBehavior.PopUntilCurrentDestinationChange)
+                                    }
+                                }
+                            },
                             onCreateItemRequest = {
                                 scope.launch {
                                     listNavigator.navigateTo(
@@ -93,11 +108,19 @@ fun NavGraphBuilder.dashboardGraph(
                                     )
                                 }
                             },
+                            onFirstItemAvailable = { id ->
+                                if (!isSinglePaneMode && !isModifyScreenActive && openedItemId == null)
+                                    scope.launch {
+                                        listNavigator.navigateTo(
+                                            ListDetailPaneScaffoldRole.Detail,
+                                            DetailType.View(id)
+                                        )
+                                    }
+                            },
                             dockedSearchResults = !LocalIsInSinglePaneMode.current,
                             enableDeletion = true,
                             enableSelection = true,
-                            autoSelectFirst = !isSinglePaneMode && !isModifyScreenActive,
-                            openedItemId = openedItemId,
+                            highlightedId = openedItemId
                         )
                     }
                 },

@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.mapLatest
@@ -174,6 +175,7 @@ internal class PasswordViewModel(
         if (itemId == ItemIdNone) return
 
         passwordRepository.observePasswordById(itemId)
+            .filterNotNull()
             .onEach { password ->
                 coroutineScope {
                     val pwdDeferred = async {

@@ -133,7 +133,12 @@ internal class ItemListViewModel(
     fun onDelete(itemId: ItemId) {
         updateItemSelectionState(itemId, selected = false)
         updateItemDeletionState(itemId, deleted = true)
-
+        _event.trySend(
+            Event.ItemDeleted(
+                itemId,
+                listItemState.value.items.firstOrNull()?.vaultItemId
+            )
+        )
 
         snackbarManager.sendMessage(
             ItemDeletedMessage(

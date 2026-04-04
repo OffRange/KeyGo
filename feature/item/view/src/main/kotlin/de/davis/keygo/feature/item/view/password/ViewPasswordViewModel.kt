@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
@@ -72,7 +73,7 @@ internal class ViewPasswordViewModel(
         .filter { it != ItemIdNone }
         .distinctUntilChanged()
         .flatMapLatest { id ->
-            passwordRepository.observePasswordById(id).flatMapLatest { password ->
+            passwordRepository.observePasswordById(id).filterNotNull().flatMapLatest { password ->
                 coroutineScope {
                     val obfuscatedString = async {
                         cryptographicScopeProvider.scope {

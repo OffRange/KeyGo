@@ -31,6 +31,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,13 +83,14 @@ fun ItemListScreen(
     onCreateItemRequest: (VaultItemType) -> Unit,
     modifier: Modifier = Modifier,
     onItemLongClick: (ItemId) -> Unit = {},
+    onItemDelete: (deleted: ItemId, firstItemId: ItemId?) -> Unit = { _, _ -> },
+    onFirstItemAvailable: (ItemId) -> Unit = {},
     itemTypeWhitelist: ItemTypeWhitelist = ItemTypeWhitelist.ALL,
     notFoundStrategy: NoItemStrategy = NoItemStrategy.ShowCreateNewItemCard,
     enableDeletion: Boolean = true,
     enableSelection: Boolean = true,
-    autoSelectFirst: Boolean = false,
-    openedItemId: ItemId? = null,
     dockedSearchResults: Boolean = false,
+    highlightedId: ItemId? = null,
     scrollBehavior: SearchBarScrollBehavior = SearchBarDefaults.enterAlwaysSearchBarScrollBehavior(),
 ) {
     val viewModel = koinViewModel<ItemListViewModel> {
@@ -97,6 +99,12 @@ fun ItemListScreen(
     val uiState by viewModel.listItemState.collectAsStateWithLifecycle()
 
     val searchBarState = rememberSearchBarState()
+
+    LaunchedEffect(uiState.items, highlightedId) {
+        if (highlightedId == null && uiState.items.isNotEmpty()) {
+            onFirstItemAvailable(uiState.items.first().vaultItemId)
+        }
+    }
 
     // In case the user types something, but does not submit the search, we rollback to the last
     // submitted search query.
@@ -118,21 +126,7 @@ fun ItemListScreen(
         }
     }
 
-    // Auto-select the first item when requested (e.g. multi-pane mode) and nothing is
-    // currently opened or selected. Reacts to autoSelectFirst changing (pane mode transitions)
-    // and to the item list updating (initial load, deletions).
-    val items = uiState.items
-    val selectedItemIds = uiState.selectedItemIds
-    LaunchedEffect(autoSelectFirst, items, openedItemId, selectedItemIds) {
-        if (autoSelectFirst
-            && items.isNotEmpty()
-            && openedItemId == null
-            && selectedItemIds.isEmpty()
-        ) {
-            viewModel.onItemClick(items.first().vaultItemId)
-        }
-    }
-
+    val currentOnItemDelete by rememberUpdatedState(onItemDelete)
     ObserveAsEvents(flow = viewModel.event) {
         when (it) {
             is Event.ItemSelected -> {
@@ -141,6 +135,10 @@ fun ItemListScreen(
 
             is Event.ItemLongClicked -> {
                 onItemLongClick(it.itemId)
+            }
+
+            is Event.ItemDeleted -> {
+                currentOnItemDelete(it.itemId, it.firstItemId)
             }
         }
     }
@@ -286,7 +284,7 @@ fun ItemListScreen(
                         onItemLongClick = viewModel::onItemLongClick,
                         modifier = Modifier.padding(horizontal = 8.dp),
                         enableSwipeToDelete = enableDeletion,
-                        openedItemId = openedItemId,
+                        openedItemId = highlightedId,
                         selectedItemIds = uiState.selectedItemIds
                     )
                 }

@@ -31,7 +31,7 @@ interface PasswordRepository {
 
     suspend fun getPasswordById(vaultId: ItemId): Password?
 
-    fun observePasswordById(vaultId: ItemId): Flow<Password>
+    fun observePasswordById(vaultId: ItemId): Flow<Password?>
     fun observePasswords(): Flow<List<Password>>
 
     fun observeLitePasswords(): Flow<List<LiteItem>>

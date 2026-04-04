@@ -86,9 +86,9 @@ internal class PasswordRepositoryImpl(
     override suspend fun getPasswordById(vaultId: ItemId): Password? =
         passwordDao.getVaultPassword(vaultId)?.toDomain()
 
-    override fun observePasswordById(vaultId: ItemId): Flow<Password> =
+    override fun observePasswordById(vaultId: ItemId): Flow<Password?> =
         passwordDao.observeVaultPassword(vaultId)
-            .map(VaultPassword::toDomain)
+            .map { it?.toDomain() }
 
     override fun observePasswords(): Flow<List<Password>> = passwordDao.getAllPasswords().map {
         it.map(VaultPassword::toDomain)
