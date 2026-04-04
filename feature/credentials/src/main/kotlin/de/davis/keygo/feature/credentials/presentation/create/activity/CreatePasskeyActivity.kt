@@ -191,7 +191,7 @@ internal class CreatePasskeyActivity : FragmentActivity() {
             ItemListScreen(
                 onItemClick = onItemClick,
                 onItemLongClick = { },
-                onCreateItemRequest = { /* TODO */ },
+                onCreateItemRequest = { onCreateClicked() },
                 enableDeletion = false,
                 enableSelection = false,
                 modifier = Modifier
