@@ -5,6 +5,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -72,6 +73,7 @@ fun <ID : Any> KeyGoColumn(
 
     Box(modifier = modifier.clipToBounds()) {
         LazyColumn(
+            modifier = Modifier.fillMaxSize(),
             state = listState,
             verticalArrangement = Arrangement.spacedBy(ItemVerticalPadding)
         ) {
