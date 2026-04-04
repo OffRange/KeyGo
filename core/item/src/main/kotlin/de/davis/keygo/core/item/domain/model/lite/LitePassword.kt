@@ -8,6 +8,7 @@ data class LitePassword(
     override val vaultItemId: ItemId,
     val passwordId: ItemId,
     override val name: String,
+    override val pinned: Boolean,
     val username: String?,
     val domains: List<DomainInfo>,
 ) : LiteVaultItem {

@@ -13,12 +13,14 @@ internal fun VaultItem.toData() = VaultItemEntity(
     note = note,
     encryptedData = encryptedData,
     itemType = itemType,
+    pinned = pinned,
 )
 
 internal fun LightweightVaultItem.toDomain() = LiteItem.Concrete(
     vaultItemId = id,
     name = name,
     itemType = itemType,
+    pinned = pinned
 )
 
 internal fun LightweightVaultItemSearchResult.toDomain() = LiteVaultItemSearchResult(
@@ -27,4 +29,5 @@ internal fun LightweightVaultItemSearchResult.toDomain() = LiteVaultItemSearchRe
     itemType = itemType,
     matchedName = matchedName,
     matchedNote = matchedNote,
+    pinned = pinned,
 )

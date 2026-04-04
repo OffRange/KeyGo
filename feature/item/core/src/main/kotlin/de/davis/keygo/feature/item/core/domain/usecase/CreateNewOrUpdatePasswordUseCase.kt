@@ -90,6 +90,7 @@ class CreateNewOrUpdatePasswordUseCase(
                         totpSecret = totpSecret?.await(),
                         score = passwordStrength!!.await(),
                         note = upsert.note.getValue(),
+                        pinned = false,
                     )
                 }
 

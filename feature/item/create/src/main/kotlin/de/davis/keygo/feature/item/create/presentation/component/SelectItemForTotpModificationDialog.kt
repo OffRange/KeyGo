@@ -132,6 +132,7 @@ private fun SelectItemForTotpModificationDialogPreview() {
                         name = "${if (1 >= 5) 'A' else 'B'} Item 1",
                         username = "User 1",
                         domains = listOf(DomainInfo(1, "Website", "website.com")),
+                        pinned = false,
                     ),
                     LitePassword(
                         vaultItemId = 2,
@@ -139,6 +140,7 @@ private fun SelectItemForTotpModificationDialogPreview() {
                         name = "${if (2 >= 5) 'A' else 'B'} Item 2",
                         username = "User 2",
                         domains = listOf(DomainInfo(12, "Website", "website.com")),
+                        pinned = false,
                     )
                 )
             )

@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "a8a3eac5ce69231e8ccfe0eed30df473",
+    "identityHash": "74ee7b1a530df594091711f23a9564f2",
     "entities": [
       {
         "tableName": "VaultItemEntity",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `note` TEXT, `encrypted_data` BLOB NOT NULL, `itemType` TEXT NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `note` TEXT, `encrypted_data` BLOB NOT NULL, `itemType` TEXT NOT NULL, `pinned` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -35,6 +35,12 @@
             "fieldPath": "itemType",
             "columnName": "itemType",
             "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pinned",
+            "columnName": "pinned",
+            "affinity": "INTEGER",
             "notNull": true
           }
         ],
@@ -247,7 +253,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a8a3eac5ce69231e8ccfe0eed30df473')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '74ee7b1a530df594091711f23a9564f2')"
     ]
   }
 }

@@ -15,5 +15,6 @@ internal data class VaultItemEntity(
     val note: String?,
     @ColumnInfo(name = "encrypted_data")
     val encryptedData: SecretData<String>,
-    val itemType: VaultItemType
+    val itemType: VaultItemType,
+    val pinned: Boolean,
 )

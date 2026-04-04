@@ -30,7 +30,7 @@ internal interface VaultDao {
 
     @Query(
         """
-        SELECT v.id, v.name, v.itemType, (name LIKE '%' || :query || '%') AS matchedName, (note LIKE '%' || :query || '%') AS matchedNote
+        SELECT v.id, v.name, v.itemType, v.pinned, (name LIKE '%' || :query || '%') AS matchedName, (note LIKE '%' || :query || '%') AS matchedNote
         FROM VaultItemEntity v
         WHERE (:itemType IS NULL OR itemType = :itemType)
           AND (name LIKE '%' || :query || '%' OR COALESCE(note, '') LIKE '%' || :query || '%')
@@ -42,6 +42,6 @@ internal interface VaultDao {
     ): List<LightweightVaultItemSearchResult>
 
 
-    @Query("SELECT v.id, v.name, v.itemType FROM VaultItemEntity v")
+    @Query("SELECT v.id, v.name, v.itemType, v.pinned FROM VaultItemEntity v")
     fun observeLiteVaultItems(): Flow<List<LightweightVaultItem>>
 }

@@ -11,12 +11,14 @@ interface LiteItem {
     val name: String
 
     val itemType: VaultItemType
+    val pinned: Boolean
 
     @ConsistentCopyVisibility
     data class Concrete internal constructor(
         override val vaultItemId: ItemId,
         override val name: String,
         override val itemType: VaultItemType,
+        override val pinned: Boolean
     ) : LiteItem
 }
 

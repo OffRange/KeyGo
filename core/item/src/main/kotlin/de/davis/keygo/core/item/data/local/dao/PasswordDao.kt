@@ -21,7 +21,7 @@ internal interface PasswordDao {
     fun getAllPasswords(): Flow<List<VaultPassword>>
 
     @Transaction
-    @Query("SELECT v.id, v.name, v.itemType FROM PasswordEntity JOIN VaultItemEntity v ON PasswordEntity.vault_item_id = v.id")
+    @Query("SELECT v.id, v.name, v.itemType, v.pinned FROM PasswordEntity JOIN VaultItemEntity v ON PasswordEntity.vault_item_id = v.id")
     fun getLitePasswords(): Flow<List<LightweightVaultItem>>
 
 
@@ -32,7 +32,7 @@ internal interface PasswordDao {
     @Transaction
     @Query(
         """
-        SELECT vault.id vault_item_id, vault.name name, password.id password_id, password.username username
+        SELECT vault.id vault_item_id, vault.name name, vault.pinned, password.id password_id, password.username username
         FROM VaultItemEntity vault
         JOIN PasswordEntity password ON vault.id = password.vault_item_id
         WHERE (NOT :requireTotp OR password.totp_secret IS NOT NULL)
@@ -56,7 +56,7 @@ internal interface PasswordDao {
 
     @Query(
         """
-        SELECT v.id, v.name, v.itemType, (name LIKE '%' || :query || '%') AS matchedName, (note LIKE '%' || :query || '%') AS matchedNote
+        SELECT v.id, v.name, v.itemType, v.pinned, (name LIKE '%' || :query || '%') AS matchedName, (note LIKE '%' || :query || '%') AS matchedNote
         FROM PasswordEntity p
         JOIN VaultItemEntity v ON p.vault_item_id = v.id
         WHERE name LIKE '%' || :query || '%' OR COALESCE(note, '') LIKE '%' || :query || '%'

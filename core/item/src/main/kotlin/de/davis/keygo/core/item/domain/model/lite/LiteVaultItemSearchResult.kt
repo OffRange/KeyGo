@@ -7,6 +7,7 @@ data class LiteVaultItemSearchResult(
     override val vaultItemId: ItemId,
     override val name: String,
     override val itemType: VaultItemType,
+    override val pinned: Boolean,
     val matchedName: Boolean,
     val matchedNote: Boolean,
 ) : LiteItem

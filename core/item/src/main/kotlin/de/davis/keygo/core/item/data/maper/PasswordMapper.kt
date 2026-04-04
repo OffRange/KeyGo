@@ -30,13 +30,15 @@ internal fun VaultPassword.toDomain(): Password = Password(
     vaultItemId = vaultItemEntity.id,
     name = vaultItemEntity.name,
     note = vaultItemEntity.note,
-    encryptedData = vaultItemEntity.encryptedData
+    encryptedData = vaultItemEntity.encryptedData,
+    pinned = vaultItemEntity.pinned,
 )
 
 internal fun LightweightPassword.toDomain(): LitePassword = LitePassword(
     vaultItemId = vaultItemId,
     passwordId = passwordId,
     name = name,
+    pinned = pinned,
     username = username,
     domains = domains.map(DomainInfoEntity::toDomain)
 )

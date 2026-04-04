@@ -12,6 +12,7 @@ internal data class LightweightPassword(
     val passwordId: ItemId,
     val username: String?,
     val name: String,
+    val pinned: Boolean,
 
     @Relation(
         parentColumn = "password_id",

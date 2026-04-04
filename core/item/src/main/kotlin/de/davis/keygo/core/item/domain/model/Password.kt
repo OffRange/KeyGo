@@ -16,7 +16,8 @@ data class Password(
     override val vaultItemId: ItemId = 0,
     override val name: String,
     override val encryptedData: SecretData<String>,
-    override val note: String?
+    override val note: String?,
+    override val pinned: Boolean,
 ) : VaultItem {
 
     override val itemType: VaultItemType
