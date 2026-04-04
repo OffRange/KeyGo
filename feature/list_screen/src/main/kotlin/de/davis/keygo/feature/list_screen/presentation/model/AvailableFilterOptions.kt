@@ -10,4 +10,5 @@ internal data class AvailableFilterOptions(
     val itemTypes: Set<VaultItemType> = emptySet(),
     val labels: Set<String> = emptySet(),
     val hasPasswordItems: Boolean = false,
+    val hasPinnedItems: Boolean = false
 )

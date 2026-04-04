@@ -9,5 +9,6 @@ internal sealed interface FilterAction {
     data class ItemTypeToggled(val itemType: VaultItemType) : FilterAction
     data class LabelToggled(val label: String) : FilterAction
     data class ScoreToggled(val score: Password.Score) : FilterAction
+    data object ShowOnlyPinnedToggled : FilterAction
     data object ClearFilters : FilterAction
 }

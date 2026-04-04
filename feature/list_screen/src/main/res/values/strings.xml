@@ -19,4 +19,6 @@
     <string name="item_type">Item Type</string>
 
     <string name="labels">Labels</string>
+
+    <string name="only_pinned_items">Only pinned Items</string>
 </resources>

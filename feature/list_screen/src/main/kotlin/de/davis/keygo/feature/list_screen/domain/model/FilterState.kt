@@ -8,6 +8,7 @@ data class FilterState(
     val selectedScores: Set<Password.Score> = emptySet(),
     val selectedItemTypes: Set<VaultItemType> = emptySet(),
     val selectedLabels: Set<String> = emptySet(),
+    val onlyPinned: Boolean = false
 ) {
 
     val isDefault: Boolean

@@ -23,12 +23,17 @@ class FilterUseCase {
     ): List<I> {
         val filtered = items.filter { item ->
             matchesItemType(filterState, item) &&
-                    matchesScore(filterState, item, passwordScores)
+                    matchesScore(filterState, item, passwordScores) &&
+                    matchesPinnedState(filterState, item)
         }
+
         val (pinned, unpinned) = filtered.partition { it.pinned }
         return sort(filterState.sortDirection, pinned) +
                 sort(filterState.sortDirection, unpinned)
     }
+
+    private fun matchesPinnedState(filterState: FilterState, item: LiteItem): Boolean =
+        !filterState.onlyPinned || item.pinned
 
     private fun matchesItemType(filterState: FilterState, item: LiteItem): Boolean =
         filterState.selectedItemTypes.isEmpty() || item.itemType in filterState.selectedItemTypes

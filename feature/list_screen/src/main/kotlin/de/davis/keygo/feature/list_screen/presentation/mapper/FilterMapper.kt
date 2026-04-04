@@ -17,7 +17,8 @@ internal fun FilterState.toBottomSheetState(
     restrictedItemType: VaultItemType?,
 ): FilterBottomSheetState {
     val showItemTypeChips = restrictedItemType == null && available.itemTypes.size > 1
-    val showItemSection = showItemTypeChips || available.labels.isNotEmpty()
+    val showItemSection =
+        showItemTypeChips || available.labels.isNotEmpty() || available.hasPinnedItems
 
     val effectiveItemTypes = restrictedItemType?.let { setOf(it) } ?: selectedItemTypes
     val showPasswordSection = available.hasPasswordItems &&
@@ -26,6 +27,8 @@ internal fun FilterState.toBottomSheetState(
     return FilterBottomSheetState(
         sortDirection = sortDirection,
         itemSection = if (showItemSection) ItemSectionState(
+            showPinnedSwitch = available.hasPinnedItems,
+            onlyPinnedChecked = onlyPinned,
             itemTypeChips = if (showItemTypeChips) available.itemTypes.map { type ->
                 FilterChipState(value = type, selected = type in selectedItemTypes)
             } else emptyList(),
@@ -62,5 +65,6 @@ internal fun List<LiteItem>.toAvailableFilterOptions(
         hasPasswordItems = hasPasswordItems,
         scores = scores,
         labels = emptySet(),
+        hasPinnedItems = any { it.pinned },
     )
 }

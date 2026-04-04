@@ -28,7 +28,8 @@ class UpsertVaultItemUseCaseTest {
         vaultItemId = 0,
         name = name,
         encryptedData = SecretData.EMPTY_STRING,
-        note = null
+        note = null,
+        pinned = false
     )
 
     @Test

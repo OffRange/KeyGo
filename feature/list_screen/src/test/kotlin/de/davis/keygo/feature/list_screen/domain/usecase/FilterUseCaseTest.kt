@@ -21,6 +21,7 @@ class FilterUseCaseTest {
         override val name: String,
         override val vaultItemId: ItemId = 0,
         override val itemType: VaultItemType = VaultItemType.Password,
+        override val pinned: Boolean = false,
     ) : LiteItem
 
     private fun items(vararg names: String) = names.map { TestLiteItem(name = it) }
@@ -329,5 +330,85 @@ class FilterUseCaseTest {
         val ascResult = useCase(ascState, scoredItems, scores)
 
         assertEquals(ascResult.reversed(), result)
+    }
+
+    // Pinned filter & sorting
+    private val mixedPinnedItems = listOf(
+        TestLiteItem(name = "Charlie", vaultItemId = 1, pinned = false),
+        TestLiteItem(name = "Alpha", vaultItemId = 2, pinned = true),
+        TestLiteItem(name = "Bravo", vaultItemId = 3, pinned = true),
+        TestLiteItem(name = "Delta", vaultItemId = 4, pinned = false),
+    )
+
+    @Test
+    fun `pinned items appear before unpinned items`() {
+        val result = useCase(filterStateAsc, mixedPinnedItems, noScores)
+
+        val pinnedNames = result.takeWhile { it.pinned }.map { it.name }
+        val unpinnedNames = result.dropWhile { it.pinned }.map { it.name }
+
+        assertEquals(listOf("Alpha", "Bravo"), pinnedNames)
+        assertEquals(listOf("Charlie", "Delta"), unpinnedNames)
+    }
+
+    @Test
+    fun `pinned items appear before unpinned items in descending order`() {
+        val result = useCase(filterStateDesc, mixedPinnedItems, noScores)
+
+        val pinnedNames = result.takeWhile { it.pinned }.map { it.name }
+        val unpinnedNames = result.dropWhile { it.pinned }.map { it.name }
+
+        assertEquals(listOf("Bravo", "Alpha"), pinnedNames)
+        assertEquals(listOf("Delta", "Charlie"), unpinnedNames)
+    }
+
+    @Test
+    fun `onlyPinned filter excludes unpinned items`() {
+        val state = FilterState(onlyPinned = true)
+        val result = useCase(state, mixedPinnedItems, noScores)
+
+        assertTrue(result.all { it.pinned })
+        assertEquals(2, result.size)
+    }
+
+    @Test
+    fun `onlyPinned false returns all items`() {
+        val state = FilterState(onlyPinned = false)
+        val result = useCase(state, mixedPinnedItems, noScores)
+
+        assertEquals(4, result.size)
+    }
+
+    @Test
+    fun `onlyPinned with no pinned items returns empty list`() {
+        val state = FilterState(onlyPinned = true)
+        val unpinnedOnly = items("A", "B", "C")
+        val result = useCase(state, unpinnedOnly, noScores)
+
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun `onlyPinned combined with item type filter`() {
+        val state = FilterState(
+            onlyPinned = true,
+            selectedItemTypes = setOf(VaultItemType.Password),
+        )
+        val result = useCase(state, mixedPinnedItems, noScores)
+
+        assertTrue(result.all { it.pinned })
+        assertTrue(result.all { it.itemType == VaultItemType.Password })
+    }
+
+    @Test
+    fun `all items pinned preserves sort order`() {
+        val allPinned = listOf(
+            TestLiteItem(name = "Zulu", pinned = true),
+            TestLiteItem(name = "Alpha", pinned = true),
+            TestLiteItem(name = "Mike", pinned = true),
+        )
+        val result = useCase(filterStateAsc, allPinned, noScores)
+
+        assertEquals(listOf("Alpha", "Mike", "Zulu"), result.map { it.name })
     }
 }

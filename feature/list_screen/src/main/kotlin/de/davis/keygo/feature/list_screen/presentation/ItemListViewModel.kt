@@ -151,6 +151,10 @@ internal class ItemListViewModel(
                 it.copy(selectedScores = it.selectedScores.toggle(action.score))
             }
 
+            FilterAction.ShowOnlyPinnedToggled -> filterState.update {
+                it.copy(onlyPinned = !it.onlyPinned)
+            }
+
             is FilterAction.ClearFilters -> filterState.update { FilterState.Default }
         }
     }
