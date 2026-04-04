@@ -34,9 +34,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,14 +75,13 @@ fun ItemListScreen(
     onCreateItemRequest: (VaultItemType) -> Unit,
     modifier: Modifier = Modifier,
     onItemLongClick: (ItemId) -> Unit = {},
-    restrictedItemType: VaultItemType? = null,
     onItemDelete: (deleted: ItemId, firstItemId: ItemId?) -> Unit = { _, _ -> },
-    onFirstItemAvailable: (ItemId) -> Unit = {},
+    restrictedItemType: VaultItemType? = null,
     notFoundStrategy: NoItemStrategy = NoItemStrategy.ShowCreateNewItemCard,
+    autoSelectFirst: Boolean = false,
     enableDeletion: Boolean = true,
     enableSelection: Boolean = true,
     dockedSearchResults: Boolean = false,
-    highlightedId: ItemId? = null,
     scrollBehavior: SearchBarScrollBehavior = SearchBarDefaults.enterAlwaysSearchBarScrollBehavior(),
 ) {
     val viewModel = koinViewModel<ItemListViewModel> {
@@ -94,10 +93,13 @@ fun ItemListScreen(
 
     val searchBarState = rememberSearchBarState()
 
-    LaunchedEffect(uiState.items, highlightedId) {
-        if (highlightedId == null && uiState.items.isNotEmpty()) {
-            onFirstItemAvailable(uiState.items.first().vaultItemId)
-        }
+    LaunchedEffect(autoSelectFirst) {
+        if (!autoSelectFirst) viewModel.resetHighlight()
+    }
+
+    LaunchedEffect(uiState.items, uiState.highlightedId, autoSelectFirst) {
+        if (autoSelectFirst && uiState.highlightedId == null && uiState.items.isNotEmpty())
+            viewModel.onItemClick(uiState.items.first().vaultItemId)
     }
 
     // In case the user types something, but does not submit the search, we rollback to the last
@@ -297,7 +299,7 @@ fun ItemListScreen(
                         onItemLongClick = viewModel::onItemLongClick,
                         modifier = Modifier.padding(horizontal = 8.dp),
                         enableSwipeToDelete = enableDeletion,
-                        openedItemId = highlightedId,
+                        openedItemId = if (autoSelectFirst) uiState.highlightedId else null,
                         selectedItemIds = uiState.selectedItemIds
                     )
                 }

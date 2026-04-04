@@ -86,18 +86,21 @@ internal class ItemListViewModel(
 
     private val searchResults = MutableStateFlow(listOf<LiteItem>())
     private val selectedItemIds = MutableStateFlow(emptySet<ItemId>())
+    private val highlightedId = MutableStateFlow<ItemId?>(null)
 
     val listItemState = combine(
         filteredItems,
         searchResults,
         selectedItemIds,
         submittedSearchQuery,
-    ) { items, searchResults, selectedIds, submittedSearchQuery ->
+        highlightedId,
+    ) { items, searchResults, selectedIds, submittedSearchQuery, highlightedId ->
         ListItemState(
             items = items,
             searchResults = searchResults,
             hasSearchQuery = submittedSearchQuery.isNotBlank(),
             selectedItemIds = selectedIds,
+            highlightedId = highlightedId,
         )
     }.onStart {
         observeSearchState()
@@ -182,6 +185,10 @@ internal class ItemListViewModel(
         searchTextFieldState.setTextAndPlaceCursorAtEnd(submittedSearchQuery.value)
     }
 
+    fun resetHighlight() {
+        highlightedId.update { null }
+    }
+
     fun onClearQuery() {
         searchTextFieldState.clearText()
         submittedSearchQuery.update { "" }
@@ -190,12 +197,12 @@ internal class ItemListViewModel(
     fun onDelete(itemId: ItemId) {
         updateItemSelectionState(itemId, selected = false)
         updateItemDeletionState(itemId, deleted = true)
-        _event.trySend(
-            Event.ItemDeleted(
-                itemId,
-                listItemState.value.items.firstOrNull()?.vaultItemId
-            )
-        )
+
+        val firstItemId = listItemState.value.items.firstOrNull()?.vaultItemId
+        if (highlightedId.value == itemId)
+            highlightedId.update { firstItemId }
+
+        _event.trySend(Event.ItemDeleted(itemId, firstItemId))
 
         snackbarManager.sendMessage(
             ItemDeletedMessage(
@@ -220,6 +227,7 @@ internal class ItemListViewModel(
             val isSelected = itemId in selectedItemIds.value
             updateItemSelectionState(itemId, selected = !isSelected)
         } else {
+            highlightedId.update { itemId }
             _event.trySend(Event.ItemSelected(itemId))
         }
     }

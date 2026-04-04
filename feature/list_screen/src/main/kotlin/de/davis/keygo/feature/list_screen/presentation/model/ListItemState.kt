@@ -7,5 +7,6 @@ data class ListItemState(
     val items: List<LiteItem> = emptyList(),
     val searchResults: List<LiteItem> = emptyList(),
     val hasSearchQuery: Boolean = false,
-    val selectedItemIds: Set<ItemId> = emptySet()
+    val selectedItemIds: Set<ItemId> = emptySet(),
+    val highlightedId: ItemId? = null,
 )

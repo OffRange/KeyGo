@@ -108,19 +108,10 @@ fun NavGraphBuilder.dashboardGraph(
                                     )
                                 }
                             },
-                            onFirstItemAvailable = { id ->
-                                if (!isSinglePaneMode && !isModifyScreenActive && openedItemId == null)
-                                    scope.launch {
-                                        listNavigator.navigateTo(
-                                            ListDetailPaneScaffoldRole.Detail,
-                                            DetailType.View(id)
-                                        )
-                                    }
-                            },
+                            autoSelectFirst = !isSinglePaneMode && !isModifyScreenActive,
                             dockedSearchResults = !LocalIsInSinglePaneMode.current,
                             enableDeletion = true,
                             enableSelection = true,
-                            highlightedId = openedItemId
                         )
                     }
                 },
