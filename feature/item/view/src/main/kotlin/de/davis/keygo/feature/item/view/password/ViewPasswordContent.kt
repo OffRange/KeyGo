@@ -32,7 +32,9 @@ import androidx.compose.material.icons.filled.MoreTime
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -108,6 +110,15 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = { onEvent(ViewPasswordUiEvent.OnPinClick) }
+                    ) {
+                        Icon(
+                            imageVector = if (state.pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                            contentDescription = null
+                        )
+                    }
+
                     IconButton(
                         onClick = { onEvent(ViewPasswordUiEvent.OnEditRequest) }
                     ) {

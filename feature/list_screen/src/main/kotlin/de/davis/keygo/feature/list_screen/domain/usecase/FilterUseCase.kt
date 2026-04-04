@@ -25,7 +25,9 @@ class FilterUseCase {
             matchesItemType(filterState, item) &&
                     matchesScore(filterState, item, passwordScores)
         }
-        return sort(filterState.sortDirection, filtered)
+        val (pinned, unpinned) = filtered.partition { it.pinned }
+        return sort(filterState.sortDirection, pinned) +
+                sort(filterState.sortDirection, unpinned)
     }
 
     private fun matchesItemType(filterState: FilterState, item: LiteItem): Boolean =

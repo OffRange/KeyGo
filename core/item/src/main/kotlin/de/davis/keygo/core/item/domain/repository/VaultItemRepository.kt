@@ -21,5 +21,7 @@ interface VaultItemRepository {
         itemType: VaultItemType? = null
     ): List<LiteVaultItemSearchResult>
 
+    suspend fun setPinned(itemId: ItemId, pinned: Boolean)
+
     fun observeLiteVaultItems(): Flow<List<LiteItem>>
 }

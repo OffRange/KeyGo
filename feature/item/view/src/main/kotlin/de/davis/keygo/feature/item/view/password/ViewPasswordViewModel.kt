@@ -7,6 +7,7 @@ import de.davis.keygo.core.item.domain.alias.ItemIdNone
 import de.davis.keygo.core.item.domain.crypto.decryptSecretData
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
+import de.davis.keygo.core.item.domain.repository.VaultItemRepository
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
@@ -54,6 +55,7 @@ import org.koin.core.annotation.KoinViewModel
 
 @KoinViewModel
 internal class ViewPasswordViewModel(
+    private val vaultItemRepository: VaultItemRepository,
     private val passwordRepository: PasswordRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val updatePassword: CreateNewOrUpdatePasswordUseCase,
@@ -99,6 +101,7 @@ internal class ViewPasswordViewModel(
                         domains = password.domainInfos,
                         note = password.note.orEmpty(),
                         totpInformation = TotpInformation("", 0, 0),
+                        pinned = password.pinned,
                     )
 
                     when {
@@ -149,6 +152,12 @@ internal class ViewPasswordViewModel(
                     return
 
                 websiteHandler.openWebsite(url)
+            }
+
+            ViewPasswordUiEvent.OnPinClick -> {
+                viewModelScope.launch {
+                    vaultItemRepository.setPinned(_itemId.value, !state.value.pinned)
+                }
             }
 
             ViewPasswordUiEvent.OnEditRequest -> {

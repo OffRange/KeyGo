@@ -7,6 +7,7 @@ sealed interface ViewPasswordUiEvent {
     data class OpenWebsite(val domain: String) : ViewPasswordUiEvent
     data object OnBackClick : ViewPasswordUiEvent
 
+    data object OnPinClick : ViewPasswordUiEvent
     data object OnEditRequest : ViewPasswordUiEvent
 
     data object OnCloseDialog : ViewPasswordUiEvent

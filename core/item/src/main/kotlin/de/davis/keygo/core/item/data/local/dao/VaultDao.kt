@@ -41,6 +41,8 @@ internal interface VaultDao {
         itemType: VaultItemType? = null
     ): List<LightweightVaultItemSearchResult>
 
+    @Query("UPDATE VaultItemEntity SET pinned = :pinned WHERE id = :id")
+    suspend fun setPinned(id: ItemId, pinned: Boolean)
 
     @Query("SELECT v.id, v.name, v.itemType, v.pinned FROM VaultItemEntity v")
     fun observeLiteVaultItems(): Flow<List<LightweightVaultItem>>

@@ -38,6 +38,9 @@ internal class VaultItemRepositoryImpl(
     ): List<LiteVaultItemSearchResult> = vaultDao.searchVaultItem(query, itemType)
         .map(LightweightVaultItemSearchResult::toDomain)
 
+    override suspend fun setPinned(itemId: ItemId, pinned: Boolean) =
+        vaultDao.setPinned(itemId, pinned)
+
     override fun observeLiteVaultItems(): Flow<List<LiteItem>> =
         vaultDao.observeLiteVaultItems().map {
             it.map(LightweightVaultItem::toDomain)

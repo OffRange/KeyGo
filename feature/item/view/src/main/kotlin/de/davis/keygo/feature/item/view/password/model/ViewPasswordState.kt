@@ -1,10 +1,12 @@
 package de.davis.keygo.feature.item.view.password.model
 
+import androidx.compose.runtime.Immutable
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.feature.totp.domain.model.TotpInformation
 
 
+@Immutable
 data class ViewPasswordState(
     val name: String = "",
     val passkeyRPs: Set<String> = emptySet(),
@@ -16,4 +18,5 @@ data class ViewPasswordState(
     val note: String = "",
     val modificationDialog: ModificationDialog? = null,
     val scanning: Boolean = false,
+    val pinned: Boolean = false,
 )

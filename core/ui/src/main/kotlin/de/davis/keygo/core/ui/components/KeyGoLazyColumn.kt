@@ -11,7 +11,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
@@ -33,8 +36,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 
+sealed interface HeaderContent {
+    data class Letter(val char: Char) : HeaderContent
+    data object Pin : HeaderContent
+}
+
 data class KeyGoColumnItem<ID : Any>(
-    val header: Char,
+    val header: HeaderContent,
     val title: String,
     val id: ID,
 )
@@ -111,7 +119,7 @@ fun <ID : Any> KeyGoColumn(
 
                         if (index in firstInGroupIndices && !isFirstVisibleItem) {
                             KeyGoInlineHeader(
-                                header = item.header.toString(),
+                                header = item.header,
                                 color = contentColorFor(containerColorForId(id))
                             )
                         } else {
@@ -125,11 +133,11 @@ fun <ID : Any> KeyGoColumn(
         // ----------- HEADER -----------
         if (items.isEmpty()) return
 
-        val headerContent by remember(items) {
+        val stickyHeader by remember(items) {
             derivedStateOf {
-                if (listState.firstVisibleItemIndex < items.size) {
-                    items[listState.firstVisibleItemIndex].header.toString()
-                } else ""
+                if (listState.firstVisibleItemIndex < items.size)
+                    items[listState.firstVisibleItemIndex].header
+                else HeaderContent.Letter(' ')
             }
         }
 
@@ -167,7 +175,7 @@ fun <ID : Any> KeyGoColumn(
         )
 
         KeyGoInlineHeader(
-            header = headerContent,
+            header = stickyHeader,
             color = color,
             modifier = Modifier
                 .offset { headerOffset }
@@ -182,14 +190,26 @@ fun <ID : Any> KeyGoColumn(
 }
 
 @Composable
-private fun KeyGoInlineHeader(header: String, color: Color, modifier: Modifier = Modifier) {
+private fun KeyGoInlineHeader(
+    header: HeaderContent,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
     Box(modifier = modifier.headerSize(), contentAlignment = Alignment.Center) {
-        Text(
-            text = header,
-            modifier = Modifier,
-            fontWeight = FontWeight.SemiBold,
-            color = color
-        )
+        when (header) {
+            is HeaderContent.Letter -> Text(
+                text = header.char.toString(),
+                fontWeight = FontWeight.SemiBold,
+                color = color,
+            )
+
+            is HeaderContent.Pin -> Icon(
+                imageVector = Icons.Default.PushPin,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(20.dp),
+            )
+        }
     }
 }
 

@@ -49,6 +49,7 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
 import de.davis.keygo.core.ui.R
+import de.davis.keygo.core.ui.components.HeaderContent
 import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.core.ui.components.KeyGoColumn
@@ -285,7 +286,8 @@ fun ItemListScreen(
                     val items = remember(uiState.items) {
                         uiState.items.map {
                             KeyGoColumnItem(
-                                header = it.name.first().uppercaseChar(),
+                                header = if (it.pinned) HeaderContent.Pin
+                                else HeaderContent.Letter(it.name.first().uppercaseChar()),
                                 title = it.name,
                                 id = it.vaultItemId
                             )
