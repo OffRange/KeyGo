@@ -49,15 +49,16 @@ fun <ID : Any> KeyGoColumn(
     openedItemId: ID? = null,
     selectedItemIds: Set<ID> = emptySet(),
 ) {
-    val groupedItems = remember(items) {
-        items.groupBy { it.header }
-    }
+    val (firstInGroupIndices, lastInGroupIndices) = remember(items) {
+        val first = mutableSetOf<Int>()
+        val last = mutableSetOf<Int>()
 
-    val (firstElementIndices, lastElementIndices) = remember(groupedItems) {
-        val values = groupedItems.values
-        val firstElementIndices = values.map { groupItems -> items.indexOf(groupItems.first()) }
-        val lastElementIndices = values.map { groupItems -> items.indexOf(groupItems.last()) }
-        firstElementIndices to lastElementIndices
+        for (i in items.indices) {
+            if (i == 0 || items[i].header != items[i - 1].header) first.add(i)
+            if (i != items.lastIndex && items[i].header != items[i + 1].header) last.add(i)
+        }
+
+        first to last
     }
 
     val listState = rememberLazyListState()
@@ -102,11 +103,11 @@ fun <ID : Any> KeyGoColumn(
                         containerColor = containerColorForId(id),
                     ),
                     leadingContent = {
-                        val isFirstVisibleItem by remember {
+                        val isFirstVisibleItem by remember(index) {
                             derivedStateOf { listState.firstVisibleItemIndex == index }
                         }
 
-                        if (index in firstElementIndices && !isFirstVisibleItem) {
+                        if (index in firstInGroupIndices && !isFirstVisibleItem) {
                             KeyGoInlineHeader(
                                 header = item.header.toString(),
                                 color = contentColorFor(containerColorForId(id))
@@ -131,13 +132,13 @@ fun <ID : Any> KeyGoColumn(
         }
 
         val density = LocalDensity.current
-        val headerOffset by remember(listState, lastElementIndices, density) {
+        val headerOffset by remember(listState, lastInGroupIndices, density) {
             derivedStateOf {
                 val offset = with(density) {
                     IntOffset(16.dp.roundToPx(), 16.dp.roundToPx())
                 }
 
-                if (listState.firstVisibleItemIndex in lastElementIndices)
+                if (listState.firstVisibleItemIndex in lastInGroupIndices)
                     offset.copy(y = offset.y - listState.firstVisibleItemScrollOffset)
                 else offset
             }

@@ -8,6 +8,7 @@ import de.davis.keygo.core.item.data.local.entity.PasswordEntity
 import de.davis.keygo.core.item.data.local.pojo.LightweightPassword
 import de.davis.keygo.core.item.data.local.pojo.LightweightVaultItem
 import de.davis.keygo.core.item.data.local.pojo.LightweightVaultItemSearchResult
+import de.davis.keygo.core.item.data.local.pojo.PasswordScoreEntry
 import de.davis.keygo.core.item.data.local.pojo.VaultPassword
 import de.davis.keygo.core.item.domain.alias.ItemId
 import kotlinx.coroutines.flow.Flow
@@ -20,7 +21,7 @@ internal interface PasswordDao {
     fun getAllPasswords(): Flow<List<VaultPassword>>
 
     @Transaction
-    @Query("SELECT v.id, v.name FROM PasswordEntity JOIN VaultItemEntity v ON PasswordEntity.vault_item_id = v.id")
+    @Query("SELECT v.id, v.name, v.itemType FROM PasswordEntity JOIN VaultItemEntity v ON PasswordEntity.vault_item_id = v.id")
     fun getLitePasswords(): Flow<List<LightweightVaultItem>>
 
 
@@ -55,13 +56,17 @@ internal interface PasswordDao {
 
     @Query(
         """
-        SELECT v.id, v.name, (name LIKE '%' || :query || '%') AS matchedName, (note LIKE '%' || :query || '%') AS matchedNote
+        SELECT v.id, v.name, v.itemType, (name LIKE '%' || :query || '%') AS matchedName, (note LIKE '%' || :query || '%') AS matchedNote
         FROM PasswordEntity p
         JOIN VaultItemEntity v ON p.vault_item_id = v.id
         WHERE name LIKE '%' || :query || '%' OR COALESCE(note, '') LIKE '%' || :query || '%'
         """
     )
+    @Deprecated("Use VaultItemDao.searchVaultItem instead")
     suspend fun searchPasswordItem(query: String): List<LightweightVaultItemSearchResult>
+
+    @Query("SELECT vault_item_id, score FROM PasswordEntity")
+    fun observePasswordScores(): Flow<List<PasswordScoreEntry>>
 
     @Query("SELECT id FROM PasswordEntity WHERE vault_item_id = :vaultId")
     suspend fun getPasswordIdByVaultId(vaultId: ItemId): ItemId?

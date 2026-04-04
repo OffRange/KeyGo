@@ -10,12 +10,13 @@ interface LiteItem {
     val vaultItemId: ItemId
     val name: String
 
-    val itemType: VaultItemType get() = VaultItemType.Password
+    val itemType: VaultItemType
 
     @ConsistentCopyVisibility
     data class Concrete internal constructor(
         override val vaultItemId: ItemId,
         override val name: String,
+        override val itemType: VaultItemType,
     ) : LiteItem
 }
 

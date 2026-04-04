@@ -11,17 +11,20 @@ internal fun VaultItem.toData() = VaultItemEntity(
     id = vaultItemId,
     name = name,
     note = note,
-    encryptedData = encryptedData
+    encryptedData = encryptedData,
+    itemType = itemType,
 )
 
 internal fun LightweightVaultItem.toDomain() = LiteItem.Concrete(
     vaultItemId = id,
     name = name,
+    itemType = itemType,
 )
 
 internal fun LightweightVaultItemSearchResult.toDomain() = LiteVaultItemSearchResult(
     vaultItemId = id,
     name = name,
+    itemType = itemType,
     matchedName = matchedName,
-    matchedNote = matchedNote
+    matchedNote = matchedNote,
 )

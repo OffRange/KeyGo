@@ -38,5 +38,7 @@ interface PasswordRepository {
 
     suspend fun searchPasswordItem(query: String): List<LiteVaultItemSearchResult>
 
+    fun observePasswordScores(): Flow<Map<ItemId, Password.Score>>
+
     suspend fun getPasswordIdByVaultId(vaultId: ItemId): ItemId?
 }

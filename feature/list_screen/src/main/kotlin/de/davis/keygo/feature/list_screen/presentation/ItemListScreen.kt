@@ -9,8 +9,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AppBarWithSearch
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExpandedDockedSearchBar
 import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,12 +28,14 @@ import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -39,10 +44,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.repeatOnLifecycle
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
@@ -52,28 +54,18 @@ import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.core.ui.components.KeyGoColumn
 import de.davis.keygo.core.ui.components.KeyGoColumnItem
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
+import de.davis.keygo.feature.list_screen.presentation.components.FilterBottomSheet
 import de.davis.keygo.feature.list_screen.presentation.components.SearchResult
 import de.davis.keygo.feature.list_screen.presentation.model.Event
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
+import de.davis.keygo.feature.list_screen.R as ListScreenR
 
 @Stable
 sealed interface NoItemStrategy {
     object ShowCreateNewItemCard : NoItemStrategy
     object ShowMessage : NoItemStrategy
-}
-
-@Immutable
-@JvmInline
-value class ItemTypeWhitelist(val allowedTypes: Array<VaultItemType>? = null) {
-
-    companion object {
-        val ALL = ItemTypeWhitelist()
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -83,9 +75,9 @@ fun ItemListScreen(
     onCreateItemRequest: (VaultItemType) -> Unit,
     modifier: Modifier = Modifier,
     onItemLongClick: (ItemId) -> Unit = {},
+    restrictedItemType: VaultItemType? = null,
     onItemDelete: (deleted: ItemId, firstItemId: ItemId?) -> Unit = { _, _ -> },
     onFirstItemAvailable: (ItemId) -> Unit = {},
-    itemTypeWhitelist: ItemTypeWhitelist = ItemTypeWhitelist.ALL,
     notFoundStrategy: NoItemStrategy = NoItemStrategy.ShowCreateNewItemCard,
     enableDeletion: Boolean = true,
     enableSelection: Boolean = true,
@@ -94,9 +86,11 @@ fun ItemListScreen(
     scrollBehavior: SearchBarScrollBehavior = SearchBarDefaults.enterAlwaysSearchBarScrollBehavior(),
 ) {
     val viewModel = koinViewModel<ItemListViewModel> {
-        parametersOf(enableSelection, itemTypeWhitelist)
+        parametersOf(enableSelection, restrictedItemType)
     }
     val uiState by viewModel.listItemState.collectAsStateWithLifecycle()
+    val filterSheetState by viewModel.filterBottomSheetState.collectAsStateWithLifecycle()
+    var showFilterSheet by rememberSaveable { mutableStateOf(false) }
 
     val searchBarState = rememberSearchBarState()
 
@@ -108,21 +102,13 @@ fun ItemListScreen(
 
     // In case the user types something, but does not submit the search, we rollback to the last
     // submitted search query.
-    val lifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(lifecycleOwner, searchBarState) {
-        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            withContext(Dispatchers.Main.immediate) {
-                snapshotFlow { searchBarState.targetValue }
-                    .collectLatest {
-                        when (it) {
-                            SearchBarValue.Collapsed -> {
-                                viewModel.resetToMatchSubmittedQuery()
-                            }
-
-                            else -> {}
-                        }
-                    }
+    ObserveAsEvents(snapshotFlow { searchBarState.targetValue }, searchBarState) {
+        when (it) {
+            SearchBarValue.Collapsed -> {
+                viewModel.resetToMatchSubmittedQuery()
             }
+
+            else -> {}
         }
     }
 
@@ -178,11 +164,31 @@ fun ItemListScreen(
                     }
                 }
             },
+            trailingIcon = {
+                IconButton(onClick = { showFilterSheet = true }) {
+                    BadgedBox(
+                        badge = {
+                            if (!filterSheetState.isDefault) Badge()
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FilterList,
+                            contentDescription = stringResource(ListScreenR.string.filter),
+                        )
+                    }
+                }
+            },
             placeholder = {
                 Text(text = stringResource(R.string.search_your_vault))
             }
         )
     }
+    if (showFilterSheet)
+        FilterBottomSheet(
+            state = filterSheetState,
+            onAction = viewModel::onFilterAction,
+            onDismiss = { showFilterSheet = false },
+        )
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -244,19 +250,26 @@ fun ItemListScreen(
                         val showCreateCard =
                             !uiState.hasSearchQuery && notFoundStrategy is NoItemStrategy.ShowCreateNewItemCard
                         when (showCreateCard) {
-                            true -> KeyGoCard(
-                                title = {
-                                    Text(text = stringResource(R.string.create_new_item))
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                properties = KeyGoCardProperties.elevated()
-                            ) {
-                                VaultItemType.entries.forEach {
-                                    FilledTonalButton(
-                                        onClick = { onCreateItemRequest(it) },
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text(text = it.presentation.first)
+                            true -> {
+                                val createTypes = remember(restrictedItemType) {
+                                    restrictedItemType?.let { listOf(it) }
+                                        ?: VaultItemType.entries
+                                }
+
+                                KeyGoCard(
+                                    title = {
+                                        Text(text = stringResource(R.string.create_new_item))
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    properties = KeyGoCardProperties.elevated()
+                                ) {
+                                    createTypes.forEach {
+                                        FilledTonalButton(
+                                            onClick = { onCreateItemRequest(it) },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text(text = it.presentation.first)
+                                        }
                                     }
                                 }
                             }
@@ -270,7 +283,7 @@ fun ItemListScreen(
                     val items = remember(uiState.items) {
                         uiState.items.map {
                             KeyGoColumnItem(
-                                header = it.name.first(),
+                                header = it.name.first().uppercaseChar(),
                                 title = it.name,
                                 id = it.vaultItemId
                             )

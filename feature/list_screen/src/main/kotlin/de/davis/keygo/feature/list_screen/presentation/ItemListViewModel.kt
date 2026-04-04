@@ -8,9 +8,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
+import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.domain.repository.VaultItemRepository
+import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
+import de.davis.keygo.feature.list_screen.domain.model.FilterState
+import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
+import de.davis.keygo.feature.list_screen.presentation.mapper.toAvailableFilterOptions
+import de.davis.keygo.feature.list_screen.presentation.mapper.toBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.Event
+import de.davis.keygo.feature.list_screen.presentation.model.FilterAction
+import de.davis.keygo.feature.list_screen.presentation.model.FilterBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.ListItemState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,7 +37,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -43,9 +50,11 @@ import kotlin.time.Duration.Companion.milliseconds
 @KoinViewModel
 internal class ItemListViewModel(
     @InjectedParam private val enableSelection: Boolean,
-    @InjectedParam private val itemTypeWhitelist: ItemTypeWhitelist,
+    @InjectedParam private val restrictedItemType: VaultItemType?,
     private val snackbarManager: SnackbarManager,
     private val vaultItemRepository: VaultItemRepository,
+    private val filterUseCase: FilterUseCase,
+    passwordRepository: PasswordRepository,
 ) : ViewModel() {
 
     private val allItems = vaultItemRepository.observeLiteVaultItems()
@@ -64,11 +73,22 @@ internal class ItemListViewModel(
     }.distinctUntilChanged()
 
 
+    private val passwordScores = passwordRepository.observePasswordScores()
+
+    private val filterState = MutableStateFlow(FilterState.Default)
+    private val filteredItems = combine(
+        nonDeletedItems,
+        filterState,
+        passwordScores,
+    ) { items, filter, scores ->
+        filterUseCase(filter, items, scores)
+    }.distinctUntilChanged()
+
     private val searchResults = MutableStateFlow(listOf<LiteItem>())
     private val selectedItemIds = MutableStateFlow(emptySet<ItemId>())
 
     val listItemState = combine(
-        nonDeletedItems,
+        filteredItems,
         searchResults,
         selectedItemIds,
         submittedSearchQuery,
@@ -87,20 +107,57 @@ internal class ItemListViewModel(
         initialValue = ListItemState()
     )
 
+    private val availableFilterOptions = combine(
+        nonDeletedItems,
+        passwordScores,
+    ) { items, scores ->
+        items.toAvailableFilterOptions(scores)
+    }.distinctUntilChanged()
+
+    val filterBottomSheetState = combine(
+        filterState,
+        availableFilterOptions,
+    ) { filter, available ->
+        filter.toBottomSheetState(available, restrictedItemType)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = FilterBottomSheetState(),
+    )
+
     private val _event = Channel<Event>(Channel.BUFFERED)
     val event = _event.receiveAsFlow()
 
     val searchTextFieldState = TextFieldState()
 
+    fun onFilterAction(action: FilterAction) {
+        when (action) {
+            is FilterAction.SortDirectionChanged -> filterState.update {
+                it.copy(sortDirection = action.direction)
+            }
+
+            is FilterAction.ItemTypeToggled -> filterState.update {
+                it.copy(selectedItemTypes = it.selectedItemTypes.toggle(action.itemType))
+            }
+
+            is FilterAction.LabelToggled -> filterState.update {
+                it.copy(selectedLabels = it.selectedLabels.toggle(action.label))
+            }
+
+            is FilterAction.ScoreToggled -> filterState.update {
+                it.copy(selectedScores = it.selectedScores.toggle(action.score))
+            }
+
+            is FilterAction.ClearFilters -> filterState.update { FilterState.Default }
+        }
+    }
+
+    private fun <T> Set<T>.toggle(element: T): Set<T> =
+        if (element in this) this - element else this + element
+
     private suspend fun queryToItems(query: String): Flow<List<LiteItem>> =
         (if (query.isBlank()) allItems
-        else flowOf(vaultItemRepository.searchVaultItem(query))).map { items ->
-            items.filter { item ->
-                itemTypeWhitelist.allowedTypes?.let {
-                    item.itemType in it
-                } ?: true // Allow all items if whitelist is null
-            }
-        }
+        else flowOf(vaultItemRepository.searchVaultItem(query, restrictedItemType)))
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private fun observeSearchState() {
