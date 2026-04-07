@@ -1,7 +1,6 @@
 package de.davis.keygo.core.ui.components
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
@@ -13,8 +12,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
@@ -47,6 +47,7 @@ data class KeyGoColumnItem<ID : Any>(
     val id: ID,
 )
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun <ID : Any> KeyGoColumn(
     items: List<KeyGoColumnItem<ID>>,
@@ -64,20 +65,18 @@ fun <ID : Any> KeyGoColumn(
 
         for (i in items.indices) {
             if (i == 0 || items[i].header != items[i - 1].header) first.add(i)
-            if (i != items.lastIndex && items[i].header != items[i + 1].header) last.add(i)
+            if (i == items.lastIndex || items[i].header != items[i + 1].header) last.add(i)
         }
 
         first to last
     }
 
     val listState = rememberLazyListState()
+    val shapeCoordinator = rememberSegmentedShapeCoordinator()
 
     @Composable
-    fun containerColorForId(id: ID): Color = when (id) {
-        in selectedItemIds -> SelectedContainerColor
-        openedItemId -> OpenedContainerColor
-        else -> ContainerColor
-    }
+    fun containerColorForId(id: ID): Color =
+        if (id == openedItemId) OpenedContainerColor else ContainerColor
 
     Box(modifier = modifier.clipToBounds()) {
         LazyColumn(
@@ -87,9 +86,20 @@ fun <ID : Any> KeyGoColumn(
         ) {
             itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
                 val id = item.id
+
+                val isFirst = index in firstInGroupIndices
+                val isLast = index in lastInGroupIndices
+
+                val bottomPadding = if (isLast && index != items.lastIndex) GroupVerticalPadding
+                else 0.dp
+
+                val containerColor by animateColorAsState(containerColorForId(id))
+
                 DeletableVaultItem(
                     title = item.title,
                     description = "TODO: description",
+                    onClick = { onItemClick(id) },
+                    onLongClick = { onItemLongClick(id) },
                     onDeleteRequested = {
                         onDelete(id)
                         // We return false here because it allows the swipe state to reset.
@@ -102,16 +112,14 @@ fun <ID : Any> KeyGoColumn(
                         // and no recomposition occurs. This ensures the UI remains consistent.
                         false
                     },
-                    modifier = Modifier
-                        .combinedClickable(
-                            onClick = { onItemClick(id) },
-                            onLongClick = { onItemLongClick(id) }
-                        )
-                        .animateItem(),
+                    shapeCoordinator = shapeCoordinator,
+                    itemIndex = index,
+                    isFirst = isFirst,
+                    isLast = isLast,
+                    modifier = Modifier.animateItem(),
+                    selected = id in selectedItemIds,
+                    containerColor = containerColor,
                     enableSwipeToDelete = enableSwipeToDelete,
-                    cardColors = CardDefaults.cardColors(
-                        containerColor = containerColorForId(id),
-                    ),
                     leadingContent = {
                         val isFirstVisibleItem by remember(index) {
                             derivedStateOf { listState.firstVisibleItemIndex == index }
@@ -216,11 +224,13 @@ private fun KeyGoInlineHeader(
 @Stable
 private fun Modifier.headerSize() = this.size(40.dp)
 
-val ItemVerticalPadding = 8.dp
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+val ItemVerticalPadding = ListItemDefaults.SegmentedGap
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+val GroupVerticalPadding = ListItemDefaults.SegmentedGap
 
 private val ContainerColor
     @Composable get() = MaterialTheme.colorScheme.surfaceContainerHigh
 private val OpenedContainerColor
     @Composable get() = MaterialTheme.colorScheme.primaryContainer
-private val SelectedContainerColor
-    @Composable get() = MaterialTheme.colorScheme.secondaryContainer
