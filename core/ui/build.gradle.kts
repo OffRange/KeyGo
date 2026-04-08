@@ -34,6 +34,7 @@ android {
 
 kotlin {
     compilerOptions {
+        freeCompilerArgs.add("-Xcontext-parameters")
         jvmTarget = JvmTarget.JVM_17
     }
 }

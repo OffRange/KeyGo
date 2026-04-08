@@ -6,8 +6,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -116,7 +118,9 @@ fun <ID : Any> KeyGoColumn(
                     itemIndex = index,
                     isFirst = isFirst,
                     isLast = isLast,
-                    modifier = Modifier.animateItem(),
+                    modifier = Modifier
+                        .padding(bottom = bottomPadding)
+                        .expressiveAnimateItem(),
                     selected = id in selectedItemIds,
                     containerColor = containerColor,
                     enableSwipeToDelete = enableSwipeToDelete,
@@ -195,6 +199,16 @@ fun <ID : Any> KeyGoColumn(
                 }
         )
     }
+}
+
+@Composable
+context(scope: LazyItemScope)
+private fun Modifier.expressiveAnimateItem(): Modifier = with(scope) {
+    animateItem(
+        fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+        fadeOutSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+        placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+    )
 }
 
 @Composable
