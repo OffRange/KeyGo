@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
@@ -182,6 +183,15 @@ fun <ID : Any> KeyGoColumn(
             }
         }
 
+        val headerAlpha by remember(shapeCoordinator, listState) {
+            derivedStateOf {
+                val swiping = shapeCoordinator.swipingIndex ?: return@derivedStateOf 1f
+                if (swiping == listState.firstVisibleItemIndex)
+                    1f - shapeCoordinator.swipingProgress * 2f
+                else 1f
+            }
+        }
+
         val color by animateColorAsState(
             contentColorFor(containerColorForId(idBehindHeader))
         )
@@ -191,6 +201,9 @@ fun <ID : Any> KeyGoColumn(
             color = color,
             modifier = Modifier
                 .offset { headerOffset }
+                .graphicsLayer {
+                    alpha = headerAlpha
+                }
                 .onGloballyPositioned {
                     headerPositionY =
                         it.positionInParent().y + it.size.height / 2f + with(density) {
