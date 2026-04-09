@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
 
+    implementation(projects.core.item)
 
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))

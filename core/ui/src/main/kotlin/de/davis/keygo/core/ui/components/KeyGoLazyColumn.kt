@@ -40,6 +40,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.item.generated.domain.model.VaultItemType
+import de.davis.keygo.core.item.generated.presentation.presentation
 
 sealed interface HeaderContent {
     data class Letter(val char: Char) : HeaderContent
@@ -50,6 +52,7 @@ data class KeyGoColumnItem<ID : Any>(
     val header: HeaderContent,
     val title: String,
     val id: ID,
+    val itemType: VaultItemType,
 )
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -89,7 +92,11 @@ fun <ID : Any> KeyGoColumn(
             state = listState,
             verticalArrangement = Arrangement.spacedBy(ItemVerticalPadding)
         ) {
-            itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
+            itemsIndexed(
+                items,
+                key = { _, item -> item.id },
+                contentType = { _, item -> item.itemType }
+            ) { index, item ->
                 val id = item.id
 
                 val isFirst = index in firstInGroupIndices
@@ -102,7 +109,7 @@ fun <ID : Any> KeyGoColumn(
 
                 DeletableVaultItem(
                     title = item.title,
-                    description = "TODO: description",
+                    description = item.itemType.presentation.first,
                     onClick = { onItemClick(id) },
                     onLongClick = { onItemLongClick(id) },
                     onDeleteRequested = {
@@ -274,6 +281,7 @@ private fun KeyGoLazyColumnPreview() {
                 header = HeaderContent.Letter('A' + it / 10),
                 title = "Item $it",
                 id = it,
+                itemType = VaultItemType.Password,
             )
         }.sortedBy { (it.header as HeaderContent.Letter).char }
     }

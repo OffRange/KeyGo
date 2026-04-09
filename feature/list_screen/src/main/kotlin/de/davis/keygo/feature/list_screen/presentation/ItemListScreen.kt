@@ -287,7 +287,8 @@ fun ItemListScreen(
                                 header = if (it.pinned) HeaderContent.Pin
                                 else HeaderContent.Letter(it.name.first().uppercaseChar()),
                                 title = it.name,
-                                id = it.vaultItemId
+                                id = it.vaultItemId,
+                                itemType = it.itemType,
                             )
                         }
                     }
