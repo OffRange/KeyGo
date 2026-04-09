@@ -99,7 +99,7 @@ fun ItemListScreen(
 
     LaunchedEffect(uiState.items, uiState.highlightedId, autoSelectFirst) {
         if (autoSelectFirst && uiState.highlightedId == null && uiState.items.isNotEmpty())
-            viewModel.onItemClick(uiState.items.first().vaultItemId)
+            viewModel.onItemClick(uiState.items.first().vaultItemId, forceSkipSelection = true)
     }
 
     // In case the user types something, but does not submit the search, we rollback to the last
