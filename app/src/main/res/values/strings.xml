@@ -12,8 +12,6 @@
     <string name="connectivity">Connectivity</string>
     <string name="settings">Settings</string>
 
-    <string name="search_your_vault">Search your Vault</string>
-
     <string name="match_name">Matched name</string>
     <string name="match_note">Matched note</string>
     <string name="match_name_and_note">Matched name and note</string>

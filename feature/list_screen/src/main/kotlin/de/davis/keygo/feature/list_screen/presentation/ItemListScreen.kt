@@ -3,7 +3,6 @@ package de.davis.keygo.feature.list_screen.presentation
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -48,20 +47,20 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
-import de.davis.keygo.core.ui.R
 import de.davis.keygo.core.ui.components.HeaderContent
 import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.core.ui.components.KeyGoColumn
 import de.davis.keygo.core.ui.components.KeyGoColumnItem
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
+import de.davis.keygo.feature.list_screen.R
 import de.davis.keygo.feature.list_screen.presentation.components.FilterBottomSheet
 import de.davis.keygo.feature.list_screen.presentation.components.SearchResult
 import de.davis.keygo.feature.list_screen.presentation.model.Event
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
-import de.davis.keygo.feature.list_screen.R as ListScreenR
+import de.davis.keygo.core.ui.R as CoreUiR
 
 @Stable
 sealed interface NoItemStrategy {
@@ -176,7 +175,7 @@ fun ItemListScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.FilterList,
-                            contentDescription = stringResource(ListScreenR.string.filter),
+                            contentDescription = stringResource(R.string.filter),
                         )
                     }
                 }
@@ -239,7 +238,6 @@ fun ItemListScreen(
             targetState = uiState.items.isEmpty(),
             modifier = Modifier
                 .padding(innerPadding)
-                .consumeWindowInsets(innerPadding)
                 .padding(top = 4.dp)
         ) { isEmpty ->
             when (isEmpty) {
@@ -261,7 +259,7 @@ fun ItemListScreen(
 
                                 KeyGoCard(
                                     title = {
-                                        Text(text = stringResource(R.string.create_new_item))
+                                        Text(text = stringResource(CoreUiR.string.create_new_item))
                                     },
                                     modifier = Modifier.fillMaxWidth(),
                                     properties = KeyGoCardProperties.elevated()
@@ -277,7 +275,7 @@ fun ItemListScreen(
                                 }
                             }
 
-                            false -> Text(text = stringResource(R.string.match_not_found))
+                            false -> Text(text = stringResource(CoreUiR.string.match_not_found))
                         }
                     }
                 }
