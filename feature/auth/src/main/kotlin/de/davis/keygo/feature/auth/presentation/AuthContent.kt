@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -57,9 +58,31 @@ import de.davis.keygo.feature.auth.presentation.model.AuthUIEvent
 import de.davis.keygo.feature.auth.presentation.model.UIPasswordError
 import de.davis.keygo.core.item.R as CoreItemR
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
+    when (state) {
+        is AuthState.Loading -> {
+            Surface(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    ContainedLoadingIndicator()
+                }
+            }
+        }
+
+        is AuthState.Interactable -> InteractableAuthContent(state = state, onEvent = onEvent)
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun InteractableAuthContent(
+    state: AuthState.Interactable,
+    onEvent: (AuthUIEvent) -> Unit,
+) {
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(
             contentAlignment = Alignment.Center,
@@ -271,7 +294,7 @@ fun MigrationDialog(onClick: () -> Unit) {
 internal val DialogMinWidth = 280.dp
 internal val DialogMaxWidth = 560.dp
 
-private val AuthState.firstTitlePart: String
+private val AuthState.Interactable.firstTitlePart: String
     @Composable
     get() = when (this) {
         is AuthState.Login -> stringResource(R.string.authenticate_to_access)
@@ -279,7 +302,7 @@ private val AuthState.firstTitlePart: String
         is AuthState.CreateAccess -> stringResource(R.string.create_access_access)
     }
 
-private val AuthState.buttonText: String
+private val AuthState.Interactable.buttonText: String
     @Composable
     get() = when (this) {
         is AuthState.Login -> stringResource(R.string.authenticate)

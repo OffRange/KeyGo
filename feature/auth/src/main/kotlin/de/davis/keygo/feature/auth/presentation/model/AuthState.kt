@@ -5,19 +5,47 @@ import de.davis.keygo.core.item.domain.model.Password
 
 sealed interface AuthState {
 
-    val passwordTextFieldState: TextFieldState
-    val passwordError: UIPasswordError
-    val loading: Boolean
+    data object Loading : AuthState
+
+    sealed interface Interactable : AuthState {
+        val passwordTextFieldState: TextFieldState
+        val passwordError: UIPasswordError
+        val loading: Boolean
+
+        fun copyDefaultState(
+            loading: Boolean = this.loading,
+            passwordTextFieldState: TextFieldState = this.passwordTextFieldState,
+            passwordError: UIPasswordError = this.passwordError,
+        ): Interactable = when (this) {
+            is Login -> copy(
+                loading = loading,
+                passwordTextFieldState = passwordTextFieldState,
+                passwordError = passwordError,
+            )
+
+            is CreateAccess -> copy(
+                loading = loading,
+                passwordTextFieldState = passwordTextFieldState,
+                passwordError = passwordError,
+            )
+
+            is Migrating -> copy(
+                loading = loading,
+                passwordTextFieldState = passwordTextFieldState,
+                passwordError = passwordError,
+            )
+        }
+    }
 
     data class Login(
         override val passwordTextFieldState: TextFieldState,
         override val passwordError: UIPasswordError = UIPasswordError.None,
         override val loading: Boolean = false,
         val biometricAuthenticationAvailable: Boolean = false,
-    ) : AuthState
+    ) : Interactable
 
 
-    sealed interface BiometricAuthState : AuthState {
+    sealed interface BiometricAuthState : Interactable {
         val biometricsAvailable: Boolean
         val useBiometrics: Boolean
 
@@ -44,7 +72,7 @@ sealed interface AuthState {
         override val biometricsAvailable: Boolean = false,
         override val useBiometrics: Boolean = true,
         val showMigrationDialog: Boolean = true
-    ) : AuthState, BiometricAuthState
+    ) : BiometricAuthState
 
     data class CreateAccess(
         override val passwordTextFieldState: TextFieldState,
@@ -55,29 +83,5 @@ sealed interface AuthState {
         val confirmPasswordTextFieldState: TextFieldState = TextFieldState(),
         val confirmPasswordError: UIPasswordError = UIPasswordError.None,
         val score: Password.Score = Password.Score.None,
-    ) : AuthState, BiometricAuthState
-
-    fun copyDefaultState(
-        loading: Boolean = this.loading,
-        passwordTextFieldState: TextFieldState = this.passwordTextFieldState,
-        passwordError: UIPasswordError = this.passwordError,
-    ): AuthState = when (this) {
-        is Login -> copy(
-            loading = loading,
-            passwordTextFieldState = passwordTextFieldState,
-            passwordError = passwordError,
-        )
-
-        is CreateAccess -> copy(
-            loading = loading,
-            passwordTextFieldState = passwordTextFieldState,
-            passwordError = passwordError,
-        )
-
-        is Migrating -> copy(
-            loading = loading,
-            passwordTextFieldState = passwordTextFieldState,
-            passwordError = passwordError,
-        )
-    }
+    ) : BiometricAuthState
 }

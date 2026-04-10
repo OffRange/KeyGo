@@ -67,8 +67,7 @@ internal class AuthViewModel(
     private val passwordTextFieldState = TextFieldState()
     private val confirmPasswordTextFieldState = TextFieldState()
 
-    private val _uiState =
-        MutableStateFlow<AuthState>(AuthState.CreateAccess(passwordTextFieldState = passwordTextFieldState))
+    private val _uiState = MutableStateFlow<AuthState>(AuthState.Loading)
     val uiState = _uiState.asStateFlow()
 
     init {
@@ -175,7 +174,7 @@ internal class AuthViewModel(
             is AuthUIEvent.RequestBiometricAuthentication -> if (uiState.value is AuthState.Login) requestBiometricLogin()
 
             AuthUIEvent.Submit -> {
-                val state = _uiState.value
+                val state = _uiState.value as? AuthState.Interactable ?: return
                 val password = state.passwordTextFieldState.text.toString()
                 when (state) {
                     is AuthState.Login -> {
@@ -183,7 +182,7 @@ internal class AuthViewModel(
                             unlockWithPassword(
                                 password = password
                             ).handleAuthenticationResult {
-                                state.copyDefaultState(passwordError = UIPasswordError.Incorrect)
+                                copyDefaultState(passwordError = UIPasswordError.Incorrect)
                             }
                         }
                     }
@@ -193,6 +192,7 @@ internal class AuthViewModel(
                             validateMainPassword(password).asResult(Unit)
                                 .onFailure {
                                     _uiState.update {
+                                        if (it !is AuthState.Interactable) return@update it
                                         it.copyDefaultState(passwordError = UIPasswordError.Incorrect)
                                     }
                                 }.onSuccess {
@@ -214,8 +214,7 @@ internal class AuthViewModel(
                             }
                             return
                         }
-                        val confirmedPassword =
-                            errorFreeState.confirmPasswordTextFieldState.text.toString()
+                        val confirmedPassword = confirmPasswordTextFieldState.text.toString()
                         if (password != confirmedPassword) {
                             _uiState.update {
                                 errorFreeState.copy(confirmPasswordError = UIPasswordError.Incorrect)
@@ -265,13 +264,18 @@ internal class AuthViewModel(
 
     private fun loading(
         setLoading: Boolean = true,
-        block: suspend LoadingScope<AuthState>.() -> Unit
+        block: suspend LoadingScope<AuthState.Interactable>.() -> Unit
     ) {
         if (setLoading)
-            _uiState.update { it.copyDefaultState(loading = true) }
+            _uiState.update {
+                if (it !is AuthState.Interactable) return@update it
+                it.copyDefaultState(loading = true)
+            }
 
         viewModelScope.launch {
             _uiState.update {
+                if (it !is AuthState.Interactable) return@update it
+
                 LoadingScope(
                     state = it,
                     onSuccess = { navigationEventChannel.trySend(Unit) },
