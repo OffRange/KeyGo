@@ -92,8 +92,6 @@ internal class CreatePasskeyViewModel(
                 )
             )
 
-            println("Creating passkey with ID ${passkey.credentialId} for RP ${passkey.rp} and user ${passkey.user.displayName}")
-            println(registrationResponse)
             passkeyRepository.createPasskey(passkey)
             _event.send(CreatePasskeyEvent.Finish(registrationResponse.response))
         }
