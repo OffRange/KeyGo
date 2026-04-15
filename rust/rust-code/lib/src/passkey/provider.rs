@@ -1,13 +1,12 @@
 use crate::passkey::authenticator::keygo_authenticator;
-use crate::passkey::keygo_passkey::passkey_from_bytes;
+use crate::passkey::keygo_passkey::{passkey_from_bytes, PasskeyCodecError};
 use crate::url::sanitize_to_https_url;
-use bincode::error::DecodeError;
 use passkey::client::{Client, WebauthnError};
-use passkey_types::webauthn::{CredentialRequestOptions, PublicKeyCredentialRequestOptions};
+use passkey::types::webauthn::{CredentialRequestOptions, PublicKeyCredentialRequestOptions};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub(crate) enum ProviderError {
+pub enum ProviderError {
     #[error("invalid json format")]
     InvalidJsonFormat,
     #[error("invalid url")]
@@ -15,10 +14,10 @@ pub(crate) enum ProviderError {
     #[error("webauthn error: {0:?}")]
     WebauthnError(WebauthnError),
     #[error("passkey decode error: {0:?}")]
-    PasskeyDecodeError(DecodeError),
+    PasskeyDecodeError(PasskeyCodecError),
 }
 
-pub(crate) async fn provide_passkey(json_request: &str, passkey: &[u8], client_data_hash: Option<Vec<u8>>) -> Result<String, ProviderError> {
+pub async fn provide_passkey(json_request: &str, passkey: &[u8], client_data_hash: Option<Vec<u8>>) -> Result<String, ProviderError> {
     let request_options: PublicKeyCredentialRequestOptions = serde_json::from_str(json_request)
         .map_err(|_| ProviderError::InvalidJsonFormat)?;
 

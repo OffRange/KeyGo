@@ -13,7 +13,9 @@ import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.rust.passkey.PasskeyManager
-import de.davis.keygo.rust.passkey.model.KeyGoRegistrationResponse
+import de.davis.keygo.rust.passkey.RegistrationResponse
+import de.davis.keygo.rust.passkey.getExcludedCredentialIds
+import de.davis.keygo.rust.passkey.registerWithResult
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
@@ -23,6 +25,7 @@ import org.koin.core.annotation.KoinViewModel
 internal class CreatePasskeyViewModel(
     private val passkeyRepository: PasskeyRepository,
     private val passwordRepository: PasswordRepository,
+    private val passkeyManager: PasskeyManager,
 ) : ViewModel() {
 
     private val biometricChannel = Channel<CreatePasskeyBiometricRequestEvent>()
@@ -31,21 +34,21 @@ internal class CreatePasskeyViewModel(
     private val _event = Channel<CreatePasskeyEvent>()
     val event = _event.receiveAsFlow()
 
-    private var registrationResponse: KeyGoRegistrationResponse? = null
+    private var registrationResponse: RegistrationResponse? = null
     private var key: CiphertextData? = null
 
 
     fun updateCreatePublicKeyCredentialRequest(request: CreatePublicKeyCredentialRequest) {
         viewModelScope.launch {
             val idsToExclude =
-                PasskeyManager.getExcludedCredentialIds(request.requestJson).getOrNull()
+                passkeyManager.getExcludedCredentialIds(request.requestJson).getOrNull()
                     ?.toSet()
                     ?: return@launch abort("Failed to get excluded IDs")
 
             val shouldAbort = passkeyRepository.doCredentialIdsExist(idsToExclude)
             if (shouldAbort) return@launch abort("Credential ID already exists")
 
-            registrationResponse = PasskeyManager.register(request.requestJson)
+            registrationResponse = passkeyManager.registerWithResult(request.requestJson)
                 .getOrNull() ?: return@launch abort("Failed to register passkey")
 
             // Request authentication
@@ -81,7 +84,7 @@ internal class CreatePasskeyViewModel(
                     iv = key.iv,
                     decryptedDataType = SecretData.DecryptedDataType.StringType
                 ),
-                rp = registrationResponse.rpId,
+                rp = registrationResponse.rp,
                 passwordId = passwordId,
                 user = PasskeyUser(
                     name = registrationResponse.userName,
@@ -89,8 +92,10 @@ internal class CreatePasskeyViewModel(
                 )
             )
 
+            println("Creating passkey with ID ${passkey.credentialId} for RP ${passkey.rp} and user ${passkey.user.displayName}")
+            println(registrationResponse)
             passkeyRepository.createPasskey(passkey)
-            _event.send(CreatePasskeyEvent.Finish(registrationResponse.responseJson))
+            _event.send(CreatePasskeyEvent.Finish(registrationResponse.response))
         }
     }
 
@@ -99,7 +104,7 @@ internal class CreatePasskeyViewModel(
             CreatePasskeyEvent.OpenConfirmationDialog(
                 itemId = itemId,
                 itemName = "N/A",
-                rp = registrationResponse?.rpId ?: "N/A"
+                rp = registrationResponse?.rp ?: "N/A"
             )
         )
     }

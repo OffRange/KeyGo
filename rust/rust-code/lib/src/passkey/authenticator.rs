@@ -1,6 +1,7 @@
 use passkey::authenticator::{Authenticator, CredentialStore, UserCheck, UserValidationMethod};
 use passkey::types::ctap2::{Aaguid, Ctap2Error};
 use passkey::types::Passkey;
+use passkey_authenticator::UiHint;
 
 pub(crate) struct KeyGoUserValidation {}
 
@@ -8,17 +9,11 @@ pub(crate) struct KeyGoUserValidation {}
 impl UserValidationMethod for KeyGoUserValidation {
     type PasskeyItem = Passkey;
 
-    #[allow(clippy::needless_lifetimes)]
-    async fn check_user<'a>(
-        &self,
-        _credential: Option<&'a Self::PasskeyItem>,
-        _presence: bool,
-        _verification: bool,
-    ) -> Result<UserCheck, Ctap2Error> {
+    async fn check_user<'a>(&self, _hint: UiHint<'a, Self::PasskeyItem>, presence: bool, verification: bool) -> Result<UserCheck, Ctap2Error> {
         Ok(
             UserCheck {
-                presence: true,
-                verification: true,
+                presence,
+                verification,
             }
         )
     }

@@ -22,14 +22,14 @@ activityCompose = "1.13.0"
 composeBom = "2026.03.00"
 mockk = "1.14.9"
 semver = "0.2.5"
-koinBOM = "4.2.0"
-koin-plugin = "0.4.1"
+koinBOM = "4.2.1"
+koin-plugin = "1.0.0-RC1"
 room = "2.8.4"
 ksp = "2.3.6"
 datastore = "1.2.1"
 protobuf = "0.9.6"
 protoc = "4.34.0"
-coroutinesTest = "1.10.2"
+coroutines = "1.10.2"
 bcrypt = "0.10.2"
 biometric = "1.4.0-alpha05"
 navigation = "2.9.7"
@@ -44,7 +44,8 @@ google-protobuf-protoc = { group = "com.google.protobuf", name = "protoc", versi
 google-protobuf-kotlin-lite = { group = "com.google.protobuf", name = "protobuf-kotlin-lite", version.ref = "protoc" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test-junit", version.ref = "kotlin" }
-kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinSerializationJson" }
 kotlinx-collections-immutable = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version.ref = "collectionsImmutable" }
 

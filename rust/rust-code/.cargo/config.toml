@@ -1,0 +1,26 @@
+# Android NDK cross-compile linkers.
+#
+# Requires the NDK toolchain `bin/` on PATH, e.g.:
+#   export PATH="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
+#
+# Min SDK: 26 (matches app/minSdk). Bump the API number in the linker name
+# if the app minSdk changes.
+#
+# Prefer `cargo ndk -t <abi> build --release -p keygo-bindings` over setting
+# PATH manually — it picks the right linker/sysroot automatically.
+
+[target.aarch64-linux-android]
+linker = "aarch64-linux-android26-clang"
+ar = "llvm-ar"
+
+[target.armv7-linux-androideabi]
+linker = "armv7a-linux-androideabi26-clang"
+ar = "llvm-ar"
+
+[target.x86_64-linux-android]
+linker = "x86_64-linux-android26-clang"
+ar = "llvm-ar"
+
+[target.i686-linux-android]
+linker = "i686-linux-android26-clang"
+ar = "llvm-ar"

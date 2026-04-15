@@ -87,6 +87,7 @@ dependencies {
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.annotations)
 
+    implementation(projects.rust)
     implementation(projects.core.item)
     implementation(projects.core.identity)
     implementation(projects.core.security)

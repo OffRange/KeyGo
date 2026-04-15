@@ -1,48 +1,22 @@
 use crate::passkey::authenticator::keygo_authenticator;
-use crate::passkey::keygo_passkey::to_bytes;
+use crate::passkey::keygo_passkey::{to_bytes, PasskeyCodecError};
 use crate::passkey::registration::RegistrationError::{InvalidDomain, InvalidJsonFormat, KeyEncodeError};
 use crate::url::sanitize_to_https_url;
 use passkey::client::{Client, DefaultClientData, WebauthnError};
 use passkey::types::webauthn::{CredentialCreationOptions, PublicKeyCredentialCreationOptions};
 use thiserror::Error;
 
-pub(crate) struct KeyGoRegistrationResponse {
-    response: String,
-    user_name: String,
-    user_display_name: String,
-    credential_id: Vec<u8>,
-    private_key: Vec<u8>,
-    rp: String,
-}
-
-impl KeyGoRegistrationResponse {
-    pub(crate) fn response(&self) -> &str {
-        &self.response
-    }
-
-    pub(crate) fn user_name(&self) -> &str {
-        &self.user_name
-    }
-
-    pub(crate) fn user_display_name(&self) -> &str {
-        &self.user_display_name
-    }
-
-    pub(crate) fn rp(&self) -> &str {
-        &self.rp
-    }
-
-    pub(crate) fn credential_id(&self) -> &[u8] {
-        &self.credential_id
-    }
-
-    pub(crate) fn private_key(&self) -> &[u8] {
-        &self.private_key
-    }
+pub struct KeyGoRegistrationResponse {
+    pub response: String,
+    pub user_name: String,
+    pub user_display_name: String,
+    pub credential_id: Vec<u8>,
+    pub private_key: Vec<u8>,
+    pub rp: String,
 }
 
 #[derive(Debug, Error)]
-pub(crate) enum RegistrationError {
+pub enum RegistrationError {
     #[error("invalid json format")]
     InvalidJsonFormat,
     #[error("invalid url")]
@@ -50,10 +24,10 @@ pub(crate) enum RegistrationError {
     #[error("webauthn error: {0:?}")]
     WebauthnError(WebauthnError),
     #[error("key encode error: {0:?}")]
-    KeyEncodeError(bincode::error::EncodeError),
+    KeyEncodeError(PasskeyCodecError),
 }
 
-pub(crate) async fn get_exclusion_list(json_request: &str) -> Result<Vec<Vec<u8>>, RegistrationError> {
+pub async fn get_exclusion_list(json_request: &str) -> Result<Vec<Vec<u8>>, RegistrationError> {
     let creation_options: PublicKeyCredentialCreationOptions = serde_json::from_str(json_request)
         .map_err(|_| InvalidJsonFormat)?;
 
@@ -65,7 +39,7 @@ pub(crate) async fn get_exclusion_list(json_request: &str) -> Result<Vec<Vec<u8>
     Ok(ids)
 }
 
-pub(crate) async fn register_passkey(json_request: &str) -> Result<KeyGoRegistrationResponse, RegistrationError> {
+pub async fn register_passkey(json_request: &str) -> Result<KeyGoRegistrationResponse, RegistrationError> {
     let creation_options: PublicKeyCredentialCreationOptions = serde_json::from_str(json_request)
         .map_err(|_| InvalidJsonFormat)?;
 
@@ -88,14 +62,12 @@ pub(crate) async fn register_passkey(json_request: &str) -> Result<KeyGoRegistra
         .unwrap();
 
     let credential_id = response.credential_id.clone().into();
-    let keygo_registration_response = KeyGoRegistrationResponse {
+    Ok(KeyGoRegistrationResponse {
         response: response_json,
         user_name,
         user_display_name,
         credential_id,
         rp: response.rp_id.clone(),
         private_key: to_bytes(response).map_err(KeyEncodeError)?,
-    };
-
-    Ok(keygo_registration_response)
+    })
 }
