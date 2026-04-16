@@ -5,8 +5,7 @@ import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 
 data class LitePassword(
-    override val vaultItemId: ItemId,
-    val passwordId: ItemId,
+    override val id: ItemId,
     override val name: String,
     override val pinned: Boolean,
     val username: String?,

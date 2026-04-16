@@ -35,6 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.presentation.StrengthIndicator
@@ -240,7 +241,7 @@ internal fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) 
                     },
                     items = state.dialogState.items,
                     onItemClicked = { item ->
-                        onEvent(PasswordUiEvent.OnTotpModificationItemSelected(item.vaultItemId))
+                        onEvent(PasswordUiEvent.OnTotpModificationItemSelected(item.id))
                     },
                     onCreateNew = { onEvent(PasswordUiEvent.OnCreateNewItemForTotp) },
                     modifier = Modifier.fillMaxWidth()
@@ -298,7 +299,7 @@ private fun PasswordContentPreview() {
                 strengthScore = Password.Score.Weak,
                 domains = setOf(
                     DomainInfo(
-                        passwordId = 0,
+                        passwordId = newItemId(),
                         value = "example.com",
                         eTLD1 = "example.com"
                     )

@@ -53,7 +53,7 @@ internal fun List<LiteItem>.toAvailableFilterOptions(
     val itemTypes = fastMapTo(mutableSetOf()) { it.itemType }
     val hasPasswordItems = VaultItemType.Password in itemTypes
 
-    val itemIds = if (hasPasswordItems) fastMapTo(mutableSetOf()) { it.vaultItemId }
+    val itemIds = if (hasPasswordItems) fastMapTo(mutableSetOf()) { it.id }
     else emptySet()
 
     val scores = if (hasPasswordItems)

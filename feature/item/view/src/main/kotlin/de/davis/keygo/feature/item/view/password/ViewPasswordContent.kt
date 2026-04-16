@@ -65,6 +65,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.presentation.StrengthIndicator
@@ -476,7 +477,7 @@ private fun ViewPasswordContentPreview() {
                     username = "Username 1",
                     domains = setOf(
                         DomainInfo(
-                            passwordId = 1,
+                            passwordId = newItemId(),
                             value = "login.example.com",
                             eTLD1 = "example.com"
                         )
@@ -504,7 +505,7 @@ private fun ViewPasswordContentModificationDialogPreview() {
                     username = "Username 1",
                     domains = setOf(
                         DomainInfo(
-                            passwordId = 1,
+                            passwordId = newItemId(),
                             value = "login.example.com",
                             eTLD1 = "example.com"
                         )

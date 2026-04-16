@@ -7,7 +7,7 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
  * A lightweight representation of a item stored in the vault.
  */
 interface LiteItem {
-    val vaultItemId: ItemId
+    val id: ItemId
     val name: String
 
     val itemType: VaultItemType
@@ -15,7 +15,7 @@ interface LiteItem {
 
     @ConsistentCopyVisibility
     data class Concrete internal constructor(
-        override val vaultItemId: ItemId,
+        override val id: ItemId,
         override val name: String,
         override val itemType: VaultItemType,
         override val pinned: Boolean

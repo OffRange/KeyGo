@@ -15,24 +15,24 @@ import kotlinx.coroutines.flow.Flow
 internal interface PasswordDao {
 
     @Transaction
-    @Query("SELECT * FROM PasswordEntity")
+    @Query("SELECT * FROM password")
     fun getAllPasswords(): Flow<List<VaultPassword>>
 
     @Transaction
-    @Query("SELECT * FROM PasswordEntity WHERE vault_item_id = :vaultId")
-    fun observeVaultPassword(vaultId: ItemId): Flow<VaultPassword?>
+    @Query("SELECT * FROM password WHERE id = :id")
+    fun observeVaultPassword(id: ItemId): Flow<VaultPassword?>
 
     @Transaction
     @Query(
         """
-        SELECT vault.id vault_item_id, vault.name name, vault.pinned, password.id password_id, password.username username
-        FROM VaultItemEntity vault
-        JOIN PasswordEntity password ON vault.id = password.vault_item_id
-        WHERE (NOT :requireTotp OR password.totp_secret IS NOT NULL)
+        SELECT i.id, i.name, i.pinned, p.username
+        FROM item i
+        JOIN password p ON i.id = p.id
+        WHERE (NOT :requireTotp OR p.totp_secret IS NOT NULL)
         AND EXISTS (
-            SELECT 1 FROM DomainInfoEntity domain
-            WHERE domain.password_id = password.id
-            AND domain.eTLD1 in (:etld1s) COLLATE NOCASE
+            SELECT 1 FROM domain_info d
+            WHERE d.password_id = p.id
+            AND d.eTLD1 IN (:etld1s) COLLATE NOCASE
         )
         LIMIT :limit
         """
@@ -44,15 +44,12 @@ internal interface PasswordDao {
     ): List<LightweightPassword>
 
     @Transaction
-    @Query("SELECT * FROM PasswordEntity WHERE vault_item_id = :vaultId")
-    suspend fun getVaultPassword(vaultId: ItemId): VaultPassword?
+    @Query("SELECT * FROM password WHERE id = :id")
+    suspend fun getVaultPassword(id: ItemId): VaultPassword?
 
-    @Query("SELECT vault_item_id, score FROM PasswordEntity")
+    @Query("SELECT id, score FROM password")
     fun observePasswordScores(): Flow<List<PasswordScoreEntry>>
 
-    @Query("SELECT id FROM PasswordEntity WHERE vault_item_id = :vaultId")
-    suspend fun getPasswordIdByVaultId(vaultId: ItemId): ItemId?
-
     @Upsert
-    suspend fun upsert(password: PasswordEntity): ItemId
+    suspend fun upsert(password: PasswordEntity)
 }

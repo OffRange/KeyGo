@@ -1,11 +1,13 @@
 package de.davis.keygo.feature.list_screen.domain.usecase
 
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
 import de.davis.keygo.feature.list_screen.domain.model.SortDirection
+import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -19,7 +21,7 @@ class FilterUseCaseTest {
 
     data class TestLiteItem(
         override val name: String,
-        override val vaultItemId: ItemId = 0,
+        override val id: ItemId = UUID.nameUUIDFromBytes(name.toByteArray()),
         override val itemType: VaultItemType = VaultItemType.Password,
         override val pinned: Boolean = false,
     ) : LiteItem
@@ -230,8 +232,8 @@ class FilterUseCaseTest {
 
     // Filter by item type
     private val typedItems = listOf(
-        TestLiteItem(name = "Login A", vaultItemId = 1, itemType = VaultItemType.Password),
-        TestLiteItem(name = "Login B", vaultItemId = 2, itemType = VaultItemType.Password),
+        TestLiteItem(name = "Login A", id = newItemId(), itemType = VaultItemType.Password),
+        TestLiteItem(name = "Login B", id = newItemId(), itemType = VaultItemType.Password),
     )
 
     private val noScores: Map<ItemId, Password.Score> = emptyMap()
@@ -253,16 +255,16 @@ class FilterUseCaseTest {
 
     // Filter by score
     private val scoredItems = listOf(
-        TestLiteItem(name = "Excellent PW", vaultItemId = 1),
-        TestLiteItem(name = "No Score", vaultItemId = 2),
-        TestLiteItem(name = "Strong PW", vaultItemId = 3),
-        TestLiteItem(name = "Weak PW", vaultItemId = 4),
+        TestLiteItem(name = "Excellent PW", id = newItemId()),
+        TestLiteItem(name = "No Score", id = newItemId()),
+        TestLiteItem(name = "Strong PW", id = newItemId()),
+        TestLiteItem(name = "Weak PW", id = newItemId()),
     )
 
     private val scores = mapOf(
-        1L to Password.Score.Excellent,
-        3L to Password.Score.Strong,
-        4L to Password.Score.Weak,
+        scoredItems[0].id to Password.Score.Excellent,
+        scoredItems[2].id to Password.Score.Strong,
+        scoredItems[3].id to Password.Score.Weak,
     )
 
     @Test
@@ -279,7 +281,7 @@ class FilterUseCaseTest {
         val state = FilterState(selectedScores = setOf(Password.Score.Weak))
         val result = useCase(state, scoredItems, scores)
 
-        val expected = scoredItems.filter { scores[it.vaultItemId] == Password.Score.Weak }
+        val expected = scoredItems.filter { scores[it.id] == Password.Score.Weak }
         assertEquals(expected, result)
     }
 
@@ -291,8 +293,8 @@ class FilterUseCaseTest {
         val result = useCase(state, scoredItems, scores)
 
         val expected = scoredItems.filter {
-            scores[it.vaultItemId] == Password.Score.Weak ||
-                    scores[it.vaultItemId] == Password.Score.Excellent
+            scores[it.id] == Password.Score.Weak ||
+                    scores[it.id] == Password.Score.Excellent
         }
 
         assertEquals(expected.size, result.size)
@@ -315,7 +317,7 @@ class FilterUseCaseTest {
         )
         val result = useCase(state, scoredItems, scores)
         assertTrue(result.all { it.itemType == VaultItemType.Password })
-        assertTrue(result.all { scores[it.vaultItemId] == Password.Score.Excellent })
+        assertTrue(result.all { scores[it.id] == Password.Score.Excellent })
     }
 
     @Test
@@ -334,10 +336,10 @@ class FilterUseCaseTest {
 
     // Pinned filter & sorting
     private val mixedPinnedItems = listOf(
-        TestLiteItem(name = "Charlie", vaultItemId = 1, pinned = false),
-        TestLiteItem(name = "Alpha", vaultItemId = 2, pinned = true),
-        TestLiteItem(name = "Bravo", vaultItemId = 3, pinned = true),
-        TestLiteItem(name = "Delta", vaultItemId = 4, pinned = false),
+        TestLiteItem(name = "Charlie", id = newItemId(), pinned = false),
+        TestLiteItem(name = "Alpha", id = newItemId(), pinned = true),
+        TestLiteItem(name = "Bravo", id = newItemId(), pinned = true),
+        TestLiteItem(name = "Delta", id = newItemId(), pinned = false),
     )
 
     @Test

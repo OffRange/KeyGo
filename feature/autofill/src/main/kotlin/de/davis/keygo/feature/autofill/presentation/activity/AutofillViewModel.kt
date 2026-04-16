@@ -8,8 +8,8 @@ import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.crypto.decryptSecretData
 import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
-import de.davis.keygo.core.item.domain.repository.VaultItemRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.feature.autofill.domain.usecase.AddRegistrableDomainsToPasswordUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.DoesItemHaveDomainReferencesUseCase
@@ -44,7 +44,7 @@ import org.koin.core.annotation.KoinViewModel
 internal class AutofillViewModel(
     savedStateHandle: SavedStateHandle,
     private val passwordRepository: PasswordRepository,
-    private val vaultItemRepository: VaultItemRepository,
+    private val itemRepository: ItemRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val autofillDatasetProvider: AutofillDatasetProvider,
     private val doesItemHaveDomainReferences: DoesItemHaveDomainReferencesUseCase,
@@ -134,9 +134,9 @@ internal class AutofillViewModel(
         }
 
     private suspend fun handleSuggestionRequest(suggestionInfo: FillRequestData.Suggestion) {
-        _uiState.update { it.copy(vaultId = suggestionInfo.vaultId) }
+        _uiState.update { it.copy(itemId = suggestionInfo.vaultId) }
 
-        val itemName = vaultItemRepository.getItemName(suggestionInfo.vaultId)
+        val itemName = itemRepository.getItemName(suggestionInfo.vaultId)
             ?: throw IllegalArgumentException("Name for vaultId=${suggestionInfo.vaultId} not found")
 
         biometricChannel.send(AutofillBiometricRequest.UnlockItem(itemName))
@@ -169,7 +169,7 @@ internal class AutofillViewModel(
                 return@launch
             }
 
-            val itemName = vaultItemRepository.getItemName(vaultId)
+            val itemName = itemRepository.getItemName(vaultId)
                 ?: throw IllegalArgumentException("Name for vaultId=$vaultId not found")
 
             _uiState.update {
@@ -178,7 +178,7 @@ internal class AutofillViewModel(
                         itemName = itemName,
                         domain = requestData.form.url
                     ),
-                    vaultId = vaultId
+                    itemId = vaultId
                 )
             }
         }
@@ -222,13 +222,14 @@ internal class AutofillViewModel(
     }
 
     private fun associateItem() {
-        val vaultItemId = uiState.value.vaultId
-        requestData.form.url?.let {
-            viewModelScope.launch {
-                addRegistrableDomainToPassword(
-                    vaultItemId = vaultItemId,
-                    domain = it
-                )
+        uiState.value.itemId?.let { itemId ->
+            requestData.form.url?.let {
+                viewModelScope.launch {
+                    addRegistrableDomainToPassword(
+                        passwordId = itemId,
+                        domain = it
+                    )
+                }
             }
         }
         hideAssociationDialog()
@@ -236,8 +237,10 @@ internal class AutofillViewModel(
 
     private fun hideAssociationDialog() {
         _uiState.update { it.copy(associationDialogVisibility = AssociationDialogVisibility.Hidden) }
-        viewModelScope.launch {
-            sendFillEvent(_uiState.value.vaultId)
+        _uiState.value.itemId?.let { itemId ->
+            viewModelScope.launch {
+                sendFillEvent(itemId)
+            }
         }
     }
 
@@ -303,7 +306,7 @@ internal class AutofillViewModel(
             if (type !is FieldType.Credentials) return@mapNotNull null
             val value = when (type) {
                 FieldType.Credentials.Password -> cryptographicScopeProvider.scope {
-                    password.encryptedData.decryptSecretData()
+                    password.password.decryptSecretData()
                 }
 
                 FieldType.Credentials.Username -> password.username

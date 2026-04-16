@@ -3,11 +3,10 @@ package de.davis.keygo.feature.item.view.password
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.alias.ItemIdNone
 import de.davis.keygo.core.item.domain.crypto.decryptSecretData
 import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
-import de.davis.keygo.core.item.domain.repository.VaultItemRepository
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
@@ -41,7 +40,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -55,7 +53,7 @@ import org.koin.core.annotation.KoinViewModel
 
 @KoinViewModel
 internal class ViewPasswordViewModel(
-    private val vaultItemRepository: VaultItemRepository,
+    private val itemRepository: ItemRepository,
     private val passwordRepository: PasswordRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val updatePassword: CreateNewOrUpdatePasswordUseCase,
@@ -68,18 +66,18 @@ internal class ViewPasswordViewModel(
 
     private val _modificationDialogState = MutableStateFlow<ModificationDialog?>(null)
     private val _scanning = MutableStateFlow(false)
-    private val _itemId = MutableStateFlow(ItemIdNone)
+    private val _itemId = MutableStateFlow<ItemId?>(null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val stateWithoutModification = _itemId
-        .filter { it != ItemIdNone }
+        .filterNotNull()
         .distinctUntilChanged()
         .flatMapLatest { id ->
             passwordRepository.observePasswordById(id).filterNotNull().flatMapLatest { password ->
                 coroutineScope {
                     val obfuscatedString = async {
                         cryptographicScopeProvider.scope {
-                            password.encryptedData.decryptSecretData()
+                            password.password.decryptSecretData()
                         }.asObfuscatedString()
                     }
 
@@ -155,19 +153,23 @@ internal class ViewPasswordViewModel(
             }
 
             ViewPasswordUiEvent.OnPinClick -> {
-                viewModelScope.launch {
-                    vaultItemRepository.setPinned(_itemId.value, !state.value.pinned)
+                _itemId.value?.let { id ->
+                    viewModelScope.launch {
+                        itemRepository.setPinned(id, !state.value.pinned)
+                    }
                 }
             }
 
             ViewPasswordUiEvent.OnEditRequest -> {
-                viewModelScope.launch {
-                    navigationEventChannel.send(
-                        NavigationEvent.NavigateToEdit(
-                            VaultItemType.Password,
-                            _itemId.value
+                _itemId.value?.let { id ->
+                    viewModelScope.launch {
+                        navigationEventChannel.send(
+                            NavigationEvent.NavigateToEdit(
+                                VaultItemType.Password,
+                                id
+                            )
                         )
-                    )
+                    }
                 }
             }
 
@@ -206,74 +208,76 @@ internal class ViewPasswordViewModel(
                     getTotpSecret(it).getOrNull()
                 }?.secret ?: return
 
-                val itemId = _itemId.value
-                viewModelScope.launch {
-                    updatePassword(
-                        UpsertPassword.update(
-                            vaultId = itemId,
-                            totpSecret = fieldUpdate(secret)
+                _itemId.value?.let { id ->
+                    viewModelScope.launch {
+                        updatePassword(
+                            UpsertPassword.update(
+                                vaultId = id,
+                                totpSecret = fieldUpdate(secret)
+                            )
                         )
-                    )
+                    }
                 }
             }
 
             is ViewPasswordUiEvent.OnSubmitModification -> {
                 val dialog = _modificationDialogState.value ?: return
-                val itemId = _itemId.value
                 val newText = fieldUpdate(event.input)
 
-                viewModelScope.launch {
-                    updatePassword(
-                        when (dialog.fieldType) {
-                            FieldType.Name -> UpsertPassword.update(
-                                vaultId = itemId,
-                                name = newText
-                            )
-
-                            FieldType.Password -> UpsertPassword.update(
-                                vaultId = itemId,
-                                password = newText
-                            )
-
-                            FieldType.Totp -> UpsertPassword.update(
-                                vaultId = itemId,
-                                totpSecret = newText
-                            )
-
-                            FieldType.Username -> UpsertPassword.update(
-                                vaultId = itemId,
-                                username = newText
-                            )
-
-                            FieldType.Domain -> newText.onSet {
-                                val eTLD1 = registrableDomainResolver.resolve(it)
-                                val updatedDomains = state.value.domains + DomainInfo(
-                                    itemId,
-                                    it,
-                                    eTLD1
+                _itemId.value?.let { id ->
+                    viewModelScope.launch {
+                        updatePassword(
+                            when (dialog.fieldType) {
+                                FieldType.Name -> UpsertPassword.update(
+                                    vaultId = id,
+                                    name = newText
                                 )
 
-                                UpsertPassword.update(
-                                    vaultId = itemId,
-                                    domains = set(updatedDomains)
+                                FieldType.Password -> UpsertPassword.update(
+                                    vaultId = id,
+                                    password = newText
                                 )
-                            } ?: return@launch
 
-                            FieldType.Note -> UpsertPassword.update(
-                                vaultId = itemId,
-                                note = newText
-                            )
+                                FieldType.Totp -> UpsertPassword.update(
+                                    vaultId = id,
+                                    totpSecret = newText
+                                )
+
+                                FieldType.Username -> UpsertPassword.update(
+                                    vaultId = id,
+                                    username = newText
+                                )
+
+                                FieldType.Domain -> newText.onSet {
+                                    val eTLD1 = registrableDomainResolver.resolve(it)
+                                    val updatedDomains = state.value.domains + DomainInfo(
+                                        id,
+                                        it,
+                                        eTLD1
+                                    )
+
+                                    UpsertPassword.update(
+                                        vaultId = id,
+                                        domains = set(updatedDomains)
+                                    )
+                                } ?: return@launch
+
+                                FieldType.Note -> UpsertPassword.update(
+                                    vaultId = id,
+                                    note = newText
+                                )
+                            }
+                        ).onFailure { failure ->
+                            _modificationDialogState.update {
+                                dialog.copy(
+                                    error = if (failure.contains(PasswordError.BlankPassword)
+                                        || failure.contains(PasswordError.BlankName)
+                                    ) InputFieldError.Empty else null
+                                )
+                            }
+                        }.onSuccess {
+                            _modificationDialogState.update { null }
                         }
-                    ).onFailure { failure ->
-                        _modificationDialogState.update {
-                            dialog.copy(
-                                error = if (failure.contains(PasswordError.BlankPassword)
-                                    || failure.contains(PasswordError.BlankName)
-                                ) InputFieldError.Empty else null
-                            )
-                        }
-                    }.onSuccess {
-                        _modificationDialogState.update { null }
                     }
                 }
             }

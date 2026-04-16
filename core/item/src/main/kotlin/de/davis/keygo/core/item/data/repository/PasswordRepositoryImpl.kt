@@ -2,8 +2,8 @@ package de.davis.keygo.core.item.data.repository
 
 import androidx.room.withTransaction
 import de.davis.keygo.core.item.data.local.dao.DomainInfoDao
+import de.davis.keygo.core.item.data.local.dao.ItemDao
 import de.davis.keygo.core.item.data.local.dao.PasswordDao
-import de.davis.keygo.core.item.data.local.dao.VaultDao
 import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
 import de.davis.keygo.core.item.data.local.pojo.LightweightPassword
 import de.davis.keygo.core.item.data.local.pojo.VaultPassword
@@ -12,8 +12,8 @@ import de.davis.keygo.core.item.data.maper.toDataDomainInfos
 import de.davis.keygo.core.item.data.maper.toDomain
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.model.Item
 import de.davis.keygo.core.item.domain.model.Password
-import de.davis.keygo.core.item.domain.model.VaultItem
 import de.davis.keygo.core.item.domain.model.lite.LitePassword
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.util.Result
@@ -24,78 +24,67 @@ import org.koin.core.annotation.Single
 @Single
 internal class PasswordRepositoryImpl(
     private val database: ItemDatabase,
-    private val vaultDao: VaultDao,
+    private val itemDao: ItemDao,
     private val passwordDao: PasswordDao,
-    private val domainInfoDao: DomainInfoDao
+    private val domainInfoDao: DomainInfoDao,
 ) : PasswordRepository {
 
     override suspend fun createOrUpdatePassword(password: Password): Result<ItemId, Throwable> =
         runCatching {
             database.withTransaction {
-                val vaultItemId = vaultDao.upsert((password as VaultItem).toData())
-                    .takeIf { it != -1L }
-                    ?: password.vaultItemId // room returned -1 meaning the item was updated
+                itemDao.upsert((password as Item).toData())
+                passwordDao.upsert(password.toData())
+                domainInfoDao.syncForPassword(password.id, password.toDataDomainInfos(password.id))
 
-                val passwordId =
-                    passwordDao.upsert(password.toData(vaultItemId))
-                        .takeIf { it != -1L }
-                        ?: password.id
-
-                domainInfoDao.syncForPassword(passwordId, password.toDataDomainInfos(passwordId))
-
-                passwordId
+                password.id
             }
         }.fold(
             onSuccess = { Result.Success(it) },
-            onFailure = { Result.Failure(it) }
+            onFailure = { Result.Failure(it) },
         )
 
-    override suspend fun updatePasswordWithDomainInfo(
-        vaultItemId: ItemId,
+    override suspend fun updateDomainInfos(
+        itemId: ItemId,
         domainInfos: Set<DomainInfo>
-    ): Result<Unit, Throwable> = runCatching {
-        database.withTransaction {
-            val password = passwordDao.getVaultPassword(vaultItemId)
-                ?: throw IllegalArgumentException("No password found with vault id $vaultItemId")
-
-            val dataDomains = domainInfos.map { it.toData(password.passwordEntity.id) }.toSet()
-            domainInfoDao.upsertAll(dataDomains)
-        }
-    }.fold(
-        onSuccess = { Result.Success(Unit) },
-        onFailure = { Result.Failure(it) }
-    )
+    ): Result<Unit, Throwable> =
+        runCatching {
+            database.withTransaction {
+                val dataDomains = domainInfos.map { it.toData(itemId) }.toSet()
+                domainInfoDao.upsertAll(dataDomains)
+            }
+        }.fold(
+            onSuccess = { Result.Success(Unit) },
+            onFailure = { Result.Failure(it) },
+        )
 
     override suspend fun getVaultPasswordsByTLD(
         etld1: String,
         requireTotp: Boolean,
-        limit: Int
-    ): List<LitePassword> =
-        getVaultPasswordsByTLDs(setOf(etld1), requireTotp, limit)
+        limit: Int,
+    ): List<LitePassword> = getVaultPasswordsByTLDs(setOf(etld1), requireTotp, limit)
 
     override suspend fun getVaultPasswordsByTLDs(
         etld1s: Set<String>,
         requireTotp: Boolean,
-        limit: Int
+        limit: Int,
     ): List<LitePassword> =
         passwordDao.getByTLDs(etld1s, requireTotp, limit).map(LightweightPassword::toDomain)
 
-    override suspend fun getPasswordById(vaultId: ItemId): Password? =
-        passwordDao.getVaultPassword(vaultId)?.toDomain()
+    override suspend fun getPasswordById(itemId: ItemId): Password? =
+        passwordDao.getVaultPassword(itemId)?.toDomain()
 
-    override fun observePasswordById(vaultId: ItemId): Flow<Password?> =
-        passwordDao.observeVaultPassword(vaultId)
-            .map { it?.toDomain() }
+    override fun observePasswordById(itemId: ItemId): Flow<Password?> =
+        passwordDao.observeVaultPassword(itemId).map { it?.toDomain() }
 
-    override fun observePasswords(): Flow<List<Password>> = passwordDao.getAllPasswords().map {
-        it.map(VaultPassword::toDomain)
-    }
+    override fun observePasswords(): Flow<List<Password>> =
+        passwordDao.getAllPasswords().map { it.map(VaultPassword::toDomain) }
 
     override fun observePasswordScores(): Flow<Map<ItemId, Password.Score>> =
         passwordDao.observePasswordScores().map { entries ->
-            entries.associate { it.vaultItemId to it.score }
+            entries.associate { it.id to it.score }
         }
 
-    override suspend fun getPasswordIdByVaultId(vaultId: ItemId): ItemId? =
-        passwordDao.getPasswordIdByVaultId(vaultId)
+    // With shared PK, the password id IS the vault item id — return it directly if it exists.
+    override suspend fun getPasswordIdByVaultId(itemId: ItemId): ItemId? =
+        passwordDao.getVaultPassword(itemId)?.passwordEntity?.id
 }

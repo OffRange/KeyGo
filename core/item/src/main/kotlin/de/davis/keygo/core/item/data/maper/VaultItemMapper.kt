@@ -1,30 +1,32 @@
 package de.davis.keygo.core.item.data.maper
 
-import de.davis.keygo.core.item.data.local.entity.VaultItemEntity
-import de.davis.keygo.core.item.data.local.pojo.LightweightVaultItem
-import de.davis.keygo.core.item.data.local.pojo.LightweightVaultItemSearchResult
-import de.davis.keygo.core.item.domain.model.VaultItem
+import de.davis.keygo.core.item.data.local.entity.ItemEntity
+import de.davis.keygo.core.item.data.local.pojo.LightweightItem
+import de.davis.keygo.core.item.data.local.pojo.LightweightItemSearchResult
+import de.davis.keygo.core.item.domain.model.Item
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
-import de.davis.keygo.core.item.domain.model.lite.LiteVaultItemSearchResult
+import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
 
-internal fun VaultItem.toData() = VaultItemEntity(
-    id = vaultItemId,
+internal fun Item.toData() = ItemEntity(
+    id = id,
+    vaultId = vaultId,
     name = name,
     note = note,
-    encryptedData = encryptedData,
+    itemType = itemType,
+    pinned = pinned,
+
+    keyInformation = keyInformation.toEntity(),
+)
+
+internal fun LightweightItem.toDomain() = LiteItem.Concrete(
+    id = id,
+    name = name,
     itemType = itemType,
     pinned = pinned,
 )
 
-internal fun LightweightVaultItem.toDomain() = LiteItem.Concrete(
-    vaultItemId = id,
-    name = name,
-    itemType = itemType,
-    pinned = pinned
-)
-
-internal fun LightweightVaultItemSearchResult.toDomain() = LiteVaultItemSearchResult(
-    vaultItemId = id,
+internal fun LightweightItemSearchResult.toDomain() = LiteItemSearchResult(
+    id = id,
     name = name,
     itemType = itemType,
     matchedName = matchedName,

@@ -46,7 +46,7 @@ class FilterUseCase {
         if (filterState.selectedScores.isEmpty()) return true
         if (item.itemType != VaultItemType.Password) return true // non-password items - pass through
 
-        val score = passwordScores[item.vaultItemId] ?: return false
+        val score = passwordScores[item.id] ?: return false
         return score in filterState.selectedScores
     }
 

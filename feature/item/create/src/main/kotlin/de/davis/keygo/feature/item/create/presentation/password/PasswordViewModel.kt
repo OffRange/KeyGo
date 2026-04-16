@@ -7,12 +7,11 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.alias.ItemIdNone
 import de.davis.keygo.core.item.domain.crypto.decryptSecretData
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
-import de.davis.keygo.core.item.domain.repository.VaultItemRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
@@ -61,7 +60,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
 internal class PasswordViewModel(
-    private val vaultItemRepository: VaultItemRepository,
+    private val itemRepository: ItemRepository,
     private val passwordRepository: PasswordRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
@@ -94,7 +93,7 @@ internal class PasswordViewModel(
     private val itemCreatedEventChannel = Channel<ItemId?>()
     val itemCreatedEvent = itemCreatedEventChannel.receiveAsFlow()
 
-    private var itemId = ItemIdNone
+    private var itemId: ItemId? = null
     private var totpSecretInformation: TotpSecretInformation? = null
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
@@ -102,7 +101,7 @@ internal class PasswordViewModel(
         snapshotFlow { nameTextFieldState.text }
             .debounce(150.milliseconds)
             .mapLatest { input ->
-                vaultItemRepository.doesNameExist(input.toString(), excludeId = itemId)
+                itemRepository.doesNameExist(input.toString(), excludeId = itemId)
             }
             .distinctUntilChanged()
             .onEach { exists ->
@@ -137,7 +136,7 @@ internal class PasswordViewModel(
 
     fun init(information: DetailPaneInformation) {
         when (information) {
-            is DetailPaneInformation.Init.Existing -> initWithId(information.vaultItemId)
+            is DetailPaneInformation.Init.Existing -> initWithId(information.id)
             is DetailPaneInformation.Init.TOTP -> initWithTotpUri(information.uri)
             is DetailPaneInformation.Init.New -> {} // Don't init anything
 
@@ -172,7 +171,6 @@ internal class PasswordViewModel(
 
     private fun initWithId(itemId: ItemId) {
         this.itemId = itemId
-        if (itemId == ItemIdNone) return
 
         passwordRepository.observePasswordById(itemId)
             .filterNotNull()
@@ -180,7 +178,7 @@ internal class PasswordViewModel(
                 coroutineScope {
                     val pwdDeferred = async {
                         cryptographicScopeProvider.scope {
-                            password.encryptedData.decryptSecretData()
+                            password.password.decryptSecretData()
                         }
                     }
 
@@ -250,27 +248,26 @@ internal class PasswordViewModel(
             is PasswordUiEvent.OnSubmit -> {
                 viewModelScope.launch {
                     val state = _uiState.value
+                    val upsert = itemId?.let { itemId ->
+                        UpsertPassword.update(
+                            vaultId = itemId,
+                            name = fieldUpdate(state.nameTextFieldState.text.toString()),
+                            username = fieldUpdate(state.usernameTextFieldState.text.toString()),
+                            domains = set(state.domains),
+                            password = fieldUpdate(state.passwordTextFieldState.text.toString()),
+                            totpSecret = fieldUpdate(state.totpTextFieldState.text.toString()),
+                            note = fieldUpdate(state.notesTextFieldState.text.toString())
+                        )
+                    } ?: UpsertPassword.create(
+                        name = state.nameTextFieldState.text.toString(),
+                        username = state.usernameTextFieldState.text.toString(),
+                        domains = state.domains,
+                        password = state.passwordTextFieldState.text.toString(),
+                        totpSecret = state.totpTextFieldState.text.toString(),
+                        note = state.notesTextFieldState.text.toString()
+                    )
                     createNewOrUpdatePassword(
-                        upsert = when (itemId == ItemIdNone) {
-                            true -> UpsertPassword.create(
-                                name = state.nameTextFieldState.text.toString(),
-                                username = state.usernameTextFieldState.text.toString(),
-                                domains = state.domains,
-                                password = state.passwordTextFieldState.text.toString(),
-                                totpSecret = state.totpTextFieldState.text.toString(),
-                                note = state.notesTextFieldState.text.toString()
-                            )
-
-                            false -> UpsertPassword.update(
-                                vaultId = itemId,
-                                name = fieldUpdate(state.nameTextFieldState.text.toString()),
-                                username = fieldUpdate(state.usernameTextFieldState.text.toString()),
-                                domains = set(state.domains),
-                                password = fieldUpdate(state.passwordTextFieldState.text.toString()),
-                                totpSecret = fieldUpdate(state.totpTextFieldState.text.toString()),
-                                note = fieldUpdate(state.notesTextFieldState.text.toString())
-                            )
-                        }
+                        upsert = upsert
                     ).onSuccess {
                         navigateUp(it)
                     }.onFailure { failure ->
@@ -403,16 +400,18 @@ internal class PasswordViewModel(
             }
 
             is PasswordUiEvent.OnAddDomains -> {
-                event.domains.forEach { domain ->
-                    val registrableDomain = registrableDomainResolver.resolve(domain)
-                    val info = DomainInfo(
-                        passwordId = itemId,
-                        value = domain,
-                        eTLD1 = registrableDomain
-                    )
-                    _uiState.update {
-                        val newList = it.domains + info
-                        it.copy(domains = newList)
+                itemId?.let { itemId ->
+                    event.domains.forEach { domain ->
+                        val registrableDomain = registrableDomainResolver.resolve(domain)
+                        val info = DomainInfo(
+                            passwordId = itemId,
+                            value = domain,
+                            eTLD1 = registrableDomain
+                        )
+                        _uiState.update {
+                            val newList = it.domains + info
+                            it.copy(domains = newList)
+                        }
                     }
                 }
             }

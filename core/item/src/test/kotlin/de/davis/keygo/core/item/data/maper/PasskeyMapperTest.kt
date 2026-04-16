@@ -1,0 +1,145 @@
+package de.davis.keygo.core.item.data.maper
+
+import de.davis.keygo.core.item.data.local.entity.PasskeyEntity
+import de.davis.keygo.core.item.data.local.pojo.PasskeyMetadataPojo
+import de.davis.keygo.core.item.domain.alias.newItemId
+import de.davis.keygo.core.item.domain.model.Passkey
+import de.davis.keygo.core.item.domain.model.PasskeyUser
+import de.davis.keygo.core.item.domain.model.SecretData
+import kotlin.test.Test
+import kotlin.test.assertContentEquals
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
+
+class PasskeyMapperTest {
+
+    private val credentialId = byteArrayOf(1, 2, 3, 4)
+    private val privateKey = SecretData.EMPTY_STRING
+    private val user = PasskeyUser(name = "alice", displayName = "Alice Smith")
+
+    private fun testPasskey() = Passkey(
+        credentialId = credentialId,
+        rp = "example.com",
+        privateKey = privateKey,
+        passwordId = newItemId(),
+        user = user,
+    )
+
+    // Passkey.toData()
+
+    @Test
+    fun `toData copies credentialId`() {
+        val entity = testPasskey().toData()
+        assertContentEquals(credentialId, entity.credentialId)
+    }
+
+    @Test
+    fun `toData copies rp`() {
+        assertEquals("example.com", testPasskey().toData().rp)
+    }
+
+    @Test
+    fun `toData copies privateKey`() {
+        assertEquals(privateKey, testPasskey().toData().privateKey)
+    }
+
+    @Test
+    fun `toData copies passwordId`() {
+        val passkey = testPasskey()
+        assertEquals(passkey.passwordId, passkey.toData().passwordId)
+    }
+
+    @Test
+    fun `toData flattens user name and displayName`() {
+        val entity = testPasskey().toData()
+        assertEquals("alice", entity.name)
+        assertEquals("Alice Smith", entity.displayName)
+    }
+
+    // PasskeyEntity.toDomain()
+
+    @Test
+    fun `PasskeyEntity toDomain copies credentialId`() {
+        val entity = passkeyEntity()
+        assertContentEquals(credentialId, entity.toDomain().credentialId)
+    }
+
+    @Test
+    fun `PasskeyEntity toDomain copies rp`() {
+        assertEquals("example.com", passkeyEntity().toDomain().rp)
+    }
+
+    @Test
+    fun `PasskeyEntity toDomain reconstructs user`() {
+        val domain = passkeyEntity(name = "bob", displayName = "Bob Jones").toDomain()
+        assertEquals("bob", domain.user.name)
+        assertEquals("Bob Jones", domain.user.displayName)
+    }
+
+    @Test
+    fun `round-trip Passkey→entity→domain preserves equality`() {
+        val original = testPasskey()
+        assertEquals(original, original.toData().toDomain())
+    }
+
+    // PasskeyMetadataPojo.toDomain()
+
+    @Test
+    fun `PasskeyMetadataPojo toDomain copies vaultName`() {
+        val metadata = pojo(vaultName = "Personal").toDomain()
+        assertEquals("Personal", metadata.vaultName)
+    }
+
+    @Test
+    fun `PasskeyMetadataPojo toDomain copies credentialId`() {
+        val metadata = pojo().toDomain()
+        assertContentEquals(credentialId, metadata.credentialId)
+    }
+
+    @Test
+    fun `PasskeyMetadataPojo toDomain reconstructs user`() {
+        val metadata = pojo(name = "carol", displayName = "Carol White").toDomain()
+        assertEquals("carol", metadata.user.name)
+        assertEquals("Carol White", metadata.user.displayName)
+    }
+
+    @Test
+    fun `PasskeyMetadataPojo toDomain preserves null pwdUsername`() {
+        assertNull(pojo(pwdUsername = null).toDomain().passwordUsername)
+    }
+
+    @Test
+    fun `PasskeyMetadataPojo toDomain preserves non-null pwdUsername`() {
+        assertEquals(
+            "alice@example.com",
+            pojo(pwdUsername = "alice@example.com").toDomain().passwordUsername
+        )
+    }
+
+    // Helpers
+
+    private fun passkeyEntity(
+        name: String = "alice",
+        displayName: String = "Alice Smith",
+    ) = PasskeyEntity(
+        credentialId = credentialId,
+        rp = "example.com",
+        privateKey = privateKey,
+        passwordId = newItemId(),
+        name = name,
+        displayName = displayName,
+    )
+
+    private fun pojo(
+        vaultName: String = "Personal",
+        pwdUsername: String? = "alice@example.com",
+        name: String = "alice",
+        displayName: String = "Alice Smith",
+    ) = PasskeyMetadataPojo(
+        vaultName = vaultName,
+        pwdUsername = pwdUsername,
+        name = name,
+        displayName = displayName,
+        credentialId = credentialId,
+    )
+}

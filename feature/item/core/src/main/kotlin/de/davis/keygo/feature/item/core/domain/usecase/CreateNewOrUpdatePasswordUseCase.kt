@@ -1,8 +1,10 @@
 package de.davis.keygo.feature.item.core.domain.usecase
 
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.crypto.encryptSecretData
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
+import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
@@ -86,24 +88,29 @@ class CreateNewOrUpdatePasswordUseCase(
                         name = upsert.name.getValue() ?: "",
                         username = upsert.username.getValue(),
                         domainInfos = upsert.domains.getValue().orEmpty(),
-                        encryptedData = encryptedPassword!!.await(),
+                        password = encryptedPassword!!.await(),
                         totpSecret = totpSecret?.await(),
                         score = passwordStrength!!.await(),
                         note = upsert.note.getValue(),
                         pinned = false,
+                        keyInformation = KeyInformation(
+                            byteArrayOf(),
+                            byteArrayOf(),
+                        ),// TODO
+                        vaultId = newVaultId(), // TODO
                     )
                 }
 
                 is UpsertType.Update -> {
                     val dbPassword =
-                        passwordRepository.getPasswordById(upsert.upsertType.vaultItemId)
+                        passwordRepository.getPasswordById(upsert.upsertType.id)
                             ?: return@coroutineScope Result.Failure(setOf(PasswordError.InvalidVaultId))
 
                     dbPassword.copy(
                         name = upsert.name.withoutClearingOn(dbPassword.name),
                         username = upsert.username.on(dbPassword.username),
                         domainInfos = upsert.domains.on(dbPassword.domainInfos).orEmpty(),
-                        encryptedData = encryptedPassword?.await() ?: dbPassword.encryptedData,
+                        password = encryptedPassword?.await() ?: dbPassword.password,
                         totpSecret = upsert.totpSecret.on(dbPassword.totpSecret, totpSecret),
                         score = passwordStrength?.await() ?: dbPassword.score,
                         note = upsert.note.on(dbPassword.note),

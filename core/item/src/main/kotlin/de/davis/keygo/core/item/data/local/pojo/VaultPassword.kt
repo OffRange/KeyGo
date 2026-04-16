@@ -3,19 +3,20 @@ package de.davis.keygo.core.item.data.local.pojo
 import androidx.room.Embedded
 import androidx.room.Relation
 import de.davis.keygo.core.item.data.local.entity.DomainInfoEntity
+import de.davis.keygo.core.item.data.local.entity.ItemEntity
 import de.davis.keygo.core.item.data.local.entity.PasskeyEntity
 import de.davis.keygo.core.item.data.local.entity.PasswordEntity
-import de.davis.keygo.core.item.data.local.entity.VaultItemEntity
 
 internal data class VaultPassword(
     @Embedded
     val passwordEntity: PasswordEntity,
 
+    // PasswordEntity.id == ItemEntity.id (shared primary key — "is-a" relationship).
     @Relation(
-        parentColumn = "vault_item_id",
+        parentColumn = "id",
         entityColumn = "id",
     )
-    val vaultItemEntity: VaultItemEntity,
+    val itemEntity: ItemEntity,
 
     @Relation(
         parentColumn = "id",

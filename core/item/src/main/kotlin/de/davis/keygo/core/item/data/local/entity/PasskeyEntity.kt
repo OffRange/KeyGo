@@ -9,6 +9,7 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.SecretData
 
 @Entity(
+    tableName = "passkey",
     foreignKeys = [
         ForeignKey(
             entity = PasswordEntity::class,

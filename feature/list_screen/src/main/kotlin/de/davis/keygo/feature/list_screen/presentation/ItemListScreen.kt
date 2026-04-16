@@ -99,7 +99,7 @@ fun ItemListScreen(
 
     LaunchedEffect(uiState.items, uiState.highlightedId, autoSelectFirst) {
         if (autoSelectFirst && uiState.highlightedId == null && uiState.items.isNotEmpty())
-            viewModel.onItemClick(uiState.items.first().vaultItemId, forceSkipSelection = true)
+            viewModel.onItemClick(uiState.items.first().id, forceSkipSelection = true)
     }
 
     // In case the user types something, but does not submit the search, we rollback to the last
@@ -205,7 +205,7 @@ fun ItemListScreen(
                 val scope = rememberCoroutineScope()
                 SearchResult(
                     searchResult = uiState.searchResults,
-                    idOf = { it.vaultItemId },
+                    idOf = { it.id },
                     nameOf = { it.name },
                     matchedInName = { true },
                     matchedInNote = { false },
@@ -214,7 +214,7 @@ fun ItemListScreen(
 
                         // Clicking a search result should not select the item when currently
                         // other items are selected.
-                        viewModel.onItemClick(item.vaultItemId, forceSkipSelection = true)
+                        viewModel.onItemClick(item.id, forceSkipSelection = true)
                     },
                     modifier = Modifier.padding(8.dp)
                 )
@@ -287,7 +287,7 @@ fun ItemListScreen(
                                 header = if (it.pinned) HeaderContent.Pin
                                 else HeaderContent.Letter(it.name.first().uppercaseChar()),
                                 title = it.name,
-                                id = it.vaultItemId,
+                                id = it.id,
                                 itemType = it.itemType,
                             )
                         }

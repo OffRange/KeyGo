@@ -8,8 +8,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
+import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
-import de.davis.keygo.core.item.domain.repository.VaultItemRepository
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
@@ -52,12 +52,12 @@ internal class ItemListViewModel(
     @InjectedParam private val enableSelection: Boolean,
     @InjectedParam private val restrictedItemType: VaultItemType?,
     private val snackbarManager: SnackbarManager,
-    private val vaultItemRepository: VaultItemRepository,
+    private val itemRepository: ItemRepository,
     private val filterUseCase: FilterUseCase,
     passwordRepository: PasswordRepository,
 ) : ViewModel() {
 
-    private val allItems = vaultItemRepository.observeLiteVaultItems()
+    private val allItems = itemRepository.observeLiteVaultItems()
 
     private val submittedSearchQuery = MutableStateFlow("")
 
@@ -69,7 +69,7 @@ internal class ItemListViewModel(
         itemSource,
         flaggedForDeletion
     ) { items, flagged ->
-        items.filterNot { item -> item.vaultItemId in flagged }
+        items.filterNot { item -> item.id in flagged }
     }.distinctUntilChanged()
 
 
@@ -164,7 +164,7 @@ internal class ItemListViewModel(
 
     private suspend fun queryToItems(query: String): Flow<List<LiteItem>> =
         (if (query.isBlank()) allItems
-        else flowOf(vaultItemRepository.searchVaultItem(query, restrictedItemType)))
+        else flowOf(itemRepository.searchVaultItem(query, restrictedItemType)))
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private fun observeSearchState() {
@@ -202,7 +202,7 @@ internal class ItemListViewModel(
         updateItemSelectionState(itemId, selected = false)
         updateItemDeletionState(itemId, deleted = true)
 
-        val firstItemId = listItemState.value.items.firstOrNull()?.vaultItemId
+        val firstItemId = listItemState.value.items.firstOrNull()?.id
         if (highlightedId.value == itemId)
             highlightedId.update { firstItemId }
 
@@ -215,7 +215,7 @@ internal class ItemListViewModel(
                 },
                 onDismiss = {
                     viewModelScope.launch {
-                        vaultItemRepository.deleteItem(itemId)
+                        itemRepository.deleteItem(itemId)
 
                         // Inside this coroutine to ensure it only runs after the deletion
                         updateItemDeletionState(itemId, deleted = false)
@@ -264,7 +264,7 @@ internal class ItemListViewModel(
         if (pendingDeletions.isNotEmpty()) {
             CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
                 pendingDeletions.forEach { itemId ->
-                    vaultItemRepository.deleteItem(itemId)
+                    itemRepository.deleteItem(itemId)
                 }
             }
         }

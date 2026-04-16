@@ -28,6 +28,10 @@ android {
     buildFeatures {
         compose = true
     }
+
+    testFixtures {
+        enable = true
+    }
 }
 
 kotlin {
@@ -65,6 +69,14 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.io.mockk)
+
+    testFixturesImplementation(libs.kotlinx.coroutines.core)
+    testFixturesImplementation(projects.core.util)
+    testFixturesImplementation(projects.core.security)
+    testFixturesImplementation(project.dependencies.platform(libs.androidx.compose.bom))
+    testFixturesImplementation(libs.androidx.compose.runtime) {
+        because("https://issuetracker.google.com/issues/259523353#comment32")
+    }
 }
 
 room {
