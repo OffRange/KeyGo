@@ -12,6 +12,7 @@ lib = { path = "../lib" }
 thiserror = "2.0.18"
 tokio = { version = "1.48.0", features = ["rt", "rt-multi-thread"] }
 uniffi = { version = "0.31.1", features = ["tokio", "cli"] }
+uuid = "1.23.1"
 
 [[bin]]
 name = "uniffi-bindgen"
