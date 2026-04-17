@@ -7,10 +7,10 @@ pub struct CreateAccount {
 }
 
 impl CreateAccount {
-    pub fn new() -> Self {
+    pub fn generate_new() -> Self {
         Self {
-            account: Account::new(),
-            default_vault: Vault::new(),
+            account: Account::generate_new(),
+            default_vault: Vault::generate_new(),
         }
     }
 }

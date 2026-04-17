@@ -81,8 +81,8 @@ pub fn passkey_from_bytes(bytes: &[u8]) -> Result<Passkey, PasskeyCodecError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use coset::iana;
     use coset::CoseKeyBuilder;
+    use coset::iana;
 
     fn sample_passkey() -> Passkey {
         let key = CoseKeyBuilder::new_okp_key()

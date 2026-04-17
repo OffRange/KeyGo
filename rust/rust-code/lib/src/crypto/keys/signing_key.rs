@@ -1,7 +1,7 @@
 use crate::crypto::error::{CryptoError, CryptoResult};
 use crate::crypto::key::KeyMaterial;
 use crate::crypto::primitive::wrap_key::KeyWrapper;
-use ed25519_dalek::{Signature, Signer, SigningKey, SECRET_KEY_LENGTH};
+use ed25519_dalek::{SECRET_KEY_LENGTH, Signature, Signer, SigningKey};
 use rand::rand_core::UnwrapErr;
 use rand::rngs::SysRng;
 use std::marker::PhantomData;

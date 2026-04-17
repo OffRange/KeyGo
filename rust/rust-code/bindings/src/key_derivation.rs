@@ -21,9 +21,9 @@ impl From<CryptoError> for KeyDerivationError {
     fn from(value: CryptoError) -> Self {
         match value {
             CryptoError::KdfError(msg) => Self::Failed(msg),
-            CryptoError::InvalidKeyLength { expected, got } => {
-                Self::Failed(format!("invalid key length: expected {expected}, got {got}"))
-            }
+            CryptoError::InvalidKeyLength { expected, got } => Self::Failed(format!(
+                "invalid key length: expected {expected}, got {got}"
+            )),
             other => Self::Other(format!("{other}")),
         }
     }

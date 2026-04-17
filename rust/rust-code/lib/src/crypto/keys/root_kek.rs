@@ -1,9 +1,9 @@
+use crate::crypto::TryDeriveFrom;
 use crate::crypto::error::CryptoResult;
 use crate::crypto::key::KeyMaterial;
 use crate::crypto::keys::account_root_key::AccountRootKey;
 use crate::crypto::primitive::argon2::derive_argon2id;
 use crate::crypto::types::UserId;
-use crate::crypto::TryDeriveFrom;
 use crate::{define_aead_key, define_wrap};
 use aes_gcm_siv::Aes256GcmSiv;
 
@@ -23,7 +23,6 @@ impl<'a> TryDeriveFrom<&'a [u8]> for RootKEK {
         <Self as KeyMaterial>::try_from_bytes(&derived)
     }
 }
-
 
 #[cfg(test)]
 mod tests {

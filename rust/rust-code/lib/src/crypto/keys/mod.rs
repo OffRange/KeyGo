@@ -1,6 +1,6 @@
 pub mod account_root_key;
-pub mod signing_key;
 pub mod root_kek;
+pub mod signing_key;
 pub mod vault_key;
 
 use crate::crypto::error::CryptoResult;

@@ -34,7 +34,10 @@ pub fn sanitize_to_https_url(input: &str) -> Result<Url, UrlSanitizeError> {
         if let Some(colon) = input.find(':') {
             // Check only well-known colon-only schemes to avoid misclassifying host:port.
             let maybe_scheme = input[..colon].to_ascii_lowercase();
-            if matches!(maybe_scheme.as_str(), "mailto" | "data" | "javascript" | "file" | "blob" | "about") {
+            if matches!(
+                maybe_scheme.as_str(),
+                "mailto" | "data" | "javascript" | "file" | "blob" | "about"
+            ) {
                 return Err(UrlSanitizeError::NonHttpScheme(maybe_scheme));
             }
         }
@@ -64,25 +67,23 @@ mod tests {
 
     #[test]
     fn test_sanitize_to_https_url() {
-        let test_map = HashMap::from(
-            [
-                ("", false),
-                ("   ", false),
-                ("ftp://example.com", false),
-                ("http://example.com", true),
-                ("https://example.com", true),
-                ("wss://example.com", false),
-                ("mailto:foo@bar", false),
-                ("data:text/plain,hi", false),
-                ("javascript:alert(1)", false),
-                ("file:///etc/hosts", false),
-                ("file://etc/hosts", false),
-                ("//example.com:3000/a", true),
-                ("HTTPS://Example.Com", true),
-                ("example.com", true),
-                ("example.com:3000", true),
-            ]
-        );
+        let test_map = HashMap::from([
+            ("", false),
+            ("   ", false),
+            ("ftp://example.com", false),
+            ("http://example.com", true),
+            ("https://example.com", true),
+            ("wss://example.com", false),
+            ("mailto:foo@bar", false),
+            ("data:text/plain,hi", false),
+            ("javascript:alert(1)", false),
+            ("file:///etc/hosts", false),
+            ("file://etc/hosts", false),
+            ("//example.com:3000/a", true),
+            ("HTTPS://Example.Com", true),
+            ("example.com", true),
+            ("example.com:3000", true),
+        ]);
 
         for (url, valid) in test_map {
             assert_eq!(sanitize_to_https_url(url).is_ok(), valid);

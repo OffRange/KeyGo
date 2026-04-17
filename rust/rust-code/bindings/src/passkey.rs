@@ -1,5 +1,7 @@
-use lib::passkey::provider::{provide_passkey, ProviderError};
-use lib::passkey::registration::{get_exclusion_list, register_passkey, KeyGoRegistrationResponse, RegistrationError};
+use lib::passkey::provider::{ProviderError, provide_passkey};
+use lib::passkey::registration::{
+    KeyGoRegistrationResponse, RegistrationError, get_exclusion_list, register_passkey,
+};
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
@@ -19,8 +21,12 @@ impl From<RegistrationError> for PasskeyError {
         match value {
             RegistrationError::InvalidJsonFormat => Self::InvalidJsonFormat,
             RegistrationError::InvalidDomain => Self::InvalidDomain,
-            RegistrationError::WebauthnError(e) => Self::Webauthn { reason: format!("{e:?}") },
-            RegistrationError::KeyEncodeError(e) => Self::KeyCodec { reason: format!("{e:?}") },
+            RegistrationError::WebauthnError(e) => Self::Webauthn {
+                reason: format!("{e:?}"),
+            },
+            RegistrationError::KeyEncodeError(e) => Self::KeyCodec {
+                reason: format!("{e:?}"),
+            },
         }
     }
 }
@@ -30,8 +36,12 @@ impl From<ProviderError> for PasskeyError {
         match value {
             ProviderError::InvalidJsonFormat => Self::InvalidJsonFormat,
             ProviderError::InvalidDomain => Self::InvalidDomain,
-            ProviderError::WebauthnError(e) => Self::Webauthn { reason: format!("{e:?}") },
-            ProviderError::PasskeyDecodeError(e) => Self::KeyCodec { reason: format!("{e:?}") },
+            ProviderError::WebauthnError(e) => Self::Webauthn {
+                reason: format!("{e:?}"),
+            },
+            ProviderError::PasskeyDecodeError(e) => Self::KeyCodec {
+                reason: format!("{e:?}"),
+            },
         }
     }
 }
@@ -69,14 +79,20 @@ impl RustPasskey {
         Arc::new(Self)
     }
 
-    pub async fn register(&self, json_request: String) -> Result<RegistrationResponse, PasskeyError> {
+    pub async fn register(
+        &self,
+        json_request: String,
+    ) -> Result<RegistrationResponse, PasskeyError> {
         register_passkey(&json_request)
             .await
             .map(Into::into)
             .map_err(Into::into)
     }
 
-    pub async fn excluded_credentials(&self, json_request: String) -> Result<Vec<Vec<u8>>, PasskeyError> {
+    pub async fn excluded_credentials(
+        &self,
+        json_request: String,
+    ) -> Result<Vec<Vec<u8>>, PasskeyError> {
         get_exclusion_list(&json_request).await.map_err(Into::into)
     }
 

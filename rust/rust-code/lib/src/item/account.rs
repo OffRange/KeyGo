@@ -7,7 +7,7 @@ pub struct Account {
 }
 
 impl Account {
-    pub fn new() -> Self {
+    pub fn generate_new() -> Self {
         Self {
             id: UserId::new_v4(),
             ark: AccountRootKey::generate_random(),

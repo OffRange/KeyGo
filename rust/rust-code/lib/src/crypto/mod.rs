@@ -1,10 +1,10 @@
-mod macros;
-pub mod types;
-pub mod keys;
-pub mod key;
 pub mod error;
+pub mod key;
+pub mod keys;
+mod macros;
 pub mod primitive;
 pub mod random;
+pub mod types;
 
 pub use key::*;
 pub use keys::*;

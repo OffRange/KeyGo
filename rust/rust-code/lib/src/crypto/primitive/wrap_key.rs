@@ -43,7 +43,10 @@ where
     }
 
     fn from_parts_bytes(ciphertext: Vec<u8>, nonce: &[u8]) -> Self {
-        Self::from_parts(ciphertext, Nonce::<Wrapper::Algorithm>::try_from(nonce).expect("invalid nonce length"))
+        Self::from_parts(
+            ciphertext,
+            Nonce::<Wrapper::Algorithm>::try_from(nonce).expect("invalid nonce length"),
+        )
     }
 
     fn ciphertext(&self) -> &[u8] {

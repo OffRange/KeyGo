@@ -1,6 +1,6 @@
+use rand::Rng;
 use rand::rand_core::UnwrapErr;
 use rand::rngs::SysRng;
-use rand::Rng;
 
 /// Generate a random byte array of the specified length.
 pub fn random_bytes<const N: usize>() -> [u8; N] {

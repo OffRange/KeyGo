@@ -59,6 +59,6 @@ impl AccountManager {
     }
 
     pub fn create_account(&self) -> CreateAccount {
-        CreateAccount::new()
+        CreateAccount::generate_new()
     }
 }

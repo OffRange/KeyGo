@@ -7,7 +7,7 @@ pub struct Vault {
 }
 
 impl Vault {
-    pub fn new() -> Self {
+    pub fn generate_new() -> Self {
         Self {
             id: VaultId::new_v4(),
             vault_key: VaultKey::generate_random(),
