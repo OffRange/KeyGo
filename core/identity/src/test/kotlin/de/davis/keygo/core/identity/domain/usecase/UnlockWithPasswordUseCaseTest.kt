@@ -1,26 +1,20 @@
 package de.davis.keygo.core.identity.domain.usecase
 
-import de.davis.keygo.core.identity.domain.model.PasswordWrappedKeyData
+import de.davis.keygo.core.identity.FakeAccountRepository
+import de.davis.keygo.core.identity.domain.model.Account
+import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.model.UnlockError
-import de.davis.keygo.core.identity.domain.repository.DeviceInfoRepository
-import de.davis.keygo.core.identity.domain.repository.KeyDerivationRepository
-import de.davis.keygo.core.identity.domain.repository.WrappedKeyRepository
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.model.AesKey
-import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.every
+import de.davis.keygo.rust.FakeKeyDeriver
+import de.davis.keygo.rust.FakeKeyWrapper
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
-import java.security.SecureRandom
-import javax.crypto.Cipher
-import javax.crypto.KeyGenerator
-import javax.crypto.spec.SecretKeySpec
+import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -28,157 +22,79 @@ import kotlin.test.assertTrue
 class UnlockWithPasswordUseCaseTest {
 
     private val session = mockk<Session>(relaxed = true)
-    private val wrappedKeyRepository = mockk<WrappedKeyRepository>()
-    private val keyDerivationRepository = mockk<KeyDerivationRepository>()
-    private val deviceInfoRepository = mockk<DeviceInfoRepository>()
+    private val accountRepository = FakeAccountRepository()
+    private val keyDeriver = FakeKeyDeriver()
+    private val keyWrapper = FakeKeyWrapper()
 
     private val useCase = UnlockWithPasswordUseCase(
         session = session,
-        wrappedKeyRepository = wrappedKeyRepository,
-        keyDerivationRepository = keyDerivationRepository,
-        deviceInfoRepository = deviceInfoRepository
+        accountRepository = accountRepository,
+        keyDeriver = keyDeriver,
+        keyWrapper = keyWrapper,
     )
 
-    private fun generateWrappedKeyData(password: String): Pair<PasswordWrappedKeyData, ByteArray> {
-        val dek = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
+    private fun seedAccount(
+        password: String,
+        accountId: UUID = UUID.randomUUID(),
+        ark: ByteArray = ByteArray(32) { it.toByte() },
+    ): Account {
+        val salt = keyDeriver.generateSalt()
+        val kek = keyDeriver.deriveRootKekFromPassword(password, salt)
+        val wrapped = keyWrapper.wrapAccountRootKey(kek, ark, accountId)
 
-        val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
-        val kekBytes = ByteArray(32).also { SecureRandom().nextBytes(it) }
-        val kek = SecretKeySpec(kekBytes, "AES")
-
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.WRAP_MODE, kek)
-        val wrappedDek = cipher.wrap(dek)
-        val iv = cipher.iv
-
-        return PasswordWrappedKeyData(
-            key = wrappedDek,
-            keyIV = iv,
-            salt = salt
-        ) to kekBytes
+        val account = Account(
+            id = accountId,
+            displayName = "Test",
+            passwordWrappedArk = PasswordWrappedArk(
+                key = wrapped.ciphertext,
+                keyIV = wrapped.nonce,
+                salt = salt,
+            ),
+            biometricWrappedArk = null,
+        )
+        accountRepository.seed(account)
+        return account
     }
 
     @Test
-    fun `returns WrappedKeyNotFound when repository has no key`() = runTest {
-        coEvery { wrappedKeyRepository.getPasswordWrappedKey() } returns Result.Failure(Unit)
-
+    fun `returns ActiveAccountNotFound when no account is registered`() = runTest {
         val result = useCase("password")
 
         assertTrue(result.isFailure())
-        assertEquals(UnlockError.WrappedKeyNotFound, (result as Result.Failure).error)
+        assertEquals(UnlockError.ActiveAccountNotFound, result.error)
     }
 
     @Test
     fun `returns DerivationFailed when key derivation fails`() = runTest {
-        val (wrappedData, _) = generateWrappedKeyData("password")
-        coEvery { wrappedKeyRepository.getPasswordWrappedKey() } returns Result.Success(wrappedData)
-        coEvery {
-            keyDerivationRepository.deriveKey(
-                password = any(),
-                salt = any(),
-                parallelism = any()
-            )
-        } returns Result.Failure("derivation error")
-        every { deviceInfoRepository.getNumCors() } returns 4
+        seedAccount("password")
+        keyDeriver.failDerivation = true
 
         val result = useCase("password")
 
         assertTrue(result.isFailure())
-        assertEquals(UnlockError.DerivationFailed, (result as Result.Failure).error)
+        assertEquals(UnlockError.DerivationFailed, result.error)
     }
 
     @Test
     fun `returns UnwrappingFailed when wrong password is used`() = runTest {
-        val (wrappedData, _) = generateWrappedKeyData("password")
-        val wrongKekBytes = ByteArray(32).also { SecureRandom().nextBytes(it) }
-
-        coEvery { wrappedKeyRepository.getPasswordWrappedKey() } returns Result.Success(wrappedData)
-        coEvery {
-            keyDerivationRepository.deriveKey(
-                password = any(),
-                salt = any(),
-                parallelism = any()
-            )
-        } returns Result.Success(wrongKekBytes)
-        every { deviceInfoRepository.getNumCors() } returns 4
+        seedAccount("password")
 
         val result = useCase("wrong-password")
 
         assertTrue(result.isFailure())
-        assertEquals(UnlockError.UnwrappingFailed, (result as Result.Failure).error)
+        assertEquals(UnlockError.UnwrappingFailed, result.error)
     }
 
     @Test
     fun `returns Success and starts session with correct password`() = runTest {
-        val (wrappedData, kekBytes) = generateWrappedKeyData("password")
-
-        coEvery { wrappedKeyRepository.getPasswordWrappedKey() } returns Result.Success(wrappedData)
-        coEvery {
-            keyDerivationRepository.deriveKey(
-                password = any(),
-                salt = any(),
-                parallelism = any()
-            )
-        } returns Result.Success(kekBytes)
-        every { deviceInfoRepository.getNumCors() } returns 4
+        val ark = ByteArray(32) { (it + 1).toByte() }
+        seedAccount("password", ark = ark)
 
         val result = useCase("password")
 
         assertTrue(result.isSuccess())
         val dekSlot = slot<AesKey>()
         verify { session.startSession(capture(dekSlot)) }
-        assertTrue(dekSlot.captured.key.encoded.size == 32)
-    }
-
-    @Test
-    fun `passes correct salt to key derivation`() = runTest {
-        val (wrappedData, kekBytes) = generateWrappedKeyData("password")
-
-        coEvery { wrappedKeyRepository.getPasswordWrappedKey() } returns Result.Success(wrappedData)
-        coEvery {
-            keyDerivationRepository.deriveKey(
-                password = any(),
-                salt = any(),
-                parallelism = any()
-            )
-        } returns Result.Success(kekBytes)
-        every { deviceInfoRepository.getNumCors() } returns 4
-
-        useCase("password")
-
-        val saltSlot = slot<ByteArray>()
-        coVerify {
-            keyDerivationRepository.deriveKey(
-                password = any(),
-                salt = capture(saltSlot),
-                parallelism = any()
-            )
-        }
-        assertTrue(saltSlot.captured.contentEquals(wrappedData.salt))
-    }
-
-    @Test
-    fun `passes device core count to key derivation`() = runTest {
-        val (wrappedData, kekBytes) = generateWrappedKeyData("password")
-
-        coEvery { wrappedKeyRepository.getPasswordWrappedKey() } returns Result.Success(wrappedData)
-        coEvery {
-            keyDerivationRepository.deriveKey(
-                password = any(),
-                salt = any(),
-                parallelism = any()
-            )
-        } returns Result.Success(kekBytes)
-        every { deviceInfoRepository.getNumCors() } returns 8
-
-        useCase("password")
-
-        coVerify {
-            keyDerivationRepository.deriveKey(
-                password = any(),
-                salt = any(),
-                parallelism = 8
-            )
-        }
+        assertTrue(dekSlot.captured.key.encoded.contentEquals(ark))
     }
 }

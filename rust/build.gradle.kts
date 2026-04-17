@@ -45,6 +45,10 @@ android {
             kotlin.directories += "build/generated/source/uniffi"
         }
     }
+
+    testFixtures {
+        enable = true
+    }
 }
 
 kotlin {

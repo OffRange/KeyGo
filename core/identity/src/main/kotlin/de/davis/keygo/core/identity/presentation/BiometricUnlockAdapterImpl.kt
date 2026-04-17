@@ -3,7 +3,7 @@ package de.davis.keygo.core.identity.presentation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import de.davis.keygo.core.identity.domain.model.UnlockError
-import de.davis.keygo.core.identity.domain.repository.WrappedKeyRepository
+import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.model.asAesKey
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
@@ -18,13 +18,13 @@ import org.koin.core.annotation.Single
 @Single
 internal class BiometricUnlockAdapterImpl(
     private val session: Session,
-    private val wrappedKeyRepository: WrappedKeyRepository
+    private val accountRepository: AccountRepository,
 ) : BiometricUnlockAdapter {
 
     override suspend fun BiometricCryptoController.requestUnlockVault(
         policy: BiometricPolicy
     ): Result<Unit, UnlockError> {
-        val wrappedKey = wrappedKeyRepository.getBiometricWrappedKey().getOrNull()
+        val wrappedKey = accountRepository.getOrNull()?.biometricWrappedArk
             ?: return Result.Failure(UnlockError.WrappedKeyNotFound)
 
         val result = requestUnwrap(
@@ -44,12 +44,12 @@ internal class BiometricUnlockAdapterImpl(
 @Composable
 fun rememberBiometricUnlockAdapter(): BiometricUnlockAdapter {
     val session = koinInject<Session>()
-    val wrappedKeyRepository = koinInject<WrappedKeyRepository>()
+    val accountRepository = koinInject<AccountRepository>()
 
-    return remember(session, wrappedKeyRepository) {
+    return remember(session, accountRepository) {
         BiometricUnlockAdapterImpl(
             session = session,
-            wrappedKeyRepository = wrappedKeyRepository
+            accountRepository = accountRepository
         )
     }
 }

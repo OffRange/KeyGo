@@ -12,7 +12,9 @@ data class Vault(
         name: String,
         wrappedVaultKey: ByteArray,
         vaultKeyNonce: ByteArray,
+        id: VaultId = newVaultId(),
     ) : this(
+        id = id,
         name = name,
         keyInformation = KeyInformation(
             wrappedKey = wrappedVaultKey,

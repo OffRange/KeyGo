@@ -71,7 +71,7 @@ dependencies {
     testImplementation(libs.io.mockk)
 
     testFixturesImplementation(libs.kotlinx.coroutines.core)
-    testFixturesImplementation(projects.core.util)
+    testFixturesApi(projects.core.util)
     testFixturesImplementation(projects.core.security)
     testFixturesImplementation(project.dependencies.platform(libs.androidx.compose.bom))
     testFixturesImplementation(libs.androidx.compose.runtime) {

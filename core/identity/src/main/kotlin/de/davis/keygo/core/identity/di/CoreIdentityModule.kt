@@ -2,11 +2,10 @@ package de.davis.keygo.core.identity.di
 
 import android.content.Context
 import androidx.datastore.dataStore
-import com.lambdapioneer.argon2kt.Argon2Kt
+import de.davis.keygo.core.identity.data.local.model.ProtoAccount
 import de.davis.keygo.core.identity.data.local.model.ProtoBiometricKeyData
 import de.davis.keygo.core.identity.data.local.model.ProtoPasswordKeyData
-import de.davis.keygo.core.identity.di.annotation.BiometricQualifier
-import de.davis.keygo.core.identity.di.annotation.PasswordQualifier
+import de.davis.keygo.core.identity.di.annotation.AccountRegistryQualifier
 import de.davis.keygo.core.security.di.CoreSecurityModule
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
@@ -34,15 +33,16 @@ object CoreIdentityModule {
         )
     )
 
-    @Single
-    @BiometricQualifier
-    internal fun provideBiometricKeyDataStore(context: Context) = context.protoBiometricKeyDataStore
+    private val Context.protoAccountDataStore by dataStore(
+        "account_registry.pb",
+        DefaultProtoSerializer(
+            defaultInstance = ProtoAccount.getDefaultInstance(),
+            parser = ProtoAccount.parser()
+        )
+    )
 
     @Single
-    @PasswordQualifier
-    internal fun providePasswordKeyDataStore(context: Context) = context.protoPasswordKeyDataStore
-
-
-    @Single
-    internal fun provideArgon2Kt() = Argon2Kt()
+    @AccountRegistryQualifier
+    internal fun provideAccountDataStore(context: Context) =
+        context.protoAccountDataStore
 }

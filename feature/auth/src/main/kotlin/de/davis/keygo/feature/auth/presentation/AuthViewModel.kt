@@ -6,14 +6,13 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
-import de.davis.keygo.core.identity.domain.repository.WrappedKeyRepository
+import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockWithPasswordUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
-import de.davis.keygo.core.util.isSuccess
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.auth.presentation.model.AuthState
@@ -47,7 +46,7 @@ import kotlin.time.Duration.Companion.milliseconds
 internal class AuthViewModel(
     savedStateHandle: SavedStateHandle,
     biometricAvailabilityRepository: BiometricAvailabilityRepository,
-    wrappedKeyRepository: WrappedKeyRepository,
+    accountRepository: AccountRepository,
 
     // ---- Migration ----
     hasV1MainPassword: HasMainPasswordUseCase,
@@ -72,13 +71,14 @@ internal class AuthViewModel(
 
     init {
         viewModelScope.launch {
-            val hasAccess = wrappedKeyRepository.getPasswordWrappedKey().isSuccess()
+            val activeAccount = accountRepository.getOrNull()
+            val hasAccess = activeAccount != null
             val hasAccessButShouldMigrate = if (!hasAccess) hasV1MainPassword()
             else false
 
             val isBiometricHardwareAvailable = biometricAvailabilityRepository.availability()
             val isBiometricCryptoSetupAvailable =
-                hasAccess && wrappedKeyRepository.getBiometricWrappedKey().isSuccess()
+                hasAccess && activeAccount.biometricWrappedArk != null
 
             val biometricsUsable = isBiometricHardwareAvailable && isBiometricCryptoSetupAvailable
             if (biometricsUsable && authRoute.showBiometricPromptIfPossible) requestBiometricLogin()

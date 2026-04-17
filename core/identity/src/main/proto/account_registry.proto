@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package de.davis.keygo.core.identity.data.local.model;
+option java_multiple_files = true;
+
+import "passsword_key_data.proto";
+import "biometric_key_data.proto";
+
+message ProtoAccount {
+  string user_id = 1;
+  string display_name = 2;
+  int64 created_at_epoch_millis = 3;
+
+  ProtoPasswordKeyData password_key_data = 4;
+  optional ProtoBiometricKeyData biometric_key_data = 5;
+}

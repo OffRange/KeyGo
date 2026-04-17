@@ -31,6 +31,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    testFixtures {
+        enable = true
+    }
 }
 
 kotlin {
@@ -44,6 +48,8 @@ dependencies {
     implementation(libs.androidx.core.ktx)
 
     implementation(projects.core.security)
+    implementation(projects.core.item)
+    implementation(projects.rust)
 
     // Datastore
     implementation(libs.androidx.datastore)
@@ -53,8 +59,6 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.material3)
 
-    implementation(libs.argon2kt)
-
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))
     implementation(libs.koin.androidx.compose)
@@ -63,6 +67,15 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.io.mockk)
+    testImplementation(testFixtures(projects.core.item))
+    testImplementation(testFixtures(projects.rust))
+
+    testFixturesApi(projects.core.util)
+    testFixturesImplementation(projects.rust)
+    testFixturesImplementation(project.dependencies.platform(libs.androidx.compose.bom))
+    testFixturesImplementation(libs.androidx.compose.runtime) {
+        because("https://issuetracker.google.com/issues/259523353#comment32")
+    }
 }
 
 protobuf {

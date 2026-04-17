@@ -34,5 +34,5 @@ class FakeVaultRepository : VaultRepository {
 
     override suspend fun getVault(id: VaultId): Vault? = store.value[id]
 
-    override fun observeVaults(): Flow<List<Vault>> = store.map { it.values.toList() }
+    fun observeVaults(): Flow<List<Vault>> = store.map { it.values.toList() }
 }
