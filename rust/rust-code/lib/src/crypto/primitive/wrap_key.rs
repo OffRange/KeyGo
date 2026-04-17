@@ -11,6 +11,7 @@ where
     Wrapper: AeadKey,
 {
     fn from_parts(ciphertext: Vec<u8>, nonce: Nonce<Wrapper::Algorithm>) -> Self;
+    fn from_parts_bytes(ciphertext: Vec<u8>, nonce: &[u8]) -> Self;
     fn ciphertext(&self) -> &[u8];
     fn nonce(&self) -> &Nonce<Wrapper::Algorithm>;
     fn nonce_bytes(&self) -> &[u8] {
@@ -39,6 +40,10 @@ where
             nonce,
             _target: PhantomData,
         }
+    }
+
+    fn from_parts_bytes(ciphertext: Vec<u8>, nonce: &[u8]) -> Self {
+        Self::from_parts(ciphertext, Nonce::<Wrapper::Algorithm>::try_from(nonce).expect("invalid nonce length"))
     }
 
     fn ciphertext(&self) -> &[u8] {
