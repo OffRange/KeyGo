@@ -45,7 +45,7 @@ Android password manager using Clean Architecture per module:
 | `:feature:*`               | `list_screen`, `item:{core,create,view}`, `credentials`, `totp`          |
 | `:automation`              | Automation support + annotation processor                                |
 | `:migration-create-access` | v1 → v2 data migration (high risk)                                       |
-| `:rust`                    | Passkey operations via Rust JNI                                          |
+| `:rust`                    | Rust crypto/passkey ops via UniFFI-generated Kotlin bindings             |
 
 ## Key Patterns
 
@@ -70,7 +70,7 @@ prompt flow, or persistence semantics without explicit instruction.
 
 - **Migration** — preserve backward compat, smallest safe change
 - **Autofill** (`app/.../autofill/`) — constrained by Android framework, keep conservative
-- **Rust FFI** — preserve type/memory-safety across JNI boundary
+- **UniFFI** — preserve memory and type safety across the FFI boundary.
 - **Room schema** — check migration implications before changing entities
 
 ## Code Style
@@ -85,3 +85,11 @@ prompt flow, or persistence semantics without explicit instruction.
 - kotlin-test + MockK + kotlinx-coroutines-test; Compose UI tests with Espresso
 - Use `runTest { }`, `mockk(relaxed = true)`, `coEvery { }`, assert against `Result`
 - Run broader tests for cross-module or security changes
+- **Rust fakes** — `:rust` uses UniFFI (not raw JNI) to generate Kotlin bindings. UniFFI emits
+  `KeyDeriverInterface`/`KeyWrapperInterface`/`AccountManagerInterface` for test seams; fakes live
+  in `:rust` testFixtures (`de.davis.keygo.rust`). Never instantiate `KeyDeriver()`/`KeyWrapper()`/
+  `AccountManager()` in JVM unit tests — their default constructors require the native Rust library
+  at runtime.
+- **testFixtures + Compose plugin** — Any module with `kotlin.compose` that enables testFixtures
+  must add `testFixturesImplementation(libs.androidx.compose.runtime)` to avoid "Compose Runtime
+  not on classpath" compile errors. See `:core:item` for the canonical pattern.
