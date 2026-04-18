@@ -19,7 +19,7 @@ ifdef NDK
   export ANDROID_NDK_HOME := $(NDK)
 endif
 
-.PHONY: help all build bindgen tools check test clean
+.PHONY: help all build bindgen tools check fmt test clean
 
 help: ## Show this help
 	@printf "Usage: make [target] [VAR=value]\n\nTargets:\n"
@@ -55,6 +55,9 @@ bindgen: build ## Generate Kotlin UniFFI bindings
 
 check: ## cargo check the workspace
 	cargo check --workspace
+
+fmt: ## Format Rust code with cargo fmt
+	cargo fmt --all
 
 test: ## cargo test the workspace
 	cargo test --workspace
