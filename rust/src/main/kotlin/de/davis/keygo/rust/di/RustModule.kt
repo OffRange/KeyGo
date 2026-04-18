@@ -14,7 +14,7 @@ import org.koin.core.annotation.Single
 
 @Module
 @Configuration
-object PasskeyModule {
+object RustModule {
 
     @Single
     fun providePasskeyManager(): RustPasskeyInterface = RustPasskey()
