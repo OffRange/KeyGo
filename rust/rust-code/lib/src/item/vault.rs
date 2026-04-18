@@ -1,5 +1,5 @@
-use crate::crypto::types::VaultId;
 use crate::crypto::VaultKey;
+use crate::crypto::types::VaultId;
 
 pub struct Vault {
     pub id: VaultId,

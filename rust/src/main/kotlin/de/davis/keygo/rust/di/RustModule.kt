@@ -2,6 +2,8 @@ package de.davis.keygo.rust.di
 
 import de.davisalessandro.keygo.rust.AccountManager
 import de.davisalessandro.keygo.rust.AccountManagerInterface
+import de.davisalessandro.keygo.rust.ItemManager
+import de.davisalessandro.keygo.rust.ItemManagerInterface
 import de.davisalessandro.keygo.rust.KeyDeriver
 import de.davisalessandro.keygo.rust.KeyDeriverInterface
 import de.davisalessandro.keygo.rust.KeyWrapper
@@ -17,14 +19,17 @@ import org.koin.core.annotation.Single
 object RustModule {
 
     @Single
-    fun providePasskeyManager(): RustPasskeyInterface = RustPasskey()
+    internal fun providePasskeyManager(): RustPasskeyInterface = RustPasskey()
 
     @Single
-    fun provideAccountManager(): AccountManagerInterface = AccountManager()
+    internal fun provideAccountManager(): AccountManagerInterface = AccountManager()
 
     @Single
-    fun provideKeyWrapper(): KeyWrapperInterface = KeyWrapper()
+    internal fun provideKeyWrapper(): KeyWrapperInterface = KeyWrapper()
 
     @Single
-    fun provideKeyDeriver(): KeyDeriverInterface = KeyDeriver()
+    internal fun provideKeyDeriver(): KeyDeriverInterface = KeyDeriver()
+
+    @Single
+    internal fun provideItemManager(): ItemManagerInterface = ItemManager()
 }

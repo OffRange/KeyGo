@@ -1,5 +1,5 @@
-use crate::crypto::types::UserId;
 use crate::crypto::AccountRootKey;
+use crate::crypto::types::UserId;
 
 pub struct Account {
     pub id: UserId,
