@@ -14,7 +14,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class VaultItemMapperTest {
+class ItemMapperTest {
 
     private fun testPassword(
         name: String = "My password",
