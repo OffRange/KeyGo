@@ -1,6 +1,6 @@
 use lib::crypto::KeyMaterial;
 use lib::crypto::error::CryptoError;
-use lib::crypto::item_key::{ItemAad, ItemKey};
+use lib::crypto::item_key::{ItemAad, ItemDataAad, ItemKey};
 use lib::crypto::primitive::aead_data::{AeadCiphertext, AeadEncryptor};
 use lib::crypto::types::{ItemId, VaultId};
 use std::sync::Arc;
@@ -73,8 +73,9 @@ impl ItemManager {
         &self,
         item_key: ItemKey,
         data: Vec<u8>,
-        aad: ItemAad,
+        aad: Vec<u8>,
     ) -> Result<EncryptedItemBlob, ItemCryptoError> {
+        let aad = ItemDataAad(aad);
         let ct = item_key.encrypt_data(&data, &aad)?;
         Ok(EncryptedItemBlob {
             ciphertext: ct.ciphertext().to_vec(),
@@ -86,8 +87,9 @@ impl ItemManager {
         &self,
         item_key: ItemKey,
         blob: EncryptedItemBlob,
-        aad: ItemAad,
+        aad: Vec<u8>,
     ) -> Result<Vec<u8>, ItemCryptoError> {
+        let aad = ItemDataAad(aad);
         let ciphertext = AeadCiphertext::<ItemKey>::from_parts_bytes(blob.ciphertext, &blob.nonce);
         Ok(item_key.decrypt_data(&ciphertext, &aad)?)
     }

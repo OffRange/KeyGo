@@ -9,14 +9,17 @@ define_aead_key! {
     random pub struct ItemKey(Aes256GcmSiv);
 }
 
-define_wrap!(VaultKey => ItemKey, aad = ItemId);
-
 #[derive(Serialize)]
 pub struct ItemAad {
     pub item_id: ItemId,
     pub vault_id: VaultId,
 }
 
+#[derive(Serialize)]
+pub struct ItemDataAad(pub Vec<u8>);
+
+define_wrap!(VaultKey => ItemKey, aad = ItemAad);
+
 impl AeadEncryptor for ItemKey {
-    type Aad = ItemAad;
+    type Aad = ItemDataAad;
 }

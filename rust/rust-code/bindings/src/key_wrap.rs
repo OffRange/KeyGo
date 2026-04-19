@@ -1,4 +1,5 @@
 use lib::crypto::error::CryptoError;
+use lib::crypto::item_key::{ItemAad, ItemKey};
 use lib::crypto::key::KeyMaterial;
 use lib::crypto::keys::{AccountRootKey, RootKEK, VaultKey};
 use lib::crypto::primitive::wrap_key::{KeyWrapper as KeyWrapperTrait, WrappedKey};
@@ -122,5 +123,23 @@ impl KeyWrapper {
         vault_id: VaultId,
     ) -> Result<VaultKey, KeyWrapError> {
         unwrap::<AccountRootKey, VaultKey>(&ark, &wrapped, &vault_id)
+    }
+
+    pub fn wrap_item_key(
+        &self,
+        vault_key: VaultKey,
+        item_key: ItemKey,
+        aad: ItemAad,
+    ) -> Result<WrappedKeyBlob, KeyWrapError> {
+        wrap::<VaultKey, ItemKey>(&vault_key, &item_key, &aad)
+    }
+
+    pub fn unwrap_item_key(
+        &self,
+        vault_key: VaultKey,
+        wrapped: WrappedKeyBlob,
+        aad: ItemAad,
+    ) -> Result<ItemKey, KeyWrapError> {
+        unwrap::<VaultKey, ItemKey>(&vault_key, &wrapped, &aad)
     }
 }
