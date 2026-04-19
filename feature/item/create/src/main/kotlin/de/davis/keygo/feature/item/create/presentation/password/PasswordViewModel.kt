@@ -7,12 +7,13 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.crypto.decryptSecretData
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
-import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.core.security.domain.crypto.decryptSecretData
+import de.davis.keygo.core.security.domain.usecase.PasswordWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
@@ -45,7 +46,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.mapLatest
@@ -60,9 +60,9 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
 internal class PasswordViewModel(
+    private val passwordWithCryptoScopeUseCase: PasswordWithCryptoScopeUseCase,
     private val itemRepository: ItemRepository,
     private val passwordRepository: PasswordRepository,
-    private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val createNewOrUpdatePassword: CreateNewOrUpdatePasswordUseCase,
     private val snackbarManager: SnackbarManager,
@@ -136,7 +136,7 @@ internal class PasswordViewModel(
 
     fun init(information: DetailPaneInformation) {
         when (information) {
-            is DetailPaneInformation.Init.Existing -> initWithId(information.id)
+            is DetailPaneInformation.Init.Existing -> viewModelScope.launch { initWithId(information.id) }
             is DetailPaneInformation.Init.TOTP -> initWithTotpUri(information.uri)
             is DetailPaneInformation.Init.New -> {} // Don't init anything
 
@@ -169,49 +169,39 @@ internal class PasswordViewModel(
         }
     }
 
-    private fun initWithId(itemId: ItemId) {
+    private suspend fun initWithId(itemId: ItemId) {
         this.itemId = itemId
 
-        passwordRepository.observePasswordById(itemId)
-            .filterNotNull()
-            .onEach { password ->
-                coroutineScope {
-                    val pwdDeferred = async {
-                        cryptographicScopeProvider.scope {
-                            password.password.decryptSecretData()
-                        }
-                    }
-
-                    val totpSecret = password.totpSecret?.let { totpSecret ->
-                        async {
-                            cryptographicScopeProvider.scope {
-                                totpSecret.decryptSecretData()
-                            }
-                        }
-                    }
-
-                    nameTextFieldState.setTextAndPlaceCursorAtEnd(password.name)
-                    passwordTextFieldState.setTextAndPlaceCursorAtEnd(pwdDeferred.await())
-
-                    _uiState.update {
-                        it.copy(
-                            totpTextFieldState = TextFieldState(totpSecret?.await() ?: ""),
-                            usernameTextFieldState = TextFieldState(password.username ?: ""),
-                            domains = password.domainInfos,
-                            notesTextFieldState = TextFieldState(password.note ?: ""),
-                            dialogState = DialogState.None,
-                            updating = true
-                        )
-                    }
-
-                    // Update the TOTP secret information if available
-                    totpSecretInformation?.let {
-                        requestTotpSecretUpdate(it)
-                    }
+        passwordWithCryptoScopeUseCase.oneShot(
+            itemId = itemId,
+        ) { password ->
+            val decrypted = coroutineScope {
+                val pwdDeferred =
+                    async { password.password.decryptSecretData(label = Password.LABEL_PASSWORD) }
+                val totpDeferred = password.totpSecret?.let { totpSecret ->
+                    async { totpSecret.decryptSecretData(label = Password.LABEL_TOTP_SECRET) }
                 }
+                pwdDeferred.await() to totpDeferred?.await()
             }
-            .flowOn(Dispatchers.Default)
-            .launchIn(viewModelScope)
+
+            nameTextFieldState.setTextAndPlaceCursorAtEnd(password.name)
+            passwordTextFieldState.setTextAndPlaceCursorAtEnd(decrypted.first)
+
+            _uiState.update {
+                it.copy(
+                    totpTextFieldState = TextFieldState(decrypted.second ?: ""),
+                    usernameTextFieldState = TextFieldState(password.username ?: ""),
+                    domains = password.domainInfos,
+                    notesTextFieldState = TextFieldState(password.note ?: ""),
+                    dialogState = DialogState.None,
+                    updating = true
+                )
+            }
+
+            totpSecretInformation?.let {
+                requestTotpSecretUpdate(it)
+            }
+        }
     }
 
     private fun initWithTotpUri(totpUri: String) {
@@ -250,7 +240,7 @@ internal class PasswordViewModel(
                     val state = _uiState.value
                     val upsert = itemId?.let { itemId ->
                         UpsertPassword.update(
-                            vaultId = itemId,
+                            itemId = itemId,
                             name = fieldUpdate(state.nameTextFieldState.text.toString()),
                             username = fieldUpdate(state.usernameTextFieldState.text.toString()),
                             domains = set(state.domains),
@@ -341,7 +331,7 @@ internal class PasswordViewModel(
             }
 
             is PasswordUiEvent.OnTotpModificationItemSelected -> {
-                initWithId(event.itemId)
+                viewModelScope.launch { initWithId(event.itemId) }
             }
 
             is PasswordUiEvent.OnCreateNewItemForTotp -> {

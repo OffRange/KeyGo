@@ -52,7 +52,7 @@ dependencies {
     implementation(projects.automation)
     ksp(projects.automationProcessor)
 
-    implementation(projects.core.security)
+    api(projects.core.util)
 
     implementation(libs.gosimple.nbvcxz)
 
@@ -73,6 +73,7 @@ dependencies {
     testFixturesImplementation(libs.kotlinx.coroutines.core)
     testFixturesApi(projects.core.util)
     testFixturesImplementation(projects.core.security)
+    testFixturesImplementation(projects.rust)
     testFixturesImplementation(project.dependencies.platform(libs.androidx.compose.bom))
     testFixturesImplementation(libs.androidx.compose.runtime) {
         because("https://issuetracker.google.com/issues/259523353#comment32")

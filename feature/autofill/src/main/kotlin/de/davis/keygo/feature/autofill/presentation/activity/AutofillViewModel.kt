@@ -6,11 +6,14 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.crypto.decryptSecretData
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
+import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.core.security.domain.crypto.decryptSecretData
+import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
+import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
 import de.davis.keygo.feature.autofill.domain.usecase.AddRegistrableDomainsToPasswordUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.DoesItemHaveDomainReferencesUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.IsAppLinkedToWebsiteUseCase
@@ -43,6 +46,7 @@ import org.koin.core.annotation.KoinViewModel
 @KoinViewModel
 internal class AutofillViewModel(
     savedStateHandle: SavedStateHandle,
+    private val vaultRepository: VaultRepository,
     private val passwordRepository: PasswordRepository,
     private val itemRepository: ItemRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
@@ -244,7 +248,7 @@ internal class AutofillViewModel(
         }
     }
 
-    private suspend fun sendFillEvent(vaultId: ItemId) {
+    private suspend fun sendFillEvent(itemId: ItemId) {
         if (requestData !is FillRequestData) {
             eventChannel.send(AutofillEvent.Abort)
             return
@@ -253,7 +257,7 @@ internal class AutofillViewModel(
         val formInformation = requestData.form
         when (formInformation.type) {
             is FormType.Credentials -> {
-                val password = passwordRepository.getPasswordById(vaultId) ?: run {
+                val password = passwordRepository.getPasswordById(itemId) ?: run {
                     eventChannel.send(AutofillEvent.Abort)
                     return
                 }
@@ -269,14 +273,26 @@ internal class AutofillViewModel(
                     return
                 }
 
-                val password = passwordRepository.getPasswordById(vaultId) ?: run {
+                // TODO: dont fetch entire password -> just fetch the totp field
+                val password = passwordRepository.getPasswordById(itemId) ?: run {
+                    eventChannel.send(AutofillEvent.Abort)
+                    return
+                }
+
+                val wrappedVaultKey = vaultRepository.getKeyInformation(password.vaultId) ?: run {
                     eventChannel.send(AutofillEvent.Abort)
                     return
                 }
 
                 val totp = password.totpSecret?.let {
-                    val secret = cryptographicScopeProvider.scope {
-                        it.decryptSecretData().encodeToByteArray()
+                    val secret = cryptographicScopeProvider.itemScope(
+                        wrappedVaultKeyInformation = WrappedVaultKeyInformation(
+                            wrappedVaultKey = wrappedVaultKey,
+                            vaultId = password.vaultId
+                        ),
+                        wrappedItemKeyInformation = password.wrappedItemKeyInformation()
+                    ) {
+                        it.decryptSecretData(label = Password.LABEL_TOTP_SECRET).encodeToByteArray()
                     }
                     totpGenerator.observeTotp(secret).first()
                 } ?: run {
@@ -301,12 +317,23 @@ internal class AutofillViewModel(
     }
 
     private suspend fun sendPasswordFillEvent(password: Password) {
+        val wrappedVaultKey = vaultRepository.getKeyInformation(password.vaultId) ?: run {
+            eventChannel.send(AutofillEvent.Abort)
+            return
+        }
+
         val values = requestData.form.fields.mapNotNull {
             val type = it.type
             if (type !is FieldType.Credentials) return@mapNotNull null
             val value = when (type) {
-                FieldType.Credentials.Password -> cryptographicScopeProvider.scope {
-                    password.password.decryptSecretData()
+                FieldType.Credentials.Password -> cryptographicScopeProvider.itemScope(
+                    wrappedVaultKeyInformation = WrappedVaultKeyInformation(
+                        wrappedVaultKey = wrappedVaultKey,
+                        vaultId = password.vaultId
+                    ),
+                    wrappedItemKeyInformation = password.wrappedItemKeyInformation()
+                ) {
+                    password.password.decryptSecretData(label = Password.LABEL_PASSWORD)
                 }
 
                 FieldType.Credentials.Username -> password.username

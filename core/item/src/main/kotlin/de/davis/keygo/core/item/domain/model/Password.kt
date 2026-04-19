@@ -26,6 +26,11 @@ data class Password(
     override val itemType: VaultItemType
         get() = VaultItemType.Password
 
+    companion object {
+        const val LABEL_PASSWORD = "password"
+        const val LABEL_TOTP_SECRET = "totp_secret"
+    }
+
     enum class Score {
         None,
         Ridiculous,

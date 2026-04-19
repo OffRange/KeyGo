@@ -1,20 +1,54 @@
 package de.davis.keygo.core.item.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Upsert
+import androidx.room.Transaction
+import de.davis.keygo.core.item.data.local.entity.KeyInformation
 import de.davis.keygo.core.item.data.local.entity.VaultEntity
+import de.davis.keygo.core.item.data.local.pojo.ActiveVaultKeyInformation
 import de.davis.keygo.core.item.domain.alias.VaultId
 
 @Dao
 internal interface VaultDao {
 
-    @Upsert
-    suspend fun upsert(vault: VaultEntity)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(vault: VaultEntity)
 
+    @Deprecated(
+        message = "Use deleteVault() instead. Raw deletion bypasses active vault safety checks and can leave the app without an active vault.",
+        replaceWith = ReplaceWith("deleteVault(id)"),
+        level = DeprecationLevel.ERROR
+    )
     @Query("DELETE FROM vault WHERE id = :id")
     suspend fun delete(id: VaultId)
 
-    @Query("SELECT * FROM vault WHERE id = :id")
-    suspend fun getById(id: VaultId): VaultEntity?
+    @Query("SELECT wrappedKey, keyNonce FROM vault WHERE id = :id")
+    suspend fun getKeyInfoById(id: VaultId): KeyInformation?
+
+
+    @Query("SELECT wrappedKey, keyNonce, vault.id as vaultId FROM vault INNER JOIN active_vault ON vault.id = active_vault.vaultId WHERE active_vault.id = 1")
+    suspend fun getActiveKeyInfo(): ActiveVaultKeyInformation
+
+    @Query("SELECT vaultId FROM active_vault WHERE id = 1")
+    suspend fun getActiveItemId(): VaultId
+
+    @Query("SELECT id FROM vault WHERE id != :excludingId LIMIT 1")
+    suspend fun anyOtherItemId(excludingId: VaultId): VaultId?
+
+    @Query("UPDATE active_vault SET vaultId = :newId WHERE id = 0")
+    suspend fun setActive(newId: VaultId)
+
+    @Suppress("DEPRECATION_ERROR")
+    @Transaction
+    suspend fun deleteVault(id: VaultId): Boolean {
+        if (id == getActiveItemId()) {
+            val replacement = anyOtherItemId(excludingId = id)
+                ?: return false //Cannot delete the last remaining item
+            setActive(replacement)
+        }
+        delete(id)
+        return true
+    }
 }

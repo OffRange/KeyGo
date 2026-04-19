@@ -30,6 +30,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    testFixtures {
+        enable = true
+    }
 }
 
 kotlin {
@@ -52,7 +56,9 @@ dependencies {
 
     implementation(libs.androidx.biometric)
 
+    implementation(projects.core.item)
     api(projects.core.util)
+    api(projects.rust)
 
 
     // Koin DI
@@ -62,6 +68,11 @@ dependencies {
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.io.mockk)
+    testImplementation(testFixtures(projects.rust))
+
+    testFixturesApi(projects.core.item)
+    testFixturesImplementation(libs.kotlinx.coroutines.core)
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

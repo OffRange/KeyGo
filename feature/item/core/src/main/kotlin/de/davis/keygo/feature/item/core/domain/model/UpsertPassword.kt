@@ -32,7 +32,7 @@ data class UpsertPassword private constructor(
         )
 
         fun update(
-            vaultId: ItemId,
+            itemId: ItemId,
             name: FieldUpdate<String> = keep(),
             password: FieldUpdate<String> = keep(),
             totpSecret: FieldUpdate<String> = keep(),
@@ -40,7 +40,7 @@ data class UpsertPassword private constructor(
             domains: FieldUpdate<Set<DomainInfo>> = keep(),
             note: FieldUpdate<String> = keep(),
         ) = UpsertPassword(
-            upsertType = UpsertType.Update(vaultId),
+            upsertType = UpsertType.Update(itemId),
             name = name,
             password = password,
             note = note,

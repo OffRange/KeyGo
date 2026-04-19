@@ -67,7 +67,7 @@ class CreateAccessUseCase(
                 ?: return Result.Failure(CreateAccessError.WrappingFailed)
 
         accountHolder.defaultVault.wrap(accountHolder.account.ark).getOrNull()?.let { wrappedKey ->
-            vaultRepository.createVault(
+            vaultRepository.createAndActivateVault(
                 Vault(
                     id = accountHolder.defaultVault.id,
                     name = vaultName,

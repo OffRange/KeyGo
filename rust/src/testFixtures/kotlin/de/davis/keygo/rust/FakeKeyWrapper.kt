@@ -1,6 +1,8 @@
 package de.davis.keygo.rust
 
 import de.davisalessandro.keygo.rust.AccountRootKey
+import de.davisalessandro.keygo.rust.ItemAad
+import de.davisalessandro.keygo.rust.ItemKey
 import de.davisalessandro.keygo.rust.KeyWrapException
 import de.davisalessandro.keygo.rust.KeyWrapperInterface
 import de.davisalessandro.keygo.rust.RootKek
@@ -12,11 +14,11 @@ import java.util.UUID
 /**
  * In-memory [KeyWrapperInterface] for tests.
  *
- * Wrapping XORs the plaintext key with a stream derived from (kek/ark, id, nonce) so that
- * wrap/unwrap round-trips correctly when the same KEK and id are supplied. Unwrapping with
- * a different KEK or id yields garbage — [unwrapAccountRootKey] and [unwrapVaultKey] throw
+ * Wrapping XORs the plaintext key with a stream derived from (outer key, id, nonce) so that
+ * wrap/unwrap round-trips correctly when the same outer key and id are supplied. Unwrapping
+ * with a different outer key or id yields garbage — every `unwrap*` call throws
  * [KeyWrapException.UnwrapFailed] when the result does not match a recorded ciphertext, which
- * is sufficient to exercise the wrong-password path in use case tests.
+ * is sufficient to exercise the wrong-password / wrong-key paths in use case tests.
  */
 class FakeKeyWrapper : KeyWrapperInterface {
 
@@ -45,6 +47,24 @@ class FakeKeyWrapper : KeyWrapperInterface {
         wrapped: WrappedKeyBlob,
         vaultId: UUID,
     ): VaultKey = unwrap(outerKey = ark, wrapped = wrapped, id = vaultId)
+
+    override fun wrapItemKey(
+        vaultKey: VaultKey,
+        itemKey: ItemKey,
+        aad: ItemAad,
+    ): WrappedKeyBlob = wrap(outerKey = vaultKey, innerKey = itemKey, id = aadId(aad))
+
+    override fun unwrapItemKey(
+        vaultKey: VaultKey,
+        wrapped: WrappedKeyBlob,
+        aad: ItemAad,
+    ): ItemKey = unwrap(outerKey = vaultKey, wrapped = wrapped, id = aadId(aad))
+
+    private fun aadId(aad: ItemAad): UUID =
+        UUID(
+            aad.itemId.mostSignificantBits xor aad.vaultId.mostSignificantBits,
+            aad.itemId.leastSignificantBits xor aad.vaultId.leastSignificantBits,
+        )
 
     private fun wrap(outerKey: ByteArray, innerKey: ByteArray, id: UUID): WrappedKeyBlob {
         val nonce = ByteArray(12).also { SecureRandom().nextBytes(it) }

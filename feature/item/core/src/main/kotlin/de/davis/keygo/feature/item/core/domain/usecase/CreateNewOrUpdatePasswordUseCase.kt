@@ -1,14 +1,19 @@
 package de.davis.keygo.feature.item.core.domain.usecase
 
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.alias.newVaultId
-import de.davis.keygo.core.item.domain.crypto.encryptSecretData
+import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
-import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.Password.Companion.LABEL_PASSWORD
+import de.davis.keygo.core.item.domain.model.Password.Companion.LABEL_TOTP_SECRET
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
+import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.core.security.domain.crypto.encryptSecretData
+import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
+import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
+import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.mapFailure
 import de.davis.keygo.feature.item.core.domain.model.FieldUpdate
@@ -19,6 +24,7 @@ import de.davis.keygo.feature.item.core.domain.model.getValue
 import de.davis.keygo.feature.item.core.domain.model.on
 import de.davis.keygo.feature.item.core.domain.model.onSet
 import de.davis.keygo.feature.item.core.domain.model.withoutClearingOn
+import de.davisalessandro.keygo.rust.ItemAad
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import org.koin.core.annotation.Single
@@ -28,6 +34,7 @@ import kotlin.contracts.ExperimentalContracts
 class CreateNewOrUpdatePasswordUseCase(
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passwordRepository: PasswordRepository,
+    private val vaultRepository: VaultRepository,
     private val upsertVaultItem: UpsertVaultItemUseCase,
     private val passwordStrengthEstimator: PasswordStrengthEstimator
 ) {
@@ -53,73 +60,97 @@ class CreateNewOrUpdatePasswordUseCase(
         return errors
     }
 
-    suspend operator fun invoke(upsert: UpsertPassword): Result<ItemId, Set<PasswordError>> =
-        coroutineScope {
-            val errors = validate(upsert)
-            if (errors.isNotEmpty())
-                return@coroutineScope Result.Failure(errors)
+    suspend operator fun invoke(upsert: UpsertPassword): Result<ItemId, Set<PasswordError>> {
+        val errors = validate(upsert)
+        if (errors.isNotEmpty()) return Result.Failure(errors)
 
+        val updatedPassword = when (upsert.upsertType) {
+            UpsertType.Create -> buildCreate(upsert)
+            is UpsertType.Update -> buildUpdate(upsert, upsert.upsertType.id)
+                ?: return Result.Failure(setOf(PasswordError.InvalidVaultId))
+        }
 
-            val encryptedPassword = upsert.password.onSet { password ->
-                async {
-                    cryptographicScopeProvider.scope {
-                        password.encryptSecretData()
-                    }
+        return upsertVaultItem(updatedPassword).mapFailure {
+            setOf(PasswordError.DatabaseError(it))
+        }
+    }
+
+    private suspend fun buildCreate(upsert: UpsertPassword): Password {
+        val itemId = newItemId()
+
+        val activeVaultKeyInformation = vaultRepository.getActiveVaultKeyInformation()
+        val aad = ItemAad(itemId = itemId, vaultId = activeVaultKeyInformation.vaultId)
+
+        return cryptographicScopeProvider.itemScope(
+            wrappedVaultKeyInformation = WrappedVaultKeyInformation(
+                wrappedVaultKey = activeVaultKeyInformation.keyInformation,
+                vaultId = activeVaultKeyInformation.vaultId
+            ),
+            wrappedItemKeyInformation = WrappedItemKeyInformation(itemAad = aad),
+        ) {
+            coroutineScope {
+                val encryptedPassword = async {
+                    upsert.password.getValue()!!.encryptSecretData(label = LABEL_PASSWORD)
                 }
-            }
-
-            val passwordStrength = upsert.password.onSet { password ->
-                async { passwordStrengthEstimator(password) }
-            }
-
-
-            val totpSecret = upsert.totpSecret.onSet { totpSecret ->
-                async {
-                    cryptographicScopeProvider.scope {
-                        totpSecret.encryptSecretData()
-                    }
+                val encryptedTotp = upsert.totpSecret.onSet { secret ->
+                    async { secret.encryptSecretData(label = LABEL_TOTP_SECRET) }
                 }
-            }
-
-            val updatedPassword = when (upsert.upsertType) {
-                UpsertType.Create -> {
-                    // Validation ensures that the values are not null
-                    Password(
-                        name = upsert.name.getValue() ?: "",
-                        username = upsert.username.getValue(),
-                        domainInfos = upsert.domains.getValue().orEmpty(),
-                        password = encryptedPassword!!.await(),
-                        totpSecret = totpSecret?.await(),
-                        score = passwordStrength!!.await(),
-                        note = upsert.note.getValue(),
-                        pinned = false,
-                        keyInformation = KeyInformation(
-                            byteArrayOf(),
-                            byteArrayOf(),
-                        ),// TODO
-                        vaultId = newVaultId(), // TODO
-                    )
+                val passwordStrength = async {
+                    passwordStrengthEstimator(upsert.password.getValue()!!)
                 }
 
-                is UpsertType.Update -> {
-                    val dbPassword =
-                        passwordRepository.getPasswordById(upsert.upsertType.id)
-                            ?: return@coroutineScope Result.Failure(setOf(PasswordError.InvalidVaultId))
+                val wrappedItemKey = async { wrapCurrentItemKey() }
 
-                    dbPassword.copy(
-                        name = upsert.name.withoutClearingOn(dbPassword.name),
-                        username = upsert.username.on(dbPassword.username),
-                        domainInfos = upsert.domains.on(dbPassword.domainInfos).orEmpty(),
-                        password = encryptedPassword?.await() ?: dbPassword.password,
-                        totpSecret = upsert.totpSecret.on(dbPassword.totpSecret, totpSecret),
-                        score = passwordStrength?.await() ?: dbPassword.score,
-                        note = upsert.note.on(dbPassword.note),
-                    )
-                }
-            }
-
-            upsertVaultItem(updatedPassword).mapFailure {
-                setOf(PasswordError.DatabaseError(it))
+                Password(
+                    id = itemId,
+                    name = upsert.name.getValue()!!,
+                    username = upsert.username.getValue(),
+                    domainInfos = upsert.domains.getValue().orEmpty(),
+                    password = encryptedPassword.await(),
+                    totpSecret = encryptedTotp?.await(),
+                    score = passwordStrength.await(),
+                    note = upsert.note.getValue(),
+                    pinned = false,
+                    keyInformation = wrappedItemKey.await(),
+                    vaultId = activeVaultKeyInformation.vaultId,
+                )
             }
         }
+    }
+
+    private suspend fun buildUpdate(upsert: UpsertPassword, id: ItemId): Password? {
+        val existing = passwordRepository.getPasswordById(id) ?: return null
+
+        val vaultKeyInfo = vaultRepository.getKeyInformation(existing.vaultId) ?: return null
+
+        return cryptographicScopeProvider.itemScope(
+            wrappedVaultKeyInformation = WrappedVaultKeyInformation(
+                wrappedVaultKey = vaultKeyInfo,
+                vaultId = existing.vaultId
+            ),
+            wrappedItemKeyInformation = existing.wrappedItemKeyInformation(),
+        ) {
+            coroutineScope {
+                val encryptedPassword = upsert.password.onSet { password ->
+                    async { password.encryptSecretData(label = LABEL_PASSWORD) }
+                }
+                val totpSecret = upsert.totpSecret.onSet { secret ->
+                    async { secret.encryptSecretData(label = LABEL_TOTP_SECRET) }
+                }
+                val passwordStrength = upsert.password.onSet { password ->
+                    async { passwordStrengthEstimator(password) }
+                }
+
+                existing.copy(
+                    name = upsert.name.withoutClearingOn(existing.name),
+                    username = upsert.username.on(existing.username),
+                    domainInfos = upsert.domains.on(existing.domainInfos).orEmpty(),
+                    password = encryptedPassword?.await() ?: existing.password,
+                    totpSecret = upsert.totpSecret.on(existing.totpSecret, totpSecret),
+                    score = passwordStrength?.await() ?: existing.score,
+                    note = upsert.note.on(existing.note),
+                )
+            }
+        }
+    }
 }

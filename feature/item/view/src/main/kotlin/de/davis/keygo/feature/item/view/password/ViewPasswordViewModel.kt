@@ -3,12 +3,12 @@ package de.davis.keygo.feature.item.view.password
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.crypto.decryptSecretData
 import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.repository.ItemRepository
-import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
-import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.core.security.domain.crypto.decryptSecretData
+import de.davis.keygo.core.security.domain.usecase.PasswordWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
@@ -54,14 +54,13 @@ import org.koin.core.annotation.KoinViewModel
 @KoinViewModel
 internal class ViewPasswordViewModel(
     private val itemRepository: ItemRepository,
-    private val passwordRepository: PasswordRepository,
-    private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val updatePassword: CreateNewOrUpdatePasswordUseCase,
     private val isValidUrl: IsValidUrlUseCase,
     private val websiteHandler: WebsiteHandler,
     private val totpGenerator: TotpGenerator,
     private val registrableDomainResolver: RegistrableDomainResolver,
-    private val getTotpSecret: GetTotpSecretFromUrlUseCase
+    private val getTotpSecret: GetTotpSecretFromUrlUseCase,
+    private val observePasswordWithCryptoScope: PasswordWithCryptoScopeUseCase,
 ) : ViewModel() {
 
     private val _modificationDialogState = MutableStateFlow<ModificationDialog?>(null)
@@ -73,58 +72,56 @@ internal class ViewPasswordViewModel(
         .filterNotNull()
         .distinctUntilChanged()
         .flatMapLatest { id ->
-            passwordRepository.observePasswordById(id).filterNotNull().flatMapLatest { password ->
-                coroutineScope {
-                    val obfuscatedString = async {
-                        cryptographicScopeProvider.scope {
-                            password.password.decryptSecretData()
-                        }.asObfuscatedString()
+            observePasswordWithCryptoScope.observe(itemId = id) { password ->
+                val decrypted = coroutineScope {
+                    val obfuscated = async {
+                        password.password.decryptSecretData(label = Password.LABEL_PASSWORD)
+                            .asObfuscatedString()
                     }
-
-                    val totpSecret = password.totpSecret?.let { totpSecret ->
+                    val totp = password.totpSecret?.let { totpSecret ->
                         async {
-                            cryptographicScopeProvider.scope {
-                                totpSecret.decryptSecretData().encodeToByteArray()
-                            }
+                            totpSecret.decryptSecretData(label = Password.LABEL_TOTP_SECRET)
+                                .encodeToByteArray()
                         }
                     }
+                    obfuscated.await() to totp?.await()
+                }
 
+                val base = ViewPasswordState(
+                    name = password.name,
+                    passkeyRPs = password.passkeyRPs,
+                    password = decrypted.first,
+                    passwordStrengthScore = password.score,
+                    username = password.username.orEmpty(),
+                    domains = password.domainInfos,
+                    note = password.note.orEmpty(),
+                    totpInformation = TotpInformation("", 0, 0),
+                    pinned = password.pinned,
+                )
 
-                    val base = ViewPasswordState(
-                        name = password.name,
-                        passkeyRPs = password.passkeyRPs,
-                        password = obfuscatedString.await(),
-                        passwordStrengthScore = password.score,
-                        username = password.username.orEmpty(),
-                        domains = password.domainInfos,
-                        note = password.note.orEmpty(),
-                        totpInformation = TotpInformation("", 0, 0),
-                        pinned = password.pinned,
-                    )
-
-                    when {
-                        totpSecret == null -> flowOf(base)
-                        else -> totpGenerator.observeTotp(totpSecret.await()).map {
-                            base.copy(totpInformation = it)
-                        }
+                when (val totpSecret = decrypted.second) {
+                    null -> flowOf(base)
+                    else -> totpGenerator.observeTotp(totpSecret).map {
+                        base.copy(totpInformation = it)
                     }
                 }
             }
+                .filterNotNull()
+                .flatMapLatest { it }
         }.flowOn(Dispatchers.Default)
 
 
-    val state =
-        combine(
-            stateWithoutModification,
-            _modificationDialogState,
-            _scanning
-        ) { state, modificationDialog, scanning ->
-            state.copy(modificationDialog = modificationDialog, scanning = scanning)
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = ViewPasswordState()
-        )
+    val state = combine(
+        stateWithoutModification,
+        _modificationDialogState,
+        _scanning
+    ) { state, modificationDialog, scanning ->
+        state.copy(modificationDialog = modificationDialog, scanning = scanning)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = ViewPasswordState()
+    )
 
     private val navigationEventChannel = Channel<NavigationEvent>()
     val navigationEvent = navigationEventChannel.receiveAsFlow()
@@ -212,7 +209,7 @@ internal class ViewPasswordViewModel(
                     viewModelScope.launch {
                         updatePassword(
                             UpsertPassword.update(
-                                vaultId = id,
+                                itemId = id,
                                 totpSecret = fieldUpdate(secret)
                             )
                         )
@@ -229,22 +226,22 @@ internal class ViewPasswordViewModel(
                         updatePassword(
                             when (dialog.fieldType) {
                                 FieldType.Name -> UpsertPassword.update(
-                                    vaultId = id,
+                                    itemId = id,
                                     name = newText
                                 )
 
                                 FieldType.Password -> UpsertPassword.update(
-                                    vaultId = id,
+                                    itemId = id,
                                     password = newText
                                 )
 
                                 FieldType.Totp -> UpsertPassword.update(
-                                    vaultId = id,
+                                    itemId = id,
                                     totpSecret = newText
                                 )
 
                                 FieldType.Username -> UpsertPassword.update(
-                                    vaultId = id,
+                                    itemId = id,
                                     username = newText
                                 )
 
@@ -257,13 +254,13 @@ internal class ViewPasswordViewModel(
                                     )
 
                                     UpsertPassword.update(
-                                        vaultId = id,
+                                        itemId = id,
                                         domains = set(updatedDomains)
                                     )
                                 } ?: return@launch
 
                                 FieldType.Note -> UpsertPassword.update(
-                                    vaultId = id,
+                                    itemId = id,
                                     note = newText
                                 )
                             }
