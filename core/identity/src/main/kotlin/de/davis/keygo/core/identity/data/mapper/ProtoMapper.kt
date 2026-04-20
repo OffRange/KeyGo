@@ -1,11 +1,12 @@
 package de.davis.keygo.core.identity.data.mapper
 
 import com.google.protobuf.kotlin.toByteString
-import de.davis.keygo.core.identity.data.local.model.ProtoAccount
+import de.davis.keygo.core.identity.data.local.model.ProtoAccountState
 import de.davis.keygo.core.identity.data.local.model.ProtoBiometricKeyData
 import de.davis.keygo.core.identity.data.local.model.ProtoPasswordKeyData
 import de.davis.keygo.core.identity.data.local.model.biometricKeyDataOrNull
 import de.davis.keygo.core.identity.data.local.model.protoAccount
+import de.davis.keygo.core.identity.data.local.model.protoAccountState
 import de.davis.keygo.core.identity.data.local.model.protoBiometricKeyData
 import de.davis.keygo.core.identity.data.local.model.protoPasswordKeyData
 import de.davis.keygo.core.identity.domain.model.Account
@@ -35,16 +36,23 @@ internal fun PasswordWrappedArk.toProto() = protoPasswordKeyData {
     salt = this@toProto.salt.toByteString()
 }
 
-internal fun ProtoAccount.toDomain() = Account(
-    id = UUID.fromString(userId),
-    displayName = displayName,
-    createdAtEpochMillis = createdAtEpochMillis,
-    passwordWrappedArk = passwordKeyData.toDomain(),
-    biometricWrappedArk = biometricKeyDataOrNull?.toDomain(),
-)
+internal fun ProtoAccountState.toDomain() = takeIf { it.hasAccount() }?.account?.let {
+    Account(
+        id = UUID.fromString(it.userId),
+        displayName = it.displayName,
+        createdAtEpochMillis = it.createdAtEpochMillis,
+        passwordWrappedArk = it.passwordKeyData.toDomain(),
+        biometricWrappedArk = it.biometricKeyDataOrNull?.toDomain(),
+    )
+}
 
-internal fun Account.toProto() = protoAccount {
-    userId = this@toProto.id.toString()
-    displayName = this@toProto.displayName
-    createdAtEpochMillis = this@toProto.createdAtEpochMillis
+internal fun Account.toProto() = protoAccountState {
+    account = protoAccount {
+        userId = this@toProto.id.toString()
+        displayName = this@toProto.displayName
+        createdAtEpochMillis = this@toProto.createdAtEpochMillis
+
+        passwordKeyData = passwordWrappedArk.toProto()
+        biometricWrappedArk?.let { biometricKeyData = it.toProto() }
+    }
 }
