@@ -12,7 +12,7 @@ import de.davis.keygo.core.item.domain.alias.VaultId
         ForeignKey(
             entity = VaultEntity::class,
             parentColumns = ["id"],
-            childColumns = ["id"],
+            childColumns = ["vaultId"],
             onDelete = ForeignKey.RESTRICT
         )
     ],

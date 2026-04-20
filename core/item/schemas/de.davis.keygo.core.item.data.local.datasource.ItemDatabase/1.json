@@ -42,7 +42,7 @@
       },
       {
         "tableName": "active_vault",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `vaultId` BLOB NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `vault`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `vaultId` BLOB NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`vaultId`) REFERENCES `vault`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
         "fields": [
           {
             "fieldPath": "id",
@@ -80,7 +80,7 @@
             "onDelete": "RESTRICT",
             "onUpdate": "NO ACTION",
             "columns": [
-              "id"
+              "vaultId"
             ],
             "referencedColumns": [
               "id"

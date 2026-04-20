@@ -37,7 +37,7 @@ internal interface VaultDao {
     @Query("SELECT id FROM vault WHERE id != :excludingId LIMIT 1")
     suspend fun anyOtherItemId(excludingId: VaultId): VaultId?
 
-    @Query("UPDATE active_vault SET vaultId = :newId WHERE id = 0")
+    @Query("INSERT OR REPLACE INTO active_vault (id, vaultId) VALUES (1, :newId)")
     suspend fun setActive(newId: VaultId)
 
     @Suppress("DEPRECATION_ERROR")
