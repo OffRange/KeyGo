@@ -104,14 +104,15 @@ class CreateAccessUseCaseTest {
     }
 
     @Test
-    fun `creates default vault with supplied name`() = runTest {
+    fun `creates account and default vault with supplied name`() = runTest {
         useCase("password", vaultName = "My Vault")
 
-        val vaults = vaultRepository.observeVaults().first()
-        assertEquals(1, vaults.size)
-        assertEquals("My Vault", vaults.single().name)
-        assertTrue(vaults.single().keyInformation.wrappedKey.isNotEmpty())
-        assertTrue(vaults.single().keyInformation.keyNonce.isNotEmpty())
+        val vault = vaultRepository.observeVaults().first().single()
+        assertEquals("My Vault", vault.name)
+
+        val activeVaultKeyInfo = vaultRepository.getActiveVaultKeyInformation()
+        assertEquals(vault.keyInformation, activeVaultKeyInfo.keyInformation)
+        assertEquals(vault.id, activeVaultKeyInfo.vaultId)
     }
 
     @Test
