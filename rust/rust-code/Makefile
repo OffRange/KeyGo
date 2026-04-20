@@ -5,8 +5,8 @@ MIN_SDK      ?= 26
 PROFILE      ?= release
 CRATE        := keygo-bindings
 LIB_NAME     := libkeygo_bindings.so
-JNI_DIR      := ../src/main/jniLibs
-KOTLIN_OUT   := ../build/generated/source/uniffi/
+JNI_DIR      := ../build/generated/source/uniffi/jniLibs
+KOTLIN_OUT   := ../build/generated/source/uniffi/kotlin/
 BINDGEN_ABI  := arm64-v8a
 BINDGEN_TRIPLE := aarch64-linux-android
 

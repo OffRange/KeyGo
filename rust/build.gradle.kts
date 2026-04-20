@@ -42,7 +42,8 @@ android {
     // the Kotlin/Java compiler picks up the generated bindings.
     sourceSets {
         getByName("main") {
-            kotlin.directories += "build/generated/source/uniffi"
+            jniLibs.directories += "build/generated/source/uniffi/jniLibs"
+            kotlin.directories += "build/generated/source/uniffi/kotlin"
         }
     }
 
