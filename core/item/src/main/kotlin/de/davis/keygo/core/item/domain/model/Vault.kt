@@ -21,4 +21,20 @@ data class Vault(
             keyNonce = vaultKeyNonce,
         )
     )
+
+    enum class Icon {
+        School,
+        Work,
+        MenuBook,
+        Home,
+        Flight,
+        ShoppingCart,
+        AccountBalanceWallet,
+        Favorite,
+        Restaurant,
+        FitnessCenter,
+        SportsEsports,
+        MusicNote,
+        Star
+    }
 }
