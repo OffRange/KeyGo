@@ -82,7 +82,7 @@ val buildRust by tasks.register<Exec>("buildRust") {
     description = "Build Rust library"
 
     onlyIf {
-        properties["buildRust"].toString().toBoolean()
+        providers.gradleProperty("rust.compile").getOrElse("true").toBoolean()
     }
 
     workingDir = projectDir.resolve("rust-code")
