@@ -72,7 +72,8 @@ class CreateAccessUseCase(
                     id = accountHolder.defaultVault.id,
                     name = vaultName,
                     wrappedVaultKey = wrappedKey.ciphertext,
-                    vaultKeyNonce = wrappedKey.nonce
+                    vaultKeyNonce = wrappedKey.nonce,
+                    icon = Vault.Icon.Default
                 )
             )
         } ?: return Result.Failure(CreateAccessError.WrappingFailed)

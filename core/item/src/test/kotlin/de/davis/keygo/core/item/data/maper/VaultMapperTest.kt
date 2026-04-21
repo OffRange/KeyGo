@@ -18,6 +18,7 @@ class VaultMapperTest {
             wrappedKey = byteArrayOf(1, 2, 3),
             keyNonce = byteArrayOf(4, 5, 6),
         ),
+        icon = Vault.Icon.Default,
     )
 
     // toData
@@ -52,6 +53,7 @@ class VaultMapperTest {
             id = id,
             name = "Personal",
             keyInformation = EntityKeyInformation(byteArrayOf(), byteArrayOf()),
+            icon = Vault.Icon.Default,
         )
 
         assertEquals(id, entity.toDomain().id)
@@ -63,6 +65,7 @@ class VaultMapperTest {
             id = newVaultId(),
             name = "Family",
             keyInformation = EntityKeyInformation(byteArrayOf(), byteArrayOf()),
+            icon = Vault.Icon.Default,
         )
 
         assertEquals("Family", entity.toDomain().name)
@@ -77,17 +80,19 @@ class VaultMapperTest {
                 wrappedKey = byteArrayOf(10, 20),
                 keyNonce = byteArrayOf(30, 40),
             ),
+            icon = Vault.Icon.Default,
         )
 
         val domain = entity.toDomain()
         assertContentEquals(byteArrayOf(10, 20), domain.keyInformation.wrappedKey)
         assertContentEquals(byteArrayOf(30, 40), domain.keyInformation.keyNonce)
+        assertEquals(Vault.Icon.Default, domain.icon)
     }
 
     // round-trip
 
     @Test
-    fun `round-trip domain→entity→domain preserves all fields`() {
+    fun `round-trip domain-entity-domain preserves all fields`() {
         val original = testVault()
         val roundTripped = original.toData().toDomain()
 

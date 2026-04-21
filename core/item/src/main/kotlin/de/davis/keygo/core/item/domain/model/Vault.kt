@@ -7,11 +7,13 @@ data class Vault(
     val id: VaultId = newVaultId(),
     val name: String,
     val keyInformation: KeyInformation,
+    val icon: Icon,
 ) {
     constructor(
         name: String,
         wrappedVaultKey: ByteArray,
         vaultKeyNonce: ByteArray,
+        icon: Icon,
         id: VaultId = newVaultId(),
     ) : this(
         id = id,
@@ -19,7 +21,8 @@ data class Vault(
         keyInformation = KeyInformation(
             wrappedKey = wrappedVaultKey,
             keyNonce = vaultKeyNonce,
-        )
+        ),
+        icon = icon
     )
 
     enum class Icon {
@@ -27,6 +30,7 @@ data class Vault(
         Work,
         MenuBook,
         Home,
+        Person,
         Flight,
         ShoppingCart,
         AccountBalanceWallet,
@@ -35,6 +39,10 @@ data class Vault(
         FitnessCenter,
         SportsEsports,
         MusicNote,
-        Star
+        Star;
+
+        companion object {
+            val Default = Person
+        }
     }
 }

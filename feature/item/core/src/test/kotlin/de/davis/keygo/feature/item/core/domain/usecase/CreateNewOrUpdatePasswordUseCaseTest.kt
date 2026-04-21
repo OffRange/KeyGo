@@ -38,6 +38,7 @@ class CreateNewOrUpdatePasswordUseCaseTest {
         id = newVaultId(),
         name = "Default vault",
         keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),
+        icon = Vault.Icon.Default,
     )
 
     private val cryptoProvider = FakeCryptographicScopeProvider()
