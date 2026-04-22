@@ -85,6 +85,10 @@ protobuf {
 
     generateProtoTasks {
         all().forEach { task ->
+            if (task.name.contains("TestFixtures", ignoreCase = true)) {
+                task.enabled = false
+                return@forEach
+            }
             task.builtins {
                 create("java") {
                     option("lite")
