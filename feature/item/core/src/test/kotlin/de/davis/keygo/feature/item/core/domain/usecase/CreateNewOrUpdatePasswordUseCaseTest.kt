@@ -56,7 +56,9 @@ class CreateNewOrUpdatePasswordUseCaseTest {
 
     @Test
     fun `create with blank name returns BlankName error`() = runTest {
-        val result = useCase(UpsertPassword.create(name = "", password = "secret"))
+        val result = useCase(
+            UpsertPassword.create(vaultId = defaultVault.id, name = "", password = "secret")
+        )
 
         assertTrue(result.isFailure())
         assertEquals(PasswordError.BlankName, result.error.single())
@@ -64,7 +66,9 @@ class CreateNewOrUpdatePasswordUseCaseTest {
 
     @Test
     fun `create with whitespace-only name returns BlankName error`() = runTest {
-        val result = useCase(UpsertPassword.create(name = "   ", password = "secret"))
+        val result = useCase(
+            UpsertPassword.create(vaultId = defaultVault.id, name = "   ", password = "secret")
+        )
 
         assertTrue(result.isFailure())
         assertEquals(PasswordError.BlankName, result.error.single())
@@ -72,7 +76,9 @@ class CreateNewOrUpdatePasswordUseCaseTest {
 
     @Test
     fun `create with blank password returns BlankPassword error`() = runTest {
-        val result = useCase(UpsertPassword.create(name = "My site", password = ""))
+        val result = useCase(
+            UpsertPassword.create(vaultId = defaultVault.id, name = "My site", password = "")
+        )
 
         assertTrue(result.isFailure())
         assertEquals(PasswordError.BlankPassword, result.error.single())
@@ -80,7 +86,9 @@ class CreateNewOrUpdatePasswordUseCaseTest {
 
     @Test
     fun `create with blank name and blank password returns both errors`() = runTest {
-        val result = useCase(UpsertPassword.create(name = "", password = ""))
+        val result = useCase(
+            UpsertPassword.create(vaultId = defaultVault.id, name = "", password = "")
+        )
 
         assertTrue(result.isFailure())
         assertContains(result.error, PasswordError.BlankName)
@@ -137,14 +145,18 @@ class CreateNewOrUpdatePasswordUseCaseTest {
 
     @Test
     fun `create with valid fields returns Success`() = runTest {
-        val result = useCase(UpsertPassword.create(name = "My site", password = "s3cr3t"))
+        val result = useCase(
+            UpsertPassword.create(vaultId = defaultVault.id, name = "My site", password = "s3cr3t")
+        )
 
         assertTrue(result.isSuccess())
     }
 
     @Test
     fun `create stores password with correct name`() = runTest {
-        val result = useCase(UpsertPassword.create(name = "My site", password = "s3cr3t"))
+        val result = useCase(
+            UpsertPassword.create(vaultId = defaultVault.id, name = "My site", password = "s3cr3t")
+        )
 
         val stored = storedById(result.getOrNull())
         assertNotNull(stored)
@@ -155,6 +167,7 @@ class CreateNewOrUpdatePasswordUseCaseTest {
     fun `create with optional username and note stores them`() = runTest {
         val result = useCase(
             UpsertPassword.create(
+                vaultId = defaultVault.id,
                 name = "My site",
                 password = "s3cr3t",
                 username = "user@example.com",
@@ -169,7 +182,9 @@ class CreateNewOrUpdatePasswordUseCaseTest {
 
     @Test
     fun `create without optional fields stores nulls`() = runTest {
-        val result = useCase(UpsertPassword.create(name = "My site", password = "s3cr3t"))
+        val result = useCase(
+            UpsertPassword.create(vaultId = defaultVault.id, name = "My site", password = "s3cr3t")
+        )
 
         val stored = storedById(result.getOrNull())
         assertEquals(null, stored?.username)
@@ -189,7 +204,9 @@ class CreateNewOrUpdatePasswordUseCaseTest {
             estimator = FakePasswordStrengthEstimator(Password.Score.Weak),
         )
 
-        val result = localUseCase(UpsertPassword.create(name = "My site", password = "123"))
+        val result = localUseCase(
+            UpsertPassword.create(vaultId = defaultVault.id, name = "My site", password = "123")
+        )
 
         val stored = freshPasswordRepo.getPasswordById(result.getOrNull()!!)
         assertEquals(Password.Score.Weak, stored?.score)
@@ -257,11 +274,11 @@ class CreateNewOrUpdatePasswordUseCaseTest {
     // Failure
 
     @Test
-    fun `update with unknown id returns InvalidVaultId error`() = runTest {
+    fun `update with unknown id returns InvalidItemId error`() = runTest {
         val result = useCase(UpsertPassword.update(itemId = newItemId()))
 
         assertTrue(result.isFailure())
-        assertContains(result.error, PasswordError.InvalidVaultId)
+        assertContains(result.error, PasswordError.InvalidItemId)
     }
 
     // Crypto scope
@@ -276,6 +293,7 @@ class CreateNewOrUpdatePasswordUseCaseTest {
 
         val result = localUseCase(
             UpsertPassword.create(
+                vaultId = defaultVault.id,
                 name = "My site",
                 password = plaintextPassword,
                 totpSecret = plaintextTotp,
@@ -318,7 +336,9 @@ class CreateNewOrUpdatePasswordUseCaseTest {
         val cause = RuntimeException("disk full")
         passwordRepository.createOrUpdateError = cause
 
-        val result = useCase(UpsertPassword.create(name = "My site", password = "s3cr3t"))
+        val result = useCase(
+            UpsertPassword.create(vaultId = defaultVault.id, name = "My site", password = "s3cr3t")
+        )
 
         assertTrue(result.isFailure())
         val error = assertIs<PasswordError.DatabaseError>(result.error.single())

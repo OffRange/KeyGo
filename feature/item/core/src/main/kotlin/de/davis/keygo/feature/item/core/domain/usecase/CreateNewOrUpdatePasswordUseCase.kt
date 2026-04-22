@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.item.core.domain.usecase
 
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.Password
@@ -65,26 +66,33 @@ class CreateNewOrUpdatePasswordUseCase(
         if (errors.isNotEmpty()) return Result.Failure(errors)
 
         val updatedPassword = when (upsert.upsertType) {
-            UpsertType.Create -> buildCreate(upsert)
+            is UpsertType.Create -> buildCreate(upsert, upsert.upsertType.vaultId)
             is UpsertType.Update -> buildUpdate(upsert, upsert.upsertType.id)
-                ?: return Result.Failure(setOf(PasswordError.InvalidVaultId))
         }
 
-        return upsertVaultItem(updatedPassword).mapFailure {
-            setOf(PasswordError.DatabaseError(it))
+        return when (updatedPassword) {
+            is Result.Success -> upsertVaultItem(updatedPassword.success).mapFailure {
+                setOf(PasswordError.DatabaseError(it))
+            }
+
+            is Result.Failure -> Result.Failure(setOf(updatedPassword.error))
         }
     }
 
-    private suspend fun buildCreate(upsert: UpsertPassword): Password {
+    private suspend fun buildCreate(
+        upsert: UpsertPassword,
+        vaultId: VaultId
+    ): Result<Password, PasswordError> {
         val itemId = newItemId()
 
-        val activeVaultKeyInformation = vaultRepository.getActiveVaultKeyInformation()
-        val aad = ItemAad(itemId = itemId, vaultId = activeVaultKeyInformation.vaultId)
+        val vaultKeyInformation = vaultRepository.getKeyInformation(vaultId)
+            ?: return Result.Failure(PasswordError.InvalidVaultId)
+        val aad = ItemAad(itemId = itemId, vaultId = vaultId)
 
-        return cryptographicScopeProvider.itemScope(
+        val password = cryptographicScopeProvider.itemScope(
             wrappedVaultKeyInformation = WrappedVaultKeyInformation(
-                wrappedVaultKey = activeVaultKeyInformation.keyInformation,
-                vaultId = activeVaultKeyInformation.vaultId
+                wrappedVaultKey = vaultKeyInformation,
+                vaultId = vaultId
             ),
             wrappedItemKeyInformation = WrappedItemKeyInformation(itemAad = aad),
         ) {
@@ -112,18 +120,25 @@ class CreateNewOrUpdatePasswordUseCase(
                     note = upsert.note.getValue(),
                     pinned = false,
                     keyInformation = wrappedItemKey.await(),
-                    vaultId = activeVaultKeyInformation.vaultId,
+                    vaultId = vaultId,
                 )
             }
         }
+
+        return Result.Success(password)
     }
 
-    private suspend fun buildUpdate(upsert: UpsertPassword, id: ItemId): Password? {
-        val existing = passwordRepository.getPasswordById(id) ?: return null
+    private suspend fun buildUpdate(
+        upsert: UpsertPassword,
+        id: ItemId
+    ): Result<Password, PasswordError> {
+        val existing = passwordRepository.getPasswordById(id)
+            ?: return Result.Failure(PasswordError.InvalidItemId)
 
-        val vaultKeyInfo = vaultRepository.getKeyInformation(existing.vaultId) ?: return null
+        val vaultKeyInfo = vaultRepository.getKeyInformation(existing.vaultId)
+            ?: return Result.Failure(PasswordError.InvalidVaultId)
 
-        return cryptographicScopeProvider.itemScope(
+        val password = cryptographicScopeProvider.itemScope(
             wrappedVaultKeyInformation = WrappedVaultKeyInformation(
                 wrappedVaultKey = vaultKeyInfo,
                 vaultId = existing.vaultId
@@ -152,5 +167,7 @@ class CreateNewOrUpdatePasswordUseCase(
                 )
             }
         }
+
+        return Result.Success(password)
     }
 }

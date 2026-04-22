@@ -194,7 +194,8 @@ internal class PasswordViewModel(
                     domains = password.domainInfos,
                     notesTextFieldState = TextFieldState(password.note ?: ""),
                     dialogState = DialogState.None,
-                    updating = true
+                    updating = true,
+                    selectedVaultId = password.vaultId,
                 )
             }
 
@@ -249,6 +250,7 @@ internal class PasswordViewModel(
                             note = fieldUpdate(state.notesTextFieldState.text.toString())
                         )
                     } ?: UpsertPassword.create(
+                        vaultId = state.selectedVaultId,
                         name = state.nameTextFieldState.text.toString(),
                         username = state.usernameTextFieldState.text.toString(),
                         domains = state.domains,
@@ -256,6 +258,7 @@ internal class PasswordViewModel(
                         totpSecret = state.totpTextFieldState.text.toString(),
                         note = state.notesTextFieldState.text.toString()
                     )
+
                     createNewOrUpdatePassword(
                         upsert = upsert
                     ).onSuccess {
