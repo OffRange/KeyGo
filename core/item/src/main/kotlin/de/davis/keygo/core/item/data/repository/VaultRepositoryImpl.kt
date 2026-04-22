@@ -7,6 +7,7 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.ActiveVaultKeyInformation
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Vault
+import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import org.koin.core.annotation.Single
 
@@ -31,4 +32,7 @@ internal class VaultRepositoryImpl(
     }
 
     override suspend fun deleteVault(vaultId: VaultId): Boolean = vaultDao.deleteVault(vaultId)
+
+    override suspend fun getAllVaultMetadata(): List<VaultMetadata> =
+        vaultDao.getAllVaultMetadata().map { it.toDomain() }
 }

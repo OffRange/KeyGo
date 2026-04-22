@@ -4,6 +4,7 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.ActiveVaultKeyInformation
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Vault
+import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,6 +59,14 @@ class FakeVaultRepository : VaultRepository {
             it.filterKeys { id -> id != vaultId }
         }
         return true
+    }
+
+    override suspend fun getAllVaultMetadata(): List<VaultMetadata> = store.value.values.map {
+        VaultMetadata(
+            vaultId = it.id,
+            name = it.name,
+            icon = it.icon
+        )
     }
 
     fun observeVaults(): Flow<List<Vault>> = store.map { it.values.toList() }

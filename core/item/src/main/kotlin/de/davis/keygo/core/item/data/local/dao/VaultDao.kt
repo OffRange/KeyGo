@@ -8,6 +8,7 @@ import androidx.room.Transaction
 import de.davis.keygo.core.item.data.local.entity.KeyInformation
 import de.davis.keygo.core.item.data.local.entity.VaultEntity
 import de.davis.keygo.core.item.data.local.pojo.ActiveVaultKeyInformation
+import de.davis.keygo.core.item.data.local.pojo.VaultMetadata
 import de.davis.keygo.core.item.domain.alias.VaultId
 
 @Dao
@@ -51,4 +52,7 @@ internal interface VaultDao {
         delete(id)
         return true
     }
+
+    @Query("SELECT id as vaultId, name, icon FROM vault")
+    suspend fun getAllVaultMetadata(): List<VaultMetadata>
 }
