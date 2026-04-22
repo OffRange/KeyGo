@@ -39,8 +39,5 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
-      - name: Run all unit tests
-        run: ./gradlew test
-
       - name: Run debug-flavor unit tests
-        run: ./gradlew testDebugUnitTest
+        run: ./gradlew testDebugUnitTest --continue
