@@ -26,6 +26,9 @@ class FakeVaultRepository : VaultRepository {
     /** Exception thrown by the next [createAndActivateVault] call (cleared after use). */
     var createError: Throwable? = null
 
+    /**
+     * Initialize this repo with [vaults]. This automatically sets the first vault as active
+     */
     suspend fun seed(vararg vaults: Vault) {
         store.update { it + vaults.associateBy { v -> v.id } }
         setActiveVault(vaults.first().id)
@@ -39,9 +42,6 @@ class FakeVaultRepository : VaultRepository {
             )
         }
     }
-
-    override suspend fun getActiveVaultKeyInformation(): ActiveVaultKeyInformation =
-        activeVault.value!!
 
     override suspend fun getKeyInformation(vaultId: VaultId): KeyInformation? =
         store.value[vaultId]?.keyInformation
@@ -61,13 +61,17 @@ class FakeVaultRepository : VaultRepository {
         return true
     }
 
-    override suspend fun getAllVaultMetadata(): List<VaultMetadata> = store.value.values.map {
-        VaultMetadata(
-            vaultId = it.id,
-            name = it.name,
-            icon = it.icon
-        )
-    }
+    override fun observeAllVaultMetadata(): Flow<List<VaultMetadata>> =
+        store.map { vaults -> vaults.values.map { it.toMetadata() } }
+
+    override fun observeActiveVaultId(): Flow<VaultId?> =
+        activeVault.map { it?.vaultId }
 
     fun observeVaults(): Flow<List<Vault>> = store.map { it.values.toList() }
+
+    private fun Vault.toMetadata() = VaultMetadata(
+        vaultId = id,
+        name = name,
+        icon = icon,
+    )
 }

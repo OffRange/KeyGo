@@ -6,6 +6,7 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.repository.ItemRepository
+import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.security.domain.crypto.decryptSecretData
 import de.davis.keygo.core.security.domain.usecase.PasswordWithCryptoScopeUseCase
@@ -61,14 +62,17 @@ internal class ViewPasswordViewModel(
     private val registrableDomainResolver: RegistrableDomainResolver,
     private val getTotpSecret: GetTotpSecretFromUrlUseCase,
     private val observePasswordWithCryptoScope: PasswordWithCryptoScopeUseCase,
+    vaultRepository: VaultRepository,
 ) : ViewModel() {
+
+    private val _metadata = vaultRepository.observeAllVaultMetadata()
 
     private val _modificationDialogState = MutableStateFlow<ModificationDialog?>(null)
     private val _scanning = MutableStateFlow(false)
     private val _itemId = MutableStateFlow<ItemId?>(null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val stateWithoutModification = _itemId
+    private val _stateWithoutModification = _itemId
         .filterNotNull()
         .distinctUntilChanged()
         .flatMapLatest { id ->
@@ -112,11 +116,16 @@ internal class ViewPasswordViewModel(
 
 
     val state = combine(
-        stateWithoutModification,
+        _stateWithoutModification,
         _modificationDialogState,
-        _scanning
-    ) { state, modificationDialog, scanning ->
-        state.copy(modificationDialog = modificationDialog, scanning = scanning)
+        _scanning,
+        _metadata,
+    ) { state, modificationDialog, scanning, vaults ->
+        state.copy(
+            modificationDialog = modificationDialog,
+            scanning = scanning,
+            vaults = vaults,
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),

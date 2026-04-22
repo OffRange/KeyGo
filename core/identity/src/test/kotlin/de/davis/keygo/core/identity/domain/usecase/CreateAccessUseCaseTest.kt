@@ -109,10 +109,6 @@ class CreateAccessUseCaseTest {
 
         val vault = vaultRepository.observeVaults().first().single()
         assertEquals("My Vault", vault.name)
-
-        val activeVaultKeyInfo = vaultRepository.getActiveVaultKeyInformation()
-        assertEquals(vault.keyInformation, activeVaultKeyInfo.keyInformation)
-        assertEquals(vault.id, activeVaultKeyInfo.vaultId)
     }
 
     @Test

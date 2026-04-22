@@ -10,6 +10,7 @@ import de.davis.keygo.core.item.data.local.entity.VaultEntity
 import de.davis.keygo.core.item.data.local.pojo.ActiveVaultKeyInformation
 import de.davis.keygo.core.item.data.local.pojo.VaultMetadata
 import de.davis.keygo.core.item.domain.alias.VaultId
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 internal interface VaultDao {
@@ -53,6 +54,9 @@ internal interface VaultDao {
         return true
     }
 
+    @Query("SELECT vaultId FROM active_vault WHERE id = 1")
+    fun observeActiveVaultId(): Flow<VaultId?>
+
     @Query("SELECT id as vaultId, name, icon FROM vault")
-    suspend fun getAllVaultMetadata(): List<VaultMetadata>
+    fun observeAllVaultMetadata(): Flow<List<VaultMetadata>>
 }

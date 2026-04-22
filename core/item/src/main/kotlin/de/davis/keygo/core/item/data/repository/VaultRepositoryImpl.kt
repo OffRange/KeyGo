@@ -4,11 +4,12 @@ import de.davis.keygo.core.item.data.local.dao.VaultDao
 import de.davis.keygo.core.item.data.maper.toData
 import de.davis.keygo.core.item.data.maper.toDomain
 import de.davis.keygo.core.item.domain.alias.VaultId
-import de.davis.keygo.core.item.domain.model.ActiveVaultKeyInformation
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.item.domain.repository.VaultRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import org.koin.core.annotation.Single
 
 @Single
@@ -18,10 +19,6 @@ internal class VaultRepositoryImpl(
     override suspend fun setActiveVault(vaultId: VaultId) {
         vaultDao.setActive(vaultId)
     }
-
-    override suspend fun getActiveVaultKeyInformation(): ActiveVaultKeyInformation =
-        vaultDao.getActiveKeyInfo().toDomain()
-
 
     override suspend fun getKeyInformation(vaultId: VaultId): KeyInformation? =
         vaultDao.getKeyInfoById(vaultId)?.toDomain()
@@ -33,6 +30,8 @@ internal class VaultRepositoryImpl(
 
     override suspend fun deleteVault(vaultId: VaultId): Boolean = vaultDao.deleteVault(vaultId)
 
-    override suspend fun getAllVaultMetadata(): List<VaultMetadata> =
-        vaultDao.getAllVaultMetadata().map { it.toDomain() }
+    override fun observeAllVaultMetadata(): Flow<List<VaultMetadata>> =
+        vaultDao.observeAllVaultMetadata().map { list -> list.map { it.toDomain() } }
+
+    override fun observeActiveVaultId(): Flow<VaultId?> = vaultDao.observeActiveVaultId()
 }
