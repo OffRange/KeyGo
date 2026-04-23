@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.item.create.presentation.password.model
 
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.feature.item.core.presentation.password.model.FieldType
 
 internal sealed interface PasswordUiEvent {
@@ -24,4 +25,6 @@ internal sealed interface PasswordUiEvent {
     data object OnOverrideTotpFieldsKept : PasswordUiEvent
 
     data class OnPasswordGenerated(val password: String) : PasswordUiEvent
+
+    data class OnVaultSelected(val vaultId: VaultId) : PasswordUiEvent
 }

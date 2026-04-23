@@ -1,21 +1,29 @@
 package de.davis.keygo.feature.item.create.presentation.password.model
 
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.runtime.Immutable
-import de.davis.keygo.core.item.domain.alias.VaultId
-import de.davis.keygo.core.item.domain.alias.newVaultId
+import androidx.compose.runtime.Stable
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
+import de.davis.keygo.feature.item.create.presentation.model.VaultsState
 
-@Immutable
-internal data class PasswordUiState(
+@Stable
+internal sealed interface PasswordUiState {
+    data object Loading : PasswordUiState
+
+    data class Ready(
+        val base: PasswordBaseState,
+        val vaultsState: VaultsState,
+    ) : PasswordUiState
+}
+
+@Stable
+internal data class PasswordBaseState(
     val nameTextFieldState: TextFieldState = TextFieldState(),
     val notesTextFieldState: TextFieldState = TextFieldState(),
     val passwordTextFieldState: TextFieldState = TextFieldState(),
     val totpTextFieldState: TextFieldState = TextFieldState(),
     val usernameTextFieldState: TextFieldState = TextFieldState(),
-    val selectedVaultId: VaultId = newVaultId(),
     val domains: Set<DomainInfo> = emptySet(),
     val nameExists: Boolean = false,
     val strengthScore: Password.Score = Password.Score.None,
