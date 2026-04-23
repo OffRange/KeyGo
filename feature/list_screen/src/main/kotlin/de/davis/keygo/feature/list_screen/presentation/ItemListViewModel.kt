@@ -13,7 +13,10 @@ import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
+import de.davis.keygo.feature.list_screen.domain.model.SelectedVault
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
+import de.davis.keygo.feature.list_screen.domain.usecase.ObserveVaultsAndSelectionUseCase
+import de.davis.keygo.feature.list_screen.domain.usecase.SelectVaultUseCase
 import de.davis.keygo.feature.list_screen.presentation.mapper.toAvailableFilterOptions
 import de.davis.keygo.feature.list_screen.presentation.mapper.toBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.Event
@@ -54,9 +57,12 @@ internal class ItemListViewModel(
     private val snackbarManager: SnackbarManager,
     private val itemRepository: ItemRepository,
     private val filterUseCase: FilterUseCase,
+    private val selectVault: SelectVaultUseCase,
+    observeVaultsAndSelection: ObserveVaultsAndSelectionUseCase,
     passwordRepository: PasswordRepository,
 ) : ViewModel() {
 
+    private val vaultsAndSelection = observeVaultsAndSelection()
     private val allItems = itemRepository.observeLiteVaultItems()
 
     private val submittedSearchQuery = MutableStateFlow("")
@@ -88,19 +94,22 @@ internal class ItemListViewModel(
     private val selectedItemIds = MutableStateFlow(emptySet<ItemId>())
     private val highlightedId = MutableStateFlow<ItemId?>(null)
 
-    val listItemState = combine(
+    val listItemState = combine6(
+        vaultsAndSelection,
         filteredItems,
         searchResults,
         selectedItemIds,
         submittedSearchQuery,
         highlightedId,
-    ) { items, searchResults, selectedIds, submittedSearchQuery, highlightedId ->
+    ) { vaultsAndSelection, items, searchResults, selectedIds, submittedSearchQuery, highlightedId ->
         ListItemState(
             items = items,
             searchResults = searchResults,
             hasSearchQuery = submittedSearchQuery.isNotBlank(),
             selectedItemIds = selectedIds,
             highlightedId = highlightedId,
+            vaults = vaultsAndSelection.vaults,
+            selectedVault = vaultsAndSelection.selection,
         )
     }.onStart {
         observeSearchState()
@@ -157,6 +166,10 @@ internal class ItemListViewModel(
 
             is FilterAction.ClearFilters -> filterState.update { FilterState.Default }
         }
+    }
+
+    fun onVaultSelected(selection: SelectedVault) {
+        viewModelScope.launch { selectVault(selection) }
     }
 
     private fun <T> Set<T>.toggle(element: T): Set<T> =
@@ -269,4 +282,24 @@ internal class ItemListViewModel(
             }
         }
     }
+}
+
+private fun <T1, T2, T3, T4, T5, T6, R> combine6(
+    flow1: Flow<T1>,
+    flow2: Flow<T2>,
+    flow3: Flow<T3>,
+    flow4: Flow<T4>,
+    flow5: Flow<T5>,
+    flow6: Flow<T6>,
+    transform: (T1, T2, T3, T4, T5, T6) -> R
+): Flow<R> = combine(flow1, flow2, flow3, flow4, flow5, flow6) { arrayOfFlows ->
+    @Suppress("UNCHECKED_CAST")
+    transform(
+        arrayOfFlows[0] as T1,
+        arrayOfFlows[1] as T2,
+        arrayOfFlows[2] as T3,
+        arrayOfFlows[3] as T4,
+        arrayOfFlows[4] as T5,
+        arrayOfFlows[5] as T6,
+    )
 }
