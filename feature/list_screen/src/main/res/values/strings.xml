@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="search_your_vault">Search your Vault</string>
-    
+
     <plurals name="items_deleted">
         <item quantity="one">1 item deleted</item>
         <item quantity="other">%d items deleted</item>
@@ -23,4 +23,11 @@
     <string name="labels">Labels</string>
 
     <string name="only_pinned_items">Only pinned Items</string>
+
+    <string name="all_vaults">All Vaults</string>
+    <string name="vaults">Vaults</string>
+    <string name="vault_name">Vault Name</string>
+    <string name="vault_name_placeholder">e.g. Work</string>
+    <string name="create_new_vault">Create new Vault</string>
+    <string name="icon">Icon</string>
 </resources>

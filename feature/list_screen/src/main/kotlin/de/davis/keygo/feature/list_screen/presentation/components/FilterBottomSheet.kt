@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.list_screen.presentation.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -27,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.SheetState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -79,7 +81,6 @@ internal fun FilterBottomSheet(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun FilterBottomSheetContent(
     state: FilterBottomSheetState,
@@ -142,7 +143,6 @@ private fun FilterBottomSheetContent(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ItemSection(
     state: ItemSectionState,
@@ -289,7 +289,6 @@ private fun SortSection(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun PasswordSection(
     state: PasswordSectionState,
@@ -372,41 +371,38 @@ private fun SortDirection.icon(): ImageVector = when (this) {
 private val DefaultHorizontalArrangement
     get() = Arrangement.spacedBy(8.dp)
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Preview
 @Composable
 private fun FilterBottomSheetContentPreview() {
     KeyGoTheme {
-        FilterBottomSheet(
-            state = FilterBottomSheetState(
-                sortDirection = SortDirection.Ascending,
-                itemSection = ItemSectionState(
-                    showPinnedSwitch = true,
-                    onlyPinnedChecked = true,
-                    itemTypeChips = VaultItemType.entries.map { type ->
-                        FilterChipState(value = type, selected = false)
-                    },
-                    labelChips = listOf(
-                        FilterChipState(value = "Label1", selected = false),
-                        FilterChipState(value = "Label2", selected = true),
+        Surface {
+            FilterBottomSheetContent(
+                state = FilterBottomSheetState(
+                    sortDirection = SortDirection.Ascending,
+                    itemSection = ItemSectionState(
+                        showPinnedSwitch = true,
+                        onlyPinnedChecked = true,
+                        itemTypeChips = VaultItemType.entries.map { type ->
+                            FilterChipState(value = type, selected = false)
+                        },
+                        labelChips = listOf(
+                            FilterChipState(value = "Label1", selected = false),
+                            FilterChipState(value = "Label2", selected = true),
+                        ),
                     ),
-                ),
-                passwordSection = PasswordSectionState(
-                    scoreChips = listOf(
-                        FilterChipState(value = Password.Score.Excellent, selected = false),
-                        FilterChipState(value = Password.Score.Strong, selected = false),
-                        FilterChipState(value = Password.Score.Moderate, selected = true),
-                        FilterChipState(value = Password.Score.Weak, selected = true),
-                        FilterChipState(value = Password.Score.Ridiculous, selected = false),
+                    passwordSection = PasswordSectionState(
+                        scoreChips = listOf(
+                            FilterChipState(value = Password.Score.Excellent, selected = false),
+                            FilterChipState(value = Password.Score.Strong, selected = false),
+                            FilterChipState(value = Password.Score.Moderate, selected = true),
+                            FilterChipState(value = Password.Score.Weak, selected = true),
+                            FilterChipState(value = Password.Score.Ridiculous, selected = false),
+                        ),
                     ),
+                    isDefault = false,
                 ),
-                isDefault = false,
-            ),
-            onAction = {},
-            onDismiss = {},
-            sheetState = rememberModalBottomSheetState(
-                skipPartiallyExpanded = true,
-            ),
-        )
+                onAction = {},
+            )
+        }
     }
 }

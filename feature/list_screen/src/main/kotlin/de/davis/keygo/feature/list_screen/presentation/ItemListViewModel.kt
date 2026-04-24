@@ -19,6 +19,7 @@ import de.davis.keygo.feature.list_screen.domain.usecase.ObserveVaultsAndSelecti
 import de.davis.keygo.feature.list_screen.domain.usecase.SelectVaultUseCase
 import de.davis.keygo.feature.list_screen.presentation.mapper.toAvailableFilterOptions
 import de.davis.keygo.feature.list_screen.presentation.mapper.toBottomSheetState
+import de.davis.keygo.feature.list_screen.presentation.model.CreateVaultRequest
 import de.davis.keygo.feature.list_screen.presentation.model.Event
 import de.davis.keygo.feature.list_screen.presentation.model.FilterAction
 import de.davis.keygo.feature.list_screen.presentation.model.FilterBottomSheetState
@@ -170,6 +171,10 @@ internal class ItemListViewModel(
 
     fun onVaultSelected(selection: SelectedVault) {
         viewModelScope.launch { selectVault(selection) }
+    }
+
+    fun onCreateVaultRequest(request: CreateVaultRequest) {
+        // TODO: create vault, select it and close sheet
     }
 
     private fun <T> Set<T>.toggle(element: T): Set<T> =
