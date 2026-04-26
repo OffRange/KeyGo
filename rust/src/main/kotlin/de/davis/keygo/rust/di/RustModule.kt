@@ -10,6 +10,8 @@ import de.davisalessandro.keygo.rust.KeyWrapper
 import de.davisalessandro.keygo.rust.KeyWrapperInterface
 import de.davisalessandro.keygo.rust.RustPasskey
 import de.davisalessandro.keygo.rust.RustPasskeyInterface
+import de.davisalessandro.keygo.rust.VaultManager
+import de.davisalessandro.keygo.rust.VaultManagerInterface
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Module
 import org.koin.core.annotation.Single
@@ -32,4 +34,7 @@ object RustModule {
 
     @Single
     internal fun provideItemManager(): ItemManagerInterface = ItemManager()
+
+    @Single
+    internal fun provideVaultManager(): VaultManagerInterface = VaultManager()
 }
