@@ -12,8 +12,11 @@ import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
+import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
 import de.davis.keygo.feature.list_screen.domain.model.SelectedVault
+import de.davis.keygo.feature.list_screen.domain.usecase.CreateAndSelectVaultUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.ObserveVaultsAndSelectionUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.SelectVaultUseCase
@@ -24,6 +27,8 @@ import de.davis.keygo.feature.list_screen.presentation.model.Event
 import de.davis.keygo.feature.list_screen.presentation.model.FilterAction
 import de.davis.keygo.feature.list_screen.presentation.model.FilterBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.ListItemState
+import de.davis.keygo.feature.list_screen.presentation.model.VaultState
+import de.davis.keygo.feature.list_screen.presentation.model.VaultStateSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -59,6 +64,7 @@ internal class ItemListViewModel(
     private val itemRepository: ItemRepository,
     private val filterUseCase: FilterUseCase,
     private val selectVault: SelectVaultUseCase,
+    private val createAndSelectVault: CreateAndSelectVaultUseCase,
     observeVaultsAndSelection: ObserveVaultsAndSelectionUseCase,
     passwordRepository: PasswordRepository,
 ) : ViewModel() {
@@ -95,22 +101,36 @@ internal class ItemListViewModel(
     private val selectedItemIds = MutableStateFlow(emptySet<ItemId>())
     private val highlightedId = MutableStateFlow<ItemId?>(null)
 
+    private val vaultStateSettings = MutableStateFlow(VaultStateSettings())
+
+    private val vaultState = combine(
+        vaultStateSettings,
+        vaultsAndSelection
+    ) { settings, vaultsAndSelection ->
+        VaultState(
+            vaults = vaultsAndSelection.vaults,
+            selectedVault = vaultsAndSelection.selection,
+            showSelection = settings.showSelection,
+            showCreationDialog = settings.showCreationDialog,
+            error = settings.error,
+        )
+    }
+
     val listItemState = combine6(
-        vaultsAndSelection,
+        vaultState,
         filteredItems,
         searchResults,
         selectedItemIds,
         submittedSearchQuery,
         highlightedId,
-    ) { vaultsAndSelection, items, searchResults, selectedIds, submittedSearchQuery, highlightedId ->
+    ) { vaultState, items, searchResults, selectedIds, submittedSearchQuery, highlightedId ->
         ListItemState(
             items = items,
             searchResults = searchResults,
             hasSearchQuery = submittedSearchQuery.isNotBlank(),
             selectedItemIds = selectedIds,
             highlightedId = highlightedId,
-            vaults = vaultsAndSelection.vaults,
-            selectedVault = vaultsAndSelection.selection,
+            vaultState = vaultState
         )
     }.onStart {
         observeSearchState()
@@ -173,8 +193,43 @@ internal class ItemListViewModel(
         viewModelScope.launch { selectVault(selection) }
     }
 
-    fun onCreateVaultRequest(request: CreateVaultRequest) {
-        // TODO: create vault, select it and close sheet
+    fun onCreateVaultRequest() {
+        vaultStateSettings.update { it.copy(showSelection = false, showCreationDialog = true) }
+    }
+
+    fun onCreateVault(request: CreateVaultRequest) {
+        viewModelScope.launch {
+            createAndSelectVault(
+                name = request.name,
+                icon = request.icon
+            ).onFailure { error ->
+                vaultStateSettings.update {
+                    it.copy(error = error)
+                }
+            }.onSuccess {
+                onDismissVaultFlow()
+            }
+        }
+    }
+
+    fun onDismissVaultFlow() {
+        vaultStateSettings.update {
+            it.copy(
+                showSelection = false,
+                showCreationDialog = false,
+                error = null
+            )
+        }
+    }
+
+    fun onVaultSelectorClick() {
+        vaultStateSettings.update {
+            it.copy(
+                showSelection = true,
+                showCreationDialog = false,
+                error = null
+            )
+        }
     }
 
     private fun <T> Set<T>.toggle(element: T): Set<T> =

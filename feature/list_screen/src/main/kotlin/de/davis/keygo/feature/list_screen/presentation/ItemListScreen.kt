@@ -111,6 +111,9 @@ fun ItemListScreen(
         scrollBehavior = scrollBehavior,
         onVaultSelect = viewModel::onVaultSelected,
         onCreateVaultRequest = viewModel::onCreateVaultRequest,
+        onCreateVault = viewModel::onCreateVault,
+        onDismissVaultFlow = viewModel::onDismissVaultFlow,
+        onVaultSelectorClick = viewModel::onVaultSelectorClick,
         modifier = modifier
     )
 }

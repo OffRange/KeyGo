@@ -31,4 +31,7 @@
     <string name="vault_name_placeholder">e.g. Work</string>
     <string name="create_new_vault">Create new Vault</string>
     <string name="icon">Icon</string>
+
+    <string name="vault_name_blank_error">Vault Name can not be blank</string>
+    <string name="vault_creation_wrap_failed">Vault key could not be wrapped</string>
 </resources>

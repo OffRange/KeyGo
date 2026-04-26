@@ -36,9 +36,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
-import de.davis.keygo.core.item.domain.alias.newVaultId
-import de.davis.keygo.core.item.domain.model.Vault
-import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
@@ -78,13 +75,14 @@ internal fun ItemListContent(
     onItemLongClick: (ItemId) -> Unit,
     onDelete: (ItemId) -> Unit,
     onVaultSelect: (SelectedVault) -> Unit,
-    onCreateVaultRequest: (CreateVaultRequest) -> Unit,
+    onCreateVaultRequest: () -> Unit,
+    onCreateVault: (CreateVaultRequest) -> Unit,
+    onVaultSelectorClick: () -> Unit,
+    onDismissVaultFlow: () -> Unit,
     scrollBehavior: SearchBarScrollBehavior,
     modifier: Modifier = Modifier
 ) {
     var showFilterSheet by rememberSaveable { mutableStateOf(false) }
-    var showVaultSheet by rememberSaveable { mutableStateOf(false) }
-    var showCreation by rememberSaveable { mutableStateOf(false) }
 
     val searchInputField = @Composable {
         ListSearchTextField(
@@ -94,7 +92,7 @@ internal fun ItemListContent(
             onSubmitQuery = onSubmitQuery,
             onClearQuery = onClearQuery,
             onShowFilterClick = { showFilterSheet = true },
-            onVaultSelectorClick = { showVaultSheet = true },
+            onVaultSelectorClick = onVaultSelectorClick,
             filterBottomSheetState = filterBottomSheetState,
         )
     }
@@ -106,24 +104,19 @@ internal fun ItemListContent(
             onDismiss = { showFilterSheet = false },
         )
 
-    if (showVaultSheet)
+    if (uiState.vaultState.showSelection)
         VaultSelectionSheet(
-            uiState = uiState,
-            onDismiss = { showVaultSheet = false },
+            vaultState = uiState.vaultState,
+            onDismiss = onDismissVaultFlow,
             onVaultSelected = onVaultSelect,
-            onCreateVaultRequest = {
-                showVaultSheet = false
-                showCreation = true
-            }
+            onCreateVaultRequest = onCreateVaultRequest
         )
 
-    if (showCreation)
+    if (uiState.vaultState.showCreationDialog)
         VaultCreationDialog(
-            onDismissRequest = { showCreation = false },
-            onCreate = {
-                showCreation = false
-                onCreateVaultRequest(it)
-            }
+            vaultState = uiState.vaultState,
+            onDismissRequest = onDismissVaultFlow,
+            onCreate = onCreateVault
         )
 
     Scaffold(
@@ -260,32 +253,13 @@ private fun ItemListContentPreview() {
                 )
             }
 
-            val vaults = remember {
-                listOf(
-                    VaultMetadata(
-                        vaultId = newVaultId(),
-                        name = "Vault 1",
-                        icon = Vault.Icon.Default
-                    ),
-                    VaultMetadata(
-                        vaultId = newVaultId(),
-                        name = "Vault 2",
-                        icon = Vault.Icon.Work
-                    )
-                )
-            }
-
-            var uiState by remember {
-                mutableStateOf(
-                    ListItemState(
-                        items = listOf(sampleItem),
-                        searchResults = listOf(sampleItem),
-                        hasSearchQuery = false,
-                        highlightedId = null,
-                        selectedItemIds = emptySet(),
-                        vaults = vaults,
-                        selectedVault = SelectedVault.Id(vaults.first().vaultId)
-                    )
+            val uiState = remember {
+                ListItemState(
+                    items = listOf(sampleItem),
+                    searchResults = listOf(sampleItem),
+                    hasSearchQuery = false,
+                    highlightedId = null,
+                    selectedItemIds = emptySet(),
                 )
             }
             val searchTextFieldState = rememberTextFieldState()
@@ -321,8 +295,11 @@ private fun ItemListContentPreview() {
                 onItemClick = { _, _ -> },
                 onItemLongClick = {},
                 onDelete = {},
-                onVaultSelect = { uiState = uiState.copy(selectedVault = it) },
+                onVaultSelect = {},
                 onCreateVaultRequest = {},
+                onCreateVault = {},
+                onVaultSelectorClick = {},
+                onDismissVaultFlow = {},
                 scrollBehavior = scrollBehavior
             )
         }

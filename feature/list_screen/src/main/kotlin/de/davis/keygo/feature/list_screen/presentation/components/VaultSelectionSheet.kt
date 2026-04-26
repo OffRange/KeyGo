@@ -56,12 +56,12 @@ import de.davis.keygo.feature.list_screen.R
 import de.davis.keygo.feature.list_screen.domain.model.SelectedVault
 import de.davis.keygo.feature.list_screen.presentation.AllVaultsIcon
 import de.davis.keygo.feature.list_screen.presentation.model.CreateVaultRequest
-import de.davis.keygo.feature.list_screen.presentation.model.ListItemState
+import de.davis.keygo.feature.list_screen.presentation.model.VaultState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun VaultSelectionSheet(
-    uiState: ListItemState,
+    vaultState: VaultState,
     onDismiss: () -> Unit,
     onVaultSelected: (SelectedVault) -> Unit,
     onCreateVaultRequest: () -> Unit,
@@ -75,7 +75,7 @@ internal fun VaultSelectionSheet(
             modifier = Modifier.padding(horizontal = 16.dp)
         ) {
             VaultSelectionSheetContent(
-                uiState = uiState,
+                vaultState = vaultState,
                 onVaultSelected = onVaultSelected,
                 onCreateVaultRequest = onCreateVaultRequest,
             )
@@ -86,7 +86,7 @@ internal fun VaultSelectionSheet(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun VaultSelectionSheetContent(
-    uiState: ListItemState,
+    vaultState: VaultState,
     onVaultSelected: (SelectedVault) -> Unit,
     onCreateVaultRequest: () -> Unit,
 ) {
@@ -98,7 +98,7 @@ private fun VaultSelectionSheetContent(
     ) {
         item(key = "vault_selection_all") {
             SegmentedListItem(
-                selected = uiState.selectedVault is SelectedVault.All,
+                selected = vaultState.selectedVault is SelectedVault.All,
                 onClick = { onVaultSelected(SelectedVault.All) },
                 shapes = ListItemDefaults.segmentedShapes(0, 2),
                 colors = ListItemDefaults.segmentedColors(),
@@ -130,10 +130,12 @@ private fun VaultSelectionSheetContent(
             }
         }
 
-        val vaultCount = uiState.vaults.size
-        itemsIndexed(uiState.vaults, key = { _, metadata -> metadata.vaultId }) { index, metadata ->
+        val vaultCount = vaultState.vaults.size
+        itemsIndexed(
+            vaultState.vaults,
+            key = { _, metadata -> metadata.vaultId }) { index, metadata ->
             SegmentedListItem(
-                selected = (uiState.selectedVault as? SelectedVault.Id)?.vaultId == metadata.vaultId,
+                selected = (vaultState.selectedVault as? SelectedVault.Id)?.vaultId == metadata.vaultId,
                 onClick = { onVaultSelected(SelectedVault.Id(metadata.vaultId)) },
                 shapes = if (vaultCount == 1) ListItemDefaults.shapes(MaterialTheme.shapes.large)
                 else ListItemDefaults.segmentedShapes(
@@ -266,7 +268,7 @@ private fun VaultSelectionSheetContentPreview() {
             color = MaterialTheme.colorScheme.surfaceContainerHigh
         ) {
             VaultSelectionSheetContent(
-                uiState = ListItemState(
+                vaultState = VaultState(
                     vaults = listOf(
                         VaultMetadata(
                             vaultId = newVaultId(),

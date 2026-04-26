@@ -93,7 +93,7 @@ internal fun ListSearchTextField(
                     onClick = onVaultSelectorClick
                 ) {
                     Icon(
-                        painter = uiState.selectedVaultIcon(),
+                        painter = uiState.vaultState.selectedVaultIcon(),
                         contentDescription = stringResource(R.string.filter),
                     )
                 }

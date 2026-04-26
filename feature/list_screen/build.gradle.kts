@@ -55,6 +55,8 @@ dependencies {
     implementation(projects.core.item)
     implementation(projects.core.ui)
     implementation(projects.core.util)
+    implementation(projects.core.security)
+    implementation(projects.rust)
 
     // Datastore
     implementation(libs.androidx.datastore)

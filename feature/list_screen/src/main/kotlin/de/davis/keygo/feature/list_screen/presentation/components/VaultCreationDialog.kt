@@ -39,12 +39,15 @@ import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.presentation.toImageVector
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.list_screen.R
+import de.davis.keygo.feature.list_screen.domain.model.VaultCreationError
 import de.davis.keygo.feature.list_screen.presentation.model.CreateVaultRequest
+import de.davis.keygo.feature.list_screen.presentation.model.VaultState
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun VaultCreationDialog(
+    vaultState: VaultState,
     onDismissRequest: () -> Unit,
     onCreate: (CreateVaultRequest) -> Unit,
 ) {
@@ -72,6 +75,7 @@ internal fun VaultCreationDialog(
         },
         text = {
             VaultCreationDialogContent(
+                vaultState = vaultState,
                 textFieldState = textFieldState,
                 selectedIcon = icon,
                 onIconClick = { icon = it },
@@ -82,7 +86,8 @@ internal fun VaultCreationDialog(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun VaultCreationDialogContent(
+private fun VaultCreationDialogContent(
+    vaultState: VaultState,
     textFieldState: TextFieldState,
     selectedIcon: Vault.Icon,
     onIconClick: (Vault.Icon) -> Unit,
@@ -112,6 +117,12 @@ internal fun VaultCreationDialogContent(
                         contentDescription = null
                     )
                 }
+            },
+            isError = vaultState.error != null,
+            supportingText = vaultState.error?.let { error ->
+                {
+                    Text(text = error.message())
+                }
             }
         )
 
@@ -132,7 +143,7 @@ internal fun VaultCreationDialogContent(
                     onCheckedChange = {
                         onIconClick(icon)
                         focusManager.clearFocus()
-                                      },
+                    },
                     modifier = Modifier
                         .minimumInteractiveComponentSize()
                         .size(IconButtonDefaults.mediumContainerSize()),
@@ -148,12 +159,21 @@ internal fun VaultCreationDialogContent(
     }
 }
 
+@Composable
+private fun VaultCreationError.message() = when (this) {
+    VaultCreationError.BlankName -> stringResource(R.string.vault_name_blank_error)
+    VaultCreationError.WrapFailed -> stringResource(R.string.vault_creation_wrap_failed)
+}
+
 @Preview
 @Composable
 private fun VaultCreationDialogContentPreview() {
     KeyGoTheme {
         Surface {
             VaultCreationDialogContent(
+                vaultState = VaultState(
+                    error = VaultCreationError.BlankName,
+                ),
                 textFieldState = rememberTextFieldState(),
                 selectedIcon = Vault.Icon.Default,
                 onIconClick = {},
