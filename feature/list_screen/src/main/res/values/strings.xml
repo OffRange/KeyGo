@@ -24,6 +24,7 @@
 
     <string name="only_pinned_items">Only pinned Items</string>
 
+    <string name="create">Create</string>
     <string name="all_vaults">All Vaults</string>
     <string name="vaults">Vaults</string>
     <string name="vault_name">Vault Name</string>

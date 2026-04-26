@@ -3,6 +3,7 @@ package de.davis.keygo.feature.list_screen.presentation.components
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -63,31 +64,21 @@ internal fun VaultSelectionSheet(
     uiState: ListItemState,
     onDismiss: () -> Unit,
     onVaultSelected: (SelectedVault) -> Unit,
-    onCreate: (CreateVaultRequest) -> Unit,
+    onCreateVaultRequest: () -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState(),
 ) {
-    var showSelection by remember { mutableStateOf(true) }
-
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
     ) {
-        AnimatedContent(
-            targetState = showSelection,
+        Box(
             modifier = Modifier.padding(horizontal = 16.dp)
-        ) { show ->
-            when {
-                show -> VaultSelectionSheetContent(
-                    uiState = uiState,
-                    onVaultSelected = onVaultSelected,
-                    onCreateVaultRequest = { showSelection = false },
-                )
-
-                else -> VaultCreationSheetContent(
-                    onBack = { showSelection = true },
-                    onCreate = onCreate
-                )
-            }
+        ) {
+            VaultSelectionSheetContent(
+                uiState = uiState,
+                onVaultSelected = onVaultSelected,
+                onCreateVaultRequest = onCreateVaultRequest,
+            )
         }
     }
 }

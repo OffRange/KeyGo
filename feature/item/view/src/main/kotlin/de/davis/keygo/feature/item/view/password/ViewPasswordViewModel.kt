@@ -124,7 +124,7 @@ internal class ViewPasswordViewModel(
         state.copy(
             modificationDialog = modificationDialog,
             scanning = scanning,
-            vaults = vaults,
+            //vaults = vaults,
         )
     }.stateIn(
         scope = viewModelScope,

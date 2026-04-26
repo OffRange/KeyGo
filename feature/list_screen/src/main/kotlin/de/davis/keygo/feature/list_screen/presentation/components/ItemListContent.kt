@@ -86,6 +86,7 @@ internal fun ItemListContent(
 ) {
     var showFilterSheet by rememberSaveable { mutableStateOf(false) }
     var showVaultSheet by rememberSaveable { mutableStateOf(false) }
+    var showCreation by rememberSaveable { mutableStateOf(false) }
     val searchBarState = rememberSearchBarState()
 
     // In case the user types something, but does not submit the search, we rollback to the last
@@ -125,7 +126,19 @@ internal fun ItemListContent(
             uiState = uiState,
             onDismiss = { showVaultSheet = false },
             onVaultSelected = onVaultSelect,
-            onCreate = onCreateVaultRequest,
+            onCreateVaultRequest = {
+                showVaultSheet = false
+                showCreation = true
+            }
+        )
+
+    if (showCreation)
+        VaultCreationDialog(
+            onDismissRequest = { showCreation = false },
+            onCreate = {
+                showCreation = false
+                onCreateVaultRequest(it)
+            }
         )
 
     Scaffold(
