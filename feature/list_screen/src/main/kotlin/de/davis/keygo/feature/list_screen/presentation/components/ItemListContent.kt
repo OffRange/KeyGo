@@ -17,7 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SearchBarScrollBehavior
-import androidx.compose.material3.SearchBarValue
+import androidx.compose.material3.SearchBarState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
@@ -28,7 +28,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -49,7 +48,6 @@ import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.core.ui.components.KeyGoColumn
 import de.davis.keygo.core.ui.components.KeyGoColumnItem
-import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.list_screen.domain.model.SelectedVault
 import de.davis.keygo.feature.list_screen.domain.model.SortDirection
 import de.davis.keygo.feature.list_screen.presentation.NoItemStrategy
@@ -64,6 +62,7 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun ItemListContent(
     uiState: ListItemState,
+    searchBarState: SearchBarState,
     searchTextFieldState: TextFieldState,
     filterBottomSheetState: FilterBottomSheetState,
     dockedSearchResults: Boolean,
@@ -72,7 +71,6 @@ internal fun ItemListContent(
     notFoundStrategy: NoItemStrategy,
     restrictedItemType: VaultItemType?,
     onCreateItemRequest: (VaultItemType) -> Unit,
-    resetToMatchSubmittedQuery: () -> Unit,
     onSubmitQuery: () -> Unit,
     onClearQuery: () -> Unit,
     onFilterAction: (FilterAction) -> Unit,
@@ -87,19 +85,6 @@ internal fun ItemListContent(
     var showFilterSheet by rememberSaveable { mutableStateOf(false) }
     var showVaultSheet by rememberSaveable { mutableStateOf(false) }
     var showCreation by rememberSaveable { mutableStateOf(false) }
-    val searchBarState = rememberSearchBarState()
-
-    // In case the user types something, but does not submit the search, we rollback to the last
-    // submitted search query.
-    ObserveAsEvents(snapshotFlow { searchBarState.targetValue }, searchBarState) {
-        when (it) {
-            SearchBarValue.Collapsed -> {
-                resetToMatchSubmittedQuery()
-            }
-
-            else -> {}
-        }
-    }
 
     val searchInputField = @Composable {
         ListSearchTextField(
@@ -321,6 +306,7 @@ private fun ItemListContentPreview() {
 
             ItemListContent(
                 uiState = uiState,
+                searchBarState = rememberSearchBarState(),
                 searchTextFieldState = searchTextFieldState,
                 filterBottomSheetState = filterBottomSheetState,
                 dockedSearchResults = false,
@@ -329,7 +315,6 @@ private fun ItemListContentPreview() {
                 notFoundStrategy = NoItemStrategy.ShowCreateNewItemCard,
                 restrictedItemType = null,
                 onCreateItemRequest = {},
-                resetToMatchSubmittedQuery = {},
                 onSubmitQuery = {},
                 onClearQuery = {},
                 onFilterAction = {},

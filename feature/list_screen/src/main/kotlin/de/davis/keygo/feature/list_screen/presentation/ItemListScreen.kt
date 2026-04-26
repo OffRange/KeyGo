@@ -3,11 +3,14 @@ package de.davis.keygo.feature.list_screen.presentation
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SearchBarScrollBehavior
+import androidx.compose.material3.SearchBarValue
+import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.item.domain.alias.ItemId
@@ -73,8 +76,24 @@ fun ItemListScreen(
         }
     }
 
+
+    val searchBarState = rememberSearchBarState()
+
+    // In case the user types something, but does not submit the search, we rollback to the last
+    // submitted search query.
+    ObserveAsEvents(snapshotFlow { searchBarState.targetValue }, searchBarState) {
+        when (it) {
+            SearchBarValue.Collapsed -> {
+                viewModel.resetToMatchSubmittedQuery()
+            }
+
+            else -> {}
+        }
+    }
+
     ItemListContent(
         uiState = uiState,
+        searchBarState = searchBarState,
         searchTextFieldState = viewModel.searchTextFieldState,
         filterBottomSheetState = filterSheetState,
         dockedSearchResults = dockedSearchResults,
@@ -83,7 +102,6 @@ fun ItemListScreen(
         notFoundStrategy = notFoundStrategy,
         restrictedItemType = restrictedItemType,
         onCreateItemRequest = onCreateItemRequest,
-        resetToMatchSubmittedQuery = viewModel::resetToMatchSubmittedQuery,
         onSubmitQuery = viewModel::onSubmitQuery,
         onClearQuery = viewModel::onClearQuery,
         onFilterAction = viewModel::onFilterAction,
