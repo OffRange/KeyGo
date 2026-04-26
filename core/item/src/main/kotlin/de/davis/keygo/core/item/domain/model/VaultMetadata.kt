@@ -6,4 +6,5 @@ data class VaultMetadata(
     val vaultId: VaultId,
     val name: String,
     val icon: Vault.Icon,
+    val count: Int = 0,
 )

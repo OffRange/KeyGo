@@ -44,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -90,6 +91,7 @@ private fun VaultSelectionSheetContent(
     onVaultSelected: (SelectedVault) -> Unit,
     onCreateVaultRequest: () -> Unit,
 ) {
+    val sumAllVaults = vaultState.sumCount
     LazyColumn(
         modifier = Modifier
             .fillMaxWidth()
@@ -107,6 +109,15 @@ private fun VaultSelectionSheetContent(
                         painter = AllVaultsIcon,
                         modifier = Modifier.size(24.dp),
                         contentDescription = null
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        text = pluralStringResource(
+                            R.plurals.vault_item_entry_count,
+                            sumAllVaults,
+                            sumAllVaults
+                        )
                     )
                 }
             ) {
@@ -147,6 +158,15 @@ private fun VaultSelectionSheetContent(
                     Icon(
                         imageVector = metadata.icon.toImageVector(),
                         contentDescription = null
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        text = pluralStringResource(
+                            R.plurals.vault_item_entry_count,
+                            metadata.count,
+                            metadata.count
+                        )
                     )
                 }
             ) {
@@ -274,11 +294,13 @@ private fun VaultSelectionSheetContentPreview() {
                             vaultId = newVaultId(),
                             name = "Personal",
                             icon = Vault.Icon.Default,
+                            count = 42
                         ),
                         VaultMetadata(
                             vaultId = selectedVaultId,
                             name = "Work",
                             icon = Vault.Icon.Work,
+                            count = 1,
                         ),
                     ),
                     selectedVault = SelectedVault.Id(selectedVaultId)

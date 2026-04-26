@@ -13,4 +13,6 @@ internal data class VaultState(
     val showCreationDialog: Boolean = false,
     val toolModeActive: Boolean = false,
     val error: VaultCreationError? = null,
-)
+) {
+    val sumCount = vaults.sumOf { it.count }
+}

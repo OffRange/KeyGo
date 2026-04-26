@@ -7,6 +7,7 @@ import de.davis.keygo.core.item.data.local.entity.ItemEntity
 import de.davis.keygo.core.item.data.local.pojo.LightweightItem
 import de.davis.keygo.core.item.data.local.pojo.LightweightItemSearchResult
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import kotlinx.coroutines.flow.Flow
 
@@ -46,6 +47,6 @@ internal interface ItemDao {
     @Query("UPDATE item SET pinned = :pinned WHERE id = :id")
     suspend fun setPinned(id: ItemId, pinned: Boolean)
 
-    @Query("SELECT i.id, i.name, i.itemType, i.pinned FROM item i")
-    fun observeLiteItems(): Flow<List<LightweightItem>>
+    @Query("SELECT i.id, i.name, i.itemType, i.pinned FROM item i WHERE (:vaultId IS NULL OR vault_id = :vaultId)")
+    fun observeLiteItems(vaultId: VaultId? = null): Flow<List<LightweightItem>>
 }

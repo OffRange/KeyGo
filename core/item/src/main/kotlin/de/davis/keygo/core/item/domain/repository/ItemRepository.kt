@@ -1,6 +1,7 @@
 package de.davis.keygo.core.item.domain.repository
 
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.Item
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
@@ -23,5 +24,5 @@ interface ItemRepository {
 
     suspend fun setPinned(itemId: ItemId, pinned: Boolean)
 
-    fun observeLiteVaultItems(): Flow<List<LiteItem>>
+    fun observeLiteVaultItems(vaultId: VaultId? = null): Flow<List<LiteItem>>
 }

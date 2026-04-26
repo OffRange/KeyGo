@@ -6,6 +6,7 @@ import de.davis.keygo.core.item.data.local.pojo.LightweightItemSearchResult
 import de.davis.keygo.core.item.data.maper.toData
 import de.davis.keygo.core.item.data.maper.toDomain
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.Item
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
@@ -43,6 +44,6 @@ internal class ItemRepositoryImpl(
     override suspend fun setPinned(itemId: ItemId, pinned: Boolean) =
         itemDao.setPinned(itemId, pinned)
 
-    override fun observeLiteVaultItems(): Flow<List<LiteItem>> =
-        itemDao.observeLiteItems().map { it.map(LightweightItem::toDomain) }
+    override fun observeLiteVaultItems(vaultId: VaultId?): Flow<List<LiteItem>> =
+        itemDao.observeLiteItems(vaultId).map { it.map(LightweightItem::toDomain) }
 }

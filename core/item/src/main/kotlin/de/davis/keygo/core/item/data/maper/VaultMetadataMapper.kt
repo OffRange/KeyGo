@@ -6,11 +6,13 @@ import de.davis.keygo.core.item.domain.model.VaultMetadata as DomainVaultMetadat
 internal fun VaultMetadata.toDomain(): DomainVaultMetadata = DomainVaultMetadata(
     vaultId = vaultId,
     name = name,
-    icon = icon
+    icon = icon,
+    count = count,
 )
 
 internal fun DomainVaultMetadata.toEntity(): VaultMetadata = VaultMetadata(
     vaultId = vaultId,
     name = name,
-    icon = icon
+    icon = icon,
+    count = count,
 )

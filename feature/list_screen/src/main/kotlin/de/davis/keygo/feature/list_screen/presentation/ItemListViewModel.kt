@@ -70,7 +70,11 @@ internal class ItemListViewModel(
 ) : ViewModel() {
 
     private val vaultsAndSelection = observeVaultsAndSelection()
-    private val allItems = itemRepository.observeLiteVaultItems()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val vaultSpecificItems = vaultsAndSelection.flatMapLatest { vaultsAndSelection ->
+        itemRepository.observeLiteVaultItems((vaultsAndSelection.selection as? SelectedVault.Id)?.vaultId)
+    }
 
     private val submittedSearchQuery = MutableStateFlow("")
 
@@ -132,13 +136,14 @@ internal class ItemListViewModel(
             highlightedId = highlightedId,
             vaultState = vaultState
         )
-    }.onStart {
-        observeSearchState()
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = ListItemState()
-    )
+    }.distinctUntilChanged()
+        .onStart {
+            observeSearchState()
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = ListItemState()
+        )
 
     private val availableFilterOptions = combine(
         nonDeletedItems,
@@ -235,8 +240,11 @@ internal class ItemListViewModel(
     private fun <T> Set<T>.toggle(element: T): Set<T> =
         if (element in this) this - element else this + element
 
-    private suspend fun queryToItems(query: String): Flow<List<LiteItem>> =
-        (if (query.isBlank()) allItems
+    private suspend fun queryToItems(
+        query: String,
+        forceSearchAllVaults: Boolean = false
+    ): Flow<List<LiteItem>> =
+        (if (!forceSearchAllVaults && query.isBlank()) vaultSpecificItems
         else flowOf(itemRepository.searchVaultItem(query, restrictedItemType)))
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
@@ -244,7 +252,7 @@ internal class ItemListViewModel(
         snapshotFlow { searchTextFieldState.text }
             .debounce(300.milliseconds)
             .flatMapLatest {
-                queryToItems(it.toString())
+                queryToItems(it.toString(), forceSearchAllVaults = true)
             }
             .distinctUntilChanged()
             .onEach { items ->

@@ -89,14 +89,15 @@ internal fun ListSearchTextField(
                     }
                 }
 
-                IconButton(
-                    onClick = onVaultSelectorClick
-                ) {
-                    Icon(
-                        painter = uiState.vaultState.selectedVaultIcon(),
-                        contentDescription = stringResource(R.string.filter),
-                    )
-                }
+                if (uiState.vaultState.vaults.isNotEmpty())
+                    IconButton(
+                        onClick = onVaultSelectorClick
+                    ) {
+                        Icon(
+                            painter = uiState.vaultState.selectedVaultIcon(),
+                            contentDescription = stringResource(R.string.filter),
+                        )
+                    }
             }
         },
         placeholder = {

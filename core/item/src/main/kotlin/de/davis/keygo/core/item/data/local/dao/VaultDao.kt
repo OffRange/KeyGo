@@ -57,6 +57,13 @@ internal interface VaultDao {
     @Query("SELECT vaultId FROM active_vault WHERE id = 1")
     fun observeActiveVaultId(): Flow<VaultId?>
 
-    @Query("SELECT id as vaultId, name, icon FROM vault")
+    @Query(
+        """
+        SELECT vault.id as vaultId, vault.name, vault.icon, COUNT(item.id) as count
+        FROM vault
+        LEFT JOIN item ON vault.id = item.vault_id
+        GROUP BY vault.id
+        """
+    )
     fun observeAllVaultMetadata(): Flow<List<VaultMetadata>>
 }

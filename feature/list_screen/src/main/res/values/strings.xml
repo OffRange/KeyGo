@@ -34,4 +34,8 @@
 
     <string name="vault_name_blank_error">Vault Name can not be blank</string>
     <string name="vault_creation_wrap_failed">Vault key could not be wrapped</string>
+    <plurals name="vault_item_entry_count">
+        <item quantity="one">1 item</item>
+        <item quantity="other">%d items</item>
+    </plurals>
 </resources>

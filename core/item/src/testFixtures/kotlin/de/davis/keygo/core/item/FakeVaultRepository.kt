@@ -73,5 +73,6 @@ class FakeVaultRepository : VaultRepository {
         vaultId = id,
         name = name,
         icon = icon,
+        count = 0,
     )
 }
