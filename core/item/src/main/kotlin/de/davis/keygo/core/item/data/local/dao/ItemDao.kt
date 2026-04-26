@@ -23,8 +23,12 @@ internal interface ItemDao {
     @Query("SELECT name FROM item WHERE id = :id")
     suspend fun getNameById(id: ItemId): String?
 
-    @Query("SELECT EXISTS(SELECT 1 FROM item WHERE name = :name AND (:excludeId IS NULL OR id != :excludeId))")
-    suspend fun existsName(name: String, excludeId: ItemId? = null): Boolean
+    @Query("SELECT EXISTS(SELECT 1 FROM item WHERE name = :name AND id != IFNULL(:excludeId, 0) AND vault_id = IFNULL(:vaultId, vault_id))")
+    suspend fun existsName(
+        name: String,
+        excludeId: ItemId? = null,
+        vaultId: VaultId? = null
+    ): Boolean
 
     @Query("SELECT * FROM item WHERE id = :id")
     suspend fun getItemById(id: ItemId): ItemEntity?

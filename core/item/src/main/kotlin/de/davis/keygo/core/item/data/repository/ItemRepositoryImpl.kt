@@ -33,7 +33,8 @@ internal class ItemRepositoryImpl(
     override suspend fun doesNameExist(
         name: String,
         excludeId: ItemId?,
-    ): Boolean = itemDao.existsName(name, excludeId)
+        vaultId: VaultId?,
+    ): Boolean = itemDao.existsName(name, excludeId, vaultId)
 
     override suspend fun searchVaultItem(
         query: String,

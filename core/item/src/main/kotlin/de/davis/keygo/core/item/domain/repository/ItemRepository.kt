@@ -15,7 +15,11 @@ interface ItemRepository {
     suspend fun createOrUpdateVaultItem(item: Item): ItemId
 
     suspend fun getItemName(itemId: ItemId): String?
-    suspend fun doesNameExist(name: String, excludeId: ItemId? = null): Boolean
+    suspend fun doesNameExist(
+        name: String,
+        excludeId: ItemId? = null,
+        vaultId: VaultId? = null
+    ): Boolean
 
     suspend fun searchVaultItem(
         query: String,

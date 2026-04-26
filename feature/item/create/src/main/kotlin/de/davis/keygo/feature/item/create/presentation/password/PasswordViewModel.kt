@@ -119,8 +119,12 @@ internal class PasswordViewModel(
     private fun observeNameTextField() {
         snapshotFlow { nameTextFieldState.text }
             .debounce(150.milliseconds)
-            .mapLatest { input ->
-                itemRepository.doesNameExist(input.toString(), excludeId = itemId)
+            .combine(_selectedVaultId.filterNotNull()) { input, vaultId ->
+                itemRepository.doesNameExist(
+                    input.toString(),
+                    excludeId = itemId,
+                    vaultId = vaultId
+                )
             }
             .distinctUntilChanged()
             .onEach { exists ->
