@@ -16,6 +16,6 @@ class ObserveVaultsAndSelectionUseCase(
         vaultRepository.observeAllVaultMetadata(),
         selectedVaultRepository.observe(),
     ) { vaults, selection ->
-        VaultsAndSelection(vaults = vaults, selection = selection)
+        VaultsAndSelection(vaults = vaults.sortedBy { it.name }, selection = selection)
     }
 }
