@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.google.protobuf)
     alias(libs.plugins.androidx.room)
     alias(libs.plugins.google.ksp)
     alias(libs.plugins.kotlin.compose)
@@ -61,6 +62,10 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.material3)
 
+    // Datastore
+    implementation(libs.androidx.datastore)
+    implementation(libs.google.protobuf.kotlin.lite)
+
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))
     implementation(libs.koin.androidx.compose)
@@ -86,4 +91,27 @@ room {
 
 ksp {
     arg("automation.android_namespace", "de.davis.keygo.core.item")
+}
+
+protobuf {
+    protoc {
+        artifact = libs.google.protobuf.protoc.get().toString()
+    }
+
+    generateProtoTasks {
+        all().forEach { task ->
+            if (task.name.contains("TestFixtures", ignoreCase = true)) {
+                task.enabled = false
+                return@forEach
+            }
+            task.builtins {
+                create("java") {
+                    option("lite")
+                }
+                create("kotlin") {
+                    option("lite")
+                }
+            }
+        }
+    }
 }

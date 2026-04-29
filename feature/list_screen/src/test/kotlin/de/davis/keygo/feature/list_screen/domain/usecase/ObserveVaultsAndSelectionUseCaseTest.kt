@@ -1,12 +1,12 @@
 package de.davis.keygo.feature.list_screen.domain.usecase
 
+import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Vault
-import de.davis.keygo.feature.list_screen.FakeSelectedVaultRepository
-import de.davis.keygo.feature.list_screen.domain.model.SelectedVault
+import de.davis.keygo.core.item.domain.model.VaultContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -19,38 +19,38 @@ class ObserveVaultsAndSelectionUseCaseTest {
     private val vaultB = testVault("Work")
 
     private val vaultRepository = FakeVaultRepository()
-    private val selectedVaultRepository = FakeSelectedVaultRepository()
+    private val vaultContextRepository = FakeVaultContextRepository()
     private val useCase = ObserveVaultsAndSelectionUseCase(
         vaultRepository = vaultRepository,
-        selectedVaultRepository = selectedVaultRepository,
+        vaultContextRepository = vaultContextRepository,
     )
 
     @Test
-    fun `emits empty vaults and All when no vaults seeded and no selection set`() = runTest {
+    fun `emits empty vaults and NoSpecific when no vaults seeded and no context set`() = runTest {
         val result = useCase().first()
 
         assertEquals(emptyList(), result.vaults)
-        assertEquals(SelectedVault.All, result.selection)
+        assertEquals(VaultContext.NoSpecific, result.selection)
     }
 
     @Test
-    fun `emits seeded vaults with All when selection is All`() = runTest {
+    fun `emits seeded vaults with NoSpecific when context is NoSpecific`() = runTest {
         vaultRepository.seed(vaultA, vaultB)
 
         val result = useCase().first()
 
         assertEquals(setOf(vaultA.id, vaultB.id), result.vaults.map { it.vaultId }.toSet())
-        assertEquals(SelectedVault.All, result.selection)
+        assertEquals(VaultContext.NoSpecific, result.selection)
     }
 
     @Test
-    fun `emits selection set via SelectedVaultRepository`() = runTest {
+    fun `emits context set via VaultContextRepository`() = runTest {
         vaultRepository.seed(vaultA)
-        selectedVaultRepository.set(SelectedVault.Id(vaultA.id))
+        vaultContextRepository.setVaultContext(VaultContext.ById(vaultA.id))
 
         val result = useCase().first()
 
-        val selection = assertIs<SelectedVault.Id>(result.selection)
+        val selection = assertIs<VaultContext.ById>(result.selection)
         assertEquals(vaultA.id, selection.vaultId)
     }
 
@@ -63,6 +63,18 @@ class ObserveVaultsAndSelectionUseCaseTest {
         assertEquals(vaultA.id, metadata.vaultId)
         assertEquals(vaultA.name, metadata.name)
         assertEquals(vaultA.icon, metadata.icon)
+    }
+
+    @Test
+    fun `sorts vaults by name`() = runTest {
+        val zebra = testVault("Zebra")
+        val alpha = testVault("Alpha")
+        val mango = testVault("Mango")
+        vaultRepository.seed(zebra, alpha, mango)
+
+        val names = useCase().first().vaults.map { it.name }
+
+        assertEquals(listOf("Alpha", "Mango", "Zebra"), names)
     }
 
     private fun testVault(

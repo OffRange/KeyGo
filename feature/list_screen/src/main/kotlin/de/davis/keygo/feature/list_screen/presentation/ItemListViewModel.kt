@@ -7,6 +7,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.model.VaultContext
+import de.davis.keygo.core.item.domain.model.getIdOrNull
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
@@ -15,7 +17,6 @@ import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
-import de.davis.keygo.feature.list_screen.domain.model.SelectedVault
 import de.davis.keygo.feature.list_screen.domain.usecase.CreateAndSelectVaultUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.ObserveVaultsAndSelectionUseCase
@@ -63,8 +64,8 @@ internal class ItemListViewModel(
     private val snackbarManager: SnackbarManager,
     private val itemRepository: ItemRepository,
     private val filterUseCase: FilterUseCase,
-    private val selectVault: SelectVaultUseCase,
-    private val createAndSelectVault: CreateAndSelectVaultUseCase,
+    private val setVaultContextUseCase: SetVaultContextUseCase,
+    private val createVault: CreateVaultUseCase,
     observeVaultsAndSelection: ObserveVaultsAndSelectionUseCase,
     passwordRepository: PasswordRepository,
 ) : ViewModel() {
@@ -73,7 +74,7 @@ internal class ItemListViewModel(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val vaultSpecificItems = vaultsAndSelection.flatMapLatest { vaultsAndSelection ->
-        itemRepository.observeLiteVaultItems((vaultsAndSelection.selection as? SelectedVault.Id)?.vaultId)
+        itemRepository.observeLiteVaultItems(vaultsAndSelection.selection.getIdOrNull())
     }
 
     private val submittedSearchQuery = MutableStateFlow("")
@@ -113,10 +114,10 @@ internal class ItemListViewModel(
     ) { settings, vaultsAndSelection ->
         VaultState(
             vaults = vaultsAndSelection.vaults,
-            selectedVault = vaultsAndSelection.selection,
             showSelection = settings.showSelection,
             showCreationDialog = settings.showCreationDialog,
             error = settings.error,
+            vaultContext = vaultsAndSelection.selection,
         )
     }
 
@@ -194,8 +195,8 @@ internal class ItemListViewModel(
         }
     }
 
-    fun onVaultSelected(selection: SelectedVault) {
-        viewModelScope.launch { selectVault(selection) }
+    fun onVaultContextSelected(context: VaultContext) {
+        viewModelScope.launch { setVaultContextUseCase(context) }
     }
 
     fun onCreateVaultRequest() {

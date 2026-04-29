@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "dcf27756ed39d25e9befa20e611043bc",
+    "identityHash": "6903561a78b816780f0903d6f3e06d9f",
     "entities": [
       {
         "tableName": "vault",
@@ -45,54 +45,6 @@
             "id"
           ]
         }
-      },
-      {
-        "tableName": "active_vault",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `vaultId` BLOB NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`vaultId`) REFERENCES `vault`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "vaultId",
-            "columnName": "vaultId",
-            "affinity": "BLOB",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "id"
-          ]
-        },
-        "indices": [
-          {
-            "name": "index_active_vault_vaultId",
-            "unique": false,
-            "columnNames": [
-              "vaultId"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_active_vault_vaultId` ON `${TABLE_NAME}` (`vaultId`)"
-          }
-        ],
-        "foreignKeys": [
-          {
-            "table": "vault",
-            "onDelete": "RESTRICT",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "vaultId"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          }
-        ]
       },
       {
         "tableName": "item",
@@ -368,7 +320,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'dcf27756ed39d25e9befa20e611043bc')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6903561a78b816780f0903d6f3e06d9f')"
     ]
   }
 }

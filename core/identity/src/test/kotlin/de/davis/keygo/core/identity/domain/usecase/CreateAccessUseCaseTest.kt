@@ -2,6 +2,7 @@ package de.davis.keygo.core.identity.domain.usecase
 
 import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.model.CreateAccessError
+import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.model.AesKey
@@ -27,6 +28,7 @@ class CreateAccessUseCaseTest {
     private val session = mockk<Session>(relaxed = true)
     private val accountRepository = FakeAccountRepository()
     private val vaultRepository = FakeVaultRepository()
+    private val vaultContextRepository = FakeVaultContextRepository()
     private val keyDeriver = FakeKeyDeriver()
     private val keyWrapper = FakeKeyWrapper()
     private val accountManager = FakeAccountManager()
@@ -37,6 +39,7 @@ class CreateAccessUseCaseTest {
         accountManager = accountManager,
         accountRepository = accountRepository,
         vaultRepository = vaultRepository,
+        vaultContextRepository = vaultContextRepository,
         session = session,
     )
 

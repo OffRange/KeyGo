@@ -109,7 +109,7 @@ fun ItemListScreen(
         onItemLongClick = viewModel::onItemLongClick,
         onDelete = viewModel::onDelete,
         scrollBehavior = scrollBehavior,
-        onVaultSelect = viewModel::onVaultSelected,
+        onVaultContextSelect = viewModel::onVaultContextSelected,
         onCreateVaultRequest = viewModel::onCreateVaultRequest,
         onCreateVault = viewModel::onCreateVault,
         onDismissVaultFlow = viewModel::onDismissVaultFlow,

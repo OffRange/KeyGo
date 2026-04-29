@@ -13,6 +13,7 @@ import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
+import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.crypto.decryptSecretData
 import de.davis.keygo.core.security.domain.usecase.PasswordWithCryptoScopeUseCase
@@ -53,7 +54,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.mapLatest
@@ -71,12 +71,13 @@ internal class PasswordViewModel(
     private val passwordWithCryptoScopeUseCase: PasswordWithCryptoScopeUseCase,
     private val itemRepository: ItemRepository,
     private val passwordRepository: PasswordRepository,
-    private val vaultRepository: VaultRepository,
+    private val vaultContextRepository: VaultContextRepository,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val createNewOrUpdatePassword: CreateNewOrUpdatePasswordUseCase,
     private val snackbarManager: SnackbarManager,
     private val getTotpSecret: GetTotpSecretFromUrlUseCase,
-    private val registrableDomainResolver: RegistrableDomainResolver
+    private val registrableDomainResolver: RegistrableDomainResolver,
+    vaultRepository: VaultRepository
 ) : ViewModel() {
 
     private val nameTextFieldState = TextFieldState()
@@ -153,7 +154,7 @@ internal class PasswordViewModel(
 
     private fun primeActiveVaultId() {
         viewModelScope.launch {
-            val activeId = vaultRepository.observeActiveVaultId().filterNotNull().first()
+            val activeId = vaultContextRepository.getLastInteractedVaultId()
             _selectedVaultId.compareAndSet(null, activeId)
         }
     }

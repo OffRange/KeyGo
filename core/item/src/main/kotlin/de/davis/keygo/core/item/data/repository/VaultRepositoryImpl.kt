@@ -16,22 +16,15 @@ import org.koin.core.annotation.Single
 internal class VaultRepositoryImpl(
     private val vaultDao: VaultDao,
 ) : VaultRepository {
-    override suspend fun setActiveVault(vaultId: VaultId) {
-        vaultDao.setActive(vaultId)
+    override suspend fun createVault(vault: Vault) {
+        vaultDao.insert(vault.toData())
     }
 
-    override suspend fun getKeyInformation(vaultId: VaultId): KeyInformation? =
-        vaultDao.getKeyInfoById(vaultId)?.toDomain()
-
-    override suspend fun createAndActivateVault(vault: Vault) = vault.also {
-        vaultDao.insert(it.toData())
-        vaultDao.setActive(it.id)
-    }
-
-    override suspend fun deleteVault(vaultId: VaultId): Boolean = vaultDao.deleteVault(vaultId)
+    override suspend fun deleteVault(vaultId: VaultId) = vaultDao.delete(vaultId)
 
     override fun observeAllVaultMetadata(): Flow<List<VaultMetadata>> =
         vaultDao.observeAllVaultMetadata().map { list -> list.map { it.toDomain() } }
 
-    override fun observeActiveVaultId(): Flow<VaultId?> = vaultDao.observeActiveVaultId()
+    override suspend fun getKeyInformation(vaultId: VaultId): KeyInformation? =
+        vaultDao.getKeyInfoById(vaultId)?.toDomain()
 }

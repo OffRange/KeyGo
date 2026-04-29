@@ -7,13 +7,9 @@ import de.davis.keygo.core.item.domain.model.VaultMetadata
 import kotlinx.coroutines.flow.Flow
 
 interface VaultRepository {
-    suspend fun setActiveVault(vaultId: VaultId)
-
-    suspend fun getKeyInformation(vaultId: VaultId): KeyInformation?
-    suspend fun createAndActivateVault(vault: Vault): Vault
-
-    suspend fun deleteVault(vaultId: VaultId): Boolean
-
+    suspend fun createVault(vault: Vault)
+    suspend fun deleteVault(vaultId: VaultId)
     fun observeAllVaultMetadata(): Flow<List<VaultMetadata>>
-    fun observeActiveVaultId(): Flow<VaultId?>
+    
+    suspend fun getKeyInformation(vaultId: VaultId): KeyInformation?
 }

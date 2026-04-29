@@ -50,11 +50,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.Vault
+import de.davis.keygo.core.item.domain.model.VaultContext
 import de.davis.keygo.core.item.domain.model.VaultMetadata
+import de.davis.keygo.core.item.domain.model.getIdOrNull
 import de.davis.keygo.core.item.presentation.toImageVector
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.list_screen.R
-import de.davis.keygo.feature.list_screen.domain.model.SelectedVault
 import de.davis.keygo.feature.list_screen.presentation.AllVaultsIcon
 import de.davis.keygo.feature.list_screen.presentation.model.CreateVaultRequest
 import de.davis.keygo.feature.list_screen.presentation.model.VaultState
@@ -64,7 +65,7 @@ import de.davis.keygo.feature.list_screen.presentation.model.VaultState
 internal fun VaultSelectionSheet(
     vaultState: VaultState,
     onDismiss: () -> Unit,
-    onVaultSelected: (SelectedVault) -> Unit,
+    onVaultContextSelect: (VaultContext) -> Unit,
     onCreateVaultRequest: () -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState(),
 ) {
@@ -77,7 +78,7 @@ internal fun VaultSelectionSheet(
         ) {
             VaultSelectionSheetContent(
                 vaultState = vaultState,
-                onVaultSelected = onVaultSelected,
+                onVaultContextSelect = onVaultContextSelect,
                 onCreateVaultRequest = onCreateVaultRequest,
             )
         }
@@ -88,7 +89,7 @@ internal fun VaultSelectionSheet(
 @Composable
 private fun VaultSelectionSheetContent(
     vaultState: VaultState,
-    onVaultSelected: (SelectedVault) -> Unit,
+    onVaultContextSelect: (VaultContext) -> Unit,
     onCreateVaultRequest: () -> Unit,
 ) {
     val sumAllVaults = vaultState.sumCount
@@ -100,8 +101,8 @@ private fun VaultSelectionSheetContent(
     ) {
         item(key = "vault_selection_all") {
             SegmentedListItem(
-                selected = vaultState.selectedVault is SelectedVault.All,
-                onClick = { onVaultSelected(SelectedVault.All) },
+                selected = vaultState.vaultContext is VaultContext.NoSpecific,
+                onClick = { onVaultContextSelect(VaultContext.NoSpecific) },
                 shapes = ListItemDefaults.segmentedShapes(0, 2),
                 colors = ListItemDefaults.segmentedColors(),
                 leadingContent = {
@@ -146,8 +147,8 @@ private fun VaultSelectionSheetContent(
             vaultState.vaults,
             key = { _, metadata -> metadata.vaultId }) { index, metadata ->
             SegmentedListItem(
-                selected = (vaultState.selectedVault as? SelectedVault.Id)?.vaultId == metadata.vaultId,
-                onClick = { onVaultSelected(SelectedVault.Id(metadata.vaultId)) },
+                selected = vaultState.vaultContext.getIdOrNull() == metadata.vaultId,
+                onClick = { onVaultContextSelect(VaultContext.ById(metadata.vaultId)) },
                 shapes = if (vaultCount == 1) ListItemDefaults.shapes(MaterialTheme.shapes.large)
                 else ListItemDefaults.segmentedShapes(
                     index = index,

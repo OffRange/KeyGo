@@ -36,6 +36,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
+import de.davis.keygo.core.item.domain.model.VaultContext
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
@@ -45,7 +46,6 @@ import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.core.ui.components.KeyGoColumn
 import de.davis.keygo.core.ui.components.KeyGoColumnItem
-import de.davis.keygo.feature.list_screen.domain.model.SelectedVault
 import de.davis.keygo.feature.list_screen.domain.model.SortDirection
 import de.davis.keygo.feature.list_screen.presentation.NoItemStrategy
 import de.davis.keygo.feature.list_screen.presentation.model.CreateVaultRequest
@@ -74,7 +74,7 @@ internal fun ItemListContent(
     onItemClick: (ItemId, forceSkipSelection: Boolean) -> Unit,
     onItemLongClick: (ItemId) -> Unit,
     onDelete: (ItemId) -> Unit,
-    onVaultSelect: (SelectedVault) -> Unit,
+    onVaultContextSelect: (VaultContext) -> Unit,
     onCreateVaultRequest: () -> Unit,
     onCreateVault: (CreateVaultRequest) -> Unit,
     onVaultSelectorClick: () -> Unit,
@@ -108,8 +108,8 @@ internal fun ItemListContent(
         VaultSelectionSheet(
             vaultState = uiState.vaultState,
             onDismiss = onDismissVaultFlow,
-            onVaultSelected = onVaultSelect,
             onCreateVaultRequest = onCreateVaultRequest
+            onVaultContextSelect = onVaultContextSelect,
         )
 
     if (uiState.vaultState.showCreationDialog)
@@ -295,7 +295,7 @@ private fun ItemListContentPreview() {
                 onItemClick = { _, _ -> },
                 onItemLongClick = {},
                 onDelete = {},
-                onVaultSelect = {},
+                onVaultContextSelect = {},
                 onCreateVaultRequest = {},
                 onCreateVault = {},
                 onVaultSelectorClick = {},

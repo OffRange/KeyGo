@@ -6,6 +6,7 @@ import de.davis.keygo.core.identity.domain.model.CreateAccessError
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.item.domain.model.Vault
+import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.model.asAesKey
@@ -33,6 +34,7 @@ class CreateAccessUseCase(
     private val accountManager: AccountManager,
     private val accountRepository: AccountRepository,
     private val vaultRepository: VaultRepository,
+    private val vaultContextRepository: VaultContextRepository,
     private val session: Session
 ) {
 
@@ -67,7 +69,8 @@ class CreateAccessUseCase(
                 ?: return Result.Failure(CreateAccessError.WrappingFailed)
 
         accountHolder.defaultVault.wrap(accountHolder.account.ark).getOrNull()?.let { wrappedKey ->
-            vaultRepository.createAndActivateVault(
+            // TODO: use CreateVaultUseCase, when having better project structure
+            vaultRepository.createVault(
                 Vault(
                     id = accountHolder.defaultVault.id,
                     name = vaultName,
@@ -76,6 +79,7 @@ class CreateAccessUseCase(
                     icon = Vault.Icon.Default
                 )
             )
+            vaultContextRepository.setContextAndLastInteracted(accountHolder.defaultVault.id)
         } ?: return Result.Failure(CreateAccessError.WrappingFailed)
 
         val biometricWrappedArk = biometricCipher?.let {

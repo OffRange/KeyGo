@@ -3,29 +3,33 @@ package de.davis.keygo.feature.list_screen.domain.usecase
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.Vault
+import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.getOrNull
-import de.davis.keygo.feature.list_screen.domain.model.SelectedVault
 import de.davis.keygo.feature.list_screen.domain.model.VaultCreationError
 import de.davis.keygo.rust.vault.VaultManager
 import de.davis.keygo.rust.wrap.KeyWrapper
 import de.davis.keygo.rust.wrap.wrapVaultKeyWithResult
 import org.koin.core.annotation.Single
 
+/**
+ * This use case creates a new vault. This new vault is being used to update
+ * [de.davis.keygo.core.item.domain.model.VaultContext] and last interacted vault.
+ */
 @Single
-class CreateAndSelectVaultUseCase(
+class CreateVaultUseCase(
     private val vaultRepository: VaultRepository,
+    private val vaultContextRepository: VaultContextRepository,
     private val vaultManager: VaultManager,
     private val keyWrapper: KeyWrapper,
-    private val selectVault: SelectVaultUseCase,
     private val session: Session
 ) {
 
     suspend operator fun invoke(
         name: String,
-        icon: Vault.Icon
+        icon: Vault.Icon,
     ): Result<VaultId, VaultCreationError> {
         if (name.isBlank()) return Result.Failure(VaultCreationError.BlankName)
 
@@ -44,8 +48,8 @@ class CreateAndSelectVaultUseCase(
             vaultKeyNonce = wrappedVaultKey.nonce,
         )
 
-        vaultRepository.createAndActivateVault(vault)
-        selectVault(SelectedVault.Id(vaultId))
+        vaultRepository.createVault(vault)
+        vaultContextRepository.setContextAndLastInteracted(vaultId)
         return Result.Success(vaultId)
     }
 }
