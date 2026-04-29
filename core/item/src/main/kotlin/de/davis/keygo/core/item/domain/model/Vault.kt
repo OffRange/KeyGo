@@ -2,12 +2,15 @@ package de.davis.keygo.core.item.domain.model
 
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newVaultId
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 data class Vault(
     val id: VaultId = newVaultId(),
     val name: String,
     val keyInformation: KeyInformation,
     val icon: Icon,
+    val createdAt: Instant = Clock.System.now(),
 ) {
     constructor(
         name: String,

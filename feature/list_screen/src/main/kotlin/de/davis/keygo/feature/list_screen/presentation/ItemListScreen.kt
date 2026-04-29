@@ -118,7 +118,7 @@ fun ItemListScreen(
         onVaultSelectorClick = viewModel::onVaultSelectorClick,
         onEditRequest = viewModel::onEditVaultRequest,
         onMoveTo = {},
-        onDeleteVault = {},
+        onDeleteVault = viewModel::onDeleteVault,
         modifier = modifier
     )
 }

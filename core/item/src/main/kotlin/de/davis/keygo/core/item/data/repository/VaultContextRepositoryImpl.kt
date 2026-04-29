@@ -7,6 +7,7 @@ import de.davis.keygo.core.item.data.local.model.protoVaultContextRecord
 import de.davis.keygo.core.item.data.maper.toDomain
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.VaultContext
+import de.davis.keygo.core.item.domain.model.VaultContextRecord
 import de.davis.keygo.core.item.domain.model.getIdOrNull
 import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import kotlinx.coroutines.flow.Flow
@@ -57,4 +58,16 @@ internal class VaultContextRepositoryImpl(
         contextDataStore.data
             .first()
             .let { VaultId.fromString(it.lastInteractedVaultId) }
+
+    override suspend fun getVaultContextRecord(): VaultContextRecord = contextDataStore.data
+        .first()
+        .let {
+            val contextId = if (it.hasVaultIdContext()) VaultId.fromString(it.vaultIdContext)
+            else null
+
+            VaultContextRecord(
+                context = contextId.toDomain(),
+                lastInteractedVaultId = VaultId.fromString(it.lastInteractedVaultId),
+            )
+        }
 }

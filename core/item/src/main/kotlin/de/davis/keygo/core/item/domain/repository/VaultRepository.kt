@@ -14,4 +14,6 @@ interface VaultRepository {
     fun observeAllVaultMetadata(): Flow<List<VaultMetadata>>
 
     suspend fun getKeyInformation(vaultId: VaultId): KeyInformation?
+
+    suspend fun getLastCreatedVaultId(exclude: VaultId): VaultId?
 }

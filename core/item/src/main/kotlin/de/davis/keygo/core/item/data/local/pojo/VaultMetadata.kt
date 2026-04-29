@@ -8,4 +8,5 @@ internal data class VaultMetadata(
     val name: String,
     val icon: Vault.Icon,
     val count: Int,
+    val createdAt: Long,
 )

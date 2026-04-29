@@ -32,4 +32,7 @@ internal class VaultRepositoryImpl(
 
     override suspend fun getKeyInformation(vaultId: VaultId): KeyInformation? =
         vaultDao.getKeyInfoById(vaultId)?.toDomain()
+
+    override suspend fun getLastCreatedVaultId(exclude: VaultId): VaultId? =
+        vaultDao.lastCreatedVaultId(exclude)
 }

@@ -7,6 +7,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultContext
 import de.davis.keygo.core.item.domain.model.VaultMetadata
@@ -20,6 +21,7 @@ import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
 import de.davis.keygo.feature.list_screen.domain.usecase.CreateVaultUseCase
+import de.davis.keygo.feature.list_screen.domain.usecase.DeleteVaultUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.EditVaultUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.ObserveVaultsAndSelectionUseCase
@@ -71,6 +73,7 @@ internal class ItemListViewModel(
     private val setVaultContextUseCase: SetVaultContextUseCase,
     private val createVault: CreateVaultUseCase,
     private val updateVault: EditVaultUseCase,
+    private val deleteVault: DeleteVaultUseCase,
     observeVaultsAndSelection: ObserveVaultsAndSelectionUseCase,
     passwordRepository: PasswordRepository,
 ) : ViewModel() {
@@ -291,6 +294,12 @@ internal class ItemListViewModel(
 
     fun onVaultSelectorClick() {
         vaultStateSwitcher.update { VaultStateSwitcher.Selection }
+    }
+
+    fun onDeleteVault(vaultId: VaultId) {
+        viewModelScope.launch {
+            deleteVault(vaultId)
+        }
     }
 
     private fun <T> Set<T>.toggle(element: T): Set<T> =

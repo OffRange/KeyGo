@@ -2,6 +2,7 @@ package de.davis.keygo.core.item
 
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.VaultContext
+import de.davis.keygo.core.item.domain.model.VaultContextRecord
 import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,4 +45,9 @@ class FakeVaultContextRepository(
 
     override suspend fun getLastInteractedVaultId(): VaultId =
         lastInteracted.value ?: error("No last interacted vault id set")
+
+    override suspend fun getVaultContextRecord(): VaultContextRecord = VaultContextRecord(
+        context = currentContext,
+        lastInteractedVaultId = getLastInteractedVaultId()
+    )
 }

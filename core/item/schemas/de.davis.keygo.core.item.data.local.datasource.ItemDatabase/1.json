@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "6903561a78b816780f0903d6f3e06d9f",
+    "identityHash": "faeacb95b88a936e7e7ca72b9eb13e78",
     "entities": [
       {
         "tableName": "vault",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `name` TEXT NOT NULL, `icon` TEXT NOT NULL, `wrappedKey` BLOB NOT NULL, `keyNonce` BLOB NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `name` TEXT NOT NULL, `icon` TEXT NOT NULL, `created_at` INTEGER NOT NULL, `wrappedKey` BLOB NOT NULL, `keyNonce` BLOB NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -24,6 +24,12 @@
             "fieldPath": "icon",
             "columnName": "icon",
             "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
             "notNull": true
           },
           {
@@ -320,7 +326,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6903561a78b816780f0903d6f3e06d9f')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'faeacb95b88a936e7e7ca72b9eb13e78')"
     ]
   }
 }

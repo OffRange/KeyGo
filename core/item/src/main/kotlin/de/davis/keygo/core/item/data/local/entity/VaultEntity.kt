@@ -1,5 +1,6 @@
 package de.davis.keygo.core.item.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -12,6 +13,8 @@ internal data class VaultEntity(
     val id: VaultId,
     val name: String,
     val icon: Vault.Icon,
+    @ColumnInfo(name = "created_at")
+    val createdAt: Long,
 
     @Embedded
     val keyInformation: KeyInformation,

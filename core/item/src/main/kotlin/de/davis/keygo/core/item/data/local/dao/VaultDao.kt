@@ -29,11 +29,14 @@ internal interface VaultDao {
 
     @Query(
         """
-        SELECT vault.id as vaultId, vault.name, vault.icon, COUNT(item.id) as count
+        SELECT vault.id as vaultId, vault.name, vault.icon, vault.created_at as createdAt, COUNT(item.id) as count
         FROM vault
         LEFT JOIN item ON vault.id = item.vault_id
         GROUP BY vault.id
         """
     )
     fun observeAllVaultMetadata(): Flow<List<VaultMetadata>>
+
+    @Query("SELECT id FROM vault WHERE id != :exclude ORDER BY created_at DESC LIMIT 1")
+    suspend fun lastCreatedVaultId(exclude: VaultId): VaultId?
 }
