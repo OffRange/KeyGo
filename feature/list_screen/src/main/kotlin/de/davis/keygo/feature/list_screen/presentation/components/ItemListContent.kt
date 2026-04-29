@@ -35,8 +35,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newItemId
+import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultContext
+import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
@@ -48,11 +51,11 @@ import de.davis.keygo.core.ui.components.KeyGoColumn
 import de.davis.keygo.core.ui.components.KeyGoColumnItem
 import de.davis.keygo.feature.list_screen.domain.model.SortDirection
 import de.davis.keygo.feature.list_screen.presentation.NoItemStrategy
-import de.davis.keygo.feature.list_screen.presentation.model.CreateVaultRequest
 import de.davis.keygo.feature.list_screen.presentation.model.FilterAction
 import de.davis.keygo.feature.list_screen.presentation.model.FilterBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.ItemSectionState
 import de.davis.keygo.feature.list_screen.presentation.model.ListItemState
+import de.davis.keygo.feature.list_screen.presentation.model.VaultState
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -76,9 +79,14 @@ internal fun ItemListContent(
     onDelete: (ItemId) -> Unit,
     onVaultContextSelect: (VaultContext) -> Unit,
     onCreateVaultRequest: () -> Unit,
-    onCreateVault: (CreateVaultRequest) -> Unit,
+    onCreateOrEditVault: () -> Unit,
+    onIconClick: (Vault.Icon) -> Unit,
     onVaultSelectorClick: () -> Unit,
     onDismissVaultFlow: () -> Unit,
+
+    onEditRequest: (VaultMetadata) -> Unit,
+    onDeleteVault: (VaultId) -> Unit,
+    onMoveTo: (VaultId) -> Unit,
     scrollBehavior: SearchBarScrollBehavior,
     modifier: Modifier = Modifier
 ) {
@@ -104,20 +112,26 @@ internal fun ItemListContent(
             onDismiss = { showFilterSheet = false },
         )
 
-    if (uiState.vaultState.showSelection)
-        VaultSelectionSheet(
-            vaultState = uiState.vaultState,
+    when (val vaultState = uiState.vaultState) {
+        VaultState.Closed -> {}
+        is VaultState.Select -> VaultSelectionSheet(
+            vaultState = vaultState,
             onDismiss = onDismissVaultFlow,
-            onCreateVaultRequest = onCreateVaultRequest
             onVaultContextSelect = onVaultContextSelect,
+            onCreateVaultRequest = onCreateVaultRequest,
+            onEditRequest = onEditRequest,
+            onDelete = onDeleteVault,
+            onMoveTo = onMoveTo,
         )
 
-    if (uiState.vaultState.showCreationDialog)
-        VaultCreationDialog(
-            vaultState = uiState.vaultState,
+        is VaultState.Create,
+        is VaultState.Edit -> VaultCreationDialog(
+            vaultState = vaultState,
             onDismissRequest = onDismissVaultFlow,
-            onCreate = onCreateVault
+            onCreateOrEdit = onCreateOrEditVault,
+            onIconClick = onIconClick,
         )
+    }
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -297,9 +311,14 @@ private fun ItemListContentPreview() {
                 onDelete = {},
                 onVaultContextSelect = {},
                 onCreateVaultRequest = {},
-                onCreateVault = {},
+                onCreateOrEditVault = {},
+                onIconClick = {},
                 onVaultSelectorClick = {},
                 onDismissVaultFlow = {},
+
+                onEditRequest = {},
+                onMoveTo = {},
+                onDeleteVault = {},
                 scrollBehavior = scrollBehavior
             )
         }

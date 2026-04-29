@@ -4,6 +4,7 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultMetadata
+import de.davis.keygo.core.item.domain.model.VaultUpdater
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +36,16 @@ class FakeVaultRepository : VaultRepository {
     override suspend fun createVault(vault: Vault) {
         createError?.let { createError = null; throw it }
         store.update { it + (vault.id to vault) }
+    }
+
+    override suspend fun updateVault(vault: VaultUpdater) {
+        store.value[vault.id]?.let { existing ->
+            val updated = existing.copy(
+                name = vault.name,
+                icon = vault.icon,
+            )
+            store.update { it + (vault.id to updated) }
+        }
     }
 
     override suspend fun deleteVault(vaultId: VaultId) {

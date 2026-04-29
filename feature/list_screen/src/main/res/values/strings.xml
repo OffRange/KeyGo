@@ -38,4 +38,8 @@
         <item quantity="one">1 item</item>
         <item quantity="other">%d items</item>
     </plurals>
+
+    <string name="edit">Edit</string>
+    <string name="move_to">Move to</string>
+    <string name="delete">Delete</string>
 </resources>

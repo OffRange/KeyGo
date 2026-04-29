@@ -7,7 +7,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultContext
+import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.item.domain.model.getIdOrNull
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.repository.ItemRepository
@@ -17,19 +19,19 @@ import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
-import de.davis.keygo.feature.list_screen.domain.usecase.CreateAndSelectVaultUseCase
+import de.davis.keygo.feature.list_screen.domain.usecase.CreateVaultUseCase
+import de.davis.keygo.feature.list_screen.domain.usecase.EditVaultUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.ObserveVaultsAndSelectionUseCase
-import de.davis.keygo.feature.list_screen.domain.usecase.SelectVaultUseCase
+import de.davis.keygo.feature.list_screen.domain.usecase.SetVaultContextUseCase
 import de.davis.keygo.feature.list_screen.presentation.mapper.toAvailableFilterOptions
 import de.davis.keygo.feature.list_screen.presentation.mapper.toBottomSheetState
-import de.davis.keygo.feature.list_screen.presentation.model.CreateVaultRequest
 import de.davis.keygo.feature.list_screen.presentation.model.Event
 import de.davis.keygo.feature.list_screen.presentation.model.FilterAction
 import de.davis.keygo.feature.list_screen.presentation.model.FilterBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.ListItemState
 import de.davis.keygo.feature.list_screen.presentation.model.VaultState
-import de.davis.keygo.feature.list_screen.presentation.model.VaultStateSettings
+import de.davis.keygo.feature.list_screen.presentation.model.VaultStateSwitcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -42,11 +44,13 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -66,6 +70,7 @@ internal class ItemListViewModel(
     private val filterUseCase: FilterUseCase,
     private val setVaultContextUseCase: SetVaultContextUseCase,
     private val createVault: CreateVaultUseCase,
+    private val updateVault: EditVaultUseCase,
     observeVaultsAndSelection: ObserveVaultsAndSelectionUseCase,
     passwordRepository: PasswordRepository,
 ) : ViewModel() {
@@ -106,36 +111,57 @@ internal class ItemListViewModel(
     private val selectedItemIds = MutableStateFlow(emptySet<ItemId>())
     private val highlightedId = MutableStateFlow<ItemId?>(null)
 
-    private val vaultStateSettings = MutableStateFlow(VaultStateSettings())
+    private val vaultStateSwitcher = MutableStateFlow<VaultStateSwitcher>(VaultStateSwitcher.Closed)
 
-    private val vaultState = combine(
-        vaultStateSettings,
-        vaultsAndSelection
-    ) { settings, vaultsAndSelection ->
-        VaultState(
-            vaults = vaultsAndSelection.vaults,
-            showSelection = settings.showSelection,
-            showCreationDialog = settings.showCreationDialog,
-            error = settings.error,
-            vaultContext = vaultsAndSelection.selection,
+    private val createVaultState = MutableStateFlow(VaultState.Create())
+    private val editVaultState = MutableStateFlow<VaultState.Edit?>(null)
+
+    private val vaultSelectionState = vaultsAndSelection.map {
+        VaultState.Select(
+            vaults = it.vaults,
+            vaultContext = it.selection,
         )
-    }
+    }.distinctUntilChanged()
 
-    val listItemState = combine6(
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val vaultState = vaultStateSwitcher.flatMapLatest { switcher ->
+        when (switcher) {
+            VaultStateSwitcher.Closed -> flowOf(VaultState.Closed)
+            VaultStateSwitcher.Selection -> vaultSelectionState
+            VaultStateSwitcher.Create -> createVaultState
+            is VaultStateSwitcher.Edit -> {
+                editVaultState.update {
+                    VaultState.Edit(
+                        vaultId = switcher.vaultMetadata.vaultId,
+                        nameTextFieldState = TextFieldState(switcher.vaultMetadata.name),
+                        icon = switcher.vaultMetadata.icon,
+                    )
+                }
+                editVaultState.filterNotNull()
+            }
+        }
+    }.distinctUntilChanged()
+
+    // TODO: vaultSelectionState is being used twice when VaultStateSwitcher.Selection
+    //  figure out a simpler and cleaner way
+    val listItemState = combine7(
+        vaultSelectionState,
         vaultState,
         filteredItems,
         searchResults,
         selectedItemIds,
         submittedSearchQuery,
         highlightedId,
-    ) { vaultState, items, searchResults, selectedIds, submittedSearchQuery, highlightedId ->
+    ) { vaultSelectionState, vaultState, items, searchResults, selectedIds, submittedSearchQuery, highlightedId ->
         ListItemState(
             items = items,
             searchResults = searchResults,
             hasSearchQuery = submittedSearchQuery.isNotBlank(),
             selectedItemIds = selectedIds,
             highlightedId = highlightedId,
-            vaultState = vaultState
+            vaultState = vaultState,
+            vaults = vaultSelectionState.vaults,
+            vaultContext = vaultSelectionState.vaultContext,
         )
     }.distinctUntilChanged()
         .onStart {
@@ -200,42 +226,71 @@ internal class ItemListViewModel(
     }
 
     fun onCreateVaultRequest() {
-        vaultStateSettings.update { it.copy(showSelection = false, showCreationDialog = true) }
+        vaultStateSwitcher.update { VaultStateSwitcher.Create }
     }
 
-    fun onCreateVault(request: CreateVaultRequest) {
+    fun onCreateOrEditVault() {
         viewModelScope.launch {
-            createAndSelectVault(
-                name = request.name,
-                icon = request.icon
-            ).onFailure { error ->
-                vaultStateSettings.update {
-                    it.copy(error = error)
+            when (vaultStateSwitcher.value) {
+                VaultStateSwitcher.Closed, VaultStateSwitcher.Selection -> null
+                VaultStateSwitcher.Create -> {
+                    val state = createVaultState.value
+                    createVault(
+                        name = state.nameTextFieldState.text.toString(),
+                        icon = state.icon,
+                    ).onFailure { error ->
+                        createVaultState.update { state.copy(error = error) }
+                    }
                 }
-            }.onSuccess {
+
+                is VaultStateSwitcher.Edit -> {
+                    editVaultState.value?.let { state ->
+                        updateVault(
+                            vaultId = state.vaultId,
+                            name = state.nameTextFieldState.text.toString(),
+                            icon = state.icon,
+                        ).onFailure { error ->
+                            editVaultState.update { state.copy(error = error) }
+                        }
+                    }
+                }
+            }?.onSuccess {
                 onDismissVaultFlow()
             }
         }
     }
 
-    fun onDismissVaultFlow() {
-        vaultStateSettings.update {
-            it.copy(
-                showSelection = false,
-                showCreationDialog = false,
-                error = null
-            )
+    fun onVaultIconClick(icon: Vault.Icon) {
+        when (vaultStateSwitcher.value) {
+            VaultStateSwitcher.Closed, VaultStateSwitcher.Selection -> {}
+            VaultStateSwitcher.Create -> {
+                createVaultState.update {
+                    it.copy(icon = icon)
+                }
+            }
+
+            is VaultStateSwitcher.Edit -> {
+                editVaultState.value?.let { state ->
+                    editVaultState.update {
+                        state.copy(icon = icon)
+                    }
+                }
+            }
         }
     }
 
-    fun onVaultSelectorClick() {
-        vaultStateSettings.update {
-            it.copy(
-                showSelection = true,
-                showCreationDialog = false,
-                error = null
-            )
+    fun onEditVaultRequest(vaultMetadata: VaultMetadata) {
+        vaultStateSwitcher.update {
+            VaultStateSwitcher.Edit(vaultMetadata)
         }
+    }
+
+    fun onDismissVaultFlow() {
+        vaultStateSwitcher.update { VaultStateSwitcher.Closed }
+    }
+
+    fun onVaultSelectorClick() {
+        vaultStateSwitcher.update { VaultStateSwitcher.Selection }
     }
 
     private fun <T> Set<T>.toggle(element: T): Set<T> =
@@ -353,15 +408,16 @@ internal class ItemListViewModel(
     }
 }
 
-private fun <T1, T2, T3, T4, T5, T6, R> combine6(
+private fun <T1, T2, T3, T4, T5, T6, T7, R> combine7(
     flow1: Flow<T1>,
     flow2: Flow<T2>,
     flow3: Flow<T3>,
     flow4: Flow<T4>,
     flow5: Flow<T5>,
     flow6: Flow<T6>,
-    transform: (T1, T2, T3, T4, T5, T6) -> R
-): Flow<R> = combine(flow1, flow2, flow3, flow4, flow5, flow6) { arrayOfFlows ->
+    flow7: Flow<T7>,
+    transform: (T1, T2, T3, T4, T5, T6, T7) -> R
+): Flow<R> = combine(flow1, flow2, flow3, flow4, flow5, flow6, flow7) { arrayOfFlows ->
     @Suppress("UNCHECKED_CAST")
     transform(
         arrayOfFlows[0] as T1,
@@ -370,5 +426,6 @@ private fun <T1, T2, T3, T4, T5, T6, R> combine6(
         arrayOfFlows[3] as T4,
         arrayOfFlows[4] as T5,
         arrayOfFlows[5] as T6,
+        arrayOfFlows[6] as T7,
     )
 }

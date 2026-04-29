@@ -1,53 +1,56 @@
 package de.davis.keygo.feature.list_screen.presentation.components
 
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenuGroup
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenuPopup
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalIconToggleButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultContext
@@ -57,16 +60,18 @@ import de.davis.keygo.core.item.presentation.toImageVector
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.list_screen.R
 import de.davis.keygo.feature.list_screen.presentation.AllVaultsIcon
-import de.davis.keygo.feature.list_screen.presentation.model.CreateVaultRequest
 import de.davis.keygo.feature.list_screen.presentation.model.VaultState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun VaultSelectionSheet(
-    vaultState: VaultState,
+    vaultState: VaultState.Select,
     onDismiss: () -> Unit,
     onVaultContextSelect: (VaultContext) -> Unit,
     onCreateVaultRequest: () -> Unit,
+    onEditRequest: (VaultMetadata) -> Unit,
+    onDelete: (VaultId) -> Unit,
+    onMoveTo: (VaultId) -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState(),
 ) {
     ModalBottomSheet(
@@ -80,6 +85,9 @@ internal fun VaultSelectionSheet(
                 vaultState = vaultState,
                 onVaultContextSelect = onVaultContextSelect,
                 onCreateVaultRequest = onCreateVaultRequest,
+                onEditRequest = onEditRequest,
+                onDelete = onDelete,
+                onMoveTo = onMoveTo,
             )
         }
     }
@@ -88,9 +96,12 @@ internal fun VaultSelectionSheet(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun VaultSelectionSheetContent(
-    vaultState: VaultState,
+    vaultState: VaultState.Select,
     onVaultContextSelect: (VaultContext) -> Unit,
     onCreateVaultRequest: () -> Unit,
+    onEditRequest: (VaultMetadata) -> Unit,
+    onDelete: (VaultId) -> Unit,
+    onMoveTo: (VaultId) -> Unit,
 ) {
     val sumAllVaults = vaultState.sumCount
     LazyColumn(
@@ -144,8 +155,9 @@ private fun VaultSelectionSheetContent(
 
         val vaultCount = vaultState.vaults.size
         itemsIndexed(
-            vaultState.vaults,
-            key = { _, metadata -> metadata.vaultId }) { index, metadata ->
+            items = vaultState.vaults,
+            key = { _, metadata -> metadata.vaultId }
+        ) { index, metadata ->
             SegmentedListItem(
                 selected = vaultState.vaultContext.getIdOrNull() == metadata.vaultId,
                 onClick = { onVaultContextSelect(VaultContext.ById(metadata.vaultId)) },
@@ -169,112 +181,108 @@ private fun VaultSelectionSheetContent(
                             metadata.count
                         )
                     )
+                },
+                trailingContent = {
+                    var expanded by rememberSaveable { mutableStateOf(false) }
+                    Box(modifier = Modifier.wrapContentSize(Alignment.TopStart)) {
+                        TooltipBox(
+                            positionProvider =
+                                TooltipDefaults.rememberTooltipPositionProvider(
+                                    TooltipAnchorPosition.Above
+                                ),
+                            tooltip = { PlainTooltip { Text(text = stringResource(R.string.edit)) } },
+                            state = rememberTooltipState(),
+                        ) {
+                            IconButton(onClick = { expanded = true }) {
+                                Icon(
+                                    Icons.Default.MoreVert,
+                                    contentDescription = stringResource(R.string.edit)
+                                )
+                            }
+                        }
+
+                        DropdownMenuPopup(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            DropdownMenuGroup(
+                                shapes = MenuDefaults.groupShape(
+                                    0,
+                                    if (vaultState.hasMultipleVaults) 2 else 1
+                                )
+                            ) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(text = stringResource(R.string.edit))
+                                    },
+                                    onClick = {
+                                        expanded = false
+                                        onEditRequest(metadata)
+                                    },
+                                    shape = MenuDefaults.itemShape(
+                                        0,
+                                        if (vaultState.hasMultipleVaults) 2 else 1
+                                    ).shape,
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = stringResource(R.string.edit)
+                                        )
+                                    }
+                                )
+
+                                if (vaultState.hasMultipleVaults) {
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(text = stringResource(R.string.move_to))
+                                        },
+                                        onClick = {
+                                            expanded = false
+                                            onMoveTo(metadata.vaultId)
+                                        },
+                                        shape = MenuDefaults.itemShape(1, 2).shape,
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Default.DriveFileMove,
+                                                contentDescription = stringResource(R.string.move_to)
+                                            )
+                                        }
+                                    )
+                                }
+                            }
+
+                            if (vaultState.hasMultipleVaults) {
+                                Spacer(modifier = Modifier.height(MenuDefaults.GroupSpacing))
+                                DropdownMenuGroup(
+                                    shapes = MenuDefaults.groupShape(1, 2),
+                                    containerColor = MaterialTheme.colorScheme.errorContainer
+                                ) {
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(text = stringResource(R.string.delete))
+                                        },
+                                        onClick = {
+                                            expanded = false
+                                            onDelete(metadata.vaultId)
+                                        },
+                                        shape = MenuDefaults.trailingItemShape,
+                                        colors = MenuDefaults.selectableItemColors(
+                                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                                        ),
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.DeleteForever,
+                                                contentDescription = stringResource(R.string.delete)
+                                            )
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             ) {
                 Text(text = metadata.name)
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun VaultCreationSheetContent(
-    onBack: () -> Unit,
-    onCreate: (CreateVaultRequest) -> Unit
-) {
-    val focusRequester = remember { FocusRequester() }
-    var selectedIcon by remember { mutableStateOf(Vault.Icon.Default) }
-    val textFieldState = rememberTextFieldState()
-
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
-
-    BackHandler(onBack = onBack)
-
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(bottom = 16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(
-                onClick = onBack
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Default.ArrowBack,
-                    contentDescription = null
-                )
-            }
-
-            Text(
-                text = stringResource(R.string.create_new_vault),
-                style = MaterialTheme.typography.titleLarge,
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-            IconButton(
-                onClick = {
-                    onCreate(
-                        CreateVaultRequest(
-                            name = textFieldState.text.toString(),
-                            icon = selectedIcon,
-                        )
-                    )
-                },
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null
-                )
-            }
-        }
-
-        OutlinedTextField(
-            state = textFieldState,
-            modifier = Modifier
-                .focusRequester(focusRequester)
-                .fillMaxWidth(),
-            label = { Text(text = stringResource(R.string.vault_name)) },
-            placeholder = { Text(text = stringResource(R.string.vault_name_placeholder)) },
-            leadingIcon = {
-                AnimatedContent(selectedIcon) { icon ->
-                    Icon(
-                        imageVector = icon.toImageVector(),
-                        contentDescription = null
-                    )
-                }
-            }
-        )
-
-        Text(
-            text = stringResource(R.string.icon),
-            modifier = Modifier.padding(top = 2.dp),
-            style = MaterialTheme.typography.labelMedium,
-        )
-
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Vault.Icon.entries.forEach { icon ->
-                FilledTonalIconToggleButton(
-                    checked = selectedIcon == icon,
-                    onCheckedChange = { selectedIcon = icon },
-                    modifier = Modifier
-                        .minimumInteractiveComponentSize()
-                        .size(IconButtonDefaults.mediumContainerSize()),
-                    shapes = IconButtonDefaults.toggleableShapes(),
-                ) {
-                    Icon(
-                        imageVector = icon.toImageVector(),
-                        contentDescription = null
-                    )
-                }
             }
         }
     }
@@ -286,10 +294,11 @@ private fun VaultSelectionSheetContentPreview() {
     val selectedVaultId = remember { newVaultId() }
     KeyGoTheme {
         Surface(
+            modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.surfaceContainerHigh
         ) {
             VaultSelectionSheetContent(
-                vaultState = VaultState(
+                vaultState = VaultState.Select(
                     vaults = listOf(
                         VaultMetadata(
                             vaultId = newVaultId(),
@@ -304,26 +313,13 @@ private fun VaultSelectionSheetContentPreview() {
                             count = 1,
                         ),
                     ),
-                    selectedVault = SelectedVault.Id(selectedVaultId)
+                    vaultContext = VaultContext.ById(selectedVaultId)
                 ),
-                onVaultSelected = {},
+                onVaultContextSelect = {},
                 onCreateVaultRequest = {},
-            )
-        }
-    }
-}
-
-@Preview
-@Composable
-private fun VaultCreationSheetContentPreview() {
-    KeyGoTheme {
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            VaultCreationSheetContent(
-                onBack = {},
-                onCreate = {},
+                onEditRequest = {},
+                onDelete = {},
+                onMoveTo = {},
             )
         }
     }

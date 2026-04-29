@@ -7,6 +7,7 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultMetadata
+import de.davis.keygo.core.item.domain.model.VaultUpdater
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -18,6 +19,10 @@ internal class VaultRepositoryImpl(
 ) : VaultRepository {
     override suspend fun createVault(vault: Vault) {
         vaultDao.insert(vault.toData())
+    }
+
+    override suspend fun updateVault(vault: VaultUpdater) {
+        vaultDao.update(vault.toData())
     }
 
     override suspend fun deleteVault(vaultId: VaultId) = vaultDao.delete(vaultId)

@@ -19,6 +19,9 @@ import androidx.compose.material3.SearchBarState
 import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -89,12 +92,16 @@ internal fun ListSearchTextField(
                     }
                 }
 
-                if (uiState.vaultState.vaults.isNotEmpty())
+                val hasVaults by remember(uiState.vaults) {
+                    derivedStateOf { uiState.vaults.isNotEmpty() }
+                }
+
+                if (hasVaults)
                     IconButton(
                         onClick = onVaultSelectorClick
                     ) {
                         Icon(
-                            painter = uiState.vaultState.selectedVaultIcon(),
+                            painter = uiState.selectedVaultIcon(),
                             contentDescription = stringResource(R.string.filter),
                         )
                     }
