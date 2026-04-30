@@ -24,6 +24,7 @@ import de.davis.keygo.feature.list_screen.domain.usecase.CreateVaultUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.DeleteVaultUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.EditVaultUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
+import de.davis.keygo.feature.list_screen.domain.usecase.MoveItemsUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.ObserveVaultsAndSelectionUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.SetVaultContextUseCase
 import de.davis.keygo.feature.list_screen.presentation.mapper.toAvailableFilterOptions
@@ -74,6 +75,7 @@ internal class ItemListViewModel(
     private val createVault: CreateVaultUseCase,
     private val updateVault: EditVaultUseCase,
     private val deleteVault: DeleteVaultUseCase,
+    private val moveItems: MoveItemsUseCase,
     observeVaultsAndSelection: ObserveVaultsAndSelectionUseCase,
     passwordRepository: PasswordRepository,
 ) : ViewModel() {
@@ -118,6 +120,7 @@ internal class ItemListViewModel(
 
     private val createVaultState = MutableStateFlow(VaultState.Create())
     private val editVaultState = MutableStateFlow<VaultState.Edit?>(null)
+    private val moveDstSelection = MutableStateFlow<VaultId?>(null)
 
     private val vaultSelectionState = vaultsAndSelection.map {
         VaultState.Select(
@@ -142,6 +145,20 @@ internal class ItemListViewModel(
                 }
                 editVaultState.filterNotNull()
             }
+
+            is VaultStateSwitcher.Move -> combine(
+                vaultsAndSelection,
+                moveDstSelection,
+            ) { vs, dstId ->
+                val src = vs.vaults.firstOrNull { it.vaultId == switcher.srcVaultId }
+                    ?: return@combine null
+                val dstVaults = vs.vaults.filter { it.vaultId != switcher.srcVaultId }
+                VaultState.Move(
+                    srcVault = src,
+                    dstVaults = dstVaults,
+                    selectedDstVaultId = dstId ?: dstVaults.firstOrNull()?.vaultId,
+                )
+            }.filterNotNull()
         }
     }.distinctUntilChanged()
 
@@ -235,7 +252,9 @@ internal class ItemListViewModel(
     fun onCreateOrEditVault() {
         viewModelScope.launch {
             when (vaultStateSwitcher.value) {
-                VaultStateSwitcher.Closed, VaultStateSwitcher.Selection -> null
+                VaultStateSwitcher.Closed,
+                VaultStateSwitcher.Selection,
+                is VaultStateSwitcher.Move -> null
                 VaultStateSwitcher.Create -> {
                     val state = createVaultState.value
                     createVault(
@@ -265,7 +284,10 @@ internal class ItemListViewModel(
 
     fun onVaultIconClick(icon: Vault.Icon) {
         when (vaultStateSwitcher.value) {
-            VaultStateSwitcher.Closed, VaultStateSwitcher.Selection -> {}
+            VaultStateSwitcher.Closed,
+            VaultStateSwitcher.Selection,
+            is VaultStateSwitcher.Move -> {
+            }
             VaultStateSwitcher.Create -> {
                 createVaultState.update {
                     it.copy(icon = icon)
@@ -290,6 +312,7 @@ internal class ItemListViewModel(
 
     fun onDismissVaultFlow() {
         vaultStateSwitcher.update { VaultStateSwitcher.Closed }
+        moveDstSelection.update { null }
     }
 
     fun onVaultSelectorClick() {
@@ -299,6 +322,24 @@ internal class ItemListViewModel(
     fun onDeleteVault(vaultId: VaultId) {
         viewModelScope.launch {
             deleteVault(vaultId)
+        }
+    }
+
+    fun onMoveTo(vaultId: VaultId) {
+        moveDstSelection.update { null }
+        vaultStateSwitcher.update { VaultStateSwitcher.Move(vaultId) }
+    }
+
+    fun onMoveDstSelected(vaultId: VaultId) {
+        moveDstSelection.update { vaultId }
+    }
+
+    fun onConfirmMove() {
+        val switcher = vaultStateSwitcher.value as? VaultStateSwitcher.Move ?: return
+        val dstVaultId = moveDstSelection.value ?: return
+        viewModelScope.launch {
+            moveItems(switcher.srcVaultId, dstVaultId)
+            onDismissVaultFlow()
         }
     }
 

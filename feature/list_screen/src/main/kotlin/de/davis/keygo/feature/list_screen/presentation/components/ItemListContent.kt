@@ -87,6 +87,8 @@ internal fun ItemListContent(
     onEditRequest: (VaultMetadata) -> Unit,
     onDeleteVault: (VaultId) -> Unit,
     onMoveTo: (VaultId) -> Unit,
+    onMoveDstSelected: (VaultId) -> Unit,
+    onConfirmMove: () -> Unit,
     scrollBehavior: SearchBarScrollBehavior,
     modifier: Modifier = Modifier
 ) {
@@ -130,6 +132,13 @@ internal fun ItemListContent(
             onDismissRequest = onDismissVaultFlow,
             onCreateOrEdit = onCreateOrEditVault,
             onIconClick = onIconClick,
+        )
+
+        is VaultState.Move -> MoveVaultDialog(
+            vaultState = vaultState,
+            onDismissRequest = onDismissVaultFlow,
+            onDstSelected = onMoveDstSelected,
+            onConfirm = onConfirmMove,
         )
     }
 
@@ -319,6 +328,8 @@ private fun ItemListContentPreview() {
                 onEditRequest = {},
                 onMoveTo = {},
                 onDeleteVault = {},
+                onMoveDstSelected = {},
+                onConfirmMove = {},
                 scrollBehavior = scrollBehavior
             )
         }

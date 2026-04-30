@@ -42,4 +42,8 @@
     <string name="edit">Edit</string>
     <string name="move_to">Move to</string>
     <string name="delete">Delete</string>
+    <string name="move">Move</string>
+    <string name="cancel">Cancel</string>
+    <string name="destination_vault">Destination vault</string>
+    <string name="source_vault">Source vault</string>
 </resources>

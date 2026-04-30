@@ -23,6 +23,16 @@ internal sealed interface VaultState {
     }
 
     @Stable
+    data class Move(
+        val srcVault: VaultMetadata,
+        val dstVaults: List<VaultMetadata>,
+        val selectedDstVaultId: VaultId? = dstVaults.firstOrNull()?.vaultId,
+    ) : VaultState {
+        val selectedDstVault: VaultMetadata? =
+            dstVaults.firstOrNull { it.vaultId == selectedDstVaultId }
+    }
+
+    @Stable
     sealed interface CreateOrUpdate : VaultState {
         val nameTextFieldState: TextFieldState
         val icon: Vault.Icon

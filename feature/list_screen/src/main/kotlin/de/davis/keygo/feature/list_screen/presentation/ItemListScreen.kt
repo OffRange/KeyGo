@@ -117,8 +117,10 @@ fun ItemListScreen(
         onDismissVaultFlow = viewModel::onDismissVaultFlow,
         onVaultSelectorClick = viewModel::onVaultSelectorClick,
         onEditRequest = viewModel::onEditVaultRequest,
-        onMoveTo = {},
+        onMoveTo = viewModel::onMoveTo,
         onDeleteVault = viewModel::onDeleteVault,
+        onMoveDstSelected = viewModel::onMoveDstSelected,
+        onConfirmMove = viewModel::onConfirmMove,
         modifier = modifier
     )
 }
