@@ -1,6 +1,5 @@
 package de.davis.keygo.feature.item.core.domain.usecase
 
-import de.davis.keygo.core.item.FakeCryptographicScopeProvider
 import de.davis.keygo.core.item.FakePasswordRepository
 import de.davis.keygo.core.item.FakePasswordStrengthEstimator
 import de.davis.keygo.core.item.FakeVaultRepository
@@ -12,7 +11,7 @@ import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.model.SecretData
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
-import de.davis.keygo.core.security.crypto.RecordingCryptographicScopeProvider
+import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.isFailure
@@ -285,13 +284,10 @@ class CreateNewOrUpdatePasswordUseCaseTest {
 
     @Test
     fun `create routes secret fields through the crypto scope`() = runTest {
-        val recordingProvider = RecordingCryptographicScopeProvider()
-        val localUseCase = makeUseCase(cryptographicScopeProvider = recordingProvider)
-
         val plaintextPassword = "s3cr3t"
         val plaintextTotp = "JBSWY3DPEHPK3PXP"
 
-        val result = localUseCase(
+        val result = useCase(
             UpsertPassword.create(
                 vaultId = defaultVault.id,
                 name = "My site",
@@ -303,30 +299,30 @@ class CreateNewOrUpdatePasswordUseCaseTest {
         val stored = storedById(result.getOrNull())
         assertNotNull(stored)
 
-        val labels = recordingProvider.encryptCalls.map { it.label }
+        val labels = cryptoProvider.encryptCalls.map { it.label }
         assertContains(labels, Password.LABEL_PASSWORD)
         assertContains(labels, Password.LABEL_TOTP_SECRET)
         assertEquals(2, labels.size)
 
         val passwordCall =
-            recordingProvider.encryptCalls.single { it.label == Password.LABEL_PASSWORD }
+            cryptoProvider.encryptCalls.single { it.label == Password.LABEL_PASSWORD }
         assertContentEquals(plaintextPassword.encodeToByteArray(), passwordCall.plaintext)
 
         val totpCall =
-            recordingProvider.encryptCalls.single { it.label == Password.LABEL_TOTP_SECRET }
+            cryptoProvider.encryptCalls.single { it.label == Password.LABEL_TOTP_SECRET }
         assertContentEquals(plaintextTotp.encodeToByteArray(), totpCall.plaintext)
 
         assertFalse(stored.password.data.contentEquals(plaintextPassword.encodeToByteArray()))
         assertContentEquals(
-            RecordingCryptographicScopeProvider.transform(plaintextPassword.encodeToByteArray()),
+            FakeCryptographicScopeProvider.transform(plaintextPassword.encodeToByteArray()),
             stored.password.data
         )
-        assertContentEquals(RecordingCryptographicScopeProvider.IV, stored.password.iv)
+        assertContentEquals(FakeCryptographicScopeProvider.IV, stored.password.iv)
 
         assertNotNull(stored.totpSecret)
         assertFalse(stored.totpSecret!!.data.contentEquals(plaintextTotp.encodeToByteArray()))
         assertContentEquals(
-            RecordingCryptographicScopeProvider.transform(plaintextTotp.encodeToByteArray()),
+            FakeCryptographicScopeProvider.transform(plaintextTotp.encodeToByteArray()),
             stored.totpSecret!!.data
         )
     }

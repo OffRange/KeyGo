@@ -2,7 +2,6 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.google.protobuf)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.koin.compiler)
@@ -56,12 +55,7 @@ dependencies {
     implementation(projects.core.ui)
     implementation(projects.core.util)
     implementation(projects.core.security)
-    implementation(projects.rust)
-    implementation(projects.feature.item.core)
-
-    // Datastore
-    implementation(libs.androidx.datastore)
-    implementation(libs.google.protobuf.kotlin.lite)
+    implementation(projects.feature.vault)
 
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))
@@ -72,30 +66,10 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.io.mockk)
     testImplementation(testFixtures(projects.core.item))
-    testImplementation(testFixtures(projects.rust))
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-}
-
-protobuf {
-    protoc {
-        artifact = libs.google.protobuf.protoc.get().toString()
-    }
-
-    generateProtoTasks {
-        all().forEach { task ->
-            task.builtins {
-                create("java") {
-                    option("lite")
-                }
-                create("kotlin") {
-                    option("lite")
-                }
-            }
-        }
-    }
 }

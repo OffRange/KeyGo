@@ -13,7 +13,7 @@ internal data class ListItemState(
     val hasSearchQuery: Boolean = false,
     val selectedItemIds: Set<ItemId> = emptySet(),
     val highlightedId: ItemId? = null,
-    val vaultState: VaultState = VaultState.Closed,
+    val isVaultFlowVisible: Boolean = false,
     val vaults: List<VaultMetadata> = emptyList(),
     val vaultContext: VaultContext = VaultContext.NoSpecific,
 )

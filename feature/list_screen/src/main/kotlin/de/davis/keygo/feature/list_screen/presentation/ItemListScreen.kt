@@ -91,7 +91,6 @@ fun ItemListScreen(
         }
     }
 
-    // TODO: add better naming to lambdas
     ItemListContent(
         uiState = uiState,
         searchBarState = searchBarState,
@@ -110,17 +109,8 @@ fun ItemListScreen(
         onItemLongClick = viewModel::onItemLongClick,
         onDelete = viewModel::onDelete,
         scrollBehavior = scrollBehavior,
-        onVaultContextSelect = viewModel::onVaultContextSelected,
-        onCreateVaultRequest = viewModel::onCreateVaultRequest,
-        onCreateOrEditVault = viewModel::onCreateOrEditVault,
-        onIconClick = viewModel::onVaultIconClick,
-        onDismissVaultFlow = viewModel::onDismissVaultFlow,
         onVaultSelectorClick = viewModel::onVaultSelectorClick,
-        onEditRequest = viewModel::onEditVaultRequest,
-        onMoveTo = viewModel::onMoveTo,
-        onDeleteVault = viewModel::onDeleteVault,
-        onMoveDstSelected = viewModel::onMoveDstSelected,
-        onConfirmMove = viewModel::onConfirmMove,
+        onDismissVaultFlow = viewModel::onDismissVaultFlow,
         modifier = modifier
     )
 }

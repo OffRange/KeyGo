@@ -98,6 +98,7 @@ dependencies {
     implementation(projects.feature.item.core)
     implementation(projects.feature.item.create)
     implementation(projects.feature.item.view)
+    implementation(projects.feature.vault)
     implementation(projects.feature.totp)
     implementation(projects.feature.autofill)
     implementation(projects.migrationCreateAccess)

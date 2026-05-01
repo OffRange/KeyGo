@@ -3,7 +3,9 @@ package de.davis.keygo.core.item.data.maper
 import de.davis.keygo.core.item.data.local.entity.ItemEntity
 import de.davis.keygo.core.item.data.local.pojo.LightweightItem
 import de.davis.keygo.core.item.data.local.pojo.LightweightItemSearchResult
+import de.davis.keygo.core.item.data.local.pojo.MovableItemPojo
 import de.davis.keygo.core.item.domain.model.Item
+import de.davis.keygo.core.item.domain.model.MovableItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
 
@@ -32,4 +34,9 @@ internal fun LightweightItemSearchResult.toDomain() = LiteItemSearchResult(
     matchedName = matchedName,
     matchedNote = matchedNote,
     pinned = pinned,
+)
+
+internal fun MovableItemPojo.toDomain() = MovableItem(
+    id = id,
+    keyInformation = keyInformation.toDomain(),
 )

@@ -6,6 +6,7 @@ import androidx.room.Upsert
 import de.davis.keygo.core.item.data.local.entity.ItemEntity
 import de.davis.keygo.core.item.data.local.pojo.LightweightItem
 import de.davis.keygo.core.item.data.local.pojo.LightweightItemSearchResult
+import de.davis.keygo.core.item.data.local.pojo.MovableItemPojo
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
@@ -53,4 +54,18 @@ internal interface ItemDao {
 
     @Query("SELECT i.id, i.name, i.itemType, i.pinned FROM item i WHERE (:vaultId IS NULL OR vault_id = :vaultId)")
     fun observeLiteItems(vaultId: VaultId? = null): Flow<List<LightweightItem>>
+
+    @Query("SELECT id, wrappedKey, keyNonce FROM item WHERE vault_id = :vaultId")
+    suspend fun getMovableItemsByVault(vaultId: VaultId): List<MovableItemPojo>
+
+    @Query(
+        "UPDATE item SET vault_id = :newVaultId, wrappedKey = :wrappedKey, keyNonce = :keyNonce " +
+                "WHERE id = :id"
+    )
+    suspend fun moveItem(
+        id: ItemId,
+        newVaultId: VaultId,
+        wrappedKey: ByteArray,
+        keyNonce: ByteArray,
+    )
 }

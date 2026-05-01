@@ -3,9 +3,12 @@ package de.davis.keygo.core.item.domain.repository
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.Item
+import de.davis.keygo.core.item.domain.model.KeyInformation
+import de.davis.keygo.core.item.domain.model.MovableItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
+import de.davis.keygo.core.util.Result
 import kotlinx.coroutines.flow.Flow
 
 interface ItemRepository {
@@ -29,4 +32,12 @@ interface ItemRepository {
     suspend fun setPinned(itemId: ItemId, pinned: Boolean)
 
     fun observeLiteVaultItems(vaultId: VaultId? = null): Flow<List<LiteItem>>
+
+    suspend fun getMovableItemsByVault(vaultId: VaultId): List<MovableItem>
+
+    suspend fun moveItem(
+        itemId: ItemId,
+        newVaultId: VaultId,
+        newKeyInformation: KeyInformation,
+    ): Result<Unit, Throwable>
 }

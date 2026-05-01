@@ -53,11 +53,13 @@ internal class CryptographicScopeImpl(
     override suspend fun wrapCurrentItemKey(context: CoroutineContext): KeyInformation =
         withContext(context, block = wrapAction)
 
+    // The vault binding is already enforced by the item-key wrap layer (item key wrapped under
+    // vault key with vault id in AAD), so the data AAD only needs to bind ciphertext to its
+    // owning item and field. This lets us move an item between vaults by rewrapping the item key
+    // alone, without touching the encrypted secrets.
     private fun buildDataAad(label: String): ByteArray {
         val labelBytes = label.toByteArray(Charsets.UTF_8)
-        return ByteBuffer.allocate(UUID_BYTES + UUID_BYTES + labelBytes.size)
-            .putLong(itemAad.vaultId.mostSignificantBits)
-            .putLong(itemAad.vaultId.leastSignificantBits)
+        return ByteBuffer.allocate(UUID_BYTES + labelBytes.size)
             .putLong(itemAad.itemId.mostSignificantBits)
             .putLong(itemAad.itemId.leastSignificantBits)
             .put(labelBytes)

@@ -8,10 +8,13 @@ import de.davis.keygo.core.item.data.maper.toDomain
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.Item
+import de.davis.keygo.core.item.domain.model.KeyInformation
+import de.davis.keygo.core.item.domain.model.MovableItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
+import de.davis.keygo.core.util.Result
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.koin.core.annotation.Single
@@ -47,4 +50,23 @@ internal class ItemRepositoryImpl(
 
     override fun observeLiteVaultItems(vaultId: VaultId?): Flow<List<LiteItem>> =
         itemDao.observeLiteItems(vaultId).map { it.map(LightweightItem::toDomain) }
+
+    override suspend fun getMovableItemsByVault(vaultId: VaultId): List<MovableItem> =
+        itemDao.getMovableItemsByVault(vaultId).map { it.toDomain() }
+
+    override suspend fun moveItem(
+        itemId: ItemId,
+        newVaultId: VaultId,
+        newKeyInformation: KeyInformation,
+    ): Result<Unit, Throwable> = runCatching {
+        itemDao.moveItem(
+            id = itemId,
+            newVaultId = newVaultId,
+            wrappedKey = newKeyInformation.wrappedKey,
+            keyNonce = newKeyInformation.keyNonce,
+        )
+    }.fold(
+        onSuccess = { Result.Success(Unit) },
+        onFailure = { Result.Failure(it) },
+    )
 }

@@ -7,34 +7,21 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.alias.VaultId
-import de.davis.keygo.core.item.domain.model.Vault
-import de.davis.keygo.core.item.domain.model.VaultContext
-import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.item.domain.model.getIdOrNull
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
-import de.davis.keygo.core.util.onFailure
-import de.davis.keygo.core.util.onSuccess
-import de.davis.keygo.feature.item.core.domain.usecase.MoveItemsToVaultUseCase
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
-import de.davis.keygo.feature.list_screen.domain.usecase.CreateVaultUseCase
-import de.davis.keygo.feature.list_screen.domain.usecase.DeleteVaultUseCase
-import de.davis.keygo.feature.list_screen.domain.usecase.EditVaultUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
-import de.davis.keygo.feature.list_screen.domain.usecase.ObserveVaultsAndSelectionUseCase
-import de.davis.keygo.feature.list_screen.domain.usecase.SetVaultContextUseCase
 import de.davis.keygo.feature.list_screen.presentation.mapper.toAvailableFilterOptions
 import de.davis.keygo.feature.list_screen.presentation.mapper.toBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.Event
 import de.davis.keygo.feature.list_screen.presentation.model.FilterAction
 import de.davis.keygo.feature.list_screen.presentation.model.FilterBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.ListItemState
-import de.davis.keygo.feature.list_screen.presentation.model.VaultState
-import de.davis.keygo.feature.list_screen.presentation.model.VaultStateSwitcher
+import de.davis.keygo.feature.vault.domain.usecase.ObserveVaultsAndSelectionUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -47,13 +34,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -71,11 +56,6 @@ internal class ItemListViewModel(
     private val snackbarManager: SnackbarManager,
     private val itemRepository: ItemRepository,
     private val filterUseCase: FilterUseCase,
-    private val setVaultContextUseCase: SetVaultContextUseCase,
-    private val createVault: CreateVaultUseCase,
-    private val updateVault: EditVaultUseCase,
-    private val deleteVault: DeleteVaultUseCase,
-    private val moveItemsToVault: MoveItemsToVaultUseCase,
     observeVaultsAndSelection: ObserveVaultsAndSelectionUseCase,
     passwordRepository: PasswordRepository,
 ) : ViewModel() {
@@ -100,7 +80,6 @@ internal class ItemListViewModel(
         items.filterNot { item -> item.id in flagged }
     }.distinctUntilChanged()
 
-
     private val passwordScores = passwordRepository.observePasswordScores()
 
     private val filterState = MutableStateFlow(FilterState.Default)
@@ -115,73 +94,26 @@ internal class ItemListViewModel(
     private val searchResults = MutableStateFlow(listOf<LiteItem>())
     private val selectedItemIds = MutableStateFlow(emptySet<ItemId>())
     private val highlightedId = MutableStateFlow<ItemId?>(null)
+    private val _isVaultFlowVisible = MutableStateFlow(false)
 
-    private val vaultStateSwitcher = MutableStateFlow<VaultStateSwitcher>(VaultStateSwitcher.Closed)
-
-    private val createVaultState = MutableStateFlow(VaultState.Create())
-    private val editVaultState = MutableStateFlow<VaultState.Edit?>(null)
-    private val moveDstSelection = MutableStateFlow<VaultId?>(null)
-
-    private val vaultSelectionState = vaultsAndSelection.map {
-        VaultState.Select(
-            vaults = it.vaults,
-            vaultContext = it.selection,
-        )
-    }.distinctUntilChanged()
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val vaultState = vaultStateSwitcher.flatMapLatest { switcher ->
-        when (switcher) {
-            VaultStateSwitcher.Closed -> flowOf(VaultState.Closed)
-            VaultStateSwitcher.Selection -> vaultSelectionState
-            VaultStateSwitcher.Create -> createVaultState
-            is VaultStateSwitcher.Edit -> {
-                editVaultState.update {
-                    VaultState.Edit(
-                        vaultId = switcher.vaultMetadata.vaultId,
-                        nameTextFieldState = TextFieldState(switcher.vaultMetadata.name),
-                        icon = switcher.vaultMetadata.icon,
-                    )
-                }
-                editVaultState.filterNotNull()
-            }
-
-            is VaultStateSwitcher.Move -> combine(
-                vaultsAndSelection,
-                moveDstSelection,
-            ) { vs, dstId ->
-                val src = vs.vaults.firstOrNull { it.vaultId == switcher.srcVaultId }
-                    ?: return@combine null
-                val dstVaults = vs.vaults.filter { it.vaultId != switcher.srcVaultId }
-                VaultState.Move(
-                    srcVault = src,
-                    dstVaults = dstVaults,
-                    selectedDstVaultId = dstId ?: dstVaults.firstOrNull()?.vaultId,
-                )
-            }.filterNotNull()
-        }
-    }.distinctUntilChanged()
-
-    // TODO: vaultSelectionState is being used twice when VaultStateSwitcher.Selection
-    //  figure out a simpler and cleaner way
     val listItemState = combine7(
-        vaultSelectionState,
-        vaultState,
+        vaultsAndSelection,
         filteredItems,
         searchResults,
         selectedItemIds,
         submittedSearchQuery,
         highlightedId,
-    ) { vaultSelectionState, vaultState, items, searchResults, selectedIds, submittedSearchQuery, highlightedId ->
+        _isVaultFlowVisible,
+    ) { vaultsAndSel, items, searchResults, selectedIds, submittedSearchQuery, highlightedId, isVaultFlowVisible ->
         ListItemState(
             items = items,
             searchResults = searchResults,
             hasSearchQuery = submittedSearchQuery.isNotBlank(),
             selectedItemIds = selectedIds,
             highlightedId = highlightedId,
-            vaultState = vaultState,
-            vaults = vaultSelectionState.vaults,
-            vaultContext = vaultSelectionState.vaultContext,
+            isVaultFlowVisible = isVaultFlowVisible,
+            vaults = vaultsAndSel.vaults,
+            vaultContext = vaultsAndSel.selection,
         )
     }.distinctUntilChanged()
         .onStart {
@@ -241,109 +173,12 @@ internal class ItemListViewModel(
         }
     }
 
-    fun onVaultContextSelected(context: VaultContext) {
-        viewModelScope.launch { setVaultContextUseCase(context) }
-    }
-
-    fun onCreateVaultRequest() {
-        vaultStateSwitcher.update { VaultStateSwitcher.Create }
-    }
-
-    fun onCreateOrEditVault() {
-        viewModelScope.launch {
-            when (vaultStateSwitcher.value) {
-                VaultStateSwitcher.Closed,
-                VaultStateSwitcher.Selection,
-                is VaultStateSwitcher.Move -> null
-
-                VaultStateSwitcher.Create -> {
-                    val state = createVaultState.value
-                    createVault(
-                        name = state.nameTextFieldState.text.toString(),
-                        icon = state.icon,
-                    ).onFailure { error ->
-                        createVaultState.update { state.copy(error = error) }
-                    }
-                }
-
-                is VaultStateSwitcher.Edit -> {
-                    editVaultState.value?.let { state ->
-                        updateVault(
-                            vaultId = state.vaultId,
-                            name = state.nameTextFieldState.text.toString(),
-                            icon = state.icon,
-                        ).onFailure { error ->
-                            editVaultState.update { state.copy(error = error) }
-                        }
-                    }
-                }
-            }?.onSuccess {
-                onDismissVaultFlow()
-            }
-        }
-    }
-
-    fun onVaultIconClick(icon: Vault.Icon) {
-        when (vaultStateSwitcher.value) {
-            VaultStateSwitcher.Closed,
-            VaultStateSwitcher.Selection,
-            is VaultStateSwitcher.Move -> {
-            }
-
-            VaultStateSwitcher.Create -> {
-                createVaultState.update {
-                    it.copy(icon = icon)
-                }
-            }
-
-            is VaultStateSwitcher.Edit -> {
-                editVaultState.value?.let { state ->
-                    editVaultState.update {
-                        state.copy(icon = icon)
-                    }
-                }
-            }
-        }
-    }
-
-    fun onEditVaultRequest(vaultMetadata: VaultMetadata) {
-        vaultStateSwitcher.update {
-            VaultStateSwitcher.Edit(vaultMetadata)
-        }
+    fun onVaultSelectorClick() {
+        _isVaultFlowVisible.update { true }
     }
 
     fun onDismissVaultFlow() {
-        vaultStateSwitcher.update { VaultStateSwitcher.Closed }
-        moveDstSelection.update { null }
-    }
-
-    fun onVaultSelectorClick() {
-        vaultStateSwitcher.update { VaultStateSwitcher.Selection }
-    }
-
-    fun onDeleteVault(vaultId: VaultId) {
-        viewModelScope.launch {
-            deleteVault(vaultId)
-        }
-    }
-
-    fun onMoveTo(vaultId: VaultId) {
-        moveDstSelection.update { null }
-        vaultStateSwitcher.update { VaultStateSwitcher.Move(vaultId) }
-    }
-
-    fun onMoveDstSelected(vaultId: VaultId) {
-        moveDstSelection.update { vaultId }
-    }
-
-    fun onConfirmMove() {
-        val switcher = vaultStateSwitcher.value as? VaultStateSwitcher.Move ?: return
-        val moveState = listItemState.value.vaultState as? VaultState.Move ?: return
-        val dstVaultId = moveState.selectedDstVaultId ?: return
-        viewModelScope.launch {
-            moveItemsToVault(switcher.srcVaultId, dstVaultId)
-            onDismissVaultFlow()
-        }
+        _isVaultFlowVisible.update { false }
     }
 
     private fun <T> Set<T>.toggle(element: T): Set<T> =

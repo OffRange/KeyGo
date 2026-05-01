@@ -2,6 +2,7 @@ package de.davis.keygo.core.item.data.maper
 
 import de.davis.keygo.core.item.data.local.pojo.LightweightItem
 import de.davis.keygo.core.item.data.local.pojo.LightweightItemSearchResult
+import de.davis.keygo.core.item.data.local.pojo.MovableItemPojo
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.Item
@@ -10,9 +11,11 @@ import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.model.SecretData
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import de.davis.keygo.core.item.data.local.entity.KeyInformation as EntityKeyInformation
 
 class ItemMapperTest {
 
@@ -114,5 +117,59 @@ class ItemMapperTest {
         assertTrue(result.matchedName)
         assertFalse(result.matchedNote)
         assertFalse(result.pinned)
+    }
+
+    // MovableItemPojo.toDomain() → MovableItem
+
+    @Test
+    fun `MovableItemPojo toDomain maps id`() {
+        val id = newItemId()
+        val pojo = MovableItemPojo(
+            id = id,
+            keyInformation = EntityKeyInformation(byteArrayOf(), byteArrayOf()),
+        )
+
+        assertEquals(id, pojo.toDomain().id)
+    }
+
+    @Test
+    fun `MovableItemPojo toDomain copies wrappedKey bytes`() {
+        val pojo = MovableItemPojo(
+            id = newItemId(),
+            keyInformation = EntityKeyInformation(
+                wrappedKey = byteArrayOf(10, 20, 30),
+                keyNonce = byteArrayOf(),
+            ),
+        )
+
+        assertContentEquals(byteArrayOf(10, 20, 30), pojo.toDomain().keyInformation.wrappedKey)
+    }
+
+    @Test
+    fun `MovableItemPojo toDomain copies keyNonce bytes`() {
+        val pojo = MovableItemPojo(
+            id = newItemId(),
+            keyInformation = EntityKeyInformation(
+                wrappedKey = byteArrayOf(),
+                keyNonce = byteArrayOf(7, 8, 9),
+            ),
+        )
+
+        assertContentEquals(byteArrayOf(7, 8, 9), pojo.toDomain().keyInformation.keyNonce)
+    }
+
+    @Test
+    fun `MovableItemPojo toDomain maps both key fields independently`() {
+        val pojo = MovableItemPojo(
+            id = newItemId(),
+            keyInformation = EntityKeyInformation(
+                wrappedKey = byteArrayOf(0xAA.toByte(), 0xBB.toByte()),
+                keyNonce = byteArrayOf(0xCC.toByte(), 0xDD.toByte()),
+            ),
+        )
+
+        val domain = pojo.toDomain()
+        assertContentEquals(byteArrayOf(0xAA.toByte(), 0xBB.toByte()), domain.keyInformation.wrappedKey)
+        assertContentEquals(byteArrayOf(0xCC.toByte(), 0xDD.toByte()), domain.keyInformation.keyNonce)
     }
 }

@@ -6,6 +6,7 @@ import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
+import de.davisalessandro.keygo.rust.ItemAad
 import de.davisalessandro.keygo.rust.ItemManagerInterface
 import de.davisalessandro.keygo.rust.KeyWrapperInterface
 import de.davisalessandro.keygo.rust.WrappedKeyBlob
@@ -23,11 +24,7 @@ internal class CryptographicScopeProviderImpl(
         wrappedItemKeyInformation: WrappedItemKeyInformation,
         block: suspend CryptographicScope.() -> R,
     ): R {
-        val vaultKey = keyWrapper.unwrapVaultKey(
-            ark = session.dek.key.encoded,
-            wrapped = wrappedVaultKeyInformation.wrappedVaultKey.toWrappedKeyBlob(),
-            vaultId = wrappedVaultKeyInformation.vaultId
-        )
+        val vaultKey = unwrapVaultKey(wrappedVaultKeyInformation)
 
         val itemKey = wrappedItemKeyInformation.wrappedItemKey?.let {
             keyWrapper.unwrapItemKey(
@@ -50,6 +47,40 @@ internal class CryptographicScopeProviderImpl(
             },
         ).block()
     }
+
+    override suspend fun rewrapItemKey(
+        sourceVault: WrappedVaultKeyInformation,
+        sourceItem: WrappedItemKeyInformation,
+        destinationVault: WrappedVaultKeyInformation,
+    ): KeyInformation {
+        val wrappedItemKey = requireNotNull(sourceItem.wrappedItemKey) {
+            "rewrapItemKey requires an existing wrapped item key"
+        }
+
+        val sourceVaultKey = unwrapVaultKey(sourceVault)
+        val itemKey = keyWrapper.unwrapItemKey(
+            vaultKey = sourceVaultKey,
+            wrapped = wrappedItemKey.toWrappedKeyBlob(),
+            aad = sourceItem.itemAad,
+        )
+
+        val destinationVaultKey = unwrapVaultKey(destinationVault)
+        val destinationAad = ItemAad(
+            itemId = sourceItem.itemAad.itemId,
+            vaultId = destinationVault.vaultId,
+        )
+        return keyWrapper.wrapItemKey(
+            vaultKey = destinationVaultKey,
+            itemKey = itemKey,
+            aad = destinationAad,
+        ).toKeyInformation()
+    }
+
+    private fun unwrapVaultKey(info: WrappedVaultKeyInformation) = keyWrapper.unwrapVaultKey(
+        ark = session.dek.key.encoded,
+        wrapped = info.wrappedVaultKey.toWrappedKeyBlob(),
+        vaultId = info.vaultId,
+    )
 }
 
 private fun KeyInformation.toWrappedKeyBlob() = WrappedKeyBlob(
