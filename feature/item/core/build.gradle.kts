@@ -67,6 +67,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.security))
+    testImplementation(testFixtures(projects.rust))
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

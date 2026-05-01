@@ -39,6 +39,7 @@ import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -211,6 +212,10 @@ private fun VaultSelectionSheetContent(
                                     if (vaultState.hasMultipleVaults) 2 else 1
                                 )
                             ) {
+                                val hasItems by remember(metadata.count) {
+                                    derivedStateOf { metadata.count > 0 }
+                                }
+
                                 DropdownMenuItem(
                                     text = {
                                         Text(text = stringResource(R.string.edit))
@@ -221,7 +226,7 @@ private fun VaultSelectionSheetContent(
                                     },
                                     shape = MenuDefaults.itemShape(
                                         0,
-                                        if (vaultState.hasMultipleVaults) 2 else 1
+                                        if (vaultState.hasMultipleVaults && hasItems) 2 else 1
                                     ).shape,
                                     leadingIcon = {
                                         Icon(
@@ -231,7 +236,7 @@ private fun VaultSelectionSheetContent(
                                     }
                                 )
 
-                                if (vaultState.hasMultipleVaults) {
+                                if (vaultState.hasMultipleVaults && hasItems) {
                                     DropdownMenuItem(
                                         text = {
                                             Text(text = stringResource(R.string.move_to))

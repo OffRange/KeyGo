@@ -9,6 +9,7 @@ import de.davis.keygo.core.item.data.local.pojo.LightweightPassword
 import de.davis.keygo.core.item.data.local.pojo.PasswordScoreEntry
 import de.davis.keygo.core.item.data.local.pojo.VaultPassword
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.VaultId
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -46,6 +47,10 @@ internal interface PasswordDao {
     @Transaction
     @Query("SELECT * FROM password WHERE id = :id")
     suspend fun getVaultPassword(id: ItemId): VaultPassword?
+
+    @Transaction
+    @Query("SELECT * FROM password WHERE id IN (SELECT id FROM item WHERE vault_id = :vaultId)")
+    suspend fun getPasswordsByVault(vaultId: VaultId): List<VaultPassword>
 
     @Query("SELECT id, score FROM password")
     fun observePasswordScores(): Flow<List<PasswordScoreEntry>>

@@ -72,7 +72,9 @@ dependencies {
     testImplementation(testFixtures(projects.rust))
 
     testFixturesApi(projects.core.item)
+    testFixturesApi(projects.rust)
     testFixturesImplementation(libs.kotlinx.coroutines.core)
+    testFixturesImplementation(testFixtures(projects.rust))
     testFixturesImplementation(project.dependencies.platform(libs.androidx.compose.bom))
     testFixturesImplementation(libs.androidx.compose.runtime) {
         because("https://issuetracker.google.com/issues/259523353#comment32")

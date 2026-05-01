@@ -19,12 +19,12 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
+import de.davis.keygo.feature.item.core.domain.usecase.MoveItemsToVaultUseCase
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
 import de.davis.keygo.feature.list_screen.domain.usecase.CreateVaultUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.DeleteVaultUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.EditVaultUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
-import de.davis.keygo.feature.list_screen.domain.usecase.MoveItemsUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.ObserveVaultsAndSelectionUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.SetVaultContextUseCase
 import de.davis.keygo.feature.list_screen.presentation.mapper.toAvailableFilterOptions
@@ -75,7 +75,7 @@ internal class ItemListViewModel(
     private val createVault: CreateVaultUseCase,
     private val updateVault: EditVaultUseCase,
     private val deleteVault: DeleteVaultUseCase,
-    private val moveItems: MoveItemsUseCase,
+    private val moveItemsToVault: MoveItemsToVaultUseCase,
     observeVaultsAndSelection: ObserveVaultsAndSelectionUseCase,
     passwordRepository: PasswordRepository,
 ) : ViewModel() {
@@ -255,6 +255,7 @@ internal class ItemListViewModel(
                 VaultStateSwitcher.Closed,
                 VaultStateSwitcher.Selection,
                 is VaultStateSwitcher.Move -> null
+
                 VaultStateSwitcher.Create -> {
                     val state = createVaultState.value
                     createVault(
@@ -288,6 +289,7 @@ internal class ItemListViewModel(
             VaultStateSwitcher.Selection,
             is VaultStateSwitcher.Move -> {
             }
+
             VaultStateSwitcher.Create -> {
                 createVaultState.update {
                     it.copy(icon = icon)
@@ -336,9 +338,10 @@ internal class ItemListViewModel(
 
     fun onConfirmMove() {
         val switcher = vaultStateSwitcher.value as? VaultStateSwitcher.Move ?: return
-        val dstVaultId = moveDstSelection.value ?: return
+        val moveState = listItemState.value.vaultState as? VaultState.Move ?: return
+        val dstVaultId = moveState.selectedDstVaultId ?: return
         viewModelScope.launch {
-            moveItems(switcher.srcVaultId, dstVaultId)
+            moveItemsToVault(switcher.srcVaultId, dstVaultId)
             onDismissVaultFlow()
         }
     }

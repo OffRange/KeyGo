@@ -1,6 +1,7 @@
 package de.davis.keygo.core.item.domain.repository
 
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.model.lite.LitePassword
@@ -28,6 +29,8 @@ interface PasswordRepository {
     ): List<LitePassword>
 
     suspend fun getPasswordById(itemId: ItemId): Password?
+
+    suspend fun getPasswordsByVault(vaultId: VaultId): List<Password>
 
     fun observePasswordById(itemId: ItemId): Flow<Password?>
     fun observePasswords(): Flow<List<Password>>

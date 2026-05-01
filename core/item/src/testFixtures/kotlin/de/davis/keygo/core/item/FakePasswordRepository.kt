@@ -1,6 +1,7 @@
 package de.davis.keygo.core.item
 
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.model.lite.LitePassword
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.update
  *
  * - Pre-populate via [seed].
  * - Force the next [createOrUpdatePassword] call to fail by setting [createOrUpdateError].
+ * - Force [createOrUpdatePassword] to fail for a specific id by setting [failCreateOrUpdateForId].
  * - Flow-returning methods react to store mutations, so observers see live updates.
  */
 class FakePasswordRepository : PasswordRepository {
@@ -25,11 +27,20 @@ class FakePasswordRepository : PasswordRepository {
     /** Error returned by the next [createOrUpdatePassword] call (cleared after use). */
     var createOrUpdateError: Throwable? = null
 
+    /**
+     * If non-null, [createOrUpdatePassword] fails when called with this id.
+     * Persists across calls; the consumer clears it explicitly.
+     */
+    var failCreateOrUpdateForId: Pair<ItemId, Throwable>? = null
+
     fun seed(vararg passwords: Password) {
         store.update { it + passwords.associateBy { p -> p.id } }
     }
 
     override suspend fun createOrUpdatePassword(password: Password): Result<ItemId, Throwable> {
+        failCreateOrUpdateForId?.let { (id, error) ->
+            if (id == password.id) return Result.Failure(error)
+        }
         createOrUpdateError?.let {
             createOrUpdateError = null
             return Result.Failure(it)
@@ -61,6 +72,9 @@ class FakePasswordRepository : PasswordRepository {
     ): List<LitePassword> = emptyList()
 
     override suspend fun getPasswordById(itemId: ItemId): Password? = store.value[itemId]
+
+    override suspend fun getPasswordsByVault(vaultId: VaultId): List<Password> =
+        store.value.values.filter { it.vaultId == vaultId }
 
     override fun observePasswordById(itemId: ItemId): Flow<Password?> =
         store.map { it[itemId] }

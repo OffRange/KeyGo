@@ -11,6 +11,7 @@ import de.davis.keygo.core.item.data.maper.toData
 import de.davis.keygo.core.item.data.maper.toDataDomainInfos
 import de.davis.keygo.core.item.data.maper.toDomain
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Item
 import de.davis.keygo.core.item.domain.model.Password
@@ -72,6 +73,9 @@ internal class PasswordRepositoryImpl(
 
     override suspend fun getPasswordById(itemId: ItemId): Password? =
         passwordDao.getVaultPassword(itemId)?.toDomain()
+
+    override suspend fun getPasswordsByVault(vaultId: VaultId): List<Password> =
+        passwordDao.getPasswordsByVault(vaultId).map(VaultPassword::toDomain)
 
     override fun observePasswordById(itemId: ItemId): Flow<Password?> =
         passwordDao.observeVaultPassword(itemId).map { it?.toDomain() }
