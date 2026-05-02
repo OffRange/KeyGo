@@ -30,6 +30,9 @@ internal class VaultRepositoryImpl(
     override fun observeAllVaultMetadata(): Flow<List<VaultMetadata>> =
         vaultDao.observeAllVaultMetadata().map { list -> list.map { it.toDomain() } }
 
+    override suspend fun getVaultMetadata(vaultId: VaultId): VaultMetadata? =
+        vaultDao.getVaultMetadata(vaultId)?.toDomain()
+
     override suspend fun getKeyInformation(vaultId: VaultId): KeyInformation? =
         vaultDao.getKeyInfoById(vaultId)?.toDomain()
 

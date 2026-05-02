@@ -12,6 +12,7 @@ interface VaultRepository {
     suspend fun updateVault(vault: VaultUpdater)
     suspend fun deleteVault(vaultId: VaultId)
     fun observeAllVaultMetadata(): Flow<List<VaultMetadata>>
+    suspend fun getVaultMetadata(vaultId: VaultId): VaultMetadata?
 
     suspend fun getKeyInformation(vaultId: VaultId): KeyInformation?
 

@@ -3,12 +3,14 @@ package de.davis.keygo.feature.item.view.password.model
 import androidx.compose.runtime.Immutable
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.feature.totp.domain.model.TotpInformation
 
 
 @Immutable
 data class ViewPasswordState(
     val name: String = "",
+    val vaultMetadata: VaultMetadata? = null,
     val passkeyRPs: Set<String> = emptySet(),
     val password: ObfuscatedString = ObfuscatedString(""),
     val passwordStrengthScore: Password.Score = Password.Score.None,

@@ -55,6 +55,7 @@ import org.koin.core.annotation.KoinViewModel
 @KoinViewModel
 internal class ViewPasswordViewModel(
     private val itemRepository: ItemRepository,
+    private val vaultRepository: VaultRepository,
     private val updatePassword: CreateNewOrUpdatePasswordUseCase,
     private val isValidUrl: IsValidUrlUseCase,
     private val websiteHandler: WebsiteHandler,
@@ -62,10 +63,7 @@ internal class ViewPasswordViewModel(
     private val registrableDomainResolver: RegistrableDomainResolver,
     private val getTotpSecret: GetTotpSecretFromUrlUseCase,
     private val observePasswordWithCryptoScope: PasswordWithCryptoScopeUseCase,
-    vaultRepository: VaultRepository,
 ) : ViewModel() {
-
-    private val _metadata = vaultRepository.observeAllVaultMetadata()
 
     private val _modificationDialogState = MutableStateFlow<ModificationDialog?>(null)
     private val _scanning = MutableStateFlow(false)
@@ -77,7 +75,7 @@ internal class ViewPasswordViewModel(
         .distinctUntilChanged()
         .flatMapLatest { id ->
             observePasswordWithCryptoScope.observe(itemId = id) { password ->
-                val decrypted = coroutineScope {
+                val (obfuscated, totp, vaultMetadata) = coroutineScope {
                     val obfuscated = async {
                         password.password.decryptSecretData(label = Password.LABEL_PASSWORD)
                             .asObfuscatedString()
@@ -88,13 +86,22 @@ internal class ViewPasswordViewModel(
                                 .encodeToByteArray()
                         }
                     }
-                    obfuscated.await() to totp?.await()
+                    val vaultMetadata = async {
+                        vaultRepository.getVaultMetadata(password.vaultId)
+                    }
+
+                    Triple(
+                        obfuscated.await(),
+                        totp?.await(),
+                        vaultMetadata.await()
+                    )
                 }
 
                 val base = ViewPasswordState(
                     name = password.name,
+                    vaultMetadata = vaultMetadata,
                     passkeyRPs = password.passkeyRPs,
-                    password = decrypted.first,
+                    password = obfuscated,
                     passwordStrengthScore = password.score,
                     username = password.username.orEmpty(),
                     domains = password.domainInfos,
@@ -103,7 +110,7 @@ internal class ViewPasswordViewModel(
                     pinned = password.pinned,
                 )
 
-                when (val totpSecret = decrypted.second) {
+                when (val totpSecret = totp) {
                     null -> flowOf(base)
                     else -> totpGenerator.observeTotp(totpSecret).map {
                         base.copy(totpInformation = it)
@@ -119,12 +126,10 @@ internal class ViewPasswordViewModel(
         _stateWithoutModification,
         _modificationDialogState,
         _scanning,
-        _metadata,
-    ) { state, modificationDialog, scanning, vaults ->
+    ) { state, modificationDialog, scanning ->
         state.copy(
             modificationDialog = modificationDialog,
             scanning = scanning,
-            //vaults = vaults,
         )
     }.stateIn(
         scope = viewModelScope,

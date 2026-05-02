@@ -55,6 +55,9 @@ class FakeVaultRepository : VaultRepository {
     override fun observeAllVaultMetadata(): Flow<List<VaultMetadata>> =
         store.map { vaults -> vaults.values.map { it.toMetadata() } }
 
+    override suspend fun getVaultMetadata(vaultId: VaultId): VaultMetadata? =
+        store.value[vaultId]?.toMetadata()
+
     override suspend fun getLastCreatedVaultId(exclude: VaultId): VaultId? =
         store.value.keys.lastOrNull { it != exclude }
 
