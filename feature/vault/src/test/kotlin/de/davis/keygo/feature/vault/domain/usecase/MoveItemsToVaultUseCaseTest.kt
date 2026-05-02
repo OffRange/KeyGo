@@ -22,6 +22,7 @@ import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
 import de.davis.keygo.feature.vault.domain.model.MoveItemsError
+import de.davis.keygo.feature.vault.domain.model.MoveItemsProgress
 import de.davis.keygo.rust.FakeItemManager
 import de.davis.keygo.rust.FakeKeyWrapper
 import de.davisalessandro.keygo.rust.ItemAad
@@ -212,6 +213,70 @@ class MoveItemsToVaultUseCaseTest {
         assertEquals(dstVault.id, passwordRepository.getPasswordById(seededIds[0])!!.vaultId)
         assertEquals(srcVault.id, passwordRepository.getPasswordById(seededIds[1])!!.vaultId)
         assertEquals(srcVault.id, passwordRepository.getPasswordById(seededIds[2])!!.vaultId)
+    }
+
+    @Test
+    fun `onProgress emits zero then increments up to total`() = runTest {
+        seedVaults(srcVault, dstVault)
+        val total = 3
+        repeat(total) { i ->
+            encryptAndSeed(srcVault, name = "item-$i", passwordPlaintext = "pw-$i")
+        }
+        val captured = mutableListOf<MoveItemsProgress>()
+
+        val result = useCase(srcVault.id, dstVault.id) { captured += it }
+
+        assertTrue(result.isSuccess())
+        assertEquals(
+            expected = listOf(
+                MoveItemsProgress(movedCount = 0, total = total),
+                MoveItemsProgress(movedCount = 1, total = total),
+                MoveItemsProgress(movedCount = 2, total = total),
+                MoveItemsProgress(movedCount = 3, total = total),
+            ),
+            actual = captured,
+        )
+    }
+
+    @Test
+    fun `onProgress emits a single zero-of-zero for an empty vault`() = runTest {
+        seedVaults(srcVault, dstVault)
+        val captured = mutableListOf<MoveItemsProgress>()
+
+        useCase(srcVault.id, dstVault.id) { captured += it }
+
+        assertEquals(listOf(MoveItemsProgress(movedCount = 0, total = 0)), captured)
+    }
+
+    @Test
+    fun `onProgress is not invoked for a same-vault no-op`() = runTest {
+        seedVaults(srcVault)
+        encryptAndSeed(srcVault, passwordPlaintext = "x")
+        val captured = mutableListOf<MoveItemsProgress>()
+
+        useCase(srcVault.id, srcVault.id) { captured += it }
+
+        assertTrue(captured.isEmpty())
+    }
+
+    @Test
+    fun `onProgress stops emitting once an item move fails`() = runTest {
+        seedVaults(srcVault, dstVault)
+        val seededIds = (1..3).map {
+            encryptAndSeed(srcVault, name = "item-$it", passwordPlaintext = "pw-$it").id
+        }
+        itemRepository.failMoveForId = seededIds[1] to RuntimeException("write blew up")
+        val captured = mutableListOf<MoveItemsProgress>()
+
+        useCase(srcVault.id, dstVault.id) { captured += it }
+
+        assertEquals(
+            expected = listOf(
+                MoveItemsProgress(movedCount = 0, total = 3),
+                MoveItemsProgress(movedCount = 1, total = 3),
+            ),
+            actual = captured,
+        )
     }
 
     // --- helpers ---

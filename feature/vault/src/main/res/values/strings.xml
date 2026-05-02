@@ -19,4 +19,6 @@
     <string name="cancel">Cancel</string>
     <string name="destination_vault">Destination vault</string>
     <string name="source_vault">Source vault</string>
+    <string name="moving_items">Moving items…</string>
+    <string name="move_progress_count" translatable="false">%1$d / %2$d</string>
 </resources>

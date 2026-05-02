@@ -9,6 +9,7 @@ import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformati
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.feature.vault.domain.model.MoveItemsError
+import de.davis.keygo.feature.vault.domain.model.MoveItemsProgress
 import de.davisalessandro.keygo.rust.ItemAad
 import org.koin.core.annotation.Single
 
@@ -22,6 +23,7 @@ class MoveItemsToVaultUseCase(
     suspend operator fun invoke(
         srcVaultId: VaultId,
         dstVaultId: VaultId,
+        onProgress: (MoveItemsProgress) -> Unit = {},
     ): Result<Unit, MoveItemsError> {
         if (srcVaultId == dstVaultId) return Result.Success(Unit)
 
@@ -36,7 +38,11 @@ class MoveItemsToVaultUseCase(
             vaultId = dstVaultId,
         )
 
-        itemRepository.getMovableItemsByVault(srcVaultId).forEach { item ->
+        val items = itemRepository.getMovableItemsByVault(srcVaultId)
+        val total = items.size
+        onProgress(MoveItemsProgress(movedCount = 0, total = total))
+
+        items.forEachIndexed { index, item ->
             val rewrapped = runCatching {
                 cryptographicScopeProvider.rewrapItemKey(
                     sourceVault = srcVault,
@@ -57,6 +63,8 @@ class MoveItemsToVaultUseCase(
             ).onFailure {
                 return Result.Failure(MoveItemsError.ItemMoveFailed(item.id, it))
             }
+
+            onProgress(MoveItemsProgress(movedCount = index + 1, total = total))
         }
         return Result.Success(Unit)
     }

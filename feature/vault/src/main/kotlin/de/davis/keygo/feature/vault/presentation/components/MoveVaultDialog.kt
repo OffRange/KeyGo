@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.vault.presentation.components
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,11 +19,13 @@ import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.Vault
@@ -43,6 +47,7 @@ import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.item.presentation.toImageVector
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.vault.R
+import de.davis.keygo.feature.vault.domain.model.MoveItemsProgress
 import de.davis.keygo.feature.vault.presentation.model.VaultState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,29 +58,74 @@ fun MoveVaultDialog(
     onDstSelected: (VaultId) -> Unit,
     onConfirm: () -> Unit,
 ) {
+    val isMoving = vaultState.isMoving
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        title = { Text(text = stringResource(R.string.move_to)) },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                enabled = vaultState.selectedDstVault != null,
-            ) {
-                Text(text = stringResource(R.string.move))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismissRequest) {
-                Text(text = stringResource(R.string.cancel))
-            }
-        },
-        text = {
-            MoveVaultDialogContent(
-                vaultState = vaultState,
-                onDstSelected = onDstSelected,
+        properties = DialogProperties(
+            dismissOnBackPress = !isMoving,
+            dismissOnClickOutside = !isMoving,
+        ),
+        title = {
+            Text(
+                text = stringResource(
+                    if (isMoving) R.string.moving_items else R.string.move_to,
+                ),
             )
         },
+        confirmButton = {
+            if (!isMoving)
+                Button(
+                    onClick = onConfirm,
+                    enabled = vaultState.selectedDstVault != null,
+                ) {
+                    Text(text = stringResource(R.string.move))
+                }
+        },
+        dismissButton = {
+            if (!isMoving)
+                TextButton(onClick = onDismissRequest) {
+                    Text(text = stringResource(R.string.cancel))
+                }
+        },
+        text = {
+            if (vaultState.progress != null)
+                MoveVaultProgressContent(progress = vaultState.progress)
+            else
+                MoveVaultDialogContent(
+                    vaultState = vaultState,
+                    onDstSelected = onDstSelected,
+                )
+        },
     )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun MoveVaultProgressContent(progress: MoveItemsProgress) {
+    val animatedFraction by animateFloatAsState(
+        targetValue = progress.fraction,
+        animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec,
+        label = "moveProgress",
+    )
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        LinearWavyProgressIndicator(
+            progress = { animatedFraction },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            text = stringResource(
+                R.string.move_progress_count,
+                progress.movedCount,
+                progress.total,
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
 
 @Composable

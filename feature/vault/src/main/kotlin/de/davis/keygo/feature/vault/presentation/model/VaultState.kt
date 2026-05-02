@@ -6,6 +6,7 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultContext
 import de.davis.keygo.core.item.domain.model.VaultMetadata
+import de.davis.keygo.feature.vault.domain.model.MoveItemsProgress
 import de.davis.keygo.feature.vault.domain.model.VaultCreationError
 
 @Stable
@@ -27,9 +28,11 @@ sealed interface VaultState {
         val srcVault: VaultMetadata,
         val dstVaults: List<VaultMetadata>,
         val selectedDstVaultId: VaultId? = dstVaults.firstOrNull()?.vaultId,
+        val progress: MoveItemsProgress? = null,
     ) : VaultState {
         val selectedDstVault: VaultMetadata? =
             dstVaults.firstOrNull { it.vaultId == selectedDstVaultId }
+        val isMoving: Boolean = progress != null
     }
 
     @Stable

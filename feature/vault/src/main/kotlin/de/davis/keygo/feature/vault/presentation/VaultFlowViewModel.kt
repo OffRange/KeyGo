@@ -9,6 +9,7 @@ import de.davis.keygo.core.item.domain.model.VaultContext
 import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
+import de.davis.keygo.feature.vault.domain.model.MoveItemsProgress
 import de.davis.keygo.feature.vault.domain.usecase.CreateVaultUseCase
 import de.davis.keygo.feature.vault.domain.usecase.DeleteVaultUseCase
 import de.davis.keygo.feature.vault.domain.usecase.EditVaultUseCase
@@ -43,10 +44,12 @@ internal class VaultFlowViewModel(
 
     private val vaultsAndSelection = observeVaultsAndSelection()
 
-    private val vaultStateSwitcher = MutableStateFlow<VaultStateSwitcher>(VaultStateSwitcher.Selection)
+    private val vaultStateSwitcher =
+        MutableStateFlow<VaultStateSwitcher>(VaultStateSwitcher.Selection)
     private val createVaultState = MutableStateFlow(VaultState.Create())
     private val editVaultState = MutableStateFlow<VaultState.Edit?>(null)
     private val moveDstSelection = MutableStateFlow<VaultId?>(null)
+    private val moveProgress = MutableStateFlow<MoveItemsProgress?>(null)
 
     private val vaultSelectionState = vaultsAndSelection.map {
         VaultState.Select(vaults = it.vaults, vaultContext = it.selection)
@@ -72,7 +75,8 @@ internal class VaultFlowViewModel(
             is VaultStateSwitcher.Move -> combine(
                 vaultsAndSelection,
                 moveDstSelection,
-            ) { vs, dstId ->
+                moveProgress,
+            ) { vs, dstId, progress ->
                 val src = vs.vaults.firstOrNull { it.vaultId == switcher.srcVaultId }
                     ?: return@combine null
                 val dstVaults = vs.vaults.filter { it.vaultId != switcher.srcVaultId }
@@ -80,6 +84,7 @@ internal class VaultFlowViewModel(
                     srcVault = src,
                     dstVaults = dstVaults,
                     selectedDstVaultId = dstId ?: dstVaults.firstOrNull()?.vaultId,
+                    progress = progress,
                 )
             }.filterNotNull()
         }
@@ -135,7 +140,8 @@ internal class VaultFlowViewModel(
         when (vaultStateSwitcher.value) {
             VaultStateSwitcher.Closed,
             VaultStateSwitcher.Selection,
-            is VaultStateSwitcher.Move -> {}
+            is VaultStateSwitcher.Move -> {
+            }
 
             VaultStateSwitcher.Create ->
                 createVaultState.update { it.copy(icon = icon) }
@@ -157,6 +163,7 @@ internal class VaultFlowViewModel(
 
     fun onMoveTo(vaultId: VaultId) {
         moveDstSelection.update { null }
+        moveProgress.update { null }
         vaultStateSwitcher.update { VaultStateSwitcher.Move(vaultId) }
     }
 
@@ -166,16 +173,21 @@ internal class VaultFlowViewModel(
 
     fun onConfirmMove() {
         val switcher = vaultStateSwitcher.value as? VaultStateSwitcher.Move ?: return
+        if (moveProgress.value != null) return
         val moveState = vaultState.value as? VaultState.Move ?: return
         val dstVaultId = moveState.selectedDstVaultId ?: return
         viewModelScope.launch {
-            moveItemsToVault(switcher.srcVaultId, dstVaultId)
-            dismiss()
+            moveItemsToVault(switcher.srcVaultId, dstVaultId) { progress ->
+                moveProgress.update { progress }
+            }
+            dismiss(force = true)
         }
     }
 
-    fun dismiss() {
+    fun dismiss(force: Boolean = false) {
+        if (!force && moveProgress.value != null) return
         vaultStateSwitcher.update { VaultStateSwitcher.Closed }
         moveDstSelection.update { null }
+        moveProgress.update { null }
     }
 }
