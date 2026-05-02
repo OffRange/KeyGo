@@ -12,8 +12,6 @@ import de.davis.keygo.feature.vault.domain.model.VaultCreationError
 @Stable
 sealed interface VaultState {
 
-    data object Closed : VaultState
-
     @Stable
     data class Select(
         val vaults: List<VaultMetadata> = emptyList(),

@@ -19,14 +19,15 @@ import de.davis.keygo.feature.vault.domain.usecase.SetVaultContextUseCase
 import de.davis.keygo.feature.vault.presentation.model.VaultState
 import de.davis.keygo.feature.vault.presentation.model.VaultStateSwitcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -51,6 +52,9 @@ internal class VaultFlowViewModel(
     private val moveDstSelection = MutableStateFlow<VaultId?>(null)
     private val moveProgress = MutableStateFlow<MoveItemsProgress?>(null)
 
+    private val _dismissEvents = Channel<Unit>(Channel.BUFFERED)
+    val dismissEvents = _dismissEvents.receiveAsFlow()
+
     private val vaultSelectionState = vaultsAndSelection.map {
         VaultState.Select(vaults = it.vaults, vaultContext = it.selection)
     }.distinctUntilChanged()
@@ -58,7 +62,6 @@ internal class VaultFlowViewModel(
     @OptIn(ExperimentalCoroutinesApi::class)
     val vaultState = vaultStateSwitcher.flatMapLatest { switcher ->
         when (switcher) {
-            VaultStateSwitcher.Closed -> flowOf(VaultState.Closed)
             VaultStateSwitcher.Selection -> vaultSelectionState
             VaultStateSwitcher.Create -> createVaultState
             is VaultStateSwitcher.Edit -> {
@@ -106,7 +109,6 @@ internal class VaultFlowViewModel(
     fun onCreateOrEditVault() {
         viewModelScope.launch {
             when (vaultStateSwitcher.value) {
-                VaultStateSwitcher.Closed,
                 VaultStateSwitcher.Selection,
                 is VaultStateSwitcher.Move -> null
 
@@ -138,7 +140,6 @@ internal class VaultFlowViewModel(
 
     fun onVaultIconClick(icon: Vault.Icon) {
         when (vaultStateSwitcher.value) {
-            VaultStateSwitcher.Closed,
             VaultStateSwitcher.Selection,
             is VaultStateSwitcher.Move -> {
             }
@@ -186,8 +187,11 @@ internal class VaultFlowViewModel(
 
     fun dismiss(force: Boolean = false) {
         if (!force && moveProgress.value != null) return
-        vaultStateSwitcher.update { VaultStateSwitcher.Closed }
+        vaultStateSwitcher.update { VaultStateSwitcher.Selection }
+        createVaultState.update { VaultState.Create() }
+        editVaultState.update { null }
         moveDstSelection.update { null }
         moveProgress.update { null }
+        _dismissEvents.trySend(Unit)
     }
 }
