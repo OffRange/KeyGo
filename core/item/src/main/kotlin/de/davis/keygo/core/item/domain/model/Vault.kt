@@ -29,19 +29,27 @@ data class Vault(
     )
 
     enum class Icon {
-        School,
-        Work,
-        MenuBook,
-        Home,
         Person,
-        Flight,
-        ShoppingCart,
-        AccountBalanceWallet,
+        Home,
         Favorite,
+        Work,
+        Business,
+        School,
+        MenuBook,
+        Lock,
+        Computer,
+        PhoneAndroid,
+        AccountBalanceWallet,
+        CreditCard,
+        ShoppingCart,
+        Flight,
+        Hotel,
+        DirectionsCar,
         Restaurant,
+        LocalCafe,
         FitnessCenter,
-        SportsEsports,
         MusicNote,
+        SportsEsports,
         Star;
 
         companion object {
