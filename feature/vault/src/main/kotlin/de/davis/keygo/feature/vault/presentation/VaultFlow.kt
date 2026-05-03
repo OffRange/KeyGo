@@ -50,6 +50,7 @@ fun VaultFlow(onDismiss: () -> Unit) {
             onDismissRequest = vm::dismiss,
             onDstSelected = vm::onMoveDstSelected,
             onConfirm = vm::onConfirmMove,
+            onDeleteVaultStateChange = vm::onMoveDeleteVaultStateChange,
         )
     }
 }

@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,6 +46,7 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.item.presentation.toImageVector
+import de.davis.keygo.core.ui.components.KeyGoSwitch
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.vault.R
 import de.davis.keygo.feature.vault.domain.model.MoveItemsProgress
@@ -57,6 +59,7 @@ fun MoveVaultDialog(
     onDismissRequest: () -> Unit,
     onDstSelected: (VaultId) -> Unit,
     onConfirm: () -> Unit,
+    onDeleteVaultStateChange: (Boolean) -> Unit,
 ) {
     val isMoving = vaultState.isMoving
     AlertDialog(
@@ -95,6 +98,7 @@ fun MoveVaultDialog(
                 MoveVaultDialogContent(
                     vaultState = vaultState,
                     onDstSelected = onDstSelected,
+                    onDeleteVaultStateChange = onDeleteVaultStateChange,
                 )
         },
     )
@@ -129,10 +133,12 @@ private fun MoveVaultProgressContent(progress: MoveItemsProgress) {
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MoveVaultDialogContent(
     vaultState: VaultState.Move,
     onDstSelected: (VaultId) -> Unit,
+    onDeleteVaultStateChange: (Boolean) -> Unit,
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -155,6 +161,16 @@ private fun MoveVaultDialogContent(
             selectedDstVault = vaultState.selectedDstVault,
             onDstSelected = onDstSelected,
         )
+
+        KeyGoSwitch(
+            checked = vaultState.delete,
+            onCheckedChange = onDeleteVaultStateChange,
+            colors = ListItemDefaults.colors(
+                containerColor = AlertDialogDefaults.containerColor
+            )
+        ) {
+            Text(text = stringResource(R.string.delete_vault_after_move))
+        }
     }
 }
 
@@ -290,6 +306,7 @@ private fun MoveVaultDialogContentPreview() {
                         selectedDstVaultId = dst.first().vaultId,
                     ),
                     onDstSelected = {},
+                    onDeleteVaultStateChange = {}
                 )
             }
         }

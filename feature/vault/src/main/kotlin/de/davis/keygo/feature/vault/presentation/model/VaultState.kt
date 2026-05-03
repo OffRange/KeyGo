@@ -31,6 +31,7 @@ sealed interface VaultState {
     data class Move(
         val srcVault: VaultMetadata,
         val dstVaults: List<VaultMetadata>,
+        val delete: Boolean = false,
         val selectedDstVaultId: VaultId? = dstVaults.firstOrNull()?.vaultId,
         val progress: MoveItemsProgress? = null,
     ) : VaultState {

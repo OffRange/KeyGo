@@ -52,6 +52,7 @@ internal class VaultFlowViewModel(
     private val createVaultState = MutableStateFlow(VaultState.Create())
     private val editVaultState = MutableStateFlow<VaultState.Edit?>(null)
     private val moveDstSelection = MutableStateFlow<VaultId?>(null)
+    private val moveDeleteSrc = MutableStateFlow(false)
     private val moveProgress = MutableStateFlow<MoveItemsProgress?>(null)
 
     private val _dismissEvents = Channel<Unit>(Channel.CONFLATED)
@@ -72,14 +73,16 @@ internal class VaultFlowViewModel(
             is VaultStateSwitcher.Move -> combine(
                 vaultsAndSelection,
                 moveDstSelection,
+                moveDeleteSrc,
                 moveProgress,
-            ) { vs, dstId, progress ->
+            ) { vs, dstId, delete, progress ->
                 val src = vs.vaults.firstOrNull { it.vaultId == switcher.srcVaultId }
                     ?: return@combine null
                 val dstVaults = vs.vaults.filter { it.vaultId != switcher.srcVaultId }
                 VaultState.Move(
                     srcVault = src,
                     dstVaults = dstVaults,
+                    delete = delete,
                     selectedDstVaultId = dstId ?: dstVaults.firstOrNull()?.vaultId,
                     progress = progress,
                 )
@@ -204,6 +207,8 @@ internal class VaultFlowViewModel(
         viewModelScope.launch {
             moveItemsToVault(switcher.srcVaultId, dstVaultId) { progress ->
                 moveProgress.update { progress }
+            }.onSuccess {
+                viewModelScope.launch { deleteVault(switcher.srcVaultId) }
             }
             dismiss(force = true)
         }
@@ -215,5 +220,9 @@ internal class VaultFlowViewModel(
         createVaultState.update { VaultState.Create() }
         moveProgress.update { null }
         _dismissEvents.trySend(Unit)
+    }
+
+    fun onMoveDeleteVaultStateChange(checked: Boolean) {
+        moveDeleteSrc.update { checked }
     }
 }

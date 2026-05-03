@@ -22,6 +22,7 @@
     <string name="moving_items">Moving items…</string>
     <string name="move_progress_count" translatable="false">%1$d / %2$d</string>
 
+    <string name="delete_vault_after_move">Delete vault after move</string>
     <!-- We need &lt; notation so it is recognized as HTML -->
     <string name="permanently_delete">Permanently Delete</string>
     <string name="delete_instruction">To confirm and permanently delete, enter \"&lt;b>%s&lt;/b>\" below.</string>
