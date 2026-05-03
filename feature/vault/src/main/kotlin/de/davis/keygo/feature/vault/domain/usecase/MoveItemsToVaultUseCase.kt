@@ -43,8 +43,8 @@ class MoveItemsToVaultUseCase(
         onProgress(MoveItemsProgress(movedCount = 0, total = total))
 
         items.forEachIndexed { index, item ->
-            val rewrapped = runCatching {
-                cryptographicScopeProvider.rewrapItemKey(
+            val rewrapped = when (
+                val r = cryptographicScopeProvider.rewrapItemKey(
                     sourceVault = srcVault,
                     sourceItem = WrappedItemKeyInformation(
                         itemAad = ItemAad(itemId = item.id, vaultId = srcVaultId),
@@ -52,8 +52,14 @@ class MoveItemsToVaultUseCase(
                     ),
                     destinationVault = dstVault,
                 )
-            }.getOrElse {
-                return Result.Failure(MoveItemsError.ItemMoveFailed(item.id, it))
+            ) {
+                is Result.Success -> r.success
+                is Result.Failure -> return Result.Failure(
+                    MoveItemsError.ItemMoveFailed(
+                        item.id,
+                        r.error
+                    )
+                )
             }
 
             itemRepository.moveItem(

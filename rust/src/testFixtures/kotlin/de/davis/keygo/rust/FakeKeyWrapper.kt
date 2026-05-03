@@ -19,8 +19,13 @@ import java.util.UUID
  * with a different outer key or id yields garbage — every `unwrap*` call throws
  * [KeyWrapException.UnwrapFailed] when the result does not match a recorded ciphertext, which
  * is sufficient to exercise the wrong-password / wrong-key paths in use case tests.
+ *
+ * Set [failUnwrapItemForId] to force [unwrapItemKey] to throw the supplied exception whenever
+ * it is called for an item whose id matches the recorded id.
  */
 class FakeKeyWrapper : KeyWrapperInterface {
+
+    var failUnwrapItemForId: Pair<UUID, KeyWrapException>? = null
 
     private val wrapRecord = mutableMapOf<Triple<List<Byte>, List<Byte>, UUID>, ByteArray>()
 
@@ -58,7 +63,12 @@ class FakeKeyWrapper : KeyWrapperInterface {
         vaultKey: VaultKey,
         wrapped: WrappedKeyBlob,
         aad: ItemAad,
-    ): ItemKey = unwrap(outerKey = vaultKey, wrapped = wrapped, id = aadId(aad))
+    ): ItemKey {
+        failUnwrapItemForId?.let { (failingItemId, error) ->
+            if (aad.itemId == failingItemId) throw error
+        }
+        return unwrap(outerKey = vaultKey, wrapped = wrapped, id = aadId(aad))
+    }
 
     private fun aadId(aad: ItemAad): UUID =
         UUID(

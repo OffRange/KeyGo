@@ -6,6 +6,8 @@ import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
+import de.davis.keygo.core.util.Result
+import de.davisalessandro.keygo.rust.KeyWrapException
 import kotlin.coroutines.CoroutineContext
 import kotlin.experimental.xor
 
@@ -52,7 +54,8 @@ class FakeCryptographicScopeProvider : CryptographicScopeProvider {
         sourceVault: WrappedVaultKeyInformation,
         sourceItem: WrappedItemKeyInformation,
         destinationVault: WrappedVaultKeyInformation,
-    ): KeyInformation = KeyInformation(byteArrayOf(), byteArrayOf())
+    ): Result<KeyInformation, KeyWrapException> =
+        Result.Success(KeyInformation(byteArrayOf(), byteArrayOf()))
 
     companion object {
         val IV: ByteArray = byteArrayOf(0x01, 0x02, 0x03, 0x04)
