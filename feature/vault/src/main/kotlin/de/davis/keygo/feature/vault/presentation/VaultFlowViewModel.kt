@@ -16,6 +16,7 @@ import de.davis.keygo.feature.vault.domain.usecase.EditVaultUseCase
 import de.davis.keygo.feature.vault.domain.usecase.MoveItemsToVaultUseCase
 import de.davis.keygo.feature.vault.domain.usecase.ObserveVaultsAndSelectionUseCase
 import de.davis.keygo.feature.vault.domain.usecase.SetVaultContextUseCase
+import de.davis.keygo.feature.vault.presentation.model.VaultDeletionError
 import de.davis.keygo.feature.vault.presentation.model.VaultState
 import de.davis.keygo.feature.vault.presentation.model.VaultStateSwitcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -47,6 +48,7 @@ internal class VaultFlowViewModel(
 
     private val vaultStateSwitcher =
         MutableStateFlow<VaultStateSwitcher>(VaultStateSwitcher.Selection)
+    private val deleteVaultState = MutableStateFlow<VaultState.Delete?>(null)
     private val createVaultState = MutableStateFlow(VaultState.Create())
     private val editVaultState = MutableStateFlow<VaultState.Edit?>(null)
     private val moveDstSelection = MutableStateFlow<VaultId?>(null)
@@ -62,6 +64,7 @@ internal class VaultFlowViewModel(
     @OptIn(ExperimentalCoroutinesApi::class)
     val vaultState = vaultStateSwitcher.flatMapLatest { switcher ->
         when (switcher) {
+            VaultStateSwitcher.Delete -> deleteVaultState.filterNotNull()
             VaultStateSwitcher.Selection -> vaultSelectionState
             VaultStateSwitcher.Create -> createVaultState
             VaultStateSwitcher.Edit -> editVaultState.filterNotNull()
@@ -100,6 +103,7 @@ internal class VaultFlowViewModel(
     fun onCreateOrEditVault() {
         viewModelScope.launch {
             when (vaultStateSwitcher.value) {
+                VaultStateSwitcher.Delete,
                 VaultStateSwitcher.Selection,
                 is VaultStateSwitcher.Move -> null
 
@@ -131,6 +135,7 @@ internal class VaultFlowViewModel(
 
     fun onVaultIconClick(icon: Vault.Icon) {
         when (vaultStateSwitcher.value) {
+            VaultStateSwitcher.Delete,
             VaultStateSwitcher.Selection,
             is VaultStateSwitcher.Move -> {
             }
@@ -156,8 +161,29 @@ internal class VaultFlowViewModel(
         vaultStateSwitcher.update { VaultStateSwitcher.Edit }
     }
 
-    fun onDeleteVault(vaultId: VaultId) {
-        viewModelScope.launch { deleteVault(vaultId) }
+    fun onDeleteRequest(vaultMetadata: VaultMetadata) {
+        deleteVaultState.update {
+            VaultState.Delete(
+                vaultMetadata = vaultMetadata
+            )
+        }
+        vaultStateSwitcher.update { VaultStateSwitcher.Delete }
+    }
+
+    fun onDeleteVault(enteredName: String) {
+        when (vaultStateSwitcher.value) {
+            VaultStateSwitcher.Delete -> {
+                deleteVaultState.value?.let { state ->
+                    if (state.vaultMetadata.name != enteredName)
+                        return@let deleteVaultState.update { state.copy(error = VaultDeletionError.NameDoesNotMatch) }
+
+                    viewModelScope.launch { deleteVault(state.vaultMetadata.vaultId) }
+                    dismiss(force = true)
+                }
+            }
+
+            else -> {}
+        }
     }
 
     fun onMoveTo(vaultId: VaultId) {
@@ -187,8 +213,6 @@ internal class VaultFlowViewModel(
         if (!force && moveProgress.value != null) return
         vaultStateSwitcher.update { VaultStateSwitcher.Selection }
         createVaultState.update { VaultState.Create() }
-        editVaultState.update { null }
-        moveDstSelection.update { null }
         moveProgress.update { null }
         _dismissEvents.trySend(Unit)
     }

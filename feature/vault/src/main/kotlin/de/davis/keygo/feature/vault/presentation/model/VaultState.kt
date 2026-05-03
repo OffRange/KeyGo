@@ -13,6 +13,12 @@ import de.davis.keygo.feature.vault.domain.model.VaultCreationError
 sealed interface VaultState {
 
     @Stable
+    data class Delete(
+        val vaultMetadata: VaultMetadata,
+        val error: VaultDeletionError? = null,
+    ) : VaultState
+
+    @Stable
     data class Select(
         val vaults: List<VaultMetadata> = emptyList(),
         val vaultContext: VaultContext = VaultContext.NoSpecific,

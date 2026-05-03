@@ -81,6 +81,7 @@ fun MoveVaultDialog(
                     Text(text = stringResource(R.string.move))
                 }
         },
+        modifier = Modifier.fillMaxWidth(),
         dismissButton = {
             if (!isMoving)
                 TextButton(onClick = onDismissRequest) {

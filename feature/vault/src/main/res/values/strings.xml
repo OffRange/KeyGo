@@ -21,4 +21,14 @@
     <string name="source_vault">Source vault</string>
     <string name="moving_items">Moving items…</string>
     <string name="move_progress_count" translatable="false">%1$d / %2$d</string>
+
+    <!-- We need &lt; notation so it is recognized as HTML -->
+    <string name="permanently_delete">Permanently Delete</string>
+    <string name="delete_instruction">To confirm and permanently delete, enter \"&lt;b>%s&lt;/b>\" below.</string>
+    <plurals name="delete_vault_warning">
+        <item quantity="one">Deleting &lt;b>%1$s&lt;/b> will permanently remove the vault and its &lt;b>%2$d item&lt;/b>. This action cannot be undone. Consider moving this item to another vault before continuing.</item>
+
+        <item quantity="other">Deleting &lt;b>%1$s&lt;/b> will permanently remove the vault and its &lt;b>%2$d items&lt;/b>. This action cannot be undone. Consider moving these items to another vault before continuing.</item>
+    </plurals>
+    <string name="name_does_not_match">The name is incorrect</string>
 </resources>

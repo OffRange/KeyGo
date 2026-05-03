@@ -71,7 +71,7 @@ fun VaultSelectionSheet(
     onVaultContextSelect: (VaultContext) -> Unit,
     onCreateVaultRequest: () -> Unit,
     onEditRequest: (VaultMetadata) -> Unit,
-    onDelete: (VaultId) -> Unit,
+    onDeleteRequest: (VaultMetadata) -> Unit,
     onMoveTo: (VaultId) -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState(),
 ) {
@@ -87,7 +87,7 @@ fun VaultSelectionSheet(
                 onVaultContextSelect = onVaultContextSelect,
                 onCreateVaultRequest = onCreateVaultRequest,
                 onEditRequest = onEditRequest,
-                onDelete = onDelete,
+                onDeleteRequest = onDeleteRequest,
                 onMoveTo = onMoveTo,
             )
         }
@@ -101,7 +101,7 @@ private fun VaultSelectionSheetContent(
     onVaultContextSelect: (VaultContext) -> Unit,
     onCreateVaultRequest: () -> Unit,
     onEditRequest: (VaultMetadata) -> Unit,
-    onDelete: (VaultId) -> Unit,
+    onDeleteRequest: (VaultMetadata) -> Unit,
     onMoveTo: (VaultId) -> Unit,
 ) {
     val sumAllVaults = vaultState.sumCount
@@ -268,7 +268,7 @@ private fun VaultSelectionSheetContent(
                                         },
                                         onClick = {
                                             expanded = false
-                                            onDelete(metadata.vaultId)
+                                            onDeleteRequest(metadata)
                                         },
                                         shape = MenuDefaults.trailingItemShape,
                                         colors = MenuDefaults.selectableItemColors(
@@ -323,7 +323,7 @@ private fun VaultSelectionSheetContentPreview() {
                 onVaultContextSelect = {},
                 onCreateVaultRequest = {},
                 onEditRequest = {},
-                onDelete = {},
+                onDeleteRequest = {},
                 onMoveTo = {},
             )
         }

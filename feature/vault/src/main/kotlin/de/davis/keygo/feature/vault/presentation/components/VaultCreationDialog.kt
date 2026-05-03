@@ -57,6 +57,7 @@ fun VaultCreationDialog(
         title = {
             Text(text = stringResource(R.string.create_new_vault))
         },
+        modifier = Modifier.fillMaxWidth(),
         text = {
             VaultCreationDialogContent(
                 vaultState = vaultState,

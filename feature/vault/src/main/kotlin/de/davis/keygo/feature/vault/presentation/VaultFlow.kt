@@ -7,6 +7,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.vault.presentation.components.MoveVaultDialog
 import de.davis.keygo.feature.vault.presentation.components.VaultCreationDialog
+import de.davis.keygo.feature.vault.presentation.components.VaultDeletionDialog
 import de.davis.keygo.feature.vault.presentation.components.VaultSelectionSheet
 import de.davis.keygo.feature.vault.presentation.model.VaultState
 import org.koin.androidx.compose.koinViewModel
@@ -21,13 +22,19 @@ fun VaultFlow(onDismiss: () -> Unit) {
     val vaultState by vm.vaultState.collectAsStateWithLifecycle()
 
     when (val state = vaultState) {
+        is VaultState.Delete -> VaultDeletionDialog(
+            vaultState = state,
+            onConfirmDeletion = vm::onDeleteVault,
+            onDismissRequest = vm::dismiss,
+        )
+
         is VaultState.Select -> VaultSelectionSheet(
             vaultState = state,
             onDismiss = vm::dismiss,
             onVaultContextSelect = vm::onVaultContextSelected,
             onCreateVaultRequest = vm::onCreateVaultRequest,
             onEditRequest = vm::onEditVaultRequest,
-            onDelete = vm::onDeleteVault,
+            onDeleteRequest = vm::onDeleteRequest,
             onMoveTo = vm::onMoveTo,
         )
 
