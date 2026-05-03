@@ -42,7 +42,7 @@ class CreateVaultUseCase(
 
         val vault = Vault(
             id = vaultId,
-            name = name,
+            name = name.trim(),
             icon = icon,
             wrappedVaultKey = wrappedVaultKey.ciphertext,
             vaultKeyNonce = wrappedVaultKey.nonce,

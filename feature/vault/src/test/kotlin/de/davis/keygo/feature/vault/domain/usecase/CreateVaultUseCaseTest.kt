@@ -114,6 +114,15 @@ class CreateVaultUseCaseTest {
     }
 
     @Test
+    fun `trims surrounding whitespace from name before persisting`() = runTest {
+        val result = useCase(name = "  My Vault  ", icon = Vault.Icon.Default)
+        assertTrue(result.isSuccess())
+
+        val stored = vaultRepository.observeVaults().first().single()
+        assertEquals("My Vault", stored.name)
+    }
+
+    @Test
     fun `creates distinct vault ids and keys across consecutive invocations`() = runTest {
         val a = assertNotNull(useCase(name = "A", icon = Vault.Icon.Default).getOrNull())
         val b = assertNotNull(useCase(name = "B", icon = Vault.Icon.Default).getOrNull())
