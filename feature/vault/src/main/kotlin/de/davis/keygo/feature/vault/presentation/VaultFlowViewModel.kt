@@ -52,7 +52,7 @@ internal class VaultFlowViewModel(
     private val moveDstSelection = MutableStateFlow<VaultId?>(null)
     private val moveProgress = MutableStateFlow<MoveItemsProgress?>(null)
 
-    private val _dismissEvents = Channel<Unit>(Channel.BUFFERED)
+    private val _dismissEvents = Channel<Unit>(Channel.CONFLATED)
     val dismissEvents = _dismissEvents.receiveAsFlow()
 
     private val vaultSelectionState = vaultsAndSelection.map {
@@ -64,16 +64,7 @@ internal class VaultFlowViewModel(
         when (switcher) {
             VaultStateSwitcher.Selection -> vaultSelectionState
             VaultStateSwitcher.Create -> createVaultState
-            is VaultStateSwitcher.Edit -> {
-                editVaultState.update {
-                    VaultState.Edit(
-                        vaultId = switcher.vaultMetadata.vaultId,
-                        nameTextFieldState = TextFieldState(switcher.vaultMetadata.name),
-                        icon = switcher.vaultMetadata.icon,
-                    )
-                }
-                editVaultState.filterNotNull()
-            }
+            VaultStateSwitcher.Edit -> editVaultState.filterNotNull()
 
             is VaultStateSwitcher.Move -> combine(
                 vaultsAndSelection,
@@ -122,7 +113,7 @@ internal class VaultFlowViewModel(
                     }
                 }
 
-                is VaultStateSwitcher.Edit ->
+                VaultStateSwitcher.Edit ->
                     editVaultState.value?.let { state ->
                         updateVault(
                             vaultId = state.vaultId,
@@ -147,7 +138,7 @@ internal class VaultFlowViewModel(
             VaultStateSwitcher.Create ->
                 createVaultState.update { it.copy(icon = icon) }
 
-            is VaultStateSwitcher.Edit ->
+            VaultStateSwitcher.Edit ->
                 editVaultState.value?.let { state ->
                     editVaultState.update { state.copy(icon = icon) }
                 }
@@ -155,7 +146,14 @@ internal class VaultFlowViewModel(
     }
 
     fun onEditVaultRequest(vaultMetadata: VaultMetadata) {
-        vaultStateSwitcher.update { VaultStateSwitcher.Edit(vaultMetadata) }
+        editVaultState.update {
+            VaultState.Edit(
+                vaultId = vaultMetadata.vaultId,
+                nameTextFieldState = TextFieldState(vaultMetadata.name),
+                icon = vaultMetadata.icon,
+            )
+        }
+        vaultStateSwitcher.update { VaultStateSwitcher.Edit }
     }
 
     fun onDeleteVault(vaultId: VaultId) {
