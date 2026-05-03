@@ -26,6 +26,7 @@ import de.davis.keygo.feature.vault.domain.model.MoveItemsProgress
 import de.davis.keygo.rust.FakeItemManager
 import de.davis.keygo.rust.FakeKeyWrapper
 import de.davisalessandro.keygo.rust.ItemAad
+import de.davisalessandro.keygo.rust.KeyWrapException
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -33,6 +34,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class MoveItemsToVaultUseCaseTest {
@@ -209,6 +211,28 @@ class MoveItemsToVaultUseCaseTest {
         val error = assertIs<MoveItemsError.ItemMoveFailed>(result.error)
         assertEquals(failingId, error.itemId)
         assertEquals(cause, error.cause)
+
+        assertEquals(dstVault.id, passwordRepository.getPasswordById(seededIds[0])!!.vaultId)
+        assertEquals(srcVault.id, passwordRepository.getPasswordById(seededIds[1])!!.vaultId)
+        assertEquals(srcVault.id, passwordRepository.getPasswordById(seededIds[2])!!.vaultId)
+    }
+
+    @Test
+    fun `rewrap failure surfaces ItemMoveFailed and stops the loop`() = runTest {
+        seedVaults(srcVault, dstVault)
+        val seededIds = (1..3).map {
+            encryptAndSeed(srcVault, name = "item-$it", passwordPlaintext = "pw-$it").id
+        }
+        val failingId = seededIds[1]
+        val cause = KeyWrapException.UnwrapFailed()
+        keyWrapper.failUnwrapItemForId = failingId to cause
+
+        val result = useCase(srcVault.id, dstVault.id)
+
+        assertTrue(result.isFailure())
+        val error = assertIs<MoveItemsError.ItemMoveFailed>(result.error)
+        assertEquals(failingId, error.itemId)
+        assertSame(cause, error.cause)
 
         assertEquals(dstVault.id, passwordRepository.getPasswordById(seededIds[0])!!.vaultId)
         assertEquals(srcVault.id, passwordRepository.getPasswordById(seededIds[1])!!.vaultId)
