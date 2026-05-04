@@ -84,6 +84,4 @@ class FakePasswordRepository : PasswordRepository {
 
     override fun observePasswordScores(): Flow<Map<ItemId, Password.Score>> =
         store.map { passwords -> passwords.mapValues { it.value.score } }
-
-    override suspend fun getPasswordIdByVaultId(itemId: ItemId): ItemId? = null
 }

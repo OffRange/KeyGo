@@ -36,6 +36,4 @@ interface PasswordRepository {
     fun observePasswords(): Flow<List<Password>>
 
     fun observePasswordScores(): Flow<Map<ItemId, Password.Score>>
-
-    suspend fun getPasswordIdByVaultId(itemId: ItemId): ItemId?
 }

@@ -87,8 +87,4 @@ internal class PasswordRepositoryImpl(
         passwordDao.observePasswordScores().map { entries ->
             entries.associate { it.id to it.score }
         }
-
-    // With shared PK, the password id IS the vault item id — return it directly if it exists.
-    override suspend fun getPasswordIdByVaultId(itemId: ItemId): ItemId? =
-        passwordDao.getVaultPassword(itemId)?.passwordEntity?.id
 }

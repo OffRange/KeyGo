@@ -74,9 +74,6 @@ internal class CreatePasskeyViewModel(
                 registrationResponse ?: return@launch abort("Response was null")
             val key = key ?: return@launch abort("Key was null")
 
-            val passwordId = passwordRepository.getPasswordIdByVaultId(itemId)
-                ?: return@launch abort("No password found for vault ID")
-
             val passkey = Passkey(
                 credentialId = registrationResponse.credentialId,
                 privateKey = SecretData(
@@ -85,7 +82,7 @@ internal class CreatePasskeyViewModel(
                     decryptedDataType = SecretData.DecryptedDataType.StringType
                 ),
                 rp = registrationResponse.rp,
-                passwordId = passwordId,
+                passwordId = itemId,
                 user = PasskeyUser(
                     name = registrationResponse.userName,
                     displayName = registrationResponse.userDisplayName
