@@ -68,25 +68,17 @@ class CreateAccessUseCase(
             getPasswordWrappedArk(accountHolder.account, derivedKek, salt).getOrNull()
                 ?: return Result.Failure(CreateAccessError.WrappingFailed)
 
-        accountHolder.defaultVault.wrap(accountHolder.account.ark).getOrNull()?.let { wrappedKey ->
-            // TODO: use CreateVaultUseCase, when having better project structure
-            vaultRepository.createVault(
-                Vault(
-                    id = accountHolder.defaultVault.id,
-                    name = vaultName,
-                    wrappedVaultKey = wrappedKey.ciphertext,
-                    vaultKeyNonce = wrappedKey.nonce,
-                    icon = Vault.Icon.Default
-                )
-            )
-            vaultContextRepository.setContextAndLastInteracted(accountHolder.defaultVault.id)
-        } ?: return Result.Failure(CreateAccessError.WrappingFailed)
+        val wrappedVaultKey = accountHolder.defaultVault.wrap(accountHolder.account.ark).getOrNull()
+            ?: return Result.Failure(CreateAccessError.WrappingFailed)
 
         val biometricWrappedArk = biometricCipher?.let {
-            getBiometricWrappedArk(accountHolder.account, biometricCipher).getOrNull()
+            getBiometricWrappedArk(accountHolder.account, it).getOrNull()
                 ?: return Result.Failure(CreateAccessError.WrappingFailed)
         }
 
+        // Persist the account before the vault: the vault is encrypted under the account's
+        // ARK, so a vault row without a recoverable account is dead weight. If the vault
+        // write fails after this, the half-state is recoverable on retry — `set` overwrites.
         accountRepository.set(
             Account(
                 id = accountHolder.account.id,
@@ -95,6 +87,21 @@ class CreateAccessUseCase(
                 biometricWrappedArk = biometricWrappedArk,
             )
         ).getOrNull() ?: return Result.Failure(CreateAccessError.AccountPersistenceFailed)
+
+        // TODO: use CreateVaultUseCase, when having better project structure
+        runCatching {
+            vaultRepository.createVault(
+                Vault(
+                    id = accountHolder.defaultVault.id,
+                    name = vaultName,
+                    wrappedVaultKey = wrappedVaultKey.ciphertext,
+                    vaultKeyNonce = wrappedVaultKey.nonce,
+                    icon = Vault.Icon.Default,
+                )
+            )
+        }.onFailure { return Result.Failure(CreateAccessError.VaultPersistenceFailed(it)) }
+
+        vaultContextRepository.setContextAndLastInteracted(accountHolder.defaultVault.id)
 
         session.startSession(accountHolder.account.ark.asAesKey())
         return Result.Success(Unit)

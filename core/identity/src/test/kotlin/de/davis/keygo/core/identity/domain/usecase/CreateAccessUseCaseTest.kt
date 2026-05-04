@@ -64,6 +64,31 @@ class CreateAccessUseCaseTest {
     }
 
     @Test
+    fun `does not persist a vault when account persistence fails`() = runTest {
+        accountRepository.setFails = true
+
+        useCase("password")
+
+        assertTrue(vaultRepository.observeVaults().first().isEmpty())
+    }
+
+    @Test
+    fun `reports VaultPersistenceFailed and leaves account persisted when vault create throws`() =
+        runTest {
+            val cause = RuntimeException("disk full")
+            vaultRepository.createError = cause
+
+            val result = useCase("password")
+
+            assertTrue(result.isFailure())
+            val error = result.error
+            assertTrue(error is CreateAccessError.VaultPersistenceFailed)
+            assertEquals(cause, error.cause)
+            // Account is durable so a retry can proceed without orphaning a half-account.
+            assertNotNull(accountRepository.getOrNull())
+        }
+
+    @Test
     fun `returns Success and starts session without biometric cipher`() = runTest {
         val result = useCase("password", biometricCipher = null)
 
