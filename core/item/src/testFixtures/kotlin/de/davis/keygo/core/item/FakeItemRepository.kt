@@ -3,7 +3,6 @@ package de.davis.keygo.core.item
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.Item
-import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.MovableItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
@@ -22,7 +21,8 @@ class FakeItemRepository(
 ) : ItemRepository {
 
     /**
-     * If non-null, [moveItem] fails when called with this id.
+     * If non-null, [moveItemsToVault] fails the whole bulk write when any of the supplied
+     * items has this id. Models a SQLite transaction failing and rolling back.
      * Persists across calls; the consumer clears it explicitly.
      */
     var failMoveForId: Pair<ItemId, Throwable>? = null
@@ -54,19 +54,19 @@ class FakeItemRepository(
         passwordRepository.getPasswordsByVault(vaultId)
             .map { MovableItem(id = it.id, keyInformation = it.keyInformation) }
 
-    override suspend fun moveItem(
-        itemId: ItemId,
+    override suspend fun moveItemsToVault(
+        items: List<MovableItem>,
         newVaultId: VaultId,
-        newKeyInformation: KeyInformation,
     ): Result<Unit, Throwable> {
-        failMoveForId?.let { (id, error) ->
-            if (id == itemId) return Result.Failure(error)
+        failMoveForId?.let { (failId, error) ->
+            if (items.any { it.id == failId }) return Result.Failure(error)
         }
-        val existing = passwordRepository.getPasswordById(itemId)
-            ?: return Result.Failure(NoSuchElementException("No item with id $itemId"))
-        passwordRepository.seed(
-            existing.copy(vaultId = newVaultId, keyInformation = newKeyInformation)
-        )
+        val updates = items.map { item ->
+            val existing = passwordRepository.getPasswordById(item.id)
+                ?: return Result.Failure(NoSuchElementException("No item with id ${item.id}"))
+            existing.copy(vaultId = newVaultId, keyInformation = item.keyInformation)
+        }
+        updates.forEach { passwordRepository.seed(it) }
         return Result.Success(Unit)
     }
 }

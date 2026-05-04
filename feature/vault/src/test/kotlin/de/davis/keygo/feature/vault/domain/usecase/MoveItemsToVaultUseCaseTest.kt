@@ -196,29 +196,27 @@ class MoveItemsToVaultUseCaseTest {
     }
 
     @Test
-    fun `persist failure stops the loop and surfaces ItemMoveFailed`() = runTest {
+    fun `persist failure rolls back all items and surfaces PersistFailed`() = runTest {
         seedVaults(srcVault, dstVault)
         val seededIds = (1..3).map {
             encryptAndSeed(srcVault, name = "item-$it", passwordPlaintext = "pw-$it").id
         }
-        val failingId = seededIds[1]
         val cause = RuntimeException("write blew up")
-        itemRepository.failMoveForId = failingId to cause
+        itemRepository.failMoveForId = seededIds[1] to cause
 
         val result = useCase(srcVault.id, dstVault.id)
 
         assertTrue(result.isFailure())
-        val error = assertIs<MoveItemsError.ItemMoveFailed>(result.error)
-        assertEquals(failingId, error.itemId)
-        assertEquals(cause, error.cause)
+        val error = assertIs<MoveItemsError.PersistFailed>(result.error)
+        assertSame(cause, error.cause)
 
-        assertEquals(dstVault.id, passwordRepository.getPasswordById(seededIds[0])!!.vaultId)
-        assertEquals(srcVault.id, passwordRepository.getPasswordById(seededIds[1])!!.vaultId)
-        assertEquals(srcVault.id, passwordRepository.getPasswordById(seededIds[2])!!.vaultId)
+        seededIds.forEach { id ->
+            assertEquals(srcVault.id, passwordRepository.getPasswordById(id)!!.vaultId)
+        }
     }
 
     @Test
-    fun `rewrap failure surfaces ItemMoveFailed and stops the loop`() = runTest {
+    fun `rewrap failure surfaces ItemMoveFailed and leaves all items in src`() = runTest {
         seedVaults(srcVault, dstVault)
         val seededIds = (1..3).map {
             encryptAndSeed(srcVault, name = "item-$it", passwordPlaintext = "pw-$it").id
@@ -234,9 +232,9 @@ class MoveItemsToVaultUseCaseTest {
         assertEquals(failingId, error.itemId)
         assertSame(cause, error.cause)
 
-        assertEquals(dstVault.id, passwordRepository.getPasswordById(seededIds[0])!!.vaultId)
-        assertEquals(srcVault.id, passwordRepository.getPasswordById(seededIds[1])!!.vaultId)
-        assertEquals(srcVault.id, passwordRepository.getPasswordById(seededIds[2])!!.vaultId)
+        seededIds.forEach { id ->
+            assertEquals(srcVault.id, passwordRepository.getPasswordById(id)!!.vaultId)
+        }
     }
 
     @Test
@@ -284,12 +282,12 @@ class MoveItemsToVaultUseCaseTest {
     }
 
     @Test
-    fun `onProgress stops emitting once an item move fails`() = runTest {
+    fun `onProgress stops emitting once a rewrap fails`() = runTest {
         seedVaults(srcVault, dstVault)
         val seededIds = (1..3).map {
             encryptAndSeed(srcVault, name = "item-$it", passwordPlaintext = "pw-$it").id
         }
-        itemRepository.failMoveForId = seededIds[1] to RuntimeException("write blew up")
+        keyWrapper.failUnwrapItemForId = seededIds[1] to KeyWrapException.UnwrapFailed()
         val captured = mutableListOf<MoveItemsProgress>()
 
         useCase(srcVault.id, dstVault.id) { captured += it }

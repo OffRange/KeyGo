@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.vault.domain.usecase
 
 import de.davis.keygo.core.item.domain.alias.VaultId
+import de.davis.keygo.core.item.domain.model.MovableItem
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
@@ -42,8 +43,11 @@ class MoveItemsToVaultUseCase(
         val total = items.size
         onProgress(MoveItemsProgress(movedCount = 0, total = total))
 
+        // Phase 1: re-wrap every item key under the destination vault. Done before any DB write
+        // so a per-item rewrap failure aborts cleanly with the source vault untouched.
+        val rewrapped = ArrayList<MovableItem>(total)
         items.forEachIndexed { index, item ->
-            val rewrapped = when (
+            val newKey = when (
                 val r = cryptographicScopeProvider.rewrapItemKey(
                     sourceVault = srcVault,
                     sourceItem = WrappedItemKeyInformation(
@@ -55,23 +59,19 @@ class MoveItemsToVaultUseCase(
             ) {
                 is Result.Success -> r.success
                 is Result.Failure -> return Result.Failure(
-                    MoveItemsError.ItemMoveFailed(
-                        item.id,
-                        r.error
-                    )
+                    MoveItemsError.ItemMoveFailed(item.id, r.error),
                 )
             }
-
-            itemRepository.moveItem(
-                itemId = item.id,
-                newVaultId = dstVaultId,
-                newKeyInformation = rewrapped,
-            ).onFailure {
-                return Result.Failure(MoveItemsError.ItemMoveFailed(item.id, it))
-            }
-
+            rewrapped += MovableItem(id = item.id, keyInformation = newKey)
             onProgress(MoveItemsProgress(movedCount = index + 1, total = total))
         }
+
+        // Phase 2: commit all moves in one SQLite transaction. On failure, every row rolls
+        // back — items remain in the source vault, decryptable under the source vault key.
+        itemRepository.moveItemsToVault(rewrapped, dstVaultId).onFailure {
+            return Result.Failure(MoveItemsError.PersistFailed(it))
+        }
+
         return Result.Success(Unit)
     }
 }

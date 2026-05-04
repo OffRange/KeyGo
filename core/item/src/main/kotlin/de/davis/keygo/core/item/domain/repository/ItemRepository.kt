@@ -3,7 +3,6 @@ package de.davis.keygo.core.item.domain.repository
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.Item
-import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.MovableItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
@@ -35,9 +34,12 @@ interface ItemRepository {
 
     suspend fun getMovableItemsByVault(vaultId: VaultId): List<MovableItem>
 
-    suspend fun moveItem(
-        itemId: ItemId,
+    /**
+     * Atomically moves all [items] to [newVaultId], updating each item's `vault_id` and
+     * key information in a single SQLite transaction. Either every row is updated or none are.
+     */
+    suspend fun moveItemsToVault(
+        items: List<MovableItem>,
         newVaultId: VaultId,
-        newKeyInformation: KeyInformation,
     ): Result<Unit, Throwable>
 }

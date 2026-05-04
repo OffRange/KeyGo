@@ -2,6 +2,7 @@ package de.davis.keygo.core.item.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Upsert
 import de.davis.keygo.core.item.data.local.entity.ItemEntity
 import de.davis.keygo.core.item.data.local.pojo.LightweightItem
@@ -68,4 +69,16 @@ internal interface ItemDao {
         wrappedKey: ByteArray,
         keyNonce: ByteArray,
     )
+
+    @Transaction
+    suspend fun moveItemsToVault(items: List<MovableItemPojo>, newVaultId: VaultId) {
+        items.forEach {
+            moveItem(
+                id = it.id,
+                newVaultId = newVaultId,
+                wrappedKey = it.keyInformation.wrappedKey,
+                keyNonce = it.keyInformation.keyNonce,
+            )
+        }
+    }
 }

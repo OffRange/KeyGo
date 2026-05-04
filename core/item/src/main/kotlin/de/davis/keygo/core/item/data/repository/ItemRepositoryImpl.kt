@@ -3,12 +3,13 @@ package de.davis.keygo.core.item.data.repository
 import de.davis.keygo.core.item.data.local.dao.ItemDao
 import de.davis.keygo.core.item.data.local.pojo.LightweightItem
 import de.davis.keygo.core.item.data.local.pojo.LightweightItemSearchResult
+import de.davis.keygo.core.item.data.local.pojo.MovableItemPojo
 import de.davis.keygo.core.item.data.maper.toData
 import de.davis.keygo.core.item.data.maper.toDomain
+import de.davis.keygo.core.item.data.maper.toEntity
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.Item
-import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.MovableItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
@@ -54,16 +55,15 @@ internal class ItemRepositoryImpl(
     override suspend fun getMovableItemsByVault(vaultId: VaultId): List<MovableItem> =
         itemDao.getMovableItemsByVault(vaultId).map { it.toDomain() }
 
-    override suspend fun moveItem(
-        itemId: ItemId,
+    override suspend fun moveItemsToVault(
+        items: List<MovableItem>,
         newVaultId: VaultId,
-        newKeyInformation: KeyInformation,
     ): Result<Unit, Throwable> = runCatching {
-        itemDao.moveItem(
-            id = itemId,
+        itemDao.moveItemsToVault(
+            items = items.map {
+                MovableItemPojo(id = it.id, keyInformation = it.keyInformation.toEntity())
+            },
             newVaultId = newVaultId,
-            wrappedKey = newKeyInformation.wrappedKey,
-            keyNonce = newKeyInformation.keyNonce,
         )
     }.fold(
         onSuccess = { Result.Success(Unit) },
