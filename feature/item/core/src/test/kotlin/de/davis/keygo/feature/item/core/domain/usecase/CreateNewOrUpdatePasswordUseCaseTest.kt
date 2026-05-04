@@ -13,6 +13,7 @@ import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
@@ -278,6 +279,145 @@ class CreateNewOrUpdatePasswordUseCaseTest {
 
         assertTrue(result.isFailure())
         assertContains(result.error, PasswordError.InvalidItemId)
+    }
+
+    // Vault move on update
+
+    @Test
+    fun `update with different vaultId moves item to that vault`() = runTest {
+        val otherVault = defaultVault.copy(id = newVaultId(), name = "Other vault")
+        vaultRepository.seed(otherVault)
+
+        val existing = testPassword()
+        passwordRepository.seed(existing)
+
+        val result = useCase(
+            UpsertPassword.update(itemId = existing.id, vaultId = otherVault.id)
+        )
+
+        assertTrue(result.isSuccess(), "result: $result")
+        assertEquals(otherVault.id, passwordRepository.getPasswordById(existing.id)?.vaultId)
+    }
+
+    @Test
+    fun `update with same vaultId keeps item in original vault`() = runTest {
+        val existing = testPassword()
+        passwordRepository.seed(existing)
+
+        useCase(UpsertPassword.update(itemId = existing.id, vaultId = defaultVault.id))
+
+        assertEquals(defaultVault.id, passwordRepository.getPasswordById(existing.id)?.vaultId)
+    }
+
+    @Test
+    fun `update with null vaultId keeps item in original vault`() = runTest {
+        val existing = testPassword()
+        passwordRepository.seed(existing)
+
+        useCase(UpsertPassword.update(itemId = existing.id, name = set("Renamed")))
+
+        assertEquals(defaultVault.id, passwordRepository.getPasswordById(existing.id)?.vaultId)
+    }
+
+    @Test
+    fun `update with unknown target vaultId returns InvalidVaultId error`() = runTest {
+        val existing = testPassword()
+        passwordRepository.seed(existing)
+
+        val result = useCase(
+            UpsertPassword.update(itemId = existing.id, vaultId = newVaultId())
+        )
+
+        assertTrue(result.isFailure())
+        assertContains(result.error, PasswordError.InvalidVaultId)
+    }
+
+    @Test
+    fun `update moving vaults also applies field changes`() = runTest {
+        val otherVault = defaultVault.copy(id = newVaultId(), name = "Other vault")
+        vaultRepository.seed(otherVault)
+
+        val existing = testPassword(name = "Old name")
+        passwordRepository.seed(existing)
+
+        useCase(
+            UpsertPassword.update(
+                itemId = existing.id,
+                vaultId = otherVault.id,
+                name = set("New name"),
+            )
+        )
+
+        val stored = passwordRepository.getPasswordById(existing.id)
+        assertEquals(otherVault.id, stored?.vaultId)
+        assertEquals("New name", stored?.name)
+    }
+
+    @Test
+    fun `update with different vaultId rewraps item key under the destination vault`() = runTest {
+        val otherVault = Vault(
+            id = newVaultId(),
+            name = "Other vault",
+            keyInformation = KeyInformation(
+                wrappedKey = byteArrayOf(0x0A),
+                keyNonce = byteArrayOf(0x0B),
+            ),
+            icon = Vault.Icon.Default,
+        )
+        vaultRepository.seed(otherVault)
+
+        val existingItemKey = KeyInformation(
+            wrappedKey = byteArrayOf(0x11, 0x22),
+            keyNonce = byteArrayOf(0x33, 0x44),
+        )
+        val existing = testPassword().copy(keyInformation = existingItemKey)
+        passwordRepository.seed(existing)
+
+        val rewrappedItemKey = KeyInformation(
+            wrappedKey = byteArrayOf(0xAA.toByte(), 0xBB.toByte()),
+            keyNonce = byteArrayOf(0xCC.toByte(), 0xDD.toByte()),
+        )
+        cryptoProvider.rewrapResult = Result.Success(rewrappedItemKey)
+
+        val result = useCase(
+            UpsertPassword.update(itemId = existing.id, vaultId = otherVault.id)
+        )
+
+        assertTrue(result.isSuccess(), "result: $result")
+
+        val rewrap = cryptoProvider.rewrapCalls.single()
+        assertEquals(defaultVault.id, rewrap.sourceVault.vaultId)
+        assertContentEquals(
+            defaultVault.keyInformation.wrappedKey,
+            rewrap.sourceVault.wrappedVaultKey.wrappedKey,
+        )
+        assertEquals(otherVault.id, rewrap.destinationVault.vaultId)
+        assertContentEquals(
+            otherVault.keyInformation.wrappedKey,
+            rewrap.destinationVault.wrappedVaultKey.wrappedKey,
+        )
+        assertEquals(existing.id, rewrap.sourceItem.itemAad.itemId)
+        assertEquals(defaultVault.id, rewrap.sourceItem.itemAad.vaultId)
+        assertContentEquals(
+            existingItemKey.wrappedKey,
+            rewrap.sourceItem.wrappedItemKey?.wrappedKey,
+        )
+
+        val stored = passwordRepository.getPasswordById(existing.id)
+        assertNotNull(stored)
+        assertEquals(otherVault.id, stored.vaultId)
+        assertContentEquals(rewrappedItemKey.wrappedKey, stored.keyInformation.wrappedKey)
+        assertContentEquals(rewrappedItemKey.keyNonce, stored.keyInformation.keyNonce)
+    }
+
+    @Test
+    fun `update with same vaultId does not rewrap`() = runTest {
+        val existing = testPassword()
+        passwordRepository.seed(existing)
+
+        useCase(UpsertPassword.update(itemId = existing.id, vaultId = defaultVault.id))
+
+        assertTrue(cryptoProvider.rewrapCalls.isEmpty())
     }
 
     // Crypto scope

@@ -67,7 +67,11 @@ class CreateNewOrUpdatePasswordUseCase(
 
         val updatedPassword = when (upsert.upsertType) {
             is UpsertType.Create -> buildCreate(upsert, upsert.upsertType.vaultId)
-            is UpsertType.Update -> buildUpdate(upsert, upsert.upsertType.id)
+            is UpsertType.Update -> buildUpdate(
+                upsert = upsert,
+                id = upsert.upsertType.id,
+                targetVaultId = upsert.upsertType.targetVaultId,
+            )
         }
 
         return when (updatedPassword) {
@@ -130,19 +134,21 @@ class CreateNewOrUpdatePasswordUseCase(
 
     private suspend fun buildUpdate(
         upsert: UpsertPassword,
-        id: ItemId
+        id: ItemId,
+        targetVaultId: VaultId?,
     ): Result<Password, PasswordError> {
         val existing = passwordRepository.getPasswordById(id)
             ?: return Result.Failure(PasswordError.InvalidItemId)
 
-        val vaultKeyInfo = vaultRepository.getKeyInformation(existing.vaultId)
+        val sourceVaultKeyInfo = vaultRepository.getKeyInformation(existing.vaultId)
             ?: return Result.Failure(PasswordError.InvalidVaultId)
+        val sourceVault = WrappedVaultKeyInformation(
+            wrappedVaultKey = sourceVaultKeyInfo,
+            vaultId = existing.vaultId,
+        )
 
         val password = cryptographicScopeProvider.itemScope(
-            wrappedVaultKeyInformation = WrappedVaultKeyInformation(
-                wrappedVaultKey = vaultKeyInfo,
-                vaultId = existing.vaultId
-            ),
+            wrappedVaultKeyInformation = sourceVault,
             wrappedItemKeyInformation = existing.wrappedItemKeyInformation(),
         ) {
             coroutineScope {
@@ -168,6 +174,33 @@ class CreateNewOrUpdatePasswordUseCase(
             }
         }
 
-        return Result.Success(password)
+        if (targetVaultId == null || targetVaultId == existing.vaultId)
+            return Result.Success(password)
+
+        // Vault changed during edit: rewrap the item key under the destination vault. Encrypted
+        // secrets are bound only to the item id (see CryptographicScopeImpl.buildDataAad), so
+        // they remain valid under the same item key — no re-encryption needed.
+        val destinationVaultKeyInfo = vaultRepository.getKeyInformation(targetVaultId)
+            ?: return Result.Failure(PasswordError.InvalidVaultId)
+
+        return when (
+            val rewrapped = cryptographicScopeProvider.rewrapItemKey(
+                sourceVault = sourceVault,
+                sourceItem = existing.wrappedItemKeyInformation(),
+                destinationVault = WrappedVaultKeyInformation(
+                    wrappedVaultKey = destinationVaultKeyInfo,
+                    vaultId = targetVaultId,
+                ),
+            )
+        ) {
+            is Result.Success -> Result.Success(
+                password.copy(
+                    vaultId = targetVaultId,
+                    keyInformation = rewrapped.success,
+                )
+            )
+
+            is Result.Failure -> Result.Failure(PasswordError.DatabaseError(rewrapped.error))
+        }
     }
 }

@@ -5,5 +5,5 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 
 sealed interface UpsertType {
     data class Create(val vaultId: VaultId) : UpsertType
-    data class Update(val id: ItemId) : UpsertType
+    data class Update(val id: ItemId, val targetVaultId: VaultId? = null) : UpsertType
 }

@@ -17,11 +17,22 @@ class FakeCryptographicScopeProvider : CryptographicScopeProvider {
 
         class EncryptCall(val label: String, val plaintext: ByteArray) : CallHistory
         class DecryptCall(val label: String, val data: ByteArray) : CallHistory
+        class RewrapCall(
+            val sourceVault: WrappedVaultKeyInformation,
+            val sourceItem: WrappedItemKeyInformation,
+            val destinationVault: WrappedVaultKeyInformation,
+        ) : CallHistory
     }
 
     val callHistory = mutableListOf<CallHistory>()
     val encryptCalls
         get() = callHistory.filterIsInstance<CallHistory.EncryptCall>()
+    val rewrapCalls
+        get() = callHistory.filterIsInstance<CallHistory.RewrapCall>()
+
+    /** Result returned by the next [rewrapItemKey] call. */
+    var rewrapResult: Result<KeyInformation, KeyWrapException> =
+        Result.Success(KeyInformation(byteArrayOf(), byteArrayOf()))
 
     override suspend fun <R> itemScope(
         wrappedVaultKeyInformation: WrappedVaultKeyInformation,
@@ -54,8 +65,10 @@ class FakeCryptographicScopeProvider : CryptographicScopeProvider {
         sourceVault: WrappedVaultKeyInformation,
         sourceItem: WrappedItemKeyInformation,
         destinationVault: WrappedVaultKeyInformation,
-    ): Result<KeyInformation, KeyWrapException> =
-        Result.Success(KeyInformation(byteArrayOf(), byteArrayOf()))
+    ): Result<KeyInformation, KeyWrapException> {
+        callHistory += CallHistory.RewrapCall(sourceVault, sourceItem, destinationVault)
+        return rewrapResult
+    }
 
     companion object {
         val IV: ByteArray = byteArrayOf(0x01, 0x02, 0x03, 0x04)

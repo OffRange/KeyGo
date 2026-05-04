@@ -274,6 +274,7 @@ internal class PasswordViewModel(
                     val upsert = itemId?.let { itemId ->
                         UpsertPassword.update(
                             itemId = itemId,
+                            vaultId = ready.vaultsState.selectedVaultId,
                             name = fieldUpdate(base.nameTextFieldState.text.toString()),
                             username = fieldUpdate(base.usernameTextFieldState.text.toString()),
                             domains = set(base.domains),
