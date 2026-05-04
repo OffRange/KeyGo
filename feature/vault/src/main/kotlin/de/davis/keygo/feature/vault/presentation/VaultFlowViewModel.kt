@@ -208,7 +208,8 @@ internal class VaultFlowViewModel(
             moveItemsToVault(switcher.srcVaultId, dstVaultId) { progress ->
                 moveProgress.update { progress }
             }.onSuccess {
-                viewModelScope.launch { deleteVault(switcher.srcVaultId) }
+                if (moveState.delete)
+                    viewModelScope.launch { deleteVault(switcher.srcVaultId) }
             }
             dismiss(force = true)
         }
