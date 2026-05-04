@@ -56,8 +56,10 @@ internal class VaultContextRepositoryImpl(
 
     override suspend fun getLastInteractedVaultId(): VaultId =
         contextDataStore.data
-            .first()
-            .let { VaultId.fromString(it.lastInteractedVaultId) }
+            .first { it.lastInteractedVaultId.isNotBlank() }
+            .let {
+                VaultId.fromString(it.lastInteractedVaultId)
+            }
 
     override suspend fun getVaultContextRecord(): VaultContextRecord = contextDataStore.data
         .first()
