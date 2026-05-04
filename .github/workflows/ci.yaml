@@ -80,15 +80,18 @@ jobs:
       - name: Run tests
         run: cargo test --workspace --verbose
 
-  # Android unit tests. Waits for rust-lint when rust changed (skips past it when unchanged)
-  # so NDK cross-compilation isn't triggered on code that already fails fmt/clippy.
+  # Android unit tests. Waits for rust-lint when rust changed, so NDK cross-compilation isn't
+  # triggered on code that already fails fmt/clippy.
   # buildRust (make all) runs internally via the preBuild Gradle hook and generates
   # the UniFFI Kotlin interfaces that the tests compile against.
   android-test:
-    needs: [ rust-lint ]
+    needs: [ detect-changes, rust-lint ]
     if: |
       always() &&
-      (needs.rust-test.result == 'success' || needs.rust-test.result == 'skipped')
+      (
+        needs.detect-changes.outputs.rust != 'true' ||
+        needs.rust-lint.result == 'success'
+      )
     runs-on: ubuntu-latest
 
     steps:
