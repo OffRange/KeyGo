@@ -45,17 +45,18 @@ fun VaultCreationDialog(
     onCreateOrEdit: () -> Unit,
     onIconClick: (Vault.Icon) -> Unit,
 ) {
+    val isCreate = vaultState is VaultState.Create
     AlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
             Button(
                 onClick = onCreateOrEdit
             ) {
-                Text(text = stringResource(R.string.create))
+                Text(text = stringResource(if (isCreate) R.string.create else R.string.edit))
             }
         },
         title = {
-            Text(text = stringResource(R.string.create_new_vault))
+            Text(text = stringResource(if (isCreate) R.string.create_new_vault else R.string.edit))
         },
         modifier = Modifier.fillMaxWidth(),
         text = {
