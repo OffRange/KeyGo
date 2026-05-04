@@ -13,9 +13,9 @@ import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.rust.passkey.PasskeyManager
-import de.davis.keygo.rust.passkey.RegistrationResponse
 import de.davis.keygo.rust.passkey.getExcludedCredentialIds
 import de.davis.keygo.rust.passkey.registerWithResult
+import de.davisalessandro.keygo.rust.RegistrationResponse
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch

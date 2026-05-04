@@ -43,4 +43,3 @@ suspend fun RustPasskeyInterface.getExcludedCredentialIds(
 }
 
 typealias PasskeyManager = RustPasskeyInterface
-typealias RegistrationResponse = RegistrationResponse
