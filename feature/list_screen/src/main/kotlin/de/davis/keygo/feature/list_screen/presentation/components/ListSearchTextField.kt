@@ -97,13 +97,15 @@ internal fun ListSearchTextField(
                 }
 
                 if (hasVaults)
-                    IconButton(
-                        onClick = onVaultSelectorClick
-                    ) {
-                        Icon(
-                            painter = uiState.selectedVaultIcon(),
-                            contentDescription = stringResource(R.string.filter),
-                        )
+                    uiState.selectedVaultIcon()?.let { icon ->
+                        IconButton(
+                            onClick = onVaultSelectorClick
+                        ) {
+                            Icon(
+                                painter = icon,
+                                contentDescription = stringResource(R.string.filter),
+                            )
+                        }
                     }
             }
         },

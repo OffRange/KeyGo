@@ -9,7 +9,10 @@ import de.davis.keygo.feature.list_screen.presentation.model.ListItemState
 import de.davis.keygo.feature.vault.presentation.AllVaultsIcon
 
 @Composable
-internal fun ListItemState.selectedVaultIcon(): Painter = when (vaultContext) {
+internal fun ListItemState.selectedVaultIcon(): Painter? = when (vaultContext) {
     VaultContext.NoSpecific -> AllVaultsIcon
-    is VaultContext.ById -> rememberVectorPainter(vaults.first { it.vaultId == vaultContext.vaultId }.icon.toImageVector())
+    is VaultContext.ById -> vaults.firstOrNull { it.vaultId == vaultContext.vaultId }
+        ?.icon
+        ?.toImageVector()
+        ?.let { rememberVectorPainter(it) }
 }
