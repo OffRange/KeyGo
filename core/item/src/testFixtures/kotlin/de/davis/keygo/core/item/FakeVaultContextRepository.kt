@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
  * In-memory [VaultContextRepository] for tests.
  *
  * - [observeVaultContext] reflects mutations made via the setters.
- * - [getLastInteractedVaultId] throws when no last interacted vault has been recorded;
+ * - [getLastInteractedVaultId] returns null when no last interacted vault has been recorded;
  *   pre-seed via [seedLastInteracted] when a test relies on reading it back.
  */
 class FakeVaultContextRepository(
@@ -36,6 +36,10 @@ class FakeVaultContextRepository(
         lastInteracted.value = vaultId
     }
 
+    override suspend fun clearLastInteractedVault() {
+        lastInteracted.value = null
+    }
+
     override suspend fun setContextAndLastInteracted(vaultId: VaultId) {
         context.value = VaultContext.ById(vaultId)
         lastInteracted.value = vaultId
@@ -43,11 +47,10 @@ class FakeVaultContextRepository(
 
     override fun observeVaultContext(): Flow<VaultContext> = context
 
-    override suspend fun getLastInteractedVaultId(): VaultId =
-        lastInteracted.value ?: error("No last interacted vault id set")
+    override suspend fun getLastInteractedVaultId(): VaultId? = lastInteracted.value
 
     override suspend fun getVaultContextRecord(): VaultContextRecord = VaultContextRecord(
         context = currentContext,
-        lastInteractedVaultId = getLastInteractedVaultId()
+        lastInteractedVaultId = lastInteracted.value,
     )
 }

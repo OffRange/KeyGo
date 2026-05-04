@@ -9,9 +9,10 @@ interface VaultContextRepository {
 
     suspend fun setVaultContext(context: VaultContext)
     suspend fun setLastInteractedVault(vaultId: VaultId)
+    suspend fun clearLastInteractedVault()
     suspend fun setContextAndLastInteracted(vaultId: VaultId)
 
     fun observeVaultContext(): Flow<VaultContext>
-    suspend fun getLastInteractedVaultId(): VaultId
+    suspend fun getLastInteractedVaultId(): VaultId?
     suspend fun getVaultContextRecord(): VaultContextRecord
 }

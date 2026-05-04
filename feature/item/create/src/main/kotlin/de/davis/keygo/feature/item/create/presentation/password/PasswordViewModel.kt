@@ -154,7 +154,7 @@ internal class PasswordViewModel(
 
     private fun primeActiveVaultId() {
         viewModelScope.launch {
-            val activeId = vaultContextRepository.getLastInteractedVaultId()
+            val activeId = vaultContextRepository.getLastInteractedVaultId() ?: return@launch
             _selectedVaultId.compareAndSet(null, activeId)
         }
     }

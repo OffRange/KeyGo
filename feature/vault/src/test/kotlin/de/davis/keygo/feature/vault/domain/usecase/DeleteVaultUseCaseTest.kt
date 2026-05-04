@@ -119,7 +119,7 @@ class DeleteVaultUseCaseTest {
         }
 
     @Test
-    fun `clears context and keeps last interacted when deleting the only vault while it is the current context`() =
+    fun `clears context and last interacted when deleting the only vault`() =
         runTest {
             vaultRepository.seed(vaultA)
             vaultContextRepository.seedLastInteracted(vaultA.id)
@@ -128,7 +128,7 @@ class DeleteVaultUseCaseTest {
             useCase(vaultA.id)
 
             assertEquals(VaultContext.NoSpecific, vaultContextRepository.currentContext)
-            assertEquals(vaultA.id, vaultContextRepository.currentLastInteracted)
+            assertEquals(null, vaultContextRepository.currentLastInteracted)
         }
 
     private fun testVault(

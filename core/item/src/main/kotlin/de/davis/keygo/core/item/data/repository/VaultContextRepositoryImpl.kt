@@ -12,6 +12,7 @@ import de.davis.keygo.core.item.domain.model.getIdOrNull
 import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import org.koin.core.annotation.Single
 
@@ -37,6 +38,14 @@ internal class VaultContextRepositoryImpl(
         }
     }
 
+    override suspend fun clearLastInteractedVault() {
+        contextDataStore.updateData {
+            it.copy {
+                clearLastInteractedVaultId()
+            }
+        }
+    }
+
     override suspend fun setContextAndLastInteracted(vaultId: VaultId) {
         contextDataStore.updateData {
             protoVaultContextRecord {
@@ -54,22 +63,24 @@ internal class VaultContextRepositoryImpl(
             id.toDomain()
         }
 
-    override suspend fun getLastInteractedVaultId(): VaultId =
+    override suspend fun getLastInteractedVaultId(): VaultId? =
         contextDataStore.data
-            .first { it.lastInteractedVaultId.isNotBlank() }
-            .let {
-                VaultId.fromString(it.lastInteractedVaultId)
-            }
+            .firstOrNull()
+            ?.takeIf { it.hasLastInteractedVaultId() }
+            ?.let { VaultId.fromString(it.lastInteractedVaultId) }
 
     override suspend fun getVaultContextRecord(): VaultContextRecord = contextDataStore.data
         .first()
         .let {
             val contextId = if (it.hasVaultIdContext()) VaultId.fromString(it.vaultIdContext)
             else null
+            val lastInteracted = if (it.hasLastInteractedVaultId())
+                VaultId.fromString(it.lastInteractedVaultId)
+            else null
 
             VaultContextRecord(
                 context = contextId.toDomain(),
-                lastInteractedVaultId = VaultId.fromString(it.lastInteractedVaultId),
+                lastInteractedVaultId = lastInteracted,
             )
         }
 }

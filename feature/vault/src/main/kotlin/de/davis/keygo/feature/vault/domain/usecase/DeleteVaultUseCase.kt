@@ -20,9 +20,9 @@ class DeleteVaultUseCase(
             vaultContextRepository.setVaultContext(VaultContext.NoSpecific)
 
         if (record.lastInteractedVaultId == vaultId) {
-            vaultRepository.getLastCreatedVaultId(vaultId)?.let { lastCreated ->
-                vaultContextRepository.setLastInteractedVault(lastCreated)
-            }
+            val replacement = vaultRepository.getLastCreatedVaultId(vaultId)
+            if (replacement != null) vaultContextRepository.setLastInteractedVault(replacement)
+            else vaultContextRepository.clearLastInteractedVault()
         }
 
         vaultRepository.deleteVault(vaultId)
