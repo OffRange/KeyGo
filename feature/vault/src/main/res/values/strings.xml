@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="create">Create</string>
+    <string name="all_vaults">All Vaults</string>
+    <string name="vault_name">Vault Name</string>
+    <string name="vault_name_placeholder">e.g. Work</string>
+    <string name="create_new_vault">Create new Vault</string>
+    <string name="icon">Icon</string>
+    <string name="vault_name_blank_error">Vault Name can not be blank</string>
+    <string name="vault_creation_wrap_failed">Vault key could not be wrapped</string>
+    <plurals name="vault_item_entry_count">
+        <item quantity="one">1 item</item>
+        <item quantity="other">%d items</item>
+    </plurals>
+    <string name="edit">Edit</string>
+    <string name="move_to">Move to</string>
+    <string name="delete">Delete</string>
+    <string name="move">Move</string>
+    <string name="cancel">Cancel</string>
+    <string name="destination_vault">Destination vault</string>
+    <string name="source_vault">Source vault</string>
+    <string name="moving_items">Moving items…</string>
+    <string name="move_progress_count" translatable="false">%1$d / %2$d</string>
+
+    <string name="delete_vault_after_move">Delete vault after move</string>
+    <!-- We need &lt; notation so it is recognized as HTML -->
+    <string name="permanently_delete">Permanently Delete</string>
+    <string name="delete_instruction">To confirm and permanently delete, enter \"&lt;b>%s&lt;/b>\" below.</string>
+    <plurals name="delete_vault_warning">
+        <item quantity="one">Deleting &lt;b>%1$s&lt;/b> will permanently remove the vault and its &lt;b>%2$d item&lt;/b>. This action cannot be undone. Consider moving this item to another vault before continuing.</item>
+
+        <item quantity="other">Deleting &lt;b>%1$s&lt;/b> will permanently remove the vault and its &lt;b>%2$d items&lt;/b>. This action cannot be undone. Consider moving these items to another vault before continuing.</item>
+    </plurals>
+    <string name="name_does_not_match">The name is incorrect</string>
+</resources>

@@ -8,32 +8,28 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.SheetState
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -50,6 +46,7 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
 import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
+import de.davis.keygo.core.ui.components.KeyGoSwitch
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.list_screen.R
 import de.davis.keygo.feature.list_screen.domain.model.SortDirection
@@ -79,7 +76,6 @@ internal fun FilterBottomSheet(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun FilterBottomSheetContent(
     state: FilterBottomSheetState,
@@ -159,38 +155,20 @@ private fun ItemSection(
         )
 
         if (state.showPinnedSwitch) {
-            OutlinedCard(
-                modifier = Modifier
-                    .minimumInteractiveComponentSize()
-                    .toggleable(
-                        value = state.onlyPinnedChecked,
-                        role = Role.Switch,
-                        onValueChange = { onAction(FilterAction.ShowOnlyPinnedToggled) }
-                    ),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            OutlinedCard {
+                KeyGoSwitch(
+                    checked = state.onlyPinnedChecked,
+                    onCheckedChange = { onAction(FilterAction.ShowOnlyPinnedToggled) },
+                    shapes = ListItemDefaults.shapes(
+                        shape = CardDefaults.outlinedShape,
+                        pressedShape = CardDefaults.outlinedShape,
+                        draggedShape = CardDefaults.outlinedShape,
+                        focusedShape = CardDefaults.outlinedShape,
+                        hoveredShape = CardDefaults.outlinedShape,
+                        selectedShape = CardDefaults.outlinedShape,
+                    )
                 ) {
                     Text(text = stringResource(R.string.only_pinned_items))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Switch(
-                        checked = state.onlyPinnedChecked,
-                        onCheckedChange = null,
-                        thumbContent = {
-                            Icon(
-                                imageVector = when {
-                                    state.onlyPinnedChecked -> Icons.Default.Check
-                                    else -> Icons.Default.Close
-                                },
-                                contentDescription = null,
-                                modifier = Modifier.size(SwitchDefaults.IconSize),
-                            )
-                        }
-                    )
                 }
             }
         }
@@ -289,7 +267,6 @@ private fun SortSection(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun PasswordSection(
     state: PasswordSectionState,
@@ -372,41 +349,38 @@ private fun SortDirection.icon(): ImageVector = when (this) {
 private val DefaultHorizontalArrangement
     get() = Arrangement.spacedBy(8.dp)
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Preview
 @Composable
 private fun FilterBottomSheetContentPreview() {
     KeyGoTheme {
-        FilterBottomSheet(
-            state = FilterBottomSheetState(
-                sortDirection = SortDirection.Ascending,
-                itemSection = ItemSectionState(
-                    showPinnedSwitch = true,
-                    onlyPinnedChecked = true,
-                    itemTypeChips = VaultItemType.entries.map { type ->
-                        FilterChipState(value = type, selected = false)
-                    },
-                    labelChips = listOf(
-                        FilterChipState(value = "Label1", selected = false),
-                        FilterChipState(value = "Label2", selected = true),
+        Surface {
+            FilterBottomSheetContent(
+                state = FilterBottomSheetState(
+                    sortDirection = SortDirection.Ascending,
+                    itemSection = ItemSectionState(
+                        showPinnedSwitch = true,
+                        onlyPinnedChecked = true,
+                        itemTypeChips = VaultItemType.entries.map { type ->
+                            FilterChipState(value = type, selected = false)
+                        },
+                        labelChips = listOf(
+                            FilterChipState(value = "Label1", selected = false),
+                            FilterChipState(value = "Label2", selected = true),
+                        ),
                     ),
-                ),
-                passwordSection = PasswordSectionState(
-                    scoreChips = listOf(
-                        FilterChipState(value = Password.Score.Excellent, selected = false),
-                        FilterChipState(value = Password.Score.Strong, selected = false),
-                        FilterChipState(value = Password.Score.Moderate, selected = true),
-                        FilterChipState(value = Password.Score.Weak, selected = true),
-                        FilterChipState(value = Password.Score.Ridiculous, selected = false),
+                    passwordSection = PasswordSectionState(
+                        scoreChips = listOf(
+                            FilterChipState(value = Password.Score.Excellent, selected = false),
+                            FilterChipState(value = Password.Score.Strong, selected = false),
+                            FilterChipState(value = Password.Score.Moderate, selected = true),
+                            FilterChipState(value = Password.Score.Weak, selected = true),
+                            FilterChipState(value = Password.Score.Ridiculous, selected = false),
+                        ),
                     ),
+                    isDefault = false,
                 ),
-                isDefault = false,
-            ),
-            onAction = {},
-            onDismiss = {},
-            sheetState = rememberModalBottomSheetState(
-                skipPartiallyExpanded = true,
-            ),
-        )
+                onAction = {},
+            )
+        }
     }
 }

@@ -7,9 +7,10 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.model.getIdOrNull
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
+import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
-import de.davis.keygo.core.item.domain.repository.VaultItemRepository
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
@@ -20,6 +21,7 @@ import de.davis.keygo.feature.list_screen.presentation.model.Event
 import de.davis.keygo.feature.list_screen.presentation.model.FilterAction
 import de.davis.keygo.feature.list_screen.presentation.model.FilterBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.ListItemState
+import de.davis.keygo.feature.vault.domain.usecase.ObserveVaultsAndSelectionUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -52,12 +54,18 @@ internal class ItemListViewModel(
     @InjectedParam private val enableSelection: Boolean,
     @InjectedParam private val restrictedItemType: VaultItemType?,
     private val snackbarManager: SnackbarManager,
-    private val vaultItemRepository: VaultItemRepository,
+    private val itemRepository: ItemRepository,
     private val filterUseCase: FilterUseCase,
+    observeVaultsAndSelection: ObserveVaultsAndSelectionUseCase,
     passwordRepository: PasswordRepository,
 ) : ViewModel() {
 
-    private val allItems = vaultItemRepository.observeLiteVaultItems()
+    private val vaultsAndSelection = observeVaultsAndSelection()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val vaultSpecificItems = vaultsAndSelection.flatMapLatest { vaultsAndSelection ->
+        itemRepository.observeLiteVaultItems(vaultsAndSelection.selection.getIdOrNull())
+    }
 
     private val submittedSearchQuery = MutableStateFlow("")
 
@@ -69,9 +77,8 @@ internal class ItemListViewModel(
         itemSource,
         flaggedForDeletion
     ) { items, flagged ->
-        items.filterNot { item -> item.vaultItemId in flagged }
+        items.filterNot { item -> item.id in flagged }
     }.distinctUntilChanged()
-
 
     private val passwordScores = passwordRepository.observePasswordScores()
 
@@ -87,28 +94,35 @@ internal class ItemListViewModel(
     private val searchResults = MutableStateFlow(listOf<LiteItem>())
     private val selectedItemIds = MutableStateFlow(emptySet<ItemId>())
     private val highlightedId = MutableStateFlow<ItemId?>(null)
+    private val _isVaultFlowVisible = MutableStateFlow(false)
 
-    val listItemState = combine(
+    val listItemState = combine7(
+        vaultsAndSelection,
         filteredItems,
         searchResults,
         selectedItemIds,
         submittedSearchQuery,
         highlightedId,
-    ) { items, searchResults, selectedIds, submittedSearchQuery, highlightedId ->
+        _isVaultFlowVisible,
+    ) { vaultsAndSel, items, searchResults, selectedIds, submittedSearchQuery, highlightedId, isVaultFlowVisible ->
         ListItemState(
             items = items,
             searchResults = searchResults,
             hasSearchQuery = submittedSearchQuery.isNotBlank(),
             selectedItemIds = selectedIds,
             highlightedId = highlightedId,
+            isVaultFlowVisible = isVaultFlowVisible,
+            vaults = vaultsAndSel.vaults,
+            vaultContext = vaultsAndSel.selection,
         )
-    }.onStart {
-        observeSearchState()
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = ListItemState()
-    )
+    }.distinctUntilChanged()
+        .onStart {
+            observeSearchState()
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = ListItemState()
+        )
 
     private val availableFilterOptions = combine(
         nonDeletedItems,
@@ -159,19 +173,30 @@ internal class ItemListViewModel(
         }
     }
 
+    fun onVaultSelectorClick() {
+        _isVaultFlowVisible.update { true }
+    }
+
+    fun onDismissVaultFlow() {
+        _isVaultFlowVisible.update { false }
+    }
+
     private fun <T> Set<T>.toggle(element: T): Set<T> =
         if (element in this) this - element else this + element
 
-    private suspend fun queryToItems(query: String): Flow<List<LiteItem>> =
-        (if (query.isBlank()) allItems
-        else flowOf(vaultItemRepository.searchVaultItem(query, restrictedItemType)))
+    private suspend fun queryToItems(
+        query: String,
+        forceSearchAllVaults: Boolean = false
+    ): Flow<List<LiteItem>> =
+        (if (!forceSearchAllVaults && query.isBlank()) vaultSpecificItems
+        else flowOf(itemRepository.searchVaultItem(query, restrictedItemType)))
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private fun observeSearchState() {
         snapshotFlow { searchTextFieldState.text }
             .debounce(300.milliseconds)
             .flatMapLatest {
-                queryToItems(it.toString())
+                queryToItems(it.toString(), forceSearchAllVaults = true)
             }
             .distinctUntilChanged()
             .onEach { items ->
@@ -202,7 +227,7 @@ internal class ItemListViewModel(
         updateItemSelectionState(itemId, selected = false)
         updateItemDeletionState(itemId, deleted = true)
 
-        val firstItemId = listItemState.value.items.firstOrNull()?.vaultItemId
+        val firstItemId = listItemState.value.items.firstOrNull()?.id
         if (highlightedId.value == itemId)
             highlightedId.update { firstItemId }
 
@@ -215,7 +240,7 @@ internal class ItemListViewModel(
                 },
                 onDismiss = {
                     viewModelScope.launch {
-                        vaultItemRepository.deleteItem(itemId)
+                        itemRepository.deleteItem(itemId)
 
                         // Inside this coroutine to ensure it only runs after the deletion
                         updateItemDeletionState(itemId, deleted = false)
@@ -264,9 +289,31 @@ internal class ItemListViewModel(
         if (pendingDeletions.isNotEmpty()) {
             CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
                 pendingDeletions.forEach { itemId ->
-                    vaultItemRepository.deleteItem(itemId)
+                    itemRepository.deleteItem(itemId)
                 }
             }
         }
     }
+}
+
+private fun <T1, T2, T3, T4, T5, T6, T7, R> combine7(
+    flow1: Flow<T1>,
+    flow2: Flow<T2>,
+    flow3: Flow<T3>,
+    flow4: Flow<T4>,
+    flow5: Flow<T5>,
+    flow6: Flow<T6>,
+    flow7: Flow<T7>,
+    transform: (T1, T2, T3, T4, T5, T6, T7) -> R
+): Flow<R> = combine(flow1, flow2, flow3, flow4, flow5, flow6, flow7) { arrayOfFlows ->
+    @Suppress("UNCHECKED_CAST")
+    transform(
+        arrayOfFlows[0] as T1,
+        arrayOfFlows[1] as T2,
+        arrayOfFlows[2] as T3,
+        arrayOfFlows[3] as T4,
+        arrayOfFlows[4] as T5,
+        arrayOfFlows[5] as T6,
+        arrayOfFlows[6] as T7,
+    )
 }

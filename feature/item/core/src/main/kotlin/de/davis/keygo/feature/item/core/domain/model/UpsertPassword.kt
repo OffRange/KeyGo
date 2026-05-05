@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.item.core.domain.model
 
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 
 @ConsistentCopyVisibility
@@ -15,6 +16,7 @@ data class UpsertPassword private constructor(
 ) {
     companion object {
         fun create(
+            vaultId: VaultId,
             name: String,
             password: String,
             totpSecret: String? = null,
@@ -22,7 +24,7 @@ data class UpsertPassword private constructor(
             domains: Set<DomainInfo> = emptySet(),
             note: String? = null,
         ) = UpsertPassword(
-            upsertType = UpsertType.Create,
+            upsertType = UpsertType.Create(vaultId),
             name = FieldUpdate.Set(name),
             password = FieldUpdate.Set(password),
             note = if (!note.isNullOrBlank()) FieldUpdate.Set(note) else FieldUpdate.Clear,
@@ -32,7 +34,8 @@ data class UpsertPassword private constructor(
         )
 
         fun update(
-            vaultId: ItemId,
+            itemId: ItemId,
+            vaultId: VaultId? = null,
             name: FieldUpdate<String> = keep(),
             password: FieldUpdate<String> = keep(),
             totpSecret: FieldUpdate<String> = keep(),
@@ -40,7 +43,7 @@ data class UpsertPassword private constructor(
             domains: FieldUpdate<Set<DomainInfo>> = keep(),
             note: FieldUpdate<String> = keep(),
         ) = UpsertPassword(
-            upsertType = UpsertType.Update(vaultId),
+            upsertType = UpsertType.Update(itemId, vaultId),
             name = name,
             password = password,
             note = note,

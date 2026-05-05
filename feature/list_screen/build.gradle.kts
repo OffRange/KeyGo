@@ -54,14 +54,19 @@ dependencies {
     implementation(projects.core.item)
     implementation(projects.core.ui)
     implementation(projects.core.util)
+    implementation(projects.core.security)
+    implementation(projects.feature.vault)
 
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.annotations)
 
-
     testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.io.mockk)
+    testImplementation(testFixtures(projects.core.item))
+
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 

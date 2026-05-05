@@ -8,10 +8,12 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
@@ -42,6 +44,8 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
@@ -57,17 +61,21 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.presentation.StrengthIndicator
+import de.davis.keygo.core.item.presentation.toImageVector
 import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
 import de.davis.keygo.feature.item.core.presentation.component.CopyToClipboardButton
@@ -97,7 +105,30 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                     Text(text = state.name)
                 },
                 subtitle = {
-                    Text(text = stringResource(CoreItemR.string.password))
+                    state.vaultMetadata?.let { metadata ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CompositionLocalProvider(
+                                LocalContentColor provides MaterialTheme.colorScheme.onSecondaryContainer
+                            ) {
+                                val textStyle = LocalTextStyle.current
+                                val size = with(LocalDensity.current) {
+                                    if (textStyle.fontSize.isSp) textStyle.fontSize.toDp()
+                                    else 24.dp
+                                }
+                                Icon(
+                                    imageVector = metadata.icon.toImageVector(),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(size),
+                                )
+                                Text(text = metadata.name)
+                            }
+                            Text(text = "\u2022")
+                            Text(text = stringResource(CoreItemR.string.password))
+                        }
+                    }
                 },
                 navigationIcon = {
                     if (LocalIsInSinglePaneMode.current) {
@@ -476,7 +507,7 @@ private fun ViewPasswordContentPreview() {
                     username = "Username 1",
                     domains = setOf(
                         DomainInfo(
-                            passwordId = 1,
+                            passwordId = newItemId(),
                             value = "login.example.com",
                             eTLD1 = "example.com"
                         )
@@ -504,7 +535,7 @@ private fun ViewPasswordContentModificationDialogPreview() {
                     username = "Username 1",
                     domains = setOf(
                         DomainInfo(
-                            passwordId = 1,
+                            passwordId = newItemId(),
                             value = "login.example.com",
                             eTLD1 = "example.com"
                         )

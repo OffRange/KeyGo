@@ -3,32 +3,31 @@ package de.davis.keygo.core.item.data.local.entity
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
-import androidx.room.Index
 import androidx.room.PrimaryKey
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.model.SecretData
 
+// The primary key is shared with ItemEntity — one ItemId identifies both the base item row and
+// this password row. This models the "is-a" relationship at the DB level (joined-table
+// inheritance): there is no separate password-specific ID.
 @Entity(
+    tableName = "password",
     foreignKeys = [
         ForeignKey(
-            entity = VaultItemEntity::class,
+            entity = ItemEntity::class,
             parentColumns = ["id"],
-            childColumns = ["vault_item_id"],
-            onDelete = ForeignKey.CASCADE
+            childColumns = ["id"],
+            onDelete = ForeignKey.CASCADE,
         )
-    ],
-    indices = [
-        Index(value = ["vault_item_id"], unique = true)
     ],
 )
 internal data class PasswordEntity(
-    @PrimaryKey(autoGenerate = true)
+    @PrimaryKey
     val id: ItemId,
     val username: String?,
     val score: Password.Score,
+    val password: SecretData<String>,
     @ColumnInfo(name = "totp_secret")
     val totpSecret: SecretData<String>?,
-    @ColumnInfo(name = "vault_item_id")
-    val vaultItemId: ItemId,
 )

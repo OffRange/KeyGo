@@ -54,8 +54,12 @@ class ItemHandler : Handler<KSClassDeclaration, RootVaultEntity>, KoinComponent 
                 )
             }.toList()
 
+            val annotation = root.getAnnotation<RootVaultEntity>()
+            val simpleName = annotation?.name?.takeIf { it.isNotEmpty() }
+                ?: root.simpleName.asString()
+
             Entry.RootEntry(
-                simpleName = root.simpleName.asString(),
+                simpleName = simpleName,
                 packageName = root.packageName.asString(),
                 children = subclasses
             )

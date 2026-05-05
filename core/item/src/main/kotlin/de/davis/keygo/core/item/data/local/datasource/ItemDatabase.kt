@@ -7,29 +7,34 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import de.davis.keygo.core.item.data.local.converter.SecretDataConverter
 import de.davis.keygo.core.item.data.local.dao.DomainInfoDao
+import de.davis.keygo.core.item.data.local.dao.ItemDao
 import de.davis.keygo.core.item.data.local.dao.PasskeyDao
 import de.davis.keygo.core.item.data.local.dao.PasswordDao
 import de.davis.keygo.core.item.data.local.dao.VaultDao
 import de.davis.keygo.core.item.data.local.entity.DomainInfoEntity
+import de.davis.keygo.core.item.data.local.entity.ItemEntity
 import de.davis.keygo.core.item.data.local.entity.PasskeyEntity
 import de.davis.keygo.core.item.data.local.entity.PasswordEntity
-import de.davis.keygo.core.item.data.local.entity.VaultItemEntity
+import de.davis.keygo.core.item.data.local.entity.VaultEntity
 import org.koin.core.annotation.Module
 import org.koin.core.annotation.Single
 
 @Database(
     entities = [
-        VaultItemEntity::class,
+        VaultEntity::class,
+        ItemEntity::class,
         PasswordEntity::class,
         DomainInfoEntity::class,
-        PasskeyEntity::class
+        PasskeyEntity::class,
     ],
-    version = 1
+    version = 1,
 )
 @TypeConverters(SecretDataConverter::class)
 internal abstract class ItemDatabase : RoomDatabase() {
 
     abstract fun vaultDao(): VaultDao
+
+    abstract fun itemDao(): ItemDao
 
     abstract fun passwordDao(): PasswordDao
 
@@ -46,11 +51,14 @@ internal class DatabaseModule {
         Room.databaseBuilder(
             context,
             ItemDatabase::class.java,
-            "secure_element_database"
-        ).fallbackToDestructiveMigration(false).build()
+            "secure_element_database",
+        ).build()
 
     @Single
     fun provideVaultDao(db: ItemDatabase) = db.vaultDao()
+
+    @Single
+    fun provideItemDao(db: ItemDatabase) = db.itemDao()
 
     @Single
     fun providePasswordDao(db: ItemDatabase) = db.passwordDao()

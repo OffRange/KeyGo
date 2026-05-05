@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.lite.LitePassword
 import de.davis.keygo.core.ui.theme.KeyGoTheme
@@ -67,7 +68,7 @@ fun SelectItemForTotpModificationDialog(
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(items = items, key = { it.vaultItemId }) { item ->
+                    items(items = items, key = { it.id }) { item ->
                         OutlinedCard(
                             onClick = {
                                 onItemClicked(item)
@@ -127,19 +128,29 @@ private fun SelectItemForTotpModificationDialogPreview() {
                 onCreateNew = {},
                 items = listOf(
                     LitePassword(
-                        vaultItemId = 1,
-                        passwordId = 1,
+                        id = newItemId(),
                         name = "${if (1 >= 5) 'A' else 'B'} Item 1",
                         username = "User 1",
-                        domains = listOf(DomainInfo(1, "Website", "website.com")),
+                        domains = listOf(
+                            DomainInfo(
+                                passwordId = newItemId(),
+                                value = "Website",
+                                eTLD1 = "website.com"
+                            )
+                        ),
                         pinned = false,
                     ),
                     LitePassword(
-                        vaultItemId = 2,
-                        passwordId = 2,
+                        id = newItemId(),
                         name = "${if (2 >= 5) 'A' else 'B'} Item 2",
                         username = "User 2",
-                        domains = listOf(DomainInfo(12, "Website", "website.com")),
+                        domains = listOf(
+                            DomainInfo(
+                                passwordId = newItemId(),
+                                value = "Website",
+                                eTLD1 = "website.com"
+                            )
+                        ),
                         pinned = false,
                     )
                 )

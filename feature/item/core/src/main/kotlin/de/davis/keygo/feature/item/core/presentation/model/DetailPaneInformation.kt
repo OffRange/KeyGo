@@ -9,7 +9,7 @@ sealed interface DetailPaneInformation {
         val itemType: VaultItemType
 
         data class New(override val itemType: VaultItemType) : Init
-        data class Existing(override val itemType: VaultItemType, val vaultItemId: ItemId) : Init
+        data class Existing(override val itemType: VaultItemType, val id: ItemId) : Init
         data class TOTP(override val itemType: VaultItemType, val uri: String) : Init
     }
 

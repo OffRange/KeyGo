@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.koin.compiler)
 }
 
 android {
@@ -34,6 +35,21 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    // Ensure UniFFI-generated Kotlin sources are compiled. The UniFFI Makefile
+    // outputs Kotlin into build/generated/source/uniffi/, which isn't a
+    // conventional AGP-generated directory. Register it as a source dir so
+    // the Kotlin/Java compiler picks up the generated bindings.
+    sourceSets {
+        getByName("main") {
+            jniLibs.directories += "build/generated/source/uniffi/jniLibs"
+            kotlin.directories += "build/generated/source/uniffi/kotlin"
+        }
+    }
+
+    testFixtures {
+        enable = true
+    }
 }
 
 kotlin {
@@ -48,6 +64,15 @@ dependencies {
 
     api(projects.core.util)
 
+    // Koin DI
+    implementation(project.dependencies.platform(libs.koin.bom))
+    implementation(libs.koin.core)
+    implementation(libs.koin.annotations)
+
+    implementation("net.java.dev.jna:jna:5.18.1@aar")
+    // kotlinx-coroutines-core is also required for async uniffi functions:
+    implementation(libs.kotlinx.coroutines.core)
+
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
@@ -57,15 +82,15 @@ val buildRust by tasks.register<Exec>("buildRust") {
     description = "Build Rust library"
 
     onlyIf {
-        properties["buildRust"].toString().toBoolean()
+        providers.gradleProperty("rust.compile").getOrElse("true").toBoolean()
     }
 
     workingDir = projectDir.resolve("rust-code")
 
     commandLine(
-        "./build.sh",
-        "--min-platform",
-        libs.versions.minSdk.get()
+        "make",
+        "all",
+        "MIN_SDK=${libs.versions.minSdk.get()}",
     )
 }
 

@@ -2,16 +2,70 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "74ee7b1a530df594091711f23a9564f2",
+    "identityHash": "faeacb95b88a936e7e7ca72b9eb13e78",
     "entities": [
       {
-        "tableName": "VaultItemEntity",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `note` TEXT, `encrypted_data` BLOB NOT NULL, `itemType` TEXT NOT NULL, `pinned` INTEGER NOT NULL)",
+        "tableName": "vault",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `name` TEXT NOT NULL, `icon` TEXT NOT NULL, `created_at` INTEGER NOT NULL, `wrappedKey` BLOB NOT NULL, `keyNonce` BLOB NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "icon",
+            "columnName": "icon",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
             "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "keyInformation.wrappedKey",
+            "columnName": "wrappedKey",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "keyInformation.keyNonce",
+            "columnName": "keyNonce",
+            "affinity": "BLOB",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "item",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `vault_id` BLOB NOT NULL, `name` TEXT NOT NULL, `note` TEXT, `itemType` TEXT NOT NULL, `pinned` INTEGER NOT NULL, `wrappedKey` BLOB NOT NULL, `keyNonce` BLOB NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`vault_id`) REFERENCES `vault`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vaultId",
+            "columnName": "vault_id",
+            "affinity": "BLOB",
             "notNull": true
           },
           {
@@ -26,12 +80,6 @@
             "affinity": "TEXT"
           },
           {
-            "fieldPath": "encryptedData",
-            "columnName": "encrypted_data",
-            "affinity": "BLOB",
-            "notNull": true
-          },
-          {
             "fieldPath": "itemType",
             "columnName": "itemType",
             "affinity": "TEXT",
@@ -42,23 +90,59 @@
             "columnName": "pinned",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "keyInformation.wrappedKey",
+            "columnName": "wrappedKey",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "keyInformation.keyNonce",
+            "columnName": "keyNonce",
+            "affinity": "BLOB",
+            "notNull": true
           }
         ],
         "primaryKey": {
-          "autoGenerate": true,
+          "autoGenerate": false,
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "index_item_vault_id",
+            "unique": false,
+            "columnNames": [
+              "vault_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_item_vault_id` ON `${TABLE_NAME}` (`vault_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "vault",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "vault_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
       },
       {
-        "tableName": "PasswordEntity",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `username` TEXT, `score` TEXT NOT NULL, `totp_secret` BLOB, `vault_item_id` INTEGER NOT NULL, FOREIGN KEY(`vault_item_id`) REFERENCES `VaultItemEntity`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "tableName": "password",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `username` TEXT, `score` TEXT NOT NULL, `password` BLOB NOT NULL, `totp_secret` BLOB, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `item`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
-            "affinity": "INTEGER",
+            "affinity": "BLOB",
             "notNull": true
           },
           {
@@ -73,41 +157,30 @@
             "notNull": true
           },
           {
+            "fieldPath": "password",
+            "columnName": "password",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
             "fieldPath": "totpSecret",
             "columnName": "totp_secret",
             "affinity": "BLOB"
-          },
-          {
-            "fieldPath": "vaultItemId",
-            "columnName": "vault_item_id",
-            "affinity": "INTEGER",
-            "notNull": true
           }
         ],
         "primaryKey": {
-          "autoGenerate": true,
+          "autoGenerate": false,
           "columnNames": [
             "id"
           ]
         },
-        "indices": [
-          {
-            "name": "index_PasswordEntity_vault_item_id",
-            "unique": true,
-            "columnNames": [
-              "vault_item_id"
-            ],
-            "orders": [],
-            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_PasswordEntity_vault_item_id` ON `${TABLE_NAME}` (`vault_item_id`)"
-          }
-        ],
         "foreignKeys": [
           {
-            "table": "VaultItemEntity",
+            "table": "item",
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
-              "vault_item_id"
+              "id"
             ],
             "referencedColumns": [
               "id"
@@ -116,13 +189,13 @@
         ]
       },
       {
-        "tableName": "DomainInfoEntity",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`password_id` INTEGER NOT NULL, `value` TEXT NOT NULL, `eTLD1` TEXT, PRIMARY KEY(`password_id`, `value`), FOREIGN KEY(`password_id`) REFERENCES `PasswordEntity`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "tableName": "domain_info",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`password_id` BLOB NOT NULL, `value` TEXT NOT NULL, `eTLD1` TEXT, PRIMARY KEY(`password_id`, `value`), FOREIGN KEY(`password_id`) REFERENCES `password`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "passwordId",
             "columnName": "password_id",
-            "affinity": "INTEGER",
+            "affinity": "BLOB",
             "notNull": true
           },
           {
@@ -146,18 +219,18 @@
         },
         "indices": [
           {
-            "name": "index_DomainInfoEntity_eTLD1",
+            "name": "index_domain_info_eTLD1",
             "unique": false,
             "columnNames": [
               "eTLD1"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_DomainInfoEntity_eTLD1` ON `${TABLE_NAME}` (`eTLD1`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_domain_info_eTLD1` ON `${TABLE_NAME}` (`eTLD1`)"
           }
         ],
         "foreignKeys": [
           {
-            "table": "PasswordEntity",
+            "table": "password",
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
@@ -170,8 +243,8 @@
         ]
       },
       {
-        "tableName": "PasskeyEntity",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`credential_id` BLOB NOT NULL, `rp` TEXT NOT NULL, `private_key` BLOB NOT NULL, `password_id` INTEGER NOT NULL, `name` TEXT NOT NULL, `display_name` TEXT NOT NULL, PRIMARY KEY(`credential_id`), FOREIGN KEY(`password_id`) REFERENCES `PasswordEntity`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "tableName": "passkey",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`credential_id` BLOB NOT NULL, `rp` TEXT NOT NULL, `private_key` BLOB NOT NULL, `password_id` BLOB NOT NULL, `name` TEXT NOT NULL, `display_name` TEXT NOT NULL, PRIMARY KEY(`credential_id`), FOREIGN KEY(`password_id`) REFERENCES `password`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "credentialId",
@@ -194,7 +267,7 @@
           {
             "fieldPath": "passwordId",
             "columnName": "password_id",
-            "affinity": "INTEGER",
+            "affinity": "BLOB",
             "notNull": true
           },
           {
@@ -218,27 +291,27 @@
         },
         "indices": [
           {
-            "name": "index_PasskeyEntity_password_id",
+            "name": "index_passkey_password_id",
             "unique": false,
             "columnNames": [
               "password_id"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_PasskeyEntity_password_id` ON `${TABLE_NAME}` (`password_id`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_passkey_password_id` ON `${TABLE_NAME}` (`password_id`)"
           },
           {
-            "name": "index_PasskeyEntity_rp",
+            "name": "index_passkey_rp",
             "unique": false,
             "columnNames": [
               "rp"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_PasskeyEntity_rp` ON `${TABLE_NAME}` (`rp`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_passkey_rp` ON `${TABLE_NAME}` (`rp`)"
           }
         ],
         "foreignKeys": [
           {
-            "table": "PasswordEntity",
+            "table": "password",
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
@@ -253,7 +326,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '74ee7b1a530df594091711f23a9564f2')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'faeacb95b88a936e7e7ca72b9eb13e78')"
     ]
   }
 }

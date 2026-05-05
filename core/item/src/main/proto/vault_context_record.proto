@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package de.davis.keygo.core.item.data.local.model;
+option java_multiple_files = true;
+
+message ProtoVaultContextRecord {
+  optional string vault_id_context = 1;
+  optional string last_interacted_vault_id = 2;
+}

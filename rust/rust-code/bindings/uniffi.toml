@@ -1,0 +1,8 @@
+[bindings.kotlin]
+package_name = "de.davisalessandro.keygo.rust"
+
+[bindings.kotlin.custom_types.Uuid]
+type_name = "java.util.UUID"
+imports = ["java.util.UUID"]
+lift = "java.util.UUID.fromString({})"
+lower = "{}.toString()"

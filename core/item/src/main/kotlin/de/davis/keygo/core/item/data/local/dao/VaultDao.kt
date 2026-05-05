@@ -1,49 +1,53 @@
 package de.davis.keygo.core.item.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Upsert
-import de.davis.keygo.core.item.data.local.entity.VaultItemEntity
-import de.davis.keygo.core.item.data.local.pojo.LightweightVaultItem
-import de.davis.keygo.core.item.data.local.pojo.LightweightVaultItemSearchResult
-import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.generated.domain.model.VaultItemType
+import androidx.room.Update
+import de.davis.keygo.core.item.data.local.entity.KeyInformation
+import de.davis.keygo.core.item.data.local.entity.VaultEntity
+import de.davis.keygo.core.item.data.local.pojo.VaultMetadata
+import de.davis.keygo.core.item.data.local.pojo.VaultUpdater
+import de.davis.keygo.core.item.domain.alias.VaultId
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 internal interface VaultDao {
 
-    @Upsert
-    suspend fun upsert(vaultItem: VaultItemEntity): ItemId
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(vault: VaultEntity)
 
-    @Query("DELETE FROM VaultItemEntity WHERE id = :id")
-    suspend fun delete(id: ItemId)
+    @Update(entity = VaultEntity::class)
+    suspend fun update(vaultUpdater: VaultUpdater)
 
-    @Query("SELECT name FROM VaultItemEntity WHERE id = :itemId")
-    suspend fun getNameById(itemId: ItemId): String?
+    @Query("DELETE FROM vault WHERE id = :id")
+    suspend fun delete(id: VaultId)
 
-    @Query("SELECT EXISTS(SELECT 1 FROM VaultItemEntity WHERE name = :name AND (:excludeId IS NULL OR id != :excludeId))")
-    suspend fun existsName(name: String, excludeId: ItemId? = null): Boolean
-
-    @Query("SELECT * FROM VaultItemEntity WHERE id = :id")
-    suspend fun getVaultItemById(id: ItemId): VaultItemEntity?
+    @Query("SELECT wrappedKey, keyNonce FROM vault WHERE id = :id")
+    suspend fun getKeyInfoById(id: VaultId): KeyInformation?
 
     @Query(
         """
-        SELECT v.id, v.name, v.itemType, v.pinned, (name LIKE '%' || :query || '%') AS matchedName, (note LIKE '%' || :query || '%') AS matchedNote
-        FROM VaultItemEntity v
-        WHERE (:itemType IS NULL OR itemType = :itemType)
-          AND (name LIKE '%' || :query || '%' OR COALESCE(note, '') LIKE '%' || :query || '%')
+        SELECT vault.id as vaultId, vault.name, vault.icon, vault.created_at as createdAt, COUNT(item.id) as count
+        FROM vault
+        LEFT JOIN item ON vault.id = item.vault_id
+        GROUP BY vault.id
         """
     )
-    suspend fun searchVaultItem(
-        query: String,
-        itemType: VaultItemType? = null
-    ): List<LightweightVaultItemSearchResult>
+    fun observeAllVaultMetadata(): Flow<List<VaultMetadata>>
 
-    @Query("UPDATE VaultItemEntity SET pinned = :pinned WHERE id = :id")
-    suspend fun setPinned(id: ItemId, pinned: Boolean)
+    @Query(
+        """
+        SELECT vault.id as vaultId, vault.name, vault.icon, vault.created_at as createdAt, COUNT(item.id) as count
+        FROM vault
+        LEFT JOIN item ON vault.id = item.vault_id
+        WHERE vault.id = :id
+        GROUP BY vault.id
+        """
+    )
+    suspend fun getVaultMetadata(id: VaultId): VaultMetadata?
 
-    @Query("SELECT v.id, v.name, v.itemType, v.pinned FROM VaultItemEntity v")
-    fun observeLiteVaultItems(): Flow<List<LightweightVaultItem>>
+    @Query("SELECT id FROM vault WHERE id != :exclude ORDER BY created_at DESC LIMIT 1")
+    suspend fun lastCreatedVaultId(exclude: VaultId): VaultId?
 }

@@ -178,7 +178,7 @@ internal class InlineDatasetBuilder(
         return presentation.buildDataset(
             suggestionRequestData(
                 form,
-                suggestion.vaultItemId,
+                suggestion.id,
                 index
             )
         )

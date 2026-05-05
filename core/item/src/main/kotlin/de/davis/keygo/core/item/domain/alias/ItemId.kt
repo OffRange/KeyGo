@@ -1,5 +1,7 @@
 package de.davis.keygo.core.item.domain.alias
 
-typealias ItemId = Long
+import java.util.UUID
 
-const val ItemIdNone: ItemId = -1L
+typealias ItemId = UUID
+
+fun newItemId(): ItemId = UUID.randomUUID()

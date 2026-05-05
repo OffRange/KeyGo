@@ -12,8 +12,7 @@ import android.service.autofill.SaveRequest
 import android.util.Log
 import android.view.autofill.AutofillId
 import androidx.core.os.bundleOf
-import de.davis.keygo.core.identity.domain.repository.WrappedKeyRepository
-import de.davis.keygo.core.util.isSuccess
+import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.feature.autofill.presentation.dataset.applySaveInfo
 import de.davis.keygo.feature.autofill.presentation.dataset.getForm
 import de.davis.keygo.feature.autofill.presentation.model.Form
@@ -29,7 +28,7 @@ internal class KeyGoAutofillService : AutofillService() {
 
     private val extractor by inject<Extractor>()
     private val datasetProvider by inject<AutofillDatasetProvider>()
-    private val wrappedKeyRepository by inject<WrappedKeyRepository>()
+    private val accountRepository by inject<AccountRepository>()
 
     override fun onFillRequest(
         request: FillRequest,
@@ -42,7 +41,7 @@ internal class KeyGoAutofillService : AutofillService() {
         }
 
         val job = CoroutineScope(Dispatchers.IO + handler).launch {
-            if (!wrappedKeyRepository.getPasswordWrappedKey().isSuccess()) {
+            if (accountRepository.getOrNull() == null) {
                 Log.w(TAG, "No valid access - not filling")
                 callback.onSuccess(null)
                 return@launch

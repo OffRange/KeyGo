@@ -87,6 +87,7 @@ dependencies {
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.annotations)
 
+    implementation(projects.rust)
     implementation(projects.core.item)
     implementation(projects.core.identity)
     implementation(projects.core.security)
@@ -97,6 +98,7 @@ dependencies {
     implementation(projects.feature.item.core)
     implementation(projects.feature.item.create)
     implementation(projects.feature.item.view)
+    implementation(projects.feature.vault)
     implementation(projects.feature.totp)
     implementation(projects.feature.autofill)
     implementation(projects.migrationCreateAccess)

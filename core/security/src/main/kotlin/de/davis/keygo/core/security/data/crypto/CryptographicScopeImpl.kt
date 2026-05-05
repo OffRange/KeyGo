@@ -1,47 +1,72 @@
 package de.davis.keygo.core.security.data.crypto
 
-import de.davis.keygo.core.security.domain.crypto.CryptographicConstants
+import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.security.domain.crypto.CryptographicScope
-import de.davis.keygo.core.security.domain.crypto.model.AesKey
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
+import de.davis.keygo.rust.item.ItemManager
+import de.davisalessandro.keygo.rust.EncryptedItemBlob
+import de.davisalessandro.keygo.rust.ItemAad
+import de.davisalessandro.keygo.rust.ItemKey
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.withContext
-import javax.crypto.Cipher
-import javax.crypto.spec.GCMParameterSpec
+import java.nio.ByteBuffer
 import kotlin.coroutines.CoroutineContext
 
-internal class CryptographicScopeImpl(private val aesKey: AesKey) : CryptographicScope {
-
+internal class CryptographicScopeImpl(
+    private val itemKey: ItemKey,
+    private val itemAad: ItemAad,
+    private val itemManager: ItemManager,
+    private val wrapAction: suspend CoroutineScope.() -> KeyInformation,
+) : CryptographicScope {
     override suspend fun ByteArray.encrypt(
-        context: CoroutineContext
+        label: String,
+        context: CoroutineContext,
     ): CryptographicData = withContext(context) {
-        if (isEmpty()) return@withContext CryptographicData(this@encrypt, byteArrayOf())
-        val cipher = getCipher()
+        val ct = itemManager.encryptItemData(
+            itemKey = itemKey,
+            data = this@encrypt,
+            aad = buildDataAad(label),
+        )
 
-        cipher.init(Cipher.ENCRYPT_MODE, aesKey.key)
-        val encrypted = cipher.doFinal(this@encrypt)
-
-        CryptographicData(encrypted, cipher.iv)
+        CryptographicData(
+            data = ct.ciphertext,
+            iv = ct.nonce,
+        )
     }
 
     override suspend fun CryptographicData.decrypt(
-        context: CoroutineContext
+        label: String,
+        context: CoroutineContext,
     ): ByteArray = withContext(context) {
-        if (data.isEmpty()) return@withContext data
+        val blob = EncryptedItemBlob(
+            ciphertext = data,
+            nonce = iv,
+        )
 
-        // If data is set, we require a valid IV
-        require(iv.size == IV_LENGTH) { "Invalid IV length: ${iv.size}, expected: $IV_LENGTH" }
-
-        val cipher = getCipher()
-        cipher.init(Cipher.DECRYPT_MODE, aesKey.key, GCMParameterSpec(T_LEN, iv))
-
-        cipher.doFinal(data)
+        itemManager.decryptItemData(
+            itemKey = itemKey,
+            blob = blob,
+            aad = buildDataAad(label),
+        )
     }
 
-    companion object {
-        const val IV_LENGTH = 12 // 96 bits
-        const val T_LEN = 128
+    override suspend fun wrapCurrentItemKey(context: CoroutineContext): KeyInformation =
+        withContext(context, block = wrapAction)
 
-        private fun getCipher() =
-            Cipher.getInstance("${CryptographicConstants.ALGORITHM}/${CryptographicConstants.BLOCK_MODE}/${CryptographicConstants.PADDING_MODE}")
+    // The vault binding is already enforced by the item-key wrap layer (item key wrapped under
+    // vault key with vault id in AAD), so the data AAD only needs to bind ciphertext to its
+    // owning item and field. This lets us move an item between vaults by rewrapping the item key
+    // alone, without touching the encrypted secrets.
+    private fun buildDataAad(label: String): ByteArray {
+        val labelBytes = label.toByteArray(Charsets.UTF_8)
+        return ByteBuffer.allocate(UUID_BYTES + labelBytes.size)
+            .putLong(itemAad.itemId.mostSignificantBits)
+            .putLong(itemAad.itemId.leastSignificantBits)
+            .put(labelBytes)
+            .array()
+    }
+
+    private companion object {
+        const val UUID_BYTES = 16
     }
 }

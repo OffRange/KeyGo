@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="search_your_vault">Search your Vault</string>
-    
+
     <plurals name="items_deleted">
         <item quantity="one">1 item deleted</item>
         <item quantity="other">%d items deleted</item>

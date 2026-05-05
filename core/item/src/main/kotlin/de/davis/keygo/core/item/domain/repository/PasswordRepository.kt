@@ -1,6 +1,7 @@
 package de.davis.keygo.core.item.domain.repository
 
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.model.lite.LitePassword
@@ -10,8 +11,8 @@ import kotlinx.coroutines.flow.Flow
 interface PasswordRepository {
 
     suspend fun createOrUpdatePassword(password: Password): Result<ItemId, Throwable>
-    suspend fun updatePasswordWithDomainInfo(
-        vaultItemId: ItemId,
+    suspend fun updateDomainInfos(
+        itemId: ItemId,
         domainInfos: Set<DomainInfo>
     ): Result<Unit, Throwable>
 
@@ -27,12 +28,12 @@ interface PasswordRepository {
         limit: Int = -1
     ): List<LitePassword>
 
-    suspend fun getPasswordById(vaultId: ItemId): Password?
+    suspend fun getPasswordById(itemId: ItemId): Password?
 
-    fun observePasswordById(vaultId: ItemId): Flow<Password?>
+    suspend fun getPasswordsByVault(vaultId: VaultId): List<Password>
+
+    fun observePasswordById(itemId: ItemId): Flow<Password?>
     fun observePasswords(): Flow<List<Password>>
 
     fun observePasswordScores(): Flow<Map<ItemId, Password.Score>>
-
-    suspend fun getPasswordIdByVaultId(vaultId: ItemId): ItemId?
 }

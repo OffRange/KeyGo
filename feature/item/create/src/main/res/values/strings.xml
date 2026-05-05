@@ -60,4 +60,6 @@
 
     <string name="database_error">An unexpected database error has occurred: %s</string>
     <string name="invalid_vault_id">Vault item ID can not be found</string>
+
+    <string name="vault">Vault</string>
 </resources>

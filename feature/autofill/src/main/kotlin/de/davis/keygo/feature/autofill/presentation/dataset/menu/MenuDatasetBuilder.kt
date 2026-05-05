@@ -94,7 +94,7 @@ internal class MenuDatasetBuilder(
             intentSender = context.getSelectionPendingIntent(
                 suggestionRequestData(
                     form,
-                    suggestion.vaultItemId,
+                    suggestion.id,
                     index
                 )
             ).intentSender,

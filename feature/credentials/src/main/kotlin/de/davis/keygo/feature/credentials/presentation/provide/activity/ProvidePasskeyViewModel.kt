@@ -9,6 +9,7 @@ import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.rust.passkey.PasskeyManager
+import de.davis.keygo.rust.passkey.authenticateWithResult
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
@@ -16,7 +17,8 @@ import org.koin.core.annotation.KoinViewModel
 
 @KoinViewModel
 internal class ProvidePasskeyViewModel(
-    private val passkeyRepository: PasskeyRepository
+    private val passkeyRepository: PasskeyRepository,
+    private val passkeyManager: PasskeyManager
 ) : ViewModel() {
 
     private val biometricChannel = Channel<DecryptPasskeyEncryptionKeyRequest>()
@@ -55,7 +57,7 @@ internal class ProvidePasskeyViewModel(
         viewModelScope.launch {
             val requestJson = requestJson ?: return@launch abort("Request was null")
             val clientHashData = clientHashData ?: return@launch abort("ClientHashData was null")
-            PasskeyManager.authenticate(
+            passkeyManager.authenticateWithResult(
                 requestJson = requestJson,
                 passkey = key,
                 clientDataHash = clientHashData
