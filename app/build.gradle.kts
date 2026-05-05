@@ -51,6 +51,16 @@ android {
         debug {
             applicationIdSuffix = ".debug"
         }
+
+        create("staging") {
+            initWith(getByName("release"))
+
+            applicationIdSuffix = ".staging"
+            versionNameSuffix = "-staging"
+
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
