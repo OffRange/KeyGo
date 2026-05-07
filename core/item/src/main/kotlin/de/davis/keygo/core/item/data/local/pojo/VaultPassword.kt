@@ -6,6 +6,7 @@ import de.davis.keygo.core.item.data.local.entity.DomainInfoEntity
 import de.davis.keygo.core.item.data.local.entity.ItemEntity
 import de.davis.keygo.core.item.data.local.entity.PasskeyEntity
 import de.davis.keygo.core.item.data.local.entity.PasswordEntity
+import de.davis.keygo.core.item.data.local.entity.TotpEntity
 
 internal data class VaultPassword(
     @Embedded
@@ -29,5 +30,11 @@ internal data class VaultPassword(
         parentColumn = "id",
         entityColumn = "password_id",
     )
-    val domains: List<DomainInfoEntity>
+    val domains: List<DomainInfoEntity>,
+
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "password_id",
+    )
+    val totp: TotpEntity?,
 )

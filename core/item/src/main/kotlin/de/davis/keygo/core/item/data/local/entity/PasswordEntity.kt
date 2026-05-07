@@ -1,6 +1,5 @@
 package de.davis.keygo.core.item.data.local.entity
 
-import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
@@ -28,6 +27,4 @@ internal data class PasswordEntity(
     val username: String?,
     val score: Password.Score,
     val password: SecretData<String>,
-    @ColumnInfo(name = "totp_secret")
-    val totpSecret: SecretData<String>?,
 )

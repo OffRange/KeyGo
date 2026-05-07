@@ -62,6 +62,7 @@ dependencies {
 
     implementation(libs.com.google.accompanist.permissions)
 
+    implementation(projects.core.item)
     implementation(projects.core.util)
     implementation(libs.turingcomplete.totp)
 

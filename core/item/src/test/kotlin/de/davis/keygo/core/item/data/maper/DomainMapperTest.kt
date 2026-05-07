@@ -23,7 +23,7 @@ class DomainMapperTest {
         domainInfos = domainInfos,
         score = Password.Score.Strong,
         password = SecretData.EMPTY_STRING,
-        totpSecret = null,
+        totp = null,
         vaultId = newVaultId(),
         name = "Test",
         keyInformation = KeyInformation(wrappedKey = byteArrayOf(), keyNonce = byteArrayOf()),

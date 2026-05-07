@@ -284,7 +284,7 @@ internal class AutofillViewModel(
                     return
                 }
 
-                val totp = password.totpSecret?.let {
+                val totp = password.totp?.let {
                     val secret = cryptographicScopeProvider.itemScope(
                         wrappedVaultKeyInformation = WrappedVaultKeyInformation(
                             wrappedVaultKey = wrappedVaultKey,
@@ -292,7 +292,8 @@ internal class AutofillViewModel(
                         ),
                         wrappedItemKeyInformation = password.wrappedItemKeyInformation()
                     ) {
-                        it.decryptSecretData(label = Password.LABEL_TOTP_SECRET).encodeToByteArray()
+                        it.secret.decryptSecretData(label = Password.LABEL_TOTP_SECRET)
+                            .encodeToByteArray()
                     }
                     totpGenerator.observeTotp(secret).first()
                 } ?: run {

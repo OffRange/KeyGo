@@ -30,7 +30,7 @@ class ItemMapperTest {
         domainInfos = emptySet(),
         score = Password.Score.Strong,
         password = SecretData.EMPTY_STRING,
-        totpSecret = null,
+        totp = null,
         note = note,
         pinned = pinned,
         vaultId = newVaultId(),
@@ -169,7 +169,13 @@ class ItemMapperTest {
         )
 
         val domain = pojo.toDomain()
-        assertContentEquals(byteArrayOf(0xAA.toByte(), 0xBB.toByte()), domain.keyInformation.wrappedKey)
-        assertContentEquals(byteArrayOf(0xCC.toByte(), 0xDD.toByte()), domain.keyInformation.keyNonce)
+        assertContentEquals(
+            byteArrayOf(0xAA.toByte(), 0xBB.toByte()),
+            domain.keyInformation.wrappedKey
+        )
+        assertContentEquals(
+            byteArrayOf(0xCC.toByte(), 0xDD.toByte()),
+            domain.keyInformation.keyNonce
+        )
     }
 }

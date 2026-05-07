@@ -29,9 +29,17 @@ internal interface PasswordDao {
         SELECT i.id, i.name, i.pinned, p.username
         FROM item i
         JOIN password p ON i.id = p.id
-        WHERE (NOT :requireTotp OR p.totp_secret IS NOT NULL)
+        WHERE (
+            NOT :requireTotp
+            OR EXISTS (
+                SELECT 1
+                FROM totp t
+                WHERE t.password_id = p.id
+            )
+        )
         AND EXISTS (
-            SELECT 1 FROM domain_info d
+            SELECT 1
+            FROM domain_info d
             WHERE d.password_id = p.id
             AND d.eTLD1 IN (:etld1s) COLLATE NOCASE
         )

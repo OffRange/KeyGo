@@ -12,14 +12,13 @@ internal fun Password.toData(): PasswordEntity = PasswordEntity(
     username = username,
     score = score,
     password = password,
-    totpSecret = totpSecret,
 )
 
 internal fun VaultPassword.toDomain(): Password = Password(
     id = passwordEntity.id,
     username = passwordEntity.username,
     score = passwordEntity.score,
-    totpSecret = passwordEntity.totpSecret,
+    totp = totp?.toDomain(),
     password = passwordEntity.password,
 
     passkeyRPs = rpEntity.map { it.rp }.toSet(),

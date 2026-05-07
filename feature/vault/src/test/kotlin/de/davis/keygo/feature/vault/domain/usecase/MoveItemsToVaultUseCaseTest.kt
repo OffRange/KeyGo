@@ -10,6 +10,7 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.security.crypto.BindingCryptographicScopeProvider
 import de.davis.keygo.core.security.crypto.FakeSession
@@ -102,7 +103,7 @@ class MoveItemsToVaultUseCaseTest {
         useCase(srcVault.id, dstVault.id)
 
         val moved = passwordRepository.getPasswordById(seeded.id)!!
-        assertNull(moved.totpSecret)
+        assertNull(moved.totp)
     }
 
     @Test
@@ -352,7 +353,13 @@ class MoveItemsToVaultUseCaseTest {
                 domainInfos = domainInfos,
                 score = score,
                 password = passwordPlaintext.encryptSecretData(label = Password.LABEL_PASSWORD),
-                totpSecret = totpPlaintext?.encryptSecretData(label = Password.LABEL_TOTP_SECRET),
+                totp = totpPlaintext?.encryptSecretData(label = Password.LABEL_TOTP_SECRET)?.let {
+                    Totp(
+                        passwordId = id,
+                        secret = it,
+                        accountName = "",
+                    )
+                },
                 note = note,
                 pinned = pinned,
                 vaultId = vault.id,
@@ -373,7 +380,7 @@ class MoveItemsToVaultUseCaseTest {
         ) {
             val pw: String = password.password.decryptSecretData(label = Password.LABEL_PASSWORD)
             val totp: String? =
-                password.totpSecret?.decryptSecretData(label = Password.LABEL_TOTP_SECRET)
+                password.totp?.secret?.decryptSecretData(label = Password.LABEL_TOTP_SECRET)
             pw to totp
         }
 }

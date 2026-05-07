@@ -80,9 +80,9 @@ internal class ViewPasswordViewModel(
                         password.password.decryptSecretData(label = Password.LABEL_PASSWORD)
                             .asObfuscatedString()
                     }
-                    val totp = password.totpSecret?.let { totpSecret ->
+                    val totp = password.totp?.let { totpSecret ->
                         async {
-                            totpSecret.decryptSecretData(label = Password.LABEL_TOTP_SECRET)
+                            totpSecret.secret.decryptSecretData(label = Password.LABEL_TOTP_SECRET)
                                 .encodeToByteArray()
                         }
                     }

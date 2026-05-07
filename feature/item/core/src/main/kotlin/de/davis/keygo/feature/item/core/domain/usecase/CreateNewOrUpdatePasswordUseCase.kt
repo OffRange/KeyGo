@@ -7,6 +7,7 @@ import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.Password
 import de.davis.keygo.core.item.domain.model.Password.Companion.LABEL_PASSWORD
 import de.davis.keygo.core.item.domain.model.Password.Companion.LABEL_TOTP_SECRET
+import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
@@ -119,7 +120,19 @@ class CreateNewOrUpdatePasswordUseCase(
                     username = upsert.username.getValue(),
                     domainInfos = upsert.domains.getValue().orEmpty(),
                     password = encryptedPassword.await(),
-                    totpSecret = encryptedTotp?.await(),
+                    totp = encryptedTotp?.await()
+                        ?.let { // TODO: allow url, otherwise make API cleaner
+                            Totp(
+                                passwordId = itemId,
+                                id = -1,
+                                secret = it,
+                                issuer = null,
+                                accountName = "",
+                                algorithm = "sha1",
+                                digits = 6,
+                                period = 30
+                            )
+                        },
                     score = passwordStrength.await(),
                     note = upsert.note.getValue(),
                     pinned = false,
@@ -156,7 +169,14 @@ class CreateNewOrUpdatePasswordUseCase(
                     async { password.encryptSecretData(label = LABEL_PASSWORD) }
                 }
                 val totpSecret = upsert.totpSecret.onSet { secret ->
-                    async { secret.encryptSecretData(label = LABEL_TOTP_SECRET) }
+                    async {
+                        val result = secret.encryptSecretData(label = LABEL_TOTP_SECRET)
+                        existing.totp?.copy(secret = result) ?: Totp(
+                            passwordId = existing.id,
+                            secret = result,
+                            accountName = ""
+                        )
+                    }
                 }
                 val passwordStrength = upsert.password.onSet { password ->
                     async { passwordStrengthEstimator(password) }
@@ -167,7 +187,7 @@ class CreateNewOrUpdatePasswordUseCase(
                     username = upsert.username.on(existing.username),
                     domainInfos = upsert.domains.on(existing.domainInfos).orEmpty(),
                     password = encryptedPassword?.await() ?: existing.password,
-                    totpSecret = upsert.totpSecret.on(existing.totpSecret, totpSecret),
+                    totp = upsert.totpSecret.on(existing.totp, totpSecret),
                     score = passwordStrength?.await() ?: existing.score,
                     note = upsert.note.on(existing.note),
                 )

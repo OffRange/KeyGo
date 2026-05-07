@@ -24,7 +24,7 @@ class UpsertItemUseCaseTest {
         username = "user",
         domainInfos = emptySet(),
         score = Password.Score.Strong,
-        totpSecret = null,
+        totp = null,
         name = name,
         password = SecretData.EMPTY_STRING,
         note = null,

@@ -209,8 +209,8 @@ internal class PasswordViewModel(
             val decrypted = coroutineScope {
                 val pwdDeferred =
                     async { password.password.decryptSecretData(label = Password.LABEL_PASSWORD) }
-                val totpDeferred = password.totpSecret?.let { totpSecret ->
-                    async { totpSecret.decryptSecretData(label = Password.LABEL_TOTP_SECRET) }
+                val totpDeferred = password.totp?.let { totp ->
+                    async { totp.secret.decryptSecretData(label = Password.LABEL_TOTP_SECRET) }
                 }
                 pwdDeferred.await() to totpDeferred?.await()
             }

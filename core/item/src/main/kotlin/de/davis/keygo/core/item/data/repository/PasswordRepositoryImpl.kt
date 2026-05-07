@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import de.davis.keygo.core.item.data.local.dao.DomainInfoDao
 import de.davis.keygo.core.item.data.local.dao.ItemDao
 import de.davis.keygo.core.item.data.local.dao.PasswordDao
+import de.davis.keygo.core.item.data.local.dao.TotpDao
 import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
 import de.davis.keygo.core.item.data.local.pojo.LightweightPassword
 import de.davis.keygo.core.item.data.local.pojo.VaultPassword
@@ -28,6 +29,7 @@ internal class PasswordRepositoryImpl(
     private val itemDao: ItemDao,
     private val passwordDao: PasswordDao,
     private val domainInfoDao: DomainInfoDao,
+    private val totpDao: TotpDao,
 ) : PasswordRepository {
 
     override suspend fun createOrUpdatePassword(password: Password): Result<ItemId, Throwable> =
@@ -35,6 +37,9 @@ internal class PasswordRepositoryImpl(
             database.withTransaction {
                 itemDao.upsert((password as Item).toData())
                 passwordDao.upsert(password.toData())
+                password.totp?.toData()?.let {
+                    totpDao.upsert(it)
+                }
                 domainInfoDao.syncForPassword(password.id, password.toDataDomainInfos(password.id))
 
                 password.id

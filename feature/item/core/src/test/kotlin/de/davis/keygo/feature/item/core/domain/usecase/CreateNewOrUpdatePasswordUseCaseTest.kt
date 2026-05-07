@@ -189,7 +189,7 @@ class CreateNewOrUpdatePasswordUseCaseTest {
         val stored = storedById(result.getOrNull())
         assertEquals(null, stored?.username)
         assertEquals(null, stored?.note)
-        assertEquals(null, stored?.totpSecret)
+        assertEquals(null, stored?.totp)
     }
 
     @Test
@@ -459,11 +459,11 @@ class CreateNewOrUpdatePasswordUseCaseTest {
         )
         assertContentEquals(FakeCryptographicScopeProvider.IV, stored.password.iv)
 
-        assertNotNull(stored.totpSecret)
-        assertFalse(stored.totpSecret!!.data.contentEquals(plaintextTotp.encodeToByteArray()))
+        assertNotNull(stored.totp)
+        assertFalse(stored.totp!!.secret.data.contentEquals(plaintextTotp.encodeToByteArray()))
         assertContentEquals(
             FakeCryptographicScopeProvider.transform(plaintextTotp.encodeToByteArray()),
-            stored.totpSecret!!.data
+            stored.totp!!.secret.data
         )
     }
 
@@ -507,7 +507,7 @@ class CreateNewOrUpdatePasswordUseCaseTest {
         domainInfos = emptySet(),
         score = score,
         password = SecretData.EMPTY_STRING,
-        totpSecret = null,
+        totp = null,
         note = null,
         pinned = false,
         vaultId = defaultVault.id,
