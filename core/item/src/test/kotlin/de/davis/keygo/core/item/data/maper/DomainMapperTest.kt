@@ -6,6 +6,7 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.SecretData
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -21,7 +22,7 @@ class DomainMapperTest {
         id = id,
         username = null,
         domainInfos = domainInfos,
-        score = Login.Score.Strong,
+        passwordScore = PasswordScore.Strong,
         password = SecretData.EMPTY_STRING,
         totp = null,
         vaultId = newVaultId(),

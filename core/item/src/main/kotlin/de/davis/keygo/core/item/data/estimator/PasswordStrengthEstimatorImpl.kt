@@ -1,7 +1,7 @@
 package de.davis.keygo.core.item.data.estimator
 
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
-import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.gosimple.nbvcxz.Nbvcxz
@@ -11,12 +11,12 @@ import org.koin.core.annotation.Single
 internal class PasswordStrengthEstimatorImpl(private val nbvcxz: Nbvcxz) :
     PasswordStrengthEstimator {
 
-    override suspend fun estimate(password: String): Login.Score =
+    override suspend fun estimate(password: String): PasswordScore =
         withContext(Dispatchers.Default) {
             if (password.isEmpty())
-                return@withContext Login.Score.None
+                return@withContext PasswordScore.None
 
             val result = nbvcxz.estimate(password)
-            Login.Score(result.basicScore + 1 /* 1..5 */)
+            PasswordScore(result.basicScore + 1 /* 1..5 */)
         }
 }

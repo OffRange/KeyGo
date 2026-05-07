@@ -1,6 +1,6 @@
 package de.davis.keygo.feature.list_screen.domain.model
 
-import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import kotlin.test.Test
 import kotlin.test.assertFalse
@@ -33,7 +33,7 @@ class FilterStateTest {
     @Test
     fun `non-empty selected scores is not default`() {
         val state = FilterState(
-            selectedScores = setOf(Login.Score.Weak),
+            selectedScores = setOf(PasswordScore.Weak),
         )
         assertFalse(state.isDefault)
     }
@@ -42,7 +42,7 @@ class FilterStateTest {
     fun `both non-default sort and scores is not default`() {
         val state = FilterState(
             sortDirection = SortDirection.Descending,
-            selectedScores = setOf(Login.Score.Strong, Login.Score.Excellent),
+            selectedScores = setOf(PasswordScore.Strong, PasswordScore.Excellent),
         )
         assertFalse(state.isDefault)
     }
@@ -67,7 +67,7 @@ class FilterStateTest {
     fun `all fields non-default is not default`() {
         val state = FilterState(
             sortDirection = SortDirection.Descending,
-            selectedScores = setOf(Login.Score.Weak),
+            selectedScores = setOf(PasswordScore.Weak),
             selectedItemTypes = setOf(VaultItemType.Login),
             selectedLabels = setOf("personal"),
         )

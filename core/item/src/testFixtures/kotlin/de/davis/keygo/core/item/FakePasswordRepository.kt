@@ -4,6 +4,7 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.lite.LiteLogin
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.util.Result
@@ -82,6 +83,6 @@ class FakePasswordRepository : PasswordRepository {
     override fun observePasswords(): Flow<List<Login>> =
         store.map { it.values.toList() }
 
-    override fun observePasswordScores(): Flow<Map<ItemId, Login.Score>> =
-        store.map { passwords -> passwords.mapValues { it.value.score } }
+    override fun observePasswordScores(): Flow<Map<ItemId, PasswordScore>> =
+        store.map { passwords -> passwords.mapValues { it.value.passwordScore } }
 }

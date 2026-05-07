@@ -41,7 +41,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
 import de.davis.keygo.core.ui.components.KeyGoCard
@@ -270,7 +270,7 @@ private fun SortSection(
 @Composable
 private fun PasswordSection(
     state: PasswordSectionState,
-    onScoreToggled: (Login.Score) -> Unit,
+    onScoreToggled: (PasswordScore) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -288,7 +288,7 @@ private fun PasswordSection(
             },
         ) {
             FlowRow(horizontalArrangement = DefaultHorizontalArrangement) {
-                state.scoreChips.forEach { chip ->
+                state.passwordScoreChips.forEach { chip ->
                     FilterChip(
                         selected = chip.selected,
                         onClick = { onScoreToggled(chip.value) },
@@ -325,13 +325,13 @@ private fun SectionHeader(
 }
 
 @Composable
-private fun Login.Score.label(): String = when (this) {
-    Login.Score.None -> ""
-    Login.Score.Ridiculous -> stringResource(CoreItemR.string.password_strength_ridiculous)
-    Login.Score.Weak -> stringResource(CoreItemR.string.password_strength_weak)
-    Login.Score.Moderate -> stringResource(CoreItemR.string.password_strength_moderate)
-    Login.Score.Strong -> stringResource(CoreItemR.string.password_strength_strong)
-    Login.Score.Excellent -> stringResource(CoreItemR.string.password_strength_excellent)
+private fun PasswordScore.label(): String = when (this) {
+    PasswordScore.None -> ""
+    PasswordScore.Ridiculous -> stringResource(CoreItemR.string.password_strength_ridiculous)
+    PasswordScore.Weak -> stringResource(CoreItemR.string.password_strength_weak)
+    PasswordScore.Moderate -> stringResource(CoreItemR.string.password_strength_moderate)
+    PasswordScore.Strong -> stringResource(CoreItemR.string.password_strength_strong)
+    PasswordScore.Excellent -> stringResource(CoreItemR.string.password_strength_excellent)
 }
 
 @Composable
@@ -369,12 +369,12 @@ private fun FilterBottomSheetContentPreview() {
                         ),
                     ),
                     passwordSection = PasswordSectionState(
-                        scoreChips = listOf(
-                            FilterChipState(value = Login.Score.Excellent, selected = false),
-                            FilterChipState(value = Login.Score.Strong, selected = false),
-                            FilterChipState(value = Login.Score.Moderate, selected = true),
-                            FilterChipState(value = Login.Score.Weak, selected = true),
-                            FilterChipState(value = Login.Score.Ridiculous, selected = false),
+                        passwordScoreChips = listOf(
+                            FilterChipState(value = PasswordScore.Excellent, selected = false),
+                            FilterChipState(value = PasswordScore.Strong, selected = false),
+                            FilterChipState(value = PasswordScore.Moderate, selected = true),
+                            FilterChipState(value = PasswordScore.Weak, selected = true),
+                            FilterChipState(value = PasswordScore.Ridiculous, selected = false),
                         ),
                     ),
                     isDefault = false,

@@ -162,7 +162,7 @@ internal class ItemListViewModel(
             }
 
             is FilterAction.ScoreToggled -> filterState.update {
-                it.copy(selectedScores = it.selectedScores.toggle(action.score))
+                it.copy(selectedScores = it.selectedScores.toggle(action.passwordScore))
             }
 
             FilterAction.ShowOnlyPinnedToggled -> filterState.update {

@@ -43,7 +43,7 @@ import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
-import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.item.presentation.StrengthIndicator
@@ -191,7 +191,7 @@ private fun PasswordReadyContent(
                         )
 
                         StrengthIndicator(
-                            score = state.strengthScore,
+                            passwordScore = state.strengthScore,
                             forceCompact = forceCompact,
                         )
                     }
@@ -367,7 +367,7 @@ private fun PasswordContentPreview() {
         PasswordContent(
             state = PasswordUiState.Ready(
                 base = PasswordBaseState(
-                    strengthScore = Login.Score.Weak,
+                    strengthScore = PasswordScore.Weak,
                     domains = setOf(
                         DomainInfo(
                             loginId = newItemId(),

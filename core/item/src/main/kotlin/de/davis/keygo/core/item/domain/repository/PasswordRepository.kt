@@ -4,6 +4,7 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.lite.LiteLogin
 import de.davis.keygo.core.util.Result
 import kotlinx.coroutines.flow.Flow
@@ -35,5 +36,5 @@ interface PasswordRepository {
     fun observePasswordById(itemId: ItemId): Flow<Login?>
     fun observePasswords(): Flow<List<Login>>
 
-    fun observePasswordScores(): Flow<Map<ItemId, Login.Score>>
+    fun observePasswordScores(): Flow<Map<ItemId, PasswordScore>>
 }

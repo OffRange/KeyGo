@@ -10,6 +10,7 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.security.crypto.BindingCryptographicScopeProvider
@@ -114,7 +115,7 @@ class MoveItemsToVaultUseCaseTest {
             name = "Acme",
             username = "alice",
             note = "shared corp account",
-            score = Login.Score.Strong,
+            passwordScore = PasswordScore.Strong,
             domainInfos = setOf(DomainInfo(value = "acme.com", eTLD1 = "acme.com")),
             pinned = true,
             passwordPlaintext = "x",
@@ -126,7 +127,7 @@ class MoveItemsToVaultUseCaseTest {
         assertEquals(seeded.name, moved.name)
         assertEquals(seeded.username, moved.username)
         assertEquals(seeded.note, moved.note)
-        assertEquals(seeded.score, moved.score)
+        assertEquals(seeded.passwordScore, moved.passwordScore)
         assertEquals(seeded.domainInfos, moved.domainInfos)
         assertEquals(seeded.pinned, moved.pinned)
     }
@@ -332,7 +333,7 @@ class MoveItemsToVaultUseCaseTest {
         name: String = "item",
         username: String? = null,
         note: String? = null,
-        score: Login.Score = Login.Score.Strong,
+        passwordScore: PasswordScore = PasswordScore.Strong,
         domainInfos: Set<DomainInfo> = emptySet(),
         pinned: Boolean = false,
         passwordPlaintext: String,
@@ -351,7 +352,7 @@ class MoveItemsToVaultUseCaseTest {
                 name = name,
                 username = username,
                 domainInfos = domainInfos,
-                score = score,
+                passwordScore = passwordScore,
                 password = passwordPlaintext.encryptSecretData(label = Login.LABEL_PASSWORD),
                 totp = totpPlaintext?.encryptSecretData(label = Login.LABEL_TOTP_SECRET)?.let {
                     Totp(

@@ -1,6 +1,5 @@
 package de.davis.keygo.core.item.domain.model
 
-import androidx.annotation.IntRange
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newItemId
@@ -12,7 +11,7 @@ data class Login(
     override val id: ItemId = newItemId(),
     val username: String?,
     val domainInfos: Set<DomainInfo>,
-    val score: Score,
+    val passwordScore: PasswordScore,
     val password: SecretData<String>,
     val totp: Totp?,
     val passkeyRPs: Set<String> = emptySet(),
@@ -29,28 +28,5 @@ data class Login(
     companion object {
         const val LABEL_PASSWORD = "password"
         const val LABEL_TOTP_SECRET = "totp_secret"
-    }
-
-    enum class Score {
-        None,
-        Ridiculous,
-        Weak,
-        Moderate,
-        Strong,
-        Excellent;
-
-        val isNone: Boolean
-            get() = this == None
-
-        companion object {
-            operator fun invoke(@IntRange(from = 1, to = 5) value: Int): Score = when (value) {
-                1 -> Ridiculous
-                2 -> Weak
-                3 -> Moderate
-                4 -> Strong
-                5 -> Excellent
-                else -> None
-            }
-        }
     }
 }

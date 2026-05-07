@@ -9,43 +9,43 @@ class PasswordScoreTest {
 
     @Test
     fun `invoke maps 1 to Ridiculous`() {
-        assertEquals(Login.Score.Ridiculous, Login.Score(1))
+        assertEquals(PasswordScore.Ridiculous, PasswordScore(1))
     }
 
     @Test
     fun `invoke maps 2 to Weak`() {
-        assertEquals(Login.Score.Weak, Login.Score(2))
+        assertEquals(PasswordScore.Weak, PasswordScore(2))
     }
 
     @Test
     fun `invoke maps 3 to Moderate`() {
-        assertEquals(Login.Score.Moderate, Login.Score(3))
+        assertEquals(PasswordScore.Moderate, PasswordScore(3))
     }
 
     @Test
     fun `invoke maps 4 to Strong`() {
-        assertEquals(Login.Score.Strong, Login.Score(4))
+        assertEquals(PasswordScore.Strong, PasswordScore(4))
     }
 
     @Test
     fun `invoke maps 5 to Excellent`() {
-        assertEquals(Login.Score.Excellent, Login.Score(5))
+        assertEquals(PasswordScore.Excellent, PasswordScore(5))
     }
 
     @Test
     fun `invoke maps out of range to None`() {
-        assertEquals(Login.Score.None, Login.Score(0))
-        assertEquals(Login.Score.None, Login.Score(6))
-        assertEquals(Login.Score.None, Login.Score(-1))
+        assertEquals(PasswordScore.None, PasswordScore(0))
+        assertEquals(PasswordScore.None, PasswordScore(6))
+        assertEquals(PasswordScore.None, PasswordScore(-1))
     }
 
     @Test
     fun `isNone returns true only for None`() {
-        assertTrue(Login.Score.None.isNone)
-        assertFalse(Login.Score.Ridiculous.isNone)
-        assertFalse(Login.Score.Weak.isNone)
-        assertFalse(Login.Score.Moderate.isNone)
-        assertFalse(Login.Score.Strong.isNone)
-        assertFalse(Login.Score.Excellent.isNone)
+        assertTrue(PasswordScore.None.isNone)
+        assertFalse(PasswordScore.Ridiculous.isNone)
+        assertFalse(PasswordScore.Weak.isNone)
+        assertFalse(PasswordScore.Moderate.isNone)
+        assertFalse(PasswordScore.Strong.isNone)
+        assertFalse(PasswordScore.Excellent.isNone)
     }
 }

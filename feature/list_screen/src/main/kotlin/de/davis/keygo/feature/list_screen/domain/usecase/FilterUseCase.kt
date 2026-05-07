@@ -1,7 +1,7 @@
 package de.davis.keygo.feature.list_screen.domain.usecase
 
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
@@ -19,7 +19,7 @@ class FilterUseCase {
     operator fun <I : LiteItem> invoke(
         filterState: FilterState,
         items: List<I>,
-        passwordScores: Map<ItemId, Login.Score>,
+        passwordScores: Map<ItemId, PasswordScore>,
     ): List<I> {
         val filtered = items.filter { item ->
             matchesItemType(filterState, item) &&
@@ -41,7 +41,7 @@ class FilterUseCase {
     private fun matchesScore(
         filterState: FilterState,
         item: LiteItem,
-        passwordScores: Map<ItemId, Login.Score>,
+        passwordScores: Map<ItemId, PasswordScore>,
     ): Boolean {
         if (filterState.selectedScores.isEmpty()) return true
         if (item.itemType != VaultItemType.Login) return true // non-password items - pass through

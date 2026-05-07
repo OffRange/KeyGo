@@ -23,21 +23,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.R
-import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
 
 @Composable
 fun StrengthIndicator(
-    score: Login.Score,
+    passwordScore: PasswordScore,
     forceCompact: Boolean = false,
 ) {
     val targetTrackColor =
-        if (score.isNone || score == Login.Score.Excellent)
+        if (passwordScore.isNone || passwordScore == PasswordScore.Excellent)
             MaterialTheme.colorScheme.secondaryContainer
         else
             MaterialTheme.colorScheme.errorContainer
 
     val targetIndicatorColor =
-        if (score.isNone || score == Login.Score.Excellent)
+        if (passwordScore.isNone || passwordScore == PasswordScore.Excellent)
             MaterialTheme.colorScheme.onSecondaryContainer
         else
             MaterialTheme.colorScheme.error
@@ -51,7 +51,7 @@ fun StrengthIndicator(
         ) {
             repeat(5) {
                 val backgroundColor by animateColorAsState(
-                    if (it < score.ordinal) targetIndicatorColor else targetTrackColor,
+                    if (it < passwordScore.ordinal) targetIndicatorColor else targetTrackColor,
                     label = "Indicator color $it"
                 )
                 Box(
@@ -73,18 +73,18 @@ fun StrengthIndicator(
             LocalTextStyle provides MaterialTheme.typography.bodySmall,
         ) {
             AnimatedVisibility(
-                visible = !score.isNone && !forceCompact,
+                visible = !passwordScore.isNone && !forceCompact,
                 enter = expandVertically(),
                 exit = shrinkVertically(),
             ) {
-                val text = when (score) {
-                    Login.Score.None,
-                    Login.Score.Ridiculous -> stringResource(R.string.password_strength_ridiculous)
+                val text = when (passwordScore) {
+                    PasswordScore.None,
+                    PasswordScore.Ridiculous -> stringResource(R.string.password_strength_ridiculous)
 
-                    Login.Score.Weak -> stringResource(R.string.password_strength_weak)
-                    Login.Score.Moderate -> stringResource(R.string.password_strength_moderate)
-                    Login.Score.Strong -> stringResource(R.string.password_strength_strong)
-                    Login.Score.Excellent -> stringResource(R.string.password_strength_excellent)
+                    PasswordScore.Weak -> stringResource(R.string.password_strength_weak)
+                    PasswordScore.Moderate -> stringResource(R.string.password_strength_moderate)
+                    PasswordScore.Strong -> stringResource(R.string.password_strength_strong)
+                    PasswordScore.Excellent -> stringResource(R.string.password_strength_excellent)
                 }
 
                 Text(text = text)

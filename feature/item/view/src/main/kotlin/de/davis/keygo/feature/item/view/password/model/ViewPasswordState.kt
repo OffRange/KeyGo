@@ -2,7 +2,7 @@ package de.davis.keygo.feature.item.view.password.model
 
 import androidx.compose.runtime.Immutable
 import de.davis.keygo.core.item.domain.model.DomainInfo
-import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.feature.totp.domain.model.TotpInformation
 
@@ -13,7 +13,7 @@ data class ViewPasswordState(
     val vaultMetadata: VaultMetadata? = null,
     val passkeyRPs: Set<String> = emptySet(),
     val password: ObfuscatedString = ObfuscatedString(""),
-    val passwordStrengthScore: Login.Score = Login.Score.None,
+    val passwordStrengthScore: PasswordScore = PasswordScore.None,
     val totpInformation: TotpInformation = TotpInformation("", 0, 0),
     val username: String = "",
     val domains: Set<DomainInfo> = emptySet(),

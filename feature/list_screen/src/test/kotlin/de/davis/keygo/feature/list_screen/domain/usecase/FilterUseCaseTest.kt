@@ -2,7 +2,7 @@ package de.davis.keygo.feature.list_screen.domain.usecase
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
-import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
@@ -68,7 +68,7 @@ class FilterUseCaseTest {
 
     @Test
     fun `filtering an empty list returns empty list`() {
-        val state = FilterState(selectedScores = setOf(Login.Score.Weak))
+        val state = FilterState(selectedScores = setOf(PasswordScore.Weak))
         val result = useCase(state, emptyList<TestLiteItem>(), noScores)
         assertTrue(result.isEmpty())
     }
@@ -236,7 +236,7 @@ class FilterUseCaseTest {
         TestLiteItem(name = "Login B", id = newItemId(), itemType = VaultItemType.Login),
     )
 
-    private val noScores: Map<ItemId, Login.Score> = emptyMap()
+    private val noScores: Map<ItemId, PasswordScore> = emptyMap()
 
     @Test
     fun `no item type selected returns all items`() {
@@ -262,9 +262,9 @@ class FilterUseCaseTest {
     )
 
     private val scores = mapOf(
-        scoredItems[0].id to Login.Score.Excellent,
-        scoredItems[2].id to Login.Score.Strong,
-        scoredItems[3].id to Login.Score.Weak,
+        scoredItems[0].id to PasswordScore.Excellent,
+        scoredItems[2].id to PasswordScore.Strong,
+        scoredItems[3].id to PasswordScore.Weak,
     )
 
     @Test
@@ -278,23 +278,23 @@ class FilterUseCaseTest {
 
     @Test
     fun `selecting single score returns matching items`() {
-        val state = FilterState(selectedScores = setOf(Login.Score.Weak))
+        val state = FilterState(selectedScores = setOf(PasswordScore.Weak))
         val result = useCase(state, scoredItems, scores)
 
-        val expected = scoredItems.filter { scores[it.id] == Login.Score.Weak }
+        val expected = scoredItems.filter { scores[it.id] == PasswordScore.Weak }
         assertEquals(expected, result)
     }
 
     @Test
     fun `selecting multiple scores returns union of matches`() {
         val state = FilterState(
-            selectedScores = setOf(Login.Score.Weak, Login.Score.Excellent),
+            selectedScores = setOf(PasswordScore.Weak, PasswordScore.Excellent),
         )
         val result = useCase(state, scoredItems, scores)
 
         val expected = scoredItems.filter {
-            scores[it.id] == Login.Score.Weak ||
-                    scores[it.id] == Login.Score.Excellent
+            scores[it.id] == PasswordScore.Weak ||
+                    scores[it.id] == PasswordScore.Excellent
         }
 
         assertEquals(expected.size, result.size)
@@ -303,7 +303,7 @@ class FilterUseCaseTest {
 
     @Test
     fun `selecting a score not present in any item returns empty list`() {
-        val state = FilterState(selectedScores = setOf(Login.Score.Ridiculous))
+        val state = FilterState(selectedScores = setOf(PasswordScore.Ridiculous))
         val result = useCase(state, scoredItems, scores)
         assertTrue(result.isEmpty())
     }
@@ -313,18 +313,18 @@ class FilterUseCaseTest {
     fun `item type and score filters are applied together`() {
         val state = FilterState(
             selectedItemTypes = setOf(VaultItemType.Login),
-            selectedScores = setOf(Login.Score.Excellent),
+            selectedScores = setOf(PasswordScore.Excellent),
         )
         val result = useCase(state, scoredItems, scores)
         assertTrue(result.all { it.itemType == VaultItemType.Login })
-        assertTrue(result.all { scores[it.id] == Login.Score.Excellent })
+        assertTrue(result.all { scores[it.id] == PasswordScore.Excellent })
     }
 
     @Test
     fun `filter result is still sorted by sort direction`() {
         val state = FilterState(
             sortDirection = SortDirection.Descending,
-            selectedScores = setOf(Login.Score.Weak, Login.Score.Strong),
+            selectedScores = setOf(PasswordScore.Weak, PasswordScore.Strong),
         )
         val result = useCase(state, scoredItems, scores)
 

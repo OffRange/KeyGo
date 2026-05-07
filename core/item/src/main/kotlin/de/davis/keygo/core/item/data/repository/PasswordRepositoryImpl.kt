@@ -16,6 +16,7 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Item
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.lite.LiteLogin
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.util.Result
@@ -88,8 +89,8 @@ internal class PasswordRepositoryImpl(
     override fun observePasswords(): Flow<List<Login>> =
         passwordDao.getAllPasswords().map { it.map(LoginProjection::toDomain) }
 
-    override fun observePasswordScores(): Flow<Map<ItemId, Login.Score>> =
+    override fun observePasswordScores(): Flow<Map<ItemId, PasswordScore>> =
         passwordDao.observePasswordScores().map { entries ->
-            entries.associate { it.id to it.score }
+            entries.associate { it.id to it.passwordScore }
         }
 }

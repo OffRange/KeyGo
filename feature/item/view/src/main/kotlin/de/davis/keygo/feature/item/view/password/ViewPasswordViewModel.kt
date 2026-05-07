@@ -102,7 +102,7 @@ internal class ViewPasswordViewModel(
                     vaultMetadata = vaultMetadata,
                     passkeyRPs = password.passkeyRPs,
                     password = obfuscated,
-                    passwordStrengthScore = password.score,
+                    passwordStrengthScore = password.passwordScore,
                     username = password.username.orEmpty(),
                     domains = password.domainInfos,
                     note = password.note.orEmpty(),

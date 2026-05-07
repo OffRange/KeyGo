@@ -2,7 +2,7 @@ package de.davis.keygo.feature.list_screen.presentation.mapper
 
 import androidx.compose.ui.util.fastMapTo
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
@@ -37,7 +37,7 @@ internal fun FilterState.toBottomSheetState(
             },
         ) else null,
         passwordSection = if (showLoginSection) PasswordSectionState(
-            scoreChips = available.scores
+            passwordScoreChips = available.passwordScores
                 .sortedByDescending { it.ordinal }
                 .map { score ->
                     FilterChipState(value = score, selected = score in selectedScores)
@@ -48,7 +48,7 @@ internal fun FilterState.toBottomSheetState(
 }
 
 internal fun List<LiteItem>.toAvailableFilterOptions(
-    passwordScores: Map<ItemId, Login.Score>,
+    passwordScores: Map<ItemId, PasswordScore>,
 ): AvailableFilterOptions {
     val itemTypes = fastMapTo(mutableSetOf()) { it.itemType }
     val hasLoginItems = VaultItemType.Login in itemTypes
@@ -63,7 +63,7 @@ internal fun List<LiteItem>.toAvailableFilterOptions(
     return AvailableFilterOptions(
         itemTypes = itemTypes,
         hasPasswordItems = hasLoginItems,
-        scores = scores,
+        passwordScores = scores,
         labels = emptySet(),
         hasPinnedItems = any { it.pinned },
     )

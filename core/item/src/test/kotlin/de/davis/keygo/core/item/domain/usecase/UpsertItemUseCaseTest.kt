@@ -5,6 +5,7 @@ import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.SecretData
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
@@ -23,7 +24,7 @@ class UpsertItemUseCaseTest {
         id = newItemId(),
         username = "user",
         domainInfos = emptySet(),
-        score = Login.Score.Strong,
+        passwordScore = PasswordScore.Strong,
         totp = null,
         name = name,
         password = SecretData.EMPTY_STRING,

@@ -160,7 +160,7 @@ private fun InteractableAuthContent(
 
                         if (this is AuthState.CreateAccess) {
                             StrengthIndicator(
-                                score = score,
+                                passwordScore = passwordScore,
                                 forceCompact = forceCompact,
                             )
 

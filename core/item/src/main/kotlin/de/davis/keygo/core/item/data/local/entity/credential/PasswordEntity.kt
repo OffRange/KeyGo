@@ -6,7 +6,7 @@ import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 import de.davis.keygo.core.item.data.local.entity.LoginEntity
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.SecretData
 
 // The primary key is shared with ItemEntity — one ItemId identifies both the base item row and
@@ -27,6 +27,6 @@ internal data class PasswordEntity(
     @PrimaryKey
     @ColumnInfo(name = "login_id")
     val loginId: ItemId,
-    val score: Login.Score,
+    val passwordScore: PasswordScore,
     val password: SecretData<String>,
 )

@@ -9,14 +9,14 @@ import de.davis.keygo.core.item.domain.model.lite.LiteLogin
 
 internal fun Login.toData(): PasswordEntity = PasswordEntity(
     loginId = id,
-    score = score,
+    passwordScore = passwordScore,
     password = password,
 )
 
 internal fun LoginProjection.toDomain(): Login = Login(
     id = loginEntity.id,
     username = loginEntity.username,
-    score = passwordEntity.score,
+    passwordScore = passwordEntity.passwordScore,
     totp = totp?.toDomain(),
     password = passwordEntity.password,
 

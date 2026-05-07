@@ -8,6 +8,7 @@ import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.SecretData
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
@@ -201,7 +202,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         val localUseCase = makeUseCase(
             passwordRepository = freshPasswordRepo,
             vaultRepository = freshVaultRepo,
-            estimator = FakePasswordStrengthEstimator(Login.Score.Weak),
+            estimator = FakePasswordStrengthEstimator(PasswordScore.Weak),
         )
 
         val result = localUseCase(
@@ -209,23 +210,23 @@ class CreateNewOrUpdateLoginUseCaseTest {
         )
 
         val stored = freshPasswordRepo.getPasswordById(result.getOrNull()!!)
-        assertEquals(Login.Score.Weak, stored?.score)
+        assertEquals(PasswordScore.Weak, stored?.passwordScore)
     }
 
     @Test
     fun `update with new password re-evaluates password strength`() = runTest {
-        val existing = testPassword(score = Login.Score.Weak)
+        val existing = testPassword(passwordScore = PasswordScore.Weak)
         passwordRepository.seed(existing)
 
         // inject an estimator that returns Strong
         val localUseCase = makeUseCase(
-            estimator = FakePasswordStrengthEstimator(Login.Score.Strong)
+            estimator = FakePasswordStrengthEstimator(PasswordScore.Strong)
         )
 
         localUseCase(UpsertPassword.update(itemId = existing.id, password = set("SuperS3cr3t!")))
 
         val updated = passwordRepository.getPasswordById(existing.id)
-        assertEquals(Login.Score.Strong, updated?.score)
+        assertEquals(PasswordScore.Strong, updated?.passwordScore)
     }
 
     // Success — Update
@@ -499,13 +500,13 @@ class CreateNewOrUpdateLoginUseCaseTest {
     private fun testPassword(
         name: String = "Test",
         username: String? = null,
-        score: Login.Score = Login.Score.Strong,
+        passwordScore: PasswordScore = PasswordScore.Strong,
     ) = Login(
         id = newItemId(),
         name = name,
         username = username,
         domainInfos = emptySet(),
-        score = score,
+        passwordScore = passwordScore,
         password = SecretData.EMPTY_STRING,
         totp = null,
         note = null,

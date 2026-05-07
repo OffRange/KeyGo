@@ -60,7 +60,7 @@ internal interface PasswordDao {
     @Query("SELECT * FROM login WHERE id IN (SELECT id FROM item WHERE vault_id = :vaultId)")
     suspend fun getPasswordsByVault(vaultId: VaultId): List<LoginProjection>
 
-    @Query("SELECT login_id AS id, score FROM password")
+    @Query("SELECT login_id AS id, passwordScore FROM password")
     fun observePasswordScores(): Flow<List<PasswordScoreProjection>>
 
     @Upsert

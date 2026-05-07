@@ -132,7 +132,7 @@ class CreateNewOrUpdatePasswordUseCase(
                                 period = 30
                             )
                         },
-                    score = passwordStrength.await(),
+                    passwordScore = passwordStrength.await(),
                     note = upsert.note.getValue(),
                     pinned = false,
                     keyInformation = wrappedItemKey.await(),
@@ -187,7 +187,7 @@ class CreateNewOrUpdatePasswordUseCase(
                     domainInfos = upsert.domains.on(existing.domainInfos).orEmpty(),
                     password = encryptedPassword?.await() ?: existing.password,
                     totp = upsert.totpSecret.on(existing.totp, totpSecret),
-                    score = passwordStrength?.await() ?: existing.score,
+                    passwordScore = passwordStrength?.await() ?: existing.passwordScore,
                     note = upsert.note.on(existing.note),
                 )
             }

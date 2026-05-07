@@ -8,6 +8,7 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.Item
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.SecretData
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import kotlin.test.Test
@@ -28,7 +29,7 @@ class ItemMapperTest {
         name = name,
         username = null,
         domainInfos = emptySet(),
-        score = Login.Score.Strong,
+        passwordScore = PasswordScore.Strong,
         password = SecretData.EMPTY_STRING,
         totp = null,
         note = note,

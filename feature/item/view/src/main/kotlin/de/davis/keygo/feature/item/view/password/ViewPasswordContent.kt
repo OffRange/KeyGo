@@ -73,7 +73,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.DomainInfo
-import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.core.item.presentation.toImageVector
 import de.davis.keygo.core.ui.components.KeyGoCard
@@ -246,7 +246,7 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                     modifier = Modifier.horizontalScroll(scrollState)
                 )
                 StrengthIndicator(
-                    score = state.passwordStrengthScore,
+                    passwordScore = state.passwordStrengthScore,
                     forceCompact = true
                 )
             }
@@ -498,7 +498,7 @@ private fun ViewPasswordContentPreview() {
                     name = "Password 1",
                     passkeyRPs = setOf("example.com", "example.org"),
                     password = ObfuscatedString("Password"),
-                    passwordStrengthScore = Login.Score.Ridiculous,
+                    passwordStrengthScore = PasswordScore.Ridiculous,
                     totpInformation = TotpInformation(
                         code = "123456",
                         validUntil = System.currentTimeMillis() + 30_000L,
@@ -531,7 +531,7 @@ private fun ViewPasswordContentModificationDialogPreview() {
                 state = ViewPasswordState(
                     name = "Password 1",
                     password = ObfuscatedString("Password"),
-                    passwordStrengthScore = Login.Score.Ridiculous,
+                    passwordStrengthScore = PasswordScore.Ridiculous,
                     username = "Username 1",
                     domains = setOf(
                         DomainInfo(
