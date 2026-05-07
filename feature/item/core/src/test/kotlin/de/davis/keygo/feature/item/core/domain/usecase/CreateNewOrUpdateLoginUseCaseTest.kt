@@ -7,7 +7,7 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.KeyInformation
-import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.SecretData
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
@@ -32,7 +32,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-class CreateNewOrUpdatePasswordUseCaseTest {
+class CreateNewOrUpdateLoginUseCaseTest {
 
     private val defaultVault = Vault(
         id = newVaultId(),
@@ -201,7 +201,7 @@ class CreateNewOrUpdatePasswordUseCaseTest {
         val localUseCase = makeUseCase(
             passwordRepository = freshPasswordRepo,
             vaultRepository = freshVaultRepo,
-            estimator = FakePasswordStrengthEstimator(Password.Score.Weak),
+            estimator = FakePasswordStrengthEstimator(Login.Score.Weak),
         )
 
         val result = localUseCase(
@@ -209,23 +209,23 @@ class CreateNewOrUpdatePasswordUseCaseTest {
         )
 
         val stored = freshPasswordRepo.getPasswordById(result.getOrNull()!!)
-        assertEquals(Password.Score.Weak, stored?.score)
+        assertEquals(Login.Score.Weak, stored?.score)
     }
 
     @Test
     fun `update with new password re-evaluates password strength`() = runTest {
-        val existing = testPassword(score = Password.Score.Weak)
+        val existing = testPassword(score = Login.Score.Weak)
         passwordRepository.seed(existing)
 
         // inject an estimator that returns Strong
         val localUseCase = makeUseCase(
-            estimator = FakePasswordStrengthEstimator(Password.Score.Strong)
+            estimator = FakePasswordStrengthEstimator(Login.Score.Strong)
         )
 
         localUseCase(UpsertPassword.update(itemId = existing.id, password = set("SuperS3cr3t!")))
 
         val updated = passwordRepository.getPasswordById(existing.id)
-        assertEquals(Password.Score.Strong, updated?.score)
+        assertEquals(Login.Score.Strong, updated?.score)
     }
 
     // Success — Update
@@ -440,16 +440,16 @@ class CreateNewOrUpdatePasswordUseCaseTest {
         assertNotNull(stored)
 
         val labels = cryptoProvider.encryptCalls.map { it.label }
-        assertContains(labels, Password.LABEL_PASSWORD)
-        assertContains(labels, Password.LABEL_TOTP_SECRET)
+        assertContains(labels, Login.LABEL_PASSWORD)
+        assertContains(labels, Login.LABEL_TOTP_SECRET)
         assertEquals(2, labels.size)
 
         val passwordCall =
-            cryptoProvider.encryptCalls.single { it.label == Password.LABEL_PASSWORD }
+            cryptoProvider.encryptCalls.single { it.label == Login.LABEL_PASSWORD }
         assertContentEquals(plaintextPassword.encodeToByteArray(), passwordCall.plaintext)
 
         val totpCall =
-            cryptoProvider.encryptCalls.single { it.label == Password.LABEL_TOTP_SECRET }
+            cryptoProvider.encryptCalls.single { it.label == Login.LABEL_TOTP_SECRET }
         assertContentEquals(plaintextTotp.encodeToByteArray(), totpCall.plaintext)
 
         assertFalse(stored.password.data.contentEquals(plaintextPassword.encodeToByteArray()))
@@ -484,8 +484,8 @@ class CreateNewOrUpdatePasswordUseCaseTest {
     // Helpers
 
     private fun makeUseCase(
-        passwordRepository: FakePasswordRepository = this@CreateNewOrUpdatePasswordUseCaseTest.passwordRepository,
-        vaultRepository: FakeVaultRepository = this@CreateNewOrUpdatePasswordUseCaseTest.vaultRepository,
+        passwordRepository: FakePasswordRepository = this@CreateNewOrUpdateLoginUseCaseTest.passwordRepository,
+        vaultRepository: FakeVaultRepository = this@CreateNewOrUpdateLoginUseCaseTest.vaultRepository,
         estimator: FakePasswordStrengthEstimator = FakePasswordStrengthEstimator(),
         cryptographicScopeProvider: CryptographicScopeProvider = cryptoProvider,
     ) = CreateNewOrUpdatePasswordUseCase(
@@ -499,8 +499,8 @@ class CreateNewOrUpdatePasswordUseCaseTest {
     private fun testPassword(
         name: String = "Test",
         username: String? = null,
-        score: Password.Score = Password.Score.Strong,
-    ) = Password(
+        score: Login.Score = Login.Score.Strong,
+    ) = Login(
         id = newItemId(),
         name = name,
         username = username,
@@ -514,7 +514,7 @@ class CreateNewOrUpdatePasswordUseCaseTest {
         keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),
     )
 
-    private suspend fun storedById(id: ItemId?): Password? {
+    private suspend fun storedById(id: ItemId?): Login? {
         id ?: return null
         return passwordRepository.getPasswordById(id)
     }

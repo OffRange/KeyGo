@@ -82,7 +82,7 @@ internal class CreatePasskeyViewModel(
                     decryptedDataType = SecretData.DecryptedDataType.StringType
                 ),
                 rp = registrationResponse.rp,
-                passwordId = itemId,
+                loginId = itemId,
                 user = PasskeyUser(
                     name = registrationResponse.userName,
                     displayName = registrationResponse.userDisplayName

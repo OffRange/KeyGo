@@ -10,9 +10,9 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 @Dao
 internal abstract class DomainInfoDao {
 
-    @Query("DELETE FROM domain_info WHERE password_id = :passwordId AND (value IS NULL OR value NOT IN (:except))")
+    @Query("DELETE FROM domain_info WHERE login_id = :loginId AND (value IS NULL OR value NOT IN (:except))")
     protected abstract suspend fun deleteAllDomainsForPassword(
-        passwordId: ItemId,
+        loginId: ItemId,
         except: Set<String> = emptySet()
     )
 
@@ -20,14 +20,14 @@ internal abstract class DomainInfoDao {
     abstract suspend fun upsertAll(domains: Set<DomainInfoEntity>)
 
     @Transaction
-    open suspend fun syncForPassword(passwordId: ItemId, domains: Set<DomainInfoEntity>) {
+    open suspend fun syncForPassword(loginId: ItemId, domains: Set<DomainInfoEntity>) {
         if (domains.isEmpty()) {
-            deleteAllDomainsForPassword(passwordId)
+            deleteAllDomainsForPassword(loginId)
             return
         }
 
-        val adjusted = domains.map { it.copy(passwordId = passwordId) }.toSet()
+        val adjusted = domains.map { it.copy(loginId = loginId) }.toSet()
         upsertAll(adjusted)
-        deleteAllDomainsForPassword(passwordId, adjusted.map { it.value }.toSet())
+        deleteAllDomainsForPassword(loginId, adjusted.map { it.value }.toSet())
     }
 }

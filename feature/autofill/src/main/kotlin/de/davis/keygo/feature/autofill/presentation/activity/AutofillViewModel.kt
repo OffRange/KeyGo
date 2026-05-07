@@ -6,7 +6,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
@@ -230,7 +230,7 @@ internal class AutofillViewModel(
             requestData.form.url?.let {
                 viewModelScope.launch {
                     addRegistrableDomainToPassword(
-                        passwordId = itemId,
+                        loginId = itemId,
                         domain = it
                     )
                 }
@@ -292,7 +292,7 @@ internal class AutofillViewModel(
                         ),
                         wrappedItemKeyInformation = password.wrappedItemKeyInformation()
                     ) {
-                        it.secret.decryptSecretData(label = Password.LABEL_TOTP_SECRET)
+                        it.secret.decryptSecretData(label = Login.LABEL_TOTP_SECRET)
                             .encodeToByteArray()
                     }
                     totpGenerator.observeTotp(secret).first()
@@ -317,8 +317,8 @@ internal class AutofillViewModel(
         }
     }
 
-    private suspend fun sendPasswordFillEvent(password: Password) {
-        val wrappedVaultKey = vaultRepository.getKeyInformation(password.vaultId) ?: run {
+    private suspend fun sendPasswordFillEvent(login: Login) {
+        val wrappedVaultKey = vaultRepository.getKeyInformation(login.vaultId) ?: run {
             eventChannel.send(AutofillEvent.Abort)
             return
         }
@@ -330,24 +330,24 @@ internal class AutofillViewModel(
                 FieldType.Credentials.Password -> cryptographicScopeProvider.itemScope(
                     wrappedVaultKeyInformation = WrappedVaultKeyInformation(
                         wrappedVaultKey = wrappedVaultKey,
-                        vaultId = password.vaultId
+                        vaultId = login.vaultId
                     ),
-                    wrappedItemKeyInformation = password.wrappedItemKeyInformation()
+                    wrappedItemKeyInformation = login.wrappedItemKeyInformation()
                 ) {
-                    password.password.decryptSecretData(label = Password.LABEL_PASSWORD)
+                    login.password.decryptSecretData(label = Login.LABEL_PASSWORD)
                 }
 
-                FieldType.Credentials.Username -> password.username
+                FieldType.Credentials.Username -> login.username
 
                 FieldType.Credentials.EMail -> {
-                    password.username?.let { potentialEmail ->
+                    login.username?.let { potentialEmail ->
                         val isEmail = PatternsCompat.EMAIL_ADDRESS.matcher(potentialEmail).matches()
                         if (isEmail) potentialEmail else null
                     }
                 }
 
                 FieldType.Credentials.Phone -> {
-                    password.username?.let { potentialPhone ->
+                    login.username?.let { potentialPhone ->
                         val isPhone = Patterns.PHONE.matcher(potentialPhone).matches()
                         if (isPhone) potentialPhone else null
                     }

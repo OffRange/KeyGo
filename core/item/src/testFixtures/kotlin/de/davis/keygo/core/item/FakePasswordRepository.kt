@@ -3,8 +3,8 @@ package de.davis.keygo.core.item
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
-import de.davis.keygo.core.item.domain.model.Password
-import de.davis.keygo.core.item.domain.model.lite.LitePassword
+import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.lite.LiteLogin
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.util.Result
 import kotlinx.coroutines.flow.Flow
@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.update
  */
 class FakePasswordRepository : PasswordRepository {
 
-    private val store = MutableStateFlow<Map<ItemId, Password>>(emptyMap())
+    private val store = MutableStateFlow<Map<ItemId, Login>>(emptyMap())
 
     /** Error returned by the next [createOrUpdatePassword] call (cleared after use). */
     var createOrUpdateError: Throwable? = null
@@ -33,20 +33,20 @@ class FakePasswordRepository : PasswordRepository {
      */
     var failCreateOrUpdateForId: Pair<ItemId, Throwable>? = null
 
-    fun seed(vararg passwords: Password) {
-        store.update { it + passwords.associateBy { p -> p.id } }
+    fun seed(vararg logins: Login) {
+        store.update { it + logins.associateBy { p -> p.id } }
     }
 
-    override suspend fun createOrUpdatePassword(password: Password): Result<ItemId, Throwable> {
+    override suspend fun createOrUpdatePassword(login: Login): Result<ItemId, Throwable> {
         failCreateOrUpdateForId?.let { (id, error) ->
-            if (id == password.id) return Result.Failure(error)
+            if (id == login.id) return Result.Failure(error)
         }
         createOrUpdateError?.let {
             createOrUpdateError = null
             return Result.Failure(it)
         }
-        store.update { it + (password.id to password) }
-        return Result.Success(password.id)
+        store.update { it + (login.id to login) }
+        return Result.Success(login.id)
     }
 
     override suspend fun updateDomainInfos(
@@ -63,25 +63,25 @@ class FakePasswordRepository : PasswordRepository {
         etld1: String,
         requireTotp: Boolean,
         limit: Int,
-    ): List<LitePassword> = emptyList()
+    ): List<LiteLogin> = emptyList()
 
     override suspend fun getVaultPasswordsByTLDs(
         etld1s: Set<String>,
         requireTotp: Boolean,
         limit: Int,
-    ): List<LitePassword> = emptyList()
+    ): List<LiteLogin> = emptyList()
 
-    override suspend fun getPasswordById(itemId: ItemId): Password? = store.value[itemId]
+    override suspend fun getPasswordById(itemId: ItemId): Login? = store.value[itemId]
 
-    override suspend fun getPasswordsByVault(vaultId: VaultId): List<Password> =
+    override suspend fun getPasswordsByVault(vaultId: VaultId): List<Login> =
         store.value.values.filter { it.vaultId == vaultId }
 
-    override fun observePasswordById(itemId: ItemId): Flow<Password?> =
+    override fun observePasswordById(itemId: ItemId): Flow<Login?> =
         store.map { it[itemId] }
 
-    override fun observePasswords(): Flow<List<Password>> =
+    override fun observePasswords(): Flow<List<Login>> =
         store.map { it.values.toList() }
 
-    override fun observePasswordScores(): Flow<Map<ItemId, Password.Score>> =
+    override fun observePasswordScores(): Flow<Map<ItemId, Login.Score>> =
         store.map { passwords -> passwords.mapValues { it.value.score } }
 }

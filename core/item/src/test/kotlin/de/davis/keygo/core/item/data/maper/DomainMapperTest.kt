@@ -5,7 +5,7 @@ import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.KeyInformation
-import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.SecretData
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -17,11 +17,11 @@ class DomainMapperTest {
     private fun password(
         id: ItemId = newItemId(),
         domainInfos: Set<DomainInfo> = emptySet(),
-    ) = Password(
+    ) = Login(
         id = id,
         username = null,
         domainInfos = domainInfos,
-        score = Password.Score.Strong,
+        score = Login.Score.Strong,
         password = SecretData.EMPTY_STRING,
         totp = null,
         vaultId = newVaultId(),
@@ -45,11 +45,11 @@ class DomainMapperTest {
     }
 
     @Test
-    fun `toData assigns provided passwordId`() {
+    fun `toData assigns provided loginId`() {
         val id = newItemId()
         val entity = DomainInfo(value = "https://example.com", eTLD1 = null).toData(id)
 
-        assertEquals(id, entity.passwordId)
+        assertEquals(id, entity.loginId)
     }
 
     @Test
@@ -64,7 +64,7 @@ class DomainMapperTest {
     @Test
     fun `toDomain round-trips all fields`() {
         val id = newItemId()
-        val info = DomainInfo(passwordId = id, value = "https://example.com", eTLD1 = "example.com")
+        val info = DomainInfo(loginId = id, value = "https://example.com", eTLD1 = "example.com")
 
         val entity = info.toData(id)
         val result = entity.toDomain()
@@ -88,7 +88,7 @@ class DomainMapperTest {
     }
 
     @Test
-    fun `toDataDomainInfos assigns the given passwordId to all entities`() {
+    fun `toDataDomainInfos assigns the given loginId to all entities`() {
         val id = newItemId()
         val infos = setOf(
             DomainInfo(value = "https://a.com", eTLD1 = "a.com"),
@@ -97,7 +97,7 @@ class DomainMapperTest {
 
         val entities = password(id = id, domainInfos = infos).toDataDomainInfos(id)
 
-        assertTrue(entities.all { it.passwordId == id })
+        assertTrue(entities.all { it.loginId == id })
     }
 
     @Test

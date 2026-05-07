@@ -14,10 +14,11 @@ import de.davis.keygo.core.item.data.local.dao.TotpDao
 import de.davis.keygo.core.item.data.local.dao.VaultDao
 import de.davis.keygo.core.item.data.local.entity.DomainInfoEntity
 import de.davis.keygo.core.item.data.local.entity.ItemEntity
-import de.davis.keygo.core.item.data.local.entity.PasskeyEntity
-import de.davis.keygo.core.item.data.local.entity.PasswordEntity
-import de.davis.keygo.core.item.data.local.entity.TotpEntity
+import de.davis.keygo.core.item.data.local.entity.LoginEntity
 import de.davis.keygo.core.item.data.local.entity.VaultEntity
+import de.davis.keygo.core.item.data.local.entity.credential.PasskeyEntity
+import de.davis.keygo.core.item.data.local.entity.credential.PasswordEntity
+import de.davis.keygo.core.item.data.local.entity.credential.TotpEntity
 import org.koin.core.annotation.Module
 import org.koin.core.annotation.Single
 
@@ -25,6 +26,7 @@ import org.koin.core.annotation.Single
     entities = [
         VaultEntity::class,
         ItemEntity::class,
+        LoginEntity::class,
         TotpEntity::class,
         PasswordEntity::class,
         DomainInfoEntity::class,

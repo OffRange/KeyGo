@@ -1,6 +1,6 @@
 package de.davis.keygo.core.item.data.maper
 
-import de.davis.keygo.core.item.data.local.entity.PasskeyEntity
+import de.davis.keygo.core.item.data.local.entity.credential.PasskeyEntity
 import de.davis.keygo.core.item.data.local.pojo.PasskeyMetadataPojo
 import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasskeyMetadata
@@ -10,7 +10,7 @@ internal fun Passkey.toData() = PasskeyEntity(
     credentialId = credentialId,
     rp = rp,
     privateKey = privateKey,
-    passwordId = passwordId,
+    loginId = loginId,
     name = user.name,
     displayName = user.displayName,
 )
@@ -19,7 +19,7 @@ internal fun PasskeyEntity.toDomain() = Passkey(
     credentialId = credentialId,
     rp = rp,
     privateKey = privateKey,
-    passwordId = passwordId,
+    loginId = loginId,
     user = PasskeyUser(
         name = name,
         displayName = displayName

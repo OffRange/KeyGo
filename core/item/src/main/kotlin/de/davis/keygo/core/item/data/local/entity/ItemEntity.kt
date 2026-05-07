@@ -30,6 +30,7 @@ internal data class ItemEntity(
 
     val name: String,
     val note: String?,
+    @ColumnInfo(name = "item_type")
     val itemType: VaultItemType,
     val pinned: Boolean,
 

@@ -1,6 +1,6 @@
 package de.davis.keygo.feature.autofill.presentation.dataset
 
-import de.davis.keygo.core.item.domain.model.lite.LitePassword
+import de.davis.keygo.core.item.domain.model.lite.LiteLogin
 import de.davis.keygo.core.item.domain.model.lite.LiteVaultItem
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
@@ -30,7 +30,7 @@ internal class SuggestionFinder(
         form: Form,
         count: Int,
         withTOTP: Boolean = false
-    ): List<LitePassword> = form.url?.let {
+    ): List<LiteLogin> = form.url?.let {
         registrableDomainResolver.resolve(it)
     }?.let {
         passwordRepository.getVaultPasswordsByTLD(etld1 = it, requireTotp = withTOTP, limit = count)

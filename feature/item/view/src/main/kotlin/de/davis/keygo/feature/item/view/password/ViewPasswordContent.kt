@@ -73,7 +73,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.DomainInfo
-import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.core.item.presentation.toImageVector
 import de.davis.keygo.core.ui.components.KeyGoCard
@@ -498,7 +498,7 @@ private fun ViewPasswordContentPreview() {
                     name = "Password 1",
                     passkeyRPs = setOf("example.com", "example.org"),
                     password = ObfuscatedString("Password"),
-                    passwordStrengthScore = Password.Score.Ridiculous,
+                    passwordStrengthScore = Login.Score.Ridiculous,
                     totpInformation = TotpInformation(
                         code = "123456",
                         validUntil = System.currentTimeMillis() + 30_000L,
@@ -507,7 +507,7 @@ private fun ViewPasswordContentPreview() {
                     username = "Username 1",
                     domains = setOf(
                         DomainInfo(
-                            passwordId = newItemId(),
+                            loginId = newItemId(),
                             value = "login.example.com",
                             eTLD1 = "example.com"
                         )
@@ -531,11 +531,11 @@ private fun ViewPasswordContentModificationDialogPreview() {
                 state = ViewPasswordState(
                     name = "Password 1",
                     password = ObfuscatedString("Password"),
-                    passwordStrengthScore = Password.Score.Ridiculous,
+                    passwordStrengthScore = Login.Score.Ridiculous,
                     username = "Username 1",
                     domains = setOf(
                         DomainInfo(
-                            passwordId = newItemId(),
+                            loginId = newItemId(),
                             value = "login.example.com",
                             eTLD1 = "example.com"
                         )

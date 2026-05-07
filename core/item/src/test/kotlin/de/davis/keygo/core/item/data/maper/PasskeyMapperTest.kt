@@ -1,6 +1,6 @@
 package de.davis.keygo.core.item.data.maper
 
-import de.davis.keygo.core.item.data.local.entity.PasskeyEntity
+import de.davis.keygo.core.item.data.local.entity.credential.PasskeyEntity
 import de.davis.keygo.core.item.data.local.pojo.PasskeyMetadataPojo
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.Passkey
@@ -21,7 +21,7 @@ class PasskeyMapperTest {
         credentialId = credentialId,
         rp = "example.com",
         privateKey = privateKey,
-        passwordId = newItemId(),
+        loginId = newItemId(),
         user = user,
     )
 
@@ -44,9 +44,9 @@ class PasskeyMapperTest {
     }
 
     @Test
-    fun `toData copies passwordId`() {
+    fun `toData copies loginId`() {
         val passkey = testPasskey()
-        assertEquals(passkey.passwordId, passkey.toData().passwordId)
+        assertEquals(passkey.loginId, passkey.toData().loginId)
     }
 
     @Test
@@ -125,7 +125,7 @@ class PasskeyMapperTest {
         credentialId = credentialId,
         rp = "example.com",
         privateKey = privateKey,
-        passwordId = newItemId(),
+        loginId = newItemId(),
         name = name,
         displayName = displayName,
     )

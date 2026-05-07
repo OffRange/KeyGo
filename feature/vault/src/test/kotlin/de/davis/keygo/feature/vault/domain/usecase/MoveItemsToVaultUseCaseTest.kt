@@ -9,7 +9,7 @@ import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.KeyInformation
-import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.security.crypto.BindingCryptographicScopeProvider
@@ -114,7 +114,7 @@ class MoveItemsToVaultUseCaseTest {
             name = "Acme",
             username = "alice",
             note = "shared corp account",
-            score = Password.Score.Strong,
+            score = Login.Score.Strong,
             domainInfos = setOf(DomainInfo(value = "acme.com", eTLD1 = "acme.com")),
             pinned = true,
             passwordPlaintext = "x",
@@ -332,30 +332,30 @@ class MoveItemsToVaultUseCaseTest {
         name: String = "item",
         username: String? = null,
         note: String? = null,
-        score: Password.Score = Password.Score.Strong,
+        score: Login.Score = Login.Score.Strong,
         domainInfos: Set<DomainInfo> = emptySet(),
         pinned: Boolean = false,
         passwordPlaintext: String,
         totpPlaintext: String? = null,
-    ): Password {
+    ): Login {
         val aad = ItemAad(itemId = id, vaultId = vault.id)
-        val password = cryptographicScopeProvider.itemScope(
+        val login = cryptographicScopeProvider.itemScope(
             wrappedVaultKeyInformation = WrappedVaultKeyInformation(
                 wrappedVaultKey = vault.keyInformation,
                 vaultId = vault.id,
             ),
             wrappedItemKeyInformation = WrappedItemKeyInformation(itemAad = aad),
         ) {
-            Password(
+            Login(
                 id = id,
                 name = name,
                 username = username,
                 domainInfos = domainInfos,
                 score = score,
-                password = passwordPlaintext.encryptSecretData(label = Password.LABEL_PASSWORD),
-                totp = totpPlaintext?.encryptSecretData(label = Password.LABEL_TOTP_SECRET)?.let {
+                password = passwordPlaintext.encryptSecretData(label = Login.LABEL_PASSWORD),
+                totp = totpPlaintext?.encryptSecretData(label = Login.LABEL_TOTP_SECRET)?.let {
                     Totp(
-                        passwordId = id,
+                        loginId = id,
                         secret = it,
                         accountName = "",
                     )
@@ -366,21 +366,21 @@ class MoveItemsToVaultUseCaseTest {
                 keyInformation = wrapCurrentItemKey(),
             )
         }
-        passwordRepository.seed(password)
-        return password
+        passwordRepository.seed(login)
+        return login
     }
 
-    private suspend fun decrypt(password: Password, vault: Vault): Pair<String, String?> =
+    private suspend fun decrypt(login: Login, vault: Vault): Pair<String, String?> =
         cryptographicScopeProvider.itemScope(
             wrappedVaultKeyInformation = WrappedVaultKeyInformation(
                 wrappedVaultKey = vault.keyInformation,
                 vaultId = vault.id,
             ),
-            wrappedItemKeyInformation = password.wrappedItemKeyInformation(),
+            wrappedItemKeyInformation = login.wrappedItemKeyInformation(),
         ) {
-            val pw: String = password.password.decryptSecretData(label = Password.LABEL_PASSWORD)
+            val pw: String = login.password.decryptSecretData(label = Login.LABEL_PASSWORD)
             val totp: String? =
-                password.totp?.secret?.decryptSecretData(label = Password.LABEL_TOTP_SECRET)
+                login.totp?.secret?.decryptSecretData(label = Login.LABEL_TOTP_SECRET)
             pw to totp
         }
 }

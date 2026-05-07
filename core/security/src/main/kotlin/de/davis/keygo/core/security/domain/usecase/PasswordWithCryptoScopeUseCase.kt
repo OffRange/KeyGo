@@ -2,7 +2,7 @@ package de.davis.keygo.core.security.domain.usecase
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Item
-import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScope
@@ -22,14 +22,14 @@ class PasswordWithCryptoScopeUseCase(
 
     suspend fun <R> observe(
         itemId: ItemId,
-        block: suspend CryptographicScope.(Password) -> R
+        block: suspend CryptographicScope.(Login) -> R
     ): Flow<R?> = passwordRepository.observePasswordById(itemId).map { password ->
         password?.let { handleItem(it, block) }
     }
 
     suspend fun <R> oneShot(
         itemId: ItemId,
-        block: suspend CryptographicScope.(Password) -> R,
+        block: suspend CryptographicScope.(Login) -> R,
     ): R? {
         val password = passwordRepository.getPasswordById(itemId) ?: return null
         return handleItem(password, block)

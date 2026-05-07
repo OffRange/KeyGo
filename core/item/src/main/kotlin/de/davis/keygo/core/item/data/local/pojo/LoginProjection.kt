@@ -4,15 +4,16 @@ import androidx.room.Embedded
 import androidx.room.Relation
 import de.davis.keygo.core.item.data.local.entity.DomainInfoEntity
 import de.davis.keygo.core.item.data.local.entity.ItemEntity
-import de.davis.keygo.core.item.data.local.entity.PasskeyEntity
-import de.davis.keygo.core.item.data.local.entity.PasswordEntity
-import de.davis.keygo.core.item.data.local.entity.TotpEntity
+import de.davis.keygo.core.item.data.local.entity.LoginEntity
+import de.davis.keygo.core.item.data.local.entity.credential.PasskeyEntity
+import de.davis.keygo.core.item.data.local.entity.credential.PasswordEntity
+import de.davis.keygo.core.item.data.local.entity.credential.TotpEntity
 
-internal data class VaultPassword(
+internal data class LoginProjection(
+
     @Embedded
-    val passwordEntity: PasswordEntity,
+    val loginEntity: LoginEntity,
 
-    // PasswordEntity.id == ItemEntity.id (shared primary key — "is-a" relationship).
     @Relation(
         parentColumn = "id",
         entityColumn = "id",
@@ -21,20 +22,26 @@ internal data class VaultPassword(
 
     @Relation(
         parentColumn = "id",
-        entityColumn = "password_id",
+        entityColumn = "login_id",
+    )
+    val passwordEntity: PasswordEntity,
+
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "login_id",
         entity = PasskeyEntity::class
     )
     val rpEntity: List<RP>,
 
     @Relation(
         parentColumn = "id",
-        entityColumn = "password_id",
+        entityColumn = "login_id",
     )
     val domains: List<DomainInfoEntity>,
 
     @Relation(
         parentColumn = "id",
-        entityColumn = "password_id",
+        entityColumn = "login_id",
     )
     val totp: TotpEntity?,
 )

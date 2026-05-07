@@ -3,7 +3,7 @@ package de.davis.keygo.core.item.data.local.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
-import de.davis.keygo.core.item.data.local.entity.PasskeyEntity
+import de.davis.keygo.core.item.data.local.entity.credential.PasskeyEntity
 import de.davis.keygo.core.item.data.local.pojo.PasskeyMetadataPojo
 
 @Dao
@@ -22,7 +22,7 @@ internal interface PasskeyDao {
         """
         SELECT pk.credential_id, pk.name, pk.display_name, p.username AS password_username, i.name AS vault_name
         FROM passkey pk
-        INNER JOIN password p ON pk.password_id = p.id
+        INNER JOIN login p ON pk.login_id = p.id
         INNER JOIN item i ON p.id = i.id
         WHERE pk.rp = :rpId
         """

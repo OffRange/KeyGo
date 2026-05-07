@@ -12,13 +12,13 @@ class AddRegistrableDomainsToPasswordUseCase(
     private val registrableDomainResolver: RegistrableDomainResolver
 ) {
 
-    suspend operator fun invoke(passwordId: ItemId, domain: String) {
+    suspend operator fun invoke(loginId: ItemId, domain: String) {
         val domainInfo = DomainInfo(
-            passwordId = passwordId,
+            loginId = loginId,
             value = domain,
             eTLD1 = registrableDomainResolver.resolve(domain)
         )
 
-        passwordRepository.updateDomainInfos(passwordId, setOf(domainInfo))
+        passwordRepository.updateDomainInfos(loginId, setOf(domainInfo))
     }
 }

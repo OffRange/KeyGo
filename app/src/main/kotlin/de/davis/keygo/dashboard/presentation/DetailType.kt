@@ -19,7 +19,7 @@ sealed interface DetailType : Parcelable {
         data class Totp(val uri: String) : Modify {
 
             @IgnoredOnParcel
-            override val vaultItemType: VaultItemType = VaultItemType.Password
+            override val vaultItemType: VaultItemType = VaultItemType.Login
         }
     }
 

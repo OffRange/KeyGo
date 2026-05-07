@@ -2,7 +2,7 @@ package de.davis.keygo.feature.list_screen.presentation.mapper
 
 import androidx.compose.ui.util.fastMapTo
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
@@ -21,8 +21,8 @@ internal fun FilterState.toBottomSheetState(
         showItemTypeChips || available.labels.isNotEmpty() || available.hasPinnedItems
 
     val effectiveItemTypes = restrictedItemType?.let { setOf(it) } ?: selectedItemTypes
-    val showPasswordSection = available.hasPasswordItems &&
-            (effectiveItemTypes.isEmpty() || VaultItemType.Password in effectiveItemTypes)
+    val showLoginSection = available.hasPasswordItems &&
+            (effectiveItemTypes.isEmpty() || VaultItemType.Login in effectiveItemTypes)
 
     return FilterBottomSheetState(
         sortDirection = sortDirection,
@@ -36,7 +36,7 @@ internal fun FilterState.toBottomSheetState(
                 FilterChipState(value = label, selected = label in selectedLabels)
             },
         ) else null,
-        passwordSection = if (showPasswordSection) PasswordSectionState(
+        passwordSection = if (showLoginSection) PasswordSectionState(
             scoreChips = available.scores
                 .sortedByDescending { it.ordinal }
                 .map { score ->
@@ -48,21 +48,21 @@ internal fun FilterState.toBottomSheetState(
 }
 
 internal fun List<LiteItem>.toAvailableFilterOptions(
-    passwordScores: Map<ItemId, Password.Score>,
+    passwordScores: Map<ItemId, Login.Score>,
 ): AvailableFilterOptions {
     val itemTypes = fastMapTo(mutableSetOf()) { it.itemType }
-    val hasPasswordItems = VaultItemType.Password in itemTypes
+    val hasLoginItems = VaultItemType.Login in itemTypes
 
-    val itemIds = if (hasPasswordItems) fastMapTo(mutableSetOf()) { it.id }
+    val itemIds = if (hasLoginItems) fastMapTo(mutableSetOf()) { it.id }
     else emptySet()
 
-    val scores = if (hasPasswordItems)
+    val scores = if (hasLoginItems)
         passwordScores.filterKeys { it in itemIds }.values.toSet()
     else emptySet()
 
     return AvailableFilterOptions(
         itemTypes = itemTypes,
-        hasPasswordItems = hasPasswordItems,
+        hasPasswordItems = hasLoginItems,
         scores = scores,
         labels = emptySet(),
         hasPinnedItems = any { it.pinned },

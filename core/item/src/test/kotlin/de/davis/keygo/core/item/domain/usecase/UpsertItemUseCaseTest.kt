@@ -4,7 +4,7 @@ import de.davis.keygo.core.item.FakePasswordRepository
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.KeyInformation
-import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.SecretData
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
@@ -19,11 +19,11 @@ class UpsertItemUseCaseTest {
     private val passwordRepository = FakePasswordRepository()
     private val useCase = UpsertVaultItemUseCase(passwordRepository)
 
-    private fun testPassword(name: String = "Test") = Password(
+    private fun testPassword(name: String = "Test") = Login(
         id = newItemId(),
         username = "user",
         domainInfos = emptySet(),
-        score = Password.Score.Strong,
+        score = Login.Score.Strong,
         totp = null,
         name = name,
         password = SecretData.EMPTY_STRING,

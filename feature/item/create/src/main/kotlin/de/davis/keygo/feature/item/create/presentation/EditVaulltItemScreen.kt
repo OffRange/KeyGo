@@ -34,7 +34,7 @@ private fun ForInit(
     navigateBack: () -> Unit
 ) {
     when (info.itemType) {
-        VaultItemType.Password -> PasswordScreen(
+        VaultItemType.Login -> PasswordScreen(
             detailPaneInformation = info,
             passwordCreated = onCreated,
             navigateBack = navigateBack

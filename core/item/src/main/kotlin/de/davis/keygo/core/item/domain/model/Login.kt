@@ -8,7 +8,7 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.processor.annotation.VaultEntity
 
 @VaultEntity(resString = "password", defaultIconType = "Password")
-data class Password(
+data class Login(
     override val id: ItemId = newItemId(),
     val username: String?,
     val domainInfos: Set<DomainInfo>,
@@ -24,7 +24,7 @@ data class Password(
 ) : Item {
 
     override val itemType: VaultItemType
-        get() = VaultItemType.Password
+        get() = VaultItemType.Login
 
     companion object {
         const val LABEL_PASSWORD = "password"

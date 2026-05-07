@@ -4,9 +4,9 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
-import de.davis.keygo.core.item.domain.model.Password
-import de.davis.keygo.core.item.domain.model.Password.Companion.LABEL_PASSWORD
-import de.davis.keygo.core.item.domain.model.Password.Companion.LABEL_TOTP_SECRET
+import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.Login.Companion.LABEL_PASSWORD
+import de.davis.keygo.core.item.domain.model.Login.Companion.LABEL_TOTP_SECRET
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
@@ -87,14 +87,14 @@ class CreateNewOrUpdatePasswordUseCase(
     private suspend fun buildCreate(
         upsert: UpsertPassword,
         vaultId: VaultId
-    ): Result<Password, PasswordError> {
+    ): Result<Login, PasswordError> {
         val itemId = newItemId()
 
         val vaultKeyInformation = vaultRepository.getKeyInformation(vaultId)
             ?: return Result.Failure(PasswordError.InvalidVaultId)
         val aad = ItemAad(itemId = itemId, vaultId = vaultId)
 
-        val password = cryptographicScopeProvider.itemScope(
+        val login = cryptographicScopeProvider.itemScope(
             wrappedVaultKeyInformation = WrappedVaultKeyInformation(
                 wrappedVaultKey = vaultKeyInformation,
                 vaultId = vaultId
@@ -114,7 +114,7 @@ class CreateNewOrUpdatePasswordUseCase(
 
                 val wrappedItemKey = async { wrapCurrentItemKey() }
 
-                Password(
+                Login(
                     id = itemId,
                     name = upsert.name.getValue()!!,
                     username = upsert.username.getValue(),
@@ -123,8 +123,7 @@ class CreateNewOrUpdatePasswordUseCase(
                     totp = encryptedTotp?.await()
                         ?.let { // TODO: allow url, otherwise make API cleaner
                             Totp(
-                                passwordId = itemId,
-                                id = -1,
+                                loginId = itemId,
                                 secret = it,
                                 issuer = null,
                                 accountName = "",
@@ -142,14 +141,14 @@ class CreateNewOrUpdatePasswordUseCase(
             }
         }
 
-        return Result.Success(password)
+        return Result.Success(login)
     }
 
     private suspend fun buildUpdate(
         upsert: UpsertPassword,
         id: ItemId,
         targetVaultId: VaultId?,
-    ): Result<Password, PasswordError> {
+    ): Result<Login, PasswordError> {
         val existing = passwordRepository.getPasswordById(id)
             ?: return Result.Failure(PasswordError.InvalidItemId)
 
@@ -172,7 +171,7 @@ class CreateNewOrUpdatePasswordUseCase(
                     async {
                         val result = secret.encryptSecretData(label = LABEL_TOTP_SECRET)
                         existing.totp?.copy(secret = result) ?: Totp(
-                            passwordId = existing.id,
+                            loginId = existing.id,
                             secret = result,
                             accountName = ""
                         )

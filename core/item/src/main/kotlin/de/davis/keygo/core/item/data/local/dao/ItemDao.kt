@@ -37,11 +37,11 @@ internal interface ItemDao {
 
     @Query(
         """
-        SELECT i.id, i.name, i.itemType, i.pinned,
+        SELECT i.id, i.name, i.item_type AS itemType, i.pinned,
                (name LIKE '%' || :query || '%') AS matchedName,
                (note LIKE '%' || :query || '%') AS matchedNote
         FROM item i
-        WHERE (:itemType IS NULL OR itemType = :itemType)
+        WHERE (:itemType IS NULL OR item_type = :itemType)
           AND (name LIKE '%' || :query || '%' OR COALESCE(note, '') LIKE '%' || :query || '%')
         """
     )
@@ -53,7 +53,7 @@ internal interface ItemDao {
     @Query("UPDATE item SET pinned = :pinned WHERE id = :id")
     suspend fun setPinned(id: ItemId, pinned: Boolean)
 
-    @Query("SELECT i.id, i.name, i.itemType, i.pinned FROM item i WHERE (:vaultId IS NULL OR vault_id = :vaultId)")
+    @Query("SELECT i.id, i.name, i.item_type as itemType, i.pinned FROM item i WHERE (:vaultId IS NULL OR vault_id = :vaultId)")
     fun observeLiteItems(vaultId: VaultId? = null): Flow<List<LightweightItem>>
 
     @Query("SELECT id, wrappedKey, keyNonce FROM item WHERE vault_id = :vaultId")

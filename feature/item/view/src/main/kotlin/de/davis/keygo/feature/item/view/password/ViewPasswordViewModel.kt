@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.DomainInfo
-import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
@@ -77,12 +77,12 @@ internal class ViewPasswordViewModel(
             observePasswordWithCryptoScope.observe(itemId = id) { password ->
                 val (obfuscated, totp, vaultMetadata) = coroutineScope {
                     val obfuscated = async {
-                        password.password.decryptSecretData(label = Password.LABEL_PASSWORD)
+                        password.password.decryptSecretData(label = Login.LABEL_PASSWORD)
                             .asObfuscatedString()
                     }
                     val totp = password.totp?.let { totpSecret ->
                         async {
-                            totpSecret.secret.decryptSecretData(label = Password.LABEL_TOTP_SECRET)
+                            totpSecret.secret.decryptSecretData(label = Login.LABEL_TOTP_SECRET)
                                 .encodeToByteArray()
                         }
                     }
@@ -176,7 +176,7 @@ internal class ViewPasswordViewModel(
                     viewModelScope.launch {
                         navigationEventChannel.send(
                             NavigationEvent.NavigateToEdit(
-                                VaultItemType.Password,
+                                VaultItemType.Login,
                                 id
                             )
                         )

@@ -1,9 +1,10 @@
-package de.davis.keygo.core.item.data.local.entity
+package de.davis.keygo.core.item.data.local.entity.credential
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
+import de.davis.keygo.core.item.data.local.entity.LoginEntity
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.SecretData
 
@@ -11,18 +12,17 @@ import de.davis.keygo.core.item.domain.model.SecretData
     tableName = "totp",
     foreignKeys = [
         ForeignKey(
-            entity = PasswordEntity::class,
+            entity = LoginEntity::class,
             parentColumns = ["id"],
-            childColumns = ["password_id"],
+            childColumns = ["login_id"],
             onDelete = ForeignKey.CASCADE,
         )
     ]
 )
 internal data class TotpEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long,
-    @ColumnInfo(name = "password_id")
-    val passwordId: ItemId,
+    @PrimaryKey
+    @ColumnInfo(name = "login_id")
+    val loginId: ItemId,
     val secret: SecretData<String>,
     val issuer: String?,
     val accountName: String,

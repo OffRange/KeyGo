@@ -3,10 +3,9 @@ package de.davis.keygo.core.item.domain.model
 import de.davis.keygo.core.item.domain.alias.ItemId
 
 data class Totp(
-    val passwordId: ItemId,
+    val loginId: ItemId,
     val secret: SecretData<String>,
     val accountName: String,
-    val id: Long = -1,
     val issuer: String? = null,
     val algorithm: String = DEFAULT_ALGORITHM,
     val digits: Int = DEFAULT_DIGITS,

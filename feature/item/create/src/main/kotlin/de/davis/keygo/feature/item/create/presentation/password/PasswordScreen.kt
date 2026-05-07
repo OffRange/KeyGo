@@ -13,7 +13,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun PasswordScreen(
     detailPaneInformation: DetailPaneInformation = DetailPaneInformation.Init.New(
-        itemType = VaultItemType.Password
+        itemType = VaultItemType.Login
     ),
     passwordCreated: (ItemId) -> Unit,
     navigateBack: () -> Unit

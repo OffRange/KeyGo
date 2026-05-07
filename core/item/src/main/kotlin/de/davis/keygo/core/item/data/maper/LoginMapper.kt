@@ -1,22 +1,21 @@
 package de.davis.keygo.core.item.data.maper
 
 import de.davis.keygo.core.item.data.local.entity.DomainInfoEntity
-import de.davis.keygo.core.item.data.local.entity.PasswordEntity
-import de.davis.keygo.core.item.data.local.pojo.LightweightPassword
-import de.davis.keygo.core.item.data.local.pojo.VaultPassword
-import de.davis.keygo.core.item.domain.model.Password
-import de.davis.keygo.core.item.domain.model.lite.LitePassword
+import de.davis.keygo.core.item.data.local.entity.credential.PasswordEntity
+import de.davis.keygo.core.item.data.local.pojo.LightweightLogin
+import de.davis.keygo.core.item.data.local.pojo.LoginProjection
+import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.lite.LiteLogin
 
-internal fun Password.toData(): PasswordEntity = PasswordEntity(
-    id = id,
-    username = username,
+internal fun Login.toData(): PasswordEntity = PasswordEntity(
+    loginId = id,
     score = score,
     password = password,
 )
 
-internal fun VaultPassword.toDomain(): Password = Password(
-    id = passwordEntity.id,
-    username = passwordEntity.username,
+internal fun LoginProjection.toDomain(): Login = Login(
+    id = loginEntity.id,
+    username = loginEntity.username,
     score = passwordEntity.score,
     totp = totp?.toDomain(),
     password = passwordEntity.password,
@@ -32,7 +31,7 @@ internal fun VaultPassword.toDomain(): Password = Password(
     pinned = itemEntity.pinned,
 )
 
-internal fun LightweightPassword.toDomain(): LitePassword = LitePassword(
+internal fun LightweightLogin.toDomain(): LiteLogin = LiteLogin(
     id = id,
     name = name,
     pinned = pinned,

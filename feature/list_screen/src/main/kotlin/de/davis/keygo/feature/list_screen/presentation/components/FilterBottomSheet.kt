@@ -41,7 +41,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
 import de.davis.keygo.core.ui.components.KeyGoCard
@@ -270,7 +270,7 @@ private fun SortSection(
 @Composable
 private fun PasswordSection(
     state: PasswordSectionState,
-    onScoreToggled: (Password.Score) -> Unit,
+    onScoreToggled: (Login.Score) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -325,13 +325,13 @@ private fun SectionHeader(
 }
 
 @Composable
-private fun Password.Score.label(): String = when (this) {
-    Password.Score.None -> ""
-    Password.Score.Ridiculous -> stringResource(CoreItemR.string.password_strength_ridiculous)
-    Password.Score.Weak -> stringResource(CoreItemR.string.password_strength_weak)
-    Password.Score.Moderate -> stringResource(CoreItemR.string.password_strength_moderate)
-    Password.Score.Strong -> stringResource(CoreItemR.string.password_strength_strong)
-    Password.Score.Excellent -> stringResource(CoreItemR.string.password_strength_excellent)
+private fun Login.Score.label(): String = when (this) {
+    Login.Score.None -> ""
+    Login.Score.Ridiculous -> stringResource(CoreItemR.string.password_strength_ridiculous)
+    Login.Score.Weak -> stringResource(CoreItemR.string.password_strength_weak)
+    Login.Score.Moderate -> stringResource(CoreItemR.string.password_strength_moderate)
+    Login.Score.Strong -> stringResource(CoreItemR.string.password_strength_strong)
+    Login.Score.Excellent -> stringResource(CoreItemR.string.password_strength_excellent)
 }
 
 @Composable
@@ -370,11 +370,11 @@ private fun FilterBottomSheetContentPreview() {
                     ),
                     passwordSection = PasswordSectionState(
                         scoreChips = listOf(
-                            FilterChipState(value = Password.Score.Excellent, selected = false),
-                            FilterChipState(value = Password.Score.Strong, selected = false),
-                            FilterChipState(value = Password.Score.Moderate, selected = true),
-                            FilterChipState(value = Password.Score.Weak, selected = true),
-                            FilterChipState(value = Password.Score.Ridiculous, selected = false),
+                            FilterChipState(value = Login.Score.Excellent, selected = false),
+                            FilterChipState(value = Login.Score.Strong, selected = false),
+                            FilterChipState(value = Login.Score.Moderate, selected = true),
+                            FilterChipState(value = Login.Score.Weak, selected = true),
+                            FilterChipState(value = Login.Score.Ridiculous, selected = false),
                         ),
                     ),
                     isDefault = false,

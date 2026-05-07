@@ -230,7 +230,7 @@ private fun ItemListContentPreview() {
                 LiteItemSearchResult(
                     id = newItemId(),
                     name = "Sample Item",
-                    itemType = VaultItemType.Password,
+                    itemType = VaultItemType.Login,
                     pinned = false,
                     matchedName = true,
                     matchedNote = false,

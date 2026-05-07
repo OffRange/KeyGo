@@ -10,7 +10,7 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.DomainInfo
-import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.item.domain.repository.VaultContextRepository
@@ -208,9 +208,9 @@ internal class PasswordViewModel(
         ) { password ->
             val decrypted = coroutineScope {
                 val pwdDeferred =
-                    async { password.password.decryptSecretData(label = Password.LABEL_PASSWORD) }
+                    async { password.password.decryptSecretData(label = Login.LABEL_PASSWORD) }
                 val totpDeferred = password.totp?.let { totp ->
-                    async { totp.secret.decryptSecretData(label = Password.LABEL_TOTP_SECRET) }
+                    async { totp.secret.decryptSecretData(label = Login.LABEL_TOTP_SECRET) }
                 }
                 pwdDeferred.await() to totpDeferred?.await()
             }
@@ -430,7 +430,7 @@ internal class PasswordViewModel(
                     event.domains.forEach { domain ->
                         val registrableDomain = registrableDomainResolver.resolve(domain)
                         val info = DomainInfo(
-                            passwordId = itemId,
+                            loginId = itemId,
                             value = domain,
                             eTLD1 = registrableDomain
                         )
