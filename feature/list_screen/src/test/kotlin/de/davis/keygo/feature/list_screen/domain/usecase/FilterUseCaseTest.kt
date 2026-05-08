@@ -246,7 +246,7 @@ class FilterUseCaseTest {
     }
 
     @Test
-    fun `selecting Password type keeps only passwords`() {
+    fun `selecting Login type keeps only logins`() {
         val state = FilterState(selectedItemTypes = setOf(VaultItemType.Login))
         val result = useCase(state, typedItems, noScores)
 
@@ -268,7 +268,7 @@ class FilterUseCaseTest {
     )
 
     @Test
-    fun `no score selected returns all passwords items`() {
+    fun `no score selected returns all login items`() {
         val state = FilterState(selectedScores = emptySet())
         val result =
             useCase(state, scoredItems, scores).filter { it.itemType == VaultItemType.Login }

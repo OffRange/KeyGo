@@ -20,7 +20,7 @@ import de.davis.keygo.core.item.data.local.entity.KeyInformation as EntityKeyInf
 
 class ItemMapperTest {
 
-    private fun testPassword(
+    private fun testLogin(
         name: String = "My password",
         note: String? = null,
         pinned: Boolean = false,
@@ -41,39 +41,39 @@ class ItemMapperTest {
     // Item.toData() → ItemEntity
 
     @Test
-    fun `Password toData maps id and vaultId`() {
-        val password = testPassword()
-        val entity = (password as Item).toData()
+    fun `Login toData maps id and vaultId`() {
+        val login = testLogin()
+        val entity = (login as Item).toData()
 
-        assertEquals(password.id, entity.id)
-        assertEquals(password.vaultId, entity.vaultId)
+        assertEquals(login.id, entity.id)
+        assertEquals(login.vaultId, entity.vaultId)
     }
 
     @Test
-    fun `Password toData maps name`() {
-        val entity = (testPassword(name = "Work login") as Item).toData()
+    fun `Login toData maps name`() {
+        val entity = (testLogin(name = "Work login") as Item).toData()
         assertEquals("Work login", entity.name)
     }
 
     @Test
-    fun `Password toData maps null note`() {
-        assertEquals(null, (testPassword(note = null) as Item).toData().note)
+    fun `Login toData maps null note`() {
+        assertEquals(null, (testLogin(note = null) as Item).toData().note)
     }
 
     @Test
-    fun `Password toData maps non-null note`() {
-        assertEquals("My note", (testPassword(note = "My note") as Item).toData().note)
+    fun `Login toData maps non-null note`() {
+        assertEquals("My note", (testLogin(note = "My note") as Item).toData().note)
     }
 
     @Test
-    fun `Password toData sets itemType to Password`() {
-        assertEquals(VaultItemType.Login, (testPassword() as Item).toData().itemType)
+    fun `Login toData sets itemType to Login`() {
+        assertEquals(VaultItemType.Login, (testLogin() as Item).toData().itemType)
     }
 
     @Test
-    fun `Password toData maps pinned`() {
-        assertTrue((testPassword(pinned = true) as Item).toData().pinned)
-        assertFalse((testPassword(pinned = false) as Item).toData().pinned)
+    fun `Login toData maps pinned`() {
+        assertTrue((testLogin(pinned = true) as Item).toData().pinned)
+        assertFalse((testLogin(pinned = false) as Item).toData().pinned)
     }
 
     // LightweightItem.toDomain() → LiteItem.Concrete

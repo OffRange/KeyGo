@@ -61,7 +61,7 @@ class MoveItemsToVaultUseCaseTest {
     private val dstVault = makeVault("Destination")
 
     @Test
-    fun `moved password and totp decrypt under destination vault`() = runTest {
+    fun `moved login and totp decrypt under destination vault`() = runTest {
         seedVaults(srcVault, dstVault)
         val passwordPlaintext = "hunter2"
         val totpPlaintext = "JBSWY3DPEHPK3PXP"

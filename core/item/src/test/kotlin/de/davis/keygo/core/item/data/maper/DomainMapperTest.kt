@@ -15,7 +15,7 @@ import kotlin.test.assertTrue
 
 class DomainMapperTest {
 
-    private fun password(
+    private fun login(
         id: ItemId = newItemId(),
         domainInfos: Set<DomainInfo> = emptySet(),
     ) = Login(
@@ -83,7 +83,7 @@ class DomainMapperTest {
             DomainInfo(value = "https://other.com", eTLD1 = "other.com"),
         )
 
-        val entities = password(id = id, domainInfos = infos).toDomainInfoEntities(id)
+        val entities = login(id = id, domainInfos = infos).toDomainInfoEntities(id)
 
         assertEquals(2, entities.size)
     }
@@ -96,14 +96,14 @@ class DomainMapperTest {
             DomainInfo(value = "https://b.com", eTLD1 = "b.com"),
         )
 
-        val entities = password(id = id, domainInfos = infos).toDomainInfoEntities(id)
+        val entities = login(id = id, domainInfos = infos).toDomainInfoEntities(id)
 
         assertTrue(entities.all { it.loginId == id })
     }
 
     @Test
     fun `toDomainInfoEntities on empty domainInfos returns empty set`() {
-        val entities = password(domainInfos = emptySet()).toDomainInfoEntities(newItemId())
+        val entities = login(domainInfos = emptySet()).toDomainInfoEntities(newItemId())
 
         assertTrue(entities.isEmpty())
     }
