@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.item.create.presentation.password.model
+package de.davis.keygo.feature.item.create.presentation.login.model
 
 import de.davis.keygo.core.item.domain.model.lite.LiteLogin
 

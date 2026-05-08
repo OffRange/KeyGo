@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.item.view.password
+package de.davis.keygo.feature.item.view.login
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -80,14 +80,14 @@ import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
 import de.davis.keygo.feature.item.core.presentation.component.CopyToClipboardButton
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
-import de.davis.keygo.feature.item.core.presentation.password.model.FieldType
+import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.transformation.TrimTransformation
 import de.davis.keygo.feature.item.core.presentation.transformation.rememberSchemeStrippingTransformation
 import de.davis.keygo.feature.item.view.R
-import de.davis.keygo.feature.item.view.password.model.ModificationDialog
-import de.davis.keygo.feature.item.view.password.model.ObfuscatedString
-import de.davis.keygo.feature.item.view.password.model.ViewPasswordState
-import de.davis.keygo.feature.item.view.password.model.ViewPasswordUiEvent
+import de.davis.keygo.feature.item.view.login.model.ModificationDialog
+import de.davis.keygo.feature.item.view.login.model.ObfuscatedString
+import de.davis.keygo.feature.item.view.login.model.ViewLoginState
+import de.davis.keygo.feature.item.view.login.model.ViewLoginUiEvent
 import de.davis.keygo.feature.totp.domain.model.TotpInformation
 import de.davis.keygo.feature.totp.presentation.component.QRScanner
 import de.davis.keygo.core.item.R as CoreItemR
@@ -96,7 +96,7 @@ import de.davis.keygo.feature.item.core.R as ItemCoreR
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent) -> Unit) {
+fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     Scaffold(
         topBar = {
@@ -125,41 +125,41 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                                 )
                                 Text(text = metadata.name)
                             }
-                            Text(text = "\u2022")
+                            Text(text = "•")
                             Text(text = stringResource(CoreItemR.string.password))
                         }
                     }
                 },
                 navigationIcon = {
                     if (LocalIsInSinglePaneMode.current) {
-                        IconButton(onClick = { onEvent(ViewPasswordUiEvent.OnBackClick) }) {
+                        IconButton(onClick = { onEvent(ViewLoginUiEvent.OnBackClick) }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Default.ArrowBack,
-                                contentDescription = stringResource(ItemCoreR.string.back_content_description)
+                                contentDescription = stringResource(ItemCoreR.string.back_content_description),
                             )
                         }
                     }
                 },
                 actions = {
                     IconButton(
-                        onClick = { onEvent(ViewPasswordUiEvent.OnPinClick) }
+                        onClick = { onEvent(ViewLoginUiEvent.OnPinClick) },
                     ) {
                         Icon(
                             imageVector = if (state.pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
-                            contentDescription = null
+                            contentDescription = null,
                         )
                     }
 
                     IconButton(
-                        onClick = { onEvent(ViewPasswordUiEvent.OnEditRequest) }
+                        onClick = { onEvent(ViewLoginUiEvent.OnEditRequest) },
                     ) {
                         Icon(
                             imageVector = Icons.Default.Edit,
-                            contentDescription = stringResource(ItemCoreR.string.edit_content_description)
+                            contentDescription = stringResource(ItemCoreR.string.edit_content_description),
                         )
                     }
                 },
-                scrollBehavior = scrollBehavior
+                scrollBehavior = scrollBehavior,
             )
         }
     ) { innerPadding ->
@@ -183,8 +183,8 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                 targetValue = 0f,
                 animationSpec = tween(
                     durationMillis = remaining.toInt(),
-                    easing = LinearEasing
-                )
+                    easing = LinearEasing,
+                ),
             )
         }
 
@@ -195,11 +195,11 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                 .consumeWindowInsets(innerPadding)
                 .padding(start = 8.dp, end = 8.dp, top = 8.dp)
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             entry(
                 title = name,
-                leadingIcon = Icons.Default.Badge
+                leadingIcon = Icons.Default.Badge,
             ) {
                 Text(text = state.name)
             }
@@ -237,17 +237,17 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                 },
                 trailingContent = {
                     CopyToClipboardButton(state.password.raw)
-                }
+                },
             ) {
                 val scrollState = rememberScrollState()
                 Text(
                     text = if (isPasswordHidden) state.password.hidden else state.password.raw,
                     maxLines = 1,
-                    modifier = Modifier.horizontalScroll(scrollState)
+                    modifier = Modifier.horizontalScroll(scrollState),
                 )
                 StrengthIndicator(
                     passwordScore = state.passwordStrengthScore,
-                    forceCompact = true
+                    forceCompact = true,
                 )
             }
 
@@ -257,12 +257,12 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                     leadingIcon = Icons.Default.AccessTime,
                     trailingContent = {
                         CopyToClipboardButton(state.totpInformation.code)
-                    }
+                    },
                 ) {
                     Text(text = state.totpInformation.code.chunked(3).joinToString(" "))
                     LinearProgressIndicator(
                         progress = { progress.value },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
@@ -270,7 +270,7 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
             if (state.username.isNotBlank()) {
                 entry(
                     title = username,
-                    leadingIcon = Icons.Default.Person
+                    leadingIcon = Icons.Default.Person,
                 ) {
                     Text(text = state.username)
                 }
@@ -283,15 +283,15 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                 ) {
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         state.domains.forEach {
                             key(it.value) {
                                 AssistChip(
                                     onClick = {
-                                        onEvent(ViewPasswordUiEvent.OpenWebsite(it.value))
+                                        onEvent(ViewLoginUiEvent.OpenWebsite(it.value))
                                     },
-                                    label = { Text(text = it.value) }
+                                    label = { Text(text = it.value) },
                                 )
                             }
                         }
@@ -312,30 +312,30 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     if (state.totpInformation.code.isBlank()) {
                         AddChip(
                             fieldType = FieldType.Totp,
-                            onClick = { onEvent(ViewPasswordUiEvent.OnModifyFieldRequest(it)) }
+                            onClick = { onEvent(ViewLoginUiEvent.OnModifyFieldRequest(it)) },
                         )
                     }
                     if (state.username.isBlank()) {
                         AddChip(
                             fieldType = FieldType.Username,
-                            onClick = { onEvent(ViewPasswordUiEvent.OnModifyFieldRequest(it)) }
+                            onClick = { onEvent(ViewLoginUiEvent.OnModifyFieldRequest(it)) },
                         )
                     }
 
                     AddChip(
                         fieldType = FieldType.Domain,
-                        onClick = { onEvent(ViewPasswordUiEvent.OnModifyFieldRequest(it)) }
+                        onClick = { onEvent(ViewLoginUiEvent.OnModifyFieldRequest(it)) },
                     )
 
                     if (state.note.isBlank()) {
                         AddChip(
                             fieldType = FieldType.Note,
-                            onClick = { onEvent(ViewPasswordUiEvent.OnModifyFieldRequest(it)) }
+                            onClick = { onEvent(ViewLoginUiEvent.OnModifyFieldRequest(it)) },
                         )
                     }
                 }
@@ -345,16 +345,16 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
         state.modificationDialog?.let { dialog ->
             val textFieldInputState = rememberTextFieldState(dialog.initialValue)
             AlertDialog(
-                onDismissRequest = { onEvent(ViewPasswordUiEvent.OnCloseDialog) },
+                onDismissRequest = { onEvent(ViewLoginUiEvent.OnCloseDialog) },
                 confirmButton = {
                     TextButton(
                         onClick = {
                             onEvent(
-                                ViewPasswordUiEvent.OnSubmitModification(
-                                    textFieldInputState.text.toString()
-                                )
+                                ViewLoginUiEvent.OnSubmitModification(
+                                    textFieldInputState.text.toString(),
+                                ),
                             )
-                        }
+                        },
                     ) {
                         Text(text = stringResource(CoreUiR.string.add))
                     }
@@ -393,11 +393,11 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
                         outsideTrailingContent = if (dialog.fieldType == FieldType.Totp) {
                             {
                                 IconButton(
-                                    onClick = { onEvent(ViewPasswordUiEvent.OnScanCodeRequest) }
+                                    onClick = { onEvent(ViewLoginUiEvent.OnScanCodeRequest) },
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.QrCodeScanner,
-                                        contentDescription = null
+                                        contentDescription = null,
                                     )
                                 }
                             }
@@ -412,10 +412,10 @@ fun ViewPasswordContent(state: ViewPasswordState, onEvent: (ViewPasswordUiEvent)
 
     if (state.scanning) {
         QRScanner(
-            onClose = { onEvent(ViewPasswordUiEvent.OnBackClick) },
+            onClose = { onEvent(ViewLoginUiEvent.OnBackClick) },
             success = {
-                onEvent(ViewPasswordUiEvent.OnCodesScanned(it))
-            }
+                onEvent(ViewLoginUiEvent.OnCodesScanned(it))
+            },
         )
     }
 }
@@ -430,9 +430,9 @@ private fun AddChip(fieldType: FieldType, onClick: (FieldType) -> Unit) {
         leadingIcon = {
             Icon(
                 imageVector = fieldType.addIcon(),
-                contentDescription = null
+                contentDescription = null,
             )
-        }
+        },
     )
 }
 
@@ -479,7 +479,7 @@ private fun LazyListScope.entry(
                 )
             },
             trailingItem = trailingContent,
-            modifier = modifier.animateItem()
+            modifier = modifier.animateItem(),
         ) {
             content()
         }
@@ -488,33 +488,33 @@ private fun LazyListScope.entry(
 
 @Preview
 @Composable
-private fun ViewPasswordContentPreview() {
+private fun ViewLoginContentPreview() {
     MaterialTheme {
         CompositionLocalProvider(
             LocalIsInSinglePaneMode provides true
         ) {
-            ViewPasswordContent(
-                state = ViewPasswordState(
-                    name = "Password 1",
+            ViewLoginContent(
+                state = ViewLoginState(
+                    name = "Login 1",
                     passkeyRPs = setOf("example.com", "example.org"),
                     password = ObfuscatedString("Password"),
                     passwordStrengthScore = PasswordScore.Ridiculous,
                     totpInformation = TotpInformation(
                         code = "123456",
                         validUntil = System.currentTimeMillis() + 30_000L,
-                        maxLifetime = 30_000L
+                        maxLifetime = 30_000L,
                     ),
                     username = "Username 1",
                     domains = setOf(
                         DomainInfo(
                             loginId = newItemId(),
                             value = "login.example.com",
-                            eTLD1 = "example.com"
-                        )
+                            eTLD1 = "example.com",
+                        ),
                     ),
-                    note = "Note about the password or any additional information that might be useful.",
+                    note = "Note about the login or any additional information that might be useful.",
                 ),
-                onEvent = {}
+                onEvent = {},
             )
         }
     }
@@ -522,14 +522,14 @@ private fun ViewPasswordContentPreview() {
 
 @Preview
 @Composable
-private fun ViewPasswordContentModificationDialogPreview() {
+private fun ViewLoginContentModificationDialogPreview() {
     MaterialTheme {
         CompositionLocalProvider(
             LocalIsInSinglePaneMode provides true
         ) {
-            ViewPasswordContent(
-                state = ViewPasswordState(
-                    name = "Password 1",
+            ViewLoginContent(
+                state = ViewLoginState(
+                    name = "Login 1",
                     password = ObfuscatedString("Password"),
                     passwordStrengthScore = PasswordScore.Ridiculous,
                     username = "Username 1",
@@ -537,15 +537,15 @@ private fun ViewPasswordContentModificationDialogPreview() {
                         DomainInfo(
                             loginId = newItemId(),
                             value = "login.example.com",
-                            eTLD1 = "example.com"
-                        )
+                            eTLD1 = "example.com",
+                        ),
                     ),
                     modificationDialog = ModificationDialog(
                         fieldType = FieldType.Name,
-                        initialValue = "Password"
-                    )
+                        initialValue = "Login",
+                    ),
                 ),
-                onEvent = {}
+                onEvent = {},
             )
         }
     }

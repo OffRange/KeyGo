@@ -1,13 +1,19 @@
 package de.davis.keygo.core.item.data.maper
 
 import de.davis.keygo.core.item.data.local.entity.DomainInfoEntity
+import de.davis.keygo.core.item.data.local.entity.LoginEntity
 import de.davis.keygo.core.item.data.local.entity.credential.PasswordEntity
 import de.davis.keygo.core.item.data.local.pojo.LightweightLogin
 import de.davis.keygo.core.item.data.local.pojo.LoginProjection
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.lite.LiteLogin
 
-internal fun Login.toData(): PasswordEntity = PasswordEntity(
+internal fun Login.toLoginEntity(): LoginEntity = LoginEntity(
+    id = id,
+    username = username,
+)
+
+internal fun Login.toPasswordEntity(): PasswordEntity = PasswordEntity(
     loginId = id,
     passwordScore = passwordScore,
     password = password,

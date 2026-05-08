@@ -27,6 +27,7 @@ internal data class PasswordEntity(
     @PrimaryKey
     @ColumnInfo(name = "login_id")
     val loginId: ItemId,
+    @ColumnInfo(name = "password_score")
     val passwordScore: PasswordScore,
     val password: SecretData<String>,
 )

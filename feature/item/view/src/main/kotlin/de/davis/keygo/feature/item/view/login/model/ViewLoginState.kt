@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.item.view.password.model
+package de.davis.keygo.feature.item.view.login.model
 
 import androidx.compose.runtime.Immutable
 import de.davis.keygo.core.item.domain.model.DomainInfo
@@ -6,9 +6,8 @@ import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.feature.totp.domain.model.TotpInformation
 
-
 @Immutable
-data class ViewPasswordState(
+data class ViewLoginState(
     val name: String = "",
     val vaultMetadata: VaultMetadata? = null,
     val passkeyRPs: Set<String> = emptySet(),

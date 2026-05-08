@@ -9,32 +9,33 @@ import de.davis.keygo.core.item.domain.model.lite.LiteLogin
 import de.davis.keygo.core.util.Result
 import kotlinx.coroutines.flow.Flow
 
-interface PasswordRepository {
+interface LoginRepository {
 
-    suspend fun createOrUpdatePassword(login: Login): Result<ItemId, Throwable>
+    suspend fun createOrUpdateLogin(login: Login): Result<ItemId, Throwable>
+
     suspend fun updateDomainInfos(
         itemId: ItemId,
-        domainInfos: Set<DomainInfo>
+        domainInfos: Set<DomainInfo>,
     ): Result<Unit, Throwable>
 
-    suspend fun getVaultPasswordsByTLD(
+    suspend fun getLoginsByTLD(
         etld1: String,
         requireTotp: Boolean = false,
-        limit: Int = -1
+        limit: Int = -1,
     ): List<LiteLogin>
 
-    suspend fun getVaultPasswordsByTLDs(
+    suspend fun getLoginsByTLDs(
         etld1s: Set<String>,
         requireTotp: Boolean = false,
-        limit: Int = -1
+        limit: Int = -1,
     ): List<LiteLogin>
 
-    suspend fun getPasswordById(itemId: ItemId): Login?
+    suspend fun getLoginById(itemId: ItemId): Login?
 
-    suspend fun getPasswordsByVault(vaultId: VaultId): List<Login>
+    suspend fun getLoginsByVault(vaultId: VaultId): List<Login>
 
-    fun observePasswordById(itemId: ItemId): Flow<Login?>
-    fun observePasswords(): Flow<List<Login>>
+    fun observeLoginById(itemId: ItemId): Flow<Login?>
+    fun observeLogins(): Flow<List<Login>>
 
     fun observePasswordScores(): Flow<Map<ItemId, PasswordScore>>
 }

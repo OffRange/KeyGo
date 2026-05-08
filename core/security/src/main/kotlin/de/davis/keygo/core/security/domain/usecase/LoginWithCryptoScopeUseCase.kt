@@ -3,7 +3,7 @@ package de.davis.keygo.core.security.domain.usecase
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Item
 import de.davis.keygo.core.item.domain.model.Login
-import de.davis.keygo.core.item.domain.repository.PasswordRepository
+import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
@@ -14,25 +14,25 @@ import kotlinx.coroutines.flow.map
 import org.koin.core.annotation.Single
 
 @Single
-class PasswordWithCryptoScopeUseCase(
+class LoginWithCryptoScopeUseCase(
     private val vaultRepository: VaultRepository,
-    private val passwordRepository: PasswordRepository,
+    private val loginRepository: LoginRepository,
     private val cryptoScopeProvider: CryptographicScopeProvider,
 ) {
 
     suspend fun <R> observe(
         itemId: ItemId,
-        block: suspend CryptographicScope.(Login) -> R
-    ): Flow<R?> = passwordRepository.observePasswordById(itemId).map { password ->
-        password?.let { handleItem(it, block) }
+        block: suspend CryptographicScope.(Login) -> R,
+    ): Flow<R?> = loginRepository.observeLoginById(itemId).map { login ->
+        login?.let { handleItem(it, block) }
     }
 
     suspend fun <R> oneShot(
         itemId: ItemId,
         block: suspend CryptographicScope.(Login) -> R,
     ): R? {
-        val password = passwordRepository.getPasswordById(itemId) ?: return null
-        return handleItem(password, block)
+        val login = loginRepository.getLoginById(itemId) ?: return null
+        return handleItem(login, block)
     }
 
     private suspend fun <I : Item, R> handleItem(
@@ -46,7 +46,7 @@ class PasswordWithCryptoScopeUseCase(
                 wrappedVaultKey = vaultKeyInfo,
                 vaultId = item.vaultId,
             ),
-            wrappedItemKeyInformation = item.wrappedItemKeyInformation()
+            wrappedItemKeyInformation = item.wrappedItemKeyInformation(),
         ) {
             block(item)
         }

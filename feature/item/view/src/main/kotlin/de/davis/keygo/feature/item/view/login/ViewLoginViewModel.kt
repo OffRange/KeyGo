@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.item.view.password
+package de.davis.keygo.feature.item.view.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -9,26 +9,26 @@ import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.security.domain.crypto.decryptSecretData
-import de.davis.keygo.core.security.domain.usecase.PasswordWithCryptoScopeUseCase
+import de.davis.keygo.core.security.domain.usecase.LoginWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
-import de.davis.keygo.feature.item.core.domain.model.PasswordError
-import de.davis.keygo.feature.item.core.domain.model.UpsertPassword
+import de.davis.keygo.feature.item.core.domain.model.LoginError
+import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.fieldUpdate
 import de.davis.keygo.feature.item.core.domain.model.onSet
 import de.davis.keygo.feature.item.core.domain.model.set
-import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdatePasswordUseCase
+import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
+import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
 import de.davis.keygo.feature.item.core.presentation.model.NavigationEvent
-import de.davis.keygo.feature.item.core.presentation.password.model.FieldType
 import de.davis.keygo.feature.item.view.domain.WebsiteHandler
 import de.davis.keygo.feature.item.view.domain.usecase.IsValidUrlUseCase
-import de.davis.keygo.feature.item.view.password.model.ModificationDialog
-import de.davis.keygo.feature.item.view.password.model.ViewPasswordState
-import de.davis.keygo.feature.item.view.password.model.ViewPasswordUiEvent
-import de.davis.keygo.feature.item.view.password.model.asObfuscatedString
+import de.davis.keygo.feature.item.view.login.model.ModificationDialog
+import de.davis.keygo.feature.item.view.login.model.ViewLoginState
+import de.davis.keygo.feature.item.view.login.model.ViewLoginUiEvent
+import de.davis.keygo.feature.item.view.login.model.asObfuscatedString
 import de.davis.keygo.feature.totp.domain.model.TotpInformation
 import de.davis.keygo.feature.totp.domain.repository.TotpGenerator
 import de.davis.keygo.feature.totp.domain.usecase.GetTotpSecretFromUrlUseCase
@@ -53,16 +53,16 @@ import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
 
 @KoinViewModel
-internal class ViewPasswordViewModel(
+internal class ViewLoginViewModel(
     private val itemRepository: ItemRepository,
     private val vaultRepository: VaultRepository,
-    private val updatePassword: CreateNewOrUpdatePasswordUseCase,
+    private val updateLogin: CreateNewOrUpdateLoginUseCase,
     private val isValidUrl: IsValidUrlUseCase,
     private val websiteHandler: WebsiteHandler,
     private val totpGenerator: TotpGenerator,
     private val registrableDomainResolver: RegistrableDomainResolver,
     private val getTotpSecret: GetTotpSecretFromUrlUseCase,
-    private val observePasswordWithCryptoScope: PasswordWithCryptoScopeUseCase,
+    private val observeLoginWithCryptoScope: LoginWithCryptoScopeUseCase,
 ) : ViewModel() {
 
     private val _modificationDialogState = MutableStateFlow<ModificationDialog?>(null)
@@ -74,40 +74,40 @@ internal class ViewPasswordViewModel(
         .filterNotNull()
         .distinctUntilChanged()
         .flatMapLatest { id ->
-            observePasswordWithCryptoScope.observe(itemId = id) { password ->
+            observeLoginWithCryptoScope.observe(itemId = id) { login ->
                 val (obfuscated, totp, vaultMetadata) = coroutineScope {
                     val obfuscated = async {
-                        password.password.decryptSecretData(label = Login.LABEL_PASSWORD)
+                        login.password.decryptSecretData(label = Login.LABEL_PASSWORD)
                             .asObfuscatedString()
                     }
-                    val totp = password.totp?.let { totpSecret ->
+                    val totp = login.totp?.let { totpSecret ->
                         async {
                             totpSecret.secret.decryptSecretData(label = Login.LABEL_TOTP_SECRET)
                                 .encodeToByteArray()
                         }
                     }
                     val vaultMetadata = async {
-                        vaultRepository.getVaultMetadata(password.vaultId)
+                        vaultRepository.getVaultMetadata(login.vaultId)
                     }
 
                     Triple(
                         obfuscated.await(),
                         totp?.await(),
-                        vaultMetadata.await()
+                        vaultMetadata.await(),
                     )
                 }
 
-                val base = ViewPasswordState(
-                    name = password.name,
+                val base = ViewLoginState(
+                    name = login.name,
                     vaultMetadata = vaultMetadata,
-                    passkeyRPs = password.passkeyRPs,
+                    passkeyRPs = login.passkeyRPs,
                     password = obfuscated,
-                    passwordStrengthScore = password.passwordScore,
-                    username = password.username.orEmpty(),
-                    domains = password.domainInfos,
-                    note = password.note.orEmpty(),
+                    passwordStrengthScore = login.passwordScore,
+                    username = login.username.orEmpty(),
+                    domains = login.domainInfos,
+                    note = login.note.orEmpty(),
                     totpInformation = TotpInformation("", 0, 0),
-                    pinned = password.pinned,
+                    pinned = login.pinned,
                 )
 
                 when (val totpSecret = totp) {
@@ -134,7 +134,7 @@ internal class ViewPasswordViewModel(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = ViewPasswordState()
+        initialValue = ViewLoginState(),
     )
 
     private val navigationEventChannel = Channel<NavigationEvent>()
@@ -146,16 +146,16 @@ internal class ViewPasswordViewModel(
         }
     }
 
-    fun onEvent(event: ViewPasswordUiEvent) {
+    fun onEvent(event: ViewLoginUiEvent) {
         when (event) {
-            ViewPasswordUiEvent.OnBackClick -> {
+            ViewLoginUiEvent.OnBackClick -> {
                 if (_scanning.value) _scanning.update { false }
                 else viewModelScope.launch {
                     navigationEventChannel.send(NavigationEvent.NavigateBack)
                 }
             }
 
-            is ViewPasswordUiEvent.OpenWebsite -> {
+            is ViewLoginUiEvent.OpenWebsite -> {
                 val url = event.domain
                 if (!isValidUrl(url))
                     return
@@ -163,7 +163,7 @@ internal class ViewPasswordViewModel(
                 websiteHandler.openWebsite(url)
             }
 
-            ViewPasswordUiEvent.OnPinClick -> {
+            ViewLoginUiEvent.OnPinClick -> {
                 _itemId.value?.let { id ->
                     viewModelScope.launch {
                         itemRepository.setPinned(id, !state.value.pinned)
@@ -171,24 +171,24 @@ internal class ViewPasswordViewModel(
                 }
             }
 
-            ViewPasswordUiEvent.OnEditRequest -> {
+            ViewLoginUiEvent.OnEditRequest -> {
                 _itemId.value?.let { id ->
                     viewModelScope.launch {
                         navigationEventChannel.send(
                             NavigationEvent.NavigateToEdit(
                                 VaultItemType.Login,
-                                id
+                                id,
                             )
                         )
                     }
                 }
             }
 
-            ViewPasswordUiEvent.OnCloseDialog -> {
+            ViewLoginUiEvent.OnCloseDialog -> {
                 _modificationDialogState.update { null }
             }
 
-            is ViewPasswordUiEvent.OnModifyFieldRequest -> {
+            is ViewLoginUiEvent.OnModifyFieldRequest -> {
                 val fieldType = event.fieldType
                 val state = state.value
                 val initialValue = when (fieldType) {
@@ -203,17 +203,17 @@ internal class ViewPasswordViewModel(
                 _modificationDialogState.update {
                     ModificationDialog(
                         fieldType = fieldType,
-                        initialValue = initialValue
+                        initialValue = initialValue,
                     )
                 }
             }
 
-            ViewPasswordUiEvent.OnScanCodeRequest -> {
+            ViewLoginUiEvent.OnScanCodeRequest -> {
                 _modificationDialogState.update { null }
                 _scanning.update { true }
             }
 
-            is ViewPasswordUiEvent.OnCodesScanned -> {
+            is ViewLoginUiEvent.OnCodesScanned -> {
                 _scanning.update { false }
                 val secret = event.codes.firstNotNullOfOrNull {
                     getTotpSecret(it).getOrNull()
@@ -221,42 +221,42 @@ internal class ViewPasswordViewModel(
 
                 _itemId.value?.let { id ->
                     viewModelScope.launch {
-                        updatePassword(
-                            UpsertPassword.update(
+                        updateLogin(
+                            UpsertLogin.update(
                                 itemId = id,
-                                totpSecret = fieldUpdate(secret)
+                                totpSecret = fieldUpdate(secret),
                             )
                         )
                     }
                 }
             }
 
-            is ViewPasswordUiEvent.OnSubmitModification -> {
+            is ViewLoginUiEvent.OnSubmitModification -> {
                 val dialog = _modificationDialogState.value ?: return
                 val newText = fieldUpdate(event.input)
 
                 _itemId.value?.let { id ->
                     viewModelScope.launch {
-                        updatePassword(
+                        updateLogin(
                             when (dialog.fieldType) {
-                                FieldType.Name -> UpsertPassword.update(
+                                FieldType.Name -> UpsertLogin.update(
                                     itemId = id,
-                                    name = newText
+                                    name = newText,
                                 )
 
-                                FieldType.Password -> UpsertPassword.update(
+                                FieldType.Password -> UpsertLogin.update(
                                     itemId = id,
-                                    password = newText
+                                    password = newText,
                                 )
 
-                                FieldType.Totp -> UpsertPassword.update(
+                                FieldType.Totp -> UpsertLogin.update(
                                     itemId = id,
-                                    totpSecret = newText
+                                    totpSecret = newText,
                                 )
 
-                                FieldType.Username -> UpsertPassword.update(
+                                FieldType.Username -> UpsertLogin.update(
                                     itemId = id,
-                                    username = newText
+                                    username = newText,
                                 )
 
                                 FieldType.Domain -> newText.onSet {
@@ -264,26 +264,26 @@ internal class ViewPasswordViewModel(
                                     val updatedDomains = state.value.domains + DomainInfo(
                                         id,
                                         it,
-                                        eTLD1
+                                        eTLD1,
                                     )
 
-                                    UpsertPassword.update(
+                                    UpsertLogin.update(
                                         itemId = id,
-                                        domains = set(updatedDomains)
+                                        domains = set(updatedDomains),
                                     )
                                 } ?: return@launch
 
-                                FieldType.Note -> UpsertPassword.update(
+                                FieldType.Note -> UpsertLogin.update(
                                     itemId = id,
-                                    note = newText
+                                    note = newText,
                                 )
                             }
                         ).onFailure { failure ->
                             _modificationDialogState.update {
                                 dialog.copy(
-                                    error = if (failure.contains(PasswordError.BlankPassword)
-                                        || failure.contains(PasswordError.BlankName)
-                                    ) InputFieldError.Empty else null
+                                    error = if (failure.contains(LoginError.BlankPassword)
+                                        || failure.contains(LoginError.BlankName)
+                                    ) InputFieldError.Empty else null,
                                 )
                             }
                         }.onSuccess {

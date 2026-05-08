@@ -8,13 +8,13 @@ import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.repository.ItemRepository
-import de.davis.keygo.core.item.domain.repository.PasswordRepository
+import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.decryptSecretData
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
-import de.davis.keygo.feature.autofill.domain.usecase.AddRegistrableDomainsToPasswordUseCase
+import de.davis.keygo.feature.autofill.domain.usecase.AddRegistrableDomainsToLoginUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.DoesItemHaveDomainReferencesUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.IsAppLinkedToWebsiteUseCase
 import de.davis.keygo.feature.autofill.presentation.AutofillDatasetProvider
@@ -47,12 +47,12 @@ import org.koin.core.annotation.KoinViewModel
 internal class AutofillViewModel(
     savedStateHandle: SavedStateHandle,
     private val vaultRepository: VaultRepository,
-    private val passwordRepository: PasswordRepository,
+    private val loginRepository: LoginRepository,
     private val itemRepository: ItemRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val autofillDatasetProvider: AutofillDatasetProvider,
     private val doesItemHaveDomainReferences: DoesItemHaveDomainReferencesUseCase,
-    private val addRegistrableDomainToPassword: AddRegistrableDomainsToPasswordUseCase,
+    private val addRegistrableDomainToLogin: AddRegistrableDomainsToLoginUseCase,
     private val isAppLinkedToWebsite: IsAppLinkedToWebsiteUseCase,
     private val totpGenerator: TotpGenerator,
 ) : ViewModel() {
@@ -229,9 +229,9 @@ internal class AutofillViewModel(
         uiState.value.itemId?.let { itemId ->
             requestData.form.url?.let {
                 viewModelScope.launch {
-                    addRegistrableDomainToPassword(
+                    addRegistrableDomainToLogin(
                         loginId = itemId,
-                        domain = it
+                        domain = it,
                     )
                 }
             }
@@ -257,12 +257,12 @@ internal class AutofillViewModel(
         val formInformation = requestData.form
         when (formInformation.type) {
             is FormType.Credentials -> {
-                val password = passwordRepository.getPasswordById(itemId) ?: run {
+                val login = loginRepository.getLoginById(itemId) ?: run {
                     eventChannel.send(AutofillEvent.Abort)
                     return
                 }
 
-                sendPasswordFillEvent(password)
+                sendLoginFillEvent(login)
             }
 
             is FormType.TOTP -> {
@@ -273,24 +273,24 @@ internal class AutofillViewModel(
                     return
                 }
 
-                // TODO: dont fetch entire password -> just fetch the totp field
-                val password = passwordRepository.getPasswordById(itemId) ?: run {
+                // TODO: don't fetch entire login -> just fetch the totp field
+                val login = loginRepository.getLoginById(itemId) ?: run {
                     eventChannel.send(AutofillEvent.Abort)
                     return
                 }
 
-                val wrappedVaultKey = vaultRepository.getKeyInformation(password.vaultId) ?: run {
+                val wrappedVaultKey = vaultRepository.getKeyInformation(login.vaultId) ?: run {
                     eventChannel.send(AutofillEvent.Abort)
                     return
                 }
 
-                val totp = password.totp?.let {
+                val totp = login.totp?.let {
                     val secret = cryptographicScopeProvider.itemScope(
                         wrappedVaultKeyInformation = WrappedVaultKeyInformation(
                             wrappedVaultKey = wrappedVaultKey,
-                            vaultId = password.vaultId
+                            vaultId = login.vaultId,
                         ),
-                        wrappedItemKeyInformation = password.wrappedItemKeyInformation()
+                        wrappedItemKeyInformation = login.wrappedItemKeyInformation(),
                     ) {
                         it.secret.decryptSecretData(label = Login.LABEL_TOTP_SECRET)
                             .encodeToByteArray()
@@ -317,7 +317,7 @@ internal class AutofillViewModel(
         }
     }
 
-    private suspend fun sendPasswordFillEvent(login: Login) {
+    private suspend fun sendLoginFillEvent(login: Login) {
         val wrappedVaultKey = vaultRepository.getKeyInformation(login.vaultId) ?: run {
             eventChannel.send(AutofillEvent.Abort)
             return

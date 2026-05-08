@@ -1,7 +1,7 @@
-package de.davis.keygo.feature.item.view.password.model
+package de.davis.keygo.feature.item.view.login.model
 
+import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
-import de.davis.keygo.feature.item.core.presentation.password.model.FieldType
 
 data class ModificationDialog(
     val fieldType: FieldType,

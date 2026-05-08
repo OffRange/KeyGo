@@ -5,7 +5,7 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 
 @ConsistentCopyVisibility
-data class UpsertPassword private constructor(
+data class UpsertLogin private constructor(
     val upsertType: UpsertType,
     val name: FieldUpdate<String>,
     val password: FieldUpdate<String>,
@@ -23,7 +23,7 @@ data class UpsertPassword private constructor(
             username: String? = null,
             domains: Set<DomainInfo> = emptySet(),
             note: String? = null,
-        ) = UpsertPassword(
+        ) = UpsertLogin(
             upsertType = UpsertType.Create(vaultId),
             name = FieldUpdate.Set(name),
             password = FieldUpdate.Set(password),
@@ -42,7 +42,7 @@ data class UpsertPassword private constructor(
             username: FieldUpdate<String> = keep(),
             domains: FieldUpdate<Set<DomainInfo>> = keep(),
             note: FieldUpdate<String> = keep(),
-        ) = UpsertPassword(
+        ) = UpsertLogin(
             upsertType = UpsertType.Update(itemId, vaultId),
             name = name,
             password = password,

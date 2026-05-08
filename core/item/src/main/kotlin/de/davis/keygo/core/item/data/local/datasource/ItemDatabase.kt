@@ -8,6 +8,7 @@ import androidx.room.TypeConverters
 import de.davis.keygo.core.item.data.local.converter.SecretDataConverter
 import de.davis.keygo.core.item.data.local.dao.DomainInfoDao
 import de.davis.keygo.core.item.data.local.dao.ItemDao
+import de.davis.keygo.core.item.data.local.dao.LoginDao
 import de.davis.keygo.core.item.data.local.dao.PasskeyDao
 import de.davis.keygo.core.item.data.local.dao.PasswordDao
 import de.davis.keygo.core.item.data.local.dao.TotpDao
@@ -41,6 +42,8 @@ internal abstract class ItemDatabase : RoomDatabase() {
 
     abstract fun itemDao(): ItemDao
 
+    abstract fun loginDao(): LoginDao
+
     abstract fun totpDao(): TotpDao
 
     abstract fun passwordDao(): PasswordDao
@@ -66,6 +69,9 @@ internal class DatabaseModule {
 
     @Single
     fun provideItemDao(db: ItemDatabase) = db.itemDao()
+
+    @Single
+    fun provideLoginDao(db: ItemDatabase) = db.loginDao()
 
     @Single
     fun provideTotpDao(db: ItemDatabase) = db.totpDao()

@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "c24a1d2835ab03e87552dc3e4e2cb930",
+    "identityHash": "f743ef57912ffbfba99e2a2d00ec0f2e",
     "entities": [
       {
         "tableName": "vault",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `name` TEXT NOT NULL, `icon` TEXT NOT NULL, `created_at` INTEGER NOT NULL, `wrappedKey` BLOB NOT NULL, `keyNonce` BLOB NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `name` TEXT NOT NULL, `icon` TEXT NOT NULL, `created_at` INTEGER NOT NULL, `wrapped_key` BLOB NOT NULL, `key_nonce` BLOB NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -34,13 +34,13 @@
           },
           {
             "fieldPath": "keyInformation.wrappedKey",
-            "columnName": "wrappedKey",
+            "columnName": "wrapped_key",
             "affinity": "BLOB",
             "notNull": true
           },
           {
             "fieldPath": "keyInformation.keyNonce",
-            "columnName": "keyNonce",
+            "columnName": "key_nonce",
             "affinity": "BLOB",
             "notNull": true
           }
@@ -54,7 +54,7 @@
       },
       {
         "tableName": "item",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `vault_id` BLOB NOT NULL, `name` TEXT NOT NULL, `note` TEXT, `item_type` TEXT NOT NULL, `pinned` INTEGER NOT NULL, `wrappedKey` BLOB NOT NULL, `keyNonce` BLOB NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`vault_id`) REFERENCES `vault`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `vault_id` BLOB NOT NULL, `name` TEXT NOT NULL, `note` TEXT, `item_type` TEXT NOT NULL, `pinned` INTEGER NOT NULL, `wrapped_key` BLOB NOT NULL, `key_nonce` BLOB NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`vault_id`) REFERENCES `vault`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -93,13 +93,13 @@
           },
           {
             "fieldPath": "keyInformation.wrappedKey",
-            "columnName": "wrappedKey",
+            "columnName": "wrapped_key",
             "affinity": "BLOB",
             "notNull": true
           },
           {
             "fieldPath": "keyInformation.keyNonce",
-            "columnName": "keyNonce",
+            "columnName": "key_nonce",
             "affinity": "BLOB",
             "notNull": true
           }
@@ -173,7 +173,7 @@
       },
       {
         "tableName": "totp",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`login_id` BLOB NOT NULL, `secret` BLOB NOT NULL, `issuer` TEXT, `accountName` TEXT NOT NULL, `algorithm` TEXT NOT NULL, `digits` INTEGER NOT NULL, `period` INTEGER NOT NULL, PRIMARY KEY(`login_id`), FOREIGN KEY(`login_id`) REFERENCES `login`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`login_id` BLOB NOT NULL, `secret` BLOB NOT NULL, `issuer` TEXT, `account_name` TEXT, `algorithm` TEXT NOT NULL, `digits` INTEGER NOT NULL, `period` INTEGER NOT NULL, PRIMARY KEY(`login_id`), FOREIGN KEY(`login_id`) REFERENCES `login`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "loginId",
@@ -194,9 +194,8 @@
           },
           {
             "fieldPath": "accountName",
-            "columnName": "accountName",
-            "affinity": "TEXT",
-            "notNull": true
+            "columnName": "account_name",
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "algorithm",
@@ -239,7 +238,7 @@
       },
       {
         "tableName": "password",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`login_id` BLOB NOT NULL, `passwordScore` TEXT NOT NULL, `password` BLOB NOT NULL, PRIMARY KEY(`login_id`), FOREIGN KEY(`login_id`) REFERENCES `login`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`login_id` BLOB NOT NULL, `password_score` TEXT NOT NULL, `password` BLOB NOT NULL, PRIMARY KEY(`login_id`), FOREIGN KEY(`login_id`) REFERENCES `login`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "loginId",
@@ -249,7 +248,7 @@
           },
           {
             "fieldPath": "passwordScore",
-            "columnName": "passwordScore",
+            "columnName": "password_score",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -418,7 +417,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c24a1d2835ab03e87552dc3e4e2cb930')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f743ef57912ffbfba99e2a2d00ec0f2e')"
     ]
   }
 }

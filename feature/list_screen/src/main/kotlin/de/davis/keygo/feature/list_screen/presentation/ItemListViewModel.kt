@@ -10,7 +10,7 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.getIdOrNull
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.repository.ItemRepository
-import de.davis.keygo.core.item.domain.repository.PasswordRepository
+import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
@@ -57,7 +57,7 @@ internal class ItemListViewModel(
     private val itemRepository: ItemRepository,
     private val filterUseCase: FilterUseCase,
     observeVaultsAndSelection: ObserveVaultsAndSelectionUseCase,
-    passwordRepository: PasswordRepository,
+    loginRepository: LoginRepository,
 ) : ViewModel() {
 
     private val vaultsAndSelection = observeVaultsAndSelection()
@@ -80,7 +80,7 @@ internal class ItemListViewModel(
         items.filterNot { item -> item.id in flagged }
     }.distinctUntilChanged()
 
-    private val passwordScores = passwordRepository.observePasswordScores()
+    private val passwordScores = loginRepository.observePasswordScores()
 
     private val filterState = MutableStateFlow(FilterState.Default)
     private val filteredItems = combine(

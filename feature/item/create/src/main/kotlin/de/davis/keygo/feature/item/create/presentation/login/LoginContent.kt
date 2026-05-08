@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.item.create.presentation.password
+package de.davis.keygo.feature.item.create.presentation.login
 
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
@@ -58,24 +58,25 @@ import de.davis.keygo.feature.item.create.presentation.component.KeyGoItemForm
 import de.davis.keygo.feature.item.create.presentation.component.OverrideTotpDialog
 import de.davis.keygo.feature.item.create.presentation.component.SelectItemForTotpModificationDialog
 import de.davis.keygo.feature.item.create.presentation.component.TotpParseErrorDialog
+import de.davis.keygo.feature.item.create.presentation.login.model.DialogState
+import de.davis.keygo.feature.item.create.presentation.login.model.LoginBaseState
+import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiEvent
+import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiState
 import de.davis.keygo.feature.item.create.presentation.model.VaultsState
-import de.davis.keygo.feature.item.create.presentation.password.model.DialogState
-import de.davis.keygo.feature.item.create.presentation.password.model.PasswordBaseState
-import de.davis.keygo.feature.item.create.presentation.password.model.PasswordUiEvent
-import de.davis.keygo.feature.item.create.presentation.password.model.PasswordUiState
+import de.davis.keygo.feature.item.create.presentation.password.GeneratePasswordModalBottomSheet
 import de.davis.keygo.feature.totp.presentation.component.QRScanner
 import de.davis.keygo.core.item.R as CoreItemR
 import de.davis.keygo.core.ui.R as CoreUiR
 import de.davis.keygo.feature.item.core.R as ItemCoreR
 
 @Composable
-internal fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) -> Unit) {
+internal fun LoginContent(state: LoginUiState, onEvent: (LoginUiEvent) -> Unit) {
     when (state) {
-        PasswordUiState.Loading -> PasswordLoadingScaffold(
-            onBackClick = { onEvent(PasswordUiEvent.OnBackClick) },
+        LoginUiState.Loading -> LoginLoadingScaffold(
+            onBackClick = { onEvent(LoginUiEvent.OnBackClick) },
         )
 
-        is PasswordUiState.Ready -> PasswordReadyContent(
+        is LoginUiState.Ready -> LoginReadyContent(
             state = state.base,
             vaultsState = state.vaultsState,
             onEvent = onEvent,
@@ -85,11 +86,11 @@ internal fun PasswordContent(state: PasswordUiState, onEvent: (PasswordUiEvent) 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun PasswordLoadingScaffold(onBackClick: () -> Unit) {
+private fun LoginLoadingScaffold(onBackClick: () -> Unit) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            PasswordTopAppBar(
+            LoginTopAppBar(
                 updating = false,
                 onBackClick = onBackClick,
             )
@@ -108,10 +109,10 @@ private fun PasswordLoadingScaffold(onBackClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun PasswordReadyContent(
-    state: PasswordBaseState,
+private fun LoginReadyContent(
+    state: LoginBaseState,
     vaultsState: VaultsState,
-    onEvent: (PasswordUiEvent) -> Unit,
+    onEvent: (LoginUiEvent) -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val domainTextFieldState = rememberTextFieldState()
@@ -120,9 +121,9 @@ private fun PasswordReadyContent(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            PasswordTopAppBar(
+            LoginTopAppBar(
                 updating = state.updating,
-                onBackClick = { onEvent(PasswordUiEvent.OnBackClick) },
+                onBackClick = { onEvent(LoginUiEvent.OnBackClick) },
                 actions = {
                     IconButton(onClick = {
                         val pending = domainTextFieldState.text.toString()
@@ -130,13 +131,13 @@ private fun PasswordReadyContent(
                             .filter { it.isNotBlank() }
                             .toSet()
                         if (pending.isNotEmpty()) {
-                            onEvent(PasswordUiEvent.OnAddDomains(pending))
+                            onEvent(LoginUiEvent.OnAddDomains(pending))
                         }
-                        onEvent(PasswordUiEvent.OnSubmit)
+                        onEvent(LoginUiEvent.OnSubmit)
                     }) {
                         Icon(
                             imageVector = Icons.Default.Done,
-                            contentDescription = stringResource(R.string.submit_content_description)
+                            contentDescription = stringResource(R.string.submit_content_description),
                         )
                     }
                 },
@@ -156,14 +157,14 @@ private fun PasswordReadyContent(
             nameError = state.nameError,
             nameExists = state.nameExists,
             vaultsState = vaultsState,
-            onVaultSelect = { onEvent(PasswordUiEvent.OnVaultSelected(it)) }
+            onVaultSelect = { onEvent(LoginUiEvent.OnVaultSelected(it)) },
         ) {
             item(key = "password_information") {
                 var forceCompact by rememberSaveable { mutableStateOf(false) }
 
                 FormGroup(
                     title = stringResource(CoreItemR.string.password),
-                    modifier = Modifier
+                    modifier = Modifier,
                 ) {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -178,16 +179,16 @@ private fun PasswordReadyContent(
                             isSecure = true,
                             outsideTrailingContent = {
                                 IconButton(
-                                    onClick = { onEvent(PasswordUiEvent.OnGeneratePasswordClick) },
+                                    onClick = { onEvent(LoginUiEvent.OnGeneratePasswordClick) },
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.AutoAwesome,
-                                        contentDescription = stringResource(R.string.generate_password_content_description)
+                                        contentDescription = stringResource(R.string.generate_password_content_description),
                                     )
                                 }
                             },
                             error = state.passwordError,
-                            inputTransformation = null
+                            inputTransformation = null,
                         )
 
                         StrengthIndicator(
@@ -202,15 +203,15 @@ private fun PasswordReadyContent(
                         placeholder = { Text(text = stringResource(R.string.totp_secret)) },
                         outsideTrailingContent = {
                             IconButton(
-                                onClick = { onEvent(PasswordUiEvent.OnScanCodeRequest) }
+                                onClick = { onEvent(LoginUiEvent.OnScanCodeRequest) },
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.QrCodeScanner,
-                                    contentDescription = null
+                                    contentDescription = null,
                                 )
                             }
                         },
-                        isSecure = true
+                        isSecure = true,
                     )
 
                     KeyGoFormField(
@@ -228,17 +229,17 @@ private fun PasswordReadyContent(
                     textOf = { it.value },
                     state = domainTextFieldState,
                     onEdit = { old, newDomains ->
-                        onEvent(PasswordUiEvent.OnDeleteDomain(old.value))
-                        onEvent(PasswordUiEvent.OnAddDomains(newDomains))
+                        onEvent(LoginUiEvent.OnDeleteDomain(old.value))
+                        onEvent(LoginUiEvent.OnAddDomains(newDomains))
                     },
                     containsForInput = {
                         state.domains.any { domain -> domain.value == it }
                     },
                     onSubmit = {
-                        onEvent(PasswordUiEvent.OnAddDomains(it))
+                        onEvent(LoginUiEvent.OnAddDomains(it))
                     },
                     onDelete = {
-                        onEvent(PasswordUiEvent.OnDeleteDomain(it.value))
+                        onEvent(LoginUiEvent.OnDeleteDomain(it.value))
                     },
                     label = {
                         Text(text = stringResource(R.string.add_domains))
@@ -262,8 +263,8 @@ private fun PasswordReadyContent(
 
             DialogState.TotpParseError -> {
                 TotpParseErrorDialog(
-                    onDismiss = { onEvent(PasswordUiEvent.OnTotpParseErrorDismiss) },
-                    modifier = Modifier.fillMaxWidth()
+                    onDismiss = { onEvent(LoginUiEvent.OnTotpParseErrorDismiss) },
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
 
@@ -274,10 +275,10 @@ private fun PasswordReadyContent(
                     },
                     items = state.dialogState.items,
                     onItemClicked = { item ->
-                        onEvent(PasswordUiEvent.OnTotpModificationItemSelected(item.id))
+                        onEvent(LoginUiEvent.OnTotpModificationItemSelected(item.id))
                     },
-                    onCreateNew = { onEvent(PasswordUiEvent.OnCreateNewItemForTotp) },
-                    modifier = Modifier.fillMaxWidth()
+                    onCreateNew = { onEvent(LoginUiEvent.OnCreateNewItemForTotp) },
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
 
@@ -288,15 +289,15 @@ private fun PasswordReadyContent(
                     },
                     overrideFields = state.dialogState.fields,
                     onOverride = {
-                        onEvent(PasswordUiEvent.OnOverrideTotpFieldsConfirmed)
+                        onEvent(LoginUiEvent.OnOverrideTotpFieldsConfirmed)
                     },
                     onKeep = {
-                        onEvent(PasswordUiEvent.OnOverrideTotpFieldsKept)
+                        onEvent(LoginUiEvent.OnOverrideTotpFieldsKept)
                     },
                     onFieldClicked = {
-                        onEvent(PasswordUiEvent.OnOverrideFieldClicked(it))
+                        onEvent(LoginUiEvent.OnOverrideFieldClicked(it))
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
@@ -304,28 +305,28 @@ private fun PasswordReadyContent(
 
     if (state.generatePasswordBottomSheetVisible) {
         GeneratePasswordModalBottomSheet(
-            onGenerated = { onEvent(PasswordUiEvent.OnPasswordGenerated(it)) },
-            onDismiss = { onEvent(PasswordUiEvent.OnCloseBottomSheet) }
+            onGenerated = { onEvent(LoginUiEvent.OnPasswordGenerated(it)) },
+            onDismiss = { onEvent(LoginUiEvent.OnCloseBottomSheet) },
         )
     }
 
     if (state.scanning) {
         QRScanner(
-            onClose = { onEvent(PasswordUiEvent.OnBackClick) },
+            onClose = { onEvent(LoginUiEvent.OnBackClick) },
             success = {
-                onEvent(PasswordUiEvent.OnCodesScanned(it))
-            }
+                onEvent(LoginUiEvent.OnCodesScanned(it))
+            },
         )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun PasswordTopAppBar(
+fun LoginTopAppBar(
     updating: Boolean,
     onBackClick: () -> Unit,
     actions: @Composable RowScope.() -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior? = null
+    scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
     MediumFlexibleTopAppBar(
         title = {
@@ -334,8 +335,8 @@ fun PasswordTopAppBar(
                     when {
                         updating -> R.string.update_item
                         else -> CoreUiR.string.create_new_item
-                    }
-                )
+                    },
+                ),
             )
         },
         subtitle = {
@@ -346,13 +347,13 @@ fun PasswordTopAppBar(
                 IconButton(onClick = onBackClick) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Default.ArrowBack,
-                        contentDescription = stringResource(ItemCoreR.string.back_content_description)
+                        contentDescription = stringResource(ItemCoreR.string.back_content_description),
                     )
                 }
             }
         },
         actions = actions,
-        scrollBehavior = scrollBehavior
+        scrollBehavior = scrollBehavior,
     )
 }
 
@@ -361,12 +362,12 @@ private val DELIMITERS = setOf(',', ' ')
 @Preview
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
 @Composable
-private fun PasswordContentPreview() {
+private fun LoginContentPreview() {
     val selectedVaultId = newVaultId()
     KeyGoTheme {
-        PasswordContent(
-            state = PasswordUiState.Ready(
-                base = PasswordBaseState(
+        LoginContent(
+            state = LoginUiState.Ready(
+                base = LoginBaseState(
                     strengthScore = PasswordScore.Weak,
                     domains = setOf(
                         DomainInfo(

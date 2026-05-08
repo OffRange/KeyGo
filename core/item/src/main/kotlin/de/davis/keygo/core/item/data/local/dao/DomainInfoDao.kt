@@ -11,23 +11,23 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 internal abstract class DomainInfoDao {
 
     @Query("DELETE FROM domain_info WHERE login_id = :loginId AND (value IS NULL OR value NOT IN (:except))")
-    protected abstract suspend fun deleteAllDomainsForPassword(
+    protected abstract suspend fun deleteAllDomainsForLogin(
         loginId: ItemId,
-        except: Set<String> = emptySet()
+        except: Set<String> = emptySet(),
     )
 
     @Upsert
     abstract suspend fun upsertAll(domains: Set<DomainInfoEntity>)
 
     @Transaction
-    open suspend fun syncForPassword(loginId: ItemId, domains: Set<DomainInfoEntity>) {
+    open suspend fun syncForLogin(loginId: ItemId, domains: Set<DomainInfoEntity>) {
         if (domains.isEmpty()) {
-            deleteAllDomainsForPassword(loginId)
+            deleteAllDomainsForLogin(loginId)
             return
         }
 
         val adjusted = domains.map { it.copy(loginId = loginId) }.toSet()
         upsertAll(adjusted)
-        deleteAllDomainsForPassword(loginId, adjusted.map { it.value }.toSet())
+        deleteAllDomainsForLogin(loginId, adjusted.map { it.value }.toSet())
     }
 }

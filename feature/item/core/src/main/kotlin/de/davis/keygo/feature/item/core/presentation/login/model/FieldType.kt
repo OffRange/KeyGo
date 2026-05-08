@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.item.core.presentation.password.model
+package de.davis.keygo.feature.item.core.presentation.login.model
 
 enum class FieldType(val isSensitive: Boolean = false) {
     Name,
@@ -6,5 +6,5 @@ enum class FieldType(val isSensitive: Boolean = false) {
     Totp,
     Username,
     Domain,
-    Note
+    Note,
 }

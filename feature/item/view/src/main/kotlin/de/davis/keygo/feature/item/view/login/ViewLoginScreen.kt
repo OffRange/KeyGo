@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.item.view.password
+package de.davis.keygo.feature.item.view.login
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -11,9 +11,9 @@ import de.davis.keygo.feature.item.core.presentation.model.NavigationEvent
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
-fun ViewPasswordScreen(itemId: ItemId, navigate: (NavigationEvent) -> Unit) {
+fun ViewLoginScreen(itemId: ItemId, navigate: (NavigationEvent) -> Unit) {
     val currentId by rememberUpdatedState(itemId)
-    val viewModel: ViewPasswordViewModel = koinViewModel()
+    val viewModel: ViewLoginViewModel = koinViewModel()
     LaunchedEffect(currentId) {
         viewModel.init(currentId)
     }
@@ -24,8 +24,8 @@ fun ViewPasswordScreen(itemId: ItemId, navigate: (NavigationEvent) -> Unit) {
         navigate(it)
     }
 
-    ViewPasswordContent(
+    ViewLoginContent(
         state = state,
-        onEvent = viewModel::onEvent
+        onEvent = viewModel::onEvent,
     )
 }

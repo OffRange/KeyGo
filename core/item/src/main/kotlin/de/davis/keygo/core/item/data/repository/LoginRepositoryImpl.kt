@@ -3,14 +3,17 @@ package de.davis.keygo.core.item.data.repository
 import androidx.room.withTransaction
 import de.davis.keygo.core.item.data.local.dao.DomainInfoDao
 import de.davis.keygo.core.item.data.local.dao.ItemDao
+import de.davis.keygo.core.item.data.local.dao.LoginDao
 import de.davis.keygo.core.item.data.local.dao.PasswordDao
 import de.davis.keygo.core.item.data.local.dao.TotpDao
 import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
 import de.davis.keygo.core.item.data.local.pojo.LightweightLogin
 import de.davis.keygo.core.item.data.local.pojo.LoginProjection
 import de.davis.keygo.core.item.data.maper.toData
-import de.davis.keygo.core.item.data.maper.toDataDomainInfos
 import de.davis.keygo.core.item.data.maper.toDomain
+import de.davis.keygo.core.item.data.maper.toDomainInfoEntities
+import de.davis.keygo.core.item.data.maper.toLoginEntity
+import de.davis.keygo.core.item.data.maper.toPasswordEntity
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
@@ -18,30 +21,32 @@ import de.davis.keygo.core.item.domain.model.Item
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.lite.LiteLogin
-import de.davis.keygo.core.item.domain.repository.PasswordRepository
+import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.util.Result
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.koin.core.annotation.Single
 
 @Single
-internal class PasswordRepositoryImpl(
+internal class LoginRepositoryImpl(
     private val database: ItemDatabase,
     private val itemDao: ItemDao,
+    private val loginDao: LoginDao,
     private val passwordDao: PasswordDao,
     private val domainInfoDao: DomainInfoDao,
     private val totpDao: TotpDao,
-) : PasswordRepository {
+) : LoginRepository {
 
-    override suspend fun createOrUpdatePassword(login: Login): Result<ItemId, Throwable> =
+    override suspend fun createOrUpdateLogin(login: Login): Result<ItemId, Throwable> =
         runCatching {
             database.withTransaction {
                 itemDao.upsert((login as Item).toData())
-                passwordDao.upsert(login.toData())
+                loginDao.upsert(login.toLoginEntity())
+                passwordDao.upsert(login.toPasswordEntity())
                 login.totp?.toData()?.let {
                     totpDao.upsert(it)
                 }
-                domainInfoDao.syncForPassword(login.id, login.toDataDomainInfos(login.id))
+                domainInfoDao.syncForLogin(login.id, login.toDomainInfoEntities(login.id))
 
                 login.id
             }
@@ -52,7 +57,7 @@ internal class PasswordRepositoryImpl(
 
     override suspend fun updateDomainInfos(
         itemId: ItemId,
-        domainInfos: Set<DomainInfo>
+        domainInfos: Set<DomainInfo>,
     ): Result<Unit, Throwable> =
         runCatching {
             database.withTransaction {
@@ -64,33 +69,33 @@ internal class PasswordRepositoryImpl(
             onFailure = { Result.Failure(it) },
         )
 
-    override suspend fun getVaultPasswordsByTLD(
+    override suspend fun getLoginsByTLD(
         etld1: String,
         requireTotp: Boolean,
         limit: Int,
-    ): List<LiteLogin> = getVaultPasswordsByTLDs(setOf(etld1), requireTotp, limit)
+    ): List<LiteLogin> = getLoginsByTLDs(setOf(etld1), requireTotp, limit)
 
-    override suspend fun getVaultPasswordsByTLDs(
+    override suspend fun getLoginsByTLDs(
         etld1s: Set<String>,
         requireTotp: Boolean,
         limit: Int,
     ): List<LiteLogin> =
-        passwordDao.getByTLDs(etld1s, requireTotp, limit).map(LightweightLogin::toDomain)
+        loginDao.getByTLDs(etld1s, requireTotp, limit).map(LightweightLogin::toDomain)
 
-    override suspend fun getPasswordById(itemId: ItemId): Login? =
-        passwordDao.getVaultPassword(itemId)?.toDomain()
+    override suspend fun getLoginById(itemId: ItemId): Login? =
+        loginDao.getById(itemId)?.toDomain()
 
-    override suspend fun getPasswordsByVault(vaultId: VaultId): List<Login> =
-        passwordDao.getPasswordsByVault(vaultId).map(LoginProjection::toDomain)
+    override suspend fun getLoginsByVault(vaultId: VaultId): List<Login> =
+        loginDao.getByVault(vaultId).map(LoginProjection::toDomain)
 
-    override fun observePasswordById(itemId: ItemId): Flow<Login?> =
-        passwordDao.observeVaultPassword(itemId).map { it?.toDomain() }
+    override fun observeLoginById(itemId: ItemId): Flow<Login?> =
+        loginDao.observeById(itemId).map { it?.toDomain() }
 
-    override fun observePasswords(): Flow<List<Login>> =
-        passwordDao.getAllPasswords().map { it.map(LoginProjection::toDomain) }
+    override fun observeLogins(): Flow<List<Login>> =
+        loginDao.observeAll().map { it.map(LoginProjection::toDomain) }
 
     override fun observePasswordScores(): Flow<Map<ItemId, PasswordScore>> =
-        passwordDao.observePasswordScores().map { entries ->
+        passwordDao.observeScores().map { entries ->
             entries.associate { it.id to it.passwordScore }
         }
 }

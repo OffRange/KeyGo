@@ -73,37 +73,37 @@ class DomainMapperTest {
         assertEquals(info, result)
     }
 
-    // toDataDomainInfos
+    // toDomainInfoEntities
 
     @Test
-    fun `toDataDomainInfos maps every DomainInfo to an entity`() {
+    fun `toDomainInfoEntities maps every DomainInfo to an entity`() {
         val id = newItemId()
         val infos = setOf(
             DomainInfo(value = "https://example.com", eTLD1 = "example.com"),
             DomainInfo(value = "https://other.com", eTLD1 = "other.com"),
         )
 
-        val entities = password(id = id, domainInfos = infos).toDataDomainInfos(id)
+        val entities = password(id = id, domainInfos = infos).toDomainInfoEntities(id)
 
         assertEquals(2, entities.size)
     }
 
     @Test
-    fun `toDataDomainInfos assigns the given loginId to all entities`() {
+    fun `toDomainInfoEntities assigns the given loginId to all entities`() {
         val id = newItemId()
         val infos = setOf(
             DomainInfo(value = "https://a.com", eTLD1 = "a.com"),
             DomainInfo(value = "https://b.com", eTLD1 = "b.com"),
         )
 
-        val entities = password(id = id, domainInfos = infos).toDataDomainInfos(id)
+        val entities = password(id = id, domainInfos = infos).toDomainInfoEntities(id)
 
         assertTrue(entities.all { it.loginId == id })
     }
 
     @Test
-    fun `toDataDomainInfos on empty domainInfos returns empty set`() {
-        val entities = password(domainInfos = emptySet()).toDataDomainInfos(newItemId())
+    fun `toDomainInfoEntities on empty domainInfos returns empty set`() {
+        val entities = password(domainInfos = emptySet()).toDomainInfoEntities(newItemId())
 
         assertTrue(entities.isEmpty())
     }

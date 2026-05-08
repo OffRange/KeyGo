@@ -1,6 +1,6 @@
 package de.davis.keygo.core.item.domain.usecase
 
-import de.davis.keygo.core.item.FakePasswordRepository
+import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.KeyInformation
@@ -17,10 +17,10 @@ import kotlin.test.assertTrue
 
 class UpsertItemUseCaseTest {
 
-    private val passwordRepository = FakePasswordRepository()
-    private val useCase = UpsertVaultItemUseCase(passwordRepository)
+    private val loginRepository = FakeLoginRepository()
+    private val useCase = UpsertVaultItemUseCase(loginRepository)
 
-    private fun testPassword(name: String = "Test") = Login(
+    private fun testLogin(name: String = "Test") = Login(
         id = newItemId(),
         username = "user",
         domainInfos = emptySet(),
@@ -38,30 +38,30 @@ class UpsertItemUseCaseTest {
     )
 
     @Test
-    fun `delegates password to passwordRepository`() = runTest {
-        val password = testPassword()
+    fun `delegates login to loginRepository`() = runTest {
+        val login = testLogin()
 
-        useCase(password)
+        useCase(login)
 
-        assertNotNull(passwordRepository.getPasswordById(password.id))
+        assertNotNull(loginRepository.getLoginById(login.id))
     }
 
     @Test
     fun `returns success with item id`() = runTest {
-        val password = testPassword()
+        val login = testLogin()
 
-        val result = useCase(password)
+        val result = useCase(login)
 
         assertTrue(result.isSuccess())
-        assertEquals(password.id, result.success)
+        assertEquals(login.id, result.success)
     }
 
     @Test
     fun `returns failure from repository`() = runTest {
         val error = RuntimeException("db error")
-        passwordRepository.createOrUpdateError = error
+        loginRepository.createOrUpdateError = error
 
-        val result = useCase(testPassword())
+        val result = useCase(testLogin())
 
         assertTrue(result.isFailure())
         assertEquals(error, result.error)

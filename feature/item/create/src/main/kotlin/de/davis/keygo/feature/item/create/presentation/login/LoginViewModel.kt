@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.item.create.presentation.password
+package de.davis.keygo.feature.item.create.presentation.login
 
 import android.util.Log
 import androidx.compose.foundation.text.input.TextFieldState
@@ -12,11 +12,11 @@ import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.repository.ItemRepository
-import de.davis.keygo.core.item.domain.repository.PasswordRepository
+import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.crypto.decryptSecretData
-import de.davis.keygo.core.security.domain.usecase.PasswordWithCryptoScopeUseCase
+import de.davis.keygo.core.security.domain.usecase.LoginWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
@@ -24,21 +24,21 @@ import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
-import de.davis.keygo.feature.item.core.domain.model.PasswordError
-import de.davis.keygo.feature.item.core.domain.model.UpsertPassword
+import de.davis.keygo.feature.item.core.domain.model.LoginError
+import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.fieldUpdate
 import de.davis.keygo.feature.item.core.domain.model.set
-import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdatePasswordUseCase
+import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
+import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
-import de.davis.keygo.feature.item.core.presentation.password.model.FieldType
 import de.davis.keygo.feature.item.create.R
+import de.davis.keygo.feature.item.create.presentation.login.model.DialogState
+import de.davis.keygo.feature.item.create.presentation.login.model.LoginBaseState
+import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiEvent
+import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiState
+import de.davis.keygo.feature.item.create.presentation.login.model.OverrideTotpField
 import de.davis.keygo.feature.item.create.presentation.model.VaultsState
-import de.davis.keygo.feature.item.create.presentation.password.model.DialogState
-import de.davis.keygo.feature.item.create.presentation.password.model.OverrideTotpField
-import de.davis.keygo.feature.item.create.presentation.password.model.PasswordBaseState
-import de.davis.keygo.feature.item.create.presentation.password.model.PasswordUiEvent
-import de.davis.keygo.feature.item.create.presentation.password.model.PasswordUiState
 import de.davis.keygo.feature.totp.domain.model.TotpSecretInformation
 import de.davis.keygo.feature.totp.domain.usecase.GetTotpSecretFromUrlUseCase
 import kotlinx.coroutines.Dispatchers
@@ -67,25 +67,25 @@ import org.koin.core.annotation.KoinViewModel
 import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
-internal class PasswordViewModel(
-    private val passwordWithCryptoScopeUseCase: PasswordWithCryptoScopeUseCase,
+internal class LoginViewModel(
+    private val loginWithCryptoScope: LoginWithCryptoScopeUseCase,
     private val itemRepository: ItemRepository,
-    private val passwordRepository: PasswordRepository,
+    private val loginRepository: LoginRepository,
     private val vaultContextRepository: VaultContextRepository,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
-    private val createNewOrUpdatePassword: CreateNewOrUpdatePasswordUseCase,
+    private val createNewOrUpdateLogin: CreateNewOrUpdateLoginUseCase,
     private val snackbarManager: SnackbarManager,
     private val getTotpSecret: GetTotpSecretFromUrlUseCase,
     private val registrableDomainResolver: RegistrableDomainResolver,
-    vaultRepository: VaultRepository
+    vaultRepository: VaultRepository,
 ) : ViewModel() {
 
     private val nameTextFieldState = TextFieldState()
     private val passwordTextFieldState = TextFieldState()
     private val _base = MutableStateFlow(
-        PasswordBaseState(
+        LoginBaseState(
             nameTextFieldState = nameTextFieldState,
-            passwordTextFieldState = passwordTextFieldState
+            passwordTextFieldState = passwordTextFieldState,
         )
     )
 
@@ -99,7 +99,7 @@ internal class PasswordViewModel(
     }.distinctUntilChanged()
 
     val state = combine(_base, vaultsFlow) { base, vaults ->
-        PasswordUiState.Ready(base = base, vaultsState = vaults)
+        LoginUiState.Ready(base = base, vaultsState = vaults)
     }.onStart {
         observeNameTextField()
         observePasswordTextField()
@@ -107,7 +107,7 @@ internal class PasswordViewModel(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = PasswordUiState.Loading,
+        initialValue = LoginUiState.Loading,
     )
 
     private val itemCreatedEventChannel = Channel<ItemId?>()
@@ -124,7 +124,7 @@ internal class PasswordViewModel(
                 itemRepository.doesNameExist(
                     input.toString(),
                     excludeId = itemId,
-                    vaultId = vaultId
+                    vaultId = vaultId,
                 )
             }
             .distinctUntilChanged()
@@ -184,7 +184,7 @@ internal class PasswordViewModel(
                     val eTLD1 = registrableDomainResolver.resolve(it)
                     DomainInfo(
                         value = it,
-                        eTLD1 = eTLD1
+                        eTLD1 = eTLD1,
                     )
                 }
 
@@ -193,7 +193,7 @@ internal class PasswordViewModel(
                     it.copy(
                         usernameTextFieldState = TextFieldState(createRaw.username),
                         domains = setOfNotNull(domainInfo),
-                        updating = false
+                        updating = false,
                     )
                 }
             }
@@ -203,28 +203,28 @@ internal class PasswordViewModel(
     private suspend fun initWithId(itemId: ItemId) {
         this.itemId = itemId
 
-        passwordWithCryptoScopeUseCase.oneShot(
+        loginWithCryptoScope.oneShot(
             itemId = itemId,
-        ) { password ->
+        ) { login ->
             val decrypted = coroutineScope {
                 val pwdDeferred =
-                    async { password.password.decryptSecretData(label = Login.LABEL_PASSWORD) }
-                val totpDeferred = password.totp?.let { totp ->
+                    async { login.password.decryptSecretData(label = Login.LABEL_PASSWORD) }
+                val totpDeferred = login.totp?.let { totp ->
                     async { totp.secret.decryptSecretData(label = Login.LABEL_TOTP_SECRET) }
                 }
                 pwdDeferred.await() to totpDeferred?.await()
             }
 
-            nameTextFieldState.setTextAndPlaceCursorAtEnd(password.name)
+            nameTextFieldState.setTextAndPlaceCursorAtEnd(login.name)
             passwordTextFieldState.setTextAndPlaceCursorAtEnd(decrypted.first)
 
-            _selectedVaultId.update { password.vaultId }
+            _selectedVaultId.update { login.vaultId }
             _base.update {
                 it.copy(
                     totpTextFieldState = TextFieldState(decrypted.second ?: ""),
-                    usernameTextFieldState = TextFieldState(password.username ?: ""),
-                    domains = password.domainInfos,
-                    notesTextFieldState = TextFieldState(password.note ?: ""),
+                    usernameTextFieldState = TextFieldState(login.username ?: ""),
+                    domains = login.domainInfos,
+                    notesTextFieldState = TextFieldState(login.note ?: ""),
                     dialogState = DialogState.None,
                     updating = true,
                 )
@@ -246,7 +246,7 @@ internal class PasswordViewModel(
                 val matchedItems = secret.issuer?.let {
                     registrableDomainResolver.resolve(it)
                 }?.let {
-                    passwordRepository.getVaultPasswordsByTLD(etld1 = it)
+                    loginRepository.getLoginsByTLD(etld1 = it)
                 }
 
                 if (matchedItems.isNullOrEmpty()) {
@@ -257,7 +257,7 @@ internal class PasswordViewModel(
                 _base.update {
                     it.copy(
                         dialogState = DialogState.SelectItemForModification(
-                            items = matchedItems
+                            items = matchedItems,
                         )
                     )
                 }
@@ -265,14 +265,14 @@ internal class PasswordViewModel(
         }
     }
 
-    fun onEvent(event: PasswordUiEvent) {
+    fun onEvent(event: LoginUiEvent) {
         when (event) {
-            is PasswordUiEvent.OnSubmit -> {
-                val ready = state.value as? PasswordUiState.Ready ?: return
+            is LoginUiEvent.OnSubmit -> {
+                val ready = state.value as? LoginUiState.Ready ?: return
                 val base = ready.base
                 viewModelScope.launch {
                     val upsert = itemId?.let { itemId ->
-                        UpsertPassword.update(
+                        UpsertLogin.update(
                             itemId = itemId,
                             vaultId = ready.vaultsState.selectedVaultId,
                             name = fieldUpdate(base.nameTextFieldState.text.toString()),
@@ -280,49 +280,49 @@ internal class PasswordViewModel(
                             domains = set(base.domains),
                             password = fieldUpdate(base.passwordTextFieldState.text.toString()),
                             totpSecret = fieldUpdate(base.totpTextFieldState.text.toString()),
-                            note = fieldUpdate(base.notesTextFieldState.text.toString())
+                            note = fieldUpdate(base.notesTextFieldState.text.toString()),
                         )
-                    } ?: UpsertPassword.create(
+                    } ?: UpsertLogin.create(
                         vaultId = ready.vaultsState.selectedVaultId,
                         name = base.nameTextFieldState.text.toString(),
                         username = base.usernameTextFieldState.text.toString(),
                         domains = base.domains,
                         password = base.passwordTextFieldState.text.toString(),
                         totpSecret = base.totpTextFieldState.text.toString(),
-                        note = base.notesTextFieldState.text.toString()
+                        note = base.notesTextFieldState.text.toString(),
                     )
 
-                    createNewOrUpdatePassword(
-                        upsert = upsert
+                    createNewOrUpdateLogin(
+                        upsert = upsert,
                     ).onSuccess {
                         navigateUp(it)
                     }.onFailure { failure ->
                         _base.update {
                             it.copy(
-                                nameError = if (failure.contains(PasswordError.BlankName)) InputFieldError.Empty else null,
-                                passwordError = if (failure.contains(PasswordError.BlankPassword)) InputFieldError.Empty else null
+                                nameError = if (failure.contains(LoginError.BlankName)) InputFieldError.Empty else null,
+                                passwordError = if (failure.contains(LoginError.BlankPassword)) InputFieldError.Empty else null,
                             )
                         }
 
-                        if (failure.any { it is PasswordError.InvalidVaultId }) {
+                        if (failure.any { it is LoginError.InvalidVaultId }) {
                             snackbarManager.sendMessage(
                                 message = SnackbarMessage(
-                                    message = ResourceString(R.string.invalid_vault_id)
-                                )
+                                    message = ResourceString(R.string.invalid_vault_id),
+                                ),
                             )
                         }
 
-                        if (failure.any { it is PasswordError.DatabaseError }) {
-                            failure.filterIsInstance<PasswordError.DatabaseError>()
+                        if (failure.any { it is LoginError.DatabaseError }) {
+                            failure.filterIsInstance<LoginError.DatabaseError>()
                                 .first()
                                 .let { dbError ->
                                     snackbarManager.sendMessage(
                                         message = SnackbarMessage(
                                             message = ResourceString(
                                                 R.string.database_error,
-                                                dbError.throwable.message ?: "no message"
+                                                dbError.throwable.message ?: "no message",
                                             ),
-                                        )
+                                        ),
                                     )
                                 }
                         }
@@ -330,11 +330,11 @@ internal class PasswordViewModel(
                 }
             }
 
-            is PasswordUiEvent.OnGeneratePasswordClick -> {
+            is LoginUiEvent.OnGeneratePasswordClick -> {
                 _base.update { it.copy(generatePasswordBottomSheetVisible = true) }
             }
 
-            is PasswordUiEvent.OnBackClick -> {
+            is LoginUiEvent.OnBackClick -> {
                 if (_base.value.scanning) {
                     _base.update { it.copy(scanning = false) }
                     return
@@ -343,15 +343,15 @@ internal class PasswordViewModel(
                 navigateUp()
             }
 
-            is PasswordUiEvent.OnCloseBottomSheet -> {
+            is LoginUiEvent.OnCloseBottomSheet -> {
                 _base.update { it.copy(generatePasswordBottomSheetVisible = false) }
             }
 
-            is PasswordUiEvent.OnScanCodeRequest -> {
+            is LoginUiEvent.OnScanCodeRequest -> {
                 _base.update { it.copy(scanning = true) }
             }
 
-            is PasswordUiEvent.OnCodesScanned -> {
+            is LoginUiEvent.OnCodesScanned -> {
                 event.codes.firstNotNullOfOrNull {
                     getTotpSecret(it).onFailure { failure ->
                         Log.e(TAG, "Error parsing TOTP URI: $failure")
@@ -366,17 +366,17 @@ internal class PasswordViewModel(
                 } ?: showTotpParseError()
             }
 
-            is PasswordUiEvent.OnTotpModificationItemSelected -> {
+            is LoginUiEvent.OnTotpModificationItemSelected -> {
                 viewModelScope.launch { initWithId(event.itemId) }
             }
 
-            is PasswordUiEvent.OnCreateNewItemForTotp -> {
+            is LoginUiEvent.OnCreateNewItemForTotp -> {
                 totpSecretInformation?.let {
                     updateUiWithTotpSecretInfo(it)
                 }
             }
 
-            is PasswordUiEvent.OnOverrideFieldClicked -> {
+            is LoginUiEvent.OnOverrideFieldClicked -> {
                 _base.update {
                     it.copy(
                         dialogState = when (it.dialogState) {
@@ -395,7 +395,7 @@ internal class PasswordViewModel(
                 }
             }
 
-            is PasswordUiEvent.OnOverrideTotpFieldsConfirmed -> {
+            is LoginUiEvent.OnOverrideTotpFieldsConfirmed -> {
                 val currentDialogState = _base.value.dialogState
                 if (currentDialogState !is DialogState.OverrideTotp) return
 
@@ -407,7 +407,7 @@ internal class PasswordViewModel(
                 }
             }
 
-            is PasswordUiEvent.OnOverrideTotpFieldsKept -> {
+            is LoginUiEvent.OnOverrideTotpFieldsKept -> {
                 val currentDialogState = _base.value.dialogState
                 if (currentDialogState !is DialogState.OverrideTotp) return
 
@@ -416,23 +416,23 @@ internal class PasswordViewModel(
                 }
             }
 
-            is PasswordUiEvent.OnTotpParseErrorDismiss -> {
+            is LoginUiEvent.OnTotpParseErrorDismiss -> {
                 _base.update {
                     it.copy(
                         dialogState = DialogState.None,
-                        scanning = false
+                        scanning = false,
                     )
                 }
             }
 
-            is PasswordUiEvent.OnAddDomains -> {
+            is LoginUiEvent.OnAddDomains -> {
                 itemId?.let { itemId ->
                     event.domains.forEach { domain ->
                         val registrableDomain = registrableDomainResolver.resolve(domain)
                         val info = DomainInfo(
                             loginId = itemId,
                             value = domain,
-                            eTLD1 = registrableDomain
+                            eTLD1 = registrableDomain,
                         )
                         _base.update {
                             it.copy(domains = it.domains + info)
@@ -441,22 +441,22 @@ internal class PasswordViewModel(
                 }
             }
 
-            is PasswordUiEvent.OnDeleteDomain -> {
+            is LoginUiEvent.OnDeleteDomain -> {
                 _base.update {
                     it.copy(
-                        domains = it.domains.filterNot { info -> info.value == event.value }.toSet()
+                        domains = it.domains.filterNot { info -> info.value == event.value }.toSet(),
                     )
                 }
             }
 
-            is PasswordUiEvent.OnPasswordGenerated -> {
+            is LoginUiEvent.OnPasswordGenerated -> {
                 passwordTextFieldState.setTextAndPlaceCursorAtEnd(event.password)
                 _base.update {
                     it.copy(generatePasswordBottomSheetVisible = false)
                 }
             }
 
-            is PasswordUiEvent.OnVaultSelected -> {
+            is LoginUiEvent.OnVaultSelected -> {
                 _selectedVaultId.value = event.vaultId
             }
         }
@@ -471,7 +471,7 @@ internal class PasswordViewModel(
         updateUiWithSpecificTotpSecretInfo(
             secret = secretField?.overrideWith(),
             issuer = domainField?.overrideWith(),
-            accountName = usernameField?.overrideWith()
+            accountName = usernameField?.overrideWith(),
         )
     }
 
@@ -503,7 +503,7 @@ internal class PasswordViewModel(
                 OverrideTotpField(
                     fieldType = FieldType.Totp,
                     before = currentTotpSecret,
-                    after = newTotpSecret
+                    after = newTotpSecret,
                 )
             )
         }
@@ -513,7 +513,7 @@ internal class PasswordViewModel(
                 OverrideTotpField(
                     fieldType = FieldType.Username,
                     before = currentAccountName,
-                    after = newAccountName
+                    after = newAccountName,
                 )
             )
         }
@@ -522,7 +522,7 @@ internal class PasswordViewModel(
             secret = if (!isOverridingTotpSecret) newTotpSecret else null,
             issuer = if (isAddingNewIssuer) newIssuer else null,
             accountName = if (!isOverridingAccountName) newAccountName else null,
-            closeDialog = false
+            closeDialog = false,
         )
 
         if (overridingFields.isNotEmpty())
@@ -535,14 +535,14 @@ internal class PasswordViewModel(
         updateUiWithSpecificTotpSecretInfo(
             secret = secretInformation.secret,
             issuer = secretInformation.issuer,
-            accountName = secretInformation.accountName
+            accountName = secretInformation.accountName,
         )
 
     private fun updateUiWithSpecificTotpSecretInfo(
         secret: String? = null,
         issuer: String? = null,
         accountName: String? = null,
-        closeDialog: Boolean = true
+        closeDialog: Boolean = true,
     ) {
         val currentState = _base.value
         secret?.let {
@@ -550,7 +550,7 @@ internal class PasswordViewModel(
         }
 
         issuer?.let {
-            onEvent(PasswordUiEvent.OnAddDomains(setOf(it)))
+            onEvent(LoginUiEvent.OnAddDomains(setOf(it)))
         }
 
         accountName?.let {
@@ -569,12 +569,12 @@ internal class PasswordViewModel(
         _base.update {
             it.copy(
                 dialogState = DialogState.TotpParseError,
-                scanning = false
+                scanning = false,
             )
         }
     }
 
     companion object {
-        private const val TAG = "PasswordViewModel"
+        private const val TAG = "LoginViewModel"
     }
 }

@@ -24,7 +24,7 @@ internal interface VaultDao {
     @Query("DELETE FROM vault WHERE id = :id")
     suspend fun delete(id: VaultId)
 
-    @Query("SELECT wrappedKey, keyNonce FROM vault WHERE id = :id")
+    @Query("SELECT wrapped_key, key_nonce FROM vault WHERE id = :id")
     suspend fun getKeyInfoById(id: VaultId): KeyInformation?
 
     @Query(

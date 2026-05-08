@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.item.create.presentation.password
+package de.davis.keygo.feature.item.create.presentation.login
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -11,14 +11,14 @@ import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
-fun PasswordScreen(
+fun LoginScreen(
     detailPaneInformation: DetailPaneInformation = DetailPaneInformation.Init.New(
-        itemType = VaultItemType.Login
+        itemType = VaultItemType.Login,
     ),
-    passwordCreated: (ItemId) -> Unit,
-    navigateBack: () -> Unit
+    loginCreated: (ItemId) -> Unit,
+    navigateBack: () -> Unit,
 ) {
-    val viewmodel: PasswordViewModel = koinViewModel()
+    val viewmodel: LoginViewModel = koinViewModel()
     val state by viewmodel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(detailPaneInformation) {
@@ -28,11 +28,11 @@ fun PasswordScreen(
     ObserveAsEvents(viewmodel.itemCreatedEvent) {
         when (it) {
             null -> navigateBack()
-            else -> passwordCreated(it)
+            else -> loginCreated(it)
         }
     }
 
-    PasswordContent(
+    LoginContent(
         state = state,
         onEvent = viewmodel::onEvent,
     )

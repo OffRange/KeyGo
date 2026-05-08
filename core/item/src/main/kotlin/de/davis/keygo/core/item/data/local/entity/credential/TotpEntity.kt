@@ -25,7 +25,8 @@ internal data class TotpEntity(
     val loginId: ItemId,
     val secret: SecretData<String>,
     val issuer: String?,
-    val accountName: String,
+    @ColumnInfo(name = "account_name")
+    val accountName: String?,
     val algorithm: String,
     val digits: Int,
     val period: Int,

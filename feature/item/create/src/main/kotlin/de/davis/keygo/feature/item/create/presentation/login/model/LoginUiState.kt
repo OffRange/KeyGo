@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.item.create.presentation.password.model
+package de.davis.keygo.feature.item.create.presentation.login.model
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Stable
@@ -8,17 +8,17 @@ import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
 import de.davis.keygo.feature.item.create.presentation.model.VaultsState
 
 @Stable
-internal sealed interface PasswordUiState {
-    data object Loading : PasswordUiState
+internal sealed interface LoginUiState {
+    data object Loading : LoginUiState
 
     data class Ready(
-        val base: PasswordBaseState,
+        val base: LoginBaseState,
         val vaultsState: VaultsState,
-    ) : PasswordUiState
+    ) : LoginUiState
 }
 
 @Stable
-internal data class PasswordBaseState(
+internal data class LoginBaseState(
     val nameTextFieldState: TextFieldState = TextFieldState(),
     val notesTextFieldState: TextFieldState = TextFieldState(),
     val passwordTextFieldState: TextFieldState = TextFieldState(),

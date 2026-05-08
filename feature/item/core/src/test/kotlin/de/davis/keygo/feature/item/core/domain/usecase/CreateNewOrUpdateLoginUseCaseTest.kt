@@ -1,6 +1,6 @@
 package de.davis.keygo.feature.item.core.domain.usecase
 
-import de.davis.keygo.core.item.FakePasswordRepository
+import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.FakePasswordStrengthEstimator
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.item.domain.alias.ItemId
@@ -18,8 +18,8 @@ import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
-import de.davis.keygo.feature.item.core.domain.model.PasswordError
-import de.davis.keygo.feature.item.core.domain.model.UpsertPassword
+import de.davis.keygo.feature.item.core.domain.model.LoginError
+import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.clear
 import de.davis.keygo.feature.item.core.domain.model.set
 import kotlinx.coroutines.test.runTest
@@ -44,8 +44,8 @@ class CreateNewOrUpdateLoginUseCaseTest {
 
     private val cryptoProvider = FakeCryptographicScopeProvider()
     private val vaultRepository = FakeVaultRepository()
-    private val passwordRepository = FakePasswordRepository()
-    private val useCase = makeUseCase(passwordRepository, vaultRepository)
+    private val loginRepository = FakeLoginRepository()
+    private val useCase = makeUseCase(loginRepository, vaultRepository)
 
     @BeforeTest
     fun setupVault() = runTest {
@@ -58,42 +58,42 @@ class CreateNewOrUpdateLoginUseCaseTest {
     @Test
     fun `create with blank name returns BlankName error`() = runTest {
         val result = useCase(
-            UpsertPassword.create(vaultId = defaultVault.id, name = "", password = "secret")
+            UpsertLogin.create(vaultId = defaultVault.id, name = "", password = "secret")
         )
 
         assertTrue(result.isFailure())
-        assertEquals(PasswordError.BlankName, result.error.single())
+        assertEquals(LoginError.BlankName, result.error.single())
     }
 
     @Test
     fun `create with whitespace-only name returns BlankName error`() = runTest {
         val result = useCase(
-            UpsertPassword.create(vaultId = defaultVault.id, name = "   ", password = "secret")
+            UpsertLogin.create(vaultId = defaultVault.id, name = "   ", password = "secret")
         )
 
         assertTrue(result.isFailure())
-        assertEquals(PasswordError.BlankName, result.error.single())
+        assertEquals(LoginError.BlankName, result.error.single())
     }
 
     @Test
     fun `create with blank password returns BlankPassword error`() = runTest {
         val result = useCase(
-            UpsertPassword.create(vaultId = defaultVault.id, name = "My site", password = "")
+            UpsertLogin.create(vaultId = defaultVault.id, name = "My site", password = "")
         )
 
         assertTrue(result.isFailure())
-        assertEquals(PasswordError.BlankPassword, result.error.single())
+        assertEquals(LoginError.BlankPassword, result.error.single())
     }
 
     @Test
     fun `create with blank name and blank password returns both errors`() = runTest {
         val result = useCase(
-            UpsertPassword.create(vaultId = defaultVault.id, name = "", password = "")
+            UpsertLogin.create(vaultId = defaultVault.id, name = "", password = "")
         )
 
         assertTrue(result.isFailure())
-        assertContains(result.error, PasswordError.BlankName)
-        assertContains(result.error, PasswordError.BlankPassword)
+        assertContains(result.error, LoginError.BlankName)
+        assertContains(result.error, LoginError.BlankPassword)
         assertEquals(2, result.error.size)
     }
 
@@ -101,45 +101,45 @@ class CreateNewOrUpdateLoginUseCaseTest {
 
     @Test
     fun `update with Keep name and Keep password is valid`() = runTest {
-        val existing = testPassword()
-        passwordRepository.seed(existing)
+        val existing = testLogin()
+        loginRepository.seed(existing)
 
-        val result = useCase(UpsertPassword.update(itemId = existing.id))
+        val result = useCase(UpsertLogin.update(itemId = existing.id))
 
         assertTrue(result.isSuccess())
     }
 
     @Test
     fun `update with Clear name returns BlankName error`() = runTest {
-        val existing = testPassword()
-        passwordRepository.seed(existing)
+        val existing = testLogin()
+        loginRepository.seed(existing)
 
-        val result = useCase(UpsertPassword.update(itemId = existing.id, name = clear()))
+        val result = useCase(UpsertLogin.update(itemId = existing.id, name = clear()))
 
         assertTrue(result.isFailure())
-        assertEquals(PasswordError.BlankName, result.error.single())
+        assertEquals(LoginError.BlankName, result.error.single())
     }
 
     @Test
     fun `update with blank Set name returns BlankName error`() = runTest {
-        val existing = testPassword()
-        passwordRepository.seed(existing)
+        val existing = testLogin()
+        loginRepository.seed(existing)
 
-        val result = useCase(UpsertPassword.update(itemId = existing.id, name = set("")))
+        val result = useCase(UpsertLogin.update(itemId = existing.id, name = set("")))
 
         assertTrue(result.isFailure())
-        assertEquals(PasswordError.BlankName, result.error.single())
+        assertEquals(LoginError.BlankName, result.error.single())
     }
 
     @Test
     fun `update with Clear password returns BlankPassword error`() = runTest {
-        val existing = testPassword()
-        passwordRepository.seed(existing)
+        val existing = testLogin()
+        loginRepository.seed(existing)
 
-        val result = useCase(UpsertPassword.update(itemId = existing.id, password = clear()))
+        val result = useCase(UpsertLogin.update(itemId = existing.id, password = clear()))
 
         assertTrue(result.isFailure())
-        assertEquals(PasswordError.BlankPassword, result.error.single())
+        assertEquals(LoginError.BlankPassword, result.error.single())
     }
 
     // Success — Create
@@ -147,16 +147,16 @@ class CreateNewOrUpdateLoginUseCaseTest {
     @Test
     fun `create with valid fields returns Success`() = runTest {
         val result = useCase(
-            UpsertPassword.create(vaultId = defaultVault.id, name = "My site", password = "s3cr3t")
+            UpsertLogin.create(vaultId = defaultVault.id, name = "My site", password = "s3cr3t")
         )
 
         assertTrue(result.isSuccess())
     }
 
     @Test
-    fun `create stores password with correct name`() = runTest {
+    fun `create stores login with correct name`() = runTest {
         val result = useCase(
-            UpsertPassword.create(vaultId = defaultVault.id, name = "My site", password = "s3cr3t")
+            UpsertLogin.create(vaultId = defaultVault.id, name = "My site", password = "s3cr3t")
         )
 
         val stored = storedById(result.getOrNull())
@@ -167,7 +167,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
     @Test
     fun `create with optional username and note stores them`() = runTest {
         val result = useCase(
-            UpsertPassword.create(
+            UpsertLogin.create(
                 vaultId = defaultVault.id,
                 name = "My site",
                 password = "s3cr3t",
@@ -184,7 +184,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
     @Test
     fun `create without optional fields stores nulls`() = runTest {
         val result = useCase(
-            UpsertPassword.create(vaultId = defaultVault.id, name = "My site", password = "s3cr3t")
+            UpsertLogin.create(vaultId = defaultVault.id, name = "My site", password = "s3cr3t")
         )
 
         val stored = storedById(result.getOrNull())
@@ -195,37 +195,37 @@ class CreateNewOrUpdateLoginUseCaseTest {
 
     @Test
     fun `create stores password strength from estimator`() = runTest {
-        val freshPasswordRepo = FakePasswordRepository()
+        val freshLoginRepo = FakeLoginRepository()
         val freshVaultRepo = FakeVaultRepository()
         freshVaultRepo.seed(defaultVault)
 
         val localUseCase = makeUseCase(
-            passwordRepository = freshPasswordRepo,
+            loginRepository = freshLoginRepo,
             vaultRepository = freshVaultRepo,
             estimator = FakePasswordStrengthEstimator(PasswordScore.Weak),
         )
 
         val result = localUseCase(
-            UpsertPassword.create(vaultId = defaultVault.id, name = "My site", password = "123")
+            UpsertLogin.create(vaultId = defaultVault.id, name = "My site", password = "123")
         )
 
-        val stored = freshPasswordRepo.getPasswordById(result.getOrNull()!!)
+        val stored = freshLoginRepo.getLoginById(result.getOrNull()!!)
         assertEquals(PasswordScore.Weak, stored?.passwordScore)
     }
 
     @Test
     fun `update with new password re-evaluates password strength`() = runTest {
-        val existing = testPassword(passwordScore = PasswordScore.Weak)
-        passwordRepository.seed(existing)
+        val existing = testLogin(passwordScore = PasswordScore.Weak)
+        loginRepository.seed(existing)
 
         // inject an estimator that returns Strong
         val localUseCase = makeUseCase(
             estimator = FakePasswordStrengthEstimator(PasswordScore.Strong)
         )
 
-        localUseCase(UpsertPassword.update(itemId = existing.id, password = set("SuperS3cr3t!")))
+        localUseCase(UpsertLogin.update(itemId = existing.id, password = set("SuperS3cr3t!")))
 
-        val updated = passwordRepository.getPasswordById(existing.id)
+        val updated = loginRepository.getLoginById(existing.id)
         assertEquals(PasswordScore.Strong, updated?.passwordScore)
     }
 
@@ -233,53 +233,53 @@ class CreateNewOrUpdateLoginUseCaseTest {
 
     @Test
     fun `update with new name replaces name`() = runTest {
-        val existing = testPassword(name = "Old name")
-        passwordRepository.seed(existing)
+        val existing = testLogin(name = "Old name")
+        loginRepository.seed(existing)
 
-        useCase(UpsertPassword.update(itemId = existing.id, name = set("New name")))
+        useCase(UpsertLogin.update(itemId = existing.id, name = set("New name")))
 
-        assertEquals("New name", passwordRepository.getPasswordById(existing.id)?.name)
+        assertEquals("New name", loginRepository.getLoginById(existing.id)?.name)
     }
 
     @Test
     fun `update with Keep name preserves existing name`() = runTest {
-        val existing = testPassword(name = "Preserved")
-        passwordRepository.seed(existing)
+        val existing = testLogin(name = "Preserved")
+        loginRepository.seed(existing)
 
-        useCase(UpsertPassword.update(itemId = existing.id))
+        useCase(UpsertLogin.update(itemId = existing.id))
 
-        assertEquals("Preserved", passwordRepository.getPasswordById(existing.id)?.name)
+        assertEquals("Preserved", loginRepository.getLoginById(existing.id)?.name)
     }
 
     @Test
     fun `update with new username replaces username`() = runTest {
-        val existing = testPassword(username = "old@example.com")
-        passwordRepository.seed(existing)
+        val existing = testLogin(username = "old@example.com")
+        loginRepository.seed(existing)
 
-        useCase(UpsertPassword.update(itemId = existing.id, username = set("new@example.com")))
+        useCase(UpsertLogin.update(itemId = existing.id, username = set("new@example.com")))
 
-        assertEquals("new@example.com", passwordRepository.getPasswordById(existing.id)?.username)
+        assertEquals("new@example.com", loginRepository.getLoginById(existing.id)?.username)
     }
 
     @Test
     fun `update with Clear username sets username to null`() = runTest {
-        val existing = testPassword(username = "user@example.com")
-        passwordRepository.seed(existing)
+        val existing = testLogin(username = "user@example.com")
+        loginRepository.seed(existing)
 
-        val result = useCase(UpsertPassword.update(itemId = existing.id, username = clear()))
+        val result = useCase(UpsertLogin.update(itemId = existing.id, username = clear()))
 
         assertTrue(result.isSuccess(), "result: $result")
-        assertEquals(null, passwordRepository.getPasswordById(existing.id)?.username)
+        assertEquals(null, loginRepository.getLoginById(existing.id)?.username)
     }
 
     // Failure
 
     @Test
     fun `update with unknown id returns InvalidItemId error`() = runTest {
-        val result = useCase(UpsertPassword.update(itemId = newItemId()))
+        val result = useCase(UpsertLogin.update(itemId = newItemId()))
 
         assertTrue(result.isFailure())
-        assertContains(result.error, PasswordError.InvalidItemId)
+        assertContains(result.error, LoginError.InvalidItemId)
     }
 
     // Vault move on update
@@ -289,48 +289,48 @@ class CreateNewOrUpdateLoginUseCaseTest {
         val otherVault = defaultVault.copy(id = newVaultId(), name = "Other vault")
         vaultRepository.seed(otherVault)
 
-        val existing = testPassword()
-        passwordRepository.seed(existing)
+        val existing = testLogin()
+        loginRepository.seed(existing)
 
         val result = useCase(
-            UpsertPassword.update(itemId = existing.id, vaultId = otherVault.id)
+            UpsertLogin.update(itemId = existing.id, vaultId = otherVault.id)
         )
 
         assertTrue(result.isSuccess(), "result: $result")
-        assertEquals(otherVault.id, passwordRepository.getPasswordById(existing.id)?.vaultId)
+        assertEquals(otherVault.id, loginRepository.getLoginById(existing.id)?.vaultId)
     }
 
     @Test
     fun `update with same vaultId keeps item in original vault`() = runTest {
-        val existing = testPassword()
-        passwordRepository.seed(existing)
+        val existing = testLogin()
+        loginRepository.seed(existing)
 
-        useCase(UpsertPassword.update(itemId = existing.id, vaultId = defaultVault.id))
+        useCase(UpsertLogin.update(itemId = existing.id, vaultId = defaultVault.id))
 
-        assertEquals(defaultVault.id, passwordRepository.getPasswordById(existing.id)?.vaultId)
+        assertEquals(defaultVault.id, loginRepository.getLoginById(existing.id)?.vaultId)
     }
 
     @Test
     fun `update with null vaultId keeps item in original vault`() = runTest {
-        val existing = testPassword()
-        passwordRepository.seed(existing)
+        val existing = testLogin()
+        loginRepository.seed(existing)
 
-        useCase(UpsertPassword.update(itemId = existing.id, name = set("Renamed")))
+        useCase(UpsertLogin.update(itemId = existing.id, name = set("Renamed")))
 
-        assertEquals(defaultVault.id, passwordRepository.getPasswordById(existing.id)?.vaultId)
+        assertEquals(defaultVault.id, loginRepository.getLoginById(existing.id)?.vaultId)
     }
 
     @Test
     fun `update with unknown target vaultId returns InvalidVaultId error`() = runTest {
-        val existing = testPassword()
-        passwordRepository.seed(existing)
+        val existing = testLogin()
+        loginRepository.seed(existing)
 
         val result = useCase(
-            UpsertPassword.update(itemId = existing.id, vaultId = newVaultId())
+            UpsertLogin.update(itemId = existing.id, vaultId = newVaultId())
         )
 
         assertTrue(result.isFailure())
-        assertContains(result.error, PasswordError.InvalidVaultId)
+        assertContains(result.error, LoginError.InvalidVaultId)
     }
 
     @Test
@@ -338,18 +338,18 @@ class CreateNewOrUpdateLoginUseCaseTest {
         val otherVault = defaultVault.copy(id = newVaultId(), name = "Other vault")
         vaultRepository.seed(otherVault)
 
-        val existing = testPassword(name = "Old name")
-        passwordRepository.seed(existing)
+        val existing = testLogin(name = "Old name")
+        loginRepository.seed(existing)
 
         useCase(
-            UpsertPassword.update(
+            UpsertLogin.update(
                 itemId = existing.id,
                 vaultId = otherVault.id,
                 name = set("New name"),
             )
         )
 
-        val stored = passwordRepository.getPasswordById(existing.id)
+        val stored = loginRepository.getLoginById(existing.id)
         assertEquals(otherVault.id, stored?.vaultId)
         assertEquals("New name", stored?.name)
     }
@@ -371,8 +371,8 @@ class CreateNewOrUpdateLoginUseCaseTest {
             wrappedKey = byteArrayOf(0x11, 0x22),
             keyNonce = byteArrayOf(0x33, 0x44),
         )
-        val existing = testPassword().copy(keyInformation = existingItemKey)
-        passwordRepository.seed(existing)
+        val existing = testLogin().copy(keyInformation = existingItemKey)
+        loginRepository.seed(existing)
 
         val rewrappedItemKey = KeyInformation(
             wrappedKey = byteArrayOf(0xAA.toByte(), 0xBB.toByte()),
@@ -381,7 +381,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         cryptoProvider.rewrapResult = Result.Success(rewrappedItemKey)
 
         val result = useCase(
-            UpsertPassword.update(itemId = existing.id, vaultId = otherVault.id)
+            UpsertLogin.update(itemId = existing.id, vaultId = otherVault.id)
         )
 
         assertTrue(result.isSuccess(), "result: $result")
@@ -404,7 +404,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
             rewrap.sourceItem.wrappedItemKey?.wrappedKey,
         )
 
-        val stored = passwordRepository.getPasswordById(existing.id)
+        val stored = loginRepository.getLoginById(existing.id)
         assertNotNull(stored)
         assertEquals(otherVault.id, stored.vaultId)
         assertContentEquals(rewrappedItemKey.wrappedKey, stored.keyInformation.wrappedKey)
@@ -413,10 +413,10 @@ class CreateNewOrUpdateLoginUseCaseTest {
 
     @Test
     fun `update with same vaultId does not rewrap`() = runTest {
-        val existing = testPassword()
-        passwordRepository.seed(existing)
+        val existing = testLogin()
+        loginRepository.seed(existing)
 
-        useCase(UpsertPassword.update(itemId = existing.id, vaultId = defaultVault.id))
+        useCase(UpsertLogin.update(itemId = existing.id, vaultId = defaultVault.id))
 
         assertTrue(cryptoProvider.rewrapCalls.isEmpty())
     }
@@ -429,7 +429,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         val plaintextTotp = "JBSWY3DPEHPK3PXP"
 
         val result = useCase(
-            UpsertPassword.create(
+            UpsertLogin.create(
                 vaultId = defaultVault.id,
                 name = "My site",
                 password = plaintextPassword,
@@ -471,33 +471,33 @@ class CreateNewOrUpdateLoginUseCaseTest {
     @Test
     fun `repository failure on create wraps error in DatabaseError`() = runTest {
         val cause = RuntimeException("disk full")
-        passwordRepository.createOrUpdateError = cause
+        loginRepository.createOrUpdateError = cause
 
         val result = useCase(
-            UpsertPassword.create(vaultId = defaultVault.id, name = "My site", password = "s3cr3t")
+            UpsertLogin.create(vaultId = defaultVault.id, name = "My site", password = "s3cr3t")
         )
 
         assertTrue(result.isFailure())
-        val error = assertIs<PasswordError.DatabaseError>(result.error.single())
+        val error = assertIs<LoginError.DatabaseError>(result.error.single())
         assertEquals(cause, error.throwable)
     }
 
     // Helpers
 
     private fun makeUseCase(
-        passwordRepository: FakePasswordRepository = this@CreateNewOrUpdateLoginUseCaseTest.passwordRepository,
+        loginRepository: FakeLoginRepository = this@CreateNewOrUpdateLoginUseCaseTest.loginRepository,
         vaultRepository: FakeVaultRepository = this@CreateNewOrUpdateLoginUseCaseTest.vaultRepository,
         estimator: FakePasswordStrengthEstimator = FakePasswordStrengthEstimator(),
         cryptographicScopeProvider: CryptographicScopeProvider = cryptoProvider,
-    ) = CreateNewOrUpdatePasswordUseCase(
+    ) = CreateNewOrUpdateLoginUseCase(
         cryptographicScopeProvider = cryptographicScopeProvider,
-        passwordRepository = passwordRepository,
+        loginRepository = loginRepository,
         vaultRepository = vaultRepository,
-        upsertVaultItem = UpsertVaultItemUseCase(passwordRepository),
+        upsertVaultItem = UpsertVaultItemUseCase(loginRepository),
         passwordStrengthEstimator = estimator,
     )
 
-    private fun testPassword(
+    private fun testLogin(
         name: String = "Test",
         username: String? = null,
         passwordScore: PasswordScore = PasswordScore.Strong,
@@ -517,6 +517,6 @@ class CreateNewOrUpdateLoginUseCaseTest {
 
     private suspend fun storedById(id: ItemId?): Login? {
         id ?: return null
-        return passwordRepository.getPasswordById(id)
+        return loginRepository.getLoginById(id)
     }
 }
