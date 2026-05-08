@@ -1,4 +1,4 @@
-package de.davis.keygo.core.item.data.maper
+package de.davis.keygo.core.item.data.mapper
 
 import de.davis.keygo.core.item.data.local.entity.ItemEntity
 import de.davis.keygo.core.item.data.local.pojo.LightweightItem

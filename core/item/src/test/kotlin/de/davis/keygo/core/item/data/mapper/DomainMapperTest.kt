@@ -1,4 +1,4 @@
-package de.davis.keygo.core.item.data.maper
+package de.davis.keygo.core.item.data.mapper
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId

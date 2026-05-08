@@ -1,4 +1,4 @@
-package de.davis.keygo.core.item.data.maper
+package de.davis.keygo.core.item.data.mapper
 
 import kotlin.test.Test
 import kotlin.test.assertContentEquals

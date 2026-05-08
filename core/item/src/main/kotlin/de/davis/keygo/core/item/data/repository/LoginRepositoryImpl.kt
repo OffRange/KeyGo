@@ -9,11 +9,11 @@ import de.davis.keygo.core.item.data.local.dao.TotpDao
 import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
 import de.davis.keygo.core.item.data.local.pojo.LightweightLogin
 import de.davis.keygo.core.item.data.local.pojo.LoginProjection
-import de.davis.keygo.core.item.data.maper.toData
-import de.davis.keygo.core.item.data.maper.toDomain
-import de.davis.keygo.core.item.data.maper.toDomainInfoEntities
-import de.davis.keygo.core.item.data.maper.toLoginEntity
-import de.davis.keygo.core.item.data.maper.toPasswordEntity
+import de.davis.keygo.core.item.data.mapper.toData
+import de.davis.keygo.core.item.data.mapper.toDomain
+import de.davis.keygo.core.item.data.mapper.toDomainInfoEntities
+import de.davis.keygo.core.item.data.mapper.toLoginEntity
+import de.davis.keygo.core.item.data.mapper.toPasswordEntity
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo

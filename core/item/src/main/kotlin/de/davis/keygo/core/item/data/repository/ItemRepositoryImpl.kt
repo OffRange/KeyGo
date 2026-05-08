@@ -4,9 +4,9 @@ import de.davis.keygo.core.item.data.local.dao.ItemDao
 import de.davis.keygo.core.item.data.local.pojo.LightweightItem
 import de.davis.keygo.core.item.data.local.pojo.LightweightItemSearchResult
 import de.davis.keygo.core.item.data.local.pojo.MovableItemPojo
-import de.davis.keygo.core.item.data.maper.toData
-import de.davis.keygo.core.item.data.maper.toDomain
-import de.davis.keygo.core.item.data.maper.toEntity
+import de.davis.keygo.core.item.data.mapper.toData
+import de.davis.keygo.core.item.data.mapper.toDomain
+import de.davis.keygo.core.item.data.mapper.toEntity
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.Item
