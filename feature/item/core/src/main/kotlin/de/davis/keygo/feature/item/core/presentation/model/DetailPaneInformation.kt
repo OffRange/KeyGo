@@ -18,7 +18,7 @@ sealed interface DetailPaneInformation {
         val name: String
 
         @Serializable
-        data class Password(
+        data class Login(
             override val name: String,
             val password: String,
             val username: String,

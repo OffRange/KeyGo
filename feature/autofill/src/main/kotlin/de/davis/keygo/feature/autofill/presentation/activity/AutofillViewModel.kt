@@ -76,7 +76,7 @@ internal class AutofillViewModel(
 
     private fun Form.toRawItem() = when (type) {
         // TODO: maybe find suitable names
-        is FormType.Credentials -> DetailPaneInformation.CreateRaw.Password(
+        is FormType.Credentials -> DetailPaneInformation.CreateRaw.Login(
             name = "",
             password = fields.find { it.type == FieldType.Credentials.Password }?.autofillValue
                 ?: "",

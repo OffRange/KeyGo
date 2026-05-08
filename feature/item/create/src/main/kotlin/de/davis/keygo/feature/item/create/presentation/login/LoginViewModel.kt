@@ -179,7 +179,7 @@ internal class LoginViewModel(
         nameTextFieldState.setTextAndPlaceCursorAtEnd(createRaw.name)
 
         when (createRaw) {
-            is DetailPaneInformation.CreateRaw.Password -> {
+            is DetailPaneInformation.CreateRaw.Login -> {
                 val domainInfo = createRaw.url?.let {
                     val eTLD1 = registrableDomainResolver.resolve(it)
                     DomainInfo(

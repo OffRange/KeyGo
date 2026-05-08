@@ -49,7 +49,7 @@ private fun ForRawItem(
     navigateBack: () -> Unit,
 ) {
     when (item) {
-        is DetailPaneInformation.CreateRaw.Password -> LoginScreen(
+        is DetailPaneInformation.CreateRaw.Login -> LoginScreen(
             detailPaneInformation = item,
             loginCreated = onCreated,
             navigateBack = navigateBack,
