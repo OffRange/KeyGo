@@ -8,14 +8,18 @@ import androidx.room.TypeConverters
 import de.davis.keygo.core.item.data.local.converter.SecretDataConverter
 import de.davis.keygo.core.item.data.local.dao.DomainInfoDao
 import de.davis.keygo.core.item.data.local.dao.ItemDao
+import de.davis.keygo.core.item.data.local.dao.LoginDao
 import de.davis.keygo.core.item.data.local.dao.PasskeyDao
 import de.davis.keygo.core.item.data.local.dao.PasswordDao
+import de.davis.keygo.core.item.data.local.dao.TotpDao
 import de.davis.keygo.core.item.data.local.dao.VaultDao
 import de.davis.keygo.core.item.data.local.entity.DomainInfoEntity
 import de.davis.keygo.core.item.data.local.entity.ItemEntity
-import de.davis.keygo.core.item.data.local.entity.PasskeyEntity
-import de.davis.keygo.core.item.data.local.entity.PasswordEntity
+import de.davis.keygo.core.item.data.local.entity.LoginEntity
 import de.davis.keygo.core.item.data.local.entity.VaultEntity
+import de.davis.keygo.core.item.data.local.entity.credential.PasskeyEntity
+import de.davis.keygo.core.item.data.local.entity.credential.PasswordEntity
+import de.davis.keygo.core.item.data.local.entity.credential.TotpEntity
 import org.koin.core.annotation.Module
 import org.koin.core.annotation.Single
 
@@ -23,6 +27,8 @@ import org.koin.core.annotation.Single
     entities = [
         VaultEntity::class,
         ItemEntity::class,
+        LoginEntity::class,
+        TotpEntity::class,
         PasswordEntity::class,
         DomainInfoEntity::class,
         PasskeyEntity::class,
@@ -35,6 +41,10 @@ internal abstract class ItemDatabase : RoomDatabase() {
     abstract fun vaultDao(): VaultDao
 
     abstract fun itemDao(): ItemDao
+
+    abstract fun loginDao(): LoginDao
+
+    abstract fun totpDao(): TotpDao
 
     abstract fun passwordDao(): PasswordDao
 
@@ -59,6 +69,12 @@ internal class DatabaseModule {
 
     @Single
     fun provideItemDao(db: ItemDatabase) = db.itemDao()
+
+    @Single
+    fun provideLoginDao(db: ItemDatabase) = db.loginDao()
+
+    @Single
+    fun provideTotpDao(db: ItemDatabase) = db.totpDao()
 
     @Single
     fun providePasswordDao(db: ItemDatabase) = db.passwordDao()

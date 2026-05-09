@@ -13,11 +13,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 
 /**
- * In-memory [ItemRepository] for tests, layered on top of a [FakePasswordRepository] so the
- * password store is the single source of truth for vault/key state.
+ * In-memory [ItemRepository] for tests, layered on top of a [FakeLoginRepository] so the
+ * login store is the single source of truth for vault/key state.
  */
 class FakeItemRepository(
-    private val passwordRepository: FakePasswordRepository,
+    private val loginRepository: FakeLoginRepository,
 ) : ItemRepository {
 
     /**
@@ -32,7 +32,7 @@ class FakeItemRepository(
     override suspend fun createOrUpdateVaultItem(item: Item): ItemId = item.id
 
     override suspend fun getItemName(itemId: ItemId): String? =
-        passwordRepository.getPasswordById(itemId)?.name
+        loginRepository.getLoginById(itemId)?.name
 
     override suspend fun doesNameExist(
         name: String,
@@ -51,7 +51,7 @@ class FakeItemRepository(
         flowOf(emptyList())
 
     override suspend fun getMovableItemsByVault(vaultId: VaultId): List<MovableItem> =
-        passwordRepository.getPasswordsByVault(vaultId)
+        loginRepository.getLoginsByVault(vaultId)
             .map { MovableItem(id = it.id, keyInformation = it.keyInformation) }
 
     override suspend fun moveItemsToVault(
@@ -62,11 +62,11 @@ class FakeItemRepository(
             if (items.any { it.id == failId }) return Result.Failure(error)
         }
         val updates = items.map { item ->
-            val existing = passwordRepository.getPasswordById(item.id)
+            val existing = loginRepository.getLoginById(item.id)
                 ?: return Result.Failure(NoSuchElementException("No item with id ${item.id}"))
             existing.copy(vaultId = newVaultId, keyInformation = item.keyInformation)
         }
-        updates.forEach { passwordRepository.seed(it) }
+        updates.forEach { loginRepository.seed(it) }
         return Result.Success(Unit)
     }
 }

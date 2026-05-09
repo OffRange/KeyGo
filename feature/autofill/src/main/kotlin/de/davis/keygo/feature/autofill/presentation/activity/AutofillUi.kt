@@ -53,7 +53,7 @@ fun AutofillUi(
 
             itemListGraph(
                 onItemClick = onItemSelected,
-                restrictedItemType = VaultItemType.Password,
+                restrictedItemType = VaultItemType.Login,
                 dockedSearchResults = false,
                 enableDeletion = false,
                 onCreateRequest = {},

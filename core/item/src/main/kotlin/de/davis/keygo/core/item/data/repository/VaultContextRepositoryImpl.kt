@@ -4,7 +4,7 @@ import androidx.datastore.core.DataStore
 import de.davis.keygo.core.item.data.local.model.ProtoVaultContextRecord
 import de.davis.keygo.core.item.data.local.model.copy
 import de.davis.keygo.core.item.data.local.model.protoVaultContextRecord
-import de.davis.keygo.core.item.data.maper.toDomain
+import de.davis.keygo.core.item.data.mapper.toDomain
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.VaultContext
 import de.davis.keygo.core.item.domain.model.VaultContextRecord

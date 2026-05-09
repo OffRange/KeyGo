@@ -1,14 +1,14 @@
 package de.davis.keygo.core.item
 
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
-import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.PasswordScore
 
 /**
- * [PasswordStrengthEstimator] fake that always returns [Password.Score.Strong].
- * Inject a custom [score] when score-specific behaviour needs asserting.
+ * [PasswordStrengthEstimator] fake that always returns [de.davis.keygo.core.item.domain.model.PasswordScore.Strong].
+ * Inject a custom [passwordScore] when score-specific behaviour needs asserting.
  */
 class FakePasswordStrengthEstimator(
-    val score: Password.Score = Password.Score.Strong,
+    val passwordScore: PasswordScore = PasswordScore.Strong,
 ) : PasswordStrengthEstimator {
-    override suspend fun estimate(password: String): Password.Score = score
+    override suspend fun estimate(password: String): PasswordScore = passwordScore
 }

@@ -135,7 +135,7 @@ fun GeneratePasswordContent(
                 )
 
                 StrengthIndicator(
-                    score = state.passwordStrength,
+                    passwordScore = state.passwordStrength,
                     forceCompact = true
                 )
             }

@@ -39,7 +39,7 @@ import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.credentials.R
-import de.davis.keygo.feature.item.create.presentation.password.PasswordScreen
+import de.davis.keygo.feature.item.create.presentation.login.LoginScreen
 import de.davis.keygo.feature.list_screen.presentation.ItemListScreen
 import de.davis.keygo.feature.list_screen.presentation.NoItemStrategy
 import kotlinx.serialization.Serializable
@@ -161,11 +161,11 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                     }
 
                     composable<CreateItem> {
-                        PasswordScreen(
-                            passwordCreated = {
+                        LoginScreen(
+                            loginCreated = {
                                 viewModel.associatePasskeyAndFinish(it)
                             },
-                            navigateBack = { cancel("User cancelled passkey creation") }
+                            navigateBack = { cancel("User cancelled passkey creation") },
                         )
                     }
                 }

@@ -281,7 +281,7 @@ private fun KeyGoLazyColumnPreview() {
                 header = HeaderContent.Letter('A' + it / 10),
                 title = "Item $it",
                 id = it,
-                itemType = VaultItemType.Password,
+                itemType = VaultItemType.Login,
             )
         }.sortedBy { (it.header as HeaderContent.Letter).char }
     }

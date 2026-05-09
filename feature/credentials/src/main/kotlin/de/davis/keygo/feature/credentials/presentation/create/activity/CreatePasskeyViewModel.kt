@@ -9,7 +9,6 @@ import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasskeyUser
 import de.davis.keygo.core.item.domain.model.SecretData
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
-import de.davis.keygo.core.item.domain.repository.PasswordRepository
 import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.rust.passkey.PasskeyManager
@@ -24,7 +23,6 @@ import org.koin.core.annotation.KoinViewModel
 @KoinViewModel
 internal class CreatePasskeyViewModel(
     private val passkeyRepository: PasskeyRepository,
-    private val passwordRepository: PasswordRepository,
     private val passkeyManager: PasskeyManager,
 ) : ViewModel() {
 
@@ -82,7 +80,7 @@ internal class CreatePasskeyViewModel(
                     decryptedDataType = SecretData.DecryptedDataType.StringType
                 ),
                 rp = registrationResponse.rp,
-                passwordId = itemId,
+                loginId = itemId,
                 user = PasskeyUser(
                     name = registrationResponse.userName,
                     displayName = registrationResponse.userDisplayName

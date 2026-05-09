@@ -28,15 +28,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.DomainInfo
-import de.davis.keygo.core.item.domain.model.lite.LitePassword
+import de.davis.keygo.core.item.domain.model.lite.LiteLogin
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.item.create.R
 
 @Composable
 fun SelectItemForTotpModificationDialog(
     onDismissRequest: () -> Unit,
-    items: List<LitePassword>,
-    onItemClicked: (LitePassword) -> Unit,
+    items: List<LiteLogin>,
+    onItemClicked: (LiteLogin) -> Unit,
     onCreateNew: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -127,26 +127,26 @@ private fun SelectItemForTotpModificationDialogPreview() {
                 onItemClicked = {},
                 onCreateNew = {},
                 items = listOf(
-                    LitePassword(
+                    LiteLogin(
                         id = newItemId(),
                         name = "${if (1 >= 5) 'A' else 'B'} Item 1",
                         username = "User 1",
                         domains = listOf(
                             DomainInfo(
-                                passwordId = newItemId(),
+                                loginId = newItemId(),
                                 value = "Website",
                                 eTLD1 = "website.com"
                             )
                         ),
                         pinned = false,
                     ),
-                    LitePassword(
+                    LiteLogin(
                         id = newItemId(),
                         name = "${if (2 >= 5) 'A' else 'B'} Item 2",
                         username = "User 2",
                         domains = listOf(
                             DomainInfo(
-                                passwordId = newItemId(),
+                                loginId = newItemId(),
                                 value = "Website",
                                 eTLD1 = "website.com"
                             )

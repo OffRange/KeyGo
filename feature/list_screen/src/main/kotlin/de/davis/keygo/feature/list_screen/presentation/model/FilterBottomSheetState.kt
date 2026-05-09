@@ -1,7 +1,7 @@
 package de.davis.keygo.feature.list_screen.presentation.model
 
 import androidx.compose.runtime.Immutable
-import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.feature.list_screen.domain.model.SortDirection
 
@@ -23,7 +23,7 @@ internal data class ItemSectionState(
 
 @Immutable
 internal data class PasswordSectionState(
-    val scoreChips: List<FilterChipState<Password.Score>>,
+    val passwordScoreChips: List<FilterChipState<PasswordScore>>,
 )
 
 @Immutable

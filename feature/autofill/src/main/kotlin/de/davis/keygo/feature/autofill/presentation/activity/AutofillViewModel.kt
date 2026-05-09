@@ -6,15 +6,15 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.repository.ItemRepository
-import de.davis.keygo.core.item.domain.repository.PasswordRepository
+import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.decryptSecretData
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
-import de.davis.keygo.feature.autofill.domain.usecase.AddRegistrableDomainsToPasswordUseCase
+import de.davis.keygo.feature.autofill.domain.usecase.AddRegistrableDomainsToLoginUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.DoesItemHaveDomainReferencesUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.IsAppLinkedToWebsiteUseCase
 import de.davis.keygo.feature.autofill.presentation.AutofillDatasetProvider
@@ -47,12 +47,12 @@ import org.koin.core.annotation.KoinViewModel
 internal class AutofillViewModel(
     savedStateHandle: SavedStateHandle,
     private val vaultRepository: VaultRepository,
-    private val passwordRepository: PasswordRepository,
+    private val loginRepository: LoginRepository,
     private val itemRepository: ItemRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val autofillDatasetProvider: AutofillDatasetProvider,
     private val doesItemHaveDomainReferences: DoesItemHaveDomainReferencesUseCase,
-    private val addRegistrableDomainToPassword: AddRegistrableDomainsToPasswordUseCase,
+    private val addRegistrableDomainToLogin: AddRegistrableDomainsToLoginUseCase,
     private val isAppLinkedToWebsite: IsAppLinkedToWebsiteUseCase,
     private val totpGenerator: TotpGenerator,
 ) : ViewModel() {
@@ -76,7 +76,7 @@ internal class AutofillViewModel(
 
     private fun Form.toRawItem() = when (type) {
         // TODO: maybe find suitable names
-        is FormType.Credentials -> DetailPaneInformation.CreateRaw.Password(
+        is FormType.Credentials -> DetailPaneInformation.CreateRaw.Login(
             name = "",
             password = fields.find { it.type == FieldType.Credentials.Password }?.autofillValue
                 ?: "",
@@ -229,9 +229,9 @@ internal class AutofillViewModel(
         uiState.value.itemId?.let { itemId ->
             requestData.form.url?.let {
                 viewModelScope.launch {
-                    addRegistrableDomainToPassword(
-                        passwordId = itemId,
-                        domain = it
+                    addRegistrableDomainToLogin(
+                        loginId = itemId,
+                        domain = it,
                     )
                 }
             }
@@ -257,12 +257,12 @@ internal class AutofillViewModel(
         val formInformation = requestData.form
         when (formInformation.type) {
             is FormType.Credentials -> {
-                val password = passwordRepository.getPasswordById(itemId) ?: run {
+                val login = loginRepository.getLoginById(itemId) ?: run {
                     eventChannel.send(AutofillEvent.Abort)
                     return
                 }
 
-                sendPasswordFillEvent(password)
+                sendLoginFillEvent(login)
             }
 
             is FormType.TOTP -> {
@@ -273,26 +273,27 @@ internal class AutofillViewModel(
                     return
                 }
 
-                // TODO: dont fetch entire password -> just fetch the totp field
-                val password = passwordRepository.getPasswordById(itemId) ?: run {
+                // TODO: don't fetch entire login -> just fetch the totp field
+                val login = loginRepository.getLoginById(itemId) ?: run {
                     eventChannel.send(AutofillEvent.Abort)
                     return
                 }
 
-                val wrappedVaultKey = vaultRepository.getKeyInformation(password.vaultId) ?: run {
+                val wrappedVaultKey = vaultRepository.getKeyInformation(login.vaultId) ?: run {
                     eventChannel.send(AutofillEvent.Abort)
                     return
                 }
 
-                val totp = password.totpSecret?.let {
+                val totp = login.totp?.let {
                     val secret = cryptographicScopeProvider.itemScope(
                         wrappedVaultKeyInformation = WrappedVaultKeyInformation(
                             wrappedVaultKey = wrappedVaultKey,
-                            vaultId = password.vaultId
+                            vaultId = login.vaultId,
                         ),
-                        wrappedItemKeyInformation = password.wrappedItemKeyInformation()
+                        wrappedItemKeyInformation = login.wrappedItemKeyInformation(),
                     ) {
-                        it.decryptSecretData(label = Password.LABEL_TOTP_SECRET).encodeToByteArray()
+                        it.secret.decryptSecretData(label = Login.LABEL_TOTP_SECRET)
+                            .encodeToByteArray()
                     }
                     totpGenerator.observeTotp(secret).first()
                 } ?: run {
@@ -316,8 +317,8 @@ internal class AutofillViewModel(
         }
     }
 
-    private suspend fun sendPasswordFillEvent(password: Password) {
-        val wrappedVaultKey = vaultRepository.getKeyInformation(password.vaultId) ?: run {
+    private suspend fun sendLoginFillEvent(login: Login) {
+        val wrappedVaultKey = vaultRepository.getKeyInformation(login.vaultId) ?: run {
             eventChannel.send(AutofillEvent.Abort)
             return
         }
@@ -329,24 +330,24 @@ internal class AutofillViewModel(
                 FieldType.Credentials.Password -> cryptographicScopeProvider.itemScope(
                     wrappedVaultKeyInformation = WrappedVaultKeyInformation(
                         wrappedVaultKey = wrappedVaultKey,
-                        vaultId = password.vaultId
+                        vaultId = login.vaultId
                     ),
-                    wrappedItemKeyInformation = password.wrappedItemKeyInformation()
+                    wrappedItemKeyInformation = login.wrappedItemKeyInformation()
                 ) {
-                    password.password.decryptSecretData(label = Password.LABEL_PASSWORD)
+                    login.password.decryptSecretData(label = Login.LABEL_PASSWORD)
                 }
 
-                FieldType.Credentials.Username -> password.username
+                FieldType.Credentials.Username -> login.username
 
                 FieldType.Credentials.EMail -> {
-                    password.username?.let { potentialEmail ->
+                    login.username?.let { potentialEmail ->
                         val isEmail = PatternsCompat.EMAIL_ADDRESS.matcher(potentialEmail).matches()
                         if (isEmail) potentialEmail else null
                     }
                 }
 
                 FieldType.Credentials.Phone -> {
-                    password.username?.let { potentialPhone ->
+                    login.username?.let { potentialPhone ->
                         val isPhone = Patterns.PHONE.matcher(potentialPhone).matches()
                         if (isPhone) potentialPhone else null
                     }

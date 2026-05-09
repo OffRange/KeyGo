@@ -159,7 +159,7 @@ internal class AuthViewModel(
             .onEach { score ->
                 _uiState.update {
                     if (it !is AuthState.CreateAccess) return@update it
-                    it.copy(score = score)
+                    it.copy(passwordScore = score)
                 }
             }
             .flowOn(Dispatchers.Default)

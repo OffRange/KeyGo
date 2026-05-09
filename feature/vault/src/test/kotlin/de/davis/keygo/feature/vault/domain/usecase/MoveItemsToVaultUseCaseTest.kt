@@ -1,7 +1,7 @@
 package de.davis.keygo.feature.vault.domain.usecase
 
 import de.davis.keygo.core.item.FakeItemRepository
-import de.davis.keygo.core.item.FakePasswordRepository
+import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
@@ -9,7 +9,9 @@ import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.KeyInformation
-import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.security.crypto.BindingCryptographicScopeProvider
 import de.davis.keygo.core.security.crypto.FakeSession
@@ -45,8 +47,8 @@ class MoveItemsToVaultUseCaseTest {
     private val cryptographicScopeProvider: CryptographicScopeProvider =
         BindingCryptographicScopeProvider(session, itemManager, keyWrapper)
 
-    private val passwordRepository = FakePasswordRepository()
-    private val itemRepository = FakeItemRepository(passwordRepository)
+    private val loginRepository = FakeLoginRepository()
+    private val itemRepository = FakeItemRepository(loginRepository)
     private val vaultRepository = FakeVaultRepository()
 
     private val useCase = MoveItemsToVaultUseCase(
@@ -59,7 +61,7 @@ class MoveItemsToVaultUseCaseTest {
     private val dstVault = makeVault("Destination")
 
     @Test
-    fun `moved password and totp decrypt under destination vault`() = runTest {
+    fun `moved login and totp decrypt under destination vault`() = runTest {
         seedVaults(srcVault, dstVault)
         val passwordPlaintext = "hunter2"
         val totpPlaintext = "JBSWY3DPEHPK3PXP"
@@ -72,7 +74,7 @@ class MoveItemsToVaultUseCaseTest {
         val result = useCase(srcVault.id, dstVault.id)
 
         assertTrue(result.isSuccess())
-        val moved = passwordRepository.getPasswordById(seeded.id)
+        val moved = loginRepository.getLoginById(seeded.id)
         assertNotNull(moved)
         assertEquals(dstVault.id, moved.vaultId)
         val (recoveredPassword, recoveredTotp) = decrypt(moved, dstVault)
@@ -87,7 +89,7 @@ class MoveItemsToVaultUseCaseTest {
 
         useCase(srcVault.id, dstVault.id)
 
-        val moved = passwordRepository.getPasswordById(seeded.id)!!
+        val moved = loginRepository.getLoginById(seeded.id)!!
         assertNotEquals(
             seeded.keyInformation.wrappedKey.toList(),
             moved.keyInformation.wrappedKey.toList(),
@@ -101,8 +103,8 @@ class MoveItemsToVaultUseCaseTest {
 
         useCase(srcVault.id, dstVault.id)
 
-        val moved = passwordRepository.getPasswordById(seeded.id)!!
-        assertNull(moved.totpSecret)
+        val moved = loginRepository.getLoginById(seeded.id)!!
+        assertNull(moved.totp)
     }
 
     @Test
@@ -113,7 +115,7 @@ class MoveItemsToVaultUseCaseTest {
             name = "Acme",
             username = "alice",
             note = "shared corp account",
-            score = Password.Score.Strong,
+            passwordScore = PasswordScore.Strong,
             domainInfos = setOf(DomainInfo(value = "acme.com", eTLD1 = "acme.com")),
             pinned = true,
             passwordPlaintext = "x",
@@ -121,11 +123,11 @@ class MoveItemsToVaultUseCaseTest {
 
         useCase(srcVault.id, dstVault.id)
 
-        val moved = passwordRepository.getPasswordById(seeded.id)!!
+        val moved = loginRepository.getLoginById(seeded.id)!!
         assertEquals(seeded.name, moved.name)
         assertEquals(seeded.username, moved.username)
         assertEquals(seeded.note, moved.note)
-        assertEquals(seeded.score, moved.score)
+        assertEquals(seeded.passwordScore, moved.passwordScore)
         assertEquals(seeded.domainInfos, moved.domainInfos)
         assertEquals(seeded.pinned, moved.pinned)
     }
@@ -138,7 +140,7 @@ class MoveItemsToVaultUseCaseTest {
         val result = useCase(srcVault.id, srcVault.id)
 
         assertTrue(result.isSuccess())
-        val after = passwordRepository.getPasswordById(seeded.id)!!
+        val after = loginRepository.getLoginById(seeded.id)!!
         assertEquals(srcVault.id, after.vaultId)
         assertEquals(
             seeded.keyInformation.wrappedKey.toList(),
@@ -190,7 +192,7 @@ class MoveItemsToVaultUseCaseTest {
 
         assertTrue(result.isSuccess())
         seededIds.forEach { id ->
-            val moved = passwordRepository.getPasswordById(id)!!
+            val moved = loginRepository.getLoginById(id)!!
             assertEquals(dstVault.id, moved.vaultId)
         }
     }
@@ -211,7 +213,7 @@ class MoveItemsToVaultUseCaseTest {
         assertSame(cause, error.cause)
 
         seededIds.forEach { id ->
-            assertEquals(srcVault.id, passwordRepository.getPasswordById(id)!!.vaultId)
+            assertEquals(srcVault.id, loginRepository.getLoginById(id)!!.vaultId)
         }
     }
 
@@ -233,7 +235,7 @@ class MoveItemsToVaultUseCaseTest {
         assertSame(cause, error.cause)
 
         seededIds.forEach { id ->
-            assertEquals(srcVault.id, passwordRepository.getPasswordById(id)!!.vaultId)
+            assertEquals(srcVault.id, loginRepository.getLoginById(id)!!.vaultId)
         }
     }
 
@@ -331,49 +333,51 @@ class MoveItemsToVaultUseCaseTest {
         name: String = "item",
         username: String? = null,
         note: String? = null,
-        score: Password.Score = Password.Score.Strong,
+        passwordScore: PasswordScore = PasswordScore.Strong,
         domainInfos: Set<DomainInfo> = emptySet(),
         pinned: Boolean = false,
         passwordPlaintext: String,
         totpPlaintext: String? = null,
-    ): Password {
+    ): Login {
         val aad = ItemAad(itemId = id, vaultId = vault.id)
-        val password = cryptographicScopeProvider.itemScope(
+        val login = cryptographicScopeProvider.itemScope(
             wrappedVaultKeyInformation = WrappedVaultKeyInformation(
                 wrappedVaultKey = vault.keyInformation,
                 vaultId = vault.id,
             ),
             wrappedItemKeyInformation = WrappedItemKeyInformation(itemAad = aad),
         ) {
-            Password(
+            Login(
                 id = id,
                 name = name,
                 username = username,
                 domainInfos = domainInfos,
-                score = score,
-                password = passwordPlaintext.encryptSecretData(label = Password.LABEL_PASSWORD),
-                totpSecret = totpPlaintext?.encryptSecretData(label = Password.LABEL_TOTP_SECRET),
+                passwordScore = passwordScore,
+                password = passwordPlaintext.encryptSecretData(label = Login.LABEL_PASSWORD),
+                totp = totpPlaintext?.encryptSecretData(label = Login.LABEL_TOTP_SECRET)?.let {
+                    Totp(loginId = id, secret = it)
+                },
                 note = note,
                 pinned = pinned,
                 vaultId = vault.id,
                 keyInformation = wrapCurrentItemKey(),
             )
         }
-        passwordRepository.seed(password)
-        return password
+        loginRepository.seed(login)
+        return login
     }
 
-    private suspend fun decrypt(password: Password, vault: Vault): Pair<String, String?> =
+    private suspend fun decrypt(login: Login, vault: Vault): Pair<String, String?> =
         cryptographicScopeProvider.itemScope(
             wrappedVaultKeyInformation = WrappedVaultKeyInformation(
                 wrappedVaultKey = vault.keyInformation,
                 vaultId = vault.id,
             ),
-            wrappedItemKeyInformation = password.wrappedItemKeyInformation(),
+            wrappedItemKeyInformation = login.wrappedItemKeyInformation(),
         ) {
-            val pw: String = password.password.decryptSecretData(label = Password.LABEL_PASSWORD)
+            val pw: String = login.password.decryptSecretData(label = Login.LABEL_PASSWORD)
             val totp: String? =
-                password.totpSecret?.decryptSecretData(label = Password.LABEL_TOTP_SECRET)
+                login.totp?.secret?.decryptSecretData(label = Login.LABEL_TOTP_SECRET)
             pw to totp
         }
 }

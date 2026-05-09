@@ -9,43 +9,43 @@ class PasswordScoreTest {
 
     @Test
     fun `invoke maps 1 to Ridiculous`() {
-        assertEquals(Password.Score.Ridiculous, Password.Score(1))
+        assertEquals(PasswordScore.Ridiculous, PasswordScore(1))
     }
 
     @Test
     fun `invoke maps 2 to Weak`() {
-        assertEquals(Password.Score.Weak, Password.Score(2))
+        assertEquals(PasswordScore.Weak, PasswordScore(2))
     }
 
     @Test
     fun `invoke maps 3 to Moderate`() {
-        assertEquals(Password.Score.Moderate, Password.Score(3))
+        assertEquals(PasswordScore.Moderate, PasswordScore(3))
     }
 
     @Test
     fun `invoke maps 4 to Strong`() {
-        assertEquals(Password.Score.Strong, Password.Score(4))
+        assertEquals(PasswordScore.Strong, PasswordScore(4))
     }
 
     @Test
     fun `invoke maps 5 to Excellent`() {
-        assertEquals(Password.Score.Excellent, Password.Score(5))
+        assertEquals(PasswordScore.Excellent, PasswordScore(5))
     }
 
     @Test
     fun `invoke maps out of range to None`() {
-        assertEquals(Password.Score.None, Password.Score(0))
-        assertEquals(Password.Score.None, Password.Score(6))
-        assertEquals(Password.Score.None, Password.Score(-1))
+        assertEquals(PasswordScore.None, PasswordScore(0))
+        assertEquals(PasswordScore.None, PasswordScore(6))
+        assertEquals(PasswordScore.None, PasswordScore(-1))
     }
 
     @Test
     fun `isNone returns true only for None`() {
-        assertTrue(Password.Score.None.isNone)
-        assertFalse(Password.Score.Ridiculous.isNone)
-        assertFalse(Password.Score.Weak.isNone)
-        assertFalse(Password.Score.Moderate.isNone)
-        assertFalse(Password.Score.Strong.isNone)
-        assertFalse(Password.Score.Excellent.isNone)
+        assertTrue(PasswordScore.None.isNone)
+        assertFalse(PasswordScore.Ridiculous.isNone)
+        assertFalse(PasswordScore.Weak.isNone)
+        assertFalse(PasswordScore.Moderate.isNone)
+        assertFalse(PasswordScore.Strong.isNone)
+        assertFalse(PasswordScore.Excellent.isNone)
     }
 }

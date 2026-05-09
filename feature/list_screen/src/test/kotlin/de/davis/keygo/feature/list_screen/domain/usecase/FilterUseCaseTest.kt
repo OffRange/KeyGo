@@ -2,7 +2,7 @@ package de.davis.keygo.feature.list_screen.domain.usecase
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
-import de.davis.keygo.core.item.domain.model.Password
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
@@ -22,7 +22,7 @@ class FilterUseCaseTest {
     data class TestLiteItem(
         override val name: String,
         override val id: ItemId = UUID.nameUUIDFromBytes(name.toByteArray()),
-        override val itemType: VaultItemType = VaultItemType.Password,
+        override val itemType: VaultItemType = VaultItemType.Login,
         override val pinned: Boolean = false,
     ) : LiteItem
 
@@ -68,7 +68,7 @@ class FilterUseCaseTest {
 
     @Test
     fun `filtering an empty list returns empty list`() {
-        val state = FilterState(selectedScores = setOf(Password.Score.Weak))
+        val state = FilterState(selectedScores = setOf(PasswordScore.Weak))
         val result = useCase(state, emptyList<TestLiteItem>(), noScores)
         assertTrue(result.isEmpty())
     }
@@ -232,11 +232,11 @@ class FilterUseCaseTest {
 
     // Filter by item type
     private val typedItems = listOf(
-        TestLiteItem(name = "Login A", id = newItemId(), itemType = VaultItemType.Password),
-        TestLiteItem(name = "Login B", id = newItemId(), itemType = VaultItemType.Password),
+        TestLiteItem(name = "Login A", id = newItemId(), itemType = VaultItemType.Login),
+        TestLiteItem(name = "Login B", id = newItemId(), itemType = VaultItemType.Login),
     )
 
-    private val noScores: Map<ItemId, Password.Score> = emptyMap()
+    private val noScores: Map<ItemId, PasswordScore> = emptyMap()
 
     @Test
     fun `no item type selected returns all items`() {
@@ -246,11 +246,11 @@ class FilterUseCaseTest {
     }
 
     @Test
-    fun `selecting Password type keeps only passwords`() {
-        val state = FilterState(selectedItemTypes = setOf(VaultItemType.Password))
+    fun `selecting Login type keeps only logins`() {
+        val state = FilterState(selectedItemTypes = setOf(VaultItemType.Login))
         val result = useCase(state, typedItems, noScores)
 
-        assertTrue(result.all { it.itemType == VaultItemType.Password })
+        assertTrue(result.all { it.itemType == VaultItemType.Login })
     }
 
     // Filter by score
@@ -262,39 +262,39 @@ class FilterUseCaseTest {
     )
 
     private val scores = mapOf(
-        scoredItems[0].id to Password.Score.Excellent,
-        scoredItems[2].id to Password.Score.Strong,
-        scoredItems[3].id to Password.Score.Weak,
+        scoredItems[0].id to PasswordScore.Excellent,
+        scoredItems[2].id to PasswordScore.Strong,
+        scoredItems[3].id to PasswordScore.Weak,
     )
 
     @Test
-    fun `no score selected returns all passwords items`() {
+    fun `no score selected returns all login items`() {
         val state = FilterState(selectedScores = emptySet())
         val result =
-            useCase(state, scoredItems, scores).filter { it.itemType == VaultItemType.Password }
-        val expected = scoredItems.filter { it.itemType == VaultItemType.Password }
+            useCase(state, scoredItems, scores).filter { it.itemType == VaultItemType.Login }
+        val expected = scoredItems.filter { it.itemType == VaultItemType.Login }
         assertEquals(expected, result)
     }
 
     @Test
     fun `selecting single score returns matching items`() {
-        val state = FilterState(selectedScores = setOf(Password.Score.Weak))
+        val state = FilterState(selectedScores = setOf(PasswordScore.Weak))
         val result = useCase(state, scoredItems, scores)
 
-        val expected = scoredItems.filter { scores[it.id] == Password.Score.Weak }
+        val expected = scoredItems.filter { scores[it.id] == PasswordScore.Weak }
         assertEquals(expected, result)
     }
 
     @Test
     fun `selecting multiple scores returns union of matches`() {
         val state = FilterState(
-            selectedScores = setOf(Password.Score.Weak, Password.Score.Excellent),
+            selectedScores = setOf(PasswordScore.Weak, PasswordScore.Excellent),
         )
         val result = useCase(state, scoredItems, scores)
 
         val expected = scoredItems.filter {
-            scores[it.id] == Password.Score.Weak ||
-                    scores[it.id] == Password.Score.Excellent
+            scores[it.id] == PasswordScore.Weak ||
+                    scores[it.id] == PasswordScore.Excellent
         }
 
         assertEquals(expected.size, result.size)
@@ -303,7 +303,7 @@ class FilterUseCaseTest {
 
     @Test
     fun `selecting a score not present in any item returns empty list`() {
-        val state = FilterState(selectedScores = setOf(Password.Score.Ridiculous))
+        val state = FilterState(selectedScores = setOf(PasswordScore.Ridiculous))
         val result = useCase(state, scoredItems, scores)
         assertTrue(result.isEmpty())
     }
@@ -312,19 +312,19 @@ class FilterUseCaseTest {
     @Test
     fun `item type and score filters are applied together`() {
         val state = FilterState(
-            selectedItemTypes = setOf(VaultItemType.Password),
-            selectedScores = setOf(Password.Score.Excellent),
+            selectedItemTypes = setOf(VaultItemType.Login),
+            selectedScores = setOf(PasswordScore.Excellent),
         )
         val result = useCase(state, scoredItems, scores)
-        assertTrue(result.all { it.itemType == VaultItemType.Password })
-        assertTrue(result.all { scores[it.id] == Password.Score.Excellent })
+        assertTrue(result.all { it.itemType == VaultItemType.Login })
+        assertTrue(result.all { scores[it.id] == PasswordScore.Excellent })
     }
 
     @Test
     fun `filter result is still sorted by sort direction`() {
         val state = FilterState(
             sortDirection = SortDirection.Descending,
-            selectedScores = setOf(Password.Score.Weak, Password.Score.Strong),
+            selectedScores = setOf(PasswordScore.Weak, PasswordScore.Strong),
         )
         val result = useCase(state, scoredItems, scores)
 
@@ -394,12 +394,12 @@ class FilterUseCaseTest {
     fun `onlyPinned combined with item type filter`() {
         val state = FilterState(
             onlyPinned = true,
-            selectedItemTypes = setOf(VaultItemType.Password),
+            selectedItemTypes = setOf(VaultItemType.Login),
         )
         val result = useCase(state, mixedPinnedItems, noScores)
 
         assertTrue(result.all { it.pinned })
-        assertTrue(result.all { it.itemType == VaultItemType.Password })
+        assertTrue(result.all { it.itemType == VaultItemType.Login })
     }
 
     @Test
