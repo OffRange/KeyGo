@@ -21,7 +21,7 @@ repository.
 ./gradlew assemblePlayStoreDebug       # APK build
 ```
 
-- Flavors: `playStore` (default), `fdroid`. Types: `debug`, `release`.
+- Flavors: `playStore` (default), `fdroid`. Types: `debug`, `staging`, `release`.
 - Rust: `./gradlew :rust:buildRust -PbuildRust=true` (disabled by default)
 - CI branch: `v2`
 
@@ -39,10 +39,10 @@ Android password manager using Clean Architecture per module:
 | `:app`                     | Navigation, auth/session flow, autofill service                          |
 | `:core:security`           | Crypto, biometrics, Android Keystore                                     |
 | `:core:identity`           | Key wrapping, auth data, proto schemas (`core/identity/src/main/proto/`) |
-| `:core:item`               | Room database, password/item entities                                    |
+| `:core:item`               | Room database, login/item entities                                       |
 | `:core:ui`                 | Shared composables and UI utilities                                      |
 | `:core:util`               | Shared utilities, `Result` type                                          |
-| `:feature:*`               | `list_screen`, `item:{core,create,view}`, `credentials`, `totp`          |
+| `:feature:*`               | `list_screen`, `item:{core,create,view}`, `credentials`, `totp`, `vault` |
 | `:automation`              | Automation support + annotation processor                                |
 | `:migration-create-access` | v1 → v2 data migration (high risk)                                       |
 | `:rust`                    | Rust crypto/passkey ops via UniFFI-generated Kotlin bindings             |
@@ -66,6 +66,31 @@ Composition root: `app/di/Koin.kt`. Wire dependencies in the most local owning m
 DataStore: `biometric_key_data.pb`, `password_key_data.pb`. Do not change key lifecycle, wrapping,
 prompt flow, or persistence semantics without explicit instruction.
 
+## Key Hierarchy
+
+```
+Password / Biometric
+      ↓ derive / unlock
+   RootKek ───────────────────── never persisted
+      ↓ unwrap
+   ARK (Account Root Key) ────── in-memory only (Session); wrapped in account_registry.pb
+      ↓ unwrap (one per vault)
+   VaultKey ──────────────────── wrapped in VaultEntity.keyInformation (Room)
+      ↓ unwrap (one per item)
+   ItemKey ───────────────────── wrapped in ItemEntity.keyInformation (Room)
+      ↓ encrypt (AAD = itemId + vaultId)
+   SecretData (ciphertext) ───── stored in login/passkey/totp entity fields
+```
+
+- **RootKek** — password path: Argon2 over `(password, salt)`; biometric path: hardware
+  cipher from Android Keystore. Never stored.
+- **ARK** — wrapped twice: `PasswordWrappedArk` and optionally `BiometricWrappedArk`,
+  both inside `ProtoAccount` in `account_registry.pb`.
+- **VaultKey / ItemKey** — wrapped with AES-256-GCM; moving items between vaults
+  re-wraps only the ItemKey, not the ciphertext.
+- **AAD** (`itemId + vaultId`) — bound to every ciphertext; prevents transplant attacks.
+- **Rust FFI** (`de.davis.keygo.rust`) implements all wrap/unwrap/derive operations.
+
 ## Sensitive Areas
 
 - **Migration** — preserve backward compat, smallest safe change
@@ -86,10 +111,12 @@ prompt flow, or persistence semantics without explicit instruction.
 - Use `runTest { }`, `mockk(relaxed = true)`, `coEvery { }`, assert against `Result`
 - Run broader tests for cross-module or security changes
 - **Rust fakes** — `:rust` uses UniFFI (not raw JNI) to generate Kotlin bindings. UniFFI emits
-  `KeyDeriverInterface`/`KeyWrapperInterface`/`AccountManagerInterface` for test seams; fakes live
-  in `:rust` testFixtures (`de.davis.keygo.rust`). Never instantiate `KeyDeriver()`/`KeyWrapper()`/
-  `AccountManager()` in JVM unit tests — their default constructors require the native Rust library
-  at runtime.
+  `KeyDeriverInterface`/`KeyWrapperInterface`/`AccountManagerInterface`/`ItemManagerInterface`/
+  `VaultManagerInterface` for test seams; fakes live in `:rust` testFixtures (
+  `de.davis.keygo.rust`).
+  Never instantiate `KeyDeriver()`/`KeyWrapper()`/`AccountManager()`/`ItemManager()`/
+  `VaultManager()`
+  in JVM unit tests — their default constructors require the native Rust library at runtime.
 - **testFixtures + Compose plugin** — Any module with `kotlin.compose` that enables testFixtures
   must add `testFixturesImplementation(libs.androidx.compose.runtime)` to avoid "Compose Runtime
   not on classpath" compile errors. See `:core:item` for the canonical pattern.
