@@ -10,6 +10,7 @@ import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.SecretData
+import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
@@ -270,6 +271,20 @@ class CreateNewOrUpdateLoginUseCaseTest {
 
         assertTrue(result.isSuccess(), "result: $result")
         assertEquals(null, loginRepository.getLoginById(existing.id)?.username)
+    }
+
+    @Test
+    fun `update with Clear totpSecret removes totp`() = runTest {
+        val base = testLogin()
+        val existing = base.copy(
+            totp = Totp(loginId = base.id, secret = SecretData.EMPTY_STRING),
+        )
+        loginRepository.seed(existing)
+
+        val result = useCase(UpsertLogin.update(itemId = existing.id, totpSecret = clear()))
+
+        assertTrue(result.isSuccess(), "result: $result")
+        assertEquals(null, loginRepository.getLoginById(existing.id)?.totp)
     }
 
     // Failure

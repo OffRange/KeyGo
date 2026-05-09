@@ -45,7 +45,8 @@ internal class LoginRepositoryImpl(
                 passwordDao.upsert(login.toPasswordEntity())
                 login.totp?.toData()?.let {
                     totpDao.upsert(it)
-                }
+                } ?: totpDao.delete(login.id)
+
                 domainInfoDao.syncForLogin(login.id, login.toDomainInfoEntities(login.id))
 
                 login.id

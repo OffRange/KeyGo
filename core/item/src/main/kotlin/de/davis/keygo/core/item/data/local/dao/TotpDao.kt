@@ -12,6 +12,9 @@ internal interface TotpDao {
     @Upsert
     suspend fun upsert(totp: TotpEntity)
 
+    @Query("DELETE FROM totp WHERE login_id = :loginId")
+    suspend fun delete(loginId: ItemId)
+
     @Query("SELECT * FROM totp WHERE login_id = :loginId")
     suspend fun getTotp(loginId: ItemId): TotpEntity?
 }
