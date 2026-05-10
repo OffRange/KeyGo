@@ -62,6 +62,7 @@ dependencies {
     implementation(projects.core.ui)
     implementation(projects.feature.item.create)
     implementation(projects.feature.listScreen)
+    implementation(projects.feature.auth)
 
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))

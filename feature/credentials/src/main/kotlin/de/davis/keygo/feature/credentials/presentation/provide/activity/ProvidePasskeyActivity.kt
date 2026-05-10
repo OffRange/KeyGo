@@ -5,18 +5,29 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Modifier
 import androidx.credentials.GetCredentialResponse
 import androidx.credentials.GetPublicKeyCredentialOption
 import androidx.credentials.PublicKeyCredential
 import androidx.credentials.exceptions.GetCredentialUnknownException
 import androidx.credentials.provider.PendingIntentHandler
 import androidx.fragment.app.FragmentActivity
-import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import de.davis.keygo.core.ui.theme.KeyGoTheme
-import de.davis.keygo.core.util.onFailure
-import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
+import de.davis.keygo.feature.auth.presentation.AuthRoute
+import de.davis.keygo.feature.auth.presentation.authGraph
+import kotlinx.serialization.Serializable
 import org.koin.androidx.viewmodel.ext.android.viewModel
+
+@Serializable
+private data object ProcessingDest
 
 internal class ProvidePasskeyActivity : FragmentActivity() {
 
@@ -34,30 +45,43 @@ internal class ProvidePasskeyActivity : FragmentActivity() {
         val credentialId = intent.extras?.getByteArray(EXTRA_CREDENTIAL_ID)
             ?: return cancel("No credential ID found")
 
-        viewModel.updateGetPublicKeyCredentialOption(publicKeyRequest, credentialId)
-
         setResult(RESULT_CANCELED)
         setContent {
             KeyGoTheme {
-                val biometricCryptoController = rememberBiometricCryptoController()
-
+                val navController = rememberNavController()
                 BackHandler { cancel() }
-
-                ObserveAsEvents(flow = viewModel.biometricRequest) {
-                    biometricCryptoController.requestDecryption(
-                        keyId = it.keyId,
-                        ciphertextData = it.ciphertextData,
-                        policy = it.policy
-                    ).onSuccess(viewModel::onPasskeyDecrypted)
-                        .onFailure { error -> cancel("Biometric authentication failed: $error") }
-                }
 
                 ObserveAsEvents(flow = viewModel.event) {
                     when (it) {
                         is ProvidePasskeyEvent.Abort -> cancel("Operation aborted")
                         is ProvidePasskeyEvent.Finish -> finishWithSuccess(it.responseJson)
+                    }
+                }
 
-                        else -> {}
+                Scaffold { innerPadding ->
+                    NavHost(
+                        navController = navController,
+                        startDestination = AuthRoute(),
+                        modifier = Modifier
+                            .padding(innerPadding)
+                            .consumeWindowInsets(innerPadding),
+                    ) {
+                        authGraph(
+                            onSuccess = {
+                                navController.navigate(ProcessingDest) {
+                                    popUpTo<AuthRoute> { inclusive = true }
+                                }
+                            }
+                        )
+
+                        composable<ProcessingDest> {
+                            LaunchedEffect(Unit) {
+                                viewModel.processGetPublicKeyCredentialOption(
+                                    option = publicKeyRequest,
+                                    credentialId = credentialId,
+                                )
+                            }
+                        }
                     }
                 }
             }

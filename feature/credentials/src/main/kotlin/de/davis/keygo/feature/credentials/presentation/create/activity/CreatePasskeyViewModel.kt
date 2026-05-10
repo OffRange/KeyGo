@@ -8,8 +8,12 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasskeyUser
 import de.davis.keygo.core.item.domain.model.SecretData
+import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
-import de.davis.keygo.core.security.domain.model.CiphertextData
+import de.davis.keygo.core.item.domain.repository.VaultRepository
+import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
+import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.rust.passkey.PasskeyManager
 import de.davis.keygo.rust.passkey.getExcludedCredentialIds
@@ -23,17 +27,16 @@ import org.koin.core.annotation.KoinViewModel
 @KoinViewModel
 internal class CreatePasskeyViewModel(
     private val passkeyRepository: PasskeyRepository,
+    private val loginRepository: LoginRepository,
+    private val vaultRepository: VaultRepository,
+    private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passkeyManager: PasskeyManager,
 ) : ViewModel() {
-
-    private val biometricChannel = Channel<CreatePasskeyBiometricRequestEvent>()
-    val biometricRequest = biometricChannel.receiveAsFlow()
 
     private val _event = Channel<CreatePasskeyEvent>()
     val event = _event.receiveAsFlow()
 
     private var registrationResponse: RegistrationResponse? = null
-    private var key: CiphertextData? = null
 
 
     fun updateCreatePublicKeyCredentialRequest(request: CreatePublicKeyCredentialRequest) {
@@ -49,46 +52,52 @@ internal class CreatePasskeyViewModel(
             registrationResponse = passkeyManager.registerWithResult(request.requestJson)
                 .getOrNull() ?: return@launch abort("Failed to register passkey")
 
-            // Request authentication
-            registrationResponse?.let {
-                biometricChannel.send(
-                    CreatePasskeyBiometricRequestEvent.EncryptPasskeyEncryptionKey(
-                        key = it.privateKey
-                    )
-                )
-            }
+            _event.send(CreatePasskeyEvent.ShowList)
         }
-    }
-
-
-    fun passkeyEncrypted(key: CiphertextData) {
-        this.key = key
-        _event.trySend(CreatePasskeyEvent.ShowList)
     }
 
     fun associatePasskeyAndFinish(itemId: ItemId) {
         viewModelScope.launch {
-            val registrationResponse =
-                registrationResponse ?: return@launch abort("Response was null")
-            val key = key ?: return@launch abort("Key was null")
+            val response = registrationResponse ?: return@launch abort("Response was null")
+
+            val login = loginRepository.getLoginById(itemId)
+                ?: return@launch abort("Login not found for id $itemId")
+            val vaultKeyInfo = vaultRepository.getKeyInformation(login.vaultId)
+                ?: return@launch abort("Vault key information missing for ${login.vaultId}")
+
+            val encryptedPrivateKey = try {
+                cryptographicScopeProvider.itemScope(
+                    wrappedVaultKeyInformation = WrappedVaultKeyInformation(
+                        wrappedVaultKey = vaultKeyInfo,
+                        vaultId = login.vaultId,
+                    ),
+                    wrappedItemKeyInformation = login.wrappedItemKeyInformation(),
+                ) {
+                    val ct = response.privateKey.encrypt(label = Passkey.LABEL_PRIVATE_KEY)
+                    SecretData(
+                        data = ct.data,
+                        iv = ct.iv,
+                        decryptedDataType = SecretData.DecryptedDataType.StringType,
+                    )
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "Failed to encrypt passkey private key", t)
+                return@launch abort("Failed to encrypt passkey private key")
+            }
 
             val passkey = Passkey(
-                credentialId = registrationResponse.credentialId,
-                privateKey = SecretData(
-                    data = key.bytes,
-                    iv = key.iv,
-                    decryptedDataType = SecretData.DecryptedDataType.StringType
-                ),
-                rp = registrationResponse.rp,
+                credentialId = response.credentialId,
+                privateKey = encryptedPrivateKey,
+                rp = response.rp,
                 loginId = itemId,
                 user = PasskeyUser(
-                    name = registrationResponse.userName,
-                    displayName = registrationResponse.userDisplayName
-                )
+                    name = response.userName,
+                    displayName = response.userDisplayName,
+                ),
             )
 
             passkeyRepository.createPasskey(passkey)
-            _event.send(CreatePasskeyEvent.Finish(registrationResponse.response))
+            _event.send(CreatePasskeyEvent.Finish(response.response))
         }
     }
 

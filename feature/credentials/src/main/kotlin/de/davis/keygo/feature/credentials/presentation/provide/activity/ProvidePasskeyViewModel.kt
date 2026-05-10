@@ -4,8 +4,14 @@ import android.util.Log
 import androidx.credentials.GetPublicKeyCredentialOption
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.item.domain.model.Passkey
+import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
-import de.davis.keygo.core.security.domain.model.CiphertextData
+import de.davis.keygo.core.item.domain.repository.VaultRepository
+import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
+import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
+import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.rust.passkey.PasskeyManager
@@ -18,49 +24,53 @@ import org.koin.core.annotation.KoinViewModel
 @KoinViewModel
 internal class ProvidePasskeyViewModel(
     private val passkeyRepository: PasskeyRepository,
-    private val passkeyManager: PasskeyManager
+    private val loginRepository: LoginRepository,
+    private val vaultRepository: VaultRepository,
+    private val cryptographicScopeProvider: CryptographicScopeProvider,
+    private val passkeyManager: PasskeyManager,
 ) : ViewModel() {
-
-    private val biometricChannel = Channel<DecryptPasskeyEncryptionKeyRequest>()
-    val biometricRequest = biometricChannel.receiveAsFlow()
-
 
     private val _event = Channel<ProvidePasskeyEvent>()
     val event = _event.receiveAsFlow()
 
-    private var requestJson: String? = null
-    private var clientHashData: ByteArray? = null
-
-    fun updateGetPublicKeyCredentialOption(
+    fun processGetPublicKeyCredentialOption(
         option: GetPublicKeyCredentialOption,
-        credentialId: ByteArray
+        credentialId: ByteArray,
     ) {
-        requestJson = option.requestJson
-        clientHashData = option.clientDataHash
-
         viewModelScope.launch {
+            val clientDataHash = option.clientDataHash
+                ?: return@launch abort("ClientDataHash was null")
+
             val passkey = passkeyRepository.getPasskey(credentialId)
                 ?: return@launch abort("No passkey found!")
 
-            biometricChannel.send(
-                DecryptPasskeyEncryptionKeyRequest(
-                    ciphertextData = CiphertextData(
-                        bytes = passkey.privateKey.data,
-                        iv = passkey.privateKey.iv,
-                    )
-                )
-            )
-        }
-    }
+            val login = loginRepository.getLoginById(passkey.loginId)
+                ?: return@launch abort("Parent login not found for passkey")
+            val vaultKeyInfo = vaultRepository.getKeyInformation(login.vaultId)
+                ?: return@launch abort("Vault key information missing for ${login.vaultId}")
 
-    fun onPasskeyDecrypted(key: ByteArray) {
-        viewModelScope.launch {
-            val requestJson = requestJson ?: return@launch abort("Request was null")
-            val clientHashData = clientHashData ?: return@launch abort("ClientHashData was null")
+            val privateKey = try {
+                cryptographicScopeProvider.itemScope(
+                    wrappedVaultKeyInformation = WrappedVaultKeyInformation(
+                        wrappedVaultKey = vaultKeyInfo,
+                        vaultId = login.vaultId,
+                    ),
+                    wrappedItemKeyInformation = login.wrappedItemKeyInformation(),
+                ) {
+                    CryptographicData(
+                        data = passkey.privateKey.data,
+                        iv = passkey.privateKey.iv,
+                    ).decrypt(label = Passkey.LABEL_PRIVATE_KEY)
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "Failed to decrypt passkey private key", t)
+                return@launch abort("Failed to decrypt passkey private key")
+            }
+
             passkeyManager.authenticateWithResult(
-                requestJson = requestJson,
-                passkey = key,
-                clientDataHash = clientHashData
+                requestJson = option.requestJson,
+                passkey = privateKey,
+                clientDataHash = clientDataHash,
             ).onFailure {
                 Log.w(TAG, "Error during passkey authentication", it)
                 abort()
