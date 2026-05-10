@@ -8,7 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.credentials.GetCredentialResponse
 import androidx.credentials.GetPublicKeyCredentialOption
@@ -16,18 +16,22 @@ import androidx.credentials.PublicKeyCredential
 import androidx.credentials.exceptions.GetCredentialUnknownException
 import androidx.credentials.provider.PendingIntentHandler
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import de.davis.keygo.core.identity.presentation.rememberBiometricUnlockAdapter
+import de.davis.keygo.core.identity.presentation.useAdapter
+import de.davis.keygo.core.security.domain.model.BiometricPolicy
+import de.davis.keygo.core.security.domain.model.BiometricString
+import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
 import de.davis.keygo.core.ui.theme.KeyGoTheme
+import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.auth.presentation.authGraph
-import kotlinx.serialization.Serializable
+import de.davis.keygo.feature.credentials.presentation.auth.SessionAuthState
 import org.koin.androidx.viewmodel.ext.android.viewModel
-
-@Serializable
-private data object ProcessingDest
 
 internal class ProvidePasskeyActivity : FragmentActivity() {
 
@@ -46,40 +50,62 @@ internal class ProvidePasskeyActivity : FragmentActivity() {
             ?: return cancel("No credential ID found")
 
         viewModel.setRequest(publicKeyRequest, credentialId)
+
         setResult(RESULT_CANCELED)
         setContent {
             KeyGoTheme {
-                val navController = rememberNavController()
                 BackHandler { cancel() }
 
-                ObserveAsEvents(flow = viewModel.event) {
+                ObserveAsEvents(viewModel.event) {
                     when (it) {
                         is ProvidePasskeyEvent.Abort -> cancel("Operation aborted")
                         is ProvidePasskeyEvent.Finish -> finishWithSuccess(it.responseJson)
                     }
                 }
 
-                Scaffold { innerPadding ->
-                    NavHost(
-                        navController = navController,
-                        startDestination = AuthRoute(),
-                        modifier = Modifier
-                            .padding(innerPadding)
-                            .consumeWindowInsets(innerPadding),
-                    ) {
-                        authGraph(
-                            onSuccess = {
-                                navController.navigate(ProcessingDest) {
-                                    popUpTo<AuthRoute> { inclusive = true }
-                                }
-                            }
-                        )
+                val biometricCryptoController = rememberBiometricCryptoController()
+                val biometricUnlockAdapter = rememberBiometricUnlockAdapter()
 
-                        composable<ProcessingDest> {
-                            LaunchedEffect(Unit) {
-                                viewModel.onUnlocked()
+                ObserveAsEvents(viewModel.biometricFlow) {
+                    biometricUnlockAdapter.useAdapter {
+                        biometricCryptoController.requestUnlockVault(
+                            policy = BiometricPolicy(
+                                title = BiometricString.Title.Authenticate,
+                                negativeButton = BiometricString.NegativeButton.Password,
+                            )
+                        )
+                    }.onSuccess {
+                        viewModel.onUnlocked()
+                    }.onFailure {
+                        viewModel.onUnlockFailed(it)
+                    }
+                }
+
+                val authState by viewModel.authState.collectAsStateWithLifecycle()
+                when (authState) {
+                    SessionAuthState.TryBiometric -> {
+                        // render nothing — activity stays transparent while system biometric prompt is shown
+                    }
+
+                    SessionAuthState.NeedsPassword -> {
+                        val navController = rememberNavController()
+                        Scaffold { innerPadding ->
+                            NavHost(
+                                navController = navController,
+                                startDestination = AuthRoute(showBiometricPromptIfPossible = false),
+                                modifier = Modifier
+                                    .padding(innerPadding)
+                                    .consumeWindowInsets(innerPadding),
+                            ) {
+                                authGraph(
+                                    onSuccess = { viewModel.onUnlocked() }
+                                )
                             }
                         }
+                    }
+
+                    SessionAuthState.Authenticated -> {
+                        // render nothing — operation runs in ViewModel and emits Finish/Abort
                     }
                 }
             }
