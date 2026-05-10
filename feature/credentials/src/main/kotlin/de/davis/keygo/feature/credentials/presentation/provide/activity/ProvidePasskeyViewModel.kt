@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.credentials.GetPublicKeyCredentialOption
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.identity.domain.model.UnlockError
+import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
@@ -12,11 +14,17 @@ import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
+import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
+import de.davis.keygo.feature.credentials.presentation.auth.SessionAuthState
+import de.davis.keygo.feature.credentials.presentation.auth.UnlockOutcome
+import de.davis.keygo.feature.credentials.presentation.auth.mapUnlockError
 import de.davis.keygo.rust.passkey.PasskeyManager
 import de.davis.keygo.rust.passkey.authenticateWithResult
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
@@ -28,20 +36,63 @@ internal class ProvidePasskeyViewModel(
     private val vaultRepository: VaultRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passkeyManager: PasskeyManager,
+    private val accountRepository: AccountRepository,
+    private val biometricAvailabilityRepository: BiometricAvailabilityRepository,
 ) : ViewModel() {
 
-    private val _event = Channel<ProvidePasskeyEvent>()
+    private val _event = Channel<ProvidePasskeyEvent>(Channel.BUFFERED)
     val event = _event.receiveAsFlow()
 
-    fun processGetPublicKeyCredentialOption(
-        option: GetPublicKeyCredentialOption,
-        credentialId: ByteArray,
-    ) {
+    private val _authState = MutableStateFlow<SessionAuthState>(SessionAuthState.TryBiometric)
+    val authState = _authState.asStateFlow()
+
+    private val biometricChannel = Channel<Unit>(Channel.BUFFERED)
+    val biometricFlow = biometricChannel.receiveAsFlow()
+
+    private data class PendingRequest(
+        val option: GetPublicKeyCredentialOption,
+        val credentialId: ByteArray,
+    )
+
+    private var pendingRequest: PendingRequest? = null
+
+    init {
         viewModelScope.launch {
-            val clientDataHash = option.clientDataHash
+            val account = accountRepository.getOrNull()
+            val biometricUsable = biometricAvailabilityRepository.availability()
+                && account?.biometricWrappedArk != null
+
+            if (biometricUsable) {
+                _authState.value = SessionAuthState.TryBiometric
+                biometricChannel.send(Unit)
+            } else
+                _authState.value = SessionAuthState.NeedsPassword
+        }
+    }
+
+    fun setRequest(option: GetPublicKeyCredentialOption, credentialId: ByteArray) {
+        pendingRequest = PendingRequest(option, credentialId)
+    }
+
+    fun onUnlocked() {
+        _authState.value = SessionAuthState.Authenticated
+        val req = pendingRequest ?: return
+        runOperation(req)
+    }
+
+    fun onUnlockFailed(error: UnlockError) {
+        when (mapUnlockError(error)) {
+            UnlockOutcome.Abort -> viewModelScope.launch { abort() }
+            UnlockOutcome.NeedsPassword -> _authState.value = SessionAuthState.NeedsPassword
+        }
+    }
+
+    private fun runOperation(req: PendingRequest) {
+        viewModelScope.launch {
+            val clientDataHash = req.option.clientDataHash
                 ?: return@launch abort("ClientDataHash was null")
 
-            val passkey = passkeyRepository.getPasskey(credentialId)
+            val passkey = passkeyRepository.getPasskey(req.credentialId)
                 ?: return@launch abort("No passkey found!")
 
             val login = loginRepository.getLoginById(passkey.loginId)
@@ -68,7 +119,7 @@ internal class ProvidePasskeyViewModel(
             }
 
             passkeyManager.authenticateWithResult(
-                requestJson = option.requestJson,
+                requestJson = req.option.requestJson,
                 passkey = privateKey,
                 clientDataHash = clientDataHash,
             ).onFailure {

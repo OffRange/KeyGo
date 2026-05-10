@@ -45,6 +45,7 @@ internal class ProvidePasskeyActivity : FragmentActivity() {
         val credentialId = intent.extras?.getByteArray(EXTRA_CREDENTIAL_ID)
             ?: return cancel("No credential ID found")
 
+        viewModel.setRequest(publicKeyRequest, credentialId)
         setResult(RESULT_CANCELED)
         setContent {
             KeyGoTheme {
@@ -76,10 +77,7 @@ internal class ProvidePasskeyActivity : FragmentActivity() {
 
                         composable<ProcessingDest> {
                             LaunchedEffect(Unit) {
-                                viewModel.processGetPublicKeyCredentialOption(
-                                    option = publicKeyRequest,
-                                    credentialId = credentialId,
-                                )
+                                viewModel.onUnlocked()
                             }
                         }
                     }
