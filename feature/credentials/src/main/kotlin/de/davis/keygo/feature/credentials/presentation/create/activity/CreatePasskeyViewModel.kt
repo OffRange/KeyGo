@@ -59,7 +59,7 @@ internal class CreatePasskeyViewModel(
         viewModelScope.launch {
             val account = accountRepository.getOrNull()
             val biometricUsable = biometricAvailabilityRepository.availability()
-                && account?.biometricWrappedArk != null
+                    && account?.biometricWrappedArk != null
 
             if (biometricUsable) {
                 _authState.value = SessionAuthState.TryBiometric
@@ -74,6 +74,7 @@ internal class CreatePasskeyViewModel(
     }
 
     fun onUnlocked() {
+        if (_authState.value == SessionAuthState.Authenticated) return
         _authState.value = SessionAuthState.Authenticated
         val req = pendingRequest ?: return
         runOperation(req)
