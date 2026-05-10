@@ -11,7 +11,6 @@ import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.security.presentation.BiometricCryptoController
 import de.davis.keygo.core.util.Result
-import de.davis.keygo.core.util.getOrNull
 import org.koin.compose.koinInject
 import org.koin.core.annotation.Single
 
@@ -27,17 +26,22 @@ internal class BiometricUnlockAdapterImpl(
         val wrappedKey = accountRepository.getOrNull()?.biometricWrappedArk
             ?: return Result.Failure(UnlockError.WrappedKeyNotFound)
 
-        val result = requestUnwrap(
+        val unwrapResult = requestUnwrap(
             keyId = KeyId.BiometricVaultKek,
             ciphertextData = CiphertextData(
                 bytes = wrappedKey.key,
                 iv = wrappedKey.keyIV
             ),
             policy = policy
-        ).getOrNull() ?: return Result.Failure(UnlockError.UnwrappingFailed)
+        )
 
-        session.startSession(result.asAesKey())
-        return Result.Success(Unit)
+        return when (unwrapResult) {
+            is Result.Failure -> Result.Failure(UnlockError.BiometricFailed(unwrapResult.error))
+            is Result.Success -> {
+                session.startSession(unwrapResult.success.asAesKey())
+                Result.Success(Unit)
+            }
+        }
     }
 }
 
