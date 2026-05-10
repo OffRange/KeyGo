@@ -54,13 +54,13 @@ internal class ProvidePasskeyViewModel(
         val credentialId: ByteArray,
     )
 
-    private var pendingRequest: PendingRequest? = null
+    private lateinit var pendingRequest: PendingRequest
 
     init {
         viewModelScope.launch {
             val account = accountRepository.getOrNull()
             val biometricUsable = biometricAvailabilityRepository.availability()
-                && account?.biometricWrappedArk != null
+                    && account?.biometricWrappedArk != null
 
             if (biometricUsable) {
                 _authState.value = SessionAuthState.TryBiometric
@@ -76,8 +76,7 @@ internal class ProvidePasskeyViewModel(
 
     fun onUnlocked() {
         _authState.value = SessionAuthState.Authenticated
-        val req = pendingRequest ?: return
-        runOperation(req)
+        runOperation(pendingRequest)
     }
 
     fun onUnlockFailed(error: UnlockError) {
