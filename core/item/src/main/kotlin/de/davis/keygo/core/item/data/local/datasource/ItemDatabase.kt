@@ -4,8 +4,6 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import androidx.room.TypeConverters
-import de.davis.keygo.core.item.data.local.converter.SecretDataConverter
 import de.davis.keygo.core.item.data.local.dao.DomainInfoDao
 import de.davis.keygo.core.item.data.local.dao.ItemDao
 import de.davis.keygo.core.item.data.local.dao.LoginDao
@@ -35,7 +33,6 @@ import org.koin.core.annotation.Single
     ],
     version = 1,
 )
-@TypeConverters(SecretDataConverter::class)
 internal abstract class ItemDatabase : RoomDatabase() {
 
     abstract fun vaultDao(): VaultDao

@@ -6,6 +6,7 @@ import de.davis.keygo.core.item.data.local.entity.credential.PasswordEntity
 import de.davis.keygo.core.item.data.local.pojo.LightweightLogin
 import de.davis.keygo.core.item.data.local.pojo.LoginProjection
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.lite.LiteLogin
 
 internal fun Login.toLoginEntity(): LoginEntity = LoginEntity(
@@ -16,7 +17,7 @@ internal fun Login.toLoginEntity(): LoginEntity = LoginEntity(
 internal fun Login.toPasswordEntity(): PasswordEntity = PasswordEntity(
     loginId = id,
     passwordScore = passwordScore,
-    password = password,
+    password = password.payload,
 )
 
 internal fun LoginProjection.toDomain(): Login = Login(
@@ -24,7 +25,7 @@ internal fun LoginProjection.toDomain(): Login = Login(
     username = loginEntity.username,
     passwordScore = passwordEntity.passwordScore,
     totp = totp?.toDomain(),
-    password = passwordEntity.password,
+    password = PasswordSecret(passwordEntity.password),
 
     passkeyRPs = rpEntity.map { it.rp }.toSet(),
 

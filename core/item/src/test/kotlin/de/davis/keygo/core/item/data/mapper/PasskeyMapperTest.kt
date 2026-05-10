@@ -3,9 +3,9 @@ package de.davis.keygo.core.item.data.mapper
 import de.davis.keygo.core.item.data.local.entity.credential.PasskeyEntity
 import de.davis.keygo.core.item.data.local.pojo.PasskeyMetadataPojo
 import de.davis.keygo.core.item.domain.alias.newItemId
+import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasskeyUser
-import de.davis.keygo.core.item.domain.model.SecretData
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -14,7 +14,12 @@ import kotlin.test.assertNull
 class PasskeyMapperTest {
 
     private val credentialId = byteArrayOf(1, 2, 3, 4)
-    private val privateKey = SecretData.EMPTY_STRING
+    private val privateKey = Passkey.PrivateKey(
+        EncryptedPayload(
+            ciphertext = byteArrayOf(0x1, 0x2, 0x3),
+            iv = byteArrayOf(0x11, 0x12, 0x13)
+        )
+    )
     private val user = PasskeyUser(name = "alice", displayName = "Alice Smith")
 
     private fun testPasskey() = Passkey(
@@ -40,7 +45,7 @@ class PasskeyMapperTest {
 
     @Test
     fun `toData copies privateKey`() {
-        assertEquals(privateKey, testPasskey().toData().privateKey)
+        assertEquals(privateKey.payload, testPasskey().toData().privateKey)
     }
 
     @Test
@@ -77,7 +82,7 @@ class PasskeyMapperTest {
     }
 
     @Test
-    fun `round-trip Passkey→entity→domain preserves equality`() {
+    fun `round-trip Passkey-entity-domain preserves equality`() {
         val original = testPasskey()
         assertEquals(original, original.toData().toDomain())
     }
@@ -124,7 +129,7 @@ class PasskeyMapperTest {
     ) = PasskeyEntity(
         credentialId = credentialId,
         rp = "example.com",
-        privateKey = privateKey,
+        privateKey = privateKey.payload,
         loginId = newItemId(),
         name = name,
         displayName = displayName,

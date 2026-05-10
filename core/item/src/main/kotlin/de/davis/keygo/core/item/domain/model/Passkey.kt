@@ -5,7 +5,7 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 data class Passkey(
     val credentialId: ByteArray,
     val rp: String,
-    val privateKey: SecretData<String>,
+    val privateKey: PrivateKey,
     val loginId: ItemId,
     val user: PasskeyUser
 ) {
@@ -33,7 +33,16 @@ data class Passkey(
         return result
     }
 
-    companion object {
-        const val LABEL_PRIVATE_KEY = "passkey_private_key"
+    data class PrivateKey(
+        override val payload: EncryptedPayload,
+    ) : SecretField<ByteArray> {
+        override val blueprint: SecretBlueprint<ByteArray, out SecretField<ByteArray>> = PrivateKey
+
+        companion object : SecretBlueprint<ByteArray, PrivateKey>() {
+            override val label: String = "passkey_private_key"
+            override val codec: SecretCodec<ByteArray> = SecretCodec.ByteArrayCodec
+
+            override fun createField(payload: EncryptedPayload): PrivateKey = PrivateKey(payload)
+        }
     }
 }

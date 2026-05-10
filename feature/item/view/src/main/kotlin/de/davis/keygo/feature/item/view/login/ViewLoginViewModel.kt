@@ -4,11 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.DomainInfo
-import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
-import de.davis.keygo.core.security.domain.crypto.decryptSecretData
+import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.usecase.LoginWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
 import de.davis.keygo.core.util.getOrNull
@@ -77,13 +76,11 @@ internal class ViewLoginViewModel(
             observeLoginWithCryptoScope.observe(itemId = id) { login ->
                 val (obfuscated, totp, vaultMetadata) = coroutineScope {
                     val obfuscated = async {
-                        login.password.decryptSecretData(label = Login.LABEL_PASSWORD)
-                            .asObfuscatedString()
+                        login.password.decrypt().asObfuscatedString()
                     }
                     val totp = login.totp?.let { totpSecret ->
                         async {
-                            totpSecret.secret.decryptSecretData(label = Login.LABEL_TOTP_SECRET)
-                                .encodeToByteArray()
+                            totpSecret.secret.decrypt().encodeToByteArray()
                         }
                     }
                     val vaultMetadata = async {

@@ -11,10 +11,11 @@ import de.davis.keygo.core.item.data.local.entity.credential.TotpEntity
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
+import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasswordScore
-import de.davis.keygo.core.item.domain.model.SecretData
+import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
@@ -122,7 +123,7 @@ class LoginRepositoryImplTest {
             username = "user",
             domainInfos = emptySet(),
             passwordScore = PasswordScore.Strong,
-            password = SecretData.EMPTY_STRING,
+            password = PasswordSecret(EncryptedPayload.EMPTY),
             totp = totpProvider?.invoke(id),
             name = "Test",
             note = null,
@@ -134,7 +135,7 @@ class LoginRepositoryImplTest {
 
     private fun testTotp(loginId: ItemId) = Totp(
         loginId = loginId,
-        secret = SecretData.EMPTY_STRING,
+        secret = Totp.Secret(EncryptedPayload.EMPTY),
         accountName = "alice",
         issuer = "example",
     )

@@ -3,10 +3,11 @@ package de.davis.keygo.core.item.domain.usecase
 import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
+import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasswordScore
-import de.davis.keygo.core.item.domain.model.SecretData
+import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
 import kotlinx.coroutines.test.runTest
@@ -27,7 +28,7 @@ class UpsertItemUseCaseTest {
         passwordScore = PasswordScore.Strong,
         totp = null,
         name = name,
-        password = SecretData.EMPTY_STRING,
+        password = PasswordSecret(EncryptedPayload.EMPTY),
         note = null,
         pinned = false,
         vaultId = newVaultId(),

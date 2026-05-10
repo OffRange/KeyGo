@@ -11,7 +11,7 @@ import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
-import de.davis.keygo.core.security.domain.crypto.decryptSecretData
+import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
 import de.davis.keygo.feature.autofill.domain.usecase.AddRegistrableDomainsToLoginUseCase
@@ -292,8 +292,7 @@ internal class AutofillViewModel(
                         ),
                         wrappedItemKeyInformation = login.wrappedItemKeyInformation(),
                     ) {
-                        it.secret.decryptSecretData(label = Login.LABEL_TOTP_SECRET)
-                            .encodeToByteArray()
+                        it.secret.decrypt().encodeToByteArray()
                     }
                     totpGenerator.observeTotp(secret).first()
                 } ?: run {
@@ -334,7 +333,7 @@ internal class AutofillViewModel(
                     ),
                     wrappedItemKeyInformation = login.wrappedItemKeyInformation()
                 ) {
-                    login.password.decryptSecretData(label = Login.LABEL_PASSWORD)
+                    login.password.decrypt()
                 }
 
                 FieldType.Credentials.Username -> login.username

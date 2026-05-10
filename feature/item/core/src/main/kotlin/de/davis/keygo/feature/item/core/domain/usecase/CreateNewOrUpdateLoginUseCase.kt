@@ -5,14 +5,13 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.Login
-import de.davis.keygo.core.item.domain.model.Login.Companion.LABEL_PASSWORD
-import de.davis.keygo.core.item.domain.model.Login.Companion.LABEL_TOTP_SECRET
+import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
-import de.davis.keygo.core.security.domain.crypto.encryptSecretData
+import de.davis.keygo.core.security.domain.crypto.encrypt
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
@@ -103,10 +102,10 @@ class CreateNewOrUpdateLoginUseCase(
         ) {
             coroutineScope {
                 val encryptedPassword = async {
-                    upsert.password.getValue()!!.encryptSecretData(label = LABEL_PASSWORD)
+                    PasswordSecret.encrypt(upsert.password.getValue()!!)
                 }
                 val encryptedTotp = upsert.totpSecret.onSet { secret ->
-                    async { secret.encryptSecretData(label = LABEL_TOTP_SECRET) }
+                    async { Totp.Secret.encrypt(secret) }
                 }
                 val passwordStrength = async {
                     passwordStrengthEstimator(upsert.password.getValue()!!)
@@ -156,11 +155,11 @@ class CreateNewOrUpdateLoginUseCase(
         ) {
             coroutineScope {
                 val encryptedPassword = upsert.password.onSet { password ->
-                    async { password.encryptSecretData(label = LABEL_PASSWORD) }
+                    async { PasswordSecret.encrypt(password) }
                 }
                 val totpSecret = upsert.totpSecret.onSet { secret ->
                     async {
-                        val result = secret.encryptSecretData(label = LABEL_TOTP_SECRET)
+                        val result = Totp.Secret.encrypt(secret)
                         existing.totp?.copy(secret = result) ?: Totp(
                             loginId = existing.id,
                             secret = result,

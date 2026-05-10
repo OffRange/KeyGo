@@ -1,13 +1,14 @@
 package de.davis.keygo.core.item.data.local.entity.credential
 
 import androidx.room.ColumnInfo
+import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 import de.davis.keygo.core.item.data.local.entity.LoginEntity
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.PasswordScore
-import de.davis.keygo.core.item.domain.model.SecretData
 
 // The primary key is shared with ItemEntity — one ItemId identifies both the base item row and
 // this password row. This models the "is-a" relationship at the DB level (joined-table
@@ -29,5 +30,6 @@ internal data class PasswordEntity(
     val loginId: ItemId,
     @ColumnInfo(name = "password_score")
     val passwordScore: PasswordScore,
-    val password: SecretData<String>,
+    @Embedded(prefix = "password_")
+    val password: EncryptedPayload,
 )

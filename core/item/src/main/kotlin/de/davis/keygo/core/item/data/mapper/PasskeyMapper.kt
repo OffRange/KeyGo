@@ -9,7 +9,7 @@ import de.davis.keygo.core.item.domain.model.PasskeyUser
 internal fun Passkey.toData() = PasskeyEntity(
     credentialId = credentialId,
     rp = rp,
-    privateKey = privateKey,
+    privateKey = privateKey.payload,
     loginId = loginId,
     name = user.name,
     displayName = user.displayName,
@@ -18,7 +18,7 @@ internal fun Passkey.toData() = PasskeyEntity(
 internal fun PasskeyEntity.toDomain() = Passkey(
     credentialId = credentialId,
     rp = rp,
-    privateKey = privateKey,
+    privateKey = Passkey.PrivateKey(privateKey),
     loginId = loginId,
     user = PasskeyUser(
         name = name,

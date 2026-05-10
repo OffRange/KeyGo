@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "f743ef57912ffbfba99e2a2d00ec0f2e",
+    "identityHash": "ad09e26be7e4b8a0df65d9ba9e325f37",
     "entities": [
       {
         "tableName": "vault",
@@ -173,17 +173,11 @@
       },
       {
         "tableName": "totp",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`login_id` BLOB NOT NULL, `secret` BLOB NOT NULL, `issuer` TEXT, `account_name` TEXT, `algorithm` TEXT NOT NULL, `digits` INTEGER NOT NULL, `period` INTEGER NOT NULL, PRIMARY KEY(`login_id`), FOREIGN KEY(`login_id`) REFERENCES `login`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`login_id` BLOB NOT NULL, `issuer` TEXT, `account_name` TEXT, `algorithm` TEXT NOT NULL, `digits` INTEGER NOT NULL, `period` INTEGER NOT NULL, `secret_ciphertext` BLOB NOT NULL, `secret_iv` BLOB NOT NULL, PRIMARY KEY(`login_id`), FOREIGN KEY(`login_id`) REFERENCES `login`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "loginId",
             "columnName": "login_id",
-            "affinity": "BLOB",
-            "notNull": true
-          },
-          {
-            "fieldPath": "secret",
-            "columnName": "secret",
             "affinity": "BLOB",
             "notNull": true
           },
@@ -214,6 +208,18 @@
             "columnName": "period",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "secret.ciphertext",
+            "columnName": "secret_ciphertext",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "secret.iv",
+            "columnName": "secret_iv",
+            "affinity": "BLOB",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -238,7 +244,7 @@
       },
       {
         "tableName": "password",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`login_id` BLOB NOT NULL, `password_score` TEXT NOT NULL, `password` BLOB NOT NULL, PRIMARY KEY(`login_id`), FOREIGN KEY(`login_id`) REFERENCES `login`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`login_id` BLOB NOT NULL, `password_score` TEXT NOT NULL, `password_ciphertext` BLOB NOT NULL, `password_iv` BLOB NOT NULL, PRIMARY KEY(`login_id`), FOREIGN KEY(`login_id`) REFERENCES `login`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "loginId",
@@ -253,8 +259,14 @@
             "notNull": true
           },
           {
-            "fieldPath": "password",
-            "columnName": "password",
+            "fieldPath": "password.ciphertext",
+            "columnName": "password_ciphertext",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "password.iv",
+            "columnName": "password_iv",
             "affinity": "BLOB",
             "notNull": true
           }
@@ -335,7 +347,7 @@
       },
       {
         "tableName": "passkey",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`credential_id` BLOB NOT NULL, `login_id` BLOB NOT NULL, `rp` TEXT NOT NULL, `private_key` BLOB NOT NULL, `name` TEXT NOT NULL, `display_name` TEXT NOT NULL, PRIMARY KEY(`credential_id`), FOREIGN KEY(`login_id`) REFERENCES `login`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`credential_id` BLOB NOT NULL, `login_id` BLOB NOT NULL, `rp` TEXT NOT NULL, `name` TEXT NOT NULL, `display_name` TEXT NOT NULL, `private_key_ciphertext` BLOB NOT NULL, `private_key_iv` BLOB NOT NULL, PRIMARY KEY(`credential_id`), FOREIGN KEY(`login_id`) REFERENCES `login`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "credentialId",
@@ -356,12 +368,6 @@
             "notNull": true
           },
           {
-            "fieldPath": "privateKey",
-            "columnName": "private_key",
-            "affinity": "BLOB",
-            "notNull": true
-          },
-          {
             "fieldPath": "name",
             "columnName": "name",
             "affinity": "TEXT",
@@ -371,6 +377,18 @@
             "fieldPath": "displayName",
             "columnName": "display_name",
             "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "privateKey.ciphertext",
+            "columnName": "private_key_ciphertext",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "privateKey.iv",
+            "columnName": "private_key_iv",
+            "affinity": "BLOB",
             "notNull": true
           }
         ],
@@ -417,7 +435,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f743ef57912ffbfba99e2a2d00ec0f2e')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ad09e26be7e4b8a0df65d9ba9e325f37')"
     ]
   }
 }

@@ -10,12 +10,11 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.DomainInfo
-import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
-import de.davis.keygo.core.security.domain.crypto.decryptSecretData
+import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.usecase.LoginWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
@@ -208,9 +207,9 @@ internal class LoginViewModel(
         ) { login ->
             val decrypted = coroutineScope {
                 val pwdDeferred =
-                    async { login.password.decryptSecretData(label = Login.LABEL_PASSWORD) }
+                    async { login.password.decrypt() }
                 val totpDeferred = login.totp?.let { totp ->
-                    async { totp.secret.decryptSecretData(label = Login.LABEL_TOTP_SECRET) }
+                    async { totp.secret.decrypt() }
                 }
                 pwdDeferred.await() to totpDeferred?.await()
             }
@@ -444,7 +443,8 @@ internal class LoginViewModel(
             is LoginUiEvent.OnDeleteDomain -> {
                 _base.update {
                     it.copy(
-                        domains = it.domains.filterNot { info -> info.value == event.value }.toSet(),
+                        domains = it.domains.filterNot { info -> info.value == event.value }
+                            .toSet(),
                     )
                 }
             }

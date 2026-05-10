@@ -5,11 +5,12 @@ import de.davis.keygo.core.item.data.local.pojo.LightweightItemSearchResult
 import de.davis.keygo.core.item.data.local.pojo.MovableItemPojo
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
+import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.Item
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasswordScore
-import de.davis.keygo.core.item.domain.model.SecretData
+import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -30,7 +31,7 @@ class ItemMapperTest {
         username = null,
         domainInfos = emptySet(),
         passwordScore = PasswordScore.Strong,
-        password = SecretData.EMPTY_STRING,
+        password = PasswordSecret(EncryptedPayload.EMPTY),
         totp = null,
         note = note,
         pinned = pinned,

@@ -11,13 +11,14 @@ import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.security.crypto.BindingCryptographicScopeProvider
 import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
-import de.davis.keygo.core.security.domain.crypto.decryptSecretData
-import de.davis.keygo.core.security.domain.crypto.encryptSecretData
+import de.davis.keygo.core.security.domain.crypto.decrypt
+import de.davis.keygo.core.security.domain.crypto.encrypt
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
@@ -353,9 +354,9 @@ class MoveItemsToVaultUseCaseTest {
                 username = username,
                 domainInfos = domainInfos,
                 passwordScore = passwordScore,
-                password = passwordPlaintext.encryptSecretData(label = Login.LABEL_PASSWORD),
-                totp = totpPlaintext?.encryptSecretData(label = Login.LABEL_TOTP_SECRET)?.let {
-                    Totp(loginId = id, secret = it)
+                password = PasswordSecret.encrypt(passwordPlaintext),
+                totp = totpPlaintext?.let {
+                    Totp(loginId = id, secret = Totp.Secret.encrypt(it))
                 },
                 note = note,
                 pinned = pinned,
@@ -375,9 +376,8 @@ class MoveItemsToVaultUseCaseTest {
             ),
             wrappedItemKeyInformation = login.wrappedItemKeyInformation(),
         ) {
-            val pw: String = login.password.decryptSecretData(label = Login.LABEL_PASSWORD)
-            val totp: String? =
-                login.totp?.secret?.decryptSecretData(label = Login.LABEL_TOTP_SECRET)
+            val pw: String = login.password.decrypt()
+            val totp: String? = login.totp?.secret?.decrypt()
             pw to totp
         }
 }

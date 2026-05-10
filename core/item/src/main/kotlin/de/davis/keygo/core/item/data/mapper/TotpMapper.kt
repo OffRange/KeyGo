@@ -5,7 +5,7 @@ import de.davis.keygo.core.item.domain.model.Totp
 
 internal fun TotpEntity.toDomain(): Totp = Totp(
     loginId = loginId,
-    secret = secret,
+    secret = Totp.Secret(secret),
     accountName = accountName,
     issuer = issuer,
     algorithm = algorithm,
@@ -15,7 +15,7 @@ internal fun TotpEntity.toDomain(): Totp = Totp(
 
 internal fun Totp.toData(): TotpEntity = TotpEntity(
     loginId = loginId,
-    secret = secret,
+    secret = secret.payload,
     issuer = issuer,
     accountName = accountName,
     algorithm = algorithm,

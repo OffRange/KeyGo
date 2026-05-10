@@ -6,12 +6,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.identity.domain.model.UnlockError
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
-import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
-import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
+import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
@@ -107,10 +106,7 @@ internal class ProvidePasskeyViewModel(
                     ),
                     wrappedItemKeyInformation = login.wrappedItemKeyInformation(),
                 ) {
-                    CryptographicData(
-                        data = passkey.privateKey.data,
-                        iv = passkey.privateKey.iv,
-                    ).decrypt(label = Passkey.LABEL_PRIVATE_KEY)
+                    passkey.privateKey.decrypt()
                 }
             } catch (t: Throwable) {
                 Log.w(TAG, "Failed to decrypt passkey private key", t)

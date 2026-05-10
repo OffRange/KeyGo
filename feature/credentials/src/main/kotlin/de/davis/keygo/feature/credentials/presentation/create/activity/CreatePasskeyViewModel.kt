@@ -9,11 +9,11 @@ import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasskeyUser
-import de.davis.keygo.core.item.domain.model.SecretData
 import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.core.security.domain.crypto.encrypt
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
@@ -121,12 +121,7 @@ internal class CreatePasskeyViewModel(
                     ),
                     wrappedItemKeyInformation = login.wrappedItemKeyInformation(),
                 ) {
-                    val ct = response.privateKey.encrypt(label = Passkey.LABEL_PRIVATE_KEY)
-                    SecretData(
-                        data = ct.data,
-                        iv = ct.iv,
-                        decryptedDataType = SecretData.DecryptedDataType.StringType,
-                    )
+                    Passkey.PrivateKey.encrypt(response.privateKey)
                 }
             } catch (t: Throwable) {
                 Log.w(TAG, "Failed to encrypt passkey private key", t)

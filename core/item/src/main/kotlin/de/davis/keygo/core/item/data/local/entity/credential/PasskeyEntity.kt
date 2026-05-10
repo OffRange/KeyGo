@@ -1,13 +1,14 @@
 package de.davis.keygo.core.item.data.local.entity.credential
 
 import androidx.room.ColumnInfo
+import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import de.davis.keygo.core.item.data.local.entity.LoginEntity
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.model.SecretData
+import de.davis.keygo.core.item.domain.model.EncryptedPayload
 
 @Entity(
     tableName = "passkey",
@@ -31,8 +32,8 @@ internal class PasskeyEntity(
     @ColumnInfo(name = "login_id")
     val loginId: ItemId,
     val rp: String,
-    @ColumnInfo(name = "private_key")
-    val privateKey: SecretData<String>,
+    @Embedded(prefix = "private_key_")
+    val privateKey: EncryptedPayload,
     val name: String,
     @ColumnInfo(name = "display_name")
     val displayName: String

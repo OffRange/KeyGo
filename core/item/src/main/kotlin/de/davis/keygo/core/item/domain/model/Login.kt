@@ -12,7 +12,7 @@ data class Login(
     val username: String?,
     val domainInfos: Set<DomainInfo>,
     val passwordScore: PasswordScore,
-    val password: SecretData<String>,
+    val password: PasswordSecret,
     val totp: Totp?,
     val passkeyRPs: Set<String> = emptySet(),
     override val vaultId: VaultId,
@@ -24,9 +24,4 @@ data class Login(
 
     override val itemType: VaultItemType
         get() = VaultItemType.Login
-
-    companion object {
-        const val LABEL_PASSWORD = "password"
-        const val LABEL_TOTP_SECRET = "totp_secret"
-    }
 }
