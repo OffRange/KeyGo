@@ -9,9 +9,14 @@ import javax.crypto.spec.SecretKeySpec
  */
 class FakeSession : Session {
 
+    var startSessionCalled = false
+
     override val dek: AesKey
         get() = AesKey(SecretKeySpec(ByteArray(32) { it.toByte() }, "AES"))
 
-    override fun startSession(dek: AesKey) = Unit
+    override fun startSession(dek: AesKey) {
+        startSessionCalled = true
+    }
+
     override fun endSession() = Unit
 }

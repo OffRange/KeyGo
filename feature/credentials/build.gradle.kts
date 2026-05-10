@@ -57,11 +57,13 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     implementation(projects.rust)
+    implementation(projects.core.identity)
     implementation(projects.core.security)
     implementation(projects.core.item)
     implementation(projects.core.ui)
     implementation(projects.feature.item.create)
     implementation(projects.feature.listScreen)
+    implementation(projects.feature.auth)
 
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))
@@ -71,6 +73,10 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.io.mockk)
+    testImplementation(testFixtures(projects.core.identity))
+    testImplementation(testFixtures(projects.core.item))
+    testImplementation(testFixtures(projects.core.security))
+    testImplementation(testFixtures(projects.rust))
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

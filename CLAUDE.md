@@ -107,8 +107,14 @@ Password / Biometric
 
 ## Testing
 
-- kotlin-test + MockK + kotlinx-coroutines-test; Compose UI tests with Espresso
-- Use `runTest { }`, `mockk(relaxed = true)`, `coEvery { }`, assert against `Result`
+- kotlin-test + kotlinx-coroutines-test; Compose UI tests with Espresso
+- Prefer **testFixtures-provided fakes** and concrete fake implementations as the default testing
+  strategy
+- Use `runTest { }` and assert against `Result`
+- Prefer behavior/state assertions over interaction verification
+- Use **MockK only in rare cases** where interaction verification is the actual behavior under test
+  (for example, validating that a side-effecting API was invoked)
+- Do not use mocks as the default way to model dependencies when a fake or testFixture exists
 - Run broader tests for cross-module or security changes
 - **Rust fakes** — `:rust` uses UniFFI (not raw JNI) to generate Kotlin bindings. UniFFI emits
   `KeyDeriverInterface`/`KeyWrapperInterface`/`AccountManagerInterface`/`ItemManagerInterface`/

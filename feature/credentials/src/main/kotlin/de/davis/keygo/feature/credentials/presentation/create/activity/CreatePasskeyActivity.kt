@@ -29,22 +29,33 @@ import androidx.credentials.CreatePublicKeyCredentialResponse
 import androidx.credentials.exceptions.CreateCredentialUnknownException
 import androidx.credentials.provider.PendingIntentHandler
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import de.davis.keygo.core.identity.presentation.rememberBiometricUnlockAdapter
+import de.davis.keygo.core.identity.presentation.useAdapter
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.security.domain.model.BiometricPolicy
+import de.davis.keygo.core.security.domain.model.BiometricString
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
+import de.davis.keygo.feature.auth.presentation.AuthRoute
+import de.davis.keygo.feature.auth.presentation.authGraph
 import de.davis.keygo.feature.credentials.R
+import de.davis.keygo.feature.credentials.presentation.auth.SessionAuthState
 import de.davis.keygo.feature.item.create.presentation.login.LoginScreen
 import de.davis.keygo.feature.list_screen.presentation.ItemListScreen
 import de.davis.keygo.feature.list_screen.presentation.NoItemStrategy
 import kotlinx.serialization.Serializable
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
+
+@Serializable
+private data object AuthenticatedHome
 
 @Serializable
 private data object ListDest
@@ -63,39 +74,25 @@ internal class CreatePasskeyActivity : FragmentActivity() {
         val callingRequest = request?.callingRequest as? CreatePublicKeyCredentialRequest
             ?: return cancel("Invalid CreatePublicKeyCredentialRequest")
 
-        viewModel.updateCreatePublicKeyCredentialRequest(callingRequest)
+        viewModel.setRequest(callingRequest)
+
         setResult(RESULT_CANCELED)
 
         setContent {
             KeyGoTheme {
-                val navController = rememberNavController()
-                val biometricCryptoController = rememberBiometricCryptoController()
                 BackHandler { cancel() }
-
-                ObserveAsEvents(flow = viewModel.biometricRequest) {
-                    when (it) {
-                        is CreatePasskeyBiometricRequestEvent.EncryptPasskeyEncryptionKey -> {
-                            biometricCryptoController.requestEncryption(
-                                keyId = it.keyId,
-                                byteArray = it.key,
-                                policy = it.policy
-                            ).onSuccess(viewModel::passkeyEncrypted)
-                                .onFailure { error -> cancel("Biometric Failed: $error") }
-                        }
-
-                        else -> cancel("Unsupported Biometric Request")
-                    }
-                }
 
                 var confirmationEvent by rememberSaveable {
                     mutableStateOf<CreatePasskeyEvent.OpenConfirmationDialog?>(null)
                 }
 
+                val authenticatedNavController = rememberNavController()
+
                 ObserveAsEvents(flow = viewModel.event) {
                     when (it) {
                         CreatePasskeyEvent.Abort -> cancel()
-                        CreatePasskeyEvent.ShowList -> navController.navigate(ListDest) {
-                            popUpTo<Unit> { inclusive = true }
+                        CreatePasskeyEvent.ShowList -> authenticatedNavController.navigate(ListDest) {
+                            popUpTo<AuthenticatedHome> { inclusive = true }
                         }
 
                         is CreatePasskeyEvent.Finish -> finishWithSuccess(it.responseJson)
@@ -143,30 +140,79 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                     )
                 }
 
-                NavHost(
-                    navController = navController,
-                    startDestination = Unit
-                ) {
-                    composable<Unit> {
-                        // Show nothing by default
+                val biometricCryptoController = rememberBiometricCryptoController()
+                val biometricUnlockAdapter = rememberBiometricUnlockAdapter()
+
+                ObserveAsEvents(viewModel.biometricFlow) {
+                    biometricUnlockAdapter.useAdapter {
+                        biometricCryptoController.requestUnlockVault(
+                            policy = BiometricPolicy(
+                                title = BiometricString.Title.Authenticate,
+                                negativeButton = BiometricString.NegativeButton.Password,
+                            )
+                        )
+                    }.onSuccess {
+                        viewModel.onUnlocked()
+                    }.onFailure {
+                        viewModel.onUnlockFailed(it)
+                    }
+                }
+
+                val authState by viewModel.authState.collectAsStateWithLifecycle()
+                when (authState) {
+                    SessionAuthState.TryBiometric -> {
+                        // render nothing — activity stays transparent while system biometric prompt is shown
                     }
 
-                    composable<ListDest> {
-                        PasskeyItemListScreen(
-                            onItemClick = viewModel::onItemClicked,
-                            onCreateClicked = {
-                                navController.navigate(CreateItem)
+                    SessionAuthState.NeedsPassword -> {
+                        val authNavController = rememberNavController()
+                        Scaffold { innerPadding ->
+                            NavHost(
+                                navController = authNavController,
+                                startDestination = AuthRoute(showBiometricPromptIfPossible = false),
+                                modifier = Modifier
+                                    .padding(innerPadding)
+                                    .consumeWindowInsets(innerPadding),
+                            ) {
+                                authGraph(
+                                    onSuccess = { viewModel.onUnlocked() }
+                                )
                             }
-                        )
+                        }
                     }
 
-                    composable<CreateItem> {
-                        LoginScreen(
-                            loginCreated = {
-                                viewModel.associatePasskeyAndFinish(it)
-                            },
-                            navigateBack = { cancel("User cancelled passkey creation") },
-                        )
+                    SessionAuthState.Authenticated -> {
+                        Scaffold { innerPadding ->
+                            NavHost(
+                                navController = authenticatedNavController,
+                                startDestination = AuthenticatedHome,
+                                modifier = Modifier
+                                    .padding(innerPadding)
+                                    .consumeWindowInsets(innerPadding),
+                            ) {
+                                composable<AuthenticatedHome> {
+                                    // empty placeholder while operation runs
+                                }
+
+                                composable<ListDest> {
+                                    PasskeyItemListScreen(
+                                        onItemClick = viewModel::onItemClicked,
+                                        onCreateClicked = {
+                                            authenticatedNavController.navigate(CreateItem)
+                                        }
+                                    )
+                                }
+
+                                composable<CreateItem> {
+                                    LoginScreen(
+                                        loginCreated = {
+                                            viewModel.associatePasskeyAndFinish(it)
+                                        },
+                                        navigateBack = { cancel("User cancelled passkey creation") },
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

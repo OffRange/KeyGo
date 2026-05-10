@@ -32,4 +32,8 @@ data class Passkey(
         result = 31 * result + user.hashCode()
         return result
     }
+
+    companion object {
+        const val LABEL_PRIVATE_KEY = "passkey_private_key"
+    }
 }
