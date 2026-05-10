@@ -55,6 +55,9 @@ import org.koin.androidx.viewmodel.ext.android.viewModel
 
 
 @Serializable
+private data object AuthenticatedHome
+
+@Serializable
 private data object ListDest
 
 @Serializable
@@ -83,11 +86,13 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                     mutableStateOf<CreatePasskeyEvent.OpenConfirmationDialog?>(null)
                 }
 
+                val authenticatedNavController = rememberNavController()
+
                 ObserveAsEvents(flow = viewModel.event) {
                     when (it) {
                         CreatePasskeyEvent.Abort -> cancel()
-                        CreatePasskeyEvent.ShowList -> {
-                            // navigation handled inside authState branch below
+                        CreatePasskeyEvent.ShowList -> authenticatedNavController.navigate(ListDest) {
+                            popUpTo<AuthenticatedHome> { inclusive = true }
                         }
 
                         is CreatePasskeyEvent.Finish -> finishWithSuccess(it.responseJson)
@@ -156,14 +161,14 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                 val authState by viewModel.authState.collectAsStateWithLifecycle()
                 when (authState) {
                     SessionAuthState.TryBiometric -> {
-                        // render nothing — activity stays transparent while biometric prompt is shown
+                        // render nothing — activity stays transparent while system biometric prompt is shown
                     }
 
                     SessionAuthState.NeedsPassword -> {
-                        val navController = rememberNavController()
+                        val authNavController = rememberNavController()
                         Scaffold { innerPadding ->
                             NavHost(
-                                navController = navController,
+                                navController = authNavController,
                                 startDestination = AuthRoute(showBiometricPromptIfPossible = false),
                                 modifier = Modifier
                                     .padding(innerPadding)
@@ -177,20 +182,23 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                     }
 
                     SessionAuthState.Authenticated -> {
-                        val navController = rememberNavController()
                         Scaffold { innerPadding ->
                             NavHost(
-                                navController = navController,
-                                startDestination = ListDest,
+                                navController = authenticatedNavController,
+                                startDestination = AuthenticatedHome,
                                 modifier = Modifier
                                     .padding(innerPadding)
                                     .consumeWindowInsets(innerPadding),
                             ) {
+                                composable<AuthenticatedHome> {
+                                    // empty placeholder while operation runs
+                                }
+
                                 composable<ListDest> {
                                     PasskeyItemListScreen(
                                         onItemClick = viewModel::onItemClicked,
                                         onCreateClicked = {
-                                            navController.navigate(CreateItem)
+                                            authenticatedNavController.navigate(CreateItem)
                                         }
                                     )
                                 }
