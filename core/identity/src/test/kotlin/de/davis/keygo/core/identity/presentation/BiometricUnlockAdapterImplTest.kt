@@ -5,18 +5,13 @@ import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.model.UnlockError
-import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.crypto.FakeBiometricCryptoController
+import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
-import de.davis.keygo.core.security.domain.model.CiphertextData
-import de.davis.keygo.core.security.domain.model.KeyId
-import de.davis.keygo.core.security.presentation.BiometricCryptoController
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
-import io.mockk.coEvery
-import io.mockk.mockk
-import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import java.util.UUID
 import javax.crypto.spec.SecretKeySpec
@@ -26,9 +21,9 @@ import kotlin.test.assertTrue
 
 class BiometricUnlockAdapterImplTest {
 
-    private val session = mockk<Session>(relaxed = true)
+    private val session = FakeSession()
     private val accountRepository = FakeAccountRepository()
-    private val controller = mockk<BiometricCryptoController>()
+    private val controller = FakeBiometricCryptoController()
 
     private val adapter = BiometricUnlockAdapterImpl(
         session = session,
@@ -79,9 +74,7 @@ class BiometricUnlockAdapterImplTest {
         runTest {
             seedAccountWithBiometric()
             val biometricError = BiometricAuthError.CanNotAuthenticate(code = 12)
-            coEvery {
-                controller.requestUnwrap(any(), any(), any())
-            } returns Result.Failure(biometricError)
+            controller.unwrapResult = Result.Failure(biometricError)
 
             val result = with(adapter) { controller.requestUnlockVault(BiometricPolicy.Default) }
 
@@ -92,9 +85,7 @@ class BiometricUnlockAdapterImplTest {
     @Test
     fun `returns BiometricFailed(NoCipher) when manager refuses with NoCipher`() = runTest {
         seedAccountWithBiometric()
-        coEvery {
-            controller.requestUnwrap(any(), any(), any())
-        } returns Result.Failure(BiometricAuthError.NoCipher)
+        controller.unwrapResult = Result.Failure(BiometricAuthError.NoCipher)
 
         val result = with(adapter) { controller.requestUnlockVault(BiometricPolicy.Default) }
 
@@ -106,17 +97,11 @@ class BiometricUnlockAdapterImplTest {
     fun `on success starts session and returns Success`() = runTest {
         seedAccountWithBiometric()
         val key = SecretKeySpec(ByteArray(32) { 1 }, "AES")
-        coEvery {
-            controller.requestUnwrap(
-                keyId = KeyId.BiometricVaultKek,
-                ciphertextData = any(),
-                policy = any(),
-            )
-        } returns Result.Success(key)
+        controller.unwrapResult = Result.Success(key)
 
         val result = with(adapter) { controller.requestUnlockVault(BiometricPolicy.Default) }
 
         assertTrue(result.isSuccess())
-        verify { session.startSession(any()) }
+        assertTrue(session.startSessionCalled)
     }
 }

@@ -1,20 +1,18 @@
 package de.davis.keygo.feature.credentials.presentation.create.activity
 
+import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.model.UnlockError
-import de.davis.keygo.core.identity.domain.repository.AccountRepository
-import de.davis.keygo.core.item.domain.repository.LoginRepository
-import de.davis.keygo.core.item.domain.repository.PasskeyRepository
-import de.davis.keygo.core.item.domain.repository.VaultRepository
-import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.core.item.FakeLoginRepository
+import de.davis.keygo.core.item.FakePasskeyRepository
+import de.davis.keygo.core.item.FakeVaultRepository
+import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
+import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
-import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.feature.credentials.presentation.auth.SessionAuthState
-import de.davis.keygo.rust.passkey.PasskeyManager
-import io.mockk.coEvery
-import io.mockk.mockk
+import de.davis.keygo.rust.FakePasskeyManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -33,13 +31,13 @@ import kotlin.test.assertNotNull
 @OptIn(ExperimentalCoroutinesApi::class)
 class CreatePasskeyViewModelTest {
 
-    private val passkeyRepository = mockk<PasskeyRepository>(relaxed = true)
-    private val loginRepository = mockk<LoginRepository>(relaxed = true)
-    private val vaultRepository = mockk<VaultRepository>(relaxed = true)
-    private val cryptographicScopeProvider = mockk<CryptographicScopeProvider>(relaxed = true)
-    private val passkeyManager = mockk<PasskeyManager>(relaxed = true)
-    private val accountRepository = mockk<AccountRepository>()
-    private val biometricAvailabilityRepository = mockk<BiometricAvailabilityRepository>()
+    private val passkeyRepository = FakePasskeyRepository()
+    private val loginRepository = FakeLoginRepository()
+    private val vaultRepository = FakeVaultRepository()
+    private val cryptographicScopeProvider = FakeCryptographicScopeProvider()
+    private val passkeyManager = FakePasskeyManager()
+    private val accountRepository = FakeAccountRepository()
+    private val biometricAvailabilityRepository = FakeBiometricAvailabilityRepository()
 
     private val testDispatcher = StandardTestDispatcher()
 
@@ -78,8 +76,8 @@ class CreatePasskeyViewModelTest {
 
     @Test
     fun `init sets TryBiometric and emits biometricFlow when biometric usable`() = runTest {
-        coEvery { accountRepository.getOrNull() } returns account(withBiometric = true)
-        coEvery { biometricAvailabilityRepository.availability() } returns true
+        accountRepository.seed(account(withBiometric = true))
+        biometricAvailabilityRepository.isAvailable = true
 
         val viewModel = newViewModel()
         advanceUntilIdle()
@@ -90,8 +88,8 @@ class CreatePasskeyViewModelTest {
 
     @Test
     fun `init sets NeedsPassword when account has no biometricWrappedArk`() = runTest {
-        coEvery { accountRepository.getOrNull() } returns account(withBiometric = false)
-        coEvery { biometricAvailabilityRepository.availability() } returns true
+        accountRepository.seed(account(withBiometric = false))
+        biometricAvailabilityRepository.isAvailable = true
 
         val viewModel = newViewModel()
         advanceUntilIdle()
@@ -101,8 +99,8 @@ class CreatePasskeyViewModelTest {
 
     @Test
     fun `init sets NeedsPassword when biometric hardware unavailable`() = runTest {
-        coEvery { accountRepository.getOrNull() } returns account(withBiometric = true)
-        coEvery { biometricAvailabilityRepository.availability() } returns false
+        accountRepository.seed(account(withBiometric = true))
+        biometricAvailabilityRepository.isAvailable = false
 
         val viewModel = newViewModel()
         advanceUntilIdle()
@@ -112,8 +110,8 @@ class CreatePasskeyViewModelTest {
 
     @Test
     fun `onUnlockFailed with CanNotAuthenticate transitions to NeedsPassword`() = runTest {
-        coEvery { accountRepository.getOrNull() } returns account(withBiometric = true)
-        coEvery { biometricAvailabilityRepository.availability() } returns true
+        accountRepository.seed(account(withBiometric = true))
+        biometricAvailabilityRepository.isAvailable = true
 
         val viewModel = newViewModel()
         advanceUntilIdle()
@@ -128,8 +126,8 @@ class CreatePasskeyViewModelTest {
 
     @Test
     fun `onUnlockFailed with NoCipher emits Abort event`() = runTest {
-        coEvery { accountRepository.getOrNull() } returns account(withBiometric = true)
-        coEvery { biometricAvailabilityRepository.availability() } returns true
+        accountRepository.seed(account(withBiometric = true))
+        biometricAvailabilityRepository.isAvailable = true
 
         val viewModel = newViewModel()
         advanceUntilIdle()
@@ -143,8 +141,8 @@ class CreatePasskeyViewModelTest {
 
     @Test
     fun `onUnlocked transitions to Authenticated`() = runTest {
-        coEvery { accountRepository.getOrNull() } returns account(withBiometric = true)
-        coEvery { biometricAvailabilityRepository.availability() } returns true
+        accountRepository.seed(account(withBiometric = true))
+        biometricAvailabilityRepository.isAvailable = true
 
         val viewModel = newViewModel()
         advanceUntilIdle()
