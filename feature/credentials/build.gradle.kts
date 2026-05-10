@@ -57,6 +57,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     implementation(projects.rust)
+    implementation(projects.core.identity)
     implementation(projects.core.security)
     implementation(projects.core.item)
     implementation(projects.core.ui)
