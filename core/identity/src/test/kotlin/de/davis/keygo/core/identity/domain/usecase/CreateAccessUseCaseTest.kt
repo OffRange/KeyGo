@@ -4,16 +4,12 @@ import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.model.CreateAccessError
 import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
-import de.davis.keygo.core.security.domain.Session
-import de.davis.keygo.core.security.domain.crypto.model.AesKey
+import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
 import de.davis.keygo.rust.FakeAccountManager
 import de.davis.keygo.rust.FakeKeyDeriver
 import de.davis.keygo.rust.FakeKeyWrapper
-import io.mockk.mockk
-import io.mockk.slot
-import io.mockk.verify
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import javax.crypto.Cipher
@@ -25,7 +21,7 @@ import kotlin.test.assertTrue
 
 class CreateAccessUseCaseTest {
 
-    private val session = mockk<Session>(relaxed = true)
+    private val session = FakeSession()
     private val accountRepository = FakeAccountRepository()
     private val vaultRepository = FakeVaultRepository()
     private val vaultContextRepository = FakeVaultContextRepository()
@@ -93,9 +89,8 @@ class CreateAccessUseCaseTest {
         val result = useCase("password", biometricCipher = null)
 
         assertTrue(result.isSuccess())
-        val dekSlot = slot<AesKey>()
-        verify { session.startSession(capture(dekSlot)) }
-        assertEquals(32, dekSlot.captured.key.encoded.size)
+        assertTrue(session.startSessionCalled)
+        assertEquals(accountManager.createAccount.account.ark, session.ark)
     }
 
     @Test

@@ -95,7 +95,7 @@ internal class CryptographicScopeProviderImpl(
 
     private fun unwrapVaultKeyWithResult(info: WrappedVaultKeyInformation) =
         keyWrapper.unwrapVaultKeyWithResult(
-            ark = session.dek.key.encoded,
+            ark = session.ark,
             wrapped = info.wrappedVaultKey.toWrappedKeyBlob(),
             vaultId = info.vaultId,
         )

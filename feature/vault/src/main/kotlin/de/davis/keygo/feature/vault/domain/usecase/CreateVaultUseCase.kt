@@ -37,7 +37,7 @@ class CreateVaultUseCase(
 
         val vaultKey = vaultManager.createNewVaultKey()
         val wrappedVaultKey =
-            keyWrapper.wrapVaultKeyWithResult(session.dek.key.encoded, vaultKey, vaultId)
+            keyWrapper.wrapVaultKeyWithResult(session.ark, vaultKey, vaultId)
                 .getOrNull() ?: return Result.Failure(VaultCreationError.WrapFailed)
 
         val vault = Vault(

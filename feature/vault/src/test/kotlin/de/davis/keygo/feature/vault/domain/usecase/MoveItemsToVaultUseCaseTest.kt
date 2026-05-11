@@ -42,7 +42,7 @@ import kotlin.test.assertTrue
 
 class MoveItemsToVaultUseCaseTest {
 
-    private val session = FakeSession()
+    private val session = FakeSession(startOnConstruct = true)
     private val itemManager = FakeItemManager()
     private val keyWrapper = FakeKeyWrapper()
     private val cryptographicScopeProvider: CryptographicScopeProvider =
@@ -309,7 +309,7 @@ class MoveItemsToVaultUseCaseTest {
     private fun makeVault(name: String, id: VaultId = newVaultId()): Vault {
         val vaultKey = ByteArray(32) { (id.hashCode() + it).toByte() }
         val wrapped = keyWrapper.wrapVaultKey(
-            ark = session.dek.key.encoded,
+            ark = session.ark,
             vaultKey = vaultKey,
             vaultId = id,
         )

@@ -4,7 +4,6 @@ import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.model.UnlockError
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.Session
-import de.davis.keygo.core.security.domain.crypto.model.asAesKey
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.rust.derive.KeyDeriver
@@ -40,7 +39,7 @@ class UnlockWithPasswordUseCase(
             .getOrNull()
             ?: return Result.Failure(UnlockError.UnwrappingFailed)
 
-        session.startSession(key.asAesKey())
+        session.startSession(key)
         return Result.Success(Unit)
     }
 

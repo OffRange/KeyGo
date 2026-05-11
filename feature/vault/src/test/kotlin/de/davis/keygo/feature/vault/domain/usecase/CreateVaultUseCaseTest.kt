@@ -20,7 +20,7 @@ import kotlin.test.assertTrue
 
 class CreateVaultUseCaseTest {
 
-    private val session = FakeSession()
+    private val session = FakeSession(startOnConstruct = true)
 
     private val vaultRepository = FakeVaultRepository()
     private val vaultContextRepository = FakeVaultContextRepository()

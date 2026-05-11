@@ -1,29 +1,28 @@
 package de.davis.keygo.core.security.data
 
 import de.davis.keygo.core.security.domain.Session
-import de.davis.keygo.core.security.domain.crypto.model.AesKey
 import org.koin.core.annotation.Single
 import javax.security.auth.DestroyFailedException
 
 @Single
 internal class SessionImpl : Session {
 
-    private var _dek: AesKey? = null
+    private var _ark: ByteArray? = null
 
-    override val dek: AesKey
-        get() = _dek ?: throw IllegalStateException("No active session")
+    override val ark: ByteArray
+        get() = _ark ?: throw IllegalStateException("No active session")
 
-    override fun startSession(dek: AesKey) {
+    override fun startSession(ark: ByteArray) {
         endSession()
-        _dek = dek
+        _ark = ark
     }
 
     override fun endSession() {
         try {
-            _dek?.key?.destroy()
+            _ark?.fill(0)
         } catch (_: DestroyFailedException) {
             // Not all SecretKey implementations support destroy
         }
-        _dek = null
+        _ark = null
     }
 }

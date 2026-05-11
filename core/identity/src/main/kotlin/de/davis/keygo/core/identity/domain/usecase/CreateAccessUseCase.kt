@@ -9,7 +9,6 @@ import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.Session
-import de.davis.keygo.core.security.domain.crypto.model.asAesKey
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.getOrNull
@@ -103,7 +102,7 @@ class CreateAccessUseCase(
 
         vaultContextRepository.setContextAndLastInteracted(accountHolder.defaultVault.id)
 
-        session.startSession(accountHolder.account.ark.asAesKey())
+        session.startSession(accountHolder.account.ark)
         return Result.Success(Unit)
     }
 

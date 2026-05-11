@@ -1,7 +1,5 @@
 package de.davis.keygo.core.security.data
 
-import de.davis.keygo.core.security.domain.crypto.model.AesKey
-import javax.crypto.KeyGenerator
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -11,43 +9,42 @@ class SessionImplTest {
 
     private val session = SessionImpl()
 
-    private fun generateAesKey(): AesKey =
-        AesKey(KeyGenerator.getInstance("AES").apply { init(256) }.generateKey())
+    private fun generateArk(): ByteArray = ByteArray(32) { it.toByte() }
 
     @Test
     fun `dek throws when no active session`() {
         assertFailsWith<IllegalStateException> {
-            session.dek
+            session.ark
         }
     }
 
     @Test
     fun `startSession makes dek available`() {
-        val key = generateAesKey()
+        val key = generateArk()
         session.startSession(key)
-        assertEquals(key, session.dek)
+        assertEquals(key, session.ark)
     }
 
     @Test
     fun `endSession clears dek`() {
-        session.startSession(generateAesKey())
+        session.startSession(generateArk())
         session.endSession()
 
         assertFailsWith<IllegalStateException> {
-            session.dek
+            session.ark
         }
     }
 
     @Test
     fun `startSession replaces previous session`() {
-        val key1 = generateAesKey()
-        val key2 = generateAesKey()
+        val key1 = generateArk()
+        val key2 = generateArk()
 
         session.startSession(key1)
         session.startSession(key2)
 
-        assertNotEquals(key1, session.dek)
-        assertEquals(key2, session.dek)
+        assertNotEquals(key1, session.ark)
+        assertEquals(key2, session.ark)
     }
 
     @Test
@@ -57,7 +54,7 @@ class SessionImplTest {
 
     @Test
     fun `endSession is safe to call multiple times`() {
-        session.startSession(generateAesKey())
+        session.startSession(generateArk())
         session.endSession()
         session.endSession() // should not throw
     }

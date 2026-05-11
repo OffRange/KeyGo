@@ -4,19 +4,36 @@ import de.davisalessandro.keygo.rust.Account
 import de.davisalessandro.keygo.rust.AccountManagerInterface
 import de.davisalessandro.keygo.rust.CreateAccount
 import de.davisalessandro.keygo.rust.Vault
-import java.security.SecureRandom
 import java.util.UUID
 
 /**
- * In-memory [AccountManagerInterface] for tests. Each [createAccount] call yields fresh random
- * ARK/vault-key material and new UUIDs.
+ * In-memory [AccountManagerInterface] for tests. [seedAccount] MUST be called before any
+ * [createAccount] calls.
  */
 class FakeAccountManager : AccountManagerInterface {
 
-    override fun createAccount(): CreateAccount = CreateAccount(
-        account = Account(id = UUID.randomUUID(), ark = randomKey()),
-        defaultVault = Vault(id = UUID.randomUUID(), vaultKey = randomKey()),
+    var key: ByteArray = ByteArray(32) { it.toByte() }
+
+    var createAccount: CreateAccount = CreateAccount(
+        account = Account(
+            id = UUID.randomUUID(),
+            ark = ByteArray(32) { (it + 1).toByte() },
+        ),
+        defaultVault = Vault(
+            id = UUID.randomUUID(),
+            vaultKey = ByteArray(32) { (it + 2).toByte() },
+        )
     )
 
-    private fun randomKey(): ByteArray = ByteArray(32).also { SecureRandom().nextBytes(it) }
+    fun seedAccount(createAccount: CreateAccount) {
+        this.createAccount = createAccount
+    }
+
+    fun seedKey(key: ByteArray) {
+        this.key = key
+    }
+
+    override fun createAccount(): CreateAccount = createAccount
+
+    private fun randomKey(): ByteArray = key
 }

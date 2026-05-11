@@ -1,22 +1,30 @@
 package de.davis.keygo.core.security.crypto
 
 import de.davis.keygo.core.security.domain.Session
-import de.davis.keygo.core.security.domain.crypto.model.AesKey
-import javax.crypto.spec.SecretKeySpec
 
 /**
  * A fake implementation of [Session] that provides a fixed DEK for testing purposes.
  */
-class FakeSession : Session {
+class FakeSession(
+    private val startOnConstruct: Boolean = false
+) : Session {
 
     var startSessionCalled = false
 
-    override val dek: AesKey
-        get() = AesKey(SecretKeySpec(ByteArray(32) { it.toByte() }, "AES"))
+    private var _ark: ByteArray? = null
+    override val ark: ByteArray
+        get() = _ark ?: throw IllegalStateException("FakeSession not started")
 
-    override fun startSession(dek: AesKey) {
+    init {
+        if (startOnConstruct) _ark = ByteArray(32) { it.toByte() }
+    }
+
+    override fun startSession(ark: ByteArray) {
+        _ark = ark
         startSessionCalled = true
     }
 
-    override fun endSession() = Unit
+    override fun endSession() {
+        _ark = null
+    }
 }

@@ -5,7 +5,6 @@ import androidx.compose.runtime.remember
 import de.davis.keygo.core.identity.domain.model.UnlockError
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.Session
-import de.davis.keygo.core.security.domain.crypto.model.asAesKey
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.security.domain.model.KeyId
@@ -38,7 +37,7 @@ internal class BiometricUnlockAdapterImpl(
         return when (unwrapResult) {
             is Result.Failure -> Result.Failure(UnlockError.BiometricFailed(unwrapResult.error))
             is Result.Success -> {
-                session.startSession(unwrapResult.success.asAesKey())
+                session.startSession(unwrapResult.success.encoded)
                 Result.Success(Unit)
             }
         }

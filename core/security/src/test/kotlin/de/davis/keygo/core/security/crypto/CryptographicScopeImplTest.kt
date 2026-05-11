@@ -3,21 +3,17 @@ package de.davis.keygo.core.security.crypto
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.security.data.crypto.CryptographicScopeProviderImpl
 import de.davis.keygo.core.security.domain.Session
-import de.davis.keygo.core.security.domain.crypto.model.AesKey
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.rust.FakeItemManager
 import de.davis.keygo.rust.FakeKeyWrapper
 import de.davisalessandro.keygo.rust.ItemAad
-import io.mockk.every
-import io.mockk.mockk
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.test.runTest
 import java.util.UUID
-import javax.crypto.spec.SecretKeySpec
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -30,8 +26,7 @@ class CryptographicScopeImplTest {
 
     private val random = Random(42)
 
-    private val sessionDek = AesKey(SecretKeySpec(ByteArray(32) { random.nextBytes(1)[0] }, "AES"))
-    private val session: Session = mockk { every { dek } returns sessionDek }
+    private val session: Session = FakeSession(startOnConstruct = true)
     private val itemManager = FakeItemManager()
     private val keyWrapper = FakeKeyWrapper()
 
@@ -43,7 +38,7 @@ class CryptographicScopeImplTest {
         vaultId: UUID = UUID.randomUUID(),
     ): WrappedVaultKeyInformation {
         val blob = keyWrapper.wrapVaultKey(
-            ark = sessionDek.key.encoded,
+            ark = session.ark,
             vaultKey = ByteArray(32) { random.nextBytes(1)[0] },
             vaultId = vaultId,
         )
