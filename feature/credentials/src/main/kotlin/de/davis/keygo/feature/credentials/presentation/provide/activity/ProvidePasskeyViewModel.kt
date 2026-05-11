@@ -6,13 +6,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.identity.domain.model.UnlockError
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
-import de.davis.keygo.core.item.domain.repository.LoginRepository
+import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
-import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.decrypt
+import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
-import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
@@ -21,6 +20,7 @@ import de.davis.keygo.feature.credentials.presentation.auth.UnlockOutcome
 import de.davis.keygo.feature.credentials.presentation.auth.mapUnlockError
 import de.davis.keygo.rust.passkey.PasskeyManager
 import de.davis.keygo.rust.passkey.authenticateWithResult
+import de.davisalessandro.keygo.rust.ItemAad
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,8 +31,7 @@ import org.koin.core.annotation.KoinViewModel
 @KoinViewModel
 internal class ProvidePasskeyViewModel(
     private val passkeyRepository: PasskeyRepository,
-    private val loginRepository: LoginRepository,
-    private val vaultRepository: VaultRepository,
+    private val itemRepository: ItemRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passkeyManager: PasskeyManager,
     private val accountRepository: AccountRepository,
@@ -93,18 +92,22 @@ internal class ProvidePasskeyViewModel(
             val passkey = passkeyRepository.getPasskey(req.credentialId)
                 ?: return@launch abort("No passkey found!")
 
-            val login = loginRepository.getLoginById(passkey.loginId)
-                ?: return@launch abort("Parent login not found for passkey")
-            val vaultKeyInfo = vaultRepository.getKeyInformation(login.vaultId)
-                ?: return@launch abort("Vault key information missing for ${login.vaultId}")
+            val envelope = itemRepository.getItemKeyEnvelope(passkey.loginId)
+                ?: return@launch abort("Failed to get item key envelope for id ${passkey.loginId}")
 
             val privateKey = try {
                 cryptographicScopeProvider.itemScope(
                     wrappedVaultKeyInformation = WrappedVaultKeyInformation(
-                        wrappedVaultKey = vaultKeyInfo,
-                        vaultId = login.vaultId,
+                        wrappedVaultKey = envelope.vaultKeyInformation,
+                        vaultId = envelope.vaultId,
                     ),
-                    wrappedItemKeyInformation = login.wrappedItemKeyInformation(),
+                    wrappedItemKeyInformation = WrappedItemKeyInformation(
+                        itemAad = ItemAad(
+                            itemId = envelope.itemId,
+                            vaultId = envelope.vaultId,
+                        ),
+                        wrappedItemKey = envelope.itemKeyInformation
+                    )
                 ) {
                     passkey.privateKey.decrypt()
                 }

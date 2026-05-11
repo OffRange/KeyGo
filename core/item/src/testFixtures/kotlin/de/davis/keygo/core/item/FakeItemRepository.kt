@@ -3,6 +3,7 @@ package de.davis.keygo.core.item
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.Item
+import de.davis.keygo.core.item.domain.model.ItemKeyEnvelope
 import de.davis.keygo.core.item.domain.model.MovableItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
@@ -49,6 +50,8 @@ class FakeItemRepository(
 
     override fun observeLiteVaultItems(vaultId: VaultId?): Flow<List<LiteItem>> =
         flowOf(emptyList())
+
+    override suspend fun getItemKeyEnvelope(itemId: ItemId): ItemKeyEnvelope? = null
 
     override suspend fun getMovableItemsByVault(vaultId: VaultId): List<MovableItem> =
         loginRepository.getLoginsByVault(vaultId)

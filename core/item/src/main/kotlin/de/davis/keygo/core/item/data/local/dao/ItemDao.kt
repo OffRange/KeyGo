@@ -5,6 +5,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
 import de.davis.keygo.core.item.data.local.entity.ItemEntity
+import de.davis.keygo.core.item.data.local.pojo.ItemWrappedKeyRecord
 import de.davis.keygo.core.item.data.local.pojo.LightweightItem
 import de.davis.keygo.core.item.data.local.pojo.LightweightItemSearchResult
 import de.davis.keygo.core.item.data.local.pojo.MovableItemPojo
@@ -55,6 +56,21 @@ internal interface ItemDao {
 
     @Query("SELECT i.id, i.name, i.item_type as itemType, i.pinned FROM item i WHERE (:vaultId IS NULL OR vault_id = :vaultId)")
     fun observeLiteItems(vaultId: VaultId? = null): Flow<List<LightweightItem>>
+
+    @Query(
+        """
+        SELECT i.id AS itemId,
+            i.wrapped_key as item_wrapped_key,
+            i.key_nonce AS item_key_nonce,
+            v.id AS vaultID,
+            v.wrapped_key AS vault_wrapped_key,
+            v.key_nonce AS vault_key_nonce
+        FROM item i
+        INNER JOIN vault v ON i.vault_id = v.id
+        WHERE i.id = :itemId
+        """
+    )
+    suspend fun getItemKeyRecord(itemId: ItemId): ItemWrappedKeyRecord?
 
     @Query("SELECT id, wrapped_key, key_nonce FROM item WHERE vault_id = :vaultId")
     suspend fun getMovableItemsByVault(vaultId: VaultId): List<MovableItemPojo>

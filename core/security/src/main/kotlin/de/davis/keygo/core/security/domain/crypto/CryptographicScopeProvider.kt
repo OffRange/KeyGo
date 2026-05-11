@@ -8,6 +8,7 @@ import de.davisalessandro.keygo.rust.KeyWrapException
 
 interface CryptographicScopeProvider {
 
+    // TODO: support envelop for easier API - maybe even fetch envelop by itemId?
     suspend fun <R> itemScope(
         wrappedVaultKeyInformation: WrappedVaultKeyInformation,
         wrappedItemKeyInformation: WrappedItemKeyInformation,

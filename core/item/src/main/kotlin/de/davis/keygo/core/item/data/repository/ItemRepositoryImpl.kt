@@ -10,6 +10,7 @@ import de.davis.keygo.core.item.data.mapper.toEntity
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.Item
+import de.davis.keygo.core.item.domain.model.ItemKeyEnvelope
 import de.davis.keygo.core.item.domain.model.MovableItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
@@ -51,6 +52,9 @@ internal class ItemRepositoryImpl(
 
     override fun observeLiteVaultItems(vaultId: VaultId?): Flow<List<LiteItem>> =
         itemDao.observeLiteItems(vaultId).map { it.map(LightweightItem::toDomain) }
+
+    override suspend fun getItemKeyEnvelope(itemId: ItemId): ItemKeyEnvelope? =
+        itemDao.getItemKeyRecord(itemId)?.toDomain()
 
     override suspend fun getMovableItemsByVault(vaultId: VaultId): List<MovableItem> =
         itemDao.getMovableItemsByVault(vaultId).map { it.toDomain() }
