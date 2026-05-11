@@ -88,7 +88,7 @@ import de.davis.keygo.feature.item.view.login.model.ModificationDialog
 import de.davis.keygo.feature.item.view.login.model.ObfuscatedString
 import de.davis.keygo.feature.item.view.login.model.ViewLoginState
 import de.davis.keygo.feature.item.view.login.model.ViewLoginUiEvent
-import de.davis.keygo.feature.totp.domain.model.TotpInformation
+import de.davis.keygo.feature.totp.domain.model.TotpValue
 import de.davis.keygo.feature.totp.presentation.component.QRScanner
 import de.davis.keygo.core.item.R as CoreItemR
 import de.davis.keygo.core.ui.R as CoreUiR
@@ -174,7 +174,7 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
         var isPasswordHidden by rememberSaveable { mutableStateOf(true) }
 
         val progress = remember { Animatable(1f) }
-        val totpInformation = state.totpInformation
+        val totpInformation = state.totpValue
         LaunchedEffect(totpInformation.validUntil, totpInformation.code) {
             val remaining = totpInformation.validUntil - System.currentTimeMillis()
 
@@ -251,15 +251,15 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                 )
             }
 
-            if (state.totpInformation.code.isNotBlank()) {
+            if (state.totpValue.code.isNotBlank()) {
                 entry(
                     title = totp,
                     leadingIcon = Icons.Default.AccessTime,
                     trailingContent = {
-                        CopyToClipboardButton(state.totpInformation.code)
+                        CopyToClipboardButton(state.totpValue.code)
                     },
                 ) {
-                    Text(text = state.totpInformation.code.chunked(3).joinToString(" "))
+                    Text(text = state.totpValue.code.chunked(3).joinToString(" "))
                     LinearProgressIndicator(
                         progress = { progress.value },
                         modifier = Modifier.fillMaxWidth(),
@@ -314,7 +314,7 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    if (state.totpInformation.code.isBlank()) {
+                    if (state.totpValue.code.isBlank()) {
                         AddChip(
                             fieldType = FieldType.Totp,
                             onClick = { onEvent(ViewLoginUiEvent.OnModifyFieldRequest(it)) },
@@ -499,7 +499,7 @@ private fun ViewLoginContentPreview() {
                     passkeyRPs = setOf("example.com", "example.org"),
                     password = ObfuscatedString("Password"),
                     passwordStrengthScore = PasswordScore.Ridiculous,
-                    totpInformation = TotpInformation(
+                    totpValue = TotpValue(
                         code = "123456",
                         validUntil = System.currentTimeMillis() + 30_000L,
                         maxLifetime = 30_000L,

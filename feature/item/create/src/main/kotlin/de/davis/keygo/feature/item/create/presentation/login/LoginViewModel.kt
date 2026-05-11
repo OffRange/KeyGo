@@ -40,6 +40,7 @@ import de.davis.keygo.feature.item.create.presentation.login.model.OverrideTotpF
 import de.davis.keygo.feature.item.create.presentation.model.VaultsState
 import de.davis.keygo.feature.totp.domain.model.TotpSecretInformation
 import de.davis.keygo.feature.totp.domain.usecase.GetTotpSecretFromUrlUseCase
+import de.davis.keygo.rust.totp.TotpService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -74,6 +75,7 @@ internal class LoginViewModel(
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val createNewOrUpdateLogin: CreateNewOrUpdateLoginUseCase,
     private val snackbarManager: SnackbarManager,
+    private val totpService: TotpService,
     private val getTotpSecret: GetTotpSecretFromUrlUseCase,
     private val registrableDomainResolver: RegistrableDomainResolver,
     vaultRepository: VaultRepository,

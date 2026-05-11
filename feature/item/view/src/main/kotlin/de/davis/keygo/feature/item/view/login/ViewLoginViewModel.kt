@@ -28,7 +28,7 @@ import de.davis.keygo.feature.item.view.login.model.ModificationDialog
 import de.davis.keygo.feature.item.view.login.model.ViewLoginState
 import de.davis.keygo.feature.item.view.login.model.ViewLoginUiEvent
 import de.davis.keygo.feature.item.view.login.model.asObfuscatedString
-import de.davis.keygo.feature.totp.domain.model.TotpInformation
+import de.davis.keygo.feature.totp.domain.model.TotpValue
 import de.davis.keygo.feature.totp.domain.repository.TotpGenerator
 import de.davis.keygo.feature.totp.domain.usecase.GetTotpSecretFromUrlUseCase
 import kotlinx.coroutines.Dispatchers
@@ -74,22 +74,16 @@ internal class ViewLoginViewModel(
         .distinctUntilChanged()
         .flatMapLatest { id ->
             observeLoginWithCryptoScope.observe(itemId = id) { login ->
-                val (obfuscated, totp, vaultMetadata) = coroutineScope {
+                val (obfuscated, vaultMetadata) = coroutineScope {
                     val obfuscated = async {
                         login.password.decrypt().asObfuscatedString()
-                    }
-                    val totp = login.totp?.let { totpSecret ->
-                        async {
-                            totpSecret.secret.decrypt().encodeToByteArray()
-                        }
                     }
                     val vaultMetadata = async {
                         vaultRepository.getVaultMetadata(login.vaultId)
                     }
 
-                    Triple(
+                    Pair(
                         obfuscated.await(),
-                        totp?.await(),
                         vaultMetadata.await(),
                     )
                 }
@@ -103,14 +97,14 @@ internal class ViewLoginViewModel(
                     username = login.username.orEmpty(),
                     domains = login.domainInfos,
                     note = login.note.orEmpty(),
-                    totpInformation = TotpInformation("", 0, 0),
+                    totpValue = TotpValue("", 0, 0),
                     pinned = login.pinned,
                 )
 
-                when (val totpSecret = totp) {
+                when (val totp = login.totp) {
                     null -> flowOf(base)
-                    else -> totpGenerator.observeTotp(totpSecret).map {
-                        base.copy(totpInformation = it)
+                    else -> totpGenerator.observeTotpCode(totp).map {
+                        base.copy(totpValue = it)
                     }
                 }
             }
