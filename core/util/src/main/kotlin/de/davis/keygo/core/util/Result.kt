@@ -3,10 +3,10 @@ package de.davis.keygo.core.util
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
-sealed interface Result<S, E> {
+sealed interface Result<out S, out E> {
 
-    data class Failure<S, E>(val error: E) : Result<S, E>
-    data class Success<S, E>(val success: S) : Result<S, E>
+    data class Failure<out S, out E>(val error: E) : Result<S, E>
+    data class Success<out S, out E>(val success: S) : Result<S, E>
 }
 
 
@@ -32,46 +32,6 @@ inline fun <S, E> Result<S, E>.onSuccess(action: (S) -> Unit): Result<S, E> {
     }
     return this
 }
-
-data class SuccessPair2<S1, S2>(val success1: S1, val success2: S2)
-data class SuccessPair3<S1, S2, S3>(val success1: S1, val success2: S2, val success3: S3)
-data class SuccessPair4<S1, S2, S3, S4>(
-    val success1: S1,
-    val success2: S2,
-    val success3: S3,
-    val success4: S4
-)
-
-inline fun <S, S2, E : F, F> Result<S, E>.zip(transform: (S) -> Result<S2, F>): Result<SuccessPair2<S, S2>, F> =
-    when (this) {
-        is Result.Success -> transform(success).mapSuccess { SuccessPair2(success, it) }
-        is Result.Failure -> Result.Failure(error)
-    }
-
-inline fun <S1, S2, S3, E : F, F> Result<SuccessPair2<S1, S2>, E>.zip(transform: (S1, S2) -> Result<S3, F>): Result<SuccessPair3<S1, S2, S3>, F> =
-    when (this) {
-        is Result.Success -> with(success) {
-            transform(success1, success2).mapSuccess { SuccessPair3(success1, success2, it) }
-        }
-
-        is Result.Failure -> Result.Failure(error)
-    }
-
-inline fun <S1, S2, S3, S4, E : F, F> Result<SuccessPair3<S1, S2, S3>, E>.zip(transform: (S1, S2, S3) -> Result<S4, F>): Result<SuccessPair4<S1, S2, S3, S4>, F> =
-    when (this) {
-        is Result.Success -> with(success) {
-            transform(success1, success2, success3).mapSuccess {
-                SuccessPair4(
-                    success1,
-                    success2,
-                    success3,
-                    it
-                )
-            }
-        }
-
-        is Result.Failure -> Result.Failure(error)
-    }
 
 inline fun <S, E> Result<S, E>.onFailure(action: (E) -> Unit): Result<S, E> {
     if (this is Result.Failure) {
@@ -111,3 +71,40 @@ fun <E> Boolean.asResult(fail: E): Result<Unit, E> = if (this) {
 fun <S, E> S?.asResult(onNullError: E): Result<S, E> =
     if (this == null) Result.Failure(onNullError)
     else Result.Success(this)
+
+
+inline fun <S, E, R> Result<S, E>.fold(onSuccess: (S) -> R, onFailure: (E) -> R): R = when (this) {
+    is Result.Success -> onSuccess(success)
+    is Result.Failure -> onFailure(error)
+}
+
+class ResultBinding<E> {
+    class Abort(val error: Any?) : Throwable()
+
+    fun <S> Result<S, E>.bind(): S {
+        return when (this) {
+            is Result.Success -> success
+            is Result.Failure -> throw Abort(error)
+        }
+    }
+
+    fun <S, F> Result<S, F>.bind(mapError: (F) -> E): S {
+        return when (this) {
+            is Result.Success -> success
+            is Result.Failure -> throw Abort(mapError(error))
+        }
+    }
+}
+
+inline fun <S, E> resultBinding(
+    block: ResultBinding<E>.() -> S
+): Result<S, E> {
+    val binding = ResultBinding<E>()
+
+    return try {
+        Result.Success(binding.block())
+    } catch (e: ResultBinding.Abort) {
+        @Suppress("UNCHECKED_CAST")
+        Result.Failure(e.error as E)
+    }
+}
