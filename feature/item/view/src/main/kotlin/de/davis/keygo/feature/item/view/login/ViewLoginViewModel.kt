@@ -88,7 +88,7 @@ internal class ViewLoginViewModel(
                     )
                 }
 
-                val base = ViewLoginState(
+                ViewLoginState(
                     name = login.name,
                     vaultMetadata = vaultMetadata,
                     passkeyRPs = login.passkeyRPs,
@@ -99,17 +99,16 @@ internal class ViewLoginViewModel(
                     note = login.note.orEmpty(),
                     totpValue = TotpValue("", 0, 0),
                     pinned = login.pinned,
-                )
-
-                when (val totp = login.totp) {
+                ) to login.totp
+            }
+            .map { it.getOrNull() }
+            .filterNotNull()
+            .flatMapLatest { (base, totp) ->
+                when (totp) {
                     null -> flowOf(base)
-                    else -> totpGenerator.observeTotpCode(totp).map {
-                        base.copy(totpValue = it)
-                    }
+                    else -> totpGenerator.observeTotpCode(totp).map { base.copy(totpValue = it) }
                 }
-            }.map { it.getOrNull() }
-                .filterNotNull()
-                .flatMapLatest { it }
+            }
         }.flowOn(Dispatchers.Default)
 
 
