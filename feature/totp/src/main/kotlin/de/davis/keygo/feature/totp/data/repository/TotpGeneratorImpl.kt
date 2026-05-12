@@ -4,6 +4,7 @@ import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.mapFailure
 import de.davis.keygo.core.util.mapSuccess
 import de.davis.keygo.core.util.resultBinding
@@ -30,7 +31,7 @@ internal class TotpGeneratorImpl(
     override suspend fun getTotpCode(totp: Totp): Result<TotpValue, TotpError> = resultBinding {
         val decryptedSecret = totp.decryptSecret().bind()
 
-        val (value, _) = getTotpValue(totp, decryptedSecret)
+        val (value, _) = getTotpValue(totp, decryptedSecret).bind()
         value
     }
 
@@ -39,7 +40,8 @@ internal class TotpGeneratorImpl(
             val periodMs = totp.period.seconds.inWholeMilliseconds
 
             while (currentCoroutineContext().isActive) {
-                val (value, remaining) = getTotpValue(totp, decryptedSecret, periodMs)
+                val (value, remaining) = getTotpValue(totp, decryptedSecret, periodMs).getOrNull()
+                    ?: break
 
                 emit(value)
                 delay(remaining)
@@ -51,9 +53,10 @@ internal class TotpGeneratorImpl(
         totp: Totp,
         decryptedSecret: String,
         periodMs: Long = totp.period.seconds.inWholeMilliseconds,
-    ): Pair<TotpValue, Long> {
+    ): Result<Pair<TotpValue, Long>, TotpError> {
         val totpCode = totpService.getTotp(
-            algorithm = Algorithm.fromString(totp.algorithm),
+            algorithm = Algorithm.fromString(totp.algorithm).getOrNull()
+                ?: return Result.Failure(TotpError.UnsupportedAlgorithm),
             digits = totp.digits.toUByte(),
             step = totp.period.toULong(),
             secret = decryptedSecret,
@@ -64,11 +67,13 @@ internal class TotpGeneratorImpl(
         val nextWindowStart = ((now / periodMs) + 1) * periodMs
         val remaining = nextWindowStart - now
 
-        return TotpValue(
-            code = totpCode,
-            validUntil = nextWindowStart,
-            maxLifetime = periodMs
-        ) to remaining
+        return Result.Success(
+            TotpValue(
+                code = totpCode,
+                validUntil = nextWindowStart,
+                maxLifetime = periodMs
+            ) to remaining
+        )
     }
 
     private suspend fun Totp.decryptSecret(): Result<String, TotpError> {
