@@ -59,6 +59,7 @@ internal class TotpGeneratorImpl(
             secret = decryptedSecret,
         )
 
+        val periodMs = periodMs.coerceAtLeast(1L)
         val now = System.currentTimeMillis()
         val nextWindowStart = ((now / periodMs) + 1) * periodMs
         val remaining = nextWindowStart - now
