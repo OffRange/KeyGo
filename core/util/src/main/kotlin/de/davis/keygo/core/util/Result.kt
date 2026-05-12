@@ -79,7 +79,7 @@ inline fun <S, E, R> Result<S, E>.fold(onSuccess: (S) -> R, onFailure: (E) -> R)
 }
 
 class ResultBinding<E> {
-    class Abort(val error: Any?) : Throwable()
+    class Abort(val error: Any?) : RuntimeException(null, null, false, false)
 
     fun <S> Result<S, E>.bind(): S {
         return when (this) {
