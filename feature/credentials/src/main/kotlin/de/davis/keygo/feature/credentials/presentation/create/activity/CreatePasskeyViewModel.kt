@@ -9,11 +9,11 @@ import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasskeyUser
-import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.encrypt
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
+import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.feature.credentials.presentation.auth.SessionAuthState
 import de.davis.keygo.feature.credentials.presentation.auth.UnlockOutcome
@@ -32,7 +32,6 @@ import org.koin.core.annotation.KoinViewModel
 @KoinViewModel
 internal class CreatePasskeyViewModel(
     private val passkeyRepository: PasskeyRepository,
-    private val itemRepository: ItemRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passkeyManager: PasskeyManager,
     private val accountRepository: AccountRepository,
@@ -104,14 +103,12 @@ internal class CreatePasskeyViewModel(
         viewModelScope.launch {
             val response = registrationResponse ?: return@launch abort("Response was null")
 
-            val encryptedPrivateKey = try {
-                cryptographicScopeProvider.itemScope(itemId = itemId) {
-                    Passkey.PrivateKey.encrypt(response.privateKey)
-                }
-            } catch (t: Throwable) {
-                Log.w(TAG, "Failed to encrypt passkey private key", t)
-                return@launch abort("Failed to encrypt passkey private key")
-            }
+            val encryptedPrivateKey = cryptographicScopeProvider.itemScope(itemId = itemId) {
+                Passkey.PrivateKey.encrypt(response.privateKey)
+            }.fold(
+                onSuccess = { it },
+                onFailure = { return@launch abort("Failed to encrypt passkey private key: $it") }
+            )
 
             val passkey = Passkey(
                 credentialId = response.credentialId,

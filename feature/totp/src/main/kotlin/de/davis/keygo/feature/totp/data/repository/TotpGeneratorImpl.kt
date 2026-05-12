@@ -4,6 +4,9 @@ import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.mapFailure
+import de.davis.keygo.core.util.mapSuccess
+import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.totp.domain.model.TotpError
 import de.davis.keygo.feature.totp.domain.model.TotpValue
 import de.davis.keygo.feature.totp.domain.repository.TotpGenerator
@@ -24,22 +27,23 @@ internal class TotpGeneratorImpl(
     private val cryptographicScopeProvider: CryptographicScopeProvider,
 ) : TotpGenerator {
 
-    override suspend fun getTotpCode(totp: Totp): Result<TotpValue, TotpError> {
-        val decryptedSecret = totp.decryptSecret()
+    override suspend fun getTotpCode(totp: Totp): Result<TotpValue, TotpError> = resultBinding {
+        val decryptedSecret = totp.decryptSecret().bind()
 
         val (value, _) = getTotpValue(totp, decryptedSecret)
-        return Result.Success(value)
+        value
     }
 
     override fun observeTotpCode(totp: Totp): Flow<TotpValue> = flow {
-        val decryptedSecret = totp.decryptSecret()
-        val periodMs = totp.period.seconds.inWholeMilliseconds
+        totp.decryptSecret().mapSuccess { decryptedSecret ->
+            val periodMs = totp.period.seconds.inWholeMilliseconds
 
-        while (currentCoroutineContext().isActive) {
-            val (value, remaining) = getTotpValue(totp, decryptedSecret, periodMs)
+            while (currentCoroutineContext().isActive) {
+                val (value, remaining) = getTotpValue(totp, decryptedSecret, periodMs)
 
-            emit(value)
-            delay(remaining)
+                emit(value)
+                delay(remaining)
+            }
         }
     }
 
@@ -66,9 +70,9 @@ internal class TotpGeneratorImpl(
         ) to remaining
     }
 
-    private suspend fun Totp.decryptSecret(): String {
+    private suspend fun Totp.decryptSecret(): Result<String, TotpError> {
         return cryptographicScopeProvider.itemScope(itemId = loginId) {
             secret.decrypt()
-        }
+        }.mapFailure { TotpError.CryptoFailed }
     }
 }

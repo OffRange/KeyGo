@@ -17,6 +17,7 @@ import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformati
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.mapFailure
+import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.item.core.domain.model.FieldUpdate
 import de.davis.keygo.feature.item.core.domain.model.LoginError
 import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
@@ -86,14 +87,14 @@ class CreateNewOrUpdateLoginUseCase(
     private suspend fun buildCreate(
         upsert: UpsertLogin,
         vaultId: VaultId,
-    ): Result<Login, LoginError> {
+    ): Result<Login, LoginError> = resultBinding {
         val itemId = newItemId()
 
         val vaultKeyInformation = vaultRepository.getKeyInformation(vaultId)
             ?: return Result.Failure(LoginError.InvalidVaultId)
         val aad = ItemAad(itemId = itemId, vaultId = vaultId)
 
-        val login = cryptographicScopeProvider.itemScope(
+        cryptographicScopeProvider.itemScope(
             wrappedVaultKeyInformation = WrappedVaultKeyInformation(
                 wrappedVaultKey = vaultKeyInformation,
                 vaultId = vaultId,
@@ -129,16 +130,14 @@ class CreateNewOrUpdateLoginUseCase(
                     vaultId = vaultId,
                 )
             }
-        }
-
-        return Result.Success(login)
+        }.bind(LoginError::CryptoError)
     }
 
     private suspend fun buildUpdate(
         upsert: UpsertLogin,
         id: ItemId,
         targetVaultId: VaultId?,
-    ): Result<Login, LoginError> {
+    ): Result<Login, LoginError> = resultBinding {
         val existing = loginRepository.getLoginById(id)
             ?: return Result.Failure(LoginError.InvalidItemId)
 
@@ -180,10 +179,10 @@ class CreateNewOrUpdateLoginUseCase(
                     note = upsert.note.on(existing.note),
                 )
             }
-        }
+        }.bind(LoginError::CryptoError)
 
         if (targetVaultId == null || targetVaultId == existing.vaultId)
-            return Result.Success(login)
+            return@resultBinding login
 
         // Vault changed during edit: rewrap the item key under the destination vault. Encrypted
         // secrets are bound only to the item id (see CryptographicScopeImpl.buildDataAad), so
@@ -191,24 +190,18 @@ class CreateNewOrUpdateLoginUseCase(
         val destinationVaultKeyInfo = vaultRepository.getKeyInformation(targetVaultId)
             ?: return Result.Failure(LoginError.InvalidVaultId)
 
-        return when (
-            val rewrapped = cryptographicScopeProvider.rewrapItemKey(
-                sourceVault = sourceVault,
-                sourceItem = existing.wrappedItemKeyInformation(),
-                destinationVault = WrappedVaultKeyInformation(
-                    wrappedVaultKey = destinationVaultKeyInfo,
-                    vaultId = targetVaultId,
-                ),
-            )
-        ) {
-            is Result.Success -> Result.Success(
-                login.copy(
-                    vaultId = targetVaultId,
-                    keyInformation = rewrapped.success,
-                )
-            )
+        val rewrapped = cryptographicScopeProvider.rewrapItemKey(
+            sourceVault = sourceVault,
+            sourceItem = existing.wrappedItemKeyInformation(),
+            destinationVault = WrappedVaultKeyInformation(
+                wrappedVaultKey = destinationVaultKeyInfo,
+                vaultId = targetVaultId,
+            ),
+        ).bind(LoginError::CryptoError)
 
-            is Result.Failure -> Result.Failure(LoginError.DatabaseError(rewrapped.error))
-        }
+        login.copy(
+            vaultId = targetVaultId,
+            keyInformation = rewrapped,
+        )
     }
 }

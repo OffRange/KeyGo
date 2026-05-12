@@ -311,7 +311,7 @@ internal class AutofillViewModel(
                         eventChannel.send(AutofillEvent.Abort)
                         return
                     }
-                    
+
                     cryptographicScopeProvider.itemScope(
                         wrappedVaultKeyInformation = WrappedVaultKeyInformation(
                             wrappedVaultKey = wrappedVaultKey,
@@ -320,7 +320,7 @@ internal class AutofillViewModel(
                         wrappedItemKeyInformation = login.wrappedItemKeyInformation()
                     ) {
                         login.password.decrypt()
-                    }
+                    }.getOrNull()
                 }
 
                 FieldType.Credentials.Username -> login.username

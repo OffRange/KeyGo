@@ -22,6 +22,8 @@ import de.davis.keygo.core.security.domain.crypto.encrypt
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
+import de.davis.keygo.core.security.domain.model.CryptoScopeError
+import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
 import de.davis.keygo.feature.vault.domain.model.MoveItemsError
@@ -231,9 +233,11 @@ class MoveItemsToVaultUseCaseTest {
         val result = useCase(srcVault.id, dstVault.id)
 
         assertTrue(result.isFailure())
-        val error = assertIs<MoveItemsError.ItemMoveFailed>(result.error)
-        assertEquals(failingId, error.itemId)
-        assertSame(cause, error.cause)
+        val moveItemsError = assertIs<MoveItemsError.ItemMoveFailed>(result.error)
+        assertEquals(failingId, moveItemsError.itemId)
+
+        val cryptoScopeError = assertIs<CryptoScopeError.KeyWrapError>(moveItemsError.error)
+        assertSame(cause, cryptoScopeError.exception)
 
         seededIds.forEach { id ->
             assertEquals(srcVault.id, loginRepository.getLoginById(id)!!.vaultId)
@@ -363,7 +367,7 @@ class MoveItemsToVaultUseCaseTest {
                 vaultId = vault.id,
                 keyInformation = wrapCurrentItemKey(),
             )
-        }
+        }.assertSuccess()
         loginRepository.seed(login)
         return login
     }
@@ -379,5 +383,5 @@ class MoveItemsToVaultUseCaseTest {
             val pw: String = login.password.decrypt()
             val totp: String? = login.totp?.secret?.decrypt()
             pw to totp
-        }
+        }.assertSuccess()
 }

@@ -6,11 +6,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.identity.domain.model.UnlockError
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
-import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
+import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.credentials.presentation.auth.SessionAuthState
@@ -28,7 +28,6 @@ import org.koin.core.annotation.KoinViewModel
 @KoinViewModel
 internal class ProvidePasskeyViewModel(
     private val passkeyRepository: PasskeyRepository,
-    private val itemRepository: ItemRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passkeyManager: PasskeyManager,
     private val accountRepository: AccountRepository,
@@ -89,14 +88,12 @@ internal class ProvidePasskeyViewModel(
             val passkey = passkeyRepository.getPasskey(req.credentialId)
                 ?: return@launch abort("No passkey found!")
 
-            val privateKey = try {
-                cryptographicScopeProvider.itemScope(itemId = passkey.loginId) {
-                    passkey.privateKey.decrypt()
-                }
-            } catch (t: Throwable) {
-                Log.w(TAG, "Failed to decrypt passkey private key", t)
-                return@launch abort("Failed to decrypt passkey private key")
-            }
+            val privateKey = cryptographicScopeProvider.itemScope(itemId = passkey.loginId) {
+                passkey.privateKey.decrypt()
+            }.fold(
+                onSuccess = { it },
+                onFailure = { return@launch abort("Failed to decrypt passkey private key: $it") }
+            )
 
             passkeyManager.authenticateWithResult(
                 requestJson = req.option.requestJson,

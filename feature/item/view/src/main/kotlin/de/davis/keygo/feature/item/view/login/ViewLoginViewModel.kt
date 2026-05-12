@@ -107,7 +107,7 @@ internal class ViewLoginViewModel(
                         base.copy(totpValue = it)
                     }
                 }
-            }
+            }.map { it.getOrNull() }
                 .filterNotNull()
                 .flatMapLatest { it }
         }.flowOn(Dispatchers.Default)

@@ -70,6 +70,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(testFixtures(projects.rust))
     testImplementation(testFixtures(projects.core.item))
+    testImplementation(testFixtures(projects.core.util))
 
     testFixturesApi(projects.core.item)
     testFixturesApi(projects.rust)
