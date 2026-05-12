@@ -302,23 +302,25 @@ internal class AutofillViewModel(
     }
 
     private suspend fun sendLoginFillEvent(login: Login) {
-        val wrappedVaultKey = vaultRepository.getKeyInformation(login.vaultId) ?: run {
-            eventChannel.send(AutofillEvent.Abort)
-            return
-        }
-
         val values = requestData.form.fields.mapNotNull {
             val type = it.type
             if (type !is FieldType.Credentials) return@mapNotNull null
             val value = when (type) {
-                FieldType.Credentials.Password -> cryptographicScopeProvider.itemScope(
-                    wrappedVaultKeyInformation = WrappedVaultKeyInformation(
-                        wrappedVaultKey = wrappedVaultKey,
-                        vaultId = login.vaultId
-                    ),
-                    wrappedItemKeyInformation = login.wrappedItemKeyInformation()
-                ) {
-                    login.password.decrypt()
+                FieldType.Credentials.Password -> {
+                    val wrappedVaultKey = vaultRepository.getKeyInformation(login.vaultId) ?: run {
+                        eventChannel.send(AutofillEvent.Abort)
+                        return
+                    }
+                    
+                    cryptographicScopeProvider.itemScope(
+                        wrappedVaultKeyInformation = WrappedVaultKeyInformation(
+                            wrappedVaultKey = wrappedVaultKey,
+                            vaultId = login.vaultId
+                        ),
+                        wrappedItemKeyInformation = login.wrappedItemKeyInformation()
+                    ) {
+                        login.password.decrypt()
+                    }
                 }
 
                 FieldType.Credentials.Username -> login.username
