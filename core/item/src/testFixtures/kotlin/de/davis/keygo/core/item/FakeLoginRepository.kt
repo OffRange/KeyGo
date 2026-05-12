@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.update
  */
 class FakeLoginRepository : LoginRepository {
 
-    private val store = MutableStateFlow<Map<ItemId, Login>>(emptyMap())
+    internal val store = MutableStateFlow<Map<ItemId, Login>>(emptyMap())
 
     /** Error returned by the next [createOrUpdateLogin] call (cleared after use). */
     var createOrUpdateError: Throwable? = null

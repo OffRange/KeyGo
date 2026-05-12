@@ -1,7 +1,6 @@
 package de.davis.keygo.core.security.crypto
 
 import de.davis.keygo.core.item.FakeItemRepository
-import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.security.data.crypto.CryptographicScopeProviderImpl
 import de.davis.keygo.core.security.domain.Session
@@ -29,7 +28,7 @@ class CryptographicScopeImplTest {
     private val random = Random(42)
 
     private val session: Session = FakeSession(startOnConstruct = true)
-    private val itemRepository = FakeItemRepository(FakeLoginRepository())
+    private val itemRepository = FakeItemRepository()
     private val itemManager = FakeItemManager()
     private val keyWrapper = FakeKeyWrapper()
 

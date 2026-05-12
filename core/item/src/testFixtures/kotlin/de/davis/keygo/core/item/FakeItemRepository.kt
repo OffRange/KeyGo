@@ -4,6 +4,7 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.Item
 import de.davis.keygo.core.item.domain.model.ItemKeyEnvelope
+import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.MovableItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
@@ -18,8 +19,10 @@ import kotlinx.coroutines.flow.flowOf
  * login store is the single source of truth for vault/key state.
  */
 class FakeItemRepository(
-    private val loginRepository: FakeLoginRepository,
+    private val loginRepository: FakeLoginRepository = FakeLoginRepository(),
 ) : ItemRepository {
+
+    private val allStores = loginRepository.store
 
     /**
      * If non-null, [moveItemsToVault] fails the whole bulk write when any of the supplied
@@ -33,13 +36,17 @@ class FakeItemRepository(
     override suspend fun createOrUpdateVaultItem(item: Item): ItemId = item.id
 
     override suspend fun getItemName(itemId: ItemId): String? =
-        loginRepository.getLoginById(itemId)?.name
+        allStores.value[itemId]?.name
 
     override suspend fun doesNameExist(
         name: String,
         excludeId: ItemId?,
         vaultId: VaultId?,
-    ): Boolean = false
+    ): Boolean = allStores.value.values.any {
+        it.name == name &&
+                (excludeId == null || it.id != excludeId) &&
+                (vaultId == null || it.vaultId == vaultId)
+    }
 
     override suspend fun searchVaultItem(
         query: String,
@@ -54,8 +61,15 @@ class FakeItemRepository(
     override suspend fun getItemKeyEnvelope(itemId: ItemId): ItemKeyEnvelope? = null
 
     override suspend fun getMovableItemsByVault(vaultId: VaultId): List<MovableItem> =
-        loginRepository.getLoginsByVault(vaultId)
-            .map { MovableItem(id = it.id, keyInformation = it.keyInformation) }
+        allStores.value.values.filter { it.vaultId == vaultId }.map { item ->
+            MovableItem(
+                id = item.id,
+                keyInformation = KeyInformation(
+                    wrappedKey = item.keyInformation.wrappedKey,
+                    keyNonce = item.keyInformation.keyNonce,
+                )
+            )
+        }
 
     override suspend fun moveItemsToVault(
         items: List<MovableItem>,
@@ -64,12 +78,14 @@ class FakeItemRepository(
         failMoveForId?.let { (failId, error) ->
             if (items.any { it.id == failId }) return Result.Failure(error)
         }
+
         val updates = items.map { item ->
             val existing = loginRepository.getLoginById(item.id)
                 ?: return Result.Failure(NoSuchElementException("No item with id ${item.id}"))
             existing.copy(vaultId = newVaultId, keyInformation = item.keyInformation)
         }
         updates.forEach { loginRepository.seed(it) }
+
         return Result.Success(Unit)
     }
 }
