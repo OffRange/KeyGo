@@ -12,6 +12,7 @@ import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.getOrNull
+import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.rust.account.AccountManager
 import de.davis.keygo.rust.derive.KeyDeriver
 import de.davis.keygo.rust.derive.deriveRootKekFromPasswordWithResult
@@ -54,7 +55,7 @@ class CreateAccessUseCase(
         biometricCipher: Cipher? = null,
         vaultName: String = "Default Vault",
         accountDisplayName: String = "Default Account",
-    ): Result<Unit, CreateAccessError> {
+    ): Result<Unit, CreateAccessError> = resultBinding {
         val salt = keyDeriver.generateSalt()
         val derivedKek = keyDeriver.deriveRootKekFromPasswordWithResult(
             password = password,
@@ -64,15 +65,13 @@ class CreateAccessUseCase(
         val accountHolder = accountManager.createAccount()
 
         val passwordWrappedArk =
-            getPasswordWrappedArk(accountHolder.account, derivedKek, salt).getOrNull()
-                ?: return Result.Failure(CreateAccessError.WrappingFailed)
+            getPasswordWrappedArk(accountHolder.account, derivedKek, salt).bind()
 
-        val wrappedVaultKey = accountHolder.defaultVault.wrap(accountHolder.account.ark).getOrNull()
-            ?: return Result.Failure(CreateAccessError.WrappingFailed)
+        val wrappedVaultKey = accountHolder.defaultVault.wrap(accountHolder.account.ark)
+            .bind { CreateAccessError.WrappingFailed }
 
         val biometricWrappedArk = biometricCipher?.let {
-            getBiometricWrappedArk(accountHolder.account, it).getOrNull()
-                ?: return Result.Failure(CreateAccessError.WrappingFailed)
+            getBiometricWrappedArk(accountHolder.account, it).bind()
         }
 
         // Persist the account before the vault: the vault is encrypted under the account's
@@ -85,7 +84,7 @@ class CreateAccessUseCase(
                 passwordWrappedArk = passwordWrappedArk,
                 biometricWrappedArk = biometricWrappedArk,
             )
-        ).getOrNull() ?: return Result.Failure(CreateAccessError.AccountPersistenceFailed)
+        ).bind { CreateAccessError.AccountPersistenceFailed }
 
         // TODO: use CreateVaultUseCase, when having better project structure
         runCatching {
@@ -103,7 +102,6 @@ class CreateAccessUseCase(
         vaultContextRepository.setContextAndLastInteracted(accountHolder.defaultVault.id)
 
         session.startSession(accountHolder.account.ark)
-        return Result.Success(Unit)
     }
 
     private fun getPasswordWrappedArk(

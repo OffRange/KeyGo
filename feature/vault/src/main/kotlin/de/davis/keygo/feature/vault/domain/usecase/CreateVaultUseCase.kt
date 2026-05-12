@@ -7,7 +7,7 @@ import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.util.Result
-import de.davis.keygo.core.util.getOrNull
+import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.vault.domain.model.VaultCreationError
 import de.davis.keygo.rust.vault.VaultManager
 import de.davis.keygo.rust.wrap.KeyWrapper
@@ -30,7 +30,7 @@ class CreateVaultUseCase(
     suspend operator fun invoke(
         name: String,
         icon: Vault.Icon,
-    ): Result<VaultId, VaultCreationError> {
+    ): Result<VaultId, VaultCreationError> = resultBinding {
         if (name.isBlank()) return Result.Failure(VaultCreationError.BlankName)
 
         val vaultId = newVaultId()
@@ -38,7 +38,7 @@ class CreateVaultUseCase(
         val vaultKey = vaultManager.createNewVaultKey()
         val wrappedVaultKey =
             keyWrapper.wrapVaultKeyWithResult(session.ark, vaultKey, vaultId)
-                .getOrNull() ?: return Result.Failure(VaultCreationError.WrapFailed)
+                .bind { VaultCreationError.WrapFailed }
 
         val vault = Vault(
             id = vaultId,
@@ -50,6 +50,6 @@ class CreateVaultUseCase(
 
         vaultRepository.createVault(vault)
         vaultContextRepository.setContextAndLastInteracted(vaultId)
-        return Result.Success(vaultId)
+        vaultId
     }
 }
