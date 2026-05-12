@@ -61,7 +61,7 @@ dependencies {
     implementation(libs.androidx.autofill)
 
     implementation(libs.okhttp)
-    
+
     implementation(libs.kotlinx.collections.immutable)
 
     implementation(projects.core.item)
@@ -82,5 +82,4 @@ dependencies {
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.io.mockk)
 }

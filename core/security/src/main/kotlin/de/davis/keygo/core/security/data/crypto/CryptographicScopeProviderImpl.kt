@@ -1,6 +1,8 @@
 package de.davis.keygo.core.security.data.crypto
 
+import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.KeyInformation
+import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
@@ -21,9 +23,33 @@ import org.koin.core.annotation.Single
 @Single
 internal class CryptographicScopeProviderImpl(
     private val session: Session,
+    private val itemRepository: ItemRepository,
     private val itemManager: ItemManager,
     private val keyWrapper: KeyWrapper,
 ) : CryptographicScopeProvider {
+
+    override suspend fun <R> itemScope(
+        itemId: ItemId,
+        block: suspend CryptographicScope.() -> R
+    ): R {
+        val envelope = itemRepository.getItemKeyEnvelope(itemId)
+            ?: throw IllegalArgumentException("No key information found for item $itemId")
+
+        return itemScope(
+            wrappedVaultKeyInformation = WrappedVaultKeyInformation(
+                wrappedVaultKey = envelope.vaultKeyInformation,
+                vaultId = envelope.vaultId,
+            ),
+            wrappedItemKeyInformation = WrappedItemKeyInformation(
+                itemAad = ItemAad(
+                    itemId = envelope.itemId,
+                    vaultId = envelope.vaultId,
+                ),
+                wrappedItemKey = envelope.itemKeyInformation
+            ),
+            block = block,
+        )
+    }
 
     override suspend fun <R> itemScope(
         wrappedVaultKeyInformation: WrappedVaultKeyInformation,

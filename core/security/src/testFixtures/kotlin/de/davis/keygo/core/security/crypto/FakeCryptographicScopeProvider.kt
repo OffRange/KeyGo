@@ -1,5 +1,6 @@
 package de.davis.keygo.core.security.crypto
 
+import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
@@ -33,6 +34,11 @@ class FakeCryptographicScopeProvider : CryptographicScopeProvider {
     /** Result returned by the next [rewrapItemKey] call. */
     var rewrapResult: Result<KeyInformation, KeyWrapException> =
         Result.Success(KeyInformation(byteArrayOf(), byteArrayOf()))
+
+    override suspend fun <R> itemScope(
+        itemId: ItemId,
+        block: suspend CryptographicScope.() -> R
+    ): R = throw NotImplementedError()
 
     override suspend fun <R> itemScope(
         wrappedVaultKeyInformation: WrappedVaultKeyInformation,

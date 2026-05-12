@@ -10,8 +10,6 @@ import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.decrypt
-import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
-import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
@@ -20,7 +18,6 @@ import de.davis.keygo.feature.credentials.presentation.auth.UnlockOutcome
 import de.davis.keygo.feature.credentials.presentation.auth.mapUnlockError
 import de.davis.keygo.rust.passkey.PasskeyManager
 import de.davis.keygo.rust.passkey.authenticateWithResult
-import de.davisalessandro.keygo.rust.ItemAad
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -92,23 +89,8 @@ internal class ProvidePasskeyViewModel(
             val passkey = passkeyRepository.getPasskey(req.credentialId)
                 ?: return@launch abort("No passkey found!")
 
-            val envelope = itemRepository.getItemKeyEnvelope(passkey.loginId)
-                ?: return@launch abort("Failed to get item key envelope for id ${passkey.loginId}")
-
             val privateKey = try {
-                cryptographicScopeProvider.itemScope(
-                    wrappedVaultKeyInformation = WrappedVaultKeyInformation(
-                        wrappedVaultKey = envelope.vaultKeyInformation,
-                        vaultId = envelope.vaultId,
-                    ),
-                    wrappedItemKeyInformation = WrappedItemKeyInformation(
-                        itemAad = ItemAad(
-                            itemId = envelope.itemId,
-                            vaultId = envelope.vaultId,
-                        ),
-                        wrappedItemKey = envelope.itemKeyInformation
-                    )
-                ) {
+                cryptographicScopeProvider.itemScope(itemId = passkey.loginId) {
                     passkey.privateKey.decrypt()
                 }
             } catch (t: Throwable) {

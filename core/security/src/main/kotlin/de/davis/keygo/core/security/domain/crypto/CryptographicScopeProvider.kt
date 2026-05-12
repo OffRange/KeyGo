@@ -1,5 +1,6 @@
 package de.davis.keygo.core.security.domain.crypto
 
+import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
@@ -8,7 +9,11 @@ import de.davisalessandro.keygo.rust.KeyWrapException
 
 interface CryptographicScopeProvider {
 
-    // TODO: support envelop for easier API - maybe even fetch envelop by itemId?
+    suspend fun <R> itemScope(
+        itemId: ItemId,
+        block: suspend CryptographicScope.() -> R,
+    ): R
+
     suspend fun <R> itemScope(
         wrappedVaultKeyInformation: WrappedVaultKeyInformation,
         wrappedItemKeyInformation: WrappedItemKeyInformation,

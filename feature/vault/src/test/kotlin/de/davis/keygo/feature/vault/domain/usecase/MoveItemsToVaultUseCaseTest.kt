@@ -43,13 +43,13 @@ import kotlin.test.assertTrue
 class MoveItemsToVaultUseCaseTest {
 
     private val session = FakeSession(startOnConstruct = true)
+    private val loginRepository = FakeLoginRepository()
+    private val itemRepository = FakeItemRepository(loginRepository)
     private val itemManager = FakeItemManager()
     private val keyWrapper = FakeKeyWrapper()
     private val cryptographicScopeProvider: CryptographicScopeProvider =
-        BindingCryptographicScopeProvider(session, itemManager, keyWrapper)
+        BindingCryptographicScopeProvider(session, itemRepository, itemManager, keyWrapper)
 
-    private val loginRepository = FakeLoginRepository()
-    private val itemRepository = FakeItemRepository(loginRepository)
     private val vaultRepository = FakeVaultRepository()
 
     private val useCase = MoveItemsToVaultUseCase(

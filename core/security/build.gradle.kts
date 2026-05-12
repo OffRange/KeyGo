@@ -68,8 +68,8 @@ dependencies {
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.io.mockk)
     testImplementation(testFixtures(projects.rust))
+    testImplementation(testFixtures(projects.core.item))
 
     testFixturesApi(projects.core.item)
     testFixturesApi(projects.rust)
