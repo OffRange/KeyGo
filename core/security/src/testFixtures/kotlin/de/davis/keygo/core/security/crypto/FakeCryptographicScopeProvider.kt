@@ -2,6 +2,7 @@ package de.davis.keygo.core.security.crypto
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.KeyInformation
+import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
@@ -12,7 +13,9 @@ import de.davis.keygo.core.util.Result
 import kotlin.coroutines.CoroutineContext
 import kotlin.experimental.xor
 
-class FakeCryptographicScopeProvider : CryptographicScopeProvider {
+class FakeCryptographicScopeProvider(
+    private val fakeItemRepository: ItemRepository,
+) : CryptographicScopeProvider {
 
     sealed interface CallHistory {
 
@@ -38,7 +41,23 @@ class FakeCryptographicScopeProvider : CryptographicScopeProvider {
     override suspend fun <R> itemScope(
         itemId: ItemId,
         block: suspend CryptographicScope.() -> R
-    ): Result<R, CryptoScopeError> = throw NotImplementedError()
+    ): Result<R, CryptoScopeError> =
+        fakeItemRepository.getItemKeyEnvelope(itemId)?.let { envelope ->
+            itemScope(
+                wrappedVaultKeyInformation = WrappedVaultKeyInformation(
+                    wrappedVaultKey = envelope.vaultKeyInformation,
+                    vaultId = envelope.vaultId,
+                ),
+                wrappedItemKeyInformation = WrappedItemKeyInformation(
+                    itemAad = de.davisalessandro.keygo.rust.ItemAad(
+                        itemId = envelope.itemId,
+                        vaultId = envelope.vaultId,
+                    ),
+                    wrappedItemKey = envelope.itemKeyInformation
+                ),
+                block = block,
+            )
+        } ?: Result.Failure(CryptoScopeError.ItemIdNotFound)
 
     override suspend fun <R> itemScope(
         wrappedVaultKeyInformation: WrappedVaultKeyInformation,

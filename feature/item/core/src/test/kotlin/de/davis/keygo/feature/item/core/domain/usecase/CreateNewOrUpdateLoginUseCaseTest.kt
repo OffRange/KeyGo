@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.item.core.domain.usecase
 
+import de.davis.keygo.core.item.FakeItemRepository
 import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.FakePasswordStrengthEstimator
 import de.davis.keygo.core.item.FakeVaultRepository
@@ -44,9 +45,10 @@ class CreateNewOrUpdateLoginUseCaseTest {
         icon = Vault.Icon.Default,
     )
 
-    private val cryptoProvider = FakeCryptographicScopeProvider()
     private val vaultRepository = FakeVaultRepository()
     private val loginRepository = FakeLoginRepository()
+    private val cryptoProvider =
+        FakeCryptographicScopeProvider(FakeItemRepository(loginRepository))
     private val useCase = makeUseCase(loginRepository, vaultRepository)
 
     @BeforeTest

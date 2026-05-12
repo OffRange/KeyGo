@@ -8,6 +8,7 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.model.ItemKeyEnvelope
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasswordScore
@@ -369,6 +370,14 @@ class MoveItemsToVaultUseCaseTest {
             )
         }.assertSuccess()
         loginRepository.seed(login)
+        itemRepository.seedEnvelope(
+            ItemKeyEnvelope(
+                itemId = login.id,
+                vaultId = vault.id,
+                vaultKeyInformation = vault.keyInformation,
+                itemKeyInformation = login.keyInformation,
+            )
+        )
         return login
     }
 

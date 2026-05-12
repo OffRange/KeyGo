@@ -15,14 +15,23 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 
 /**
- * In-memory [ItemRepository] for tests, layered on top of a [FakeLoginRepository] so the
- * login store is the single source of truth for vault/key state.
+ * In-memory [ItemRepository] for tests.
+ *
+ * Call [seedEnvelope] to register an [ItemKeyEnvelope] for a specific item. If no envelope has
+ * been seeded, [getItemKeyEnvelope] returns a fallback with blank vault-key bytes.
+ * Tests that exercise real key-derivation paths must seed explicit envelopes with accurate vault
+ * key info.
  */
 class FakeItemRepository(
     private val loginRepository: FakeLoginRepository = FakeLoginRepository(),
 ) : ItemRepository {
 
     private val allStores = loginRepository.store
+    private val envelopes = mutableMapOf<ItemId, ItemKeyEnvelope>()
+
+    fun seedEnvelope(envelope: ItemKeyEnvelope) {
+        envelopes[envelope.itemId] = envelope
+    }
 
     /**
      * If non-null, [moveItemsToVault] fails the whole bulk write when any of the supplied
@@ -58,7 +67,7 @@ class FakeItemRepository(
     override fun observeLiteVaultItems(vaultId: VaultId?): Flow<List<LiteItem>> =
         flowOf(emptyList())
 
-    override suspend fun getItemKeyEnvelope(itemId: ItemId): ItemKeyEnvelope? = null
+    override suspend fun getItemKeyEnvelope(itemId: ItemId): ItemKeyEnvelope? = envelopes[itemId]
 
     override suspend fun getMovableItemsByVault(vaultId: VaultId): List<MovableItem> =
         allStores.value.values.filter { it.vaultId == vaultId }.map { item ->
