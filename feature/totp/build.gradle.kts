@@ -67,7 +67,6 @@ dependencies {
     implementation(projects.core.security)
     implementation(projects.core.item)
     implementation(projects.core.util)
-    implementation(libs.turingcomplete.totp)
 
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.compose)
