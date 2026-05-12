@@ -62,7 +62,7 @@ internal interface ItemDao {
         SELECT i.id AS itemId,
             i.wrapped_key as item_wrapped_key,
             i.key_nonce AS item_key_nonce,
-            v.id AS vaultID,
+            v.id AS vaultId,
             v.wrapped_key AS vault_wrapped_key,
             v.key_nonce AS vault_key_nonce
         FROM item i
