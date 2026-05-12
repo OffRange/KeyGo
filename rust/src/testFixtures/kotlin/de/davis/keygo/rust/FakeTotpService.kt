@@ -13,6 +13,4 @@ class FakeTotpService : TotpServiceInterface {
         step: ULong,
         secret: String
     ): String = totpResult
-
-    override fun getTotpFromUrl(url: String): String = totpResult
 }
