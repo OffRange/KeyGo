@@ -10,6 +10,6 @@ interface TotpGenerator {
 
     suspend fun getTotpCode(totp: Totp): Result<TotpValue, TotpError>
 
-    fun observeTotpCode(totp: Totp): Flow<TotpValue>
+    fun observeTotpCode(totp: Totp): Flow<Result<TotpValue, TotpError>>
 }
 

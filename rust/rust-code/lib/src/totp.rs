@@ -1,15 +1,15 @@
 use std::time::SystemTimeError;
 use thiserror::Error;
 pub use totp_rs::Algorithm;
-use totp_rs::{Secret, SecretParseError, TOTP, TotpUrlError};
+use totp_rs::{Secret, SecretParseError, TotpUrlError, TOTP};
 
 #[derive(Debug, Error)]
 pub enum TotpError {
-    #[error("url error: {0:?}")]
+    #[error("url error: {0}")]
     Url(TotpUrlError),
-    #[error("time error: {0:?}")]
+    #[error("time error: {0}")]
     Time(SystemTimeError),
-    #[error("secret parse error: {0:?}")]
+    #[error("secret parse error: {0}")]
     Secret(SecretParseError),
 }
 

@@ -37,6 +37,9 @@ impl From<Algorithm> for lib::totp::Algorithm {
 pub enum TotpError {
     #[error("{0}")]
     Generic(String),
+
+    #[error("Invalid input parameter")]
+    InvalidInput,
 }
 
 impl From<lib::totp::TotpError> for TotpError {
@@ -58,10 +61,12 @@ impl TotpService {
     pub fn get_totp(
         &self,
         algorithm: Algorithm,
-        digits: u8,
-        step: u64,
+        digits: i32,
+        step: i32,
         secret: String,
     ) -> Result<String, TotpError> {
-        core_get_totp(algorithm.into(), digits as usize, step, secret).map_err(Into::into)
+        let digits = usize::try_from(digits).map_err(|_| TotpError::InvalidInput)?;
+        let step = u64::try_from(step).map_err(|_| TotpError::InvalidInput)?;
+        core_get_totp(algorithm.into(), digits, step, secret).map_err(Into::into)
     }
 }

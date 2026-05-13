@@ -10,6 +10,7 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.usecase.LoginWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
+import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
@@ -25,10 +26,10 @@ import de.davis.keygo.feature.item.core.presentation.model.NavigationEvent
 import de.davis.keygo.feature.item.view.domain.WebsiteHandler
 import de.davis.keygo.feature.item.view.domain.usecase.IsValidUrlUseCase
 import de.davis.keygo.feature.item.view.login.model.ModificationDialog
+import de.davis.keygo.feature.item.view.login.model.TotpState
 import de.davis.keygo.feature.item.view.login.model.ViewLoginState
 import de.davis.keygo.feature.item.view.login.model.ViewLoginUiEvent
 import de.davis.keygo.feature.item.view.login.model.asObfuscatedString
-import de.davis.keygo.feature.totp.domain.model.TotpValue
 import de.davis.keygo.feature.totp.domain.repository.TotpGenerator
 import de.davis.keygo.feature.totp.domain.usecase.GetTotpSecretFromUrlUseCase
 import kotlinx.coroutines.Dispatchers
@@ -97,18 +98,23 @@ internal class ViewLoginViewModel(
                     username = login.username.orEmpty(),
                     domains = login.domainInfos,
                     note = login.note.orEmpty(),
-                    totpValue = TotpValue("", 0, 0),
+                    totpState = TotpState.NoTotp,
                     pinned = login.pinned,
                 ) to login.totp
             }
-            .map { it.getOrNull() }
-            .filterNotNull()
-            .flatMapLatest { (base, totp) ->
-                when (totp) {
-                    null -> flowOf(base)
-                    else -> totpGenerator.observeTotpCode(totp).map { base.copy(totpValue = it) }
+                .map { it.getOrNull() }
+                .filterNotNull()
+                .flatMapLatest { (base, totp) ->
+                    when (totp) {
+                        null -> flowOf(base)
+                        else -> totpGenerator.observeTotpCode(totp).map { result ->
+                            result.fold(
+                                onSuccess = { base.copy(totpState = TotpState.HasTotp(it)) },
+                                onFailure = { base.copy(totpState = TotpState.Error(it)) },
+                            )
+                        }
+                    }
                 }
-            }
         }.flowOn(Dispatchers.Default)
 
 

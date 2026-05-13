@@ -14,3 +14,14 @@ fun Algorithm.Companion.fromString(value: String): Result<Algorithm, TotpExcepti
             onSuccess = { Result.Success(it) },
             onFailure = { Result.Failure(it as TotpException) }
         )
+
+fun TotpServiceInterface.getTotpWithResult(
+    algorithm: Algorithm,
+    digits: Int,
+    step: Int,
+    secret: String,
+): Result<String, TotpException> = runCatching { getTotp(algorithm, digits, step, secret) }
+    .fold(
+        onSuccess = { Result.Success(it) },
+        onFailure = { Result.Failure(it as TotpException) }
+    )
