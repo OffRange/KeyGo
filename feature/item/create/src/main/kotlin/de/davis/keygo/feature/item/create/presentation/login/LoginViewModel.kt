@@ -40,7 +40,6 @@ import de.davis.keygo.feature.item.create.presentation.login.model.OverrideTotpF
 import de.davis.keygo.feature.item.create.presentation.model.VaultsState
 import de.davis.keygo.feature.totp.domain.model.TotpSecretInformation
 import de.davis.keygo.feature.totp.domain.usecase.GetTotpSecretFromUrlUseCase
-import de.davis.keygo.rust.totp.TotpService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -75,7 +74,6 @@ internal class LoginViewModel(
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val createNewOrUpdateLogin: CreateNewOrUpdateLoginUseCase,
     private val snackbarManager: SnackbarManager,
-    private val totpService: TotpService,
     private val getTotpSecret: GetTotpSecretFromUrlUseCase,
     private val registrableDomainResolver: RegistrableDomainResolver,
     vaultRepository: VaultRepository,
@@ -280,7 +278,7 @@ internal class LoginViewModel(
                             username = fieldUpdate(base.usernameTextFieldState.text.toString()),
                             domains = set(base.domains),
                             password = fieldUpdate(base.passwordTextFieldState.text.toString()),
-                            totpSecret = fieldUpdate(base.totpTextFieldState.text.toString()),
+                            totoUriOrSecret = fieldUpdate(base.totpTextFieldState.text.toString()),
                             note = fieldUpdate(base.notesTextFieldState.text.toString()),
                         )
                     } ?: UpsertLogin.create(
@@ -289,7 +287,7 @@ internal class LoginViewModel(
                         username = base.usernameTextFieldState.text.toString(),
                         domains = base.domains,
                         password = base.passwordTextFieldState.text.toString(),
-                        totpSecret = base.totpTextFieldState.text.toString(),
+                        totoUriOrSecret = base.totpTextFieldState.text.toString(),
                         note = base.notesTextFieldState.text.toString(),
                     )
 

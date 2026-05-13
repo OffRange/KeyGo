@@ -10,12 +10,14 @@ import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
+import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.encrypt
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.mapFailure
 import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.item.core.domain.model.FieldUpdate
@@ -26,6 +28,7 @@ import de.davis.keygo.feature.item.core.domain.model.getValue
 import de.davis.keygo.feature.item.core.domain.model.on
 import de.davis.keygo.feature.item.core.domain.model.onSet
 import de.davis.keygo.feature.item.core.domain.model.withoutClearingOn
+import de.davis.keygo.feature.totp.domain.usecase.GetTotpSecretFromUrlUseCase
 import de.davisalessandro.keygo.rust.ItemAad
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -39,6 +42,7 @@ class CreateNewOrUpdateLoginUseCase(
     private val vaultRepository: VaultRepository,
     private val upsertVaultItem: UpsertVaultItemUseCase,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
+    private val getTotpSecret: GetTotpSecretFromUrlUseCase,
 ) {
 
     @OptIn(ExperimentalContracts::class)
@@ -105,8 +109,8 @@ class CreateNewOrUpdateLoginUseCase(
                 val encryptedPassword = async {
                     PasswordSecret.encrypt(upsert.password.getValue()!!)
                 }
-                val encryptedTotp = upsert.totpSecret.onSet { secret ->
-                    async { Totp.Secret.encrypt(secret) }
+                val totp = upsert.totoUriOrSecret.onSet { uriOrSecret ->
+                    async { uriOrSecret.convertTotpUriOrSecretToUri(itemId) }
                 }
                 val passwordStrength = async {
                     passwordStrengthEstimator(upsert.password.getValue()!!)
@@ -120,9 +124,7 @@ class CreateNewOrUpdateLoginUseCase(
                     username = upsert.username.getValue(),
                     domainInfos = upsert.domains.getValue().orEmpty(),
                     password = encryptedPassword.await(),
-                    totp = encryptedTotp?.await()?.let {
-                        Totp(loginId = itemId, secret = it)
-                    },
+                    totp = totp?.await().also { println("TOTP: $it") },
                     passwordScore = passwordStrength.await(),
                     note = upsert.note.getValue(),
                     pinned = false,
@@ -156,14 +158,8 @@ class CreateNewOrUpdateLoginUseCase(
                 val encryptedPassword = upsert.password.onSet { password ->
                     async { PasswordSecret.encrypt(password) }
                 }
-                val totpSecret = upsert.totpSecret.onSet { secret ->
-                    async {
-                        val result = Totp.Secret.encrypt(secret)
-                        existing.totp?.copy(secret = result) ?: Totp(
-                            loginId = existing.id,
-                            secret = result,
-                        )
-                    }
+                val totp = upsert.totoUriOrSecret.onSet { uriOrSecret ->
+                    async { uriOrSecret.convertTotpUriOrSecretToUri(existing.id) }
                 }
                 val passwordStrength = upsert.password.onSet { password ->
                     async { passwordStrengthEstimator(password) }
@@ -174,7 +170,7 @@ class CreateNewOrUpdateLoginUseCase(
                     username = upsert.username.on(existing.username),
                     domainInfos = upsert.domains.on(existing.domainInfos).orEmpty(),
                     password = encryptedPassword?.await() ?: existing.password,
-                    totp = upsert.totpSecret.on(existing.totp, totpSecret),
+                    totp = upsert.totoUriOrSecret.on(existing.totp, totp),
                     passwordScore = passwordStrength?.await() ?: existing.passwordScore,
                     note = upsert.note.on(existing.note),
                 )
@@ -202,6 +198,30 @@ class CreateNewOrUpdateLoginUseCase(
         login.copy(
             vaultId = targetVaultId,
             keyInformation = rewrapped,
+        )
+    }
+
+    context(scope: CryptographicScope)
+    private suspend fun String.convertTotpUriOrSecretToUri(itemId: ItemId) = with(scope) {
+        getTotpSecret(this@convertTotpUriOrSecretToUri).fold(
+            onSuccess = { secrets ->
+                Totp(
+                    loginId = itemId,
+                    secret = Totp.Secret.encrypt(secrets.secret),
+                    accountName = secrets.accountName,
+                    issuer = secrets.issuer,
+                    algorithm = secrets.algorithm.name,
+                    digits = secrets.digits,
+                    period = secrets.period,
+                )
+            },
+            onFailure = {
+                // not valid uri - treat it as secret
+                Totp(
+                    loginId = itemId,
+                    secret = Totp.Secret.encrypt(this@convertTotpUriOrSecretToUri)
+                )
+            }
         )
     }
 }

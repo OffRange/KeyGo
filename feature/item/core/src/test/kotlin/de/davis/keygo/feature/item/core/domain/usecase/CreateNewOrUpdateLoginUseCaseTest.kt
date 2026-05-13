@@ -284,7 +284,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         )
         loginRepository.seed(existing)
 
-        val result = useCase(UpsertLogin.update(itemId = existing.id, totpSecret = clear()))
+        val result = useCase(UpsertLogin.update(itemId = existing.id, totoUriOrSecret = clear()))
 
         assertTrue(result.isSuccess(), "result: $result")
         assertEquals(null, loginRepository.getLoginById(existing.id)?.totp)
@@ -451,7 +451,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
                 vaultId = defaultVault.id,
                 name = "My site",
                 password = plaintextPassword,
-                totpSecret = plaintextTotp,
+                totoUriOrSecret = plaintextTotp,
             )
         )
 
