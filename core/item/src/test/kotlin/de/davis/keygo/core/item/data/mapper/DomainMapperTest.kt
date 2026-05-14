@@ -24,7 +24,7 @@ class DomainMapperTest {
         id = id,
         username = null,
         domainInfos = domainInfos,
-        passwordCredential = PasswordCredential( // TODO(#43-task3)
+        passwordCredential = PasswordCredential(
             secret = PasswordSecret(EncryptedPayload.EMPTY),
             score = PasswordScore.Strong,
         ),

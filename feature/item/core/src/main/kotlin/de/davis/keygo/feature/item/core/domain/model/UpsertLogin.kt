@@ -18,7 +18,7 @@ data class UpsertLogin private constructor(
         fun create(
             vaultId: VaultId,
             name: String,
-            password: String,
+            password: String? = null,
             totoUriOrSecret: String? = null,
             username: String? = null,
             domains: Set<DomainInfo> = emptySet(),
@@ -26,7 +26,7 @@ data class UpsertLogin private constructor(
         ) = UpsertLogin(
             upsertType = UpsertType.Create(vaultId),
             name = FieldUpdate.Set(name),
-            password = FieldUpdate.Set(password),
+            password = if (!password.isNullOrBlank()) FieldUpdate.Set(password) else FieldUpdate.Clear,
             note = if (!note.isNullOrBlank()) FieldUpdate.Set(note) else FieldUpdate.Clear,
             totoUriOrSecret = if (!totoUriOrSecret.isNullOrBlank()) FieldUpdate.Set(totoUriOrSecret) else FieldUpdate.Clear,
             username = if (!username.isNullOrBlank()) FieldUpdate.Set(username) else FieldUpdate.Clear,

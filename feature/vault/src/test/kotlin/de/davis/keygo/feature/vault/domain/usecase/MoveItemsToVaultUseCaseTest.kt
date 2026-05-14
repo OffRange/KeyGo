@@ -132,7 +132,7 @@ class MoveItemsToVaultUseCaseTest {
         assertEquals(seeded.name, moved.name)
         assertEquals(seeded.username, moved.username)
         assertEquals(seeded.note, moved.note)
-        assertEquals(seeded.passwordCredential!!.score, moved.passwordCredential!!.score) // TODO(#43-task3)
+        assertEquals(seeded.passwordCredential!!.score, moved.passwordCredential!!.score)
         assertEquals(seeded.domainInfos, moved.domainInfos)
         assertEquals(seeded.pinned, moved.pinned)
     }
@@ -359,7 +359,7 @@ class MoveItemsToVaultUseCaseTest {
                 name = name,
                 username = username,
                 domainInfos = domainInfos,
-                passwordCredential = PasswordCredential( // TODO(#43-task3)
+                passwordCredential = PasswordCredential(
                     secret = PasswordSecret.encrypt(passwordPlaintext),
                     score = passwordScore,
                 ),
@@ -392,7 +392,7 @@ class MoveItemsToVaultUseCaseTest {
             ),
             wrappedItemKeyInformation = login.wrappedItemKeyInformation(),
         ) {
-            val pw: String = login.passwordCredential!!.secret.decrypt() // TODO(#43-task3)
+            val pw: String = login.passwordCredential!!.secret.decrypt()
             val totp: String? = login.totp?.secret?.decrypt()
             pw to totp
         }.assertSuccess()

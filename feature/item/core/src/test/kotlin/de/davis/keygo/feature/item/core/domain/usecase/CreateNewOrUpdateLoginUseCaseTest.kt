@@ -86,25 +86,57 @@ class CreateNewOrUpdateLoginUseCaseTest {
     }
 
     @Test
-    fun `create with blank password returns BlankPassword error`() = runTest {
+    fun `create with no password no totp no username returns EmptyLogin`() = runTest {
         val result = useCase(
-            UpsertLogin.create(vaultId = defaultVault.id, name = "My site", password = "")
+            UpsertLogin.create(
+                vaultId = defaultVault.id,
+                name = "My site",
+                password = null,
+                username = null,
+                totoUriOrSecret = null,
+            )
         )
 
         assertTrue(result.isFailure())
-        assertEquals(LoginError.BlankPassword, result.error.single())
+        assertEquals(setOf(LoginError.EmptyLogin), result.error)
     }
 
     @Test
-    fun `create with blank name and blank password returns both errors`() = runTest {
+    fun `create with password only returns Success`() = runTest {
         val result = useCase(
-            UpsertLogin.create(vaultId = defaultVault.id, name = "", password = "")
+            UpsertLogin.create(
+                vaultId = defaultVault.id,
+                name = "My site",
+                password = "s3cr3t",
+            )
         )
+        assertTrue(result.isSuccess())
+    }
 
-        assertTrue(result.isFailure())
-        assertContains(result.error, LoginError.BlankName)
-        assertContains(result.error, LoginError.BlankPassword)
-        assertEquals(2, result.error.size)
+    @Test
+    fun `create with username only returns Success`() = runTest {
+        val result = useCase(
+            UpsertLogin.create(
+                vaultId = defaultVault.id,
+                name = "My site",
+                password = null,
+                username = "alice",
+            )
+        )
+        assertTrue(result.isSuccess())
+    }
+
+    @Test
+    fun `create with totp only returns Success`() = runTest {
+        val result = useCase(
+            UpsertLogin.create(
+                vaultId = defaultVault.id,
+                name = "My site",
+                password = null,
+                totoUriOrSecret = "JBSWY3DPEHPK3PXP",
+            )
+        )
+        assertTrue(result.isSuccess())
     }
 
     // Validation — Update
@@ -142,14 +174,34 @@ class CreateNewOrUpdateLoginUseCaseTest {
     }
 
     @Test
-    fun `update with Clear password returns BlankPassword error`() = runTest {
-        val existing = testLogin()
+    fun `update clearing password preserves totp and succeeds`() = runTest {
+        val existing = testLogin(
+            totp = Totp(
+                loginId = newItemId(),
+                secret = Totp.Secret(EncryptedPayload.EMPTY),
+                accountName = "alice",
+                issuer = "example",
+            ),
+        )
+        loginRepository.seed(existing)
+
+        val result = useCase(UpsertLogin.update(itemId = existing.id, password = clear()))
+
+        assertTrue(result.isSuccess())
+        val saved = loginRepository.getLoginById(existing.id)!!
+        assertNull(saved.passwordCredential)
+        assertNotNull(saved.totp)
+    }
+
+    @Test
+    fun `update clearing the only credential returns EmptyLogin`() = runTest {
+        val existing = testLogin(username = null, totp = null)
         loginRepository.seed(existing)
 
         val result = useCase(UpsertLogin.update(itemId = existing.id, password = clear()))
 
         assertTrue(result.isFailure())
-        assertEquals(LoginError.BlankPassword, result.error.single())
+        assertEquals(setOf(LoginError.EmptyLogin), result.error)
     }
 
     // Success — Create
@@ -220,7 +272,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         )
 
         val stored = freshLoginRepo.getLoginById(result.getOrNull()!!)
-        assertEquals(PasswordScore.Weak, stored?.passwordCredential!!.score) // TODO(#43-task3)
+        assertEquals(PasswordScore.Weak, stored?.passwordCredential!!.score)
     }
 
     @Test
@@ -236,7 +288,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         localUseCase(UpsertLogin.update(itemId = existing.id, password = set("SuperS3cr3t!")))
 
         val updated = loginRepository.getLoginById(existing.id)
-        assertEquals(PasswordScore.Strong, updated?.passwordCredential!!.score) // TODO(#43-task3)
+        assertEquals(PasswordScore.Strong, updated?.passwordCredential!!.score)
     }
 
     // Success — Update
@@ -475,7 +527,6 @@ class CreateNewOrUpdateLoginUseCaseTest {
         val totpCall = cryptoProvider.encryptCalls.single { it.label == Totp.Secret.label }
         assertContentEquals(plaintextTotp.encodeToByteArray(), totpCall.plaintext)
 
-        // TODO(#43-task3)
         val storedSecret = stored.passwordCredential!!.secret
         assertFalse(storedSecret.payload.ciphertext.contentEquals(plaintextPassword.encodeToByteArray()))
         assertContentEquals(
@@ -712,16 +763,18 @@ class CreateNewOrUpdateLoginUseCaseTest {
         name: String = "Test",
         username: String? = null,
         passwordScore: PasswordScore = PasswordScore.Strong,
+        passwordCredential: PasswordCredential? = PasswordCredential(
+            secret = PasswordSecret(EncryptedPayload.EMPTY),
+            score = passwordScore,
+        ),
+        totp: Totp? = null,
     ) = Login(
         id = newItemId(),
         name = name,
         username = username,
         domainInfos = emptySet(),
-        passwordCredential = PasswordCredential( // TODO(#43-task3)
-            secret = PasswordSecret(EncryptedPayload.EMPTY),
-            score = passwordScore,
-        ),
-        totp = null,
+        passwordCredential = passwordCredential,
+        totp = totp,
         note = null,
         pinned = false,
         vaultId = defaultVault.id,

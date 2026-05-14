@@ -313,7 +313,7 @@ internal class LoginViewModel(
                         _base.update {
                             it.copy(
                                 nameError = if (failure.contains(LoginError.BlankName)) InputFieldError.Empty else null,
-                                passwordError = if (failure.contains(LoginError.BlankPassword)) InputFieldError.Empty else null,
+                                passwordError = if (failure.contains(LoginError.EmptyLogin)) InputFieldError.Empty else null,
                             )
                         }
 

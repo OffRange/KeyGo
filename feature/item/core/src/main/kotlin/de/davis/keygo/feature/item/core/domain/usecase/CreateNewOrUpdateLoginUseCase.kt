@@ -62,9 +62,6 @@ class CreateNewOrUpdateLoginUseCase(
         if (!isValid(field = upsert.name, allowKeep = allowKeep))
             errors.add(LoginError.BlankName)
 
-        if (!isValid(upsert.password, allowKeep = allowKeep))
-            errors.add(LoginError.BlankPassword)
-
         return errors
     }
 
@@ -100,7 +97,7 @@ class CreateNewOrUpdateLoginUseCase(
             ?: return Result.Failure(LoginError.InvalidVaultId)
         val aad = ItemAad(itemId = itemId, vaultId = vaultId)
 
-        cryptographicScopeProvider.itemScope(
+        val built = cryptographicScopeProvider.itemScope(
             wrappedVaultKeyInformation = WrappedVaultKeyInformation(
                 wrappedVaultKey = vaultKeyInformation,
                 vaultId = vaultId,
@@ -108,14 +105,21 @@ class CreateNewOrUpdateLoginUseCase(
             wrappedItemKeyInformation = WrappedItemKeyInformation(itemAad = aad),
         ) {
             coroutineScope {
-                val encryptedPassword = async {
-                    PasswordSecret.encrypt(upsert.password.getValue()!!)
+                val newPasswordCredential = when (val pw = upsert.password) {
+                    FieldUpdate.Keep,
+                    FieldUpdate.Clear -> null
+
+                    is FieldUpdate.Set<String> -> {
+                        val encrypted = async { PasswordSecret.encrypt(pw.value) }
+                        val strength = async { passwordStrengthEstimator(pw.value) }
+                        PasswordCredential(
+                            secret = encrypted.await(),
+                            score = strength.await(),
+                        )
+                    }
                 }
                 val totp = upsert.totoUriOrSecret.onSet { uriOrSecret ->
                     async { uriOrSecret.convertTotpUriOrSecretToUri(itemId) }
-                }
-                val passwordStrength = async {
-                    passwordStrengthEstimator(upsert.password.getValue()!!)
                 }
 
                 val wrappedItemKey = async { wrapCurrentItemKey() }
@@ -125,10 +129,7 @@ class CreateNewOrUpdateLoginUseCase(
                     name = upsert.name.getValue()!!,
                     username = upsert.username.getValue(),
                     domainInfos = upsert.domains.getValue().orEmpty(),
-                    passwordCredential = PasswordCredential( // TODO(#43-task3)
-                        secret = encryptedPassword.await(),
-                        score = passwordStrength.await(),
-                    ),
+                    passwordCredential = newPasswordCredential,
                     totp = totp?.await(),
                     note = upsert.note.getValue(),
                     pinned = false,
@@ -137,6 +138,9 @@ class CreateNewOrUpdateLoginUseCase(
                 )
             }
         }.bind(LoginError::CryptoError)
+
+        if (!built.hasAnyContent) return Result.Failure(LoginError.EmptyLogin)
+        built
     }
 
     private suspend fun buildUpdate(
@@ -159,31 +163,34 @@ class CreateNewOrUpdateLoginUseCase(
             wrappedItemKeyInformation = existing.wrappedItemKeyInformation(),
         ) {
             coroutineScope {
-                val encryptedPassword = upsert.password.onSet { password ->
-                    async { PasswordSecret.encrypt(password) }
+                val newPasswordCredential = when (val pw = upsert.password) {
+                    is FieldUpdate.Keep -> existing.passwordCredential
+                    is FieldUpdate.Clear -> null
+                    is FieldUpdate.Set<String> -> {
+                        val encrypted = async { PasswordSecret.encrypt(pw.value) }
+                        val strength = async { passwordStrengthEstimator(pw.value) }
+                        PasswordCredential(
+                            secret = encrypted.await(),
+                            score = strength.await(),
+                        )
+                    }
                 }
                 val totp = upsert.totoUriOrSecret.onSet { uriOrSecret ->
                     async { uriOrSecret.convertTotpUriOrSecretToUri(existing.id) }
-                }
-                val passwordStrength = upsert.password.onSet { password ->
-                    async { passwordStrengthEstimator(password) }
                 }
 
                 existing.copy(
                     name = upsert.name.withoutClearingOn(existing.name),
                     username = upsert.username.on(existing.username),
                     domainInfos = upsert.domains.on(existing.domainInfos).orEmpty(),
-                    passwordCredential = existing.passwordCredential!!.let { existingPwd -> // TODO(#43-task3)
-                        PasswordCredential(
-                            secret = encryptedPassword?.await() ?: existingPwd.secret,
-                            score = passwordStrength?.await() ?: existingPwd.score,
-                        )
-                    },
+                    passwordCredential = newPasswordCredential,
                     totp = upsert.totoUriOrSecret.on(existing.totp, totp),
                     note = upsert.note.on(existing.note),
                 )
             }
         }.bind(LoginError::CryptoError)
+
+        if (!login.hasAnyContent) return Result.Failure(LoginError.EmptyLogin)
 
         if (targetVaultId == null || targetVaultId == existing.vaultId)
             return@resultBinding login

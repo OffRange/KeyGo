@@ -279,7 +279,7 @@ internal class ViewLoginViewModel(
                         ).onFailure { failure ->
                             _modificationDialogState.update {
                                 dialog.copy(
-                                    error = if (failure.contains(LoginError.BlankPassword)
+                                    error = if (failure.contains(LoginError.EmptyLogin)
                                         || failure.contains(LoginError.BlankName)
                                     ) InputFieldError.Empty else null,
                                 )

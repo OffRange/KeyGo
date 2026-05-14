@@ -31,7 +31,7 @@ class ItemMapperTest {
         name = name,
         username = null,
         domainInfos = emptySet(),
-        passwordCredential = PasswordCredential( // TODO(#43-task3)
+        passwordCredential = PasswordCredential(
             secret = PasswordSecret(EncryptedPayload.EMPTY),
             score = PasswordScore.Strong,
         ),
