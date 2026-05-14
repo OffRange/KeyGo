@@ -173,10 +173,12 @@ class CreateNewOrUpdateLoginUseCase(
                     name = upsert.name.withoutClearingOn(existing.name),
                     username = upsert.username.on(existing.username),
                     domainInfos = upsert.domains.on(existing.domainInfos).orEmpty(),
-                    passwordCredential = PasswordCredential( // TODO(#43-task3)
-                        secret = encryptedPassword?.await() ?: existing.passwordCredential!!.secret,
-                        score = passwordStrength?.await() ?: existing.passwordCredential!!.score,
-                    ),
+                    passwordCredential = existing.passwordCredential!!.let { existingPwd -> // TODO(#43-task3)
+                        PasswordCredential(
+                            secret = encryptedPassword?.await() ?: existingPwd.secret,
+                            score = passwordStrength?.await() ?: existingPwd.score,
+                        )
+                    },
                     totp = upsert.totoUriOrSecret.on(existing.totp, totp),
                     note = upsert.note.on(existing.note),
                 )
