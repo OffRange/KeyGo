@@ -2,16 +2,14 @@ package de.davis.keygo.feature.autofill.presentation.dataset
 
 import de.davis.keygo.core.item.domain.model.lite.LiteLogin
 import de.davis.keygo.core.item.domain.model.lite.LiteVaultItem
-import de.davis.keygo.core.item.domain.repository.LoginRepository
-import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
+import de.davis.keygo.core.security.domain.usecase.GetTdlMatchedLoginsUseCase
 import de.davis.keygo.feature.autofill.presentation.model.Form
 import de.davis.keygo.feature.autofill.presentation.model.FormType
 import org.koin.core.annotation.Single
 
 @Single
 internal class SuggestionFinder(
-    private val loginRepository: LoginRepository,
-    private val registrableDomainResolver: RegistrableDomainResolver,
+    private val getTdlMatchedLogins: GetTdlMatchedLoginsUseCase,
 ) {
 
     internal suspend fun findVaultSuggestions(
@@ -31,8 +29,6 @@ internal class SuggestionFinder(
         count: Int,
         withTOTP: Boolean = false,
     ): List<LiteLogin> = form.url?.let {
-        registrableDomainResolver.resolve(it)
-    }?.let {
-        loginRepository.getLoginsByTLD(etld1 = it, requireTotp = withTOTP, limit = count)
+        getTdlMatchedLogins(it, requireTotp = withTOTP, limit = count)
     } ?: emptyList()
 }

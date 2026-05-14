@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.item.core.domain.usecase
 
+import de.davis.keygo.core.item.FakeItemRepository
 import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.FakePasswordStrengthEstimator
 import de.davis.keygo.core.item.FakeVaultRepository
@@ -24,6 +25,10 @@ import de.davis.keygo.feature.item.core.domain.model.LoginError
 import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.clear
 import de.davis.keygo.feature.item.core.domain.model.set
+import de.davis.keygo.rust.FakeTotpService
+import de.davis.keygo.rust.totp.TotpService
+import de.davisalessandro.keygo.rust.Algorithm
+import de.davisalessandro.keygo.rust.TotpInfo
 import kotlinx.coroutines.test.runTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -33,6 +38,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CreateNewOrUpdateLoginUseCaseTest {
@@ -44,9 +50,10 @@ class CreateNewOrUpdateLoginUseCaseTest {
         icon = Vault.Icon.Default,
     )
 
-    private val cryptoProvider = FakeCryptographicScopeProvider()
     private val vaultRepository = FakeVaultRepository()
     private val loginRepository = FakeLoginRepository()
+    private val cryptoProvider =
+        FakeCryptographicScopeProvider(FakeItemRepository(loginRepository))
     private val useCase = makeUseCase(loginRepository, vaultRepository)
 
     @BeforeTest
@@ -282,7 +289,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         )
         loginRepository.seed(existing)
 
-        val result = useCase(UpsertLogin.update(itemId = existing.id, totpSecret = clear()))
+        val result = useCase(UpsertLogin.update(itemId = existing.id, totoUriOrSecret = clear()))
 
         assertTrue(result.isSuccess(), "result: $result")
         assertEquals(null, loginRepository.getLoginById(existing.id)?.totp)
@@ -449,7 +456,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
                 vaultId = defaultVault.id,
                 name = "My site",
                 password = plaintextPassword,
-                totpSecret = plaintextTotp,
+                totoUriOrSecret = plaintextTotp,
             )
         )
 
@@ -497,6 +504,190 @@ class CreateNewOrUpdateLoginUseCaseTest {
         assertEquals(cause, error.throwable)
     }
 
+    // TOTP handling — Create
+
+    @Test
+    fun `create with plain secret stores totp with only the secret and default fields`() = runTest {
+        val result = useCase(
+            UpsertLogin.create(
+                vaultId = defaultVault.id,
+                name = "My site",
+                password = "s3cr3t",
+                totoUriOrSecret = "JBSWY3DPEHPK3PXP",
+            )
+        )
+
+        val totp = storedById(result.getOrNull())?.totp
+        assertNotNull(totp)
+        assertEquals(Totp.DEFAULT_ALGORITHM, totp.algorithm)
+        assertEquals(Totp.DEFAULT_DIGITS, totp.digits)
+        assertEquals(Totp.DEFAULT_PERIOD, totp.period)
+        assertNull(totp.issuer)
+        assertNull(totp.accountName)
+    }
+
+    @Test
+    fun `create with valid totp uri stores all parsed metadata`() = runTest {
+        val parsed = TotpInfo(
+            secret = "JBSWY3DPEHPK3PXP",
+            issuer = "GitHub",
+            accountName = "alice@github.com",
+            algorithm = Algorithm.SHA256,
+            digits = 8,
+            period = 60,
+        )
+        val localUseCase = makeUseCase(
+            totpService = FakeTotpService().apply { infoFromUriResult = parsed },
+        )
+
+        val result = localUseCase(
+            UpsertLogin.create(
+                vaultId = defaultVault.id,
+                name = "My site",
+                password = "s3cr3t",
+                totoUriOrSecret = "otpauth://totp/GitHub:alice@github.com?secret=JBSWY3DPEHPK3PXP",
+            )
+        )
+
+        val totp = storedById(result.getOrNull())?.totp
+        assertNotNull(totp)
+        assertEquals("sha256", totp.algorithm)
+        assertEquals(8, totp.digits)
+        assertEquals(60, totp.period)
+        assertEquals("GitHub", totp.issuer)
+        assertEquals("alice@github.com", totp.accountName)
+    }
+
+    @Test
+    fun `create with blank totp field stores no totp`() = runTest {
+        val result = useCase(
+            UpsertLogin.create(
+                vaultId = defaultVault.id,
+                name = "My site",
+                password = "s3cr3t",
+                totoUriOrSecret = "   ",
+            )
+        )
+
+        assertNull(storedById(result.getOrNull())?.totp)
+    }
+
+    @Test
+    fun `create with null totp field stores no totp`() = runTest {
+        val result = useCase(
+            UpsertLogin.create(
+                vaultId = defaultVault.id,
+                name = "My site",
+                password = "s3cr3t",
+                totoUriOrSecret = null,
+            )
+        )
+
+        assertNull(storedById(result.getOrNull())?.totp)
+    }
+
+    // TOTP handling — Update
+
+    @Test
+    fun `update replacing totp uri with plain secret resets algorithm digits period issuer and account name`() = runTest {
+        val base = testLogin()
+        val existing = base.copy(
+            totp = Totp(
+                loginId = base.id,
+                secret = Totp.Secret(EncryptedPayload.EMPTY),
+                algorithm = "sha256",
+                digits = 8,
+                period = 60,
+                issuer = "GitHub",
+                accountName = "alice@github.com",
+            ),
+        )
+        loginRepository.seed(existing)
+
+        // useCase uses FakeTotpService with no infoFromUriResult, so input is treated as plain secret
+        val result = useCase(
+            UpsertLogin.update(
+                itemId = existing.id,
+                totoUriOrSecret = set("NEWSECRET"),
+            )
+        )
+
+        assertTrue(result.isSuccess(), "result: $result")
+        val totp = loginRepository.getLoginById(existing.id)?.totp
+        assertNotNull(totp)
+        assertEquals(Totp.DEFAULT_ALGORITHM, totp.algorithm)
+        assertEquals(Totp.DEFAULT_DIGITS, totp.digits)
+        assertEquals(Totp.DEFAULT_PERIOD, totp.period)
+        assertNull(totp.issuer)
+        assertNull(totp.accountName)
+    }
+
+    @Test
+    fun `update replacing plain secret with valid uri sets all parsed metadata`() = runTest {
+        val base = testLogin()
+        val existing = base.copy(
+            totp = Totp(
+                loginId = base.id,
+                secret = Totp.Secret(EncryptedPayload.EMPTY),
+            ),
+        )
+        loginRepository.seed(existing)
+
+        val parsed = TotpInfo(
+            secret = "JBSWY3DPEHPK3PXP",
+            issuer = "Acme",
+            accountName = "bob@acme.com",
+            algorithm = Algorithm.SHA512,
+            digits = 8,
+            period = 60,
+        )
+        val result = makeUseCase(
+            totpService = FakeTotpService().apply { infoFromUriResult = parsed },
+        )(
+            UpsertLogin.update(
+                itemId = existing.id,
+                totoUriOrSecret = set("otpauth://totp/Acme:bob@acme.com?secret=JBSWY3DPEHPK3PXP"),
+            )
+        )
+
+        assertTrue(result.isSuccess(), "result: $result")
+        val totp = loginRepository.getLoginById(existing.id)?.totp
+        assertNotNull(totp)
+        assertEquals("sha512", totp.algorithm)
+        assertEquals(8, totp.digits)
+        assertEquals(60, totp.period)
+        assertEquals("Acme", totp.issuer)
+        assertEquals("bob@acme.com", totp.accountName)
+    }
+
+    @Test
+    fun `update with keep on totp preserves existing metadata unchanged`() = runTest {
+        val base = testLogin()
+        val existing = base.copy(
+            totp = Totp(
+                loginId = base.id,
+                secret = Totp.Secret(EncryptedPayload.EMPTY),
+                algorithm = "sha256",
+                digits = 8,
+                period = 60,
+                issuer = "GitHub",
+                accountName = "alice@github.com",
+            ),
+        )
+        loginRepository.seed(existing)
+
+        val result = useCase(UpsertLogin.update(itemId = existing.id))
+
+        assertTrue(result.isSuccess(), "result: $result")
+        val totp = loginRepository.getLoginById(existing.id)?.totp
+        assertNotNull(totp)
+        assertEquals("sha256", totp.algorithm)
+        assertEquals(8, totp.digits)
+        assertEquals(60, totp.period)
+        assertEquals("GitHub", totp.issuer)
+        assertEquals("alice@github.com", totp.accountName)
+    }
+
     // Helpers
 
     private fun makeUseCase(
@@ -504,12 +695,14 @@ class CreateNewOrUpdateLoginUseCaseTest {
         vaultRepository: FakeVaultRepository = this@CreateNewOrUpdateLoginUseCaseTest.vaultRepository,
         estimator: FakePasswordStrengthEstimator = FakePasswordStrengthEstimator(),
         cryptographicScopeProvider: CryptographicScopeProvider = cryptoProvider,
+        totpService: TotpService = FakeTotpService(),
     ) = CreateNewOrUpdateLoginUseCase(
         cryptographicScopeProvider = cryptographicScopeProvider,
         loginRepository = loginRepository,
         vaultRepository = vaultRepository,
         upsertVaultItem = UpsertVaultItemUseCase(loginRepository),
         passwordStrengthEstimator = estimator,
+        totpService = totpService,
     )
 
     private fun testLogin(

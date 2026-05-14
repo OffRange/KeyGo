@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddLink
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.MoreTime
@@ -86,9 +87,10 @@ import de.davis.keygo.feature.item.core.presentation.transformation.rememberSche
 import de.davis.keygo.feature.item.view.R
 import de.davis.keygo.feature.item.view.login.model.ModificationDialog
 import de.davis.keygo.feature.item.view.login.model.ObfuscatedString
+import de.davis.keygo.feature.item.view.login.model.TotpState
 import de.davis.keygo.feature.item.view.login.model.ViewLoginState
 import de.davis.keygo.feature.item.view.login.model.ViewLoginUiEvent
-import de.davis.keygo.feature.totp.domain.model.TotpInformation
+import de.davis.keygo.feature.totp.domain.model.TotpValue
 import de.davis.keygo.feature.totp.presentation.component.QRScanner
 import de.davis.keygo.core.item.R as CoreItemR
 import de.davis.keygo.core.ui.R as CoreUiR
@@ -174,18 +176,24 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
         var isPasswordHidden by rememberSaveable { mutableStateOf(true) }
 
         val progress = remember { Animatable(1f) }
-        val totpInformation = state.totpInformation
-        LaunchedEffect(totpInformation.validUntil, totpInformation.code) {
-            val remaining = totpInformation.validUntil - System.currentTimeMillis()
+        val totpState = state.totpState
+        LaunchedEffect(totpState) {
+            when (totpState) {
+                is TotpState.HasTotp -> {
+                    val remaining = totpState.value.validUntil - System.currentTimeMillis()
 
-            progress.snapTo(remaining / totpInformation.maxLifetime.toFloat())
-            progress.animateTo(
-                targetValue = 0f,
-                animationSpec = tween(
-                    durationMillis = remaining.toInt(),
-                    easing = LinearEasing,
-                ),
-            )
+                    progress.snapTo(remaining / totpState.value.maxLifetime.toFloat())
+                    progress.animateTo(
+                        targetValue = 0f,
+                        animationSpec = tween(
+                            durationMillis = remaining.toInt(),
+                            easing = LinearEasing,
+                        ),
+                    )
+                }
+
+                else -> {}
+            }
         }
 
         LazyColumn(
@@ -251,20 +259,29 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                 )
             }
 
-            if (state.totpInformation.code.isNotBlank()) {
-                entry(
+            when (totpState) {
+                is TotpState.HasTotp -> entry(
                     title = totp,
                     leadingIcon = Icons.Default.AccessTime,
                     trailingContent = {
-                        CopyToClipboardButton(state.totpInformation.code)
+                        CopyToClipboardButton(state.totpState.value.code)
                     },
                 ) {
-                    Text(text = state.totpInformation.code.chunked(3).joinToString(" "))
+                    Text(text = state.totpState.formattedCode)
                     LinearProgressIndicator(
                         progress = { progress.value },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
+
+                is TotpState.Error -> entry(
+                    title = totp,
+                    leadingIcon = Icons.Default.Error,
+                ) {
+                    Text(text = totpState.error.message)
+                }
+
+                else -> {}
             }
 
             if (state.username.isNotBlank()) {
@@ -314,7 +331,7 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    if (state.totpInformation.code.isBlank()) {
+                    if (state.totpState is TotpState.NoTotp) {
                         AddChip(
                             fieldType = FieldType.Totp,
                             onClick = { onEvent(ViewLoginUiEvent.OnModifyFieldRequest(it)) },
@@ -499,10 +516,12 @@ private fun ViewLoginContentPreview() {
                     passkeyRPs = setOf("example.com", "example.org"),
                     password = ObfuscatedString("Password"),
                     passwordStrengthScore = PasswordScore.Ridiculous,
-                    totpInformation = TotpInformation(
-                        code = "123456",
-                        validUntil = System.currentTimeMillis() + 30_000L,
-                        maxLifetime = 30_000L,
+                    totpState = TotpState.HasTotp(
+                        TotpValue(
+                            code = "123456",
+                            validUntil = System.currentTimeMillis() + 30_000L,
+                            maxLifetime = 30_000L,
+                        )
                     ),
                     username = "Username 1",
                     domains = setOf(

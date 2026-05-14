@@ -35,6 +35,17 @@ android {
     testFixtures {
         enable = true
     }
+
+    flavorDimensions += listOf("store")
+    productFlavors {
+        create("playStore") {
+            dimension = "store"
+        }
+
+        create("fdroid") {
+            dimension = "store"
+        }
+    }
 }
 
 kotlin {
@@ -57,6 +68,7 @@ dependencies {
     implementation(projects.core.item)
     implementation(projects.core.security)
     implementation(projects.core.ui)
+    implementation(projects.feature.totp)
 
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))

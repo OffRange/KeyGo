@@ -10,6 +10,8 @@ import de.davisalessandro.keygo.rust.KeyWrapper
 import de.davisalessandro.keygo.rust.KeyWrapperInterface
 import de.davisalessandro.keygo.rust.RustPasskey
 import de.davisalessandro.keygo.rust.RustPasskeyInterface
+import de.davisalessandro.keygo.rust.TotpService
+import de.davisalessandro.keygo.rust.TotpServiceInterface
 import de.davisalessandro.keygo.rust.VaultManager
 import de.davisalessandro.keygo.rust.VaultManagerInterface
 import org.koin.core.annotation.Configuration
@@ -37,4 +39,7 @@ object RustModule {
 
     @Single
     internal fun provideVaultManager(): VaultManagerInterface = VaultManager()
+
+    @Single
+    internal fun provideTotpService(): TotpServiceInterface = TotpService()
 }

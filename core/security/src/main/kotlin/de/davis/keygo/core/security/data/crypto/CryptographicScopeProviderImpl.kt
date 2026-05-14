@@ -1,46 +1,75 @@
 package de.davis.keygo.core.security.data.crypto
 
+import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.KeyInformation
+import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
+import de.davis.keygo.core.security.domain.model.CryptoScopeError
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.mapFailure
 import de.davis.keygo.core.util.mapSuccess
+import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.rust.item.ItemManager
 import de.davis.keygo.rust.wrap.KeyWrapper
 import de.davis.keygo.rust.wrap.unwrapItemKeyWithResult
 import de.davis.keygo.rust.wrap.unwrapVaultKeyWithResult
 import de.davis.keygo.rust.wrap.wrapItemKeyWithResult
 import de.davisalessandro.keygo.rust.ItemAad
-import de.davisalessandro.keygo.rust.KeyWrapException
 import de.davisalessandro.keygo.rust.WrappedKeyBlob
 import org.koin.core.annotation.Single
 
 @Single
 internal class CryptographicScopeProviderImpl(
     private val session: Session,
+    private val itemRepository: ItemRepository,
     private val itemManager: ItemManager,
     private val keyWrapper: KeyWrapper,
 ) : CryptographicScopeProvider {
 
     override suspend fun <R> itemScope(
+        itemId: ItemId,
+        block: suspend CryptographicScope.() -> R
+    ): Result<R, CryptoScopeError> {
+        val envelope = itemRepository.getItemKeyEnvelope(itemId)
+            ?: return Result.Failure(CryptoScopeError.IdNotFound)
+
+        return itemScope(
+            wrappedVaultKeyInformation = WrappedVaultKeyInformation(
+                wrappedVaultKey = envelope.vaultKeyInformation,
+                vaultId = envelope.vaultId,
+            ),
+            wrappedItemKeyInformation = WrappedItemKeyInformation(
+                itemAad = ItemAad(
+                    itemId = envelope.itemId,
+                    vaultId = envelope.vaultId,
+                ),
+                wrappedItemKey = envelope.itemKeyInformation
+            ),
+            block = block,
+        )
+    }
+
+    override suspend fun <R> itemScope(
         wrappedVaultKeyInformation: WrappedVaultKeyInformation,
         wrappedItemKeyInformation: WrappedItemKeyInformation,
         block: suspend CryptographicScope.() -> R,
-    ): R {
-        val vaultKey = unwrapVaultKeyWithResult(wrappedVaultKeyInformation).get()
+    ): Result<R, CryptoScopeError> = resultBinding {
+        val vaultKey =
+            unwrapVaultKeyWithResult(wrappedVaultKeyInformation).bind()
 
         val itemKey = wrappedItemKeyInformation.wrappedItemKey?.let {
             keyWrapper.unwrapItemKeyWithResult(
                 vaultKey = vaultKey,
                 wrapped = it.toWrappedKeyBlob(),
                 aad = wrappedItemKeyInformation.itemAad
-            ).get()
+            ).bind(CryptoScopeError::KeyWrapError)
         } ?: itemManager.createNewItemKey()
 
-        return CryptographicScopeImpl(
+        CryptographicScopeImpl(
             itemKey = itemKey,
             itemAad = wrappedItemKeyInformation.itemAad,
             itemManager = itemManager,
@@ -58,7 +87,7 @@ internal class CryptographicScopeProviderImpl(
         sourceVault: WrappedVaultKeyInformation,
         sourceItem: WrappedItemKeyInformation,
         destinationVault: WrappedVaultKeyInformation,
-    ): Result<KeyInformation, KeyWrapException> {
+    ): Result<KeyInformation, CryptoScopeError> = resultBinding {
         val wrappedItemKey = requireNotNull(sourceItem.wrappedItemKey) {
             "rewrapItemKey requires an existing wrapped item key"
         }
@@ -67,30 +96,19 @@ internal class CryptographicScopeProviderImpl(
             vaultId = destinationVault.vaultId,
         )
 
-        val sourceVaultKey = when (val r = unwrapVaultKeyWithResult(sourceVault)) {
-            is Result.Success -> r.success
-            is Result.Failure -> return Result.Failure(r.error)
-        }
-        val itemKey = when (
-            val r = keyWrapper.unwrapItemKeyWithResult(
-                vaultKey = sourceVaultKey,
-                wrapped = wrappedItemKey.toWrappedKeyBlob(),
-                aad = sourceItem.itemAad,
-            )
-        ) {
-            is Result.Success -> r.success
-            is Result.Failure -> return Result.Failure(r.error)
-        }
+        val sourceVaultKey = unwrapVaultKeyWithResult(sourceVault).bind()
+        val itemKey = keyWrapper.unwrapItemKeyWithResult(
+            vaultKey = sourceVaultKey,
+            wrapped = wrappedItemKey.toWrappedKeyBlob(),
+            aad = sourceItem.itemAad,
+        ).bind(CryptoScopeError::KeyWrapError)
 
-        val destinationVaultKey = when (val r = unwrapVaultKeyWithResult(destinationVault)) {
-            is Result.Success -> r.success
-            is Result.Failure -> return Result.Failure(r.error)
-        }
-        return keyWrapper.wrapItemKeyWithResult(
+        val destinationVaultKey = unwrapVaultKeyWithResult(destinationVault).bind()
+        keyWrapper.wrapItemKeyWithResult(
             vaultKey = destinationVaultKey,
             itemKey = itemKey,
             aad = destinationAad,
-        ).mapSuccess { it.toKeyInformation() }
+        ).mapSuccess { it.toKeyInformation() }.bind(CryptoScopeError::KeyWrapError)
     }
 
     private fun unwrapVaultKeyWithResult(info: WrappedVaultKeyInformation) =
@@ -98,7 +116,7 @@ internal class CryptographicScopeProviderImpl(
             ark = session.ark,
             wrapped = info.wrappedVaultKey.toWrappedKeyBlob(),
             vaultId = info.vaultId,
-        )
+        ).mapFailure { CryptoScopeError.KeyWrapError(it) }
 }
 
 private fun KeyInformation.toWrappedKeyBlob() = WrappedKeyBlob(
@@ -108,8 +126,3 @@ private fun KeyInformation.toWrappedKeyBlob() = WrappedKeyBlob(
 
 private fun WrappedKeyBlob.toKeyInformation(): KeyInformation =
     KeyInformation(wrappedKey = ciphertext, keyNonce = nonce)
-
-private fun <S, E : Exception> Result<S, E>.get(): S = when (this) {
-    is Result.Success -> success
-    is Result.Failure -> throw error
-}

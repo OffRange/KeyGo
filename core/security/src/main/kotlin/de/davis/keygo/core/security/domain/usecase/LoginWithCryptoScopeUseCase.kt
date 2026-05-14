@@ -9,6 +9,8 @@ import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
+import de.davis.keygo.core.security.domain.model.CryptoScopeError
+import de.davis.keygo.core.util.Result
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.koin.core.annotation.Single
@@ -23,23 +25,27 @@ class LoginWithCryptoScopeUseCase(
     suspend fun <R> observe(
         itemId: ItemId,
         block: suspend CryptographicScope.(Login) -> R,
-    ): Flow<R?> = loginRepository.observeLoginById(itemId).map { login ->
+    ): Flow<Result<R, CryptoScopeError>> = loginRepository.observeLoginById(itemId).map { login ->
         login?.let { handleItem(it, block) }
+            ?: return@map Result.Failure(CryptoScopeError.IdNotFound)
     }
 
     suspend fun <R> oneShot(
         itemId: ItemId,
         block: suspend CryptographicScope.(Login) -> R,
-    ): R? {
-        val login = loginRepository.getLoginById(itemId) ?: return null
+    ): Result<R, CryptoScopeError> {
+        val login = loginRepository.getLoginById(itemId)
+            ?: return Result.Failure(CryptoScopeError.IdNotFound)
         return handleItem(login, block)
     }
 
     private suspend fun <I : Item, R> handleItem(
         item: I,
         block: suspend CryptographicScope.(I) -> R,
-    ): R? {
-        val vaultKeyInfo = vaultRepository.getKeyInformation(item.vaultId) ?: return null
+    ): Result<R, CryptoScopeError> {
+        val vaultKeyInfo =
+            vaultRepository.getKeyInformation(item.vaultId)
+                ?: return Result.Failure(CryptoScopeError.IdNotFound)
 
         return cryptoScopeProvider.itemScope(
             wrappedVaultKeyInformation = WrappedVaultKeyInformation(

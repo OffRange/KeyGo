@@ -11,10 +11,10 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.repository.ItemRepository
-import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.crypto.decrypt
+import de.davis.keygo.core.security.domain.usecase.GetTdlMatchedLoginsUseCase
 import de.davis.keygo.core.security.domain.usecase.LoginWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
@@ -26,6 +26,7 @@ import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.feature.item.core.domain.model.LoginError
 import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.fieldUpdate
+import de.davis.keygo.feature.item.core.domain.model.resolveTotpDomain
 import de.davis.keygo.feature.item.core.domain.model.set
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
 import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
@@ -38,8 +39,10 @@ import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiEvent
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiState
 import de.davis.keygo.feature.item.create.presentation.login.model.OverrideTotpField
 import de.davis.keygo.feature.item.create.presentation.model.VaultsState
-import de.davis.keygo.feature.totp.domain.model.TotpSecretInformation
-import de.davis.keygo.feature.totp.domain.usecase.GetTotpSecretFromUrlUseCase
+import de.davis.keygo.rust.totp.TotpService
+import de.davis.keygo.rust.totp.getInfoFromUriWithResult
+import de.davis.keygo.rust.totp.getUrlWithResult
+import de.davisalessandro.keygo.rust.TotpInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -69,12 +72,12 @@ import kotlin.time.Duration.Companion.milliseconds
 internal class LoginViewModel(
     private val loginWithCryptoScope: LoginWithCryptoScopeUseCase,
     private val itemRepository: ItemRepository,
-    private val loginRepository: LoginRepository,
     private val vaultContextRepository: VaultContextRepository,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val createNewOrUpdateLogin: CreateNewOrUpdateLoginUseCase,
+    private val getTdlMatchedLogins: GetTdlMatchedLoginsUseCase,
     private val snackbarManager: SnackbarManager,
-    private val getTotpSecret: GetTotpSecretFromUrlUseCase,
+    private val totpService: TotpService,
     private val registrableDomainResolver: RegistrableDomainResolver,
     vaultRepository: VaultRepository,
 ) : ViewModel() {
@@ -113,7 +116,8 @@ internal class LoginViewModel(
     val itemCreatedEvent = itemCreatedEventChannel.receiveAsFlow()
 
     private var itemId: ItemId? = null
-    private var totpSecretInformation: TotpSecretInformation? = null
+    private var totpSecretInformation: TotpInfo? = null
+    private var totpOriginalUri: String? = null
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private fun observeNameTextField() {
@@ -206,10 +210,21 @@ internal class LoginViewModel(
             itemId = itemId,
         ) { login ->
             val decrypted = coroutineScope {
-                val pwdDeferred =
-                    async { login.password.decrypt() }
+                val pwdDeferred = async { login.password.decrypt() }
                 val totpDeferred = login.totp?.let { totp ->
-                    async { totp.secret.decrypt() }
+                    async {
+                        val secret = totp.secret.decrypt()
+                        totp.accountName?.let { accountName ->
+                            totpService.getUrlWithResult(
+                                totp.algorithm,
+                                totp.digits,
+                                totp.period,
+                                secret,
+                                totp.issuer,
+                                accountName
+                            ).getOrNull()
+                        } ?: secret
+                    }
                 }
                 pwdDeferred.await() to totpDeferred?.await()
             }
@@ -230,26 +245,25 @@ internal class LoginViewModel(
             }
 
             totpSecretInformation?.let {
-                requestTotpSecretUpdate(it)
+                requestTotpSecretUpdate(it, totpOriginalUri)
             }
         }
     }
 
     private fun initWithTotpUri(totpUri: String) {
-        getTotpSecret(totpUri).onFailure {
+        totpService.getInfoFromUriWithResult(totpUri).onFailure {
             Log.e(TAG, "Error parsing TOTP URI: $it")
             showTotpParseError()
         }.onSuccess { secret ->
             totpSecretInformation = secret
+            totpOriginalUri = totpUri
             viewModelScope.launch {
                 val matchedItems = secret.issuer?.let {
-                    registrableDomainResolver.resolve(it)
-                }?.let {
-                    loginRepository.getLoginsByTLD(etld1 = it)
+                    getTdlMatchedLogins(it)
                 }
 
                 if (matchedItems.isNullOrEmpty()) {
-                    updateUiWithTotpSecretInfo(secret)
+                    updateUiWithTotpSecretInfo(secret, totpUri)
                     return@launch
                 }
 
@@ -278,7 +292,7 @@ internal class LoginViewModel(
                             username = fieldUpdate(base.usernameTextFieldState.text.toString()),
                             domains = set(base.domains),
                             password = fieldUpdate(base.passwordTextFieldState.text.toString()),
-                            totpSecret = fieldUpdate(base.totpTextFieldState.text.toString()),
+                            totoUriOrSecret = fieldUpdate(base.totpTextFieldState.text.toString()),
                             note = fieldUpdate(base.notesTextFieldState.text.toString()),
                         )
                     } ?: UpsertLogin.create(
@@ -287,7 +301,7 @@ internal class LoginViewModel(
                         username = base.usernameTextFieldState.text.toString(),
                         domains = base.domains,
                         password = base.passwordTextFieldState.text.toString(),
-                        totpSecret = base.totpTextFieldState.text.toString(),
+                        totoUriOrSecret = base.totpTextFieldState.text.toString(),
                         note = base.notesTextFieldState.text.toString(),
                     )
 
@@ -351,17 +365,18 @@ internal class LoginViewModel(
             }
 
             is LoginUiEvent.OnCodesScanned -> {
-                event.codes.firstNotNullOfOrNull {
-                    getTotpSecret(it).onFailure { failure ->
+                event.codes.firstNotNullOfOrNull { code ->
+                    totpService.getInfoFromUriWithResult(code).onFailure { failure ->
                         Log.e(TAG, "Error parsing TOTP URI: $failure")
-                    }.getOrNull()
-                }?.let {
+                    }.getOrNull()?.let { code to it }
+                }?.let { (scannedUri, secretInfo) ->
                     _base.update { state ->
                         state.copy(scanning = false)
                     }
 
-                    totpSecretInformation = it
-                    requestTotpSecretUpdate(it)
+                    totpOriginalUri = scannedUri
+                    totpSecretInformation = secretInfo
+                    requestTotpSecretUpdate(secretInfo, scannedUri)
                 } ?: showTotpParseError()
             }
 
@@ -371,7 +386,7 @@ internal class LoginViewModel(
 
             is LoginUiEvent.OnCreateNewItemForTotp -> {
                 totpSecretInformation?.let {
-                    updateUiWithTotpSecretInfo(it)
+                    updateUiWithTotpSecretInfo(it, totpOriginalUri)
                 }
             }
 
@@ -425,17 +440,15 @@ internal class LoginViewModel(
             }
 
             is LoginUiEvent.OnAddDomains -> {
-                itemId?.let { itemId ->
-                    event.domains.forEach { domain ->
-                        val registrableDomain = registrableDomainResolver.resolve(domain)
-                        val info = DomainInfo(
-                            loginId = itemId,
-                            value = domain,
-                            eTLD1 = registrableDomain,
-                        )
-                        _base.update {
-                            it.copy(domains = it.domains + info)
-                        }
+                event.domains.forEach { domain ->
+                    val registrableDomain = registrableDomainResolver.resolve(domain)
+                    val info = DomainInfo(
+                        loginId = itemId,
+                        value = domain,
+                        eTLD1 = registrableDomain,
+                    )
+                    _base.update {
+                        it.copy(domains = it.domains + info)
                     }
                 }
             }
@@ -475,14 +488,17 @@ internal class LoginViewModel(
         )
     }
 
-    private fun requestTotpSecretUpdate(secretInformation: TotpSecretInformation) {
+    private fun requestTotpSecretUpdate(
+        secretInformation: TotpInfo,
+        originalUri: String? = null,
+    ) {
         val currentState = _base.value
         val currentTotpSecret = currentState.totpTextFieldState.text.toString()
         val currentIssuers = currentState.domains
         val currentAccountName = currentState.usernameTextFieldState.text.toString()
 
-        val newTotpSecret = secretInformation.secret
-        val newIssuer = secretInformation.issuer ?: ""
+        val newTotpSecret = originalUri ?: secretInformation.secret
+        val newDomain = resolveTotpDomain(secretInformation.issuer, secretInformation.accountName)
         val newAccountName = secretInformation.accountName
 
         val isCurrentSecretSet = currentTotpSecret.isNotBlank()
@@ -494,8 +510,8 @@ internal class LoginViewModel(
         val overridingFields = mutableSetOf<OverrideTotpField>()
 
         val isOverridingTotpSecret = isCurrentSecretSet && !isCurrentTotpSecretSame
-        val isAddingNewIssuer = currentIssuers
-            .none { it.value.contains(newIssuer, ignoreCase = true) }
+        val isAddingNewIssuer = newDomain != null && currentIssuers
+            .none { it.value.contains(newDomain, ignoreCase = true) }
         val isOverridingAccountName = isCurrentAccountNameSet && !isCurrentAccountNameSame
 
         if (isOverridingTotpSecret) {
@@ -520,7 +536,7 @@ internal class LoginViewModel(
 
         updateUiWithSpecificTotpSecretInfo(
             secret = if (!isOverridingTotpSecret) newTotpSecret else null,
-            issuer = if (isAddingNewIssuer) newIssuer else null,
+            issuer = if (isAddingNewIssuer) newDomain else null,
             accountName = if (!isOverridingAccountName) newAccountName else null,
             closeDialog = false,
         )
@@ -531,12 +547,14 @@ internal class LoginViewModel(
             }
     }
 
-    private fun updateUiWithTotpSecretInfo(secretInformation: TotpSecretInformation) =
-        updateUiWithSpecificTotpSecretInfo(
-            secret = secretInformation.secret,
-            issuer = secretInformation.issuer,
-            accountName = secretInformation.accountName,
-        )
+    private fun updateUiWithTotpSecretInfo(
+        secretInformation: TotpInfo,
+        originalUri: String? = null,
+    ) = updateUiWithSpecificTotpSecretInfo(
+        secret = originalUri ?: secretInformation.secret,
+        issuer = resolveTotpDomain(secretInformation.issuer, secretInformation.accountName),
+        accountName = secretInformation.accountName,
+    )
 
     private fun updateUiWithSpecificTotpSecretInfo(
         secret: String? = null,

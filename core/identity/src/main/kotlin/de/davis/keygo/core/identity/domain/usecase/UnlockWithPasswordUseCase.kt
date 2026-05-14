@@ -5,7 +5,7 @@ import de.davis.keygo.core.identity.domain.model.UnlockError
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.util.Result
-import de.davis.keygo.core.util.getOrNull
+import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.rust.derive.KeyDeriver
 import de.davis.keygo.rust.derive.deriveRootKekFromPasswordWithResult
 import de.davis.keygo.rust.wrap.KeyWrapper
@@ -25,7 +25,7 @@ class UnlockWithPasswordUseCase(
     private val keyWrapper: KeyWrapper,
 ) {
 
-    suspend operator fun invoke(password: String): Result<Unit, UnlockError> {
+    suspend operator fun invoke(password: String): Result<Unit, UnlockError> = resultBinding {
         val account = accountRepository.getOrNull()
             ?: return Result.Failure(UnlockError.ActiveAccountNotFound)
 
@@ -33,14 +33,12 @@ class UnlockWithPasswordUseCase(
         val derivedKey = keyDeriver.deriveRootKekFromPasswordWithResult(
             password = password,
             salt = wrappedKey.salt,
-        ).getOrNull() ?: return Result.Failure(UnlockError.DerivationFailed)
+        ).bind { UnlockError.DerivationFailed }
 
         val key = wrappedKey.unwrapUsing(derivedKey, account.id)
-            .getOrNull()
-            ?: return Result.Failure(UnlockError.UnwrappingFailed)
+            .bind { UnlockError.UnwrappingFailed }
 
         session.startSession(key)
-        return Result.Success(Unit)
     }
 
     private fun PasswordWrappedArk.unwrapUsing(

@@ -8,7 +8,7 @@ import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.util.Result
-import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.vault.domain.model.MoveItemsError
 import de.davis.keygo.feature.vault.domain.model.MoveItemsProgress
 import de.davisalessandro.keygo.rust.ItemAad
@@ -25,7 +25,7 @@ class MoveItemsToVaultUseCase(
         srcVaultId: VaultId,
         dstVaultId: VaultId,
         onProgress: (MoveItemsProgress) -> Unit = {},
-    ): Result<Unit, MoveItemsError> {
+    ): Result<Unit, MoveItemsError> = resultBinding {
         if (srcVaultId == dstVaultId) return Result.Success(Unit)
 
         val srcVault = WrappedVaultKeyInformation(
@@ -47,31 +47,22 @@ class MoveItemsToVaultUseCase(
         // so a per-item rewrap failure aborts cleanly with the source vault untouched.
         val rewrapped = ArrayList<MovableItem>(total)
         items.forEachIndexed { index, item ->
-            val newKey = when (
-                val r = cryptographicScopeProvider.rewrapItemKey(
-                    sourceVault = srcVault,
-                    sourceItem = WrappedItemKeyInformation(
-                        itemAad = ItemAad(itemId = item.id, vaultId = srcVaultId),
-                        wrappedItemKey = item.keyInformation,
-                    ),
-                    destinationVault = dstVault,
-                )
-            ) {
-                is Result.Success -> r.success
-                is Result.Failure -> return Result.Failure(
-                    MoveItemsError.ItemMoveFailed(item.id, r.error),
-                )
-            }
+            val newKey = cryptographicScopeProvider.rewrapItemKey(
+                sourceVault = srcVault,
+                sourceItem = WrappedItemKeyInformation(
+                    itemAad = ItemAad(itemId = item.id, vaultId = srcVaultId),
+                    wrappedItemKey = item.keyInformation,
+                ),
+                destinationVault = dstVault,
+            ).bind { MoveItemsError.ItemMoveFailed(item.id, it) }
+
             rewrapped += MovableItem(id = item.id, keyInformation = newKey)
             onProgress(MoveItemsProgress(movedCount = index + 1, total = total))
         }
 
         // Phase 2: commit all moves in one SQLite transaction. On failure, every row rolls
         // back — items remain in the source vault, decryptable under the source vault key.
-        itemRepository.moveItemsToVault(rewrapped, dstVaultId).onFailure {
-            return Result.Failure(MoveItemsError.PersistFailed(it))
-        }
-
-        return Result.Success(Unit)
+        itemRepository.moveItemsToVault(rewrapped, dstVaultId)
+            .bind { MoveItemsError.PersistFailed(it) }
     }
 }

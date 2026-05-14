@@ -9,14 +9,11 @@ import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasskeyUser
-import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
-import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.encrypt
-import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
-import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
+import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.feature.credentials.presentation.auth.SessionAuthState
 import de.davis.keygo.feature.credentials.presentation.auth.UnlockOutcome
@@ -35,8 +32,6 @@ import org.koin.core.annotation.KoinViewModel
 @KoinViewModel
 internal class CreatePasskeyViewModel(
     private val passkeyRepository: PasskeyRepository,
-    private val loginRepository: LoginRepository,
-    private val vaultRepository: VaultRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passkeyManager: PasskeyManager,
     private val accountRepository: AccountRepository,
@@ -108,25 +103,12 @@ internal class CreatePasskeyViewModel(
         viewModelScope.launch {
             val response = registrationResponse ?: return@launch abort("Response was null")
 
-            val login = loginRepository.getLoginById(itemId)
-                ?: return@launch abort("Login not found for id $itemId")
-            val vaultKeyInfo = vaultRepository.getKeyInformation(login.vaultId)
-                ?: return@launch abort("Vault key information missing for ${login.vaultId}")
-
-            val encryptedPrivateKey = try {
-                cryptographicScopeProvider.itemScope(
-                    wrappedVaultKeyInformation = WrappedVaultKeyInformation(
-                        wrappedVaultKey = vaultKeyInfo,
-                        vaultId = login.vaultId,
-                    ),
-                    wrappedItemKeyInformation = login.wrappedItemKeyInformation(),
-                ) {
-                    Passkey.PrivateKey.encrypt(response.privateKey)
-                }
-            } catch (t: Throwable) {
-                Log.w(TAG, "Failed to encrypt passkey private key", t)
-                return@launch abort("Failed to encrypt passkey private key")
-            }
+            val encryptedPrivateKey = cryptographicScopeProvider.itemScope(itemId = itemId) {
+                Passkey.PrivateKey.encrypt(response.privateKey)
+            }.fold(
+                onSuccess = { it },
+                onFailure = { return@launch abort("Failed to encrypt passkey private key: $it") }
+            )
 
             val passkey = Passkey(
                 credentialId = response.credentialId,

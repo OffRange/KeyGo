@@ -9,11 +9,13 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.LoginRepository
+import de.davis.keygo.core.item.domain.repository.TotpRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
+import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.feature.autofill.domain.usecase.AddRegistrableDomainsToLoginUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.DoesItemHaveDomainReferencesUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.IsAppLinkedToWebsiteUseCase
@@ -37,7 +39,6 @@ import de.davis.keygo.feature.totp.domain.repository.TotpGenerator
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -48,6 +49,7 @@ internal class AutofillViewModel(
     savedStateHandle: SavedStateHandle,
     private val vaultRepository: VaultRepository,
     private val loginRepository: LoginRepository,
+    private val totpRepository: TotpRepository,
     private val itemRepository: ItemRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val autofillDatasetProvider: AutofillDatasetProvider,
@@ -273,36 +275,19 @@ internal class AutofillViewModel(
                     return
                 }
 
-                // TODO: don't fetch entire login -> just fetch the totp field
-                val login = loginRepository.getLoginById(itemId) ?: run {
+                val totp = totpRepository.getTotp(itemId) ?: run {
                     eventChannel.send(AutofillEvent.Abort)
                     return
                 }
 
-                val wrappedVaultKey = vaultRepository.getKeyInformation(login.vaultId) ?: run {
-                    eventChannel.send(AutofillEvent.Abort)
-                    return
-                }
-
-                val totp = login.totp?.let {
-                    val secret = cryptographicScopeProvider.itemScope(
-                        wrappedVaultKeyInformation = WrappedVaultKeyInformation(
-                            wrappedVaultKey = wrappedVaultKey,
-                            vaultId = login.vaultId,
-                        ),
-                        wrappedItemKeyInformation = login.wrappedItemKeyInformation(),
-                    ) {
-                        it.secret.decrypt().encodeToByteArray()
-                    }
-                    totpGenerator.observeTotp(secret).first()
-                } ?: run {
+                val totpCode = totpGenerator.getTotpCode(totp).getOrNull() ?: run {
                     eventChannel.send(AutofillEvent.Abort)
                     return
                 }
 
                 val value = AutofillValue(
                     autofillId = totpField.autofillId,
-                    value = totp.code
+                    value = totpCode.code
                 )
 
                 eventChannel.send(
@@ -317,23 +302,25 @@ internal class AutofillViewModel(
     }
 
     private suspend fun sendLoginFillEvent(login: Login) {
-        val wrappedVaultKey = vaultRepository.getKeyInformation(login.vaultId) ?: run {
-            eventChannel.send(AutofillEvent.Abort)
-            return
-        }
-
         val values = requestData.form.fields.mapNotNull {
             val type = it.type
             if (type !is FieldType.Credentials) return@mapNotNull null
             val value = when (type) {
-                FieldType.Credentials.Password -> cryptographicScopeProvider.itemScope(
-                    wrappedVaultKeyInformation = WrappedVaultKeyInformation(
-                        wrappedVaultKey = wrappedVaultKey,
-                        vaultId = login.vaultId
-                    ),
-                    wrappedItemKeyInformation = login.wrappedItemKeyInformation()
-                ) {
-                    login.password.decrypt()
+                FieldType.Credentials.Password -> {
+                    val wrappedVaultKey = vaultRepository.getKeyInformation(login.vaultId) ?: run {
+                        eventChannel.send(AutofillEvent.Abort)
+                        return
+                    }
+
+                    cryptographicScopeProvider.itemScope(
+                        wrappedVaultKeyInformation = WrappedVaultKeyInformation(
+                            wrappedVaultKey = wrappedVaultKey,
+                            vaultId = login.vaultId
+                        ),
+                        wrappedItemKeyInformation = login.wrappedItemKeyInformation()
+                    ) {
+                        login.password.decrypt()
+                    }.getOrNull()
                 }
 
                 FieldType.Credentials.Username -> login.username

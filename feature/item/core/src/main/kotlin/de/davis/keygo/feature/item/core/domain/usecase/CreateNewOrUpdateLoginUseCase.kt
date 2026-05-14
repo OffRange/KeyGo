@@ -10,13 +10,16 @@ import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
+import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.encrypt
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.mapFailure
+import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.item.core.domain.model.FieldUpdate
 import de.davis.keygo.feature.item.core.domain.model.LoginError
 import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
@@ -25,6 +28,8 @@ import de.davis.keygo.feature.item.core.domain.model.getValue
 import de.davis.keygo.feature.item.core.domain.model.on
 import de.davis.keygo.feature.item.core.domain.model.onSet
 import de.davis.keygo.feature.item.core.domain.model.withoutClearingOn
+import de.davis.keygo.rust.totp.TotpService
+import de.davis.keygo.rust.totp.getInfoFromUriWithResult
 import de.davisalessandro.keygo.rust.ItemAad
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -38,6 +43,7 @@ class CreateNewOrUpdateLoginUseCase(
     private val vaultRepository: VaultRepository,
     private val upsertVaultItem: UpsertVaultItemUseCase,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
+    private val totpService: TotpService,
 ) {
 
     @OptIn(ExperimentalContracts::class)
@@ -86,14 +92,14 @@ class CreateNewOrUpdateLoginUseCase(
     private suspend fun buildCreate(
         upsert: UpsertLogin,
         vaultId: VaultId,
-    ): Result<Login, LoginError> {
+    ): Result<Login, LoginError> = resultBinding {
         val itemId = newItemId()
 
         val vaultKeyInformation = vaultRepository.getKeyInformation(vaultId)
             ?: return Result.Failure(LoginError.InvalidVaultId)
         val aad = ItemAad(itemId = itemId, vaultId = vaultId)
 
-        val login = cryptographicScopeProvider.itemScope(
+        cryptographicScopeProvider.itemScope(
             wrappedVaultKeyInformation = WrappedVaultKeyInformation(
                 wrappedVaultKey = vaultKeyInformation,
                 vaultId = vaultId,
@@ -104,8 +110,8 @@ class CreateNewOrUpdateLoginUseCase(
                 val encryptedPassword = async {
                     PasswordSecret.encrypt(upsert.password.getValue()!!)
                 }
-                val encryptedTotp = upsert.totpSecret.onSet { secret ->
-                    async { Totp.Secret.encrypt(secret) }
+                val totp = upsert.totoUriOrSecret.onSet { uriOrSecret ->
+                    async { uriOrSecret.convertTotpUriOrSecretToUri(itemId) }
                 }
                 val passwordStrength = async {
                     passwordStrengthEstimator(upsert.password.getValue()!!)
@@ -119,9 +125,7 @@ class CreateNewOrUpdateLoginUseCase(
                     username = upsert.username.getValue(),
                     domainInfos = upsert.domains.getValue().orEmpty(),
                     password = encryptedPassword.await(),
-                    totp = encryptedTotp?.await()?.let {
-                        Totp(loginId = itemId, secret = it)
-                    },
+                    totp = totp?.await(),
                     passwordScore = passwordStrength.await(),
                     note = upsert.note.getValue(),
                     pinned = false,
@@ -129,16 +133,14 @@ class CreateNewOrUpdateLoginUseCase(
                     vaultId = vaultId,
                 )
             }
-        }
-
-        return Result.Success(login)
+        }.bind(LoginError::CryptoError)
     }
 
     private suspend fun buildUpdate(
         upsert: UpsertLogin,
         id: ItemId,
         targetVaultId: VaultId?,
-    ): Result<Login, LoginError> {
+    ): Result<Login, LoginError> = resultBinding {
         val existing = loginRepository.getLoginById(id)
             ?: return Result.Failure(LoginError.InvalidItemId)
 
@@ -157,14 +159,8 @@ class CreateNewOrUpdateLoginUseCase(
                 val encryptedPassword = upsert.password.onSet { password ->
                     async { PasswordSecret.encrypt(password) }
                 }
-                val totpSecret = upsert.totpSecret.onSet { secret ->
-                    async {
-                        val result = Totp.Secret.encrypt(secret)
-                        existing.totp?.copy(secret = result) ?: Totp(
-                            loginId = existing.id,
-                            secret = result,
-                        )
-                    }
+                val totp = upsert.totoUriOrSecret.onSet { uriOrSecret ->
+                    async { uriOrSecret.convertTotpUriOrSecretToUri(existing.id) }
                 }
                 val passwordStrength = upsert.password.onSet { password ->
                     async { passwordStrengthEstimator(password) }
@@ -175,15 +171,15 @@ class CreateNewOrUpdateLoginUseCase(
                     username = upsert.username.on(existing.username),
                     domainInfos = upsert.domains.on(existing.domainInfos).orEmpty(),
                     password = encryptedPassword?.await() ?: existing.password,
-                    totp = upsert.totpSecret.on(existing.totp, totpSecret),
+                    totp = upsert.totoUriOrSecret.on(existing.totp, totp),
                     passwordScore = passwordStrength?.await() ?: existing.passwordScore,
                     note = upsert.note.on(existing.note),
                 )
             }
-        }
+        }.bind(LoginError::CryptoError)
 
         if (targetVaultId == null || targetVaultId == existing.vaultId)
-            return Result.Success(login)
+            return@resultBinding login
 
         // Vault changed during edit: rewrap the item key under the destination vault. Encrypted
         // secrets are bound only to the item id (see CryptographicScopeImpl.buildDataAad), so
@@ -191,24 +187,42 @@ class CreateNewOrUpdateLoginUseCase(
         val destinationVaultKeyInfo = vaultRepository.getKeyInformation(targetVaultId)
             ?: return Result.Failure(LoginError.InvalidVaultId)
 
-        return when (
-            val rewrapped = cryptographicScopeProvider.rewrapItemKey(
-                sourceVault = sourceVault,
-                sourceItem = existing.wrappedItemKeyInformation(),
-                destinationVault = WrappedVaultKeyInformation(
-                    wrappedVaultKey = destinationVaultKeyInfo,
-                    vaultId = targetVaultId,
-                ),
-            )
-        ) {
-            is Result.Success -> Result.Success(
-                login.copy(
-                    vaultId = targetVaultId,
-                    keyInformation = rewrapped.success,
-                )
-            )
+        val rewrapped = cryptographicScopeProvider.rewrapItemKey(
+            sourceVault = sourceVault,
+            sourceItem = existing.wrappedItemKeyInformation(),
+            destinationVault = WrappedVaultKeyInformation(
+                wrappedVaultKey = destinationVaultKeyInfo,
+                vaultId = targetVaultId,
+            ),
+        ).bind(LoginError::CryptoError)
 
-            is Result.Failure -> Result.Failure(LoginError.DatabaseError(rewrapped.error))
-        }
+        login.copy(
+            vaultId = targetVaultId,
+            keyInformation = rewrapped,
+        )
+    }
+
+    context(scope: CryptographicScope)
+    private suspend fun String.convertTotpUriOrSecretToUri(itemId: ItemId) = with(scope) {
+        totpService.getInfoFromUriWithResult(this@convertTotpUriOrSecretToUri).fold(
+            onSuccess = { secrets ->
+                Totp(
+                    loginId = itemId,
+                    secret = Totp.Secret.encrypt(secrets.secret),
+                    accountName = secrets.accountName,
+                    issuer = secrets.issuer,
+                    algorithm = secrets.algorithm.name.lowercase(),
+                    digits = secrets.digits,
+                    period = secrets.period,
+                )
+            },
+            onFailure = {
+                // not valid uri - treat it as secret
+                Totp(
+                    loginId = itemId,
+                    secret = Totp.Secret.encrypt(this@convertTotpUriOrSecretToUri)
+                )
+            }
+        )
     }
 }

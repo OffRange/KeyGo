@@ -1,17 +1,21 @@
 package de.davis.keygo.core.security.crypto
 
+import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.KeyInformation
+import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
+import de.davis.keygo.core.security.domain.model.CryptoScopeError
 import de.davis.keygo.core.util.Result
-import de.davisalessandro.keygo.rust.KeyWrapException
 import kotlin.coroutines.CoroutineContext
 import kotlin.experimental.xor
 
-class FakeCryptographicScopeProvider : CryptographicScopeProvider {
+class FakeCryptographicScopeProvider(
+    private val fakeItemRepository: ItemRepository,
+) : CryptographicScopeProvider {
 
     sealed interface CallHistory {
 
@@ -31,14 +35,35 @@ class FakeCryptographicScopeProvider : CryptographicScopeProvider {
         get() = callHistory.filterIsInstance<CallHistory.RewrapCall>()
 
     /** Result returned by the next [rewrapItemKey] call. */
-    var rewrapResult: Result<KeyInformation, KeyWrapException> =
+    var rewrapResult: Result<KeyInformation, CryptoScopeError> =
         Result.Success(KeyInformation(byteArrayOf(), byteArrayOf()))
+
+    override suspend fun <R> itemScope(
+        itemId: ItemId,
+        block: suspend CryptographicScope.() -> R
+    ): Result<R, CryptoScopeError> =
+        fakeItemRepository.getItemKeyEnvelope(itemId)?.let { envelope ->
+            itemScope(
+                wrappedVaultKeyInformation = WrappedVaultKeyInformation(
+                    wrappedVaultKey = envelope.vaultKeyInformation,
+                    vaultId = envelope.vaultId,
+                ),
+                wrappedItemKeyInformation = WrappedItemKeyInformation(
+                    itemAad = de.davisalessandro.keygo.rust.ItemAad(
+                        itemId = envelope.itemId,
+                        vaultId = envelope.vaultId,
+                    ),
+                    wrappedItemKey = envelope.itemKeyInformation
+                ),
+                block = block,
+            )
+        } ?: Result.Failure(CryptoScopeError.IdNotFound)
 
     override suspend fun <R> itemScope(
         wrappedVaultKeyInformation: WrappedVaultKeyInformation,
         wrappedItemKeyInformation: WrappedItemKeyInformation,
         block: suspend CryptographicScope.() -> R,
-    ): R = block(
+    ): Result<R, CryptoScopeError> = block(
         object : CryptographicScope {
             override suspend fun ByteArray.encrypt(
                 label: String,
@@ -59,13 +84,13 @@ class FakeCryptographicScopeProvider : CryptographicScopeProvider {
             override suspend fun wrapCurrentItemKey(context: CoroutineContext): KeyInformation =
                 KeyInformation(byteArrayOf(), byteArrayOf())
         }
-    )
+    ).let(Result<R, CryptoScopeError>::Success)
 
     override suspend fun rewrapItemKey(
         sourceVault: WrappedVaultKeyInformation,
         sourceItem: WrappedItemKeyInformation,
         destinationVault: WrappedVaultKeyInformation,
-    ): Result<KeyInformation, KeyWrapException> {
+    ): Result<KeyInformation, CryptoScopeError> {
         callHistory += CallHistory.RewrapCall(sourceVault, sourceItem, destinationVault)
         return rewrapResult
     }

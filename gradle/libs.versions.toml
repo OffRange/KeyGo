@@ -99,7 +99,6 @@ okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhtt
 okhttp-jvm = { group = "com.squareup.okhttp3", name = "okhttp-jvm", version.ref = "okhttp" }
 
 gosimple-nbvcxz = { group = "me.gosimple", name = "nbvcxz", version.ref = "nbvcxz" }
-turingcomplete-totp = { group = "dev.turingcomplete", name = "kotlin-onetimepassword", version.ref = "totp" }
 
 offrange-passgen = { group = "com.github.offrange", name = "passgen", version.ref = "passGen" }
 

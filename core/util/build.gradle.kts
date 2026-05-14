@@ -30,6 +30,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    testFixtures {
+        enable = true
+    }
 }
 
 kotlin {
@@ -59,4 +63,10 @@ dependencies {
     testImplementation(libs.okhttp.jvm)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
+
+    testFixturesImplementation(libs.kotlin.test)
+    testFixturesImplementation(project.dependencies.platform(libs.androidx.compose.bom))
+    testFixturesImplementation(libs.androidx.compose.runtime) {
+        because("https://issuetracker.google.com/issues/259523353#comment32")
+    }
 }

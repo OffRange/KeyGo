@@ -3,39 +3,72 @@ package de.davis.keygo.core.util
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ResultTest {
 
+    sealed interface TestError {
+        data object ErrorA : TestError
+        data object ErrorB : TestError
+    }
+
+    data class User(val name: String)
+    data class Profile(val user: User)
+
+    private fun getUser(): Result<User, TestError.ErrorA> {
+        return Result.Success(User("John"))
+    }
+
+    private fun getUserFailure(): Result<User, TestError.ErrorA> {
+        return Result.Failure(TestError.ErrorA)
+    }
+
+    private fun getProfile(user: User): Result<Profile, TestError.ErrorB> {
+        return Result.Success(Profile(user))
+    }
+
+    private fun getProfileFailure(): Result<Profile, TestError.ErrorB> {
+        return Result.Failure(TestError.ErrorB)
+    }
+
     @Test
     fun `onSuccess executes action and provides smart-cast value`() {
-        val result: Result<Int, String> = Result.Success(42)
+        val result: Result<Int, TestError> = Result.Success(42)
+
         var captured = 0
+
         result.onSuccess { captured = it }
+
         assertEquals(42, captured)
     }
 
     @Test
     fun `onSuccess does not execute action for Failure`() {
         var executed = false
-        Result.Failure<Int, String>("error").onSuccess { executed = true }
+
+        Result.Failure<Unit, TestError>(TestError.ErrorA)
+            .onSuccess { executed = true }
+
         assertFalse(executed)
     }
 
     @Test
     fun `onSuccess returns the same result for chaining`() {
-        val result: Result<Int, String> = Result.Success(42)
+        val result: Result<Int, TestError> = Result.Success(42)
+
         val returned = result.onSuccess { }
+
         assertEquals(result, returned)
     }
 
     @Test
     fun `onFailure executes action and provides smart-cast error`() {
-        val result: Result<Int, String> = Result.Failure("error")
-        var captured = ""
+        val result: Result<Int, TestError> = Result.Failure(TestError.ErrorA)
+        var captured: TestError? = null
         result.onFailure { captured = it }
-        assertEquals("error", captured)
+        assertEquals(TestError.ErrorA, captured)
     }
 
     @Test
@@ -47,7 +80,7 @@ class ResultTest {
 
     @Test
     fun `onFailure returns the same result for chaining`() {
-        val result: Result<Int, String> = Result.Failure("error")
+        val result: Result<Int, TestError> = Result.Failure(TestError.ErrorA)
         val returned = result.onFailure { }
         assertEquals(result, returned)
     }
@@ -61,21 +94,34 @@ class ResultTest {
 
     @Test
     fun `mapSuccess preserves failure`() {
-        val result = Result.Failure<Int, String>("error").mapSuccess { it * 2 }
+        val result = Result.Failure<Int, TestError>(TestError.ErrorA).mapSuccess { it * 2 }
         assertTrue(result.isFailure())
-        assertEquals("error", result.error)
+        assertEquals(TestError.ErrorA, result.error)
     }
 
     @Test
     fun `mapFailure transforms error value`() {
-        val result = Result.Failure<Int, String>("error").mapFailure { it.length }
+        val result = Result.Failure<Int, TestError>(TestError.ErrorA).mapFailure {
+            when (it) {
+                TestError.ErrorA -> "mapped-a"
+                TestError.ErrorB -> "mapped-b"
+            }
+        }
+
         assertTrue(result.isFailure())
-        assertEquals(5, result.error)
+        assertEquals("mapped-a", result.error)
     }
 
     @Test
     fun `mapFailure preserves success`() {
-        val result = Result.Success<Int, String>(42).mapFailure { it.length }
+        val result = Result.Success<Int, TestError>(42)
+            .mapFailure {
+                when (it) {
+                    TestError.ErrorA -> "mapped-a"
+                    TestError.ErrorB -> "mapped-b"
+                }
+            }
+
         assertTrue(result.isSuccess())
         assertEquals(42, result.success)
     }
@@ -87,7 +133,7 @@ class ResultTest {
 
     @Test
     fun `getOrNull returns null for Failure`() {
-        assertNull(Result.Failure<Int, String>("error").getOrNull())
+        assertNull(Result.Failure<Int, TestError>(TestError.ErrorA).getOrNull())
     }
 
     @Test
@@ -99,26 +145,32 @@ class ResultTest {
 
     @Test
     fun `asUnitResult preserves failure`() {
-        val result = Result.Failure<Int, String>("error").asUnitResult()
+        val result = Result.Failure<Int, TestError>(TestError.ErrorA).asUnitResult()
+
         assertTrue(result.isFailure())
-        assertEquals("error", result.error)
+        assertEquals(TestError.ErrorA, result.error)
     }
 
     @Test
     fun `Boolean asResult returns Success for true`() {
-        assertTrue(true.asResult("error").isSuccess())
+        assertTrue(
+            true.asResult(TestError.ErrorA)
+                .isSuccess()
+        )
     }
 
     @Test
     fun `Boolean asResult returns Failure for false`() {
-        val result = false.asResult("error")
+        val result = false.asResult(TestError.ErrorA)
+
         assertTrue(result.isFailure())
-        assertEquals("error", result.error)
+        assertEquals(TestError.ErrorA, result.error)
     }
 
     @Test
     fun `nullable asResult returns Success for non-null`() {
-        val result = "hello".asResult("error")
+        val result = "hello".asResult(TestError.ErrorA)
+
         assertTrue(result.isSuccess())
         assertEquals("hello", result.success)
     }
@@ -126,95 +178,119 @@ class ResultTest {
     @Test
     fun `nullable asResult returns Failure for null`() {
         val value: String? = null
-        val result = value.asResult("error")
-        assertTrue(result.isFailure())
-        assertEquals("error", result.error)
-    }
 
-    @Test
-    fun `zip chains two successful results`() {
-        val result = Result.Success<Int, String>(1)
-            .zip { Result.Success<String, String>("two") }
-
-        assertTrue(result.isSuccess())
-        assertEquals(1, result.success.success1)
-        assertEquals("two", result.success.success2)
-    }
-
-    @Test
-    fun `zip short-circuits on first failure`() {
-        var secondCalled = false
-        val result = Result.Failure<Int, String>("first")
-            .zip {
-                secondCalled = true
-                Result.Success<String, String>("two")
-            }
+        val result = value.asResult(TestError.ErrorA)
 
         assertTrue(result.isFailure())
-        assertEquals("first", result.error)
-        assertFalse(secondCalled)
-    }
-
-    @Test
-    fun `zip returns second failure when first succeeds`() {
-        val result = Result.Success<Int, String>(1)
-            .zip { Result.Failure<String, String>("second") }
-
-        assertTrue(result.isFailure())
-        assertEquals("second", result.error)
-    }
-
-    @Test
-    fun `three-way zip chains all successes`() {
-        val result = Result.Success<Int, String>(1)
-            .zip { Result.Success<String, String>("two") }
-            .zip { _, _ -> Result.Success<Double, String>(3.0) }
-
-        assertTrue(result.isSuccess())
-        assertEquals(1, result.success.success1)
-        assertEquals("two", result.success.success2)
-        assertEquals(3.0, result.success.success3)
-    }
-
-    @Test
-    fun `four-way zip chains all successes`() {
-        val result = Result.Success<Int, String>(1)
-            .zip { Result.Success<String, String>("two") }
-            .zip { _, _ -> Result.Success<Double, String>(3.0) }
-            .zip { _, _, _ -> Result.Success<Boolean, String>(true) }
-
-        assertTrue(result.isSuccess())
-        assertEquals(1, result.success.success1)
-        assertEquals("two", result.success.success2)
-        assertEquals(3.0, result.success.success3)
-        assertEquals(true, result.success.success4)
-    }
-
-    @Test
-    fun `three-way zip short-circuits on middle failure`() {
-        var thirdCalled = false
-        val result = Result.Success<Int, String>(1)
-            .zip { Result.Failure<String, String>("middle") }
-            .zip { _, _ ->
-                thirdCalled = true
-                Result.Success<Double, String>(3.0)
-            }
-
-        assertTrue(result.isFailure())
-        assertEquals("middle", result.error)
-        assertFalse(thirdCalled)
+        assertEquals(TestError.ErrorA, result.error)
     }
 
     @Test
     fun `chaining onSuccess and onFailure`() {
         var successValue = 0
-        var failureValue = ""
+        var failureValue: TestError? = null
 
-        Result.Success<Int, String>(42)
+        Result.Success<Int, TestError>(42)
             .onSuccess { successValue = it }
             .onFailure { failureValue = it }
 
         assertEquals(42, successValue)
-        assertEquals("", failureValue)
+        assertNull(failureValue)
+    }
+
+    @Test
+    fun `bind returns success value`() {
+        val result = resultBinding<String, TestError> {
+            val user = getUser().bind()
+            user.name
+        }
+
+        assertIs<Result.Success<String, TestError>>(result)
+        assertEquals("John", result.success)
+    }
+
+    @Test
+    fun `bind short circuits on first failure`() {
+        val result = resultBinding<String, TestError> {
+            val user = getUserFailure().bind()
+            user.name
+        }
+
+        assertIs<Result.Failure<String, TestError>>(result)
+        assertEquals(TestError.ErrorA, result.error)
+    }
+
+    @Test
+    fun `bind propagates subtype errors`() {
+        val result = resultBinding {
+            assertIs<User>(getUser().bind())
+            getProfileFailure().bind()
+        }
+
+        assertIs<Result.Failure<String, TestError>>(result)
+        assertEquals(TestError.ErrorB, result.error)
+    }
+
+    @Test
+    fun `multiple bind calls return final success`() {
+        val result = resultBinding {
+            val user = getUser().bind()
+            getProfile(user).bind()
+        }
+
+        assertIs<Result.Success<Profile, TestError>>(result)
+        assertEquals("John", result.success.user.name)
+    }
+
+    @Test
+    fun `execution stops after failed bind`() {
+        var executed = false
+
+        val result = resultBinding<Unit, TestError> {
+            getUserFailure().bind()
+
+            executed = true
+        }
+
+        assertIs<Result.Failure<Unit, TestError>>(result)
+        assertEquals(false, executed)
+    }
+
+    @Test
+    fun `successful binds continue execution`() {
+        var executed = false
+
+        val result = resultBinding<Unit, TestError> {
+            getUser().bind()
+
+            executed = true
+        }
+
+        assertIs<Result.Success<Unit, TestError>>(result)
+        assertEquals(true, executed)
+    }
+
+    @Test
+    fun `fold executes onSuccess for success result`() {
+        val result: Result<String, TestError> = Result.Success("hello")
+
+        val value = result.fold(
+            onSuccess = { it.uppercase() },
+            onFailure = { "error" }
+        )
+
+        assertEquals("HELLO", value)
+    }
+
+    @Test
+    fun `fold executes onFailure for failure result`() {
+        val result: Result<String, TestError> = Result.Failure(TestError.ErrorA)
+
+        val value = result.fold(
+            onSuccess = { it.uppercase() },
+            onFailure = { "error" }
+        )
+
+        assertEquals("error", value)
     }
 }

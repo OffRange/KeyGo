@@ -10,6 +10,7 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.usecase.LoginWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
+import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
@@ -25,12 +26,13 @@ import de.davis.keygo.feature.item.core.presentation.model.NavigationEvent
 import de.davis.keygo.feature.item.view.domain.WebsiteHandler
 import de.davis.keygo.feature.item.view.domain.usecase.IsValidUrlUseCase
 import de.davis.keygo.feature.item.view.login.model.ModificationDialog
+import de.davis.keygo.feature.item.view.login.model.TotpState
 import de.davis.keygo.feature.item.view.login.model.ViewLoginState
 import de.davis.keygo.feature.item.view.login.model.ViewLoginUiEvent
 import de.davis.keygo.feature.item.view.login.model.asObfuscatedString
-import de.davis.keygo.feature.totp.domain.model.TotpInformation
 import de.davis.keygo.feature.totp.domain.repository.TotpGenerator
-import de.davis.keygo.feature.totp.domain.usecase.GetTotpSecretFromUrlUseCase
+import de.davis.keygo.rust.totp.TotpService
+import de.davis.keygo.rust.totp.getInfoFromUriWithResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -60,7 +62,7 @@ internal class ViewLoginViewModel(
     private val websiteHandler: WebsiteHandler,
     private val totpGenerator: TotpGenerator,
     private val registrableDomainResolver: RegistrableDomainResolver,
-    private val getTotpSecret: GetTotpSecretFromUrlUseCase,
+    private val totpService: TotpService,
     private val observeLoginWithCryptoScope: LoginWithCryptoScopeUseCase,
 ) : ViewModel() {
 
@@ -74,27 +76,21 @@ internal class ViewLoginViewModel(
         .distinctUntilChanged()
         .flatMapLatest { id ->
             observeLoginWithCryptoScope.observe(itemId = id) { login ->
-                val (obfuscated, totp, vaultMetadata) = coroutineScope {
+                val (obfuscated, vaultMetadata) = coroutineScope {
                     val obfuscated = async {
                         login.password.decrypt().asObfuscatedString()
-                    }
-                    val totp = login.totp?.let { totpSecret ->
-                        async {
-                            totpSecret.secret.decrypt().encodeToByteArray()
-                        }
                     }
                     val vaultMetadata = async {
                         vaultRepository.getVaultMetadata(login.vaultId)
                     }
 
-                    Triple(
+                    Pair(
                         obfuscated.await(),
-                        totp?.await(),
                         vaultMetadata.await(),
                     )
                 }
 
-                val base = ViewLoginState(
+                ViewLoginState(
                     name = login.name,
                     vaultMetadata = vaultMetadata,
                     passkeyRPs = login.passkeyRPs,
@@ -103,19 +99,23 @@ internal class ViewLoginViewModel(
                     username = login.username.orEmpty(),
                     domains = login.domainInfos,
                     note = login.note.orEmpty(),
-                    totpInformation = TotpInformation("", 0, 0),
+                    totpState = TotpState.NoTotp,
                     pinned = login.pinned,
-                )
-
-                when (val totpSecret = totp) {
-                    null -> flowOf(base)
-                    else -> totpGenerator.observeTotp(totpSecret).map {
-                        base.copy(totpInformation = it)
+                ) to login.totp
+            }
+                .map { it.getOrNull() }
+                .filterNotNull()
+                .flatMapLatest { (base, totp) ->
+                    when (totp) {
+                        null -> flowOf(base)
+                        else -> totpGenerator.observeTotpCode(totp).map { result ->
+                            result.fold(
+                                onSuccess = { base.copy(totpState = TotpState.HasTotp(it)) },
+                                onFailure = { base.copy(totpState = TotpState.Error(it)) },
+                            )
+                        }
                     }
                 }
-            }
-                .filterNotNull()
-                .flatMapLatest { it }
         }.flowOn(Dispatchers.Default)
 
 
@@ -212,16 +212,17 @@ internal class ViewLoginViewModel(
 
             is ViewLoginUiEvent.OnCodesScanned -> {
                 _scanning.update { false }
-                val secret = event.codes.firstNotNullOfOrNull {
-                    getTotpSecret(it).getOrNull()
-                }?.secret ?: return
+                val uriOrSecret = event.codes.firstNotNullOfOrNull { qrCode ->
+                    // This just validates whether `qrCode` is a valid totp uri - we return qrCode
+                    totpService.getInfoFromUriWithResult(qrCode).getOrNull()?.let { qrCode }
+                } ?: return
 
                 _itemId.value?.let { id ->
                     viewModelScope.launch {
                         updateLogin(
                             UpsertLogin.update(
                                 itemId = id,
-                                totpSecret = fieldUpdate(secret),
+                                totoUriOrSecret = fieldUpdate(uriOrSecret),
                             )
                         )
                     }
@@ -248,7 +249,7 @@ internal class ViewLoginViewModel(
 
                                 FieldType.Totp -> UpsertLogin.update(
                                     itemId = id,
-                                    totpSecret = newText,
+                                    totoUriOrSecret = newText,
                                 )
 
                                 FieldType.Username -> UpsertLogin.update(
