@@ -175,9 +175,10 @@ class CreateNewOrUpdateLoginUseCaseTest {
 
     @Test
     fun `update clearing password preserves totp and succeeds`() = runTest {
-        val existing = testLogin(
+        val base = testLogin()
+        val existing = base.copy(
             totp = Totp(
-                loginId = newItemId(),
+                loginId = base.id,
                 secret = Totp.Secret(EncryptedPayload.EMPTY),
                 accountName = "alice",
                 issuer = "example",
@@ -643,38 +644,39 @@ class CreateNewOrUpdateLoginUseCaseTest {
     // TOTP handling — Update
 
     @Test
-    fun `update replacing totp uri with plain secret resets algorithm digits period issuer and account name`() = runTest {
-        val base = testLogin()
-        val existing = base.copy(
-            totp = Totp(
-                loginId = base.id,
-                secret = Totp.Secret(EncryptedPayload.EMPTY),
-                algorithm = "sha256",
-                digits = 8,
-                period = 60,
-                issuer = "GitHub",
-                accountName = "alice@github.com",
-            ),
-        )
-        loginRepository.seed(existing)
-
-        // useCase uses FakeTotpService with no infoFromUriResult, so input is treated as plain secret
-        val result = useCase(
-            UpsertLogin.update(
-                itemId = existing.id,
-                totpUriOrSecret = set("NEWSECRET"),
+    fun `update replacing totp uri with plain secret resets algorithm digits period issuer and account name`() =
+        runTest {
+            val base = testLogin()
+            val existing = base.copy(
+                totp = Totp(
+                    loginId = base.id,
+                    secret = Totp.Secret(EncryptedPayload.EMPTY),
+                    algorithm = "sha256",
+                    digits = 8,
+                    period = 60,
+                    issuer = "GitHub",
+                    accountName = "alice@github.com",
+                ),
             )
-        )
+            loginRepository.seed(existing)
 
-        assertTrue(result.isSuccess(), "result: $result")
-        val totp = loginRepository.getLoginById(existing.id)?.totp
-        assertNotNull(totp)
-        assertEquals(Totp.DEFAULT_ALGORITHM, totp.algorithm)
-        assertEquals(Totp.DEFAULT_DIGITS, totp.digits)
-        assertEquals(Totp.DEFAULT_PERIOD, totp.period)
-        assertNull(totp.issuer)
-        assertNull(totp.accountName)
-    }
+            // useCase uses FakeTotpService with no infoFromUriResult, so input is treated as plain secret
+            val result = useCase(
+                UpsertLogin.update(
+                    itemId = existing.id,
+                    totpUriOrSecret = set("NEWSECRET"),
+                )
+            )
+
+            assertTrue(result.isSuccess(), "result: $result")
+            val totp = loginRepository.getLoginById(existing.id)?.totp
+            assertNotNull(totp)
+            assertEquals(Totp.DEFAULT_ALGORITHM, totp.algorithm)
+            assertEquals(Totp.DEFAULT_DIGITS, totp.digits)
+            assertEquals(Totp.DEFAULT_PERIOD, totp.period)
+            assertNull(totp.issuer)
+            assertNull(totp.accountName)
+        }
 
     @Test
     fun `update replacing plain secret with valid uri sets all parsed metadata`() = runTest {
