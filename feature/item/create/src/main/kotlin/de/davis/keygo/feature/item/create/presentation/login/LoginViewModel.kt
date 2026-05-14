@@ -11,10 +11,10 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.repository.ItemRepository
-import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.crypto.decrypt
+import de.davis.keygo.core.security.domain.usecase.GetTdlMatchedLoginsUseCase
 import de.davis.keygo.core.security.domain.usecase.LoginWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
@@ -69,10 +69,10 @@ import kotlin.time.Duration.Companion.milliseconds
 internal class LoginViewModel(
     private val loginWithCryptoScope: LoginWithCryptoScopeUseCase,
     private val itemRepository: ItemRepository,
-    private val loginRepository: LoginRepository,
     private val vaultContextRepository: VaultContextRepository,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val createNewOrUpdateLogin: CreateNewOrUpdateLoginUseCase,
+    private val getTdlMatchedLogins: GetTdlMatchedLoginsUseCase,
     private val snackbarManager: SnackbarManager,
     private val getTotpSecret: GetTotpSecretFromUrlUseCase,
     private val registrableDomainResolver: RegistrableDomainResolver,
@@ -243,9 +243,7 @@ internal class LoginViewModel(
             totpSecretInformation = secret
             viewModelScope.launch {
                 val matchedItems = secret.issuer?.let {
-                    registrableDomainResolver.resolve(it)
-                }?.let {
-                    loginRepository.getLoginsByTLD(etld1 = it)
+                    getTdlMatchedLogins(it)
                 }
 
                 if (matchedItems.isNullOrEmpty()) {
