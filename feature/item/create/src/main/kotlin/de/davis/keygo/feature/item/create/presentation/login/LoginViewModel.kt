@@ -26,6 +26,7 @@ import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.feature.item.core.domain.model.LoginError
 import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.fieldUpdate
+import de.davis.keygo.feature.item.core.domain.model.resolveTotpDomain
 import de.davis.keygo.feature.item.core.domain.model.set
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
 import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
@@ -439,17 +440,15 @@ internal class LoginViewModel(
             }
 
             is LoginUiEvent.OnAddDomains -> {
-                itemId?.let { itemId ->
-                    event.domains.forEach { domain ->
-                        val registrableDomain = registrableDomainResolver.resolve(domain)
-                        val info = DomainInfo(
-                            loginId = itemId,
-                            value = domain,
-                            eTLD1 = registrableDomain,
-                        )
-                        _base.update {
-                            it.copy(domains = it.domains + info)
-                        }
+                event.domains.forEach { domain ->
+                    val registrableDomain = registrableDomainResolver.resolve(domain)
+                    val info = DomainInfo(
+                        loginId = itemId,
+                        value = domain,
+                        eTLD1 = registrableDomain,
+                    )
+                    _base.update {
+                        it.copy(domains = it.domains + info)
                     }
                 }
             }
@@ -499,7 +498,7 @@ internal class LoginViewModel(
         val currentAccountName = currentState.usernameTextFieldState.text.toString()
 
         val newTotpSecret = originalUri ?: secretInformation.secret
-        val newIssuer = secretInformation.issuer ?: ""
+        val newDomain = resolveTotpDomain(secretInformation.issuer, secretInformation.accountName)
         val newAccountName = secretInformation.accountName
 
         val isCurrentSecretSet = currentTotpSecret.isNotBlank()
@@ -511,8 +510,8 @@ internal class LoginViewModel(
         val overridingFields = mutableSetOf<OverrideTotpField>()
 
         val isOverridingTotpSecret = isCurrentSecretSet && !isCurrentTotpSecretSame
-        val isAddingNewIssuer = currentIssuers
-            .none { it.value.contains(newIssuer, ignoreCase = true) }
+        val isAddingNewIssuer = newDomain != null && currentIssuers
+            .none { it.value.contains(newDomain, ignoreCase = true) }
         val isOverridingAccountName = isCurrentAccountNameSet && !isCurrentAccountNameSame
 
         if (isOverridingTotpSecret) {
@@ -537,7 +536,7 @@ internal class LoginViewModel(
 
         updateUiWithSpecificTotpSecretInfo(
             secret = if (!isOverridingTotpSecret) newTotpSecret else null,
-            issuer = if (isAddingNewIssuer) newIssuer else null,
+            issuer = if (isAddingNewIssuer) newDomain else null,
             accountName = if (!isOverridingAccountName) newAccountName else null,
             closeDialog = false,
         )
@@ -553,7 +552,7 @@ internal class LoginViewModel(
         originalUri: String? = null,
     ) = updateUiWithSpecificTotpSecretInfo(
         secret = originalUri ?: secretInformation.secret,
-        issuer = secretInformation.issuer,
+        issuer = resolveTotpDomain(secretInformation.issuer, secretInformation.accountName),
         accountName = secretInformation.accountName,
     )
 

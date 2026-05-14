@@ -1,6 +1,7 @@
 package de.davis.keygo.rust
 
 import de.davisalessandro.keygo.rust.Algorithm
+import de.davisalessandro.keygo.rust.TotpException
 import de.davisalessandro.keygo.rust.TotpInfo
 import de.davisalessandro.keygo.rust.TotpServiceInterface
 
@@ -27,5 +28,5 @@ class FakeTotpService : TotpServiceInterface {
     ): String = urlResult
 
     override fun getInfoFromUri(uri: String): TotpInfo =
-        infoFromUriResult ?: error("FakeTotpService.infoFromUriResult not set")
+        infoFromUriResult ?: throw TotpException.InvalidInput()
 }
