@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use lib::totp::{
-    get_totp as core_get_totp, get_totp_info_from_uri as core_get_totp_info_from_uri,
-    get_totp_url as core_get_totp_url, TotpInfo as CoreTotpInfo,
+    TotpInfo as CoreTotpInfo, get_totp as core_get_totp,
+    get_totp_info_from_uri as core_get_totp_info_from_uri, get_totp_url as core_get_totp_url,
 };
 use thiserror::Error;
 
@@ -118,14 +118,8 @@ impl TotpService {
         let digits = usize::try_from(digits).map_err(|_| TotpError::InvalidInput)?;
         let step = u64::try_from(step).map_err(|_| TotpError::InvalidInput)?;
 
-        core_get_totp_url(
-            algorithm.into(),
-            digits,
-            step,
-            secret,
-            issuer,
-            account_name,
-        ).map_err(Into::into)
+        core_get_totp_url(algorithm.into(), digits, step, secret, issuer, account_name)
+            .map_err(Into::into)
     }
 
     pub fn get_info_from_uri(&self, uri: String) -> Result<TotpInfo, TotpError> {

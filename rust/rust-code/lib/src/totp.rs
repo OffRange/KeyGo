@@ -1,7 +1,7 @@
 use std::time::SystemTimeError;
 use thiserror::Error;
 pub use totp_rs::Algorithm;
-use totp_rs::{Secret, SecretParseError, TotpUrlError, TOTP};
+use totp_rs::{Secret, SecretParseError, TOTP, TotpUrlError};
 
 #[derive(Debug, Error)]
 pub enum TotpError {
