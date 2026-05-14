@@ -31,7 +31,8 @@ import de.davis.keygo.feature.item.view.login.model.ViewLoginState
 import de.davis.keygo.feature.item.view.login.model.ViewLoginUiEvent
 import de.davis.keygo.feature.item.view.login.model.asObfuscatedString
 import de.davis.keygo.feature.totp.domain.repository.TotpGenerator
-import de.davis.keygo.feature.totp.domain.usecase.GetTotpSecretFromUrlUseCase
+import de.davis.keygo.rust.totp.TotpService
+import de.davis.keygo.rust.totp.getInfoFromUriWithResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -61,7 +62,7 @@ internal class ViewLoginViewModel(
     private val websiteHandler: WebsiteHandler,
     private val totpGenerator: TotpGenerator,
     private val registrableDomainResolver: RegistrableDomainResolver,
-    private val getTotpSecret: GetTotpSecretFromUrlUseCase,
+    private val totpService: TotpService,
     private val observeLoginWithCryptoScope: LoginWithCryptoScopeUseCase,
 ) : ViewModel() {
 
@@ -211,16 +212,17 @@ internal class ViewLoginViewModel(
 
             is ViewLoginUiEvent.OnCodesScanned -> {
                 _scanning.update { false }
-                val secret = event.codes.firstNotNullOfOrNull {
-                    getTotpSecret(it).getOrNull()
-                }?.secret ?: return
+                val uriOrSecret = event.codes.firstNotNullOfOrNull { qrCode ->
+                    // This just validates whether `qrCode` is a valid totp uri - we return qrCode
+                    totpService.getInfoFromUriWithResult(qrCode).getOrNull()?.let { qrCode }
+                } ?: return
 
                 _itemId.value?.let { id ->
                     viewModelScope.launch {
                         updateLogin(
                             UpsertLogin.update(
                                 itemId = id,
-                                totoUriOrSecret = fieldUpdate(secret),
+                                totoUriOrSecret = fieldUpdate(uriOrSecret),
                             )
                         )
                     }

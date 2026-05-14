@@ -25,6 +25,8 @@ import de.davis.keygo.feature.item.core.domain.model.LoginError
 import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.clear
 import de.davis.keygo.feature.item.core.domain.model.set
+import de.davis.keygo.rust.FakeTotpService
+import de.davis.keygo.rust.totp.TotpService
 import kotlinx.coroutines.test.runTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -506,12 +508,14 @@ class CreateNewOrUpdateLoginUseCaseTest {
         vaultRepository: FakeVaultRepository = this@CreateNewOrUpdateLoginUseCaseTest.vaultRepository,
         estimator: FakePasswordStrengthEstimator = FakePasswordStrengthEstimator(),
         cryptographicScopeProvider: CryptographicScopeProvider = cryptoProvider,
+        totpService: TotpService = FakeTotpService(),
     ) = CreateNewOrUpdateLoginUseCase(
         cryptographicScopeProvider = cryptographicScopeProvider,
         loginRepository = loginRepository,
         vaultRepository = vaultRepository,
         upsertVaultItem = UpsertVaultItemUseCase(loginRepository),
         passwordStrengthEstimator = estimator,
+        totpService = totpService,
     )
 
     private fun testLogin(

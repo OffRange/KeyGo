@@ -28,7 +28,8 @@ import de.davis.keygo.feature.item.core.domain.model.getValue
 import de.davis.keygo.feature.item.core.domain.model.on
 import de.davis.keygo.feature.item.core.domain.model.onSet
 import de.davis.keygo.feature.item.core.domain.model.withoutClearingOn
-import de.davis.keygo.feature.totp.domain.usecase.GetTotpSecretFromUrlUseCase
+import de.davis.keygo.rust.totp.TotpService
+import de.davis.keygo.rust.totp.getInfoFromUriWithResult
 import de.davisalessandro.keygo.rust.ItemAad
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -42,7 +43,7 @@ class CreateNewOrUpdateLoginUseCase(
     private val vaultRepository: VaultRepository,
     private val upsertVaultItem: UpsertVaultItemUseCase,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
-    private val getTotpSecret: GetTotpSecretFromUrlUseCase,
+    private val totpService: TotpService,
 ) {
 
     @OptIn(ExperimentalContracts::class)
@@ -124,7 +125,7 @@ class CreateNewOrUpdateLoginUseCase(
                     username = upsert.username.getValue(),
                     domainInfos = upsert.domains.getValue().orEmpty(),
                     password = encryptedPassword.await(),
-                    totp = totp?.await().also { println("TOTP: $it") },
+                    totp = totp?.await(),
                     passwordScore = passwordStrength.await(),
                     note = upsert.note.getValue(),
                     pinned = false,
@@ -203,14 +204,14 @@ class CreateNewOrUpdateLoginUseCase(
 
     context(scope: CryptographicScope)
     private suspend fun String.convertTotpUriOrSecretToUri(itemId: ItemId) = with(scope) {
-        getTotpSecret(this@convertTotpUriOrSecretToUri).fold(
+        totpService.getInfoFromUriWithResult(this@convertTotpUriOrSecretToUri).fold(
             onSuccess = { secrets ->
                 Totp(
                     loginId = itemId,
                     secret = Totp.Secret.encrypt(secrets.secret),
                     accountName = secrets.accountName,
                     issuer = secrets.issuer,
-                    algorithm = secrets.algorithm.name,
+                    algorithm = secrets.algorithm.name.lowercase(),
                     digits = secrets.digits,
                     period = secrets.period,
                 )
