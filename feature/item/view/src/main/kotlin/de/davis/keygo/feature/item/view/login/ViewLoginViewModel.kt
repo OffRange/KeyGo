@@ -222,7 +222,7 @@ internal class ViewLoginViewModel(
                         updateLogin(
                             UpsertLogin.update(
                                 itemId = id,
-                                totoUriOrSecret = fieldUpdate(uriOrSecret),
+                                totpUriOrSecret = fieldUpdate(uriOrSecret),
                             )
                         )
                     }
@@ -249,7 +249,7 @@ internal class ViewLoginViewModel(
 
                                 FieldType.Totp -> UpsertLogin.update(
                                     itemId = id,
-                                    totoUriOrSecret = newText,
+                                    totpUriOrSecret = newText,
                                 )
 
                                 FieldType.Username -> UpsertLogin.update(

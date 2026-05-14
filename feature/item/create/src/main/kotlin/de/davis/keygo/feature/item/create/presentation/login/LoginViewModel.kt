@@ -295,7 +295,7 @@ internal class LoginViewModel(
                             username = fieldUpdate(base.usernameTextFieldState.text.toString()),
                             domains = set(base.domains),
                             password = fieldUpdate(base.passwordTextFieldState.text.toString()),
-                            totoUriOrSecret = fieldUpdate(base.totpTextFieldState.text.toString()),
+                            totpUriOrSecret = fieldUpdate(base.totpTextFieldState.text.toString()),
                             note = fieldUpdate(base.notesTextFieldState.text.toString()),
                         )
                     } ?: UpsertLogin.create(
@@ -304,7 +304,7 @@ internal class LoginViewModel(
                         username = base.usernameTextFieldState.text.toString(),
                         domains = base.domains,
                         password = base.passwordTextFieldState.text.toString(),
-                        totoUriOrSecret = base.totpTextFieldState.text.toString(),
+                        totpUriOrSecret = base.totpTextFieldState.text.toString(),
                         note = base.notesTextFieldState.text.toString(),
                     )
 

@@ -93,7 +93,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
                 name = "My site",
                 password = null,
                 username = null,
-                totoUriOrSecret = null,
+                totpUriOrSecret = null,
             )
         )
 
@@ -133,7 +133,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
                 vaultId = defaultVault.id,
                 name = "My site",
                 password = null,
-                totoUriOrSecret = "JBSWY3DPEHPK3PXP",
+                totpUriOrSecret = "JBSWY3DPEHPK3PXP",
             )
         )
         assertTrue(result.isSuccess())
@@ -342,7 +342,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         )
         loginRepository.seed(existing)
 
-        val result = useCase(UpsertLogin.update(itemId = existing.id, totoUriOrSecret = clear()))
+        val result = useCase(UpsertLogin.update(itemId = existing.id, totpUriOrSecret = clear()))
 
         assertTrue(result.isSuccess(), "result: $result")
         assertEquals(null, loginRepository.getLoginById(existing.id)?.totp)
@@ -509,7 +509,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
                 vaultId = defaultVault.id,
                 name = "My site",
                 password = plaintextPassword,
-                totoUriOrSecret = plaintextTotp,
+                totpUriOrSecret = plaintextTotp,
             )
         )
 
@@ -567,7 +567,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
                 vaultId = defaultVault.id,
                 name = "My site",
                 password = "s3cr3t",
-                totoUriOrSecret = "JBSWY3DPEHPK3PXP",
+                totpUriOrSecret = "JBSWY3DPEHPK3PXP",
             )
         )
 
@@ -599,7 +599,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
                 vaultId = defaultVault.id,
                 name = "My site",
                 password = "s3cr3t",
-                totoUriOrSecret = "otpauth://totp/GitHub:alice@github.com?secret=JBSWY3DPEHPK3PXP",
+                totpUriOrSecret = "otpauth://totp/GitHub:alice@github.com?secret=JBSWY3DPEHPK3PXP",
             )
         )
 
@@ -619,7 +619,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
                 vaultId = defaultVault.id,
                 name = "My site",
                 password = "s3cr3t",
-                totoUriOrSecret = "   ",
+                totpUriOrSecret = "   ",
             )
         )
 
@@ -633,7 +633,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
                 vaultId = defaultVault.id,
                 name = "My site",
                 password = "s3cr3t",
-                totoUriOrSecret = null,
+                totpUriOrSecret = null,
             )
         )
 
@@ -662,7 +662,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         val result = useCase(
             UpsertLogin.update(
                 itemId = existing.id,
-                totoUriOrSecret = set("NEWSECRET"),
+                totpUriOrSecret = set("NEWSECRET"),
             )
         )
 
@@ -700,7 +700,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         )(
             UpsertLogin.update(
                 itemId = existing.id,
-                totoUriOrSecret = set("otpauth://totp/Acme:bob@acme.com?secret=JBSWY3DPEHPK3PXP"),
+                totpUriOrSecret = set("otpauth://totp/Acme:bob@acme.com?secret=JBSWY3DPEHPK3PXP"),
             )
         )
 

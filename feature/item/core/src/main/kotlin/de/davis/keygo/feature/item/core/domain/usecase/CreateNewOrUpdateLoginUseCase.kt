@@ -118,7 +118,7 @@ class CreateNewOrUpdateLoginUseCase(
                         )
                     }
                 }
-                val totp = upsert.totoUriOrSecret.onSet { uriOrSecret ->
+                val totp = upsert.totpUriOrSecret.onSet { uriOrSecret ->
                     async { uriOrSecret.convertTotpUriOrSecretToUri(itemId) }
                 }
 
@@ -175,7 +175,7 @@ class CreateNewOrUpdateLoginUseCase(
                         )
                     }
                 }
-                val totp = upsert.totoUriOrSecret.onSet { uriOrSecret ->
+                val totp = upsert.totpUriOrSecret.onSet { uriOrSecret ->
                     async { uriOrSecret.convertTotpUriOrSecretToUri(existing.id) }
                 }
 
@@ -184,7 +184,7 @@ class CreateNewOrUpdateLoginUseCase(
                     username = upsert.username.on(existing.username),
                     domainInfos = upsert.domains.on(existing.domainInfos).orEmpty(),
                     passwordCredential = newPasswordCredential,
-                    totp = upsert.totoUriOrSecret.on(existing.totp, totp),
+                    totp = upsert.totpUriOrSecret.on(existing.totp, totp),
                     note = upsert.note.on(existing.note),
                 )
             }
