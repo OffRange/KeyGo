@@ -210,7 +210,9 @@ internal class LoginViewModel(
             itemId = itemId,
         ) { login ->
             val decrypted = coroutineScope {
-                val pwdDeferred = async { login.passwordCredential!!.secret.decrypt() } // TODO(#43-task3)
+                val pwdDeferred = login.passwordCredential?.let { pwd ->
+                    async { pwd.secret.decrypt() }
+                }
                 val totpDeferred = login.totp?.let { totp ->
                     async {
                         val secret = totp.secret.decrypt()
@@ -226,11 +228,11 @@ internal class LoginViewModel(
                         } ?: secret
                     }
                 }
-                pwdDeferred.await() to totpDeferred?.await()
+                pwdDeferred?.await() to totpDeferred?.await()
             }
 
             nameTextFieldState.setTextAndPlaceCursorAtEnd(login.name)
-            passwordTextFieldState.setTextAndPlaceCursorAtEnd(decrypted.first)
+            passwordTextFieldState.setTextAndPlaceCursorAtEnd(decrypted.first ?: "")
 
             _selectedVaultId.update { login.vaultId }
             _base.update {
@@ -239,6 +241,7 @@ internal class LoginViewModel(
                     usernameTextFieldState = TextFieldState(login.username ?: ""),
                     domains = login.domainInfos,
                     notesTextFieldState = TextFieldState(login.note ?: ""),
+                    existingPasskeyCount = login.passkeyRPs.size,
                     dialogState = DialogState.None,
                     updating = true,
                 )
@@ -313,7 +316,6 @@ internal class LoginViewModel(
                         _base.update {
                             it.copy(
                                 nameError = if (failure.contains(LoginError.BlankName)) InputFieldError.Empty else null,
-                                passwordError = if (failure.contains(LoginError.EmptyLogin)) InputFieldError.Empty else null,
                             )
                         }
 
