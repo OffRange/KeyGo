@@ -77,15 +77,15 @@ internal class ViewLoginViewModel(
         .flatMapLatest { id ->
             observeLoginWithCryptoScope.observe(itemId = id) { login ->
                 val (obfuscated, vaultMetadata) = coroutineScope {
-                    val obfuscated = async {
-                        login.passwordCredential!!.secret.decrypt().asObfuscatedString() // TODO(#43-task3)
+                    val obfuscated = login.passwordCredential?.let { pwd ->
+                        async { pwd.secret.decrypt().asObfuscatedString() }
                     }
                     val vaultMetadata = async {
                         vaultRepository.getVaultMetadata(login.vaultId)
                     }
 
                     Pair(
-                        obfuscated.await(),
+                        obfuscated?.await(),
                         vaultMetadata.await(),
                     )
                 }
@@ -95,7 +95,7 @@ internal class ViewLoginViewModel(
                     vaultMetadata = vaultMetadata,
                     passkeyRPs = login.passkeyRPs,
                     password = obfuscated,
-                    passwordStrengthScore = login.passwordCredential!!.score, // TODO(#43-task3)
+                    passwordStrengthScore = login.passwordCredential?.score,
                     username = login.username.orEmpty(),
                     domains = login.domainInfos,
                     note = login.note.orEmpty(),
@@ -190,7 +190,7 @@ internal class ViewLoginViewModel(
                 val state = state.value
                 val initialValue = when (fieldType) {
                     FieldType.Name -> state.name
-                    FieldType.Password -> state.password.raw
+                    FieldType.Password -> state.password?.raw.orEmpty()
                     FieldType.Totp -> "" // TOTP is not editable in this context
                     FieldType.Username -> state.username
                     FieldType.Domain -> "" // Only allow adding new domains, not editing existing ones
