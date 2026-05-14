@@ -10,6 +10,7 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Totp
@@ -219,7 +220,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         )
 
         val stored = freshLoginRepo.getLoginById(result.getOrNull()!!)
-        assertEquals(PasswordScore.Weak, stored?.passwordScore)
+        assertEquals(PasswordScore.Weak, stored?.passwordCredential!!.score) // TODO(#43-task3)
     }
 
     @Test
@@ -235,7 +236,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         localUseCase(UpsertLogin.update(itemId = existing.id, password = set("SuperS3cr3t!")))
 
         val updated = loginRepository.getLoginById(existing.id)
-        assertEquals(PasswordScore.Strong, updated?.passwordScore)
+        assertEquals(PasswordScore.Strong, updated?.passwordCredential!!.score) // TODO(#43-task3)
     }
 
     // Success — Update
@@ -474,12 +475,14 @@ class CreateNewOrUpdateLoginUseCaseTest {
         val totpCall = cryptoProvider.encryptCalls.single { it.label == Totp.Secret.label }
         assertContentEquals(plaintextTotp.encodeToByteArray(), totpCall.plaintext)
 
-        assertFalse(stored.password.payload.ciphertext.contentEquals(plaintextPassword.encodeToByteArray()))
+        // TODO(#43-task3)
+        val storedSecret = stored.passwordCredential!!.secret
+        assertFalse(storedSecret.payload.ciphertext.contentEquals(plaintextPassword.encodeToByteArray()))
         assertContentEquals(
             FakeCryptographicScopeProvider.transform(plaintextPassword.encodeToByteArray()),
-            stored.password.payload.ciphertext
+            storedSecret.payload.ciphertext
         )
-        assertContentEquals(FakeCryptographicScopeProvider.IV, stored.password.payload.iv)
+        assertContentEquals(FakeCryptographicScopeProvider.IV, storedSecret.payload.iv)
 
         assertNotNull(stored.totp)
         assertFalse(stored.totp!!.secret.payload.ciphertext.contentEquals(plaintextTotp.encodeToByteArray()))
@@ -714,8 +717,10 @@ class CreateNewOrUpdateLoginUseCaseTest {
         name = name,
         username = username,
         domainInfos = emptySet(),
-        passwordScore = passwordScore,
-        password = PasswordSecret(EncryptedPayload.EMPTY),
+        passwordCredential = PasswordCredential( // TODO(#43-task3)
+            secret = PasswordSecret(EncryptedPayload.EMPTY),
+            score = passwordScore,
+        ),
         totp = null,
         note = null,
         pinned = false,

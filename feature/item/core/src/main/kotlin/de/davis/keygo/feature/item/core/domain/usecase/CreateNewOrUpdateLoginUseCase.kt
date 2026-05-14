@@ -5,6 +5,7 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.repository.LoginRepository
@@ -124,9 +125,11 @@ class CreateNewOrUpdateLoginUseCase(
                     name = upsert.name.getValue()!!,
                     username = upsert.username.getValue(),
                     domainInfos = upsert.domains.getValue().orEmpty(),
-                    password = encryptedPassword.await(),
+                    passwordCredential = PasswordCredential( // TODO(#43-task3)
+                        secret = encryptedPassword.await(),
+                        score = passwordStrength.await(),
+                    ),
                     totp = totp?.await(),
-                    passwordScore = passwordStrength.await(),
                     note = upsert.note.getValue(),
                     pinned = false,
                     keyInformation = wrappedItemKey.await(),
@@ -170,9 +173,11 @@ class CreateNewOrUpdateLoginUseCase(
                     name = upsert.name.withoutClearingOn(existing.name),
                     username = upsert.username.on(existing.username),
                     domainInfos = upsert.domains.on(existing.domainInfos).orEmpty(),
-                    password = encryptedPassword?.await() ?: existing.password,
+                    passwordCredential = PasswordCredential( // TODO(#43-task3)
+                        secret = encryptedPassword?.await() ?: existing.passwordCredential!!.secret,
+                        score = passwordStrength?.await() ?: existing.passwordCredential!!.score,
+                    ),
                     totp = upsert.totoUriOrSecret.on(existing.totp, totp),
-                    passwordScore = passwordStrength?.await() ?: existing.passwordScore,
                     note = upsert.note.on(existing.note),
                 )
             }

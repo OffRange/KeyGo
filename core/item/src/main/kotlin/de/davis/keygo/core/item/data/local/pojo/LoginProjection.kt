@@ -24,7 +24,7 @@ internal data class LoginProjection(
         parentColumn = "id",
         entityColumn = "login_id",
     )
-    val passwordEntity: PasswordEntity,
+    val passwordEntity: PasswordEntity?,
 
     @Relation(
         parentColumn = "id",

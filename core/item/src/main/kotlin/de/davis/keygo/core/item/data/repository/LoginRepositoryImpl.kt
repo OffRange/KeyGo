@@ -42,7 +42,10 @@ internal class LoginRepositoryImpl(
             database.withTransaction {
                 itemDao.upsert((login as Item).toData())
                 loginDao.upsert(login.toLoginEntity())
-                passwordDao.upsert(login.toPasswordEntity())
+
+                login.toPasswordEntity()?.let { passwordDao.upsert(it) }
+                    ?: passwordDao.delete(login.id)
+
                 login.totp?.toData()?.let {
                     totpDao.upsert(it)
                 } ?: totpDao.delete(login.id)

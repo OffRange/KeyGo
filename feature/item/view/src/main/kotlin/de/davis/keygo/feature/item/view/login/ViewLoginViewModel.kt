@@ -78,7 +78,7 @@ internal class ViewLoginViewModel(
             observeLoginWithCryptoScope.observe(itemId = id) { login ->
                 val (obfuscated, vaultMetadata) = coroutineScope {
                     val obfuscated = async {
-                        login.password.decrypt().asObfuscatedString()
+                        login.passwordCredential!!.secret.decrypt().asObfuscatedString() // TODO(#43-task3)
                     }
                     val vaultMetadata = async {
                         vaultRepository.getVaultMetadata(login.vaultId)
@@ -95,7 +95,7 @@ internal class ViewLoginViewModel(
                     vaultMetadata = vaultMetadata,
                     passkeyRPs = login.passkeyRPs,
                     password = obfuscated,
-                    passwordStrengthScore = login.passwordScore,
+                    passwordStrengthScore = login.passwordCredential!!.score, // TODO(#43-task3)
                     username = login.username.orEmpty(),
                     domains = login.domainInfos,
                     note = login.note.orEmpty(),

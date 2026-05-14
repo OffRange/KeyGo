@@ -210,7 +210,7 @@ internal class LoginViewModel(
             itemId = itemId,
         ) { login ->
             val decrypted = coroutineScope {
-                val pwdDeferred = async { login.password.decrypt() }
+                val pwdDeferred = async { login.passwordCredential!!.secret.decrypt() } // TODO(#43-task3)
                 val totpDeferred = login.totp?.let { totp ->
                     async {
                         val secret = totp.secret.decrypt()

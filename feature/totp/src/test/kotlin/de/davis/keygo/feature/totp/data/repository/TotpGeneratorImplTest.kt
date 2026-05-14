@@ -9,6 +9,7 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Totp
@@ -89,8 +90,10 @@ class TotpGeneratorImplTest {
         id = id,
         username = "user",
         domainInfos = emptySet(),
-        passwordScore = PasswordScore.Strong,
-        password = PasswordSecret(EncryptedPayload.EMPTY),
+        passwordCredential = PasswordCredential( // TODO(#43-task3)
+            secret = PasswordSecret(EncryptedPayload.EMPTY),
+            score = PasswordScore.Strong,
+        ),
         totp = null,
         name = "Test",
         note = null,

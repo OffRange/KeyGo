@@ -7,6 +7,7 @@ import de.davis.keygo.core.item.data.local.dao.LoginDao
 import de.davis.keygo.core.item.data.local.dao.PasswordDao
 import de.davis.keygo.core.item.data.local.dao.TotpDao
 import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
+import de.davis.keygo.core.item.data.local.entity.credential.PasswordEntity
 import de.davis.keygo.core.item.data.local.entity.credential.TotpEntity
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
@@ -14,6 +15,7 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Totp
@@ -116,14 +118,71 @@ class LoginRepositoryImplTest {
         assertEquals(error, result.error)
     }
 
-    private fun testLogin(totpProvider: ((ItemId) -> Totp)? = null): Login {
+    @Test
+    fun `createOrUpdateLogin upserts password row when login has a password credential`() =
+        runTest {
+            val login = testLogin(
+                passwordCredential = PasswordCredential(
+                    secret = PasswordSecret(EncryptedPayload.EMPTY),
+                    score = PasswordScore.Strong,
+                ),
+            )
+
+            val result = repository.createOrUpdateLogin(login)
+
+            assertTrue(result.isSuccess())
+            coVerify(exactly = 1) { passwordDao.upsert(any<PasswordEntity>()) }
+            coVerify(exactly = 0) { passwordDao.delete(any()) }
+        }
+
+    @Test
+    fun `createOrUpdateLogin deletes existing password row when login has no password credential`() =
+        runTest {
+            val login = testLogin(passwordCredential = null)
+
+            val result = repository.createOrUpdateLogin(login)
+
+            assertTrue(result.isSuccess())
+            coVerify(exactly = 1) { passwordDao.delete(login.id) }
+            coVerify(exactly = 0) { passwordDao.upsert(any<PasswordEntity>()) }
+        }
+
+    @Test
+    fun `createOrUpdateLogin returns Failure when password delete throws`() = runTest {
+        val error = RuntimeException("db error")
+        coEvery { passwordDao.delete(any()) } throws error
+
+        val result = repository.createOrUpdateLogin(testLogin(passwordCredential = null))
+
+        assertTrue(result.isFailure())
+        assertEquals(error, result.error)
+    }
+
+    @Test
+    fun `createOrUpdateLogin returns Failure when password upsert throws`() = runTest {
+        val error = RuntimeException("db error")
+        coEvery { passwordDao.upsert(any<PasswordEntity>()) } throws error
+
+        val pwd = PasswordCredential(PasswordSecret(EncryptedPayload.EMPTY), PasswordScore.Strong)
+        val result = repository.createOrUpdateLogin(testLogin(passwordCredential = pwd))
+
+        assertTrue(result.isFailure())
+        assertEquals(error, result.error)
+    }
+
+    private fun testLogin(
+        passwordCredential: PasswordCredential? = PasswordCredential(
+            secret = PasswordSecret(EncryptedPayload.EMPTY),
+            score = PasswordScore.Strong,
+        ),
+        totpProvider: ((ItemId) -> Totp)? = null,
+    ): Login {
         val id = newItemId()
         return Login(
             id = id,
             username = "user",
             domainInfos = emptySet(),
-            passwordScore = PasswordScore.Strong,
-            password = PasswordSecret(EncryptedPayload.EMPTY),
+            passwordCredential = passwordCredential,
             totp = totpProvider?.invoke(id),
             name = "Test",
             note = null,

@@ -319,7 +319,7 @@ internal class AutofillViewModel(
                         ),
                         wrappedItemKeyInformation = login.wrappedItemKeyInformation()
                     ) {
-                        login.password.decrypt()
+                        login.passwordCredential!!.secret.decrypt() // TODO(#43-task3)
                     }.getOrNull()
                 }
 
