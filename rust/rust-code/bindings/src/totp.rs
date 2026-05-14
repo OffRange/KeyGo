@@ -13,19 +13,6 @@ pub enum Algorithm {
     Sha512,
 }
 
-#[uniffi::export]
-pub fn algorithm_from_string(value: String) -> Result<Algorithm, TotpError> {
-    match value.trim().to_ascii_lowercase().as_str() {
-        "sha1" | "sha-1" => Ok(Algorithm::Sha1),
-        "sha256" | "sha-256" => Ok(Algorithm::Sha256),
-        "sha512" | "sha-512" => Ok(Algorithm::Sha512),
-        _ => Err(TotpError::Generic(format!(
-            "unsupported algorithm: {}",
-            value
-        ))),
-    }
-}
-
 impl From<Algorithm> for lib::totp::Algorithm {
     fn from(value: Algorithm) -> Self {
         match value {
