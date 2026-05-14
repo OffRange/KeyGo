@@ -267,7 +267,7 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                         CopyToClipboardButton(state.totpState.value.code)
                     },
                 ) {
-                    Text(text = state.totpState.value.code.chunked(3).joinToString(" "))
+                    Text(text = state.totpState.formattedCode)
                     LinearProgressIndicator(
                         progress = { progress.value },
                         modifier = Modifier.fillMaxWidth(),

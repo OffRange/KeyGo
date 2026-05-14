@@ -8,5 +8,7 @@ import de.davis.keygo.feature.totp.domain.model.TotpValue
 sealed interface TotpState {
     data object NoTotp : TotpState
     data class Error(val error: TotpError) : TotpState
-    data class HasTotp(val value: TotpValue) : TotpState
+    data class HasTotp(val value: TotpValue) : TotpState {
+        val formattedCode = value.code.chunked(value.code.length / 2).joinToString(" ")
+    }
 }
