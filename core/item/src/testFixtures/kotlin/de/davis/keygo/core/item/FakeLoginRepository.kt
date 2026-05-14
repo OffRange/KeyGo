@@ -63,12 +63,14 @@ class FakeLoginRepository : LoginRepository {
     override suspend fun getLoginsByTLD(
         etld1: String,
         requireTotp: Boolean,
+        requirePassword: Boolean,
         limit: Int,
     ): List<LiteLogin> = emptyList()
 
     override suspend fun getLoginsByTLDs(
         etld1s: Set<String>,
         requireTotp: Boolean,
+        requirePassword: Boolean,
         limit: Int,
     ): List<LiteLogin> = emptyList()
 

@@ -48,5 +48,6 @@ internal fun LightweightLogin.toDomain(): LiteLogin = LiteLogin(
     name = name,
     pinned = pinned,
     username = username,
+    hasPassword = hasPassword,
     domains = domains.map(DomainInfoEntity::toDomain),
 )

@@ -139,6 +139,7 @@ private fun SelectItemForTotpModificationDialogPreview() {
                             )
                         ),
                         pinned = false,
+                        hasPassword = true,
                     ),
                     LiteLogin(
                         id = newItemId(),
@@ -152,6 +153,7 @@ private fun SelectItemForTotpModificationDialogPreview() {
                             )
                         ),
                         pinned = false,
+                        hasPassword = true,
                     )
                 )
             )

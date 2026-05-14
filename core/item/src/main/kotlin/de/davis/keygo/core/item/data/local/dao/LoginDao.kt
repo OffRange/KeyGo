@@ -28,7 +28,13 @@ internal interface LoginDao {
     @Transaction
     @Query(
         """
-        SELECT i.id, i.name, i.pinned, l.username
+        SELECT i.id,
+               i.name,
+               i.pinned,
+               l.username,
+               EXISTS (
+                   SELECT 1 FROM password p WHERE p.login_id = l.id
+               ) AS has_password
         FROM item i
         JOIN login l ON i.id = l.id
         WHERE (
@@ -37,6 +43,14 @@ internal interface LoginDao {
                 SELECT 1
                 FROM totp t
                 WHERE t.login_id = l.id
+            )
+        )
+        AND (
+            :requirePassword = 0
+            OR EXISTS (
+                SELECT 1
+                FROM password p
+                WHERE p.login_id = l.id
             )
         )
         AND EXISTS (
@@ -51,6 +65,7 @@ internal interface LoginDao {
     suspend fun getByTLDs(
         etld1s: Set<String>,
         requireTotp: Boolean,
+        requirePassword: Boolean,
         limit: Int,
     ): List<LightweightLogin>
 

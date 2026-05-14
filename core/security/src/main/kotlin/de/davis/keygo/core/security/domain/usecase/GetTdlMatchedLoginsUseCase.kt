@@ -14,9 +14,15 @@ class GetTdlMatchedLoginsUseCase(
     suspend operator fun invoke(
         domain: String,
         requireTotp: Boolean = false,
+        requirePassword: Boolean = false,
         limit: Int = -1,
     ): List<LiteLogin> {
         val tdl = registrableDomainResolver.resolve(domain) ?: return emptyList()
-        return loginRepository.getLoginsByTLD(etld1 = tdl, requireTotp = requireTotp, limit = limit)
+        return loginRepository.getLoginsByTLD(
+            etld1 = tdl,
+            requireTotp = requireTotp,
+            requirePassword = requirePassword,
+            limit = limit,
+        )
     }
 }
