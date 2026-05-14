@@ -57,7 +57,7 @@ class FakeCryptographicScopeProvider(
                 ),
                 block = block,
             )
-        } ?: Result.Failure(CryptoScopeError.ItemIdNotFound)
+        } ?: Result.Failure(CryptoScopeError.IdNotFound)
 
     override suspend fun <R> itemScope(
         wrappedVaultKeyInformation: WrappedVaultKeyInformation,

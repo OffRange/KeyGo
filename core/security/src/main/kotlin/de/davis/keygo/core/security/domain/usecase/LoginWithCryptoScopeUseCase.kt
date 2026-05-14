@@ -27,7 +27,7 @@ class LoginWithCryptoScopeUseCase(
         block: suspend CryptographicScope.(Login) -> R,
     ): Flow<Result<R, CryptoScopeError>> = loginRepository.observeLoginById(itemId).map { login ->
         login?.let { handleItem(it, block) }
-            ?: return@map Result.Failure(CryptoScopeError.ItemIdNotFound)
+            ?: return@map Result.Failure(CryptoScopeError.IdNotFound)
     }
 
     suspend fun <R> oneShot(
@@ -35,7 +35,7 @@ class LoginWithCryptoScopeUseCase(
         block: suspend CryptographicScope.(Login) -> R,
     ): Result<R, CryptoScopeError> {
         val login = loginRepository.getLoginById(itemId)
-            ?: return Result.Failure(CryptoScopeError.ItemIdNotFound)
+            ?: return Result.Failure(CryptoScopeError.IdNotFound)
         return handleItem(login, block)
     }
 
@@ -45,7 +45,7 @@ class LoginWithCryptoScopeUseCase(
     ): Result<R, CryptoScopeError> {
         val vaultKeyInfo =
             vaultRepository.getKeyInformation(item.vaultId)
-                ?: return Result.Failure(CryptoScopeError.ItemIdNotFound)
+                ?: return Result.Failure(CryptoScopeError.IdNotFound)
 
         return cryptoScopeProvider.itemScope(
             wrappedVaultKeyInformation = WrappedVaultKeyInformation(

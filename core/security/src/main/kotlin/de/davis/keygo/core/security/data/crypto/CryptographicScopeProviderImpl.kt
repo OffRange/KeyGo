@@ -35,7 +35,7 @@ internal class CryptographicScopeProviderImpl(
         block: suspend CryptographicScope.() -> R
     ): Result<R, CryptoScopeError> {
         val envelope = itemRepository.getItemKeyEnvelope(itemId)
-            ?: return Result.Failure(CryptoScopeError.ItemIdNotFound)
+            ?: return Result.Failure(CryptoScopeError.IdNotFound)
 
         return itemScope(
             wrappedVaultKeyInformation = WrappedVaultKeyInformation(
