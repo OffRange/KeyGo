@@ -4,4 +4,9 @@ import org.koin.core.annotation.Named
 
 
 @Named
-internal annotation class PasskeyQualifier
+internal annotation class PasskeyQualifier {
+
+    companion object {
+        const val NAMED_QUALIFIER = "PasskeyQualifier"
+    }
+}
