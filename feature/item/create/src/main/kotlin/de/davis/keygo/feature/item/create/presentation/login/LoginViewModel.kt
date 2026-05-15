@@ -168,6 +168,10 @@ internal class LoginViewModel(
         }
     }
 
+    fun setPendingPasskeyCount(count: Int) {
+        _base.update { it.copy(pendingPasskeyCount = count) }
+    }
+
     fun init(information: DetailPaneInformation) {
         when (information) {
             is DetailPaneInformation.Init.Existing -> viewModelScope.launch { initWithId(information.id) }
@@ -306,6 +310,7 @@ internal class LoginViewModel(
                         password = base.passwordTextFieldState.text.toString(),
                         totpUriOrSecret = base.totpTextFieldState.text.toString(),
                         note = base.notesTextFieldState.text.toString(),
+                        hasPendingPasskey = base.pendingPasskeyCount > 0,
                     )
 
                     createNewOrUpdateLogin(

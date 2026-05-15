@@ -31,6 +31,7 @@ internal data class LoginBaseState(
     val dialogState: DialogState = DialogState.None,
     val nameError: InputFieldError? = null,
     val existingPasskeyCount: Int = 0,
+    val pendingPasskeyCount: Int = 0,
     val scanning: Boolean = false,
     val updating: Boolean = false,
 ) {
@@ -39,6 +40,7 @@ internal data class LoginBaseState(
             || totpTextFieldState.text.isNotBlank()
             || usernameTextFieldState.text.isNotBlank()
             || existingPasskeyCount > 0
+            || pendingPasskeyCount > 0
 
     val canSave: Boolean
         get() = nameTextFieldState.text.isNotBlank() && hasAnyContent

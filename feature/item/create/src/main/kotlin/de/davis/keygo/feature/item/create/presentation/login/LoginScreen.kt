@@ -15,6 +15,7 @@ fun LoginScreen(
     detailPaneInformation: DetailPaneInformation = DetailPaneInformation.Init.New(
         itemType = VaultItemType.Login,
     ),
+    pendingPasskeyCount: Int = 0,
     loginCreated: (ItemId) -> Unit,
     navigateBack: () -> Unit,
 ) {
@@ -23,6 +24,10 @@ fun LoginScreen(
 
     LaunchedEffect(detailPaneInformation) {
         viewmodel.init(detailPaneInformation)
+    }
+
+    LaunchedEffect(pendingPasskeyCount) {
+        viewmodel.setPendingPasskeyCount(pendingPasskeyCount)
     }
 
     ObserveAsEvents(viewmodel.itemCreatedEvent) {

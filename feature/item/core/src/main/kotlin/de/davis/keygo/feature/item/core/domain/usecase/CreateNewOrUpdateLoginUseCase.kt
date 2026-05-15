@@ -139,7 +139,7 @@ class CreateNewOrUpdateLoginUseCase(
             }
         }.bind(LoginError::CryptoError)
 
-        if (!built.hasAnyContent) return Result.Failure(LoginError.EmptyLogin)
+        if (!built.hasAnyContent && !upsert.hasPendingPasskey) return Result.Failure(LoginError.EmptyLogin)
         built
     }
 

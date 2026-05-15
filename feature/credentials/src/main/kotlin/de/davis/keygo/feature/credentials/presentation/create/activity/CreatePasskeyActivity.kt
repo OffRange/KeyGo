@@ -205,6 +205,7 @@ internal class CreatePasskeyActivity : FragmentActivity() {
 
                                 composable<CreateItem> {
                                     LoginScreen(
+                                        pendingPasskeyCount = 1,
                                         loginCreated = {
                                             viewModel.associatePasskeyAndFinish(it)
                                         },
