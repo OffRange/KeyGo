@@ -39,12 +39,6 @@ internal class SuggestionFinder(
     } ?: emptyList()
 
     private fun Form.requiresPassword(): Boolean {
-        val hasPasswordField = fields.any { it.type is FieldType.Credentials.Password }
-        val hasUsernameField = fields.any {
-            it.type is FieldType.Credentials.Username
-                || it.type is FieldType.Credentials.EMail
-                || it.type is FieldType.Credentials.Phone
-        }
-        return hasPasswordField && !hasUsernameField
+        return fields.any { it.focused && it.type is FieldType.Credentials.Password }
     }
 }
