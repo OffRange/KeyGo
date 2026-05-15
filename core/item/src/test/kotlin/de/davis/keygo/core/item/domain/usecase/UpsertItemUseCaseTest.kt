@@ -6,6 +6,7 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.util.isFailure
@@ -25,10 +26,12 @@ class UpsertItemUseCaseTest {
         id = newItemId(),
         username = "user",
         domainInfos = emptySet(),
-        passwordScore = PasswordScore.Strong,
+        passwordCredential = PasswordCredential(
+            secret = PasswordSecret(EncryptedPayload.EMPTY),
+            score = PasswordScore.Strong,
+        ),
         totp = null,
         name = name,
-        password = PasswordSecret(EncryptedPayload.EMPTY),
         note = null,
         pinned = false,
         vaultId = newVaultId(),

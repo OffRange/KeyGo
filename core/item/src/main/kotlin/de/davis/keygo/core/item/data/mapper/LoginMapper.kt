@@ -6,6 +6,7 @@ import de.davis.keygo.core.item.data.local.entity.credential.PasswordEntity
 import de.davis.keygo.core.item.data.local.pojo.LightweightLogin
 import de.davis.keygo.core.item.data.local.pojo.LoginProjection
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.lite.LiteLogin
 
@@ -14,23 +15,27 @@ internal fun Login.toLoginEntity(): LoginEntity = LoginEntity(
     username = username,
 )
 
-internal fun Login.toPasswordEntity(): PasswordEntity = PasswordEntity(
-    loginId = id,
-    passwordScore = passwordScore,
-    password = password.payload,
-)
+internal fun Login.toPasswordEntity(): PasswordEntity? =
+    passwordCredential?.let {
+        PasswordEntity(
+            loginId = id,
+            passwordScore = it.score,
+            password = it.secret.payload,
+        )
+    }
 
 internal fun LoginProjection.toDomain(): Login = Login(
     id = loginEntity.id,
     username = loginEntity.username,
-    passwordScore = passwordEntity.passwordScore,
+    passwordCredential = passwordEntity?.let {
+        PasswordCredential(
+            secret = PasswordSecret(it.password),
+            score = it.passwordScore,
+        )
+    },
     totp = totp?.toDomain(),
-    password = PasswordSecret(passwordEntity.password),
-
     passkeyRPs = rpEntity.map { it.rp }.toSet(),
-
     domainInfos = domains.map(DomainInfoEntity::toDomain).toSet(),
-
     vaultId = itemEntity.vaultId,
     name = itemEntity.name,
     note = itemEntity.note,
@@ -43,5 +48,6 @@ internal fun LightweightLogin.toDomain(): LiteLogin = LiteLogin(
     name = name,
     pinned = pinned,
     username = username,
+    hasPassword = hasPassword,
     domains = domains.map(DomainInfoEntity::toDomain),
 )

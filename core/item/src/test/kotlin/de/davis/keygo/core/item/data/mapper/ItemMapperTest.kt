@@ -9,6 +9,7 @@ import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.Item
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
@@ -30,8 +31,10 @@ class ItemMapperTest {
         name = name,
         username = null,
         domainInfos = emptySet(),
-        passwordScore = PasswordScore.Strong,
-        password = PasswordSecret(EncryptedPayload.EMPTY),
+        passwordCredential = PasswordCredential(
+            secret = PasswordSecret(EncryptedPayload.EMPTY),
+            score = PasswordScore.Strong,
+        ),
         totp = null,
         note = note,
         pinned = pinned,

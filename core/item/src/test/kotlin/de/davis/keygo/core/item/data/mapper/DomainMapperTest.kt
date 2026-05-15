@@ -7,6 +7,7 @@ import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
 import kotlin.test.Test
@@ -23,8 +24,10 @@ class DomainMapperTest {
         id = id,
         username = null,
         domainInfos = domainInfos,
-        passwordScore = PasswordScore.Strong,
-        password = PasswordSecret(EncryptedPayload.EMPTY),
+        passwordCredential = PasswordCredential(
+            secret = PasswordSecret(EncryptedPayload.EMPTY),
+            score = PasswordScore.Strong,
+        ),
         totp = null,
         vaultId = newVaultId(),
         name = "Test",

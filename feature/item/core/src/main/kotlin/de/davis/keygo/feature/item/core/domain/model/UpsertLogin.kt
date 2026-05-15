@@ -9,28 +9,31 @@ data class UpsertLogin private constructor(
     val upsertType: UpsertType,
     val name: FieldUpdate<String>,
     val password: FieldUpdate<String>,
-    val totoUriOrSecret: FieldUpdate<String>,
+    val totpUriOrSecret: FieldUpdate<String>,
     val username: FieldUpdate<String>,
     val domains: FieldUpdate<Set<DomainInfo>>,
     val note: FieldUpdate<String>,
+    val hasPendingPasskey: Boolean = false,
 ) {
     companion object {
         fun create(
             vaultId: VaultId,
             name: String,
-            password: String,
-            totoUriOrSecret: String? = null,
+            password: String? = null,
+            totpUriOrSecret: String? = null,
             username: String? = null,
             domains: Set<DomainInfo> = emptySet(),
             note: String? = null,
+            hasPendingPasskey: Boolean = false,
         ) = UpsertLogin(
             upsertType = UpsertType.Create(vaultId),
             name = FieldUpdate.Set(name),
-            password = FieldUpdate.Set(password),
+            password = if (!password.isNullOrBlank()) FieldUpdate.Set(password) else FieldUpdate.Clear,
             note = if (!note.isNullOrBlank()) FieldUpdate.Set(note) else FieldUpdate.Clear,
-            totoUriOrSecret = if (!totoUriOrSecret.isNullOrBlank()) FieldUpdate.Set(totoUriOrSecret) else FieldUpdate.Clear,
+            totpUriOrSecret = if (!totpUriOrSecret.isNullOrBlank()) FieldUpdate.Set(totpUriOrSecret) else FieldUpdate.Clear,
             username = if (!username.isNullOrBlank()) FieldUpdate.Set(username) else FieldUpdate.Clear,
             domains = if (domains.isNotEmpty()) FieldUpdate.Set(domains) else FieldUpdate.Clear,
+            hasPendingPasskey = hasPendingPasskey,
         )
 
         fun update(
@@ -38,7 +41,7 @@ data class UpsertLogin private constructor(
             vaultId: VaultId? = null,
             name: FieldUpdate<String> = keep(),
             password: FieldUpdate<String> = keep(),
-            totoUriOrSecret: FieldUpdate<String> = keep(),
+            totpUriOrSecret: FieldUpdate<String> = keep(),
             username: FieldUpdate<String> = keep(),
             domains: FieldUpdate<Set<DomainInfo>> = keep(),
             note: FieldUpdate<String> = keep(),
@@ -47,7 +50,7 @@ data class UpsertLogin private constructor(
             name = name,
             password = password,
             note = note,
-            totoUriOrSecret = totoUriOrSecret,
+            totpUriOrSecret = totpUriOrSecret,
             username = username,
             domains = domains,
         )

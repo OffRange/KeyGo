@@ -11,8 +11,7 @@ data class Login(
     override val id: ItemId = newItemId(),
     val username: String?,
     val domainInfos: Set<DomainInfo>,
-    val passwordScore: PasswordScore,
-    val password: PasswordSecret,
+    val passwordCredential: PasswordCredential?,
     val totp: Totp?,
     val passkeyRPs: Set<String> = emptySet(),
     override val vaultId: VaultId,
@@ -24,4 +23,10 @@ data class Login(
 
     override val itemType: VaultItemType
         get() = VaultItemType.Login
+
+    val hasAnyContent: Boolean
+        get() = !username.isNullOrBlank()
+            || passwordCredential != null
+            || totp != null
+            || passkeyRPs.isNotEmpty()
 }

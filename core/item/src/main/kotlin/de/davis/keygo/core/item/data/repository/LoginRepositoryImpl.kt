@@ -42,7 +42,10 @@ internal class LoginRepositoryImpl(
             database.withTransaction {
                 itemDao.upsert((login as Item).toData())
                 loginDao.upsert(login.toLoginEntity())
-                passwordDao.upsert(login.toPasswordEntity())
+
+                login.toPasswordEntity()?.let { passwordDao.upsert(it) }
+                    ?: passwordDao.delete(login.id)
+
                 login.totp?.toData()?.let {
                     totpDao.upsert(it)
                 } ?: totpDao.delete(login.id)
@@ -73,15 +76,19 @@ internal class LoginRepositoryImpl(
     override suspend fun getLoginsByTLD(
         etld1: String,
         requireTotp: Boolean,
+        requirePassword: Boolean,
+        requireUsername: Boolean,
         limit: Int,
-    ): List<LiteLogin> = getLoginsByTLDs(setOf(etld1), requireTotp, limit)
+    ): List<LiteLogin> = getLoginsByTLDs(setOf(etld1), requireTotp, requirePassword, requireUsername, limit)
 
     override suspend fun getLoginsByTLDs(
         etld1s: Set<String>,
         requireTotp: Boolean,
+        requirePassword: Boolean,
+        requireUsername: Boolean,
         limit: Int,
     ): List<LiteLogin> =
-        loginDao.getByTLDs(etld1s, requireTotp, limit).map(LightweightLogin::toDomain)
+        loginDao.getByTLDs(etld1s, requireTotp, requirePassword, requireUsername, limit).map(LightweightLogin::toDomain)
 
     override suspend fun getLoginById(itemId: ItemId): Login? =
         loginDao.getById(itemId)?.toDomain()

@@ -63,12 +63,16 @@ class FakeLoginRepository : LoginRepository {
     override suspend fun getLoginsByTLD(
         etld1: String,
         requireTotp: Boolean,
+        requirePassword: Boolean,
+        requireUsername: Boolean,
         limit: Int,
     ): List<LiteLogin> = emptyList()
 
     override suspend fun getLoginsByTLDs(
         etld1s: Set<String>,
         requireTotp: Boolean,
+        requirePassword: Boolean,
+        requireUsername: Boolean,
         limit: Int,
     ): List<LiteLogin> = emptyList()
 
@@ -84,5 +88,9 @@ class FakeLoginRepository : LoginRepository {
         store.map { it.values.toList() }
 
     override fun observePasswordScores(): Flow<Map<ItemId, PasswordScore>> =
-        store.map { logins -> logins.mapValues { it.value.passwordScore } }
+        store.map { logins ->
+            logins.values
+                .mapNotNull { login -> login.passwordCredential?.let { login.id to it.score } }
+                .toMap()
+        }
 }

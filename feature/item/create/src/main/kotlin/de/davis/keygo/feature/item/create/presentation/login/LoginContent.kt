@@ -125,16 +125,19 @@ private fun LoginReadyContent(
                 updating = state.updating,
                 onBackClick = { onEvent(LoginUiEvent.OnBackClick) },
                 actions = {
-                    IconButton(onClick = {
-                        val pending = domainTextFieldState.text.toString()
-                            .split(delimiters = DELIMITERS.toCharArray())
-                            .filter { it.isNotBlank() }
-                            .toSet()
-                        if (pending.isNotEmpty()) {
-                            onEvent(LoginUiEvent.OnAddDomains(pending))
-                        }
-                        onEvent(LoginUiEvent.OnSubmit)
-                    }) {
+                    IconButton(
+                        onClick = {
+                            val pending = domainTextFieldState.text.toString()
+                                .split(delimiters = DELIMITERS.toCharArray())
+                                .filter { it.isNotBlank() }
+                                .toSet()
+                            if (pending.isNotEmpty()) {
+                                onEvent(LoginUiEvent.OnAddDomains(pending))
+                            }
+                            onEvent(LoginUiEvent.OnSubmit)
+                        },
+                        enabled = state.canSave,
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Done,
                             contentDescription = stringResource(R.string.submit_content_description),
@@ -187,7 +190,6 @@ private fun LoginReadyContent(
                                     )
                                 }
                             },
-                            error = state.passwordError,
                             inputTransformation = null,
                         )
 

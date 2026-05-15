@@ -307,6 +307,7 @@ internal class AutofillViewModel(
             if (type !is FieldType.Credentials) return@mapNotNull null
             val value = when (type) {
                 FieldType.Credentials.Password -> {
+                    val pwd = login.passwordCredential ?: return@mapNotNull null
                     val wrappedVaultKey = vaultRepository.getKeyInformation(login.vaultId) ?: run {
                         eventChannel.send(AutofillEvent.Abort)
                         return
@@ -315,11 +316,11 @@ internal class AutofillViewModel(
                     cryptographicScopeProvider.itemScope(
                         wrappedVaultKeyInformation = WrappedVaultKeyInformation(
                             wrappedVaultKey = wrappedVaultKey,
-                            vaultId = login.vaultId
+                            vaultId = login.vaultId,
                         ),
-                        wrappedItemKeyInformation = login.wrappedItemKeyInformation()
+                        wrappedItemKeyInformation = login.wrappedItemKeyInformation(),
                     ) {
-                        login.password.decrypt()
+                        pwd.secret.decrypt()
                     }.getOrNull()
                 }
 

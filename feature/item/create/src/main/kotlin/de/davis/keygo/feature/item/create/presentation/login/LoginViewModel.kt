@@ -168,6 +168,10 @@ internal class LoginViewModel(
         }
     }
 
+    fun setPendingPasskeyCount(count: Int) {
+        _base.update { it.copy(pendingPasskeyCount = count) }
+    }
+
     fun init(information: DetailPaneInformation) {
         when (information) {
             is DetailPaneInformation.Init.Existing -> viewModelScope.launch { initWithId(information.id) }
@@ -210,7 +214,9 @@ internal class LoginViewModel(
             itemId = itemId,
         ) { login ->
             val decrypted = coroutineScope {
-                val pwdDeferred = async { login.password.decrypt() }
+                val pwdDeferred = login.passwordCredential?.let { pwd ->
+                    async { pwd.secret.decrypt() }
+                }
                 val totpDeferred = login.totp?.let { totp ->
                     async {
                         val secret = totp.secret.decrypt()
@@ -226,11 +232,11 @@ internal class LoginViewModel(
                         } ?: secret
                     }
                 }
-                pwdDeferred.await() to totpDeferred?.await()
+                pwdDeferred?.await() to totpDeferred?.await()
             }
 
             nameTextFieldState.setTextAndPlaceCursorAtEnd(login.name)
-            passwordTextFieldState.setTextAndPlaceCursorAtEnd(decrypted.first)
+            passwordTextFieldState.setTextAndPlaceCursorAtEnd(decrypted.first ?: "")
 
             _selectedVaultId.update { login.vaultId }
             _base.update {
@@ -239,6 +245,7 @@ internal class LoginViewModel(
                     usernameTextFieldState = TextFieldState(login.username ?: ""),
                     domains = login.domainInfos,
                     notesTextFieldState = TextFieldState(login.note ?: ""),
+                    existingPasskeyCount = login.passkeyRPs.size,
                     dialogState = DialogState.None,
                     updating = true,
                 )
@@ -292,7 +299,7 @@ internal class LoginViewModel(
                             username = fieldUpdate(base.usernameTextFieldState.text.toString()),
                             domains = set(base.domains),
                             password = fieldUpdate(base.passwordTextFieldState.text.toString()),
-                            totoUriOrSecret = fieldUpdate(base.totpTextFieldState.text.toString()),
+                            totpUriOrSecret = fieldUpdate(base.totpTextFieldState.text.toString()),
                             note = fieldUpdate(base.notesTextFieldState.text.toString()),
                         )
                     } ?: UpsertLogin.create(
@@ -301,8 +308,9 @@ internal class LoginViewModel(
                         username = base.usernameTextFieldState.text.toString(),
                         domains = base.domains,
                         password = base.passwordTextFieldState.text.toString(),
-                        totoUriOrSecret = base.totpTextFieldState.text.toString(),
+                        totpUriOrSecret = base.totpTextFieldState.text.toString(),
                         note = base.notesTextFieldState.text.toString(),
+                        hasPendingPasskey = base.pendingPasskeyCount > 0,
                     )
 
                     createNewOrUpdateLogin(
@@ -313,7 +321,6 @@ internal class LoginViewModel(
                         _base.update {
                             it.copy(
                                 nameError = if (failure.contains(LoginError.BlankName)) InputFieldError.Empty else null,
-                                passwordError = if (failure.contains(LoginError.BlankPassword)) InputFieldError.Empty else null,
                             )
                         }
 

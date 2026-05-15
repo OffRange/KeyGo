@@ -221,42 +221,46 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                 }
             }
 
-            entry(
-                title = password,
-                leadingIcon = Icons.Default.Password,
-                modifier = Modifier.pointerInput(Unit) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown()
-                        isPasswordHidden = false
+            val pwd = state.password
+            val score = state.passwordStrengthScore
+            if (pwd != null && score != null) {
+                entry(
+                    title = password,
+                    leadingIcon = Icons.Default.Password,
+                    modifier = Modifier.pointerInput(Unit) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown()
+                            isPasswordHidden = false
 
-                        val pointerId = down.id
-                        do {
-                            val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull { it.id == pointerId }
-                            if (change == null || change.changedToUpIgnoreConsumed()) {
-                                break
-                            }
+                            val pointerId = down.id
+                            do {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == pointerId }
+                                if (change == null || change.changedToUpIgnoreConsumed()) {
+                                    break
+                                }
 
-                            change.consume()
-                        } while (true)
+                                change.consume()
+                            } while (true)
 
-                        isPasswordHidden = true
-                    }
-                },
-                trailingContent = {
-                    CopyToClipboardButton(state.password.raw)
-                },
-            ) {
-                val scrollState = rememberScrollState()
-                Text(
-                    text = if (isPasswordHidden) state.password.hidden else state.password.raw,
-                    maxLines = 1,
-                    modifier = Modifier.horizontalScroll(scrollState),
-                )
-                StrengthIndicator(
-                    passwordScore = state.passwordStrengthScore,
-                    forceCompact = true,
-                )
+                            isPasswordHidden = true
+                        }
+                    },
+                    trailingContent = {
+                        CopyToClipboardButton(pwd.raw)
+                    },
+                ) {
+                    val scrollState = rememberScrollState()
+                    Text(
+                        text = if (isPasswordHidden) pwd.hidden else pwd.raw,
+                        maxLines = 1,
+                        modifier = Modifier.horizontalScroll(scrollState),
+                    )
+                    StrengthIndicator(
+                        passwordScore = score,
+                        forceCompact = true,
+                    )
+                }
             }
 
             when (totpState) {

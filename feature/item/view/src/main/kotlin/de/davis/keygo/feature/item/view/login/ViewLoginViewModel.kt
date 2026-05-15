@@ -77,15 +77,15 @@ internal class ViewLoginViewModel(
         .flatMapLatest { id ->
             observeLoginWithCryptoScope.observe(itemId = id) { login ->
                 val (obfuscated, vaultMetadata) = coroutineScope {
-                    val obfuscated = async {
-                        login.password.decrypt().asObfuscatedString()
+                    val obfuscated = login.passwordCredential?.let { pwd ->
+                        async { pwd.secret.decrypt().asObfuscatedString() }
                     }
                     val vaultMetadata = async {
                         vaultRepository.getVaultMetadata(login.vaultId)
                     }
 
                     Pair(
-                        obfuscated.await(),
+                        obfuscated?.await(),
                         vaultMetadata.await(),
                     )
                 }
@@ -95,7 +95,7 @@ internal class ViewLoginViewModel(
                     vaultMetadata = vaultMetadata,
                     passkeyRPs = login.passkeyRPs,
                     password = obfuscated,
-                    passwordStrengthScore = login.passwordScore,
+                    passwordStrengthScore = login.passwordCredential?.score,
                     username = login.username.orEmpty(),
                     domains = login.domainInfos,
                     note = login.note.orEmpty(),
@@ -190,7 +190,7 @@ internal class ViewLoginViewModel(
                 val state = state.value
                 val initialValue = when (fieldType) {
                     FieldType.Name -> state.name
-                    FieldType.Password -> state.password.raw
+                    FieldType.Password -> state.password?.raw.orEmpty()
                     FieldType.Totp -> "" // TOTP is not editable in this context
                     FieldType.Username -> state.username
                     FieldType.Domain -> "" // Only allow adding new domains, not editing existing ones
@@ -222,7 +222,7 @@ internal class ViewLoginViewModel(
                         updateLogin(
                             UpsertLogin.update(
                                 itemId = id,
-                                totoUriOrSecret = fieldUpdate(uriOrSecret),
+                                totpUriOrSecret = fieldUpdate(uriOrSecret),
                             )
                         )
                     }
@@ -249,7 +249,7 @@ internal class ViewLoginViewModel(
 
                                 FieldType.Totp -> UpsertLogin.update(
                                     itemId = id,
-                                    totoUriOrSecret = newText,
+                                    totpUriOrSecret = newText,
                                 )
 
                                 FieldType.Username -> UpsertLogin.update(
@@ -279,7 +279,7 @@ internal class ViewLoginViewModel(
                         ).onFailure { failure ->
                             _modificationDialogState.update {
                                 dialog.copy(
-                                    error = if (failure.contains(LoginError.BlankPassword)
+                                    error = if (failure.contains(LoginError.EmptyLogin)
                                         || failure.contains(LoginError.BlankName)
                                     ) InputFieldError.Empty else null,
                                 )

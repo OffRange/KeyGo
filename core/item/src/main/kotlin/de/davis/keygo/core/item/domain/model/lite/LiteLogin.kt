@@ -9,6 +9,7 @@ data class LiteLogin(
     override val name: String,
     override val pinned: Boolean,
     val username: String?,
+    val hasPassword: Boolean,
     val domains: List<DomainInfo>,
 ) : LiteVaultItem {
     override val itemType: VaultItemType = VaultItemType.Login

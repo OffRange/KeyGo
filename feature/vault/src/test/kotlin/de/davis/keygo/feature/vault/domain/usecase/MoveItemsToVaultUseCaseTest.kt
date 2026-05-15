@@ -11,6 +11,7 @@ import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.ItemKeyEnvelope
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Totp
@@ -131,7 +132,7 @@ class MoveItemsToVaultUseCaseTest {
         assertEquals(seeded.name, moved.name)
         assertEquals(seeded.username, moved.username)
         assertEquals(seeded.note, moved.note)
-        assertEquals(seeded.passwordScore, moved.passwordScore)
+        assertEquals(seeded.passwordCredential!!.score, moved.passwordCredential!!.score)
         assertEquals(seeded.domainInfos, moved.domainInfos)
         assertEquals(seeded.pinned, moved.pinned)
     }
@@ -358,8 +359,10 @@ class MoveItemsToVaultUseCaseTest {
                 name = name,
                 username = username,
                 domainInfos = domainInfos,
-                passwordScore = passwordScore,
-                password = PasswordSecret.encrypt(passwordPlaintext),
+                passwordCredential = PasswordCredential(
+                    secret = PasswordSecret.encrypt(passwordPlaintext),
+                    score = passwordScore,
+                ),
                 totp = totpPlaintext?.let {
                     Totp(loginId = id, secret = Totp.Secret.encrypt(it))
                 },
@@ -389,7 +392,7 @@ class MoveItemsToVaultUseCaseTest {
             ),
             wrappedItemKeyInformation = login.wrappedItemKeyInformation(),
         ) {
-            val pw: String = login.password.decrypt()
+            val pw: String = login.passwordCredential!!.secret.decrypt()
             val totp: String? = login.totp?.secret?.decrypt()
             pw to totp
         }.assertSuccess()
