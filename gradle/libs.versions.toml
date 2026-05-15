@@ -36,6 +36,7 @@ kotlinpoet = "2.2.0"
 nbvcxz = "1.5.1"
 totp = "2.4.1"
 passGen = "0.1.0-beta"
+robolectric = "4.16"
 
 [libraries]
 google-protobuf-protoc = { group = "com.google.protobuf", name = "protoc", version.ref = "protoc" }
@@ -93,6 +94,7 @@ at-favre-bcrypt = { group = "at.favre.lib", name = "bcrypt", version.ref = "bcry
 
 google-devtools-ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 io-mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 squareup-kotlinpoet = { group = "com.squareup", name = "kotlinpoet-ksp", version.ref = "kotlinpoet" }
 
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }

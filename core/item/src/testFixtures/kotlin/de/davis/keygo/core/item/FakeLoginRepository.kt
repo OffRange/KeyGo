@@ -66,7 +66,26 @@ class FakeLoginRepository : LoginRepository {
         requirePassword: Boolean,
         requireUsername: Boolean,
         limit: Int,
-    ): List<LiteLogin> = emptyList()
+    ): List<LiteLogin> {
+        val results = store.value.values
+            .filter { login ->
+                login.domainInfos.any { it.eTLD1 == etld1 }
+                    && (!requirePassword || login.passwordCredential != null)
+                    && (!requireUsername || login.username != null)
+                    && (!requireTotp || login.totp != null)
+            }
+            .map { it.toLiteLogin() }
+        return if (limit >= 0) results.take(limit) else results
+    }
+
+    private fun Login.toLiteLogin() = LiteLogin(
+        id = id,
+        name = name,
+        pinned = pinned,
+        username = username,
+        hasPassword = passwordCredential != null,
+        domains = domainInfos.toList(),
+    )
 
     override suspend fun getLoginsByTLDs(
         etld1s: Set<String>,

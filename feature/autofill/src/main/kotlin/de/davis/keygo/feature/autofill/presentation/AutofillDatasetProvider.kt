@@ -15,14 +15,19 @@ import de.davis.keygo.feature.autofill.presentation.model.Form
 import org.koin.core.annotation.Single
 import android.view.autofill.AutofillValue as AndroidAutofillValue
 
-@Single
-internal class AutofillDatasetProvider(
+internal interface AutofillDatasetProvider {
+    suspend fun getAutofillDatasets(request: FillRequest, form: Form): List<Dataset>
+    fun getFillingDataset(values: List<AutofillValue>): Dataset
+}
+
+@Single(binds = [AutofillDatasetProvider::class])
+internal class AutofillDatasetProviderImpl(
     applicationContext: Context,
     private val inlineDatasetBuilder: InlineDatasetBuilder,
     private val menuDatasetBuilder: MenuDatasetBuilder,
-) {
+) : AutofillDatasetProvider {
 
-    suspend fun getAutofillDatasets(
+    override suspend fun getAutofillDatasets(
         request: FillRequest,
         form: Form
     ): List<Dataset> {
@@ -35,7 +40,7 @@ internal class AutofillDatasetProvider(
         return menuDatasetBuilder.buildMenuDatasets(form = form)
     }
 
-    fun getFillingDataset(values: List<AutofillValue>) =
+    override fun getFillingDataset(values: List<AutofillValue>) =
         getDefaultDataset()
             .applyValues(values)
             .build()

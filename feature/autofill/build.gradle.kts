@@ -36,6 +36,17 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            isReturnDefaultValues = true
+        }
+    }
+
+    testFixtures {
+        enable = true
+    }
 }
 
 kotlin {
@@ -82,4 +93,18 @@ dependencies {
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(testFixtures(projects.core.item))
+    testImplementation(testFixtures(projects.core.util))
+    testImplementation(testFixtures(projects.core.security))
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.junit)
+
+    testFixturesImplementation(libs.kotlinx.coroutines.core)
+    testFixturesImplementation(projects.core.item)
+    testFixturesApi(projects.core.util)
+    testFixturesImplementation(projects.feature.totp)
+    testFixturesImplementation(project.dependencies.platform(libs.androidx.compose.bom))
+    testFixturesImplementation(libs.androidx.compose.runtime) {
+        because("https://issuetracker.google.com/issues/259523353#comment32")
+    }
 }
