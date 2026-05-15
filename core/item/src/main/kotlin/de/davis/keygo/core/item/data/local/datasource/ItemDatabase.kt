@@ -9,11 +9,14 @@ import de.davis.keygo.core.item.data.local.dao.ItemDao
 import de.davis.keygo.core.item.data.local.dao.LoginDao
 import de.davis.keygo.core.item.data.local.dao.PasskeyDao
 import de.davis.keygo.core.item.data.local.dao.PasswordDao
+import de.davis.keygo.core.item.data.local.dao.TagDao
 import de.davis.keygo.core.item.data.local.dao.TotpDao
 import de.davis.keygo.core.item.data.local.dao.VaultDao
 import de.davis.keygo.core.item.data.local.entity.DomainInfoEntity
 import de.davis.keygo.core.item.data.local.entity.ItemEntity
 import de.davis.keygo.core.item.data.local.entity.LoginEntity
+import de.davis.keygo.core.item.data.local.entity.TagCrossRef
+import de.davis.keygo.core.item.data.local.entity.TagEntity
 import de.davis.keygo.core.item.data.local.entity.VaultEntity
 import de.davis.keygo.core.item.data.local.entity.credential.PasskeyEntity
 import de.davis.keygo.core.item.data.local.entity.credential.PasswordEntity
@@ -30,6 +33,8 @@ import org.koin.core.annotation.Single
         PasswordEntity::class,
         DomainInfoEntity::class,
         PasskeyEntity::class,
+        TagEntity::class,
+        TagCrossRef::class,
     ],
     version = 1,
 )
@@ -48,6 +53,8 @@ internal abstract class ItemDatabase : RoomDatabase() {
     abstract fun domainInfoDao(): DomainInfoDao
 
     abstract fun passkeyDao(): PasskeyDao
+
+    abstract fun tagDao(): TagDao
 }
 
 @Module
@@ -81,4 +88,7 @@ internal class DatabaseModule {
 
     @Single
     fun providePasskeyDao(db: ItemDatabase) = db.passkeyDao()
+
+    @Single
+    fun provideTagDao(db: ItemDatabase) = db.tagDao()
 }

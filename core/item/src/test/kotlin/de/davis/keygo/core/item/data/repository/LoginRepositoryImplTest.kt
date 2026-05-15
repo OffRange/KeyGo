@@ -5,8 +5,10 @@ import de.davis.keygo.core.item.data.local.dao.DomainInfoDao
 import de.davis.keygo.core.item.data.local.dao.ItemDao
 import de.davis.keygo.core.item.data.local.dao.LoginDao
 import de.davis.keygo.core.item.data.local.dao.PasswordDao
+import de.davis.keygo.core.item.data.local.dao.TagDao
 import de.davis.keygo.core.item.data.local.dao.TotpDao
 import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
+import de.davis.keygo.core.item.data.local.entity.TagEntity
 import de.davis.keygo.core.item.data.local.entity.credential.PasswordEntity
 import de.davis.keygo.core.item.data.local.entity.credential.TotpEntity
 import de.davis.keygo.core.item.domain.alias.ItemId
@@ -41,6 +43,7 @@ class LoginRepositoryImplTest {
     private val passwordDao = mockk<PasswordDao>(relaxed = true)
     private val domainInfoDao = mockk<DomainInfoDao>(relaxed = true)
     private val totpDao = mockk<TotpDao>(relaxed = true)
+    private val tagDao = mockk<TagDao>(relaxed = true)
 
     private val repository = LoginRepositoryImpl(
         database = database,
@@ -49,6 +52,7 @@ class LoginRepositoryImplTest {
         passwordDao = passwordDao,
         domainInfoDao = domainInfoDao,
         totpDao = totpDao,
+        tagDao = tagDao,
     )
 
     @BeforeTest
@@ -170,11 +174,41 @@ class LoginRepositoryImplTest {
         assertEquals(error, result.error)
     }
 
+    @Test
+    fun `createOrUpdateLogin syncs tags as normalized entities`() = runTest {
+        val login = testLogin(totpProvider = null, tags = setOf(" Work ", "work", "Email"))
+
+        val result = repository.createOrUpdateLogin(login)
+
+        assertTrue(result.isSuccess())
+        coVerify(exactly = 1) {
+            tagDao.syncTags(
+                login.id,
+                setOf(
+                    TagEntity(value = "Work", normalized = "work"),
+                    TagEntity(value = "Email", normalized = "email"),
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `createOrUpdateLogin returns Failure when tag sync throws`() = runTest {
+        val error = RuntimeException("db error")
+        coEvery { tagDao.syncTags(any(), any()) } throws error
+
+        val result = repository.createOrUpdateLogin(testLogin(totpProvider = null))
+
+        assertTrue(result.isFailure())
+        assertEquals(error, result.error)
+    }
+
     private fun testLogin(
         passwordCredential: PasswordCredential? = PasswordCredential(
             secret = PasswordSecret(EncryptedPayload.EMPTY),
             score = PasswordScore.Strong,
         ),
+        tags: Set<String> = emptySet(),
         totpProvider: ((ItemId) -> Totp)? = null,
     ): Login {
         val id = newItemId()
@@ -189,6 +223,7 @@ class LoginRepositoryImplTest {
             pinned = false,
             vaultId = newVaultId(),
             keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),
+            tags = tags,
         )
     }
 

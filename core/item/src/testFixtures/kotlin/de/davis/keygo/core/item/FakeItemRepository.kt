@@ -6,6 +6,7 @@ import de.davis.keygo.core.item.domain.model.Item
 import de.davis.keygo.core.item.domain.model.ItemKeyEnvelope
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.MovableItem
+import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
 import de.davis.keygo.core.item.domain.repository.ItemRepository
@@ -13,6 +14,7 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.Result
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 
 /**
  * In-memory [ItemRepository] for tests.
@@ -39,6 +41,9 @@ class FakeItemRepository(
      * Persists across calls; the consumer clears it explicitly.
      */
     var failMoveForId: Pair<ItemId, Throwable>? = null
+
+    override fun observeAllTags(): Flow<Set<Tag>> =
+        allStores.map { store -> store.values.flatMap { item -> item.tags }.toSet() }
 
     override suspend fun deleteItem(itemId: ItemId) = Unit
 

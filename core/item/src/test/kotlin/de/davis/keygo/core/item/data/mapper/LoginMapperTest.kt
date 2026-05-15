@@ -2,7 +2,9 @@ package de.davis.keygo.core.item.data.mapper
 
 import de.davis.keygo.core.item.data.local.entity.ItemEntity
 import de.davis.keygo.core.item.data.local.entity.LoginEntity
+import de.davis.keygo.core.item.data.local.entity.TagEntity
 import de.davis.keygo.core.item.data.local.entity.credential.PasswordEntity
+import de.davis.keygo.core.item.data.local.pojo.ItemProjection
 import de.davis.keygo.core.item.data.local.pojo.LoginProjection
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
@@ -49,22 +51,53 @@ class LoginMapperTest {
         assertEquals(payload, entity.password)
     }
 
+    @Test
+    fun `toDomain maps tag entity values to domain tags`() {
+        val id = newItemId()
+        val projection = baseProjection(
+            id = id,
+            passwordEntity = null,
+            tags = setOf(
+                TagEntity(id = 1, value = "Work", normalized = "work"),
+                TagEntity(id = 2, value = "Email", normalized = "email"),
+            ),
+        )
+
+        val login = projection.toDomain()
+
+        assertEquals(setOf("Work", "Email"), login.tags)
+    }
+
+    @Test
+    fun `toTagEntities trims, drops blanks, dedups case-insensitively`() {
+        val result = listOf(" Work ", "work", "", "Email").toTagDomains()
+
+        assertEquals(
+            listOf("Work" to "work", "Email" to "email"),
+            result.map { it.value to it.normalized },
+        )
+    }
+
     private fun baseProjection(
         id: ItemId = newItemId(),
         passwordEntity: PasswordEntity?,
+        tags: Set<TagEntity> = emptySet(),
     ): LoginProjection = LoginProjection(
         loginEntity = LoginEntity(id = id, username = "alice"),
-        itemEntity = ItemEntity(
-            id = id,
-            vaultId = newVaultId(),
-            name = "Test",
-            note = null,
-            itemType = VaultItemType.Login,
-            pinned = false,
-            keyInformation = EntityKeyInformation(
-                wrappedKey = byteArrayOf(),
-                keyNonce = byteArrayOf(),
+        item = ItemProjection(
+            itemEntity = ItemEntity(
+                id = id,
+                vaultId = newVaultId(),
+                name = "Test",
+                note = null,
+                itemType = VaultItemType.Login,
+                pinned = false,
+                keyInformation = EntityKeyInformation(
+                    wrappedKey = byteArrayOf(),
+                    keyNonce = byteArrayOf(),
+                ),
             ),
+            tags = tags,
         ),
         passwordEntity = passwordEntity,
         rpEntity = emptyList(),

@@ -24,6 +24,7 @@ semver = "0.2.5"
 koinBOM = "4.2.1"
 koin-plugin = "1.0.0-RC1"
 room = "2.8.4"
+sqlite = "2.6.2"
 ksp = "2.3.6"
 datastore = "1.2.1"
 protobuf = "0.10.0"
@@ -87,6 +88,7 @@ koin-androidx-compose = { group = "io.insert-koin", name = "koin-androidx-compos
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+androidx-sqlite-bundled = { group = "androidx.sqlite", name = "sqlite-bundled-jvm", version.ref = "sqlite" }
 
 androidx-datastore = { group = "androidx.datastore", name = "datastore", version.ref = "datastore" }
 

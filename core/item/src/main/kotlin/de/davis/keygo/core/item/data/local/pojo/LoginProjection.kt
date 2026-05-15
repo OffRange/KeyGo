@@ -17,8 +17,9 @@ internal data class LoginProjection(
     @Relation(
         parentColumn = "id",
         entityColumn = "id",
+        entity = ItemEntity::class,
     )
-    val itemEntity: ItemEntity,
+    val item: ItemProjection,
 
     @Relation(
         parentColumn = "id",

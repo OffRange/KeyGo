@@ -5,6 +5,7 @@ import de.davis.keygo.core.item.data.local.dao.DomainInfoDao
 import de.davis.keygo.core.item.data.local.dao.ItemDao
 import de.davis.keygo.core.item.data.local.dao.LoginDao
 import de.davis.keygo.core.item.data.local.dao.PasswordDao
+import de.davis.keygo.core.item.data.local.dao.TagDao
 import de.davis.keygo.core.item.data.local.dao.TotpDao
 import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
 import de.davis.keygo.core.item.data.local.pojo.LightweightLogin
@@ -14,6 +15,7 @@ import de.davis.keygo.core.item.data.mapper.toDomain
 import de.davis.keygo.core.item.data.mapper.toDomainInfoEntities
 import de.davis.keygo.core.item.data.mapper.toLoginEntity
 import de.davis.keygo.core.item.data.mapper.toPasswordEntity
+import de.davis.keygo.core.item.data.mapper.toTagDomains
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
@@ -35,6 +37,7 @@ internal class LoginRepositoryImpl(
     private val passwordDao: PasswordDao,
     private val domainInfoDao: DomainInfoDao,
     private val totpDao: TotpDao,
+    private val tagDao: TagDao,
 ) : LoginRepository {
 
     override suspend fun createOrUpdateLogin(login: Login): Result<ItemId, Throwable> =
@@ -51,6 +54,8 @@ internal class LoginRepositoryImpl(
                 } ?: totpDao.delete(login.id)
 
                 domainInfoDao.syncForLogin(login.id, login.toDomainInfoEntities(login.id))
+
+                tagDao.syncTags(login.id, login.tags.toTagDomains())
 
                 login.id
             }
@@ -79,7 +84,8 @@ internal class LoginRepositoryImpl(
         requirePassword: Boolean,
         requireUsername: Boolean,
         limit: Int,
-    ): List<LiteLogin> = getLoginsByTLDs(setOf(etld1), requireTotp, requirePassword, requireUsername, limit)
+    ): List<LiteLogin> =
+        getLoginsByTLDs(setOf(etld1), requireTotp, requirePassword, requireUsername, limit)
 
     override suspend fun getLoginsByTLDs(
         etld1s: Set<String>,
@@ -88,7 +94,8 @@ internal class LoginRepositoryImpl(
         requireUsername: Boolean,
         limit: Int,
     ): List<LiteLogin> =
-        loginDao.getByTLDs(etld1s, requireTotp, requirePassword, requireUsername, limit).map(LightweightLogin::toDomain)
+        loginDao.getByTLDs(etld1s, requireTotp, requirePassword, requireUsername, limit)
+            .map(LightweightLogin::toDomain)
 
     override suspend fun getLoginById(itemId: ItemId): Login? =
         loginDao.getById(itemId)?.toDomain()

@@ -1,6 +1,10 @@
 package de.davis.keygo.core.item.data.repository
 
+import androidx.room.withTransaction
 import de.davis.keygo.core.item.data.local.dao.ItemDao
+import de.davis.keygo.core.item.data.local.dao.TagDao
+import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
+import de.davis.keygo.core.item.data.local.entity.TagEntity
 import de.davis.keygo.core.item.data.local.pojo.LightweightItem
 import de.davis.keygo.core.item.data.local.pojo.LightweightItemSearchResult
 import de.davis.keygo.core.item.data.local.pojo.MovableItemPojo
@@ -12,6 +16,7 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.Item
 import de.davis.keygo.core.item.domain.model.ItemKeyEnvelope
 import de.davis.keygo.core.item.domain.model.MovableItem
+import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
 import de.davis.keygo.core.item.domain.repository.ItemRepository
@@ -23,10 +28,16 @@ import org.koin.core.annotation.Single
 
 @Single
 internal class ItemRepositoryImpl(
+    private val database: ItemDatabase,
     private val itemDao: ItemDao,
+    private val tagDao: TagDao,
 ) : ItemRepository {
 
-    override suspend fun deleteItem(itemId: ItemId) = itemDao.delete(itemId)
+    override suspend fun deleteItem(itemId: ItemId): Unit = database.withTransaction {
+        val tagIds = tagDao.tagIdsForItem(itemId)
+        itemDao.delete(itemId)
+        if (tagIds.isNotEmpty()) tagDao.pruneOrphans(tagIds)
+    }
 
     override suspend fun createOrUpdateVaultItem(item: Item): ItemId {
         itemDao.upsert(item.toData())
@@ -49,6 +60,9 @@ internal class ItemRepositoryImpl(
 
     override suspend fun setPinned(itemId: ItemId, pinned: Boolean) =
         itemDao.setPinned(itemId, pinned)
+
+    override fun observeAllTags(): Flow<Set<Tag>> =
+        tagDao.observeAllTags().map { it.map(TagEntity::toDomain).toSet() }
 
     override fun observeLiteVaultItems(vaultId: VaultId?): Flow<List<LiteItem>> =
         itemDao.observeLiteItems(vaultId).map { it.map(LightweightItem::toDomain) }

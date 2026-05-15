@@ -11,5 +11,6 @@ sealed interface Item : LiteItem {
     val vaultId: VaultId
     override val name: String
     val keyInformation: KeyInformation
+    val tags: Set<Tag>
     val note: String?
 }
