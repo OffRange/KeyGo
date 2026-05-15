@@ -22,6 +22,7 @@ interface LoginRepository {
         etld1: String,
         requireTotp: Boolean = false,
         requirePassword: Boolean = false,
+        requireUsername: Boolean = false,
         limit: Int = -1,
     ): List<LiteLogin>
 
@@ -29,6 +30,7 @@ interface LoginRepository {
         etld1s: Set<String>,
         requireTotp: Boolean = false,
         requirePassword: Boolean = false,
+        requireUsername: Boolean = false,
         limit: Int = -1,
     ): List<LiteLogin>
 

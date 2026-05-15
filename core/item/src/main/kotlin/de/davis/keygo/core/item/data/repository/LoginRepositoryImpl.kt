@@ -77,16 +77,18 @@ internal class LoginRepositoryImpl(
         etld1: String,
         requireTotp: Boolean,
         requirePassword: Boolean,
+        requireUsername: Boolean,
         limit: Int,
-    ): List<LiteLogin> = getLoginsByTLDs(setOf(etld1), requireTotp, requirePassword, limit)
+    ): List<LiteLogin> = getLoginsByTLDs(setOf(etld1), requireTotp, requirePassword, requireUsername, limit)
 
     override suspend fun getLoginsByTLDs(
         etld1s: Set<String>,
         requireTotp: Boolean,
         requirePassword: Boolean,
+        requireUsername: Boolean,
         limit: Int,
     ): List<LiteLogin> =
-        loginDao.getByTLDs(etld1s, requireTotp, requirePassword, limit).map(LightweightLogin::toDomain)
+        loginDao.getByTLDs(etld1s, requireTotp, requirePassword, requireUsername, limit).map(LightweightLogin::toDomain)
 
     override suspend fun getLoginById(itemId: ItemId): Login? =
         loginDao.getById(itemId)?.toDomain()

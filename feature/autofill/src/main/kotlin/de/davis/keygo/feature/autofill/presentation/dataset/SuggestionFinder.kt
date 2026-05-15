@@ -20,7 +20,13 @@ internal class SuggestionFinder(
         if (count == 0) return emptyList()
 
         return when (form.type) {
-            is FormType.Credentials -> findLoginSuggestions(form, count)
+            is FormType.Credentials -> findLoginSuggestions(
+                form,
+                count,
+                withPassword = form.requiresPassword(),
+                withUsername = form.requiresUsername()
+            )
+
             is FormType.TOTP -> findLoginSuggestions(form, count, withTOTP = true)
         }
     }
@@ -28,17 +34,31 @@ internal class SuggestionFinder(
     private suspend fun findLoginSuggestions(
         form: Form,
         count: Int,
+        withPassword: Boolean = false,
+        withUsername: Boolean = false,
         withTOTP: Boolean = false,
     ): List<LiteLogin> = form.url?.let {
         getTdlMatchedLogins(
             it,
             requireTotp = withTOTP,
-            requirePassword = form.requiresPassword(),
+            requirePassword = withPassword,
+            requireUsername = withUsername,
             limit = count,
         )
     } ?: emptyList()
 
+    private fun Form.credentialFields() = fields.filter { it.type is FieldType.Credentials }
+
     private fun Form.requiresPassword(): Boolean {
-        return fields.any { it.focused && it.type is FieldType.Credentials.Password }
+        val creds = credentialFields()
+        return creds.isNotEmpty() && creds.all { it.type is FieldType.Credentials.Password }
+    }
+
+    private fun Form.requiresUsername(): Boolean {
+        val creds = credentialFields()
+        // none because FieldType.Credentials has three non-password subtypes. All these subtypes
+        // map to the username column in the database. So an email-only or phone-only form should
+        // equally filter for logins that have a username set.
+        return creds.isNotEmpty() && creds.none { it.type is FieldType.Credentials.Password }
     }
 }

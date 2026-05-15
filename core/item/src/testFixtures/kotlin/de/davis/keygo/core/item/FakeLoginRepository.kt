@@ -64,6 +64,7 @@ class FakeLoginRepository : LoginRepository {
         etld1: String,
         requireTotp: Boolean,
         requirePassword: Boolean,
+        requireUsername: Boolean,
         limit: Int,
     ): List<LiteLogin> = emptyList()
 
@@ -71,6 +72,7 @@ class FakeLoginRepository : LoginRepository {
         etld1s: Set<String>,
         requireTotp: Boolean,
         requirePassword: Boolean,
+        requireUsername: Boolean,
         limit: Int,
     ): List<LiteLogin> = emptyList()
 

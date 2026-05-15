@@ -46,12 +46,16 @@ internal interface LoginDao {
             )
         )
         AND (
-            :requirePassword = 0
+            NOT :requirePassword
             OR EXISTS (
                 SELECT 1
                 FROM password p
                 WHERE p.login_id = l.id
             )
+        )
+        AND (
+            NOT :requireUsername
+            OR l.username IS NOT NULL
         )
         AND EXISTS (
             SELECT 1
@@ -66,6 +70,7 @@ internal interface LoginDao {
         etld1s: Set<String>,
         requireTotp: Boolean,
         requirePassword: Boolean,
+        requireUsername: Boolean,
         limit: Int,
     ): List<LightweightLogin>
 

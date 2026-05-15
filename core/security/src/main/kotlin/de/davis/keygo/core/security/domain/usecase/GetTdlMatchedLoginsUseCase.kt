@@ -15,6 +15,7 @@ class GetTdlMatchedLoginsUseCase(
         domain: String,
         requireTotp: Boolean = false,
         requirePassword: Boolean = false,
+        requireUsername: Boolean = false,
         limit: Int = -1,
     ): List<LiteLogin> {
         val tdl = registrableDomainResolver.resolve(domain) ?: return emptyList()
@@ -22,6 +23,7 @@ class GetTdlMatchedLoginsUseCase(
             etld1 = tdl,
             requireTotp = requireTotp,
             requirePassword = requirePassword,
+            requireUsername = requireUsername,
             limit = limit,
         )
     }
