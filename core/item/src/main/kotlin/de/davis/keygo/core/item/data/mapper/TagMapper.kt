@@ -11,7 +11,7 @@ internal fun Tag.toData(): TagEntity = TagEntity(
     normalized = normalize(),
 )
 
-internal fun Iterable<Tag>.toTagDomains(): Set<TagEntity> =
+internal fun Iterable<Tag>.toTagEntities(): Set<TagEntity> =
     asSequence()
         .map { it.trim() }
         .filter { it.isNotEmpty() }

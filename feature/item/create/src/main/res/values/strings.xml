@@ -4,6 +4,7 @@
     <string name="additional_information">Additional Information</string>
     <string name="password_information">Password Information</string>
     <string name="domain_information">Domain Information</string>
+    <string name="tag_information">Tag information</string>
 
     <string name="override_totp_fields">Override TOTP fields?</string>
     <string name="overriding_totp_fields_description">The current item has the following TOTP fields that differ from the fields specified in the totp information. Select fields you want to override.</string>
@@ -57,6 +58,7 @@
     <string name="generate_password_content_description">Generate Password</string>
 
     <string name="add_domains">Add domains</string>
+    <string name="add_tags">Add tags</string>
 
     <string name="database_error">An unexpected database error has occurred: %s</string>
     <string name="invalid_vault_id">Vault item ID can not be found</string>

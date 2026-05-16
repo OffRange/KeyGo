@@ -93,6 +93,8 @@ internal class LoginViewModel(
 
     private val _selectedVaultId = MutableStateFlow<VaultId?>(null)
 
+    private val allTags = itemRepository.observeAllTags()
+
     private val vaultsFlow: Flow<VaultsState> = combine(
         vaultRepository.observeAllVaultMetadata(),
         _selectedVaultId.filterNotNull(),
@@ -100,8 +102,11 @@ internal class LoginViewModel(
         VaultsState(vaults = metadata, selectedVaultId = selected)
     }.distinctUntilChanged()
 
-    val state = combine(_base, vaultsFlow) { base, vaults ->
-        LoginUiState.Ready(base = base, vaultsState = vaults)
+    val state = combine(_base, allTags, vaultsFlow) { base, allTags, vaults ->
+        LoginUiState.Ready(
+            base = base.copy(tagsForSuggestion = allTags - base.itemAssignedTags),
+            vaultsState = vaults
+        )
     }.onStart {
         observeNameTextField()
         observePasswordTextField()
@@ -244,6 +249,7 @@ internal class LoginViewModel(
                     totpTextFieldState = TextFieldState(decrypted.second ?: ""),
                     usernameTextFieldState = TextFieldState(login.username ?: ""),
                     domains = login.domainInfos,
+                    itemAssignedTags = login.tags,
                     notesTextFieldState = TextFieldState(login.note ?: ""),
                     existingPasskeyCount = login.passkeyRPs.size,
                     dialogState = DialogState.None,
@@ -298,6 +304,7 @@ internal class LoginViewModel(
                             name = fieldUpdate(base.nameTextFieldState.text.toString()),
                             username = fieldUpdate(base.usernameTextFieldState.text.toString()),
                             domains = set(base.domains),
+                            tags = set(base.itemAssignedTags),
                             password = fieldUpdate(base.passwordTextFieldState.text.toString()),
                             totpUriOrSecret = fieldUpdate(base.totpTextFieldState.text.toString()),
                             note = fieldUpdate(base.notesTextFieldState.text.toString()),
@@ -307,6 +314,7 @@ internal class LoginViewModel(
                         name = base.nameTextFieldState.text.toString(),
                         username = base.usernameTextFieldState.text.toString(),
                         domains = base.domains,
+                        tags = base.itemAssignedTags,
                         password = base.passwordTextFieldState.text.toString(),
                         totpUriOrSecret = base.totpTextFieldState.text.toString(),
                         note = base.notesTextFieldState.text.toString(),
@@ -466,6 +474,19 @@ internal class LoginViewModel(
                         domains = it.domains.filterNot { info -> info.value == event.value }
                             .toSet(),
                     )
+                }
+            }
+
+            is LoginUiEvent.OnAddTags -> {
+                _base.update {
+                    it.copy(itemAssignedTags = it.itemAssignedTags + event.tags)
+                }
+            }
+
+            is LoginUiEvent.OnRemoveTag -> {
+                _base.update {
+                    it.copy(itemAssignedTags = it.itemAssignedTags.filterNot { tag -> tag == event.tag }
+                        .toSet())
                 }
             }
 

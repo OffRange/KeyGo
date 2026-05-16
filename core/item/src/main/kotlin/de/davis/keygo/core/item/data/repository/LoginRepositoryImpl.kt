@@ -15,7 +15,7 @@ import de.davis.keygo.core.item.data.mapper.toDomain
 import de.davis.keygo.core.item.data.mapper.toDomainInfoEntities
 import de.davis.keygo.core.item.data.mapper.toLoginEntity
 import de.davis.keygo.core.item.data.mapper.toPasswordEntity
-import de.davis.keygo.core.item.data.mapper.toTagDomains
+import de.davis.keygo.core.item.data.mapper.toTagEntities
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
@@ -53,9 +53,8 @@ internal class LoginRepositoryImpl(
                     totpDao.upsert(it)
                 } ?: totpDao.delete(login.id)
 
-                domainInfoDao.syncForLogin(login.id, login.toDomainInfoEntities(login.id))
-
-                tagDao.syncTags(login.id, login.tags.toTagDomains())
+                domainInfoDao.syncForLogin(login.id, login.toDomainInfoEntities())
+                tagDao.syncTags(login.id, login.tags.toTagEntities())
 
                 login.id
             }

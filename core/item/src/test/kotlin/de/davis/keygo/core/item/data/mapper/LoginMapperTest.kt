@@ -70,7 +70,7 @@ class LoginMapperTest {
 
     @Test
     fun `toTagEntities trims, drops blanks, dedups case-insensitively`() {
-        val result = listOf(" Work ", "work", "", "Email").toTagDomains()
+        val result = listOf(" Work ", "work", "", "Email").toTagEntities()
 
         assertEquals(
             listOf("Work" to "work", "Email" to "email"),

@@ -51,12 +51,14 @@ import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.item.core.presentation.component.ChipFormGroup
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
+import de.davis.keygo.feature.item.core.presentation.component.gatherPendingItems
 import de.davis.keygo.feature.item.core.presentation.transformation.rememberSchemeStrippingTransformation
 import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.presentation.component.FormGroup
 import de.davis.keygo.feature.item.create.presentation.component.KeyGoItemForm
 import de.davis.keygo.feature.item.create.presentation.component.OverrideTotpDialog
 import de.davis.keygo.feature.item.create.presentation.component.SelectItemForTotpModificationDialog
+import de.davis.keygo.feature.item.create.presentation.component.TAG_DELIMITERS
 import de.davis.keygo.feature.item.create.presentation.component.TotpParseErrorDialog
 import de.davis.keygo.feature.item.create.presentation.login.model.DialogState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginBaseState
@@ -116,6 +118,7 @@ private fun LoginReadyContent(
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val domainTextFieldState = rememberTextFieldState()
+    val tagsTextFieldState = rememberTextFieldState()
     val schemeTransformation = rememberSchemeStrippingTransformation()
     val detectedScheme by schemeTransformation.detectedScheme
     Scaffold(
@@ -127,13 +130,14 @@ private fun LoginReadyContent(
                 actions = {
                     IconButton(
                         onClick = {
-                            val pending = domainTextFieldState.text.toString()
-                                .split(delimiters = DELIMITERS.toCharArray())
-                                .filter { it.isNotBlank() }
-                                .toSet()
-                            if (pending.isNotEmpty()) {
-                                onEvent(LoginUiEvent.OnAddDomains(pending))
+                            domainTextFieldState.gatherPendingItems(DELIMITERS) {
+                                onEvent(LoginUiEvent.OnAddDomains(it))
                             }
+
+                            tagsTextFieldState.gatherPendingItems(TAG_DELIMITERS) {
+                                onEvent(LoginUiEvent.OnAddTags(it))
+                            }
+
                             onEvent(LoginUiEvent.OnSubmit)
                         },
                         enabled = state.canSave,
@@ -151,6 +155,9 @@ private fun LoginReadyContent(
         KeyGoItemForm(
             nameTextFieldState = state.nameTextFieldState,
             notesTextFieldState = state.notesTextFieldState,
+            tagsTextFieldState = tagsTextFieldState,
+            tagsForSuggestions = state.tagsForSuggestion,
+            assignedTags = state.itemAssignedTags,
             modifier = Modifier
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)
@@ -161,6 +168,8 @@ private fun LoginReadyContent(
             nameExists = state.nameExists,
             vaultsState = vaultsState,
             onVaultSelect = { onEvent(LoginUiEvent.OnVaultSelected(it)) },
+            onTagSubmitted = { onEvent(LoginUiEvent.OnAddTags(it)) },
+            onDeleteTag = { onEvent(LoginUiEvent.OnRemoveTag(it)) },
         ) {
             item(key = "password_information") {
                 var forceCompact by rememberSaveable { mutableStateOf(false) }
