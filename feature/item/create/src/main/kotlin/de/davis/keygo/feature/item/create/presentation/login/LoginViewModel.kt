@@ -33,6 +33,7 @@ import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
 import de.davis.keygo.feature.item.create.R
+import de.davis.keygo.feature.item.create.domain.usecase.ObserveTagSuggestionsUseCase
 import de.davis.keygo.feature.item.create.presentation.login.model.DialogState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginBaseState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiEvent
@@ -72,6 +73,7 @@ import kotlin.time.Duration.Companion.milliseconds
 internal class LoginViewModel(
     private val loginWithCryptoScope: LoginWithCryptoScopeUseCase,
     private val itemRepository: ItemRepository,
+    private val observeTagSuggestions: ObserveTagSuggestionsUseCase,
     private val vaultContextRepository: VaultContextRepository,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val createNewOrUpdateLogin: CreateNewOrUpdateLoginUseCase,
@@ -93,7 +95,7 @@ internal class LoginViewModel(
 
     private val _selectedVaultId = MutableStateFlow<VaultId?>(null)
 
-    private val allTags = itemRepository.observeAllTags()
+    private val allTags = observeTagSuggestions()
 
     private val vaultsFlow: Flow<VaultsState> = combine(
         vaultRepository.observeAllVaultMetadata(),
@@ -104,7 +106,7 @@ internal class LoginViewModel(
 
     val state = combine(_base, allTags, vaultsFlow) { base, allTags, vaults ->
         LoginUiState.Ready(
-            base = base.copy(tagsForSuggestion = allTags - base.itemAssignedTags),
+            base = base.copy(tagsForSuggestion = (allTags - base.itemAssignedTags).toSet()),
             vaultsState = vaults
         )
     }.onStart {
