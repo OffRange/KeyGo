@@ -5,6 +5,7 @@ import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
+import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
 import de.davis.keygo.feature.list_screen.domain.model.SortDirection
 import java.util.UUID
@@ -14,7 +15,7 @@ import kotlin.test.assertTrue
 
 class FilterUseCaseTest {
 
-    private val useCase: FilterUseCase = FilterUseCase()
+    private val useCase: FilterUseCase = FilterUseCase(SortUseCase())
 
     private val filterStateAsc = FilterState(sortDirection = SortDirection.Ascending)
     private val filterStateDesc = FilterState(sortDirection = SortDirection.Descending)
