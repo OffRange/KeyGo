@@ -38,12 +38,23 @@ internal interface ItemDao {
 
     @Query(
         """
-        SELECT i.id, i.name, i.item_type AS itemType, i.pinned,
-               (name LIKE '%' || :query || '%') AS matchedName,
-               (note LIKE '%' || :query || '%') AS matchedNote
+        WITH tag_matches AS (
+            SELECT DISTINCT x.item_id
+            FROM tag_cross_ref x
+            JOIN tag t ON t.id = x.tag_id
+            WHERE t.value LIKE '%' || :query || '%'
+        )
+        SELECT
+            i.id, i.name, i.item_type AS itemType, i.pinned,
+            (i.name LIKE '%' || :query || '%') AS matchedName,
+            (i.note LIKE '%' || :query || '%') AS matchedNote,
+            (tm.item_id IS NOT NULL)           AS matchedTag
         FROM item i
-        WHERE (:itemType IS NULL OR item_type = :itemType)
-          AND (name LIKE '%' || :query || '%' OR COALESCE(note, '') LIKE '%' || :query || '%')
+        LEFT JOIN tag_matches tm ON tm.item_id = i.id
+        WHERE (:itemType IS NULL OR i.item_type = :itemType)
+          AND (i.name LIKE '%' || :query || '%'
+               OR i.note LIKE '%' || :query || '%'
+               OR tm.item_id IS NOT NULL)
         """
     )
     suspend fun searchItem(

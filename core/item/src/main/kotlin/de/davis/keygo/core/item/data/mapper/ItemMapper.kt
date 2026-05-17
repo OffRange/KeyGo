@@ -33,6 +33,7 @@ internal fun LightweightItemSearchResult.toDomain() = LiteItemSearchResult(
     itemType = itemType,
     matchedName = matchedName,
     matchedNote = matchedNote,
+    matchedTag = matchedTag,
     pinned = pinned,
 )
 

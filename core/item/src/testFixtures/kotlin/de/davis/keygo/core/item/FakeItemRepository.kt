@@ -45,6 +45,14 @@ class FakeItemRepository(
     override fun observeAllTags(): Flow<Set<Tag>> =
         allStores.map { store -> store.values.flatMap { item -> item.tags }.toSet() }
 
+    override fun observeItemIdsForTags(labels: Set<String>): Flow<Set<ItemId>> =
+        allStores.map { store ->
+            store.values
+                .filter { item -> item.tags.any { it in labels } }
+                .map { it.id }
+                .toSet()
+        }
+
     override suspend fun deleteItem(itemId: ItemId) = Unit
 
     override suspend fun createOrUpdateVaultItem(item: Item): ItemId = item.id

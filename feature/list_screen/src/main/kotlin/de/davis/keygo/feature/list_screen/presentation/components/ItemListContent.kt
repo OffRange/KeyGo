@@ -234,6 +234,7 @@ private fun ItemListContentPreview() {
                     pinned = false,
                     matchedName = true,
                     matchedNote = false,
+                    matchedTag = false,
                 )
             }
 

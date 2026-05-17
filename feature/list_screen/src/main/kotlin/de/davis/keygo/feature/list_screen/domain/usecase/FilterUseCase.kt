@@ -20,11 +20,13 @@ class FilterUseCase {
         filterState: FilterState,
         items: List<I>,
         passwordScores: Map<ItemId, PasswordScore>,
+        tagMatchingIds: Set<ItemId>? = null,
     ): List<I> {
         val filtered = items.filter { item ->
             matchesItemType(filterState, item) &&
                     matchesScore(filterState, item, passwordScores) &&
-                    matchesPinnedState(filterState, item)
+                    matchesPinnedState(filterState, item) &&
+                    matchesTags(tagMatchingIds, item)
         }
 
         val (pinned, unpinned) = filtered.partition { it.pinned }
@@ -34,6 +36,9 @@ class FilterUseCase {
 
     private fun matchesPinnedState(filterState: FilterState, item: LiteItem): Boolean =
         !filterState.onlyPinned || item.pinned
+
+    private fun matchesTags(tagMatchingIds: Set<ItemId>?, item: LiteItem): Boolean =
+        tagMatchingIds == null || item.id in tagMatchingIds
 
     private fun matchesItemType(filterState: FilterState, item: LiteItem): Boolean =
         filterState.selectedItemTypes.isEmpty() || item.itemType in filterState.selectedItemTypes

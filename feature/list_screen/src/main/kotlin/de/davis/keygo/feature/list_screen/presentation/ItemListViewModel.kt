@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -83,12 +84,23 @@ internal class ItemListViewModel(
     private val passwordScores = loginRepository.observePasswordScores()
 
     private val filterState = MutableStateFlow(FilterState.Default)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val tagFilteredItemIds: Flow<Set<ItemId>?> = filterState
+        .map { it.selectedLabels }
+        .distinctUntilChanged()
+        .flatMapLatest { labels ->
+            if (labels.isEmpty()) flowOf(null)
+            else itemRepository.observeItemIdsForTags(labels)
+        }
+
     private val filteredItems = combine(
         nonDeletedItems,
         filterState,
         passwordScores,
-    ) { items, filter, scores ->
-        filterUseCase(filter, items, scores)
+        tagFilteredItemIds,
+    ) { items, filter, scores, tagIds ->
+        filterUseCase(filter, items, scores, tagIds)
     }.distinctUntilChanged()
 
     private val searchResults = MutableStateFlow(listOf<LiteItem>())

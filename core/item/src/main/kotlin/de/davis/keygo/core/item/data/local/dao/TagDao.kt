@@ -23,10 +23,19 @@ internal abstract class TagDao {
     protected abstract suspend fun clearCrossRefsForItem(itemId: ItemId)
 
     @Query("SELECT id FROM tag WHERE normalized = :normalized")
-    protected abstract suspend fun findIdByNormalized(normalized: String): Long?
+    internal abstract suspend fun findIdByNormalized(normalized: String): Long?
 
     @Query("SELECT * FROM tag WHERE EXISTS (SELECT 1 FROM tag_cross_ref WHERE tag_id = tag.id)")
     abstract fun observeAllTags(): Flow<List<TagEntity>>
+
+    @Query(
+        """
+        SELECT DISTINCT x.item_id FROM tag_cross_ref x
+        JOIN tag t ON t.id = x.tag_id
+        WHERE t.value IN (:values)
+        """
+    )
+    abstract fun observeItemIdsWithAnyTag(values: Set<String>): Flow<List<ItemId>>
 
     @Query("SELECT tag_id FROM tag_cross_ref WHERE item_id = :itemId")
     abstract suspend fun tagIdsForItem(itemId: ItemId): List<Long>

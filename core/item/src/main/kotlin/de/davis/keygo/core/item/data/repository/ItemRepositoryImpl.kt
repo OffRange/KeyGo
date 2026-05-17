@@ -64,6 +64,9 @@ internal class ItemRepositoryImpl(
     override fun observeAllTags(): Flow<Set<Tag>> =
         tagDao.observeAllTags().map { it.map(TagEntity::toDomain).toSet() }
 
+    override fun observeItemIdsForTags(labels: Set<String>): Flow<Set<ItemId>> =
+        tagDao.observeItemIdsWithAnyTag(labels).map { it.toSet() }
+
     override fun observeLiteVaultItems(vaultId: VaultId?): Flow<List<LiteItem>> =
         itemDao.observeLiteItems(vaultId).map { it.map(LightweightItem::toDomain) }
 

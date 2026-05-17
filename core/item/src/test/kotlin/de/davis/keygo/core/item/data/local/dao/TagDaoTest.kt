@@ -10,11 +10,11 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
-import de.davis.keygo.core.item.domain.annotation.InternalItemKeyGoApi
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
@@ -24,7 +24,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import de.davis.keygo.core.item.data.local.entity.KeyInformation as EntityKeyInformation
 
-@OptIn(InternalItemKeyGoApi::class)
 internal class TagDaoTest {
 
     private lateinit var db: ItemDatabase
@@ -131,5 +130,51 @@ internal class TagDaoTest {
         tagDao.pruneOrphans(tagIds)
 
         assertNull(tagDao.findIdByNormalized("temp"))
+    }
+
+    @Test
+    fun `observeItemIdsWithAnyTag returns ids of items having any of the values`() = runTest {
+        val a = insertItem()
+        val b = insertItem()
+        val c = insertItem()
+        tagDao.syncTags(a, setOf(tag("Bank")))
+        tagDao.syncTags(b, setOf(tag("Work"), tag("Bank")))
+        tagDao.syncTags(c, setOf(tag("Personal")))
+
+        val ids = tagDao.observeItemIdsWithAnyTag(setOf("Bank")).first().toSet()
+
+        assertEquals(setOf(a, b), ids)
+    }
+
+    @Test
+    fun `observeItemIdsWithAnyTag unions multiple values`() = runTest {
+        val a = insertItem()
+        val b = insertItem()
+        val c = insertItem()
+        tagDao.syncTags(a, setOf(tag("Bank")))
+        tagDao.syncTags(b, setOf(tag("Work")))
+        tagDao.syncTags(c, setOf(tag("Personal")))
+
+        val ids = tagDao.observeItemIdsWithAnyTag(setOf("Bank", "Work")).first().toSet()
+
+        assertEquals(setOf(a, b), ids)
+    }
+
+    @Test
+    fun `observeItemIdsWithAnyTag returns empty when no tag matches`() = runTest {
+        val a = insertItem()
+        tagDao.syncTags(a, setOf(tag("Bank")))
+
+        assertEquals(emptyList(), tagDao.observeItemIdsWithAnyTag(setOf("Nope")).first())
+    }
+
+    @Test
+    fun `observeItemIdsWithAnyTag matches on display value exactly`() = runTest {
+        val a = insertItem()
+        tagDao.syncTags(a, setOf(tag("Bank")))
+
+        // 'bank' (lowercase) is the normalized form, not the stored display value
+        assertEquals(emptyList(), tagDao.observeItemIdsWithAnyTag(setOf("bank")).first())
+        assertEquals(listOf(a), tagDao.observeItemIdsWithAnyTag(setOf("Bank")).first())
     }
 }
