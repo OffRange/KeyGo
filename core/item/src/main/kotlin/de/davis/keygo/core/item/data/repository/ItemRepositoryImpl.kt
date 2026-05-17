@@ -61,8 +61,8 @@ internal class ItemRepositoryImpl(
     override suspend fun setPinned(itemId: ItemId, pinned: Boolean) =
         itemDao.setPinned(itemId, pinned)
 
-    override fun observeAllTags(): Flow<Set<Tag>> =
-        tagDao.observeAllTags().map { it.map(TagEntity::toDomain).toSet() }
+    override fun observeAllTags(): Flow<List<Tag>> =
+        tagDao.observeAllTags().map { it.map(TagEntity::toDomain) }
 
     override fun observeItemIdsForTags(labels: Set<String>): Flow<Set<ItemId>> =
         tagDao.observeItemIdsWithAnyTag(labels).map { it.toSet() }

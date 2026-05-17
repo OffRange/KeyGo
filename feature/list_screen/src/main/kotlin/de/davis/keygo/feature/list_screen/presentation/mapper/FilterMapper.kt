@@ -50,7 +50,7 @@ internal fun FilterState.toBottomSheetState(
 
 internal fun List<LiteItem>.toAvailableFilterOptions(
     passwordScores: Map<ItemId, PasswordScore>,
-    allTags: Set<Tag>,
+    allTags: List<Tag>,
 ): AvailableFilterOptions {
     val itemTypes = fastMapTo(mutableSetOf()) { it.itemType }
     val hasLoginItems = VaultItemType.Login in itemTypes
@@ -66,7 +66,7 @@ internal fun List<LiteItem>.toAvailableFilterOptions(
         itemTypes = itemTypes,
         hasPasswordItems = hasLoginItems,
         passwordScores = scores,
-        labels = allTags,
+        labels = allTags.toSet(),
         hasPinnedItems = any { it.pinned },
     )
 }

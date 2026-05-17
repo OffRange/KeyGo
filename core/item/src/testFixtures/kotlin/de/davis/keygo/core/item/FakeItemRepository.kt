@@ -42,8 +42,8 @@ class FakeItemRepository(
      */
     var failMoveForId: Pair<ItemId, Throwable>? = null
 
-    override fun observeAllTags(): Flow<Set<Tag>> =
-        allStores.map { store -> store.values.flatMap { item -> item.tags }.toSet() }
+    override fun observeAllTags(): Flow<List<Tag>> =
+        allStores.map { store -> store.values.flatMap { item -> item.tags }.distinct() }
 
     override fun observeItemIdsForTags(labels: Set<String>): Flow<Set<ItemId>> =
         allStores.map { store ->

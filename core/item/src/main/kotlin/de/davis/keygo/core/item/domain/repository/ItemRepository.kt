@@ -32,7 +32,7 @@ interface ItemRepository {
 
     suspend fun setPinned(itemId: ItemId, pinned: Boolean)
 
-    fun observeAllTags(): Flow<Set<Tag>>
+    fun observeAllTags(): Flow<List<Tag>>
 
     fun observeItemIdsForTags(labels: Set<String>): Flow<Set<ItemId>>
 

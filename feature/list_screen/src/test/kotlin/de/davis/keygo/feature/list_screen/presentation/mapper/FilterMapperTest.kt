@@ -25,21 +25,21 @@ class FilterMapperTest {
     fun `toAvailableFilterOptions exposes all provided tags as labels`() {
         val items = listOf(TestLiteItem("A"), TestLiteItem("B"))
 
-        val options = items.toAvailableFilterOptions(noScores, setOf("Bank", "Work"))
+        val options = items.toAvailableFilterOptions(noScores, listOf("Bank", "Work"))
 
         assertEquals(setOf("Bank", "Work"), options.labels)
     }
 
     @Test
     fun `toAvailableFilterOptions has no labels when there are no tags`() {
-        val options = listOf(TestLiteItem("A")).toAvailableFilterOptions(noScores, emptySet())
+        val options = listOf(TestLiteItem("A")).toAvailableFilterOptions(noScores, emptyList())
         assertTrue(options.labels.isEmpty())
     }
 
     @Test
     fun `selected labels are reflected as selected chips`() {
         val available = listOf(TestLiteItem("A"))
-            .toAvailableFilterOptions(noScores, setOf("Bank", "Work"))
+            .toAvailableFilterOptions(noScores, listOf("Bank", "Work"))
 
         val sheet = FilterState(selectedLabels = setOf("Bank"))
             .toBottomSheetState(available, restrictedItemType = null)
