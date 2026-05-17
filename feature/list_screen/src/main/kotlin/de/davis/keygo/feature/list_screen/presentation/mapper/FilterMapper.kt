@@ -3,6 +3,7 @@ package de.davis.keygo.feature.list_screen.presentation.mapper
 import androidx.compose.ui.util.fastMapTo
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
@@ -49,6 +50,7 @@ internal fun FilterState.toBottomSheetState(
 
 internal fun List<LiteItem>.toAvailableFilterOptions(
     passwordScores: Map<ItemId, PasswordScore>,
+    allTags: Set<Tag>,
 ): AvailableFilterOptions {
     val itemTypes = fastMapTo(mutableSetOf()) { it.itemType }
     val hasLoginItems = VaultItemType.Login in itemTypes
@@ -64,7 +66,7 @@ internal fun List<LiteItem>.toAvailableFilterOptions(
         itemTypes = itemTypes,
         hasPasswordItems = hasLoginItems,
         passwordScores = scores,
-        labels = emptySet(),
+        labels = allTags,
         hasPinnedItems = any { it.pinned },
     )
 }
