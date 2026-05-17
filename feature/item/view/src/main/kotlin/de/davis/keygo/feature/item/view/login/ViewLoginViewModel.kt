@@ -98,6 +98,7 @@ internal class ViewLoginViewModel(
                     passwordStrengthScore = login.passwordCredential?.score,
                     username = login.username.orEmpty(),
                     domains = login.domainInfos,
+                    tags = login.tags,
                     note = login.note.orEmpty(),
                     totpState = TotpState.NoTotp,
                     pinned = login.pinned,
@@ -194,6 +195,7 @@ internal class ViewLoginViewModel(
                     FieldType.Totp -> "" // TOTP is not editable in this context
                     FieldType.Username -> state.username
                     FieldType.Domain -> "" // Only allow adding new domains, not editing existing ones
+                    FieldType.Tag -> "" // Only allow adding new tags, not editing existing ones
                     FieldType.Note -> state.note
                 }
 
@@ -268,6 +270,13 @@ internal class ViewLoginViewModel(
                                     UpsertLogin.update(
                                         itemId = id,
                                         domains = set(updatedDomains),
+                                    )
+                                } ?: return@launch
+
+                                FieldType.Tag -> newText.onSet {
+                                    UpsertLogin.update(
+                                        itemId = id,
+                                        tags = set(state.value.tags + it),
                                     )
                                 } ?: return@launch
 

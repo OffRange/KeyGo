@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -171,6 +172,7 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
         val totp = stringResource(ItemCoreR.string.totp)
         val username = stringResource(ItemCoreR.string.login_identifier)
         val domains = stringResource(ItemCoreR.string.domains)
+        val tags = stringResource(ItemCoreR.string.tags)
         val note = stringResource(ItemCoreR.string.note)
 
         var isPasswordHidden by rememberSaveable { mutableStateOf(true) }
@@ -320,6 +322,27 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                 }
             }
 
+            if (state.tags.isNotEmpty()) {
+                entry(
+                    title = tags,
+                    leadingIcon = Icons.Default.Sell
+                ) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        state.tags.forEach {
+                            key(it) {
+                                AssistChip(
+                                    onClick = {},
+                                    label = { Text(text = it) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             if (state.note.isNotBlank()) {
                 entry(
                     title = note,
@@ -350,6 +373,11 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
 
                     AddChip(
                         fieldType = FieldType.Domain,
+                        onClick = { onEvent(ViewLoginUiEvent.OnModifyFieldRequest(it)) },
+                    )
+
+                    AddChip(
+                        fieldType = FieldType.Tag,
                         onClick = { onEvent(ViewLoginUiEvent.OnModifyFieldRequest(it)) },
                     )
 
@@ -465,6 +493,7 @@ private fun FieldType.addLabel(): String {
         FieldType.Totp -> stringResource(R.string.add_totp)
         FieldType.Username -> stringResource(R.string.add_username)
         FieldType.Domain -> stringResource(R.string.add_domain)
+        FieldType.Tag -> stringResource(R.string.add_tag)
         FieldType.Note -> stringResource(R.string.add_note)
     }
 }
@@ -477,6 +506,7 @@ private fun FieldType.addIcon(): ImageVector {
         FieldType.Totp -> Icons.Default.MoreTime
         FieldType.Username -> Icons.Default.PersonAdd
         FieldType.Domain -> Icons.Default.AddLink
+        FieldType.Tag -> Icons.Default.Sell
         FieldType.Note -> Icons.AutoMirrored.Default.NoteAdd
     }
 }

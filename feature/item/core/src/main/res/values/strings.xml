@@ -6,6 +6,7 @@
     <string name="passkey">Passkey</string>
     <string name="totp">TOTP</string>
     <string name="domains">Domains</string>
+    <string name="tags">Tags</string>
 
     <string name="back_content_description">Back</string>
     <string name="edit_content_description">Edit</string>
