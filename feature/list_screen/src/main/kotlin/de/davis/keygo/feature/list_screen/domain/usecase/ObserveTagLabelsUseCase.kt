@@ -13,5 +13,5 @@ class ObserveTagLabelsUseCase(
     private val sortUseCase: SortUseCase,
 ) {
     operator fun invoke(): Flow<List<Tag>> =
-        itemRepository.observeAllTags().map { tags -> sortUseCase(tags) { it } }
+        itemRepository.observeAllTags().map { tags -> sortUseCase(tags) }
 }
