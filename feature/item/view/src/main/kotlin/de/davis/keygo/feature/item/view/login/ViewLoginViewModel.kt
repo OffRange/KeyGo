@@ -10,6 +10,7 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.usecase.LoginWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
+import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
@@ -59,6 +60,7 @@ internal class ViewLoginViewModel(
     private val vaultRepository: VaultRepository,
     private val updateLogin: CreateNewOrUpdateLoginUseCase,
     private val isValidUrl: IsValidUrlUseCase,
+    private val sort: SortUseCase,
     private val websiteHandler: WebsiteHandler,
     private val totpGenerator: TotpGenerator,
     private val registrableDomainResolver: RegistrableDomainResolver,
@@ -98,7 +100,7 @@ internal class ViewLoginViewModel(
                     passwordStrengthScore = login.passwordCredential?.score,
                     username = login.username.orEmpty(),
                     domains = login.domainInfos,
-                    tags = login.tags,
+                    tags = sort(login.tags).toSet(),
                     note = login.note.orEmpty(),
                     totpState = TotpState.NoTotp,
                     pinned = login.pinned,
