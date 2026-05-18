@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.item.create.domain.usecase
+package de.davis.keygo.feature.item.core.domain.usecase
 
 import de.davis.keygo.core.item.FakeItemRepository
 import de.davis.keygo.core.item.FakeLoginRepository
@@ -12,11 +12,11 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class ObserveTagSuggestionsUseCaseTest {
+class ObserveAllTagsSortedUseCaseTest {
 
     private val loginRepository = FakeLoginRepository()
     private val itemRepository = FakeItemRepository(loginRepository)
-    private val useCase = ObserveTagSuggestionsUseCase(
+    private val useCase = ObserveAllTagsSortedUseCase(
         itemRepository = itemRepository,
         sortUseCase = SortUseCase(),
     )

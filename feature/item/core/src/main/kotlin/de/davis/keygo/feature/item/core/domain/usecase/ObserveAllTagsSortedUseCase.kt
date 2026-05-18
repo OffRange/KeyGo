@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.item.create.domain.usecase
+package de.davis.keygo.feature.item.core.domain.usecase
 
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.repository.ItemRepository
@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.map
 import org.koin.core.annotation.Single
 
 @Single
-class ObserveTagSuggestionsUseCase(
+class ObserveAllTagsSortedUseCase(
     private val itemRepository: ItemRepository,
     private val sortUseCase: SortUseCase,
 ) {

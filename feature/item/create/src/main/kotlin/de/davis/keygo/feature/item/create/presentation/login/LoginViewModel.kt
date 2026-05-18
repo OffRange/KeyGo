@@ -29,11 +29,11 @@ import de.davis.keygo.feature.item.core.domain.model.fieldUpdate
 import de.davis.keygo.feature.item.core.domain.model.resolveTotpDomain
 import de.davis.keygo.feature.item.core.domain.model.set
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
+import de.davis.keygo.feature.item.core.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
 import de.davis.keygo.feature.item.create.R
-import de.davis.keygo.feature.item.create.domain.usecase.ObserveTagSuggestionsUseCase
 import de.davis.keygo.feature.item.create.presentation.login.model.DialogState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginBaseState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiEvent
@@ -73,7 +73,6 @@ import kotlin.time.Duration.Companion.milliseconds
 internal class LoginViewModel(
     private val loginWithCryptoScope: LoginWithCryptoScopeUseCase,
     private val itemRepository: ItemRepository,
-    private val observeTagSuggestions: ObserveTagSuggestionsUseCase,
     private val vaultContextRepository: VaultContextRepository,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val createNewOrUpdateLogin: CreateNewOrUpdateLoginUseCase,
@@ -81,6 +80,7 @@ internal class LoginViewModel(
     private val snackbarManager: SnackbarManager,
     private val totpService: TotpService,
     private val registrableDomainResolver: RegistrableDomainResolver,
+    observeAllTags: ObserveAllTagsSortedUseCase,
     vaultRepository: VaultRepository,
 ) : ViewModel() {
 
@@ -95,7 +95,7 @@ internal class LoginViewModel(
 
     private val _selectedVaultId = MutableStateFlow<VaultId?>(null)
 
-    private val allTags = observeTagSuggestions()
+    private val allTags = observeAllTags()
 
     private val vaultsFlow: Flow<VaultsState> = combine(
         vaultRepository.observeAllVaultMetadata(),
