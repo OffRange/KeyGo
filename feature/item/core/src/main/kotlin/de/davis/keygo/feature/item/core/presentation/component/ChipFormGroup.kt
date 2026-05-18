@@ -20,7 +20,6 @@ import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.KeyboardActionHandler
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
@@ -31,11 +30,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenuPopup
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
@@ -262,11 +257,8 @@ fun <T> ChipFormGroup(
                 interactionSource = interactionSource
             )
 
-            is ChipFormMode.WithSuggestions -> ChipFormSuggestionTextField(
-                suggestions = mode.suggestions
-                    .map(textOf)
-                    .filter { it.startsWith(state.text, ignoreCase = true) }
-                    .toSet(),
+            is ChipFormMode.WithSuggestions -> KeyGoFormSuggestionField(
+                suggestions = mode.suggestions.map(textOf).toSet(),
                 state = state,
                 onSuggestionSelected = { handleText(it, keepLast = false) },
                 label = label,
@@ -279,72 +271,6 @@ fun <T> ChipFormGroup(
                 inputTransformation = combinedTransformation,
                 interactionSource = interactionSource,
             )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun ChipFormSuggestionTextField(
-    suggestions: Set<String>,
-    state: TextFieldState,
-    onSuggestionSelected: (String) -> Unit,
-    label: @Composable (TextFieldLabelScope.() -> Unit)?,
-    prefix: @Composable (() -> Unit)?,
-    placeholder: @Composable (() -> Unit)?,
-    lineLimits: TextFieldLineLimits,
-    keyboardOptions: KeyboardOptions,
-    onKeyboardAction: KeyboardActionHandler?,
-    inputTransformation: InputTransformation?,
-    interactionSource: MutableInteractionSource?,
-    modifier: Modifier = Modifier
-) {
-    val (allowExpanded, setExpanded) = remember { mutableStateOf(false) }
-    val expanded = allowExpanded && suggestions.isNotEmpty()
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = setExpanded
-    ) {
-        KeyGoFormField(
-            state = state,
-            label = label,
-            modifier = modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
-            prefix = prefix,
-            placeholder = placeholder,
-            lineLimits = lineLimits,
-            keyboardOptions = keyboardOptions,
-            onKeyboardAction = onKeyboardAction,
-            inputTransformation = inputTransformation,
-            interactionSource = interactionSource,
-            trailingContent = {
-                ExposedDropdownMenuDefaults.TrailingIcon(
-                    expanded = expanded,
-                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.SecondaryEditable),
-                )
-            }
-        )
-
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { setExpanded(false) }
-        ) {
-            suggestions.forEachIndexed { index, suggestion ->
-                DropdownMenuItem(
-                    shape = MenuDefaults.itemShape(index, suggestions.size).shape,
-                    text = {
-                        Text(
-                            text = suggestion,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    },
-                    onClick = {
-                        state.clearText()
-                        onSuggestionSelected(suggestion)
-                        setExpanded(false)
-                    },
-                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
-                )
-            }
         }
     }
 }
