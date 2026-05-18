@@ -141,9 +141,10 @@ internal class ItemListViewModel(
     private val availableFilterOptions = combine(
         nonDeletedItems,
         passwordScores,
+        itemRepository.observeTagsByItem(),
         observeTagLabels(),
-    ) { items, scores, allTags ->
-        items.toAvailableFilterOptions(scores, allTags)
+    ) { items, scores, tagsByItem, allTags ->
+        items.toAvailableFilterOptions(scores, tagsByItem, allTags)
     }.distinctUntilChanged()
 
     val filterBottomSheetState = combine(

@@ -36,6 +36,8 @@ interface ItemRepository {
 
     fun observeItemIdsForTags(labels: Set<String>): Flow<Set<ItemId>>
 
+    fun observeTagsByItem(): Flow<Map<ItemId, Set<Tag>>>
+
     fun observeLiteVaultItems(vaultId: VaultId? = null): Flow<List<LiteItem>>
 
     suspend fun getItemKeyEnvelope(itemId: ItemId): ItemKeyEnvelope?

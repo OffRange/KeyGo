@@ -177,4 +177,35 @@ internal class TagDaoTest {
         assertEquals(emptyList(), tagDao.observeItemIdsWithAnyTag(setOf("bank")).first())
         assertEquals(listOf(a), tagDao.observeItemIdsWithAnyTag(setOf("Bank")).first())
     }
+
+    @Test
+    fun `observeItemTags emits one row per item-tag pair using display value`() = runTest {
+        val a = insertItem()
+        val b = insertItem()
+        tagDao.syncTags(a, setOf(tag("Bank"), tag("Work")))
+        tagDao.syncTags(b, setOf(tag("Bank")))
+
+        val pairs = tagDao.observeItemTags().first().map { it.itemId to it.value }.toSet()
+
+        assertEquals(
+            setOf(
+                a to "Bank",
+                a to "Work",
+                b to "Bank",
+            ),
+            pairs,
+        )
+    }
+
+    @Test
+    fun `observeItemTags omits items that have no tags`() = runTest {
+        val a = insertItem()
+        insertItem() // untagged item must not appear
+
+        tagDao.syncTags(a, setOf(tag("Solo")))
+
+        val pairs = tagDao.observeItemTags().first().map { it.itemId to it.value }
+
+        assertEquals(listOf(a to "Solo"), pairs)
+    }
 }

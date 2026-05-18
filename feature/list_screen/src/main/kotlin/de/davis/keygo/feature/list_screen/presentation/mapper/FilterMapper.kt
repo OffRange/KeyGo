@@ -50,6 +50,7 @@ internal fun FilterState.toBottomSheetState(
 
 internal fun List<LiteItem>.toAvailableFilterOptions(
     passwordScores: Map<ItemId, PasswordScore>,
+    tagsByItem: Map<ItemId, Set<Tag>>,
     allTags: List<Tag>,
 ): AvailableFilterOptions {
     val itemTypes = fastMapTo(mutableSetOf()) { it.itemType }
@@ -62,11 +63,17 @@ internal fun List<LiteItem>.toAvailableFilterOptions(
         passwordScores.filterKeys { it in itemIds }.values.toSet()
     else emptySet()
 
+    val visibleTags = buildSet {
+        this@toAvailableFilterOptions.forEach { item ->
+            tagsByItem[item.id]?.let(::addAll)
+        }
+    }
+
     return AvailableFilterOptions(
         itemTypes = itemTypes,
         hasPasswordItems = hasLoginItems,
         passwordScores = scores,
-        labels = allTags.toSet(),
+        labels = allTags.filter { it in visibleTags }.toSet(),
         hasPinnedItems = any { it.pinned },
     )
 }

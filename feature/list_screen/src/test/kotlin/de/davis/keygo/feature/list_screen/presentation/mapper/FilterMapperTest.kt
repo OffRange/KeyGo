@@ -20,26 +20,63 @@ class FilterMapperTest {
     ) : LiteItem
 
     private val noScores: Map<ItemId, PasswordScore> = emptyMap()
+    private val noTags: Map<ItemId, Set<String>> = emptyMap()
 
     @Test
-    fun `toAvailableFilterOptions exposes all provided tags as labels`() {
-        val items = listOf(TestLiteItem("A"), TestLiteItem("B"))
+    fun `labels include only tags carried by a visible item, in allTags order`() {
+        val a = TestLiteItem("A")
+        val b = TestLiteItem("B")
 
-        val options = items.toAvailableFilterOptions(noScores, listOf("Bank", "Work"))
+        val options = listOf(a, b).toAvailableFilterOptions(
+            passwordScores = noScores,
+            tagsByItem = mapOf(
+                a.id to setOf("Bank"),
+                b.id to setOf("Work"),
+            ),
+            // "Personal" belongs to no visible item -> must be excluded.
+            allTags = listOf("Bank", "Personal", "Work"),
+        )
 
-        assertEquals(setOf("Bank", "Work"), options.labels)
+        // Order follows the (already sorted) allTags list.
+        assertEquals(listOf("Bank", "Work"), options.labels.toList())
     }
 
     @Test
-    fun `toAvailableFilterOptions has no labels when there are no tags`() {
-        val options = listOf(TestLiteItem("A")).toAvailableFilterOptions(noScores, emptyList())
+    fun `tags belonging only to items absent from the list are excluded`() {
+        val a = TestLiteItem("A")
+        val hidden = TestLiteItem("Hidden")
+
+        val options = listOf(a).toAvailableFilterOptions(
+            passwordScores = noScores,
+            tagsByItem = mapOf(
+                a.id to setOf("Bank"),
+                hidden.id to setOf("Secret"),
+            ),
+            allTags = listOf("Bank", "Secret"),
+        )
+
+        assertEquals(setOf("Bank"), options.labels)
+    }
+
+    @Test
+    fun `no labels when no visible item has tags`() {
+        val options = listOf(TestLiteItem("A")).toAvailableFilterOptions(
+            passwordScores = noScores,
+            tagsByItem = noTags,
+            allTags = listOf("Bank"),
+        )
+
         assertTrue(options.labels.isEmpty())
     }
 
     @Test
     fun `selected labels are reflected as selected chips`() {
-        val available = listOf(TestLiteItem("A"))
-            .toAvailableFilterOptions(noScores, listOf("Bank", "Work"))
+        val a = TestLiteItem("A")
+        val available = listOf(a).toAvailableFilterOptions(
+            passwordScores = noScores,
+            tagsByItem = mapOf(a.id to setOf("Bank", "Work")),
+            allTags = listOf("Bank", "Work"),
+        )
 
         val sheet = FilterState(selectedLabels = setOf("Bank"))
             .toBottomSheetState(available, restrictedItemType = null)

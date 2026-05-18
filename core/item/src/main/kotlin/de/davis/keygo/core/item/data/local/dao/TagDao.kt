@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import de.davis.keygo.core.item.data.local.entity.TagCrossRef
 import de.davis.keygo.core.item.data.local.entity.TagEntity
+import de.davis.keygo.core.item.data.local.pojo.ItemTagProjection
 import de.davis.keygo.core.item.domain.alias.ItemId
 import kotlinx.coroutines.flow.Flow
 
@@ -36,6 +37,14 @@ internal abstract class TagDao {
         """
     )
     abstract fun observeItemIdsWithAnyTag(values: Set<String>): Flow<List<ItemId>>
+
+    @Query(
+        """
+        SELECT x.item_id AS itemId, t.value AS value FROM tag_cross_ref x
+        JOIN tag t ON t.id = x.tag_id
+        """
+    )
+    abstract fun observeItemTags(): Flow<List<ItemTagProjection>>
 
     @Query("SELECT tag_id FROM tag_cross_ref WHERE item_id = :itemId")
     abstract suspend fun tagIdsForItem(itemId: ItemId): List<Long>
