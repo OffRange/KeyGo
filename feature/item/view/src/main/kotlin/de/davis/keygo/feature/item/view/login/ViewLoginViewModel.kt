@@ -21,6 +21,7 @@ import de.davis.keygo.feature.item.core.domain.model.fieldUpdate
 import de.davis.keygo.feature.item.core.domain.model.onSet
 import de.davis.keygo.feature.item.core.domain.model.set
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
+import de.davis.keygo.feature.item.core.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
 import de.davis.keygo.feature.item.core.presentation.model.NavigationEvent
@@ -44,6 +45,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
@@ -66,6 +68,7 @@ internal class ViewLoginViewModel(
     private val registrableDomainResolver: RegistrableDomainResolver,
     private val totpService: TotpService,
     private val observeLoginWithCryptoScope: LoginWithCryptoScopeUseCase,
+    private val observeAllTags: ObserveAllTagsSortedUseCase,
 ) : ViewModel() {
 
     private val _modificationDialogState = MutableStateFlow<ModificationDialog?>(null)
@@ -188,7 +191,7 @@ internal class ViewLoginViewModel(
                 _modificationDialogState.update { null }
             }
 
-            is ViewLoginUiEvent.OnModifyFieldRequest -> {
+            is ViewLoginUiEvent.OnModifyFieldRequest -> viewModelScope.launch {
                 val fieldType = event.fieldType
                 val state = state.value
                 val initialValue = when (fieldType) {
@@ -201,10 +204,15 @@ internal class ViewLoginViewModel(
                     FieldType.Note -> state.note
                 }
 
+                val tagsToSuggest =
+                    if (fieldType == FieldType.Tag) observeAllTags().first().toSet() - state.tags
+                    else emptySet()
+
                 _modificationDialogState.update {
                     ModificationDialog(
                         fieldType = fieldType,
                         initialValue = initialValue,
+                        tagsToSuggest = tagsToSuggest,
                     )
                 }
             }
