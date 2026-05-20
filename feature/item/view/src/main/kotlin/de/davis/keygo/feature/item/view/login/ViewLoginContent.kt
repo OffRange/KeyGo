@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.text.input.then
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -37,6 +38,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -81,6 +83,7 @@ import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
 import de.davis.keygo.feature.item.core.presentation.component.CopyToClipboardButton
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
+import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormSuggestionField
 import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.transformation.TrimTransformation
 import de.davis.keygo.feature.item.core.presentation.transformation.rememberSchemeStrippingTransformation
@@ -171,6 +174,7 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
         val totp = stringResource(ItemCoreR.string.totp)
         val username = stringResource(ItemCoreR.string.login_identifier)
         val domains = stringResource(ItemCoreR.string.domains)
+        val tags = stringResource(ItemCoreR.string.tags)
         val note = stringResource(ItemCoreR.string.note)
 
         var isPasswordHidden by rememberSaveable { mutableStateOf(true) }
@@ -320,6 +324,27 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                 }
             }
 
+            if (state.tags.isNotEmpty()) {
+                entry(
+                    title = tags,
+                    leadingIcon = Icons.Default.Sell
+                ) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        state.tags.forEach {
+                            key(it.display) {
+                                AssistChip(
+                                    onClick = {},
+                                    label = { Text(text = it.display) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             if (state.note.isNotBlank()) {
                 entry(
                     title = note,
@@ -350,6 +375,11 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
 
                     AddChip(
                         fieldType = FieldType.Domain,
+                        onClick = { onEvent(ViewLoginUiEvent.OnModifyFieldRequest(it)) },
+                    )
+
+                    AddChip(
+                        fieldType = FieldType.Tag,
                         onClick = { onEvent(ViewLoginUiEvent.OnModifyFieldRequest(it)) },
                     )
 
@@ -391,41 +421,59 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                     Text(text = stringResource(CoreUiR.string.add))
                 },
                 text = {
-                    val schemeTransformation = rememberSchemeStrippingTransformation()
-                    val detectedScheme by schemeTransformation.detectedScheme
+                    when (dialog.fieldType) {
+                        FieldType.Tag -> KeyGoFormSuggestionField(
+                            suggestions = dialog.tagsToSuggest.mapTo(mutableSetOf()) { it.display },
+                            onSuggestionSelected = {
+                                textFieldInputState.setTextAndPlaceCursorAtEnd(
+                                    it
+                                )
+                            },
+                            state = textFieldInputState,
+                            label = {
+                                Text(text = dialog.fieldType.addLabel())
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
 
-                    val transformation = when {
-                        dialog.fieldType == FieldType.Domain ->
-                            TrimTransformation.then(schemeTransformation)
+                        else -> {
+                            val schemeTransformation = rememberSchemeStrippingTransformation()
+                            val detectedScheme by schemeTransformation.detectedScheme
 
-                        !dialog.fieldType.isSensitive -> TrimTransformation
-                        else -> null
-                    }
+                            val transformation = when {
+                                dialog.fieldType == FieldType.Domain ->
+                                    TrimTransformation.then(schemeTransformation)
 
-                    KeyGoFormField(
-                        state = textFieldInputState,
-                        label = {
-                            Text(text = dialog.fieldType.addLabel())
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        prefix = if (dialog.fieldType == FieldType.Domain) {
-                            { Text(text = detectedScheme ?: "https://") }
-                        } else null,
-                        outsideTrailingContent = if (dialog.fieldType == FieldType.Totp) {
-                            {
-                                IconButton(
-                                    onClick = { onEvent(ViewLoginUiEvent.OnScanCodeRequest) },
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.QrCodeScanner,
-                                        contentDescription = null,
-                                    )
-                                }
+                                !dialog.fieldType.isSensitive -> TrimTransformation
+                                else -> null
                             }
-                        } else null,
-                        isSecure = dialog.fieldType.isSensitive,
-                        inputTransformation = transformation,
-                    )
+
+                            KeyGoFormField(
+                                state = textFieldInputState,
+                                label = {
+                                    Text(text = dialog.fieldType.addLabel())
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                prefix = if (dialog.fieldType == FieldType.Domain) {
+                                    { Text(text = detectedScheme ?: "https://") }
+                                } else null,
+                                outsideTrailingContent = if (dialog.fieldType == FieldType.Totp) {
+                                    {
+                                        IconButton(
+                                            onClick = { onEvent(ViewLoginUiEvent.OnScanCodeRequest) },
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.QrCodeScanner,
+                                                contentDescription = null,
+                                            )
+                                        }
+                                    }
+                                } else null,
+                                isSecure = dialog.fieldType.isSensitive,
+                                inputTransformation = transformation,
+                            )
+                        }
+                    }
                 },
             )
         }
@@ -465,6 +513,7 @@ private fun FieldType.addLabel(): String {
         FieldType.Totp -> stringResource(R.string.add_totp)
         FieldType.Username -> stringResource(R.string.add_username)
         FieldType.Domain -> stringResource(R.string.add_domain)
+        FieldType.Tag -> stringResource(R.string.add_tag)
         FieldType.Note -> stringResource(R.string.add_note)
     }
 }
@@ -477,6 +526,7 @@ private fun FieldType.addIcon(): ImageVector {
         FieldType.Totp -> Icons.Default.MoreTime
         FieldType.Username -> Icons.Default.PersonAdd
         FieldType.Domain -> Icons.Default.AddLink
+        FieldType.Tag -> Icons.Default.Sell
         FieldType.Note -> Icons.AutoMirrored.Default.NoteAdd
     }
 }

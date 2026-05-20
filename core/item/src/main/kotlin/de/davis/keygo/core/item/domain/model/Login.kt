@@ -17,6 +17,7 @@ data class Login(
     override val vaultId: VaultId,
     override val name: String,
     override val keyInformation: KeyInformation,
+    override val tags: Set<Tag> = emptySet(),
     override val note: String?,
     override val pinned: Boolean,
 ) : Item {

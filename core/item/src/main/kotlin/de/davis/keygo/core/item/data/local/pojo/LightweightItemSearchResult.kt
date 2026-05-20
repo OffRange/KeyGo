@@ -9,5 +9,6 @@ internal data class LightweightItemSearchResult(
     val itemType: VaultItemType,
     val matchedName: Boolean,
     val matchedNote: Boolean,
+    val matchedTag: Boolean,
     val pinned: Boolean
 )

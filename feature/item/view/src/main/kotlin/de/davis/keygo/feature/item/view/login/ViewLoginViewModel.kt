@@ -4,12 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
+import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.usecase.LoginWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
+import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
@@ -43,6 +46,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
@@ -59,11 +63,13 @@ internal class ViewLoginViewModel(
     private val vaultRepository: VaultRepository,
     private val updateLogin: CreateNewOrUpdateLoginUseCase,
     private val isValidUrl: IsValidUrlUseCase,
+    private val sort: SortUseCase,
     private val websiteHandler: WebsiteHandler,
     private val totpGenerator: TotpGenerator,
     private val registrableDomainResolver: RegistrableDomainResolver,
     private val totpService: TotpService,
     private val observeLoginWithCryptoScope: LoginWithCryptoScopeUseCase,
+    private val observeAllTags: ObserveAllTagsSortedUseCase,
 ) : ViewModel() {
 
     private val _modificationDialogState = MutableStateFlow<ModificationDialog?>(null)
@@ -98,6 +104,7 @@ internal class ViewLoginViewModel(
                     passwordStrengthScore = login.passwordCredential?.score,
                     username = login.username.orEmpty(),
                     domains = login.domainInfos,
+                    tags = sort(login.tags) { it.display }.toSet(),
                     note = login.note.orEmpty(),
                     totpState = TotpState.NoTotp,
                     pinned = login.pinned,
@@ -185,7 +192,7 @@ internal class ViewLoginViewModel(
                 _modificationDialogState.update { null }
             }
 
-            is ViewLoginUiEvent.OnModifyFieldRequest -> {
+            is ViewLoginUiEvent.OnModifyFieldRequest -> viewModelScope.launch {
                 val fieldType = event.fieldType
                 val state = state.value
                 val initialValue = when (fieldType) {
@@ -194,13 +201,19 @@ internal class ViewLoginViewModel(
                     FieldType.Totp -> "" // TOTP is not editable in this context
                     FieldType.Username -> state.username
                     FieldType.Domain -> "" // Only allow adding new domains, not editing existing ones
+                    FieldType.Tag -> "" // Only allow adding new tags, not editing existing ones
                     FieldType.Note -> state.note
                 }
+
+                val tagsToSuggest =
+                    if (fieldType == FieldType.Tag) observeAllTags().first().toSet() - state.tags
+                    else emptySet()
 
                 _modificationDialogState.update {
                     ModificationDialog(
                         fieldType = fieldType,
                         initialValue = initialValue,
+                        tagsToSuggest = tagsToSuggest,
                     )
                 }
             }
@@ -269,6 +282,15 @@ internal class ViewLoginViewModel(
                                         itemId = id,
                                         domains = set(updatedDomains),
                                     )
+                                } ?: return@launch
+
+                                FieldType.Tag -> newText.onSet { raw ->
+                                    Tag.of(raw)?.let { tag ->
+                                        UpsertLogin.update(
+                                            itemId = id,
+                                            tags = set(state.value.tags + tag),
+                                        )
+                                    }
                                 } ?: return@launch
 
                                 FieldType.Note -> UpsertLogin.update(

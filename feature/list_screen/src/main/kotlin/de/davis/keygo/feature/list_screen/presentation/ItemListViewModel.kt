@@ -11,6 +11,7 @@ import de.davis.keygo.core.item.domain.model.getIdOrNull
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.LoginRepository
+import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
@@ -39,6 +40,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -56,6 +58,7 @@ internal class ItemListViewModel(
     private val snackbarManager: SnackbarManager,
     private val itemRepository: ItemRepository,
     private val filterUseCase: FilterUseCase,
+    observeAllTags: ObserveAllTagsSortedUseCase,
     observeVaultsAndSelection: ObserveVaultsAndSelectionUseCase,
     loginRepository: LoginRepository,
 ) : ViewModel() {
@@ -83,12 +86,23 @@ internal class ItemListViewModel(
     private val passwordScores = loginRepository.observePasswordScores()
 
     private val filterState = MutableStateFlow(FilterState.Default)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val tagFilteredItemIds: Flow<Set<ItemId>?> = filterState
+        .map { it.selectedTags }
+        .distinctUntilChanged()
+        .flatMapLatest { tags ->
+            if (tags.isEmpty()) flowOf(null)
+            else itemRepository.observeItemIdsForTags(tags)
+        }
+
     private val filteredItems = combine(
         nonDeletedItems,
         filterState,
         passwordScores,
-    ) { items, filter, scores ->
-        filterUseCase(filter, items, scores)
+        tagFilteredItemIds,
+    ) { items, filter, scores, tagIds ->
+        filterUseCase(filter, items, scores, tagIds)
     }.distinctUntilChanged()
 
     private val searchResults = MutableStateFlow(listOf<LiteItem>())
@@ -127,8 +141,10 @@ internal class ItemListViewModel(
     private val availableFilterOptions = combine(
         nonDeletedItems,
         passwordScores,
-    ) { items, scores ->
-        items.toAvailableFilterOptions(scores)
+        itemRepository.observeTagsByItem(),
+        observeAllTags(),
+    ) { items, scores, tagsByItem, allTags ->
+        items.toAvailableFilterOptions(scores, tagsByItem, allTags)
     }.distinctUntilChanged()
 
     val filterBottomSheetState = combine(
@@ -157,8 +173,8 @@ internal class ItemListViewModel(
                 it.copy(selectedItemTypes = it.selectedItemTypes.toggle(action.itemType))
             }
 
-            is FilterAction.LabelToggled -> filterState.update {
-                it.copy(selectedLabels = it.selectedLabels.toggle(action.label))
+            is FilterAction.TagToggled -> filterState.update {
+                it.copy(selectedTags = it.selectedTags.toggle(action.tag))
             }
 
             is FilterAction.ScoreToggled -> filterState.update {

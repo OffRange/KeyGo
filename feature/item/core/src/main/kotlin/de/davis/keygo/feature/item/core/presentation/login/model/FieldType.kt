@@ -6,5 +6,6 @@ enum class FieldType(val isSensitive: Boolean = false) {
     Totp,
     Username,
     Domain,
+    Tag,
     Note,
 }

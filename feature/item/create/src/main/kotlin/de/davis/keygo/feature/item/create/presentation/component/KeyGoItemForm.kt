@@ -33,11 +33,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newVaultId
+import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.core.ui.theme.KeyGoTheme
+import de.davis.keygo.feature.item.core.presentation.component.ChipFormGroup
+import de.davis.keygo.feature.item.core.presentation.component.ChipFormMode
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
 import de.davis.keygo.feature.item.create.R
@@ -48,9 +51,14 @@ import de.davis.keygo.feature.item.core.R as ItemCoreR
 @Composable
 fun KeyGoItemForm(
     nameTextFieldState: TextFieldState,
+    tagsTextFieldState: TextFieldState,
     notesTextFieldState: TextFieldState,
     vaultsState: VaultsState?,
     onVaultSelect: (VaultId) -> Unit,
+    assignedTags: Set<Tag>,
+    tagsForSuggestions: Set<Tag>,
+    onTagSubmitted: (Set<Tag>) -> Unit,
+    onDeleteTag: (Tag) -> Unit,
     modifier: Modifier = Modifier,
     nameError: InputFieldError? = null,
     nameExists: Boolean = false,
@@ -112,7 +120,29 @@ fun KeyGoItemForm(
 
         content()
 
-        item(key = "additional_information") {
+        item(key = "tags") {
+            ChipFormGroup(
+                title = stringResource(R.string.tag_information),
+                items = assignedTags,
+                textOf = { it.display },
+                containsForInput = { input ->
+                    val normalized = Tag.normalize(input)
+                    assignedTags.any { tag -> tag.normalized == normalized }
+                },
+                onSubmit = { strings ->
+                    onTagSubmitted(strings.mapNotNullTo(mutableSetOf(), Tag::of))
+                },
+                onDelete = { onDeleteTag(it) },
+                label = {
+                    Text(text = stringResource(R.string.add_tags))
+                },
+                state = tagsTextFieldState,
+                delimiters = TAG_DELIMITERS,
+                mode = ChipFormMode.WithSuggestions(suggestions = tagsForSuggestions)
+            )
+        }
+
+        item(key = "notes") {
             FormGroup(
                 title = stringResource(R.string.additional_information),
                 modifier = Modifier
@@ -150,6 +180,8 @@ internal fun FormGroup(
     )
 }
 
+internal val TAG_DELIMITERS = setOf(',')
+
 @Preview
 @Composable
 private fun KeyGoItemFormPreview() {
@@ -160,6 +192,7 @@ private fun KeyGoItemFormPreview() {
             KeyGoItemForm(
                 nameTextFieldState = remember { TextFieldState() },
                 notesTextFieldState = remember { TextFieldState() },
+                tagsTextFieldState = remember { TextFieldState() },
                 vaultsState = remember {
                     val id = newVaultId()
                     VaultsState(
@@ -178,7 +211,11 @@ private fun KeyGoItemFormPreview() {
                     )
                 },
                 onVaultSelect = {},
-                nameExists = true
+                nameExists = true,
+                assignedTags = setOf(Tag.of("Tag 1")!!, Tag.of("Tag 2")!!, Tag.of("Tag 3")!!),
+                tagsForSuggestions = emptySet(),
+                onTagSubmitted = {},
+                onDeleteTag = {},
             ) {
                 item(key = "password_information") {
                     FormGroup(

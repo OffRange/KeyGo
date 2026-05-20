@@ -5,6 +5,7 @@ import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
+import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
 import de.davis.keygo.feature.list_screen.domain.model.SortDirection
 import java.util.UUID
@@ -14,7 +15,7 @@ import kotlin.test.assertTrue
 
 class FilterUseCaseTest {
 
-    private val useCase: FilterUseCase = FilterUseCase()
+    private val useCase: FilterUseCase = FilterUseCase(SortUseCase())
 
     private val filterStateAsc = FilterState(sortDirection = SortDirection.Ascending)
     private val filterStateDesc = FilterState(sortDirection = SortDirection.Descending)
@@ -412,5 +413,44 @@ class FilterUseCaseTest {
         val result = useCase(filterStateAsc, allPinned, noScores)
 
         assertEquals(listOf("Alpha", "Mike", "Zulu"), result.map { it.name })
+    }
+
+    // Filter by tag (precomputed matching ids)
+    private val tagItems = listOf(
+        TestLiteItem(name = "Bank A", id = newItemId()),
+        TestLiteItem(name = "Bank B", id = newItemId()),
+        TestLiteItem(name = "Work C", id = newItemId()),
+    )
+
+    @Test
+    fun `null tagMatchingIds returns all items`() {
+        val result = useCase(FilterState(), tagItems, noScores, null)
+        assertEquals(tagItems.size, result.size)
+        assertTrue(result.containsAll(tagItems))
+    }
+
+    @Test
+    fun `tagMatchingIds keeps only items whose id is in the set`() {
+        val matching = setOf(tagItems[0].id, tagItems[1].id)
+        val result = useCase(FilterState(), tagItems, noScores, matching)
+
+        assertEquals(2, result.size)
+        assertTrue(result.all { it.id in matching })
+    }
+
+    @Test
+    fun `empty tagMatchingIds returns empty list`() {
+        val result = useCase(FilterState(), tagItems, noScores, emptySet())
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun `tag filter combines with item type filter`() {
+        val state = FilterState(selectedItemTypes = setOf(VaultItemType.Login))
+        val matching = setOf(tagItems[0].id)
+        val result = useCase(state, tagItems, noScores, matching)
+
+        assertEquals(1, result.size)
+        assertEquals(tagItems[0].id, result.single().id)
     }
 }

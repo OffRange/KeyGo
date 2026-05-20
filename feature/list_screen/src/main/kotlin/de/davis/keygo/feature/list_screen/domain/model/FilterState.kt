@@ -1,13 +1,14 @@
 package de.davis.keygo.feature.list_screen.domain.model
 
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 
 data class FilterState(
     val sortDirection: SortDirection = SortDirection.Ascending,
     val selectedScores: Set<PasswordScore> = emptySet(),
     val selectedItemTypes: Set<VaultItemType> = emptySet(),
-    val selectedLabels: Set<String> = emptySet(),
+    val selectedTags: Set<Tag> = emptySet(),
     val onlyPinned: Boolean = false
 ) {
 

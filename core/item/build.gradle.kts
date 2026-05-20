@@ -74,6 +74,7 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.io.mockk)
+    testImplementation(libs.androidx.sqlite.bundled)
 
     testFixturesImplementation(libs.kotlinx.coroutines.core)
     testFixturesApi(projects.core.util)

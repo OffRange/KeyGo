@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
 import de.davis.keygo.core.ui.components.KeyGoCard
@@ -200,20 +201,20 @@ private fun ItemSection(
             }
         }
 
-        if (state.labelChips.isNotEmpty()) {
+        if (state.tagChips.isNotEmpty()) {
             KeyGoCard(
                 title = {
-                    Text(text = stringResource(R.string.labels))
+                    Text(text = stringResource(R.string.tags))
                 },
                 properties = KeyGoCardProperties.outlined(),
             ) {
                 FlowRow(horizontalArrangement = DefaultHorizontalArrangement) {
-                    state.labelChips.forEach { chip ->
+                    state.tagChips.forEach { chip ->
                         FilterChip(
                             selected = chip.selected,
-                            onClick = { onAction(FilterAction.LabelToggled(chip.value)) },
+                            onClick = { onAction(FilterAction.TagToggled(chip.value)) },
                             label = {
-                                Text(text = chip.value)
+                                Text(text = chip.value.display)
                             },
                         )
                     }
@@ -363,9 +364,9 @@ private fun FilterBottomSheetContentPreview() {
                         itemTypeChips = VaultItemType.entries.map { type ->
                             FilterChipState(value = type, selected = false)
                         },
-                        labelChips = listOf(
-                            FilterChipState(value = "Label1", selected = false),
-                            FilterChipState(value = "Label2", selected = true),
+                        tagChips = listOf(
+                            FilterChipState(value = Tag.of("Label1")!!, selected = false),
+                            FilterChipState(value = Tag.of("Label2")!!, selected = true),
                         ),
                     ),
                     passwordSection = PasswordSectionState(

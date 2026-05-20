@@ -4,6 +4,7 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Stable
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
 import de.davis.keygo.feature.item.create.presentation.model.VaultsState
 
@@ -25,6 +26,8 @@ internal data class LoginBaseState(
     val totpTextFieldState: TextFieldState = TextFieldState(),
     val usernameTextFieldState: TextFieldState = TextFieldState(),
     val domains: Set<DomainInfo> = emptySet(),
+    val tagsForSuggestion: Set<Tag> = emptySet(),
+    val itemAssignedTags: Set<Tag> = emptySet(),
     val nameExists: Boolean = false,
     val strengthScore: PasswordScore = PasswordScore.None,
     val generatePasswordBottomSheetVisible: Boolean = false,
@@ -37,10 +40,10 @@ internal data class LoginBaseState(
 ) {
     val hasAnyContent: Boolean
         get() = passwordTextFieldState.text.isNotBlank()
-            || totpTextFieldState.text.isNotBlank()
-            || usernameTextFieldState.text.isNotBlank()
-            || existingPasskeyCount > 0
-            || pendingPasskeyCount > 0
+                || totpTextFieldState.text.isNotBlank()
+                || usernameTextFieldState.text.isNotBlank()
+                || existingPasskeyCount > 0
+                || pendingPasskeyCount > 0
 
     val canSave: Boolean
         get() = nameTextFieldState.text.isNotBlank() && hasAnyContent

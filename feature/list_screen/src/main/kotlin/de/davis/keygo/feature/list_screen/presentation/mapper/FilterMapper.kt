@@ -3,6 +3,7 @@ package de.davis.keygo.feature.list_screen.presentation.mapper
 import androidx.compose.ui.util.fastMapTo
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
@@ -18,7 +19,7 @@ internal fun FilterState.toBottomSheetState(
 ): FilterBottomSheetState {
     val showItemTypeChips = restrictedItemType == null && available.itemTypes.size > 1
     val showItemSection =
-        showItemTypeChips || available.labels.isNotEmpty() || available.hasPinnedItems
+        showItemTypeChips || available.tags.isNotEmpty() || available.hasPinnedItems
 
     val effectiveItemTypes = restrictedItemType?.let { setOf(it) } ?: selectedItemTypes
     val showLoginSection = available.hasPasswordItems &&
@@ -32,8 +33,8 @@ internal fun FilterState.toBottomSheetState(
             itemTypeChips = if (showItemTypeChips) available.itemTypes.map { type ->
                 FilterChipState(value = type, selected = type in selectedItemTypes)
             } else emptyList(),
-            labelChips = available.labels.map { label ->
-                FilterChipState(value = label, selected = label in selectedLabels)
+            tagChips = available.tags.map { tag ->
+                FilterChipState(value = tag, selected = tag in selectedTags)
             },
         ) else null,
         passwordSection = if (showLoginSection) PasswordSectionState(
@@ -49,6 +50,8 @@ internal fun FilterState.toBottomSheetState(
 
 internal fun List<LiteItem>.toAvailableFilterOptions(
     passwordScores: Map<ItemId, PasswordScore>,
+    tagsByItem: Map<ItemId, Set<Tag>>,
+    allTags: List<Tag>,
 ): AvailableFilterOptions {
     val itemTypes = fastMapTo(mutableSetOf()) { it.itemType }
     val hasLoginItems = VaultItemType.Login in itemTypes
@@ -60,11 +63,17 @@ internal fun List<LiteItem>.toAvailableFilterOptions(
         passwordScores.filterKeys { it in itemIds }.values.toSet()
     else emptySet()
 
+    val visibleTags = buildSet {
+        this@toAvailableFilterOptions.forEach { item ->
+            tagsByItem[item.id]?.let(::addAll)
+        }
+    }
+
     return AvailableFilterOptions(
         itemTypes = itemTypes,
         hasPasswordItems = hasLoginItems,
         passwordScores = scores,
-        labels = emptySet(),
+        tags = allTags.filter { it in visibleTags }.toSet(),
         hasPinnedItems = any { it.pinned },
     )
 }

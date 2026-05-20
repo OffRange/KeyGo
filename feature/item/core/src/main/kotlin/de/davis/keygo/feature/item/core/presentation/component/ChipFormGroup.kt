@@ -40,6 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldLabelScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -64,6 +65,18 @@ import androidx.compose.ui.unit.dp
 import de.davis.keygo.feature.item.core.R
 import kotlinx.coroutines.flow.collectLatest
 
+@Stable
+sealed interface ChipFormMode<T> {
+
+    val suggestions: Set<T>
+
+    class Simple<T> : ChipFormMode<T> {
+        override val suggestions: Set<T> = emptySet()
+    }
+
+    data class WithSuggestions<T>(override val suggestions: Set<T>) : ChipFormMode<T>
+}
+
 @Composable
 fun <T> ChipFormGroup(
     title: String,
@@ -74,6 +87,7 @@ fun <T> ChipFormGroup(
     onDelete: (T) -> Unit,
     modifier: Modifier = Modifier,
     state: TextFieldState = rememberTextFieldState(),
+    mode: ChipFormMode<T> = ChipFormMode.Simple(),
     onEdit: ((T, Set<String>) -> Unit)? = null,
     label: @Composable (TextFieldLabelScope.() -> Unit)? = null,
     prefix: @Composable (() -> Unit)? = null,
@@ -115,8 +129,7 @@ fun <T> ChipFormGroup(
         if (keepLast && text.none { it in delimiters })
             return
 
-        val items = text.split(*delimiters.toCharArray())
-            .filter { it.isNotBlank() }
+        val items = text.splitChipInput(delimiters)
 
         val (itemsToSubmit, keep) = if (!keepLast || text.last() in delimiters) items to ""
         else items.dropLast(1) to items.last()
@@ -200,45 +213,65 @@ fun <T> ChipFormGroup(
             )
         }
 
-        KeyGoFormField(
-            state = state,
-            label = label,
-            modifier = modifier
-                .fillMaxWidth()
-                .onPreviewKeyEvent {
-                    if (it.key != Key.Backspace) return@onPreviewKeyEvent false
-                    if (it.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+        val modifier = modifier
+            .fillMaxWidth()
+            .onPreviewKeyEvent {
+                if (it.key != Key.Backspace) return@onPreviewKeyEvent false
+                if (it.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
 
-                    // Only trigger "un-chip" logic if the field is empty and there are items to remove
-                    if (state.text.isNotBlank() || items.isEmpty()) return@onPreviewKeyEvent false
+                // Only trigger "un-chip" logic if the field is empty and there are items to remove
+                if (state.text.isNotBlank() || items.isEmpty()) return@onPreviewKeyEvent false
 
-                    // Cancel editing if in edit mode
-                    if (editingItem != null) {
-                        cancelEdit()
-                        return@onPreviewKeyEvent true
-                    }
+                // Cancel editing if in edit mode
+                if (editingItem != null) {
+                    cancelEdit()
+                    return@onPreviewKeyEvent true
+                }
 
-                    // Pop the last item and restore its text representation to the field
-                    val lastItem = items.last()
-                    val text = textOf(lastItem)
-                    onDelete(lastItem)
-                    state.setTextAndPlaceCursorAtEnd(text)
-                    true
-                },
-            prefix = prefix,
-            placeholder = placeholder,
-            lineLimits = lineLimits,
-            keyboardOptions = effectiveKeyboardOptions,
-            // Flush pending text as chips before forwarding the keyboard action.
-            onKeyboardAction = KeyboardActionHandler { defaultAction ->
-                if (hasText)
-                    handleText(state.text.toString(), keepLast = false)
+                // Pop the last item and restore its text representation to the field
+                val lastItem = items.last()
+                val text = textOf(lastItem)
+                onDelete(lastItem)
+                state.setTextAndPlaceCursorAtEnd(text)
+                true
+            }
 
-                onKeyboardAction?.onKeyboardAction(defaultAction) ?: defaultAction()
-            },
-            inputTransformation = combinedTransformation,
-            interactionSource = interactionSource
-        )
+        // Flush pending text as chips before forwarding the keyboard action.
+        val keyboardActionHandler = KeyboardActionHandler { defaultAction ->
+            if (hasText) handleText(state.text.toString(), keepLast = false)
+
+            onKeyboardAction?.onKeyboardAction(defaultAction) ?: defaultAction()
+        }
+
+        when (mode) {
+            is ChipFormMode.Simple -> KeyGoFormField(
+                state = state,
+                label = label,
+                modifier = modifier,
+                prefix = prefix,
+                placeholder = placeholder,
+                lineLimits = lineLimits,
+                keyboardOptions = effectiveKeyboardOptions,
+                onKeyboardAction = keyboardActionHandler,
+                inputTransformation = combinedTransformation,
+                interactionSource = interactionSource
+            )
+
+            is ChipFormMode.WithSuggestions -> KeyGoFormSuggestionField(
+                suggestions = mode.suggestions.map(textOf).toSet(),
+                state = state,
+                onSuggestionSelected = { handleText(it, keepLast = false) },
+                label = label,
+                modifier = modifier,
+                prefix = prefix,
+                placeholder = placeholder,
+                lineLimits = lineLimits,
+                keyboardOptions = effectiveKeyboardOptions,
+                onKeyboardAction = keyboardActionHandler,
+                inputTransformation = combinedTransformation,
+                interactionSource = interactionSource,
+            )
+        }
     }
 }
 
@@ -302,6 +335,26 @@ private fun MenuChip(
             }
         }
     }
+}
+
+private fun CharSequence.splitChipInput(delimiters: Set<Char>): List<String> =
+    split(delimiters = delimiters.toCharArray())
+        .mapNotNull { it.trim().takeIf(String::isNotBlank) }
+
+/**
+ * Splits [TextFieldState.text] on each character in [delimiters], trims each segment,
+ * and filters out blank entries. Invokes [block] with the resulting set only when at
+ * least one non-blank item is found; does nothing if the text produces no valid items.
+ *
+ * @param delimiters Characters used as split points.
+ * @param block Receives the set of trimmed, non-blank items; only called when non-empty.
+ */
+fun TextFieldState.gatherPendingItems(delimiters: Set<Char>, block: (Set<String>) -> Unit) {
+    val pending = text
+        .splitChipInput(delimiters)
+        .toSet()
+
+    if (pending.isNotEmpty()) block(pending)
 }
 
 @Preview

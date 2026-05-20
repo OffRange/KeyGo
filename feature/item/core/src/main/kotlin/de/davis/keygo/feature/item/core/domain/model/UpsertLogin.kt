@@ -3,6 +3,7 @@ package de.davis.keygo.feature.item.core.domain.model
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.model.Tag
 
 @ConsistentCopyVisibility
 data class UpsertLogin private constructor(
@@ -12,6 +13,7 @@ data class UpsertLogin private constructor(
     val totpUriOrSecret: FieldUpdate<String>,
     val username: FieldUpdate<String>,
     val domains: FieldUpdate<Set<DomainInfo>>,
+    val tags: FieldUpdate<Set<Tag>>,
     val note: FieldUpdate<String>,
     val hasPendingPasskey: Boolean = false,
 ) {
@@ -23,6 +25,7 @@ data class UpsertLogin private constructor(
             totpUriOrSecret: String? = null,
             username: String? = null,
             domains: Set<DomainInfo> = emptySet(),
+            tags: Set<Tag> = emptySet(),
             note: String? = null,
             hasPendingPasskey: Boolean = false,
         ) = UpsertLogin(
@@ -33,6 +36,7 @@ data class UpsertLogin private constructor(
             totpUriOrSecret = if (!totpUriOrSecret.isNullOrBlank()) FieldUpdate.Set(totpUriOrSecret) else FieldUpdate.Clear,
             username = if (!username.isNullOrBlank()) FieldUpdate.Set(username) else FieldUpdate.Clear,
             domains = if (domains.isNotEmpty()) FieldUpdate.Set(domains) else FieldUpdate.Clear,
+            tags = if (tags.isNotEmpty()) FieldUpdate.Set(tags) else FieldUpdate.Clear,
             hasPendingPasskey = hasPendingPasskey,
         )
 
@@ -44,6 +48,7 @@ data class UpsertLogin private constructor(
             totpUriOrSecret: FieldUpdate<String> = keep(),
             username: FieldUpdate<String> = keep(),
             domains: FieldUpdate<Set<DomainInfo>> = keep(),
+            tags: FieldUpdate<Set<Tag>> = keep(),
             note: FieldUpdate<String> = keep(),
         ) = UpsertLogin(
             upsertType = UpsertType.Update(itemId, vaultId),
@@ -51,6 +56,7 @@ data class UpsertLogin private constructor(
             password = password,
             note = note,
             totpUriOrSecret = totpUriOrSecret,
+            tags = tags,
             username = username,
             domains = domains,
         )
