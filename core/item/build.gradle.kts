@@ -33,12 +33,6 @@ android {
     testFixtures {
         enable = true
     }
-
-    testOptions {
-        unitTests {
-            isReturnDefaultValues = true
-        }
-    }
 }
 
 kotlin {
