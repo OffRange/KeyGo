@@ -11,11 +11,11 @@ import de.davis.keygo.core.item.domain.model.getIdOrNull
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.LoginRepository
+import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
-import de.davis.keygo.feature.list_screen.domain.usecase.ObserveTagUseCase
 import de.davis.keygo.feature.list_screen.presentation.mapper.toAvailableFilterOptions
 import de.davis.keygo.feature.list_screen.presentation.mapper.toBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.Event
@@ -58,7 +58,7 @@ internal class ItemListViewModel(
     private val snackbarManager: SnackbarManager,
     private val itemRepository: ItemRepository,
     private val filterUseCase: FilterUseCase,
-    observeTag: ObserveTagUseCase,
+    observeAllTags: ObserveAllTagsSortedUseCase,
     observeVaultsAndSelection: ObserveVaultsAndSelectionUseCase,
     loginRepository: LoginRepository,
 ) : ViewModel() {
@@ -142,7 +142,7 @@ internal class ItemListViewModel(
         nonDeletedItems,
         passwordScores,
         itemRepository.observeTagsByItem(),
-        observeTag(),
+        observeAllTags(),
     ) { items, scores, tagsByItem, allTags ->
         items.toAvailableFilterOptions(scores, tagsByItem, allTags)
     }.distinctUntilChanged()
