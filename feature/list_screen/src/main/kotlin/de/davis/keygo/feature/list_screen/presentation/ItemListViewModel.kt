@@ -15,7 +15,7 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
-import de.davis.keygo.feature.list_screen.domain.usecase.ObserveTagLabelsUseCase
+import de.davis.keygo.feature.list_screen.domain.usecase.ObserveTagUseCase
 import de.davis.keygo.feature.list_screen.presentation.mapper.toAvailableFilterOptions
 import de.davis.keygo.feature.list_screen.presentation.mapper.toBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.Event
@@ -58,7 +58,7 @@ internal class ItemListViewModel(
     private val snackbarManager: SnackbarManager,
     private val itemRepository: ItemRepository,
     private val filterUseCase: FilterUseCase,
-    observeTagLabels: ObserveTagLabelsUseCase,
+    observeTag: ObserveTagUseCase,
     observeVaultsAndSelection: ObserveVaultsAndSelectionUseCase,
     loginRepository: LoginRepository,
 ) : ViewModel() {
@@ -89,11 +89,11 @@ internal class ItemListViewModel(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val tagFilteredItemIds: Flow<Set<ItemId>?> = filterState
-        .map { it.selectedLabels }
+        .map { it.selectedTags }
         .distinctUntilChanged()
-        .flatMapLatest { labels ->
-            if (labels.isEmpty()) flowOf(null)
-            else itemRepository.observeItemIdsForTags(labels)
+        .flatMapLatest { tags ->
+            if (tags.isEmpty()) flowOf(null)
+            else itemRepository.observeItemIdsForTags(tags)
         }
 
     private val filteredItems = combine(
@@ -142,7 +142,7 @@ internal class ItemListViewModel(
         nonDeletedItems,
         passwordScores,
         itemRepository.observeTagsByItem(),
-        observeTagLabels(),
+        observeTag(),
     ) { items, scores, tagsByItem, allTags ->
         items.toAvailableFilterOptions(scores, tagsByItem, allTags)
     }.distinctUntilChanged()
@@ -174,7 +174,7 @@ internal class ItemListViewModel(
             }
 
             is FilterAction.LabelToggled -> filterState.update {
-                it.copy(selectedLabels = it.selectedLabels.toggle(action.label))
+                it.copy(selectedTags = it.selectedTags.toggle(action.label))
             }
 
             is FilterAction.ScoreToggled -> filterState.update {

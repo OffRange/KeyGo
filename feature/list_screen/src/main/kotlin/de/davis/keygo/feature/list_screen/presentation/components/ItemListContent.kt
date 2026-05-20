@@ -255,7 +255,7 @@ private fun ItemListContentPreview() {
                         showPinnedSwitch = false,
                         onlyPinnedChecked = false,
                         itemTypeChips = emptyList(),
-                        labelChips = emptyList()
+                        tagChips = emptyList()
                     ),
                     passwordSection = null,
                     isDefault = true

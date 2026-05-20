@@ -56,9 +56,9 @@ class FilterStateTest {
     }
 
     @Test
-    fun `non-empty selected labels is not default`() {
+    fun `non-empty selected tags is not default`() {
         val state = FilterState(
-            selectedLabels = setOf("work"),
+            selectedTags = setOf("work"),
         )
         assertFalse(state.isDefault)
     }
@@ -69,7 +69,7 @@ class FilterStateTest {
             sortDirection = SortDirection.Descending,
             selectedScores = setOf(PasswordScore.Weak),
             selectedItemTypes = setOf(VaultItemType.Login),
-            selectedLabels = setOf("personal"),
+            selectedTags = setOf("personal"),
         )
         assertFalse(state.isDefault)
     }

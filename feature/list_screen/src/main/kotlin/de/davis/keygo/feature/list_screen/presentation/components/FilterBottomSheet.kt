@@ -200,15 +200,15 @@ private fun ItemSection(
             }
         }
 
-        if (state.labelChips.isNotEmpty()) {
+        if (state.tagChips.isNotEmpty()) {
             KeyGoCard(
                 title = {
-                    Text(text = stringResource(R.string.labels))
+                    Text(text = stringResource(R.string.tags))
                 },
                 properties = KeyGoCardProperties.outlined(),
             ) {
                 FlowRow(horizontalArrangement = DefaultHorizontalArrangement) {
-                    state.labelChips.forEach { chip ->
+                    state.tagChips.forEach { chip ->
                         FilterChip(
                             selected = chip.selected,
                             onClick = { onAction(FilterAction.LabelToggled(chip.value)) },
@@ -363,7 +363,7 @@ private fun FilterBottomSheetContentPreview() {
                         itemTypeChips = VaultItemType.entries.map { type ->
                             FilterChipState(value = type, selected = false)
                         },
-                        labelChips = listOf(
+                        tagChips = listOf(
                             FilterChipState(value = "Label1", selected = false),
                             FilterChipState(value = "Label2", selected = true),
                         ),

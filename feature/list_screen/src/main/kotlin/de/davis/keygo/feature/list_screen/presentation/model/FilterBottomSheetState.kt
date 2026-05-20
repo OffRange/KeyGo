@@ -18,7 +18,7 @@ internal data class ItemSectionState(
     val showPinnedSwitch: Boolean,
     val onlyPinnedChecked: Boolean,
     val itemTypeChips: List<FilterChipState<VaultItemType>>,
-    val labelChips: List<FilterChipState<String>>,
+    val tagChips: List<FilterChipState<String>>,
 )
 
 @Immutable

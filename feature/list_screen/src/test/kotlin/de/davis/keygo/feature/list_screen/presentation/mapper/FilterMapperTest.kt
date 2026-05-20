@@ -23,7 +23,7 @@ class FilterMapperTest {
     private val noTags: Map<ItemId, Set<String>> = emptyMap()
 
     @Test
-    fun `labels include only tags carried by a visible item, in allTags order`() {
+    fun `tags include only tags carried by a visible item, in allTags order`() {
         val a = TestLiteItem("A")
         val b = TestLiteItem("B")
 
@@ -38,7 +38,7 @@ class FilterMapperTest {
         )
 
         // Order follows the (already sorted) allTags list.
-        assertEquals(listOf("Bank", "Work"), options.labels.toList())
+        assertEquals(listOf("Bank", "Work"), options.tags.toList())
     }
 
     @Test
@@ -55,22 +55,22 @@ class FilterMapperTest {
             allTags = listOf("Bank", "Secret"),
         )
 
-        assertEquals(setOf("Bank"), options.labels)
+        assertEquals(setOf("Bank"), options.tags)
     }
 
     @Test
-    fun `no labels when no visible item has tags`() {
+    fun `no tags when no visible item has tags`() {
         val options = listOf(TestLiteItem("A")).toAvailableFilterOptions(
             passwordScores = noScores,
             tagsByItem = noTags,
             allTags = listOf("Bank"),
         )
 
-        assertTrue(options.labels.isEmpty())
+        assertTrue(options.tags.isEmpty())
     }
 
     @Test
-    fun `selected labels are reflected as selected chips`() {
+    fun `selected tags are reflected as selected chips`() {
         val a = TestLiteItem("A")
         val available = listOf(a).toAvailableFilterOptions(
             passwordScores = noScores,
@@ -78,10 +78,10 @@ class FilterMapperTest {
             allTags = listOf("Bank", "Work"),
         )
 
-        val sheet = FilterState(selectedLabels = setOf("Bank"))
+        val sheet = FilterState(selectedTags = setOf("Bank"))
             .toBottomSheetState(available, restrictedItemType = null)
 
-        val chips = sheet.itemSection?.labelChips.orEmpty()
+        val chips = sheet.itemSection?.tagChips.orEmpty()
         assertEquals(setOf("Bank", "Work"), chips.map { it.value }.toSet())
         assertTrue(chips.single { it.value == "Bank" }.selected)
         assertTrue(!chips.single { it.value == "Work" }.selected)

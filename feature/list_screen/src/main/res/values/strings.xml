@@ -20,7 +20,7 @@
     <string name="item">Item</string>
     <string name="item_type">Item Type</string>
 
-    <string name="labels">Labels</string>
+    <string name="tags">Tags</string>
 
     <string name="only_pinned_items">Only pinned Items</string>
 </resources>

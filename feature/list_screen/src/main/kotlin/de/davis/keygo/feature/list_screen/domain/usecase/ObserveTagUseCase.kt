@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.map
 import org.koin.core.annotation.Single
 
 @Single
-class ObserveTagLabelsUseCase(
+class ObserveTagUseCase(
     private val itemRepository: ItemRepository,
     private val sortUseCase: SortUseCase,
 ) {

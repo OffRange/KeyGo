@@ -12,11 +12,11 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class ObserveTagLabelsUseCaseTest {
+class ObserveTagUseCaseTest {
 
     private val loginRepository = FakeLoginRepository()
     private val itemRepository = FakeItemRepository(loginRepository)
-    private val useCase = ObserveTagLabelsUseCase(
+    private val useCase = ObserveTagUseCase(
         itemRepository = itemRepository,
         sortUseCase = SortUseCase(),
     )
