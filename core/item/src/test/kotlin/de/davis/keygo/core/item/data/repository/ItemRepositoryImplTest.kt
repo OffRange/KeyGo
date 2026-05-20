@@ -6,6 +6,7 @@ import de.davis.keygo.core.item.data.local.dao.TagDao
 import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
 import de.davis.keygo.core.item.data.local.pojo.ItemTagProjection
 import de.davis.keygo.core.item.domain.alias.newItemId
+import de.davis.keygo.core.item.domain.model.Tag
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.coVerifyOrder
@@ -84,8 +85,8 @@ class ItemRepositoryImplTest {
 
         assertEquals(
             mapOf(
-                a to setOf("Bank", "Work"),
-                b to setOf("Bank"),
+                a to setOf(Tag.of("Bank")!!, Tag.of("Work")!!),
+                b to setOf(Tag.of("Bank")!!),
             ),
             result,
         )

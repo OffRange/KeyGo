@@ -20,6 +20,7 @@ import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
+import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
@@ -176,7 +177,10 @@ class LoginRepositoryImplTest {
 
     @Test
     fun `createOrUpdateLogin syncs tags as normalized entities`() = runTest {
-        val login = testLogin(totpProvider = null, tags = setOf(" Work ", "work", "Email"))
+        val login = testLogin(
+            totpProvider = null,
+            tags = setOfNotNull(Tag.of(" Work "), Tag.of("work"), Tag.of("Email")),
+        )
 
         val result = repository.createOrUpdateLogin(login)
 
@@ -208,7 +212,7 @@ class LoginRepositoryImplTest {
             secret = PasswordSecret(EncryptedPayload.EMPTY),
             score = PasswordScore.Strong,
         ),
-        tags: Set<String> = emptySet(),
+        tags: Set<Tag> = emptySet(),
         totpProvider: ((ItemId) -> Totp)? = null,
     ): Login {
         val id = newItemId()

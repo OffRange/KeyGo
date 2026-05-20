@@ -55,7 +55,7 @@ internal class ItemRepositoryImpl(
     override suspend fun searchVaultItem(
         query: String,
         itemType: VaultItemType?,
-    ): List<LiteItemSearchResult> = itemDao.searchItem(query, itemType)
+    ): List<LiteItemSearchResult> = itemDao.searchItem(query, Tag.normalize(query), itemType)
         .map(LightweightItemSearchResult::toDomain)
 
     override suspend fun setPinned(itemId: ItemId, pinned: Boolean) =
@@ -64,13 +64,14 @@ internal class ItemRepositoryImpl(
     override fun observeAllTags(): Flow<List<Tag>> =
         tagDao.observeAllTags().map { it.map(TagEntity::toDomain) }
 
-    override fun observeItemIdsForTags(tags: Set<String>): Flow<Set<ItemId>> =
-        tagDao.observeItemIdsWithAnyTag(tags).map { it.toSet() }
+    override fun observeItemIdsForTags(tags: Set<Tag>): Flow<Set<ItemId>> =
+        tagDao.observeItemIdsWithAnyTag(tags.mapTo(mutableSetOf()) { it.normalized })
+            .map { it.toSet() }
 
     override fun observeTagsByItem(): Flow<Map<ItemId, Set<Tag>>> =
         tagDao.observeItemTags().map { rows ->
             rows.groupBy { it.itemId }
-                .mapValues { (_, pairs) -> pairs.mapTo(mutableSetOf()) { it.value } }
+                .mapValues { (_, pairs) -> pairs.mapNotNullTo(mutableSetOf()) { Tag.of(it.value) } }
         }
 
     override fun observeLiteVaultItems(vaultId: VaultId?): Flow<List<LiteItem>> =

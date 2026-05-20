@@ -124,13 +124,14 @@ fun KeyGoItemForm(
             ChipFormGroup(
                 title = stringResource(R.string.tag_information),
                 items = assignedTags,
-                textOf = { it },
-                containsForInput = {
-                    assignedTags.any { tag ->
-                        tag.equals(it, ignoreCase = true)
-                    }
+                textOf = { it.display },
+                containsForInput = { input ->
+                    val normalized = Tag.normalize(input)
+                    assignedTags.any { tag -> tag.normalized == normalized }
                 },
-                onSubmit = { onTagSubmitted(it) },
+                onSubmit = { strings ->
+                    onTagSubmitted(strings.mapNotNullTo(mutableSetOf(), Tag::of))
+                },
                 onDelete = { onDeleteTag(it) },
                 label = {
                     Text(text = stringResource(R.string.add_tags))
@@ -211,7 +212,7 @@ private fun KeyGoItemFormPreview() {
                 },
                 onVaultSelect = {},
                 nameExists = true,
-                assignedTags = setOf("Tag 1", "Tag 2", "Tag 3"),
+                assignedTags = setOf(Tag.of("Tag 1")!!, Tag.of("Tag 2")!!, Tag.of("Tag 3")!!),
                 tagsForSuggestions = emptySet(),
                 onTagSubmitted = {},
                 onDeleteTag = {},

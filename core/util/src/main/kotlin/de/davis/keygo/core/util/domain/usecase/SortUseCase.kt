@@ -12,11 +12,6 @@ class SortUseCase {
         }
     }
 
-    operator fun invoke(
-        items: Iterable<String>,
-        ascending: Boolean = true,
-    ) = invoke(items, ascending) { it }
-
     operator fun <T> invoke(
         items: Iterable<T>,
         ascending: Boolean = true,

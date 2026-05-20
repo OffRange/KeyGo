@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
@@ -103,7 +104,7 @@ internal class ViewLoginViewModel(
                     passwordStrengthScore = login.passwordCredential?.score,
                     username = login.username.orEmpty(),
                     domains = login.domainInfos,
-                    tags = sort(login.tags).toSet(),
+                    tags = sort(login.tags) { it.display }.toSet(),
                     note = login.note.orEmpty(),
                     totpState = TotpState.NoTotp,
                     pinned = login.pinned,
@@ -283,11 +284,13 @@ internal class ViewLoginViewModel(
                                     )
                                 } ?: return@launch
 
-                                FieldType.Tag -> newText.onSet {
-                                    UpsertLogin.update(
-                                        itemId = id,
-                                        tags = set(state.value.tags + it),
-                                    )
+                                FieldType.Tag -> newText.onSet { raw ->
+                                    Tag.of(raw)?.let { tag ->
+                                        UpsertLogin.update(
+                                            itemId = id,
+                                            tags = set(state.value.tags + tag),
+                                        )
+                                    }
                                 } ?: return@launch
 
                                 FieldType.Note -> UpsertLogin.update(

@@ -173,8 +173,8 @@ internal class ItemListViewModel(
                 it.copy(selectedItemTypes = it.selectedItemTypes.toggle(action.itemType))
             }
 
-            is FilterAction.LabelToggled -> filterState.update {
-                it.copy(selectedTags = it.selectedTags.toggle(action.label))
+            is FilterAction.TagToggled -> filterState.update {
+                it.copy(selectedTags = it.selectedTags.toggle(action.tag))
             }
 
             is FilterAction.ScoreToggled -> filterState.update {

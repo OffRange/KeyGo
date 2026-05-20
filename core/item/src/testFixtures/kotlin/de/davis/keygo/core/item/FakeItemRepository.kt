@@ -45,13 +45,15 @@ class FakeItemRepository(
     override fun observeAllTags(): Flow<List<Tag>> =
         allStores.map { store -> store.values.flatMap { item -> item.tags }.distinct() }
 
-    override fun observeItemIdsForTags(tags: Set<String>): Flow<Set<ItemId>> =
-        allStores.map { store ->
+    override fun observeItemIdsForTags(tags: Set<Tag>): Flow<Set<ItemId>> {
+        val targetNormalized = tags.mapTo(mutableSetOf()) { it.normalized }
+        return allStores.map { store ->
             store.values
-                .filter { item -> item.tags.any { it in tags } }
+                .filter { item -> item.tags.any { it.normalized in targetNormalized } }
                 .map { it.id }
                 .toSet()
         }
+    }
 
     override fun observeTagsByItem(): Flow<Map<ItemId, Set<Tag>>> =
         allStores.map { store ->

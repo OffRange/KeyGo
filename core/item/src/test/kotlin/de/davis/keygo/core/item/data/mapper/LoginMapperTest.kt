@@ -15,6 +15,7 @@ import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
+import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -65,12 +66,18 @@ class LoginMapperTest {
 
         val login = projection.toDomain()
 
-        assertEquals(setOf("Work", "Email"), login.tags)
+        assertEquals(setOf(Tag.of("Work")!!, Tag.of("Email")!!), login.tags)
     }
 
     @Test
-    fun `toTagEntities trims, drops blanks, dedups case-insensitively`() {
-        val result = listOf(" Work ", "work", "", "Email").toTagEntities()
+    fun `toTagEntities dedups case-insensitively, preserving display of first occurrence`() {
+        val tags = listOfNotNull(
+            Tag.of(" Work "),
+            Tag.of("work"),
+            Tag.of("Email"),
+        )
+
+        val result = tags.toTagEntities()
 
         assertEquals(
             listOf("Work" to "work", "Email" to "email"),

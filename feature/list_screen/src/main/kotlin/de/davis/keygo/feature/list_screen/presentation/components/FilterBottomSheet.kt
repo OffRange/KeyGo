@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
 import de.davis.keygo.core.ui.components.KeyGoCard
@@ -211,9 +212,9 @@ private fun ItemSection(
                     state.tagChips.forEach { chip ->
                         FilterChip(
                             selected = chip.selected,
-                            onClick = { onAction(FilterAction.LabelToggled(chip.value)) },
+                            onClick = { onAction(FilterAction.TagToggled(chip.value)) },
                             label = {
-                                Text(text = chip.value)
+                                Text(text = chip.value.display)
                             },
                         )
                     }
@@ -364,8 +365,8 @@ private fun FilterBottomSheetContentPreview() {
                             FilterChipState(value = type, selected = false)
                         },
                         tagChips = listOf(
-                            FilterChipState(value = "Label1", selected = false),
-                            FilterChipState(value = "Label2", selected = true),
+                            FilterChipState(value = Tag.of("Label1")!!, selected = false),
+                            FilterChipState(value = Tag.of("Label2")!!, selected = true),
                         ),
                     ),
                     passwordSection = PasswordSectionState(

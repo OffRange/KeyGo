@@ -141,7 +141,7 @@ internal class TagDaoTest {
         tagDao.syncTags(b, setOf(tag("Work"), tag("Bank")))
         tagDao.syncTags(c, setOf(tag("Personal")))
 
-        val ids = tagDao.observeItemIdsWithAnyTag(setOf("Bank")).first().toSet()
+        val ids = tagDao.observeItemIdsWithAnyTag(setOf("bank")).first().toSet()
 
         assertEquals(setOf(a, b), ids)
     }
@@ -155,7 +155,7 @@ internal class TagDaoTest {
         tagDao.syncTags(b, setOf(tag("Work")))
         tagDao.syncTags(c, setOf(tag("Personal")))
 
-        val ids = tagDao.observeItemIdsWithAnyTag(setOf("Bank", "Work")).first().toSet()
+        val ids = tagDao.observeItemIdsWithAnyTag(setOf("bank", "work")).first().toSet()
 
         assertEquals(setOf(a, b), ids)
     }
@@ -165,18 +165,19 @@ internal class TagDaoTest {
         val a = insertItem()
         tagDao.syncTags(a, setOf(tag("Bank")))
 
-        assertEquals(emptyList(), tagDao.observeItemIdsWithAnyTag(setOf("Nope")).first())
+        assertEquals(emptyList(), tagDao.observeItemIdsWithAnyTag(setOf("nope")).first())
     }
 
     @Test
-    fun `observeItemIdsWithAnyTag matches on display value exactly`() = runTest {
-        val a = insertItem()
-        tagDao.syncTags(a, setOf(tag("Bank")))
+    fun `observeItemIdsWithAnyTag matches the stored normalized form regardless of display casing`() =
+        runTest {
+            val a = insertItem()
+            tagDao.syncTags(a, setOf(tag("Bank")))
 
-        // 'bank' (lowercase) is the normalized form, not the stored display value
-        assertEquals(emptyList(), tagDao.observeItemIdsWithAnyTag(setOf("bank")).first())
-        assertEquals(listOf(a), tagDao.observeItemIdsWithAnyTag(setOf("Bank")).first())
-    }
+            // Caller is required to pass normalized (lower-cased, trimmed) values.
+            assertEquals(listOf(a), tagDao.observeItemIdsWithAnyTag(setOf("bank")).first())
+            assertEquals(emptyList(), tagDao.observeItemIdsWithAnyTag(setOf("Bank")).first())
+        }
 
     @Test
     fun `observeItemTags emits one row per item-tag pair using display value`() = runTest {

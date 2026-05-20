@@ -33,10 +33,10 @@ internal abstract class TagDao {
         """
         SELECT DISTINCT x.item_id FROM tag_cross_ref x
         JOIN tag t ON t.id = x.tag_id
-        WHERE t.value IN (:values)
+        WHERE t.normalized IN (:normalizedValues)
         """
     )
-    abstract fun observeItemIdsWithAnyTag(values: Set<String>): Flow<List<ItemId>>
+    abstract fun observeItemIdsWithAnyTag(normalizedValues: Set<String>): Flow<List<ItemId>>
 
     @Query(
         """

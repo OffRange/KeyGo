@@ -334,10 +334,10 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         state.tags.forEach {
-                            key(it) {
+                            key(it.display) {
                                 AssistChip(
                                     onClick = {},
-                                    label = { Text(text = it) },
+                                    label = { Text(text = it.display) },
                                 )
                             }
                         }
@@ -423,7 +423,7 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                 text = {
                     when (dialog.fieldType) {
                         FieldType.Tag -> KeyGoFormSuggestionField(
-                            suggestions = dialog.tagsToSuggest,
+                            suggestions = dialog.tagsToSuggest.mapTo(mutableSetOf()) { it.display },
                             onSuggestionSelected = {
                                 textFieldInputState.setTextAndPlaceCursorAtEnd(
                                     it

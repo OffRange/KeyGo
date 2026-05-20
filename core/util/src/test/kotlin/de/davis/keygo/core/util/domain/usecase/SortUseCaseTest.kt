@@ -7,6 +7,11 @@ class SortUseCaseTest {
 
     private val sort = SortUseCase()
 
+    private operator fun SortUseCase.invoke(
+        items: Iterable<String>,
+        ascending: Boolean = true,
+    ) = invoke(items, ascending) { it }
+
     @Test
     fun `sorts ascending case-insensitively by selector`() {
         val result = sort(listOf("banana", "Apple", "cherry"))

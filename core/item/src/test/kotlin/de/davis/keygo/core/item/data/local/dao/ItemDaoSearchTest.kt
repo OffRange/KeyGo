@@ -81,7 +81,7 @@ internal class ItemDaoSearchTest {
     fun `searchItem matches an item by tag value only`() = runTest {
         val id = insertItem(name = "Chase", note = null, tags = setOf("Banking"))
 
-        val results = itemDao.searchItem("Bank")
+        val results = itemDao.searchItem(query = "Bank", normalizedQuery = "bank")
 
         assertEquals(1, results.size)
         val r = results.single()
@@ -95,7 +95,7 @@ internal class ItemDaoSearchTest {
     fun `searchItem still matches by name and sets matchedName`() = runTest {
         insertItem(name = "Bank of Earth")
 
-        val r = itemDao.searchItem("Bank").single()
+        val r = itemDao.searchItem(query = "Bank", normalizedQuery = "bank").single()
 
         assertTrue(r.matchedName)
         assertFalse(r.matchedTag)
@@ -105,13 +105,20 @@ internal class ItemDaoSearchTest {
     fun `searchItem does not return items with no name note or tag match`() = runTest {
         insertItem(name = "Email", note = "personal", tags = setOf("Mail"))
 
-        assertTrue(itemDao.searchItem("Bank").isEmpty())
+        assertTrue(itemDao.searchItem(query = "Bank", normalizedQuery = "bank").isEmpty())
     }
 
     @Test
     fun `searchItem tag match still passes an explicit itemType filter`() = runTest {
         insertItem(name = "Chase", tags = setOf("Bank"))
 
-        assertEquals(1, itemDao.searchItem("Bank", VaultItemType.Login).size)
+        assertEquals(
+            1,
+            itemDao.searchItem(
+                query = "Bank",
+                normalizedQuery = "bank",
+                itemType = VaultItemType.Login,
+            ).size,
+        )
     }
 }

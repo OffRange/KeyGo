@@ -44,6 +44,7 @@ import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.item.presentation.StrengthIndicator
@@ -134,8 +135,12 @@ private fun LoginReadyContent(
                                 onEvent(LoginUiEvent.OnAddDomains(it))
                             }
 
-                            tagsTextFieldState.gatherPendingItems(TAG_DELIMITERS) {
-                                onEvent(LoginUiEvent.OnAddTags(it))
+                            tagsTextFieldState.gatherPendingItems(TAG_DELIMITERS) { strings ->
+                                onEvent(
+                                    LoginUiEvent.OnAddTags(
+                                        strings.mapNotNullTo(mutableSetOf(), Tag::of),
+                                    ),
+                                )
                             }
 
                             onEvent(LoginUiEvent.OnSubmit)

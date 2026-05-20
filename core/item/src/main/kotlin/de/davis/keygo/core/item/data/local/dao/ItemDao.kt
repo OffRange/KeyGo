@@ -42,7 +42,7 @@ internal interface ItemDao {
             SELECT DISTINCT x.item_id
             FROM tag_cross_ref x
             JOIN tag t ON t.id = x.tag_id
-            WHERE t.value LIKE '%' || :query || '%'
+            WHERE t.normalized LIKE '%' || :normalizedQuery || '%'
         )
         SELECT
             i.id, i.name, i.item_type AS itemType, i.pinned,
@@ -59,6 +59,7 @@ internal interface ItemDao {
     )
     suspend fun searchItem(
         query: String,
+        normalizedQuery: String,
         itemType: VaultItemType? = null,
     ): List<LightweightItemSearchResult>
 

@@ -33,8 +33,8 @@ internal fun FilterState.toBottomSheetState(
             itemTypeChips = if (showItemTypeChips) available.itemTypes.map { type ->
                 FilterChipState(value = type, selected = type in selectedItemTypes)
             } else emptyList(),
-            tagChips = available.tags.map { label ->
-                FilterChipState(value = label, selected = label in selectedTags)
+            tagChips = available.tags.map { tag ->
+                FilterChipState(value = tag, selected = tag in selectedTags)
             },
         ) else null,
         passwordSection = if (showLoginSection) PasswordSectionState(
