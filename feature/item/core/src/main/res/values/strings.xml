@@ -8,6 +8,13 @@
     <string name="domains">Domains</string>
     <string name="tags">Tags</string>
 
+    <string name="cc_holder">Card Holder</string>
+    <string name="cc_number">Card Number</string>
+    <string name="cc_cvv">Card CVV</string>
+    <string name="cc_expiration_date">Card Expiration Date</string>
+
+    <string name="cc_expiration_date_placeholder">MM/YY</string>
+
     <string name="back_content_description">Back</string>
     <string name="edit_content_description">Edit</string>
     <string name="edit">Edit</string>

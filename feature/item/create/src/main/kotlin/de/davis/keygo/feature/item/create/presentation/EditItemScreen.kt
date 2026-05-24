@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
+import de.davis.keygo.feature.item.create.presentation.creditcard.CreditCardScreen
 import de.davis.keygo.feature.item.create.presentation.login.LoginScreen
 
 @Composable
@@ -40,8 +41,11 @@ private fun ForInit(
             navigateBack = navigateBack,
         )
 
-        // TODO: credit card create screen not yet implemented
-        VaultItemType.CreditCard -> Unit
+        VaultItemType.CreditCard -> CreditCardScreen(
+            detailPaneInformation = info,
+            creditCardCreated = onCreated,
+            navigateBack = navigateBack,
+        )
     }
 }
 
