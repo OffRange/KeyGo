@@ -39,6 +39,7 @@ import de.davis.keygo.feature.item.create.presentation.login.model.LoginBaseStat
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiEvent
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiState
 import de.davis.keygo.feature.item.create.presentation.login.model.OverrideTotpField
+import de.davis.keygo.feature.item.create.presentation.model.ItemUiEvent
 import de.davis.keygo.feature.item.create.presentation.model.VaultsState
 import de.davis.keygo.rust.totp.TotpService
 import de.davis.keygo.rust.totp.getInfoFromUriWithResult
@@ -293,9 +294,9 @@ internal class LoginViewModel(
         }
     }
 
-    fun onEvent(event: LoginUiEvent) {
+    private fun onItemUiEvent(event: ItemUiEvent) {
         when (event) {
-            is LoginUiEvent.OnSubmit -> {
+            is ItemUiEvent.OnSubmit -> {
                 val ready = state.value as? LoginUiState.Ready ?: return
                 val base = ready.base
                 viewModelScope.launch {
@@ -360,17 +361,40 @@ internal class LoginViewModel(
                 }
             }
 
-            is LoginUiEvent.OnGeneratePasswordClick -> {
-                _base.update { it.copy(generatePasswordBottomSheetVisible = true) }
-            }
-
-            is LoginUiEvent.OnBackClick -> {
+            is ItemUiEvent.OnBackClick -> {
                 if (_base.value.scanning) {
                     _base.update { it.copy(scanning = false) }
                     return
                 }
 
                 navigateUp()
+            }
+
+            is ItemUiEvent.OnAddTags -> {
+                _base.update {
+                    it.copy(itemAssignedTags = it.itemAssignedTags + event.tags)
+                }
+            }
+
+            is ItemUiEvent.OnRemoveTag -> {
+                _base.update {
+                    it.copy(itemAssignedTags = it.itemAssignedTags.filterNot { tag -> tag == event.tag }
+                        .toSet())
+                }
+            }
+
+            is ItemUiEvent.OnVaultSelected -> {
+                _selectedVaultId.value = event.vaultId
+            }
+        }
+    }
+
+    fun onEvent(event: LoginUiEvent) {
+        when (event) {
+            is LoginUiEvent.ItemUi -> onItemUiEvent(event.event)
+
+            is LoginUiEvent.OnGeneratePasswordClick -> {
+                _base.update { it.copy(generatePasswordBottomSheetVisible = true) }
             }
 
             is LoginUiEvent.OnCloseBottomSheet -> {
@@ -479,28 +503,11 @@ internal class LoginViewModel(
                 }
             }
 
-            is LoginUiEvent.OnAddTags -> {
-                _base.update {
-                    it.copy(itemAssignedTags = it.itemAssignedTags + event.tags)
-                }
-            }
-
-            is LoginUiEvent.OnRemoveTag -> {
-                _base.update {
-                    it.copy(itemAssignedTags = it.itemAssignedTags.filterNot { tag -> tag == event.tag }
-                        .toSet())
-                }
-            }
-
             is LoginUiEvent.OnPasswordGenerated -> {
                 passwordTextFieldState.setTextAndPlaceCursorAtEnd(event.password)
                 _base.update {
                     it.copy(generatePasswordBottomSheetVisible = false)
                 }
-            }
-
-            is LoginUiEvent.OnVaultSelected -> {
-                _selectedVaultId.value = event.vaultId
             }
         }
     }

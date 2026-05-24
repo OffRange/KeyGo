@@ -62,6 +62,7 @@ import de.davis.keygo.feature.item.create.presentation.login.model.DialogState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginBaseState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiEvent
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiState
+import de.davis.keygo.feature.item.create.presentation.model.ItemUiEvent
 import de.davis.keygo.feature.item.create.presentation.model.VaultsState
 import de.davis.keygo.feature.item.create.presentation.password.GeneratePasswordModalBottomSheet
 import de.davis.keygo.feature.totp.presentation.component.QRScanner
@@ -72,7 +73,7 @@ import de.davis.keygo.feature.item.core.R as ItemCoreR
 internal fun LoginContent(state: LoginUiState, onEvent: (LoginUiEvent) -> Unit) {
     when (state) {
         LoginUiState.Loading -> LoginLoadingScaffold(
-            onBackClick = { onEvent(LoginUiEvent.OnBackClick) },
+            onBackClick = { onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnBackClick)) },
         )
 
         is LoginUiState.Ready -> LoginReadyContent(
@@ -125,7 +126,7 @@ private fun LoginReadyContent(
             CreateOrModifyItemTopAppBar(
                 itemType = VaultItemType.Login,
                 updating = state.updating,
-                onBackClick = { onEvent(LoginUiEvent.OnBackClick) },
+                onBackClick = { onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnBackClick)) },
                 actions = {
                     IconButton(
                         onClick = {
@@ -135,13 +136,15 @@ private fun LoginReadyContent(
 
                             tagsTextFieldState.gatherPendingItems(TAG_DELIMITERS) { strings ->
                                 onEvent(
-                                    LoginUiEvent.OnAddTags(
-                                        strings.mapNotNullTo(mutableSetOf(), Tag::of),
+                                    LoginUiEvent.ItemUi(
+                                        ItemUiEvent.OnAddTags(
+                                            strings.mapNotNullTo(mutableSetOf(), Tag::of),
+                                        )
                                     ),
                                 )
                             }
 
-                            onEvent(LoginUiEvent.OnSubmit)
+                            onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnSubmit))
                         },
                         enabled = state.canSave,
                     ) {
@@ -170,9 +173,9 @@ private fun LoginReadyContent(
             nameError = state.nameError,
             nameExists = state.nameExists,
             vaultsState = vaultsState,
-            onVaultSelect = { onEvent(LoginUiEvent.OnVaultSelected(it)) },
-            onTagSubmitted = { onEvent(LoginUiEvent.OnAddTags(it)) },
-            onDeleteTag = { onEvent(LoginUiEvent.OnRemoveTag(it)) },
+            onVaultSelect = { onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnVaultSelected(it))) },
+            onTagSubmitted = { onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnAddTags(it))) },
+            onDeleteTag = { onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnRemoveTag(it))) },
         ) {
             item(key = "password_information") {
                 var forceCompact by rememberSaveable { mutableStateOf(false) }
@@ -326,7 +329,7 @@ private fun LoginReadyContent(
 
     if (state.scanning) {
         QRScanner(
-            onClose = { onEvent(LoginUiEvent.OnBackClick) },
+            onClose = { onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnBackClick)) },
             success = {
                 onEvent(LoginUiEvent.OnCodesScanned(it))
             },
