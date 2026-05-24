@@ -9,12 +9,13 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.repository.ItemRepository
+import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.usecase.GetTdlMatchedLoginsUseCase
-import de.davis.keygo.core.security.domain.usecase.LoginWithCryptoScopeUseCase
+import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
@@ -62,7 +63,8 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
 internal class LoginViewModel(
-    private val loginWithCryptoScope: LoginWithCryptoScopeUseCase,
+    private val itemWithCryptoScope: ItemWithCryptoScopeUseCase,
+    private val loginRepository: LoginRepository,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val createNewOrUpdateLogin: CreateNewOrUpdateLoginUseCase,
     private val getTdlMatchedLogins: GetTdlMatchedLoginsUseCase,
@@ -153,8 +155,9 @@ internal class LoginViewModel(
     private suspend fun initWithId(itemId: ItemId) {
         this.itemId = itemId
 
-        loginWithCryptoScope.oneShot(
+        itemWithCryptoScope.oneShot(
             itemId = itemId,
+            fetch = loginRepository::getLoginById,
         ) { login ->
             val decrypted = coroutineScope {
                 val pwdDeferred = login.passwordCredential?.let { pwd ->
