@@ -27,16 +27,39 @@ import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.component.gatherPendingItems
 import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.presentation.component.FormGroup
+import de.davis.keygo.feature.item.create.presentation.component.ItemContentWrapper
 import de.davis.keygo.feature.item.create.presentation.component.KeyGoItemForm
 import de.davis.keygo.feature.item.create.presentation.component.TAG_DELIMITERS
+import de.davis.keygo.feature.item.create.presentation.creditcard.model.CreditCardBaseState
 import de.davis.keygo.feature.item.create.presentation.creditcard.model.CreditCardUiEvent
 import de.davis.keygo.feature.item.create.presentation.creditcard.model.CreditCardUiState
 import de.davis.keygo.feature.item.create.presentation.model.ItemUiEvent
+import de.davis.keygo.feature.item.create.presentation.model.SharedItemState
 import de.davis.keygo.feature.item.core.R as ItemCoreR
+
+
+@Composable
+internal fun CreditCardContent(state: CreditCardUiState, onEvent: (CreditCardUiEvent) -> Unit) {
+    ItemContentWrapper(
+        itemType = VaultItemType.CreditCard,
+        state = state,
+        onBackClick = { onEvent(CreditCardUiEvent.ItemUi(ItemUiEvent.OnBackClick)) },
+    ) { state ->
+        CreditCardReadyContent(
+            state = state.base,
+            shared = state.shared,
+            onEvent = onEvent,
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun CreditCardContent(state: CreditCardUiState, onEvent: (CreditCardUiEvent) -> Unit) {
+private fun CreditCardReadyContent(
+    state: CreditCardBaseState,
+    shared: SharedItemState,
+    onEvent: (CreditCardUiEvent) -> Unit,
+) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val tagsTextFieldState = rememberTextFieldState()
 
@@ -45,8 +68,8 @@ internal fun CreditCardContent(state: CreditCardUiState, onEvent: (CreditCardUiE
         topBar = {
             CreateOrModifyItemTopAppBar(
                 itemType = VaultItemType.CreditCard,
-                updating = false,
-                onBackClick = {},
+                updating = state.updating,
+                onBackClick = { onEvent(CreditCardUiEvent.ItemUi(ItemUiEvent.OnBackClick)) },
                 actions = {
                     IconButton(
                         onClick = {
@@ -62,7 +85,7 @@ internal fun CreditCardContent(state: CreditCardUiState, onEvent: (CreditCardUiE
 
                             onEvent(CreditCardUiEvent.ItemUi(ItemUiEvent.OnSubmit))
                         },
-                        enabled = state.canSave,
+                        enabled = state.canSave(shared.nameTextFieldState.text),
                     ) {
                         Icon(
                             imageVector = Icons.Default.Done,
@@ -75,13 +98,14 @@ internal fun CreditCardContent(state: CreditCardUiState, onEvent: (CreditCardUiE
         },
     ) { innerPadding ->
         KeyGoItemForm(
-            nameTextFieldState = rememberTextFieldState(),
+            nameTextFieldState = shared.nameTextFieldState,
             tagsTextFieldState = tagsTextFieldState,
-            notesTextFieldState = rememberTextFieldState(),
-            vaultsState = state.vaultsState,
+            notesTextFieldState = shared.notesTextFieldState,
+            nameExists = shared.nameExists,
+            vaultsState = shared.vaultsState,
             onVaultSelect = { onEvent(CreditCardUiEvent.ItemUi(ItemUiEvent.OnVaultSelected(it))) },
-            assignedTags = state.itemAssignedTags,
-            tagsForSuggestions = state.tagsForSuggestion,
+            assignedTags = shared.itemAssignedTags,
+            tagsForSuggestions = shared.tagsForSuggestion,
             onTagSubmitted = { onEvent(CreditCardUiEvent.ItemUi(ItemUiEvent.OnAddTags(it))) },
             onDeleteTag = { onEvent(CreditCardUiEvent.ItemUi(ItemUiEvent.OnRemoveTag(it))) },
             modifier = Modifier

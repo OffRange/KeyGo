@@ -4,10 +4,8 @@ import android.util.Log
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshotFlow
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.repository.ItemRepository
@@ -34,13 +32,12 @@ import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
 import de.davis.keygo.feature.item.create.R
+import de.davis.keygo.feature.item.create.presentation.ItemViewModel
 import de.davis.keygo.feature.item.create.presentation.login.model.DialogState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginBaseState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiEvent
-import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiState
 import de.davis.keygo.feature.item.create.presentation.login.model.OverrideTotpField
-import de.davis.keygo.feature.item.create.presentation.model.ItemUiEvent
-import de.davis.keygo.feature.item.create.presentation.model.VaultsState
+import de.davis.keygo.feature.item.create.presentation.model.ItemUiState
 import de.davis.keygo.rust.totp.TotpService
 import de.davis.keygo.rust.totp.getInfoFromUriWithResult
 import de.davis.keygo.rust.totp.getUrlWithResult
@@ -49,22 +46,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
@@ -73,80 +63,38 @@ import kotlin.time.Duration.Companion.milliseconds
 @KoinViewModel
 internal class LoginViewModel(
     private val loginWithCryptoScope: LoginWithCryptoScopeUseCase,
-    private val itemRepository: ItemRepository,
-    private val vaultContextRepository: VaultContextRepository,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val createNewOrUpdateLogin: CreateNewOrUpdateLoginUseCase,
     private val getTdlMatchedLogins: GetTdlMatchedLoginsUseCase,
     private val snackbarManager: SnackbarManager,
     private val totpService: TotpService,
     private val registrableDomainResolver: RegistrableDomainResolver,
+    vaultContextRepository: VaultContextRepository,
+    itemRepository: ItemRepository,
     observeAllTags: ObserveAllTagsSortedUseCase,
     vaultRepository: VaultRepository,
-) : ViewModel() {
+) : ItemViewModel<LoginBaseState>(
+    vaultContextRepository = vaultContextRepository,
+    itemRepository = itemRepository,
+    observeAllTags = observeAllTags,
+    vaultRepository = vaultRepository,
+) {
 
-    private val nameTextFieldState = TextFieldState()
     private val passwordTextFieldState = TextFieldState()
     private val _base = MutableStateFlow(
         LoginBaseState(
-            nameTextFieldState = nameTextFieldState,
             passwordTextFieldState = passwordTextFieldState,
         )
     )
 
-    private val _selectedVaultId = MutableStateFlow<VaultId?>(null)
+    override val itemState: Flow<LoginBaseState> = _base
 
-    private val allTags = observeAllTags()
-
-    private val vaultsFlow: Flow<VaultsState> = combine(
-        vaultRepository.observeAllVaultMetadata(),
-        _selectedVaultId.filterNotNull(),
-    ) { metadata, selected ->
-        VaultsState(vaults = metadata, selectedVaultId = selected)
-    }.distinctUntilChanged()
-
-    val state = combine(_base, allTags, vaultsFlow) { base, allTags, vaults ->
-        LoginUiState.Ready(
-            base = base.copy(tagsForSuggestion = (allTags - base.itemAssignedTags).toSet()),
-            vaultsState = vaults
-        )
-    }.onStart {
-        observeNameTextField()
+    override suspend fun onSubscribed() {
         observePasswordTextField()
-        primeActiveVaultId()
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = LoginUiState.Loading,
-    )
+    }
 
-    private val itemCreatedEventChannel = Channel<ItemId?>()
-    val itemCreatedEvent = itemCreatedEventChannel.receiveAsFlow()
-
-    private var itemId: ItemId? = null
     private var totpSecretInformation: TotpInfo? = null
     private var totpOriginalUri: String? = null
-
-    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
-    private fun observeNameTextField() {
-        snapshotFlow { nameTextFieldState.text }
-            .debounce(150.milliseconds)
-            .combine(_selectedVaultId.filterNotNull()) { input, vaultId ->
-                itemRepository.doesNameExist(
-                    input.toString(),
-                    excludeId = itemId,
-                    vaultId = vaultId,
-                )
-            }
-            .distinctUntilChanged()
-            .onEach { exists ->
-                _base.update {
-                    it.copy(nameExists = exists)
-                }
-            }
-            .flowOn(Dispatchers.Default)
-            .launchIn(viewModelScope)
-    }
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private fun observePasswordTextField() {
@@ -161,19 +109,6 @@ internal class LoginViewModel(
             }
             .flowOn(Dispatchers.Default)
             .launchIn(viewModelScope)
-    }
-
-    private fun primeActiveVaultId() {
-        viewModelScope.launch {
-            val activeId = vaultContextRepository.getLastInteractedVaultId() ?: return@launch
-            _selectedVaultId.compareAndSet(null, activeId)
-        }
-    }
-
-    private fun navigateUp(itemId: ItemId? = null) {
-        viewModelScope.launch {
-            itemCreatedEventChannel.send(itemId)
-        }
     }
 
     fun setPendingPasskeyCount(count: Int) {
@@ -244,16 +179,16 @@ internal class LoginViewModel(
             }
 
             nameTextFieldState.setTextAndPlaceCursorAtEnd(login.name)
+            notesTextFieldState.setTextAndPlaceCursorAtEnd(login.note ?: "")
             passwordTextFieldState.setTextAndPlaceCursorAtEnd(decrypted.first ?: "")
 
-            _selectedVaultId.update { login.vaultId }
+            setSelectedVaultId(login.vaultId)
+            setAssignedTags(login.tags)
             _base.update {
                 it.copy(
                     totpTextFieldState = TextFieldState(decrypted.second ?: ""),
                     usernameTextFieldState = TextFieldState(login.username ?: ""),
                     domains = login.domainInfos,
-                    itemAssignedTags = login.tags,
-                    notesTextFieldState = TextFieldState(login.note ?: ""),
                     existingPasskeyCount = login.passkeyRPs.size,
                     dialogState = DialogState.None,
                     updating = true,
@@ -294,99 +229,80 @@ internal class LoginViewModel(
         }
     }
 
-    private fun onItemUiEvent(event: ItemUiEvent) {
-        when (event) {
-            is ItemUiEvent.OnSubmit -> {
-                val ready = state.value as? LoginUiState.Ready ?: return
-                val base = ready.base
-                viewModelScope.launch {
-                    val upsert = itemId?.let { itemId ->
-                        UpsertLogin.update(
-                            itemId = itemId,
-                            vaultId = ready.vaultsState.selectedVaultId,
-                            name = fieldUpdate(base.nameTextFieldState.text.toString()),
-                            username = fieldUpdate(base.usernameTextFieldState.text.toString()),
-                            domains = set(base.domains),
-                            tags = set(base.itemAssignedTags),
-                            password = fieldUpdate(base.passwordTextFieldState.text.toString()),
-                            totpUriOrSecret = fieldUpdate(base.totpTextFieldState.text.toString()),
-                            note = fieldUpdate(base.notesTextFieldState.text.toString()),
-                        )
-                    } ?: UpsertLogin.create(
-                        vaultId = ready.vaultsState.selectedVaultId,
-                        name = base.nameTextFieldState.text.toString(),
-                        username = base.usernameTextFieldState.text.toString(),
-                        domains = base.domains,
-                        tags = base.itemAssignedTags,
-                        password = base.passwordTextFieldState.text.toString(),
-                        totpUriOrSecret = base.totpTextFieldState.text.toString(),
-                        note = base.notesTextFieldState.text.toString(),
-                        hasPendingPasskey = base.pendingPasskeyCount > 0,
+    override fun onSubmit() {
+        val ready = state.value as? ItemUiState.Ready ?: return
+        val base = ready.base
+        val assignedTags = ready.shared.itemAssignedTags
+        val selectedVaultId = ready.shared.vaultsState.selectedVaultId
+        viewModelScope.launch {
+            val upsert = itemId?.let { itemId ->
+                UpsertLogin.update(
+                    itemId = itemId,
+                    vaultId = selectedVaultId,
+                    name = fieldUpdate(nameTextFieldState.text.toString()),
+                    username = fieldUpdate(base.usernameTextFieldState.text.toString()),
+                    domains = set(base.domains),
+                    tags = set(assignedTags),
+                    password = fieldUpdate(base.passwordTextFieldState.text.toString()),
+                    totpUriOrSecret = fieldUpdate(base.totpTextFieldState.text.toString()),
+                    note = fieldUpdate(notesTextFieldState.text.toString()),
+                )
+            } ?: UpsertLogin.create(
+                vaultId = selectedVaultId,
+                name = nameTextFieldState.text.toString(),
+                username = base.usernameTextFieldState.text.toString(),
+                domains = base.domains,
+                tags = assignedTags,
+                password = base.passwordTextFieldState.text.toString(),
+                totpUriOrSecret = base.totpTextFieldState.text.toString(),
+                note = notesTextFieldState.text.toString(),
+                hasPendingPasskey = base.pendingPasskeyCount > 0,
+            )
+
+            createNewOrUpdateLogin(
+                upsert = upsert,
+            ).onSuccess {
+                navigateUp(it)
+            }.onFailure { failure ->
+                _base.update {
+                    it.copy(
+                        nameError = if (failure.contains(LoginError.BlankName)) InputFieldError.Empty else null,
                     )
+                }
 
-                    createNewOrUpdateLogin(
-                        upsert = upsert,
-                    ).onSuccess {
-                        navigateUp(it)
-                    }.onFailure { failure ->
-                        _base.update {
-                            it.copy(
-                                nameError = if (failure.contains(LoginError.BlankName)) InputFieldError.Empty else null,
-                            )
-                        }
+                if (failure.any { it is LoginError.InvalidVaultId }) {
+                    snackbarManager.sendMessage(
+                        message = SnackbarMessage(
+                            message = ResourceString(R.string.invalid_vault_id),
+                        ),
+                    )
+                }
 
-                        if (failure.any { it is LoginError.InvalidVaultId }) {
+                if (failure.any { it is LoginError.DatabaseError }) {
+                    failure.filterIsInstance<LoginError.DatabaseError>()
+                        .first()
+                        .let { dbError ->
                             snackbarManager.sendMessage(
                                 message = SnackbarMessage(
-                                    message = ResourceString(R.string.invalid_vault_id),
+                                    message = ResourceString(
+                                        R.string.database_error,
+                                        dbError.throwable.message ?: "no message",
+                                    ),
                                 ),
                             )
                         }
-
-                        if (failure.any { it is LoginError.DatabaseError }) {
-                            failure.filterIsInstance<LoginError.DatabaseError>()
-                                .first()
-                                .let { dbError ->
-                                    snackbarManager.sendMessage(
-                                        message = SnackbarMessage(
-                                            message = ResourceString(
-                                                R.string.database_error,
-                                                dbError.throwable.message ?: "no message",
-                                            ),
-                                        ),
-                                    )
-                                }
-                        }
-                    }
                 }
-            }
-
-            is ItemUiEvent.OnBackClick -> {
-                if (_base.value.scanning) {
-                    _base.update { it.copy(scanning = false) }
-                    return
-                }
-
-                navigateUp()
-            }
-
-            is ItemUiEvent.OnAddTags -> {
-                _base.update {
-                    it.copy(itemAssignedTags = it.itemAssignedTags + event.tags)
-                }
-            }
-
-            is ItemUiEvent.OnRemoveTag -> {
-                _base.update {
-                    it.copy(itemAssignedTags = it.itemAssignedTags.filterNot { tag -> tag == event.tag }
-                        .toSet())
-                }
-            }
-
-            is ItemUiEvent.OnVaultSelected -> {
-                _selectedVaultId.value = event.vaultId
             }
         }
+    }
+
+    override fun onBackClick() {
+        if (_base.value.scanning) {
+            _base.update { it.copy(scanning = false) }
+            return
+        }
+
+        navigateUp()
     }
 
     fun onEvent(event: LoginUiEvent) {

@@ -2,21 +2,20 @@ package de.davis.keygo.feature.item.create.presentation.creditcard.model
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Stable
-import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
-import de.davis.keygo.feature.item.create.presentation.model.VaultsState
+import de.davis.keygo.feature.item.create.presentation.model.ItemUiState
+
+internal typealias CreditCardUiState = ItemUiState<CreditCardBaseState>
 
 @Stable
-data class CreditCardUiState(
-    val nameTextFieldState: TextFieldState,
-    val notesTextFieldState: TextFieldState,
-    val ccHolderTextFieldState: TextFieldState,
-    val ccNumberTextFieldState: TextFieldState,
-    val ccCVVTextFieldState: TextFieldState,
-    val ccExpirationDateTextFieldState: TextFieldState,
-    val canSave: Boolean = false,
+internal data class CreditCardBaseState(
+    val ccHolderTextFieldState: TextFieldState = TextFieldState(),
+    val ccNumberTextFieldState: TextFieldState = TextFieldState(),
+    val ccCVVTextFieldState: TextFieldState = TextFieldState(),
+    val ccExpirationDateTextFieldState: TextFieldState = TextFieldState(),
     val numberError: InputFieldError? = null,
-    val vaultsState: VaultsState,
-    val tagsForSuggestion: Set<Tag> = emptySet(),
-    val itemAssignedTags: Set<Tag> = emptySet(),
-)
+    val updating: Boolean = false,
+) {
+    fun canSave(name: CharSequence): Boolean =
+        name.isNotBlank() && ccNumberTextFieldState.text.isNotBlank()
+}
