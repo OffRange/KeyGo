@@ -52,8 +52,6 @@
     <string name="list_before">\u2022 Before: %s</string>
     <string name="list_after">\u2022 After: %s</string>
 
-    <string name="update_item">Update your Item</string>
-
     <string name="submit_content_description">Submit</string>
     <string name="generate_password_content_description">Generate Password</string>
 

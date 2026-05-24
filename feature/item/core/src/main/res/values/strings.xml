@@ -13,6 +13,8 @@
     <string name="edit">Edit</string>
     <string name="delete">Delete</string>
 
+    <string name="update_item">Update your Item</string>
+
     <string name="login_identifier">Email, phone, or username</string>
 
     <string name="field_blank">This field can not be blank</string>

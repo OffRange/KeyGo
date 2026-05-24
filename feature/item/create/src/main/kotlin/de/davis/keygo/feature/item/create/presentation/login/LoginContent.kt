@@ -4,7 +4,6 @@ import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -22,11 +20,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,10 +43,11 @@ import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultMetadata
+import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.presentation.StrengthIndicator
-import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.item.core.presentation.component.ChipFormGroup
+import de.davis.keygo.feature.item.core.presentation.component.CreateOrModifyItemTopAppBar
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.component.gatherPendingItems
 import de.davis.keygo.feature.item.core.presentation.transformation.rememberSchemeStrippingTransformation
@@ -69,7 +66,6 @@ import de.davis.keygo.feature.item.create.presentation.model.VaultsState
 import de.davis.keygo.feature.item.create.presentation.password.GeneratePasswordModalBottomSheet
 import de.davis.keygo.feature.totp.presentation.component.QRScanner
 import de.davis.keygo.core.item.R as CoreItemR
-import de.davis.keygo.core.ui.R as CoreUiR
 import de.davis.keygo.feature.item.core.R as ItemCoreR
 
 @Composable
@@ -93,7 +89,8 @@ private fun LoginLoadingScaffold(onBackClick: () -> Unit) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            LoginTopAppBar(
+            CreateOrModifyItemTopAppBar(
+                itemType = VaultItemType.Login,
                 updating = false,
                 onBackClick = onBackClick,
             )
@@ -125,7 +122,8 @@ private fun LoginReadyContent(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            LoginTopAppBar(
+            CreateOrModifyItemTopAppBar(
+                itemType = VaultItemType.Login,
                 updating = state.updating,
                 onBackClick = { onEvent(LoginUiEvent.OnBackClick) },
                 actions = {
@@ -334,43 +332,6 @@ private fun LoginReadyContent(
             },
         )
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun LoginTopAppBar(
-    updating: Boolean,
-    onBackClick: () -> Unit,
-    actions: @Composable RowScope.() -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior? = null,
-) {
-    MediumFlexibleTopAppBar(
-        title = {
-            Text(
-                text = stringResource(
-                    when {
-                        updating -> R.string.update_item
-                        else -> CoreUiR.string.create_new_item
-                    },
-                ),
-            )
-        },
-        subtitle = {
-            Text(text = stringResource(CoreItemR.string.password))
-        },
-        navigationIcon = {
-            if (LocalIsInSinglePaneMode.current) {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Default.ArrowBack,
-                        contentDescription = stringResource(ItemCoreR.string.back_content_description),
-                    )
-                }
-            }
-        },
-        actions = actions,
-        scrollBehavior = scrollBehavior,
-    )
 }
 
 private val DELIMITERS = setOf(',', ' ')
