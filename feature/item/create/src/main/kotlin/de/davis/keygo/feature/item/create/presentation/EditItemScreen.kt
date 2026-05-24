@@ -39,6 +39,9 @@ private fun ForInit(
             loginCreated = onCreated,
             navigateBack = navigateBack,
         )
+
+        // TODO: credit card create screen not yet implemented
+        VaultItemType.CreditCard -> Unit
     }
 }
 

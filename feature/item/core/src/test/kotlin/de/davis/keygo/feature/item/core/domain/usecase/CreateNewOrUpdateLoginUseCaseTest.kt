@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.item.core.domain.usecase
 
+import de.davis.keygo.core.item.FakeCreditCardRepository
 import de.davis.keygo.core.item.FakeItemRepository
 import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.FakePasswordStrengthEstimator
@@ -756,7 +757,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         cryptographicScopeProvider = cryptographicScopeProvider,
         loginRepository = loginRepository,
         vaultRepository = vaultRepository,
-        upsertVaultItem = UpsertVaultItemUseCase(loginRepository),
+        upsertVaultItem = UpsertVaultItemUseCase(loginRepository, FakeCreditCardRepository()),
         passwordStrengthEstimator = estimator,
         totpService = totpService,
     )
