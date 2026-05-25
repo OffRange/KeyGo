@@ -1,11 +1,6 @@
 use std::sync::Arc;
 
-use lib::card::{
-    CardNetwork, card_digits as core_card_digits, card_space_indices as core_card_space_indices,
-    format_card_number as core_format_card_number,
-    format_expiration_after_edit as core_format_expiration_after_edit,
-    luhn_valid as core_luhn_valid,
-};
+use lib::card::{Card, format_expiration_after_edit as core_format_expiration_after_edit};
 
 #[derive(uniffi::Object)]
 pub struct CardFormatter;
@@ -18,26 +13,27 @@ impl CardFormatter {
     }
 
     pub fn digits(&self, input: String) -> String {
-        core_card_digits(&input)
+        Card::parse(&input).digits
     }
 
     pub fn format_number(&self, input: String) -> String {
-        core_format_card_number(&input)
+        Card::parse(&input).formatted
     }
 
     pub fn space_indices(&self, input: String) -> Vec<i32> {
-        core_card_space_indices(&input)
+        Card::parse(&input)
+            .space_indices()
             .into_iter()
             .map(|i| i as i32)
             .collect()
     }
 
     pub fn is_luhn_valid(&self, input: String) -> bool {
-        core_luhn_valid(&input)
+        Card::parse(&input).is_luhn_valid()
     }
 
     pub fn cvv_len(&self, input: String) -> i32 {
-        CardNetwork::detect(&input).cvv_len() as i32
+        Card::parse(&input).cvv_len() as i32
     }
 
     pub fn format_expiration_after_edit(&self, previous: String, proposed: String) -> String {
