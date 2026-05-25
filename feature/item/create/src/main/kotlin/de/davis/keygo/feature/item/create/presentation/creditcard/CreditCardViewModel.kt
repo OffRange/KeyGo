@@ -13,6 +13,7 @@ import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.item.core.presentation.transformation.CardNumberInputTransformation
+import de.davis.keygo.feature.item.core.presentation.transformation.CvvInputTransformation
 import de.davis.keygo.feature.item.create.presentation.ItemViewModel
 import de.davis.keygo.feature.item.create.presentation.creditcard.model.CreditCardBaseState
 import de.davis.keygo.feature.item.create.presentation.creditcard.model.CreditCardUiEvent
@@ -44,9 +45,21 @@ internal class CreditCardViewModel(
 
     private val cardDigits: (String) -> String = cardFormatter::digits
 
+    private val ccHolderTextFieldState = TextFieldState()
+    private val ccNumberTextFieldState = TextFieldState()
+    private val ccCVVTextFieldState = TextFieldState()
+    private val ccExpirationDateTextFieldState = TextFieldState()
+
     private val _base = MutableStateFlow(
         CreditCardBaseState(
+            ccHolderTextFieldState = ccHolderTextFieldState,
+            ccNumberTextFieldState = ccNumberTextFieldState,
+            ccCVVTextFieldState = ccCVVTextFieldState,
+            ccExpirationDateTextFieldState = ccExpirationDateTextFieldState,
             numberInputTransformation = CardNumberInputTransformation(cardDigits),
+            cvvInputTransformation = CvvInputTransformation {
+                cardFormatter.cvvLen(ccNumberTextFieldState.text.toString())
+            },
         ),
     )
 
@@ -78,19 +91,16 @@ internal class CreditCardViewModel(
 
             nameTextFieldState.setTextAndPlaceCursorAtEnd(card.name)
             notesTextFieldState.setTextAndPlaceCursorAtEnd(card.note ?: "")
+            ccHolderTextFieldState.setTextAndPlaceCursorAtEnd(card.holder ?: "")
+            // Set the number before the CVV so the network — and thus the CVV cap — is known.
+            ccNumberTextFieldState.setTextAndPlaceCursorAtEnd(number)
+            ccCVVTextFieldState.setTextAndPlaceCursorAtEnd(cvv ?: "")
+            ccExpirationDateTextFieldState.setTextAndPlaceCursorAtEnd(
+                card.expirationDate.format(EXPIRATION_FORMATTER),
+            )
             setSelectedVaultId(card.vaultId)
             setAssignedTags(card.tags)
-            _base.update {
-                it.copy(
-                    ccHolderTextFieldState = TextFieldState(card.holder ?: ""),
-                    ccNumberTextFieldState = TextFieldState(number),
-                    ccCVVTextFieldState = TextFieldState(cvv ?: ""),
-                    ccExpirationDateTextFieldState = TextFieldState(
-                        card.expirationDate.format(EXPIRATION_FORMATTER),
-                    ),
-                    updating = true,
-                )
-            }
+            _base.update { it.copy(updating = true) }
         }
     }
 

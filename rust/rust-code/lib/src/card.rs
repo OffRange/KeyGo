@@ -77,16 +77,16 @@ impl CardNetwork {
 
     pub fn cvv_len(self) -> usize {
         match self {
-            CardNetwork::Amex => 4,
+            CardNetwork::Unknown | CardNetwork::Amex => 4,
             _ => 3,
         }
     }
 
     /// Group sizes used to space a number of `len` digits.
     fn groups(self, len: usize) -> Vec<usize> {
-        match (self, len) {
-            (CardNetwork::Amex, 15) => vec![4, 6, 5],
-            (CardNetwork::DinersClub, 14) => vec![4, 6, 4],
+        match self {
+            CardNetwork::Amex => fit_pattern(&[4, 6, 5], len),
+            CardNetwork::DinersClub => fit_pattern(&[4, 6, 4], len),
             _ => groups_of_four(len),
         }
     }
@@ -184,7 +184,7 @@ pub fn luhn_valid(number: &str) -> bool {
             }
         })
         .sum();
-    sum % 10 == 0
+    sum.is_multiple_of(10)
 }
 
 // --- internal helpers -------------------------------------------------------
@@ -244,6 +244,26 @@ fn detect_digits(d: &str) -> CardNetwork {
     }
 
     Unknown
+}
+
+/// Truncate a fixed grouping `pattern` (e.g. Amex's `[4, 6, 5]`) to cover exactly
+/// `len` digits, so a partially typed number is spaced the same way it will be once
+/// complete. Any digits beyond the pattern trail in fours as a safety net.
+fn fit_pattern(pattern: &[usize], len: usize) -> Vec<usize> {
+    let mut groups = Vec::new();
+    let mut remaining = len;
+    for &size in pattern {
+        if remaining == 0 {
+            break;
+        }
+        let take = size.min(remaining);
+        groups.push(take);
+        remaining -= take;
+    }
+    if remaining > 0 {
+        groups.extend(groups_of_four(remaining));
+    }
+    groups
 }
 
 fn groups_of_four(len: usize) -> Vec<usize> {
@@ -351,6 +371,17 @@ mod tests {
     fn formats_partial_input_as_typed() {
         assert_eq!(format_card_number("41111"), "4111 1");
         assert_eq!(format_card_number("411111111"), "4111 1111 1");
+    }
+
+    #[test]
+    fn amex_groups_progressively_while_typing() {
+        // Prefix already identifies Amex, so partial input uses 4-6-5, not fours.
+        assert_eq!(format_card_number("341234"), "3412 34");
+        assert_eq!(format_card_number("3412345678"), "3412 345678");
+        assert_eq!(format_card_number("34123456789012"), "3412 345678 9012");
+        assert_eq!(format_card_number("341234567890123"), "3412 345678 90123");
+        assert_eq!(card_space_indices("3412345678"), vec![4]);
+        assert_eq!(card_space_indices("34123456789012"), vec![4, 10]);
     }
 
     #[test]

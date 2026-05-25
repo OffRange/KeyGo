@@ -143,6 +143,7 @@ private fun CreditCardReadyContent(
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.NumberPassword
                         ),
+                        inputTransformation = state.cvvInputTransformation,
                     )
 
                     KeyGoFormField(

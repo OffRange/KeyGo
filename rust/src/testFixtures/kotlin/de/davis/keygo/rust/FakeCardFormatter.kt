@@ -8,6 +8,7 @@ class FakeCardFormatter : CardFormatterInterface {
     var formatResult: (String) -> String = { it.chunked(4).joinToString(" ") }
     var spaceIndicesResult: (String) -> List<Int> = { emptyList() }
     var luhnResult: Boolean = true
+    var cvvLenResult: (String) -> Int = { 3 }
 
     override fun digits(input: String): String = digitsResult(input)
 
@@ -16,4 +17,6 @@ class FakeCardFormatter : CardFormatterInterface {
     override fun spaceIndices(input: String): List<Int> = spaceIndicesResult(input)
 
     override fun isLuhnValid(input: String): Boolean = luhnResult
+
+    override fun cvvLen(input: String): Int = cvvLenResult(input)
 }

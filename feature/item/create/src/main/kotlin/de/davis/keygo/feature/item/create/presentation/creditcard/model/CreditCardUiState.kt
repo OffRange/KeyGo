@@ -15,6 +15,7 @@ internal data class CreditCardBaseState(
     val ccCVVTextFieldState: TextFieldState = TextFieldState(),
     val ccExpirationDateTextFieldState: TextFieldState = TextFieldState(),
     val numberInputTransformation: InputTransformation? = null,
+    val cvvInputTransformation: InputTransformation? = null,
     val numberError: InputFieldError? = null,
     val updating: Boolean = false,
 ) {

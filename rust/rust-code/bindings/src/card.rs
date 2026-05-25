@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use lib::card::{
-    card_digits as core_card_digits, card_space_indices as core_card_space_indices,
+    CardNetwork, card_digits as core_card_digits, card_space_indices as core_card_space_indices,
     format_card_number as core_format_card_number, luhn_valid as core_luhn_valid,
 };
 
@@ -32,5 +32,9 @@ impl CardFormatter {
 
     pub fn is_luhn_valid(&self, input: String) -> bool {
         core_luhn_valid(&input)
+    }
+
+    pub fn cvv_len(&self, input: String) -> i32 {
+        CardNetwork::detect(&input).cvv_len() as i32
     }
 }
