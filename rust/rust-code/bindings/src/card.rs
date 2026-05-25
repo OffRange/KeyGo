@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use lib::card::{
     CardNetwork, card_digits as core_card_digits, card_space_indices as core_card_space_indices,
-    format_card_number as core_format_card_number, luhn_valid as core_luhn_valid,
+    format_card_number as core_format_card_number,
+    format_expiration_after_edit as core_format_expiration_after_edit,
+    luhn_valid as core_luhn_valid,
 };
 
 #[derive(uniffi::Object)]
@@ -36,5 +38,9 @@ impl CardFormatter {
 
     pub fn cvv_len(&self, input: String) -> i32 {
         CardNetwork::detect(&input).cvv_len() as i32
+    }
+
+    pub fn format_expiration_after_edit(&self, previous: String, proposed: String) -> String {
+        core_format_expiration_after_edit(&previous, &proposed)
     }
 }

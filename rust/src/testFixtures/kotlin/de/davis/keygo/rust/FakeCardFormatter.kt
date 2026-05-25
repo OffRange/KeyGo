@@ -9,6 +9,7 @@ class FakeCardFormatter : CardFormatterInterface {
     var spaceIndicesResult: (String) -> List<Int> = { emptyList() }
     var luhnResult: Boolean = true
     var cvvLenResult: (String) -> Int = { 3 }
+    var formatExpirationAfterEditResult: (String, String) -> String = { _, proposed -> proposed }
 
     override fun digits(input: String): String = digitsResult(input)
 
@@ -19,4 +20,7 @@ class FakeCardFormatter : CardFormatterInterface {
     override fun isLuhnValid(input: String): Boolean = luhnResult
 
     override fun cvvLen(input: String): Int = cvvLenResult(input)
+
+    override fun formatExpirationAfterEdit(previous: String, proposed: String): String =
+        formatExpirationAfterEditResult(previous, proposed)
 }

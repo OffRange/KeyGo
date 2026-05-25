@@ -26,6 +26,7 @@ import de.davis.keygo.feature.item.core.presentation.component.CreateOrModifyIte
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.component.gatherPendingItems
 import de.davis.keygo.feature.item.core.presentation.transformation.rememberCardFormatter
+import de.davis.keygo.feature.item.core.presentation.transformation.rememberExpirationDateInputTransformation
 import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.presentation.component.FormGroup
 import de.davis.keygo.feature.item.create.presentation.component.ItemContentWrapper
@@ -64,6 +65,7 @@ private fun CreditCardReadyContent(
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val tagsTextFieldState = rememberTextFieldState()
     val ccNumberFormatter = rememberCardFormatter()
+    val ccExpirationDateInputTransformation = rememberExpirationDateInputTransformation()
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -152,7 +154,8 @@ private fun CreditCardReadyContent(
                         placeholder = { Text(text = stringResource(ItemCoreR.string.cc_expiration_date_placeholder)) },
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Number
-                        )
+                        ),
+                        inputTransformation = ccExpirationDateInputTransformation,
                     )
                 }
             }
