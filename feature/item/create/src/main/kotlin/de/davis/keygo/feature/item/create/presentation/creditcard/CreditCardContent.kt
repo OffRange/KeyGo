@@ -25,6 +25,7 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.feature.item.core.presentation.component.CreateOrModifyItemTopAppBar
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.component.gatherPendingItems
+import de.davis.keygo.feature.item.core.presentation.transformation.rememberCardFormatter
 import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.presentation.component.FormGroup
 import de.davis.keygo.feature.item.create.presentation.component.ItemContentWrapper
@@ -62,6 +63,7 @@ private fun CreditCardReadyContent(
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val tagsTextFieldState = rememberTextFieldState()
+    val ccNumberFormatter = rememberCardFormatter()
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -127,10 +129,11 @@ private fun CreditCardReadyContent(
                     KeyGoFormField(
                         state = state.ccNumberTextFieldState,
                         label = { Text(text = stringResource(ItemCoreR.string.cc_number)) },
-                        isSecure = true,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.NumberPassword
-                        )
+                        ),
+                        inputTransformation = state.numberInputTransformation,
+                        outputTransformation = ccNumberFormatter,
                     )
 
                     KeyGoFormField(
@@ -139,7 +142,7 @@ private fun CreditCardReadyContent(
                         isSecure = true,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.NumberPassword
-                        )
+                        ),
                     )
 
                     KeyGoFormField(

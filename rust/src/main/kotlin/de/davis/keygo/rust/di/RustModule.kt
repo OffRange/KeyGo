@@ -2,6 +2,8 @@ package de.davis.keygo.rust.di
 
 import de.davisalessandro.keygo.rust.AccountManager
 import de.davisalessandro.keygo.rust.AccountManagerInterface
+import de.davisalessandro.keygo.rust.CardFormatter
+import de.davisalessandro.keygo.rust.CardFormatterInterface
 import de.davisalessandro.keygo.rust.ItemManager
 import de.davisalessandro.keygo.rust.ItemManagerInterface
 import de.davisalessandro.keygo.rust.KeyDeriver
@@ -42,4 +44,7 @@ object RustModule {
 
     @Single
     internal fun provideTotpService(): TotpServiceInterface = TotpService()
+
+    @Single
+    internal fun provideCardFormatter(): CardFormatterInterface = CardFormatter()
 }

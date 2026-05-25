@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.KeyboardActionHandler
+import androidx.compose.foundation.text.input.OutputTransformation
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.TextObfuscationMode
@@ -51,6 +52,7 @@ fun KeyGoFormField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next),
     onKeyboardAction: KeyboardActionHandler? = null,
     inputTransformation: InputTransformation? = TrimTransformation,
+    outputTransformation: OutputTransformation? = null,
     interactionSource: MutableInteractionSource? = null
 ) {
     val supportingText: @Composable (() -> Unit)? = error?.let {
@@ -113,6 +115,7 @@ fun KeyGoFormField(
                 keyboardOptions = keyboardOptions,
                 onKeyboardAction = onKeyboardAction,
                 inputTransformation = inputTransformation,
+                outputTransformation = outputTransformation,
                 interactionSource = interactionSource
             )
         }
