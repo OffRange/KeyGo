@@ -12,12 +12,9 @@ import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
-import de.davis.keygo.feature.item.core.presentation.transformation.CardNumberInputTransformation
-import de.davis.keygo.feature.item.core.presentation.transformation.CvvInputTransformation
 import de.davis.keygo.feature.item.create.presentation.ItemViewModel
 import de.davis.keygo.feature.item.create.presentation.creditcard.model.CreditCardBaseState
 import de.davis.keygo.feature.item.create.presentation.creditcard.model.CreditCardUiEvent
-import de.davisalessandro.keygo.rust.CardFormatterInterface
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -31,7 +28,6 @@ import java.time.format.DateTimeFormatter
 internal class CreditCardViewModel(
     private val itemWithCryptoScope: ItemWithCryptoScopeUseCase,
     private val creditCardRepository: CreditCardRepository,
-    cardFormatter: CardFormatterInterface,
     vaultContextRepository: VaultContextRepository,
     itemRepository: ItemRepository,
     observeAllTags: ObserveAllTagsSortedUseCase,
@@ -42,8 +38,6 @@ internal class CreditCardViewModel(
     observeAllTags = observeAllTags,
     vaultRepository = vaultRepository,
 ) {
-
-    private val cardDigits: (String) -> String = cardFormatter::digits
 
     private val ccHolderTextFieldState = TextFieldState()
     private val ccNumberTextFieldState = TextFieldState()
@@ -56,10 +50,6 @@ internal class CreditCardViewModel(
             ccNumberTextFieldState = ccNumberTextFieldState,
             ccCVVTextFieldState = ccCVVTextFieldState,
             ccExpirationDateTextFieldState = ccExpirationDateTextFieldState,
-            numberInputTransformation = CardNumberInputTransformation(cardDigits),
-            cvvInputTransformation = CvvInputTransformation {
-                cardFormatter.cvvLen(ccNumberTextFieldState.text.toString())
-            },
         ),
     )
 

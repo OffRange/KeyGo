@@ -4,11 +4,10 @@ import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.TextFieldBuffer
 import androidx.compose.foundation.text.input.placeCursorAtEnd
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import de.davis.keygo.rust.card.CardFormatter
 import org.koin.compose.koinInject
-import org.koin.core.annotation.Single
 
-@Single
 class ExpirationDateInputTransformation(
     private val cardFormatter: CardFormatter
 ) : InputTransformation {
@@ -24,5 +23,6 @@ class ExpirationDateInputTransformation(
 
 @Composable
 fun rememberExpirationDateInputTransformation(): ExpirationDateInputTransformation {
-    return koinInject<ExpirationDateInputTransformation>()
+    val cardFormatter = koinInject<CardFormatter>()
+    return remember(cardFormatter) { ExpirationDateInputTransformation(cardFormatter) }
 }

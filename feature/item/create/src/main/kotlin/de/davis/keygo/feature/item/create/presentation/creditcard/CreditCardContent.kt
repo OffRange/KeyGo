@@ -25,7 +25,9 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.feature.item.core.presentation.component.CreateOrModifyItemTopAppBar
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.component.gatherPendingItems
-import de.davis.keygo.feature.item.core.presentation.transformation.rememberCardFormatter
+import de.davis.keygo.feature.item.core.presentation.transformation.rememberCardNumberInputTransformation
+import de.davis.keygo.feature.item.core.presentation.transformation.rememberCardNumberOutputTransformation
+import de.davis.keygo.feature.item.core.presentation.transformation.rememberCvvInputTransformation
 import de.davis.keygo.feature.item.core.presentation.transformation.rememberExpirationDateInputTransformation
 import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.presentation.component.FormGroup
@@ -64,7 +66,9 @@ private fun CreditCardReadyContent(
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val tagsTextFieldState = rememberTextFieldState()
-    val ccNumberFormatter = rememberCardFormatter()
+    val ccNumberInputTransformation = rememberCardNumberInputTransformation()
+    val ccNumberOutputTransformation = rememberCardNumberOutputTransformation()
+    val ccCvvInputTransformation = rememberCvvInputTransformation(state.ccNumberTextFieldState)
     val ccExpirationDateInputTransformation = rememberExpirationDateInputTransformation()
 
     Scaffold(
@@ -134,8 +138,8 @@ private fun CreditCardReadyContent(
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.NumberPassword
                         ),
-                        inputTransformation = state.numberInputTransformation,
-                        outputTransformation = ccNumberFormatter,
+                        inputTransformation = ccNumberInputTransformation,
+                        outputTransformation = ccNumberOutputTransformation,
                     )
 
                     KeyGoFormField(
@@ -145,7 +149,7 @@ private fun CreditCardReadyContent(
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.NumberPassword
                         ),
-                        inputTransformation = state.cvvInputTransformation,
+                        inputTransformation = ccCvvInputTransformation,
                     )
 
                     KeyGoFormField(

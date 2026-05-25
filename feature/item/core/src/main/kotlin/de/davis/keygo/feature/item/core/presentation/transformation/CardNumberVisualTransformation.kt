@@ -4,11 +4,10 @@ import androidx.compose.foundation.text.input.OutputTransformation
 import androidx.compose.foundation.text.input.TextFieldBuffer
 import androidx.compose.foundation.text.input.insert
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import de.davis.keygo.rust.card.CardFormatter
 import org.koin.compose.koinInject
-import org.koin.core.annotation.Single
 
-@Single
 class CardNumberVisualTransformation(
     private val cardFormatter: CardFormatter
 ) : OutputTransformation {
@@ -26,6 +25,7 @@ class CardNumberVisualTransformation(
 }
 
 @Composable
-fun rememberCardFormatter(): CardNumberVisualTransformation {
-    return koinInject<CardNumberVisualTransformation>()
+fun rememberCardNumberOutputTransformation(): CardNumberVisualTransformation {
+    val cardFormatter = koinInject<CardFormatter>()
+    return remember(cardFormatter) { CardNumberVisualTransformation(cardFormatter) }
 }
