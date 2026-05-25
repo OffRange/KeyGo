@@ -11,6 +11,7 @@ import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
+import de.davis.keygo.feature.credit_card.domain.model.Card
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.item.create.presentation.ItemViewModel
 import de.davis.keygo.feature.item.create.presentation.creditcard.model.CreditCardBaseState
@@ -22,7 +23,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
-import java.time.format.DateTimeFormatter
 
 @KoinViewModel
 internal class CreditCardViewModel(
@@ -86,7 +86,7 @@ internal class CreditCardViewModel(
             ccNumberTextFieldState.setTextAndPlaceCursorAtEnd(number)
             ccCVVTextFieldState.setTextAndPlaceCursorAtEnd(cvv ?: "")
             ccExpirationDateTextFieldState.setTextAndPlaceCursorAtEnd(
-                card.expirationDate.format(EXPIRATION_FORMATTER),
+                card.expirationDate.format(CC_EXPIRATION_FORMATTER),
             )
             setSelectedVaultId(card.vaultId)
             setAssignedTags(card.tags)
@@ -103,10 +103,14 @@ internal class CreditCardViewModel(
     fun onEvent(event: CreditCardUiEvent) {
         when (event) {
             is CreditCardUiEvent.ItemUi -> onItemUiEvent(event.event)
+            is CreditCardUiEvent.OnCardScanned -> applyScannedCard(event.card)
         }
     }
 
-    companion object {
-        private val EXPIRATION_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MM/yy")
+    private fun applyScannedCard(card: Card) {
+        val fields = card.toScannedFields()
+        ccNumberTextFieldState.setTextAndPlaceCursorAtEnd(fields.number)
+        ccExpirationDateTextFieldState.setTextAndPlaceCursorAtEnd(fields.expiry)
+        fields.holder?.let(ccHolderTextFieldState::setTextAndPlaceCursorAtEnd)
     }
 }

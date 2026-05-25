@@ -23,6 +23,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    testFixtures {
+        enable = true
+    }
+
 }
 
 kotlin {
@@ -51,4 +55,14 @@ dependencies {
     implementation(libs.koin.annotations)
 
     implementation(libs.devnied.emvnfccard)
+
+    testFixturesApi(projects.core.util)
+    testFixturesImplementation(libs.kotlinx.coroutines.core)
+    // Required because this module applies kotlin.compose and enables testFixtures (see CLAUDE.md).
+    testFixturesImplementation(project.dependencies.platform(libs.androidx.compose.bom))
+    testFixturesImplementation(libs.androidx.compose.runtime)
+
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(testFixtures(projects.feature.creditCard))
 }

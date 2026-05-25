@@ -13,8 +13,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import de.davis.keygo.feature.credit_card.presentation.CardScanBottomSheet
+import de.davis.keygo.feature.credit_card.presentation.rememberIsNfcAvailable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
@@ -127,6 +134,21 @@ private fun CreditCardReadyContent(
                 FormGroup(
                     title = stringResource(R.string.cc_information),
                 ) {
+                    // Hardware-presence check only; the sheet handles the NFC-disabled case live.
+                    val nfcAvailable = rememberIsNfcAvailable()
+                    var showScanSheet by remember { mutableStateOf(false) }
+
+                    if (nfcAvailable)
+                        TextButton(onClick = { showScanSheet = true }) {
+                            Text(text = stringResource(R.string.cc_scan_card))
+                        }
+
+                    if (showScanSheet)
+                        CardScanBottomSheet(
+                            onCardRead = { onEvent(CreditCardUiEvent.OnCardScanned(it)) },
+                            onDismiss = { showScanSheet = false },
+                        )
+
                     KeyGoFormField(
                         state = state.ccHolderTextFieldState,
                         label = { Text(text = stringResource(ItemCoreR.string.cc_holder)) }

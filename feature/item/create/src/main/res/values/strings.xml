@@ -63,4 +63,5 @@
     <string name="invalid_vault_id">Vault item ID can not be found</string>
 
     <string name="vault">Vault</string>
+    <string name="cc_scan_card">Scan card</string>
 </resources>
