@@ -9,6 +9,7 @@ import de.davis.keygo.feature.credit_card.domain.model.CardReadFailure
 import de.davis.keygo.feature.credit_card.domain.repository.CardReaderRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,6 +43,9 @@ internal class CardScanViewModel(
             cardReaderRepository.read(transport).fold(
                 onSuccess = { card ->
                     _state.value = CardScanUiState.Success(card)
+
+                    // We have a little delay to finish the animation
+                    delay(500)
                     cardReadChannel.send(card)
                 },
                 onFailure = { _state.value = CardScanUiState.Failure(it) },

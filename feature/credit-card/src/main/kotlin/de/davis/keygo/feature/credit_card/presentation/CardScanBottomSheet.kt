@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.util.presentation.BroadcastReceiver
@@ -26,7 +27,8 @@ fun CardScanBottomSheet(
     val viewModel: CardScanViewModel = koinViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    var nfcEnabled by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var nfcEnabled by remember(context) { mutableStateOf(NfcAdapter.getDefaultAdapter(context)?.isEnabled == true) }
     BroadcastReceiver(
         action = NfcAdapter.ACTION_ADAPTER_STATE_CHANGED,
         flags = ContextCompat.RECEIVER_EXPORTED,

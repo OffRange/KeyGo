@@ -3,9 +3,12 @@
     <string name="card_scan_ready_title">Ready to scan</string>
     <string name="card_scan_ready_message">Hold your card flat against the back of the phone.</string>
     <string name="card_scan_reading">Reading card…</string>
+    <string name="card_scan_reading_message">Keep your card still until it\'s done.</string>
     <string name="card_scan_success">Card read</string>
+    <string name="card_scan_nfc_disabled_title">NFC is off</string>
     <string name="card_scan_nfc_disabled_message">NFC is turned off. Turn it on to scan your card.</string>
     <string name="card_scan_enable_nfc">Turn on NFC</string>
+    <string name="card_scan_error_title">Couldn\'t read card</string>
     <string name="card_scan_retry">Try again</string>
     <string name="card_scan_error_not_emv">That doesn\'t look like a payment card.</string>
     <string name="card_scan_error_tag_lost">Card moved too soon — hold it steady and try again.</string>
