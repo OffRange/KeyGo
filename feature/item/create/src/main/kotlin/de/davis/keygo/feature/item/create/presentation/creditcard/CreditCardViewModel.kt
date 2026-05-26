@@ -11,11 +11,25 @@ import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
+import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
+import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
+import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.core.util.onSuccess
+import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.feature.credit_card.domain.model.Card
+import de.davis.keygo.feature.item.core.domain.model.CreditCardUpsertError
+import de.davis.keygo.feature.item.core.domain.model.ItemUpsertError
+import de.davis.keygo.feature.item.core.domain.model.UpsertCreditCard
+import de.davis.keygo.feature.item.core.domain.model.fieldUpdate
+import de.davis.keygo.feature.item.core.domain.model.set
+import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateCreditCardUseCase
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
+import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
+import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.presentation.ItemViewModel
 import de.davis.keygo.feature.item.create.presentation.creditcard.model.CreditCardBaseState
 import de.davis.keygo.feature.item.create.presentation.creditcard.model.CreditCardUiEvent
+import de.davis.keygo.feature.item.create.presentation.model.ItemUiState
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -28,6 +42,8 @@ import org.koin.core.annotation.KoinViewModel
 internal class CreditCardViewModel(
     private val itemWithCryptoScope: ItemWithCryptoScopeUseCase,
     private val creditCardRepository: CreditCardRepository,
+    private val createNewOrUpdateCreditCard: CreateNewOrUpdateCreditCardUseCase,
+    private val snackbarManager: SnackbarManager,
     vaultContextRepository: VaultContextRepository,
     itemRepository: ItemRepository,
     observeAllTags: ObserveAllTagsSortedUseCase,
@@ -95,9 +111,66 @@ internal class CreditCardViewModel(
     }
 
     override fun onSubmit() {
-        // TODO: persist the credit card once a CreateNewOrUpdateCreditCard use case exists.
-        //  Building + encrypting the CreditCard here would put crypto/business logic in the
-        //  ViewModel; the architecture keeps that in a use case (see CreateNewOrUpdateLoginUseCase).
+        val ready = state.value as? ItemUiState.Ready ?: return
+        val assignedTags = ready.shared.itemAssignedTags
+        val selectedVaultId = ready.shared.vaultsState.selectedVaultId
+        viewModelScope.launch {
+            val upsert = itemId?.let { id ->
+                UpsertCreditCard.update(
+                    itemId = id,
+                    vaultId = selectedVaultId,
+                    name = fieldUpdate(nameTextFieldState.text.toString()),
+                    cardNumber = fieldUpdate(ccNumberTextFieldState.text.toString()),
+                    cvv = fieldUpdate(ccCVVTextFieldState.text.toString()),
+                    expirationDate = fieldUpdate(ccExpirationDateTextFieldState.text.toString()),
+                    holder = fieldUpdate(ccHolderTextFieldState.text.toString()),
+                    note = fieldUpdate(notesTextFieldState.text.toString()),
+                    tags = set(assignedTags),
+                )
+            } ?: UpsertCreditCard.create(
+                vaultId = selectedVaultId,
+                name = nameTextFieldState.text.toString(),
+                cardNumber = ccNumberTextFieldState.text.toString(),
+                expirationDate = ccExpirationDateTextFieldState.text.toString(),
+                holder = ccHolderTextFieldState.text.toString(),
+                cvv = ccCVVTextFieldState.text.toString(),
+                note = notesTextFieldState.text.toString(),
+                tags = assignedTags,
+            )
+
+            createNewOrUpdateCreditCard(upsert).onSuccess {
+                navigateUp(it)
+            }.onFailure { failure ->
+                _base.update {
+                    it.copy(
+                        numberError = if (failure.contains(ItemUpsertError.Empty)) InputFieldError.Empty else null,
+                    )
+                }
+
+                if (failure.any { it is ItemUpsertError.InvalidVaultId })
+                    snackbarManager.sendMessage(
+                        message = SnackbarMessage(message = ResourceString(R.string.invalid_vault_id)),
+                    )
+
+                if (failure.contains(CreditCardUpsertError.InvalidExpiration))
+                    snackbarManager.sendMessage(
+                        message = SnackbarMessage(message = ResourceString(R.string.cc_invalid_expiration)),
+                    )
+
+                failure.filterIsInstance<ItemUpsertError.DatabaseError>()
+                    .firstOrNull()
+                    ?.let { dbError ->
+                        snackbarManager.sendMessage(
+                            message = SnackbarMessage(
+                                message = ResourceString(
+                                    R.string.database_error,
+                                    dbError.throwable.message ?: "no message",
+                                ),
+                            ),
+                        )
+                    }
+            }
+        }
     }
 
     fun onEvent(event: CreditCardUiEvent) {

@@ -7,16 +7,16 @@ import de.davis.keygo.core.item.domain.model.Tag
 
 @ConsistentCopyVisibility
 data class UpsertLogin private constructor(
-    val upsertType: UpsertType,
-    val name: FieldUpdate<String>,
+    override val upsertType: UpsertType,
+    override val name: FieldUpdate<String>,
     val password: FieldUpdate<String>,
     val totpUriOrSecret: FieldUpdate<String>,
     val username: FieldUpdate<String>,
     val domains: FieldUpdate<Set<DomainInfo>>,
-    val tags: FieldUpdate<Set<Tag>>,
-    val note: FieldUpdate<String>,
+    override val tags: FieldUpdate<Set<Tag>>,
+    override val note: FieldUpdate<String>,
     val hasPendingPasskey: Boolean = false,
-) {
+) : UpsertItem {
     companion object {
         fun create(
             vaultId: VaultId,

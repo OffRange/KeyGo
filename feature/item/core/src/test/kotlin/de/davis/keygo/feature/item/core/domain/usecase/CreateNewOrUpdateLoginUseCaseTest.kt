@@ -23,7 +23,7 @@ import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
-import de.davis.keygo.feature.item.core.domain.model.LoginError
+import de.davis.keygo.feature.item.core.domain.model.ItemUpsertError
 import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.clear
 import de.davis.keygo.feature.item.core.domain.model.set
@@ -73,7 +73,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         )
 
         assertTrue(result.isFailure())
-        assertEquals(LoginError.BlankName, result.error.single())
+        assertEquals(ItemUpsertError.BlankName, result.error.single())
     }
 
     @Test
@@ -83,11 +83,11 @@ class CreateNewOrUpdateLoginUseCaseTest {
         )
 
         assertTrue(result.isFailure())
-        assertEquals(LoginError.BlankName, result.error.single())
+        assertEquals(ItemUpsertError.BlankName, result.error.single())
     }
 
     @Test
-    fun `create with no password no totp no username returns EmptyLogin`() = runTest {
+    fun `create with no password no totp no username returns Empty`() = runTest {
         val result = useCase(
             UpsertLogin.create(
                 vaultId = defaultVault.id,
@@ -99,7 +99,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         )
 
         assertTrue(result.isFailure())
-        assertEquals(setOf(LoginError.EmptyLogin), result.error)
+        assertEquals(setOf(ItemUpsertError.Empty), result.error)
     }
 
     @Test
@@ -160,7 +160,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         val result = useCase(UpsertLogin.update(itemId = existing.id, name = clear()))
 
         assertTrue(result.isFailure())
-        assertEquals(LoginError.BlankName, result.error.single())
+        assertEquals(ItemUpsertError.BlankName, result.error.single())
     }
 
     @Test
@@ -171,7 +171,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         val result = useCase(UpsertLogin.update(itemId = existing.id, name = set("")))
 
         assertTrue(result.isFailure())
-        assertEquals(LoginError.BlankName, result.error.single())
+        assertEquals(ItemUpsertError.BlankName, result.error.single())
     }
 
     @Test
@@ -196,14 +196,14 @@ class CreateNewOrUpdateLoginUseCaseTest {
     }
 
     @Test
-    fun `update clearing the only credential returns EmptyLogin`() = runTest {
+    fun `update clearing the only credential returns Empty`() = runTest {
         val existing = testLogin(username = null, totp = null)
         loginRepository.seed(existing)
 
         val result = useCase(UpsertLogin.update(itemId = existing.id, password = clear()))
 
         assertTrue(result.isFailure())
-        assertEquals(setOf(LoginError.EmptyLogin), result.error)
+        assertEquals(setOf(ItemUpsertError.Empty), result.error)
     }
 
     // Success — Create
@@ -357,7 +357,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         val result = useCase(UpsertLogin.update(itemId = newItemId()))
 
         assertTrue(result.isFailure())
-        assertContains(result.error, LoginError.InvalidItemId)
+        assertContains(result.error, ItemUpsertError.InvalidItemId)
     }
 
     // Vault move on update
@@ -408,7 +408,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         )
 
         assertTrue(result.isFailure())
-        assertContains(result.error, LoginError.InvalidVaultId)
+        assertContains(result.error, ItemUpsertError.InvalidVaultId)
     }
 
     @Test
@@ -556,7 +556,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         )
 
         assertTrue(result.isFailure())
-        val error = assertIs<LoginError.DatabaseError>(result.error.single())
+        val error = assertIs<ItemUpsertError.DatabaseError>(result.error.single())
         assertEquals(cause, error.throwable)
     }
 

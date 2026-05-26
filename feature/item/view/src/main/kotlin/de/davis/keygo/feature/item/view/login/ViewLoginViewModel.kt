@@ -18,7 +18,7 @@ import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
-import de.davis.keygo.feature.item.core.domain.model.LoginError
+import de.davis.keygo.feature.item.core.domain.model.ItemUpsertError
 import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.fieldUpdate
 import de.davis.keygo.feature.item.core.domain.model.onSet
@@ -306,8 +306,8 @@ internal class ViewLoginViewModel(
                         ).onFailure { failure ->
                             _modificationDialogState.update {
                                 dialog.copy(
-                                    error = if (failure.contains(LoginError.EmptyLogin)
-                                        || failure.contains(LoginError.BlankName)
+                                    error = if (failure.contains(ItemUpsertError.Empty)
+                                        || failure.contains(ItemUpsertError.BlankName)
                                     ) InputFieldError.Empty else null,
                                 )
                             }

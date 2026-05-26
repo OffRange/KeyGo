@@ -23,7 +23,7 @@ import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
-import de.davis.keygo.feature.item.core.domain.model.LoginError
+import de.davis.keygo.feature.item.core.domain.model.ItemUpsertError
 import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.fieldUpdate
 import de.davis.keygo.feature.item.core.domain.model.resolveTotpDomain
@@ -269,11 +269,11 @@ internal class LoginViewModel(
             }.onFailure { failure ->
                 _base.update {
                     it.copy(
-                        nameError = if (failure.contains(LoginError.BlankName)) InputFieldError.Empty else null,
+                        nameError = if (failure.contains(ItemUpsertError.BlankName)) InputFieldError.Empty else null,
                     )
                 }
 
-                if (failure.any { it is LoginError.InvalidVaultId }) {
+                if (failure.any { it is ItemUpsertError.InvalidVaultId }) {
                     snackbarManager.sendMessage(
                         message = SnackbarMessage(
                             message = ResourceString(R.string.invalid_vault_id),
@@ -281,8 +281,8 @@ internal class LoginViewModel(
                     )
                 }
 
-                if (failure.any { it is LoginError.DatabaseError }) {
-                    failure.filterIsInstance<LoginError.DatabaseError>()
+                if (failure.any { it is ItemUpsertError.DatabaseError }) {
+                    failure.filterIsInstance<ItemUpsertError.DatabaseError>()
                         .first()
                         .let { dbError ->
                             snackbarManager.sendMessage(

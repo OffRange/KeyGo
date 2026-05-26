@@ -17,5 +17,7 @@ internal data class CreditCardBaseState(
     val updating: Boolean = false,
 ) {
     fun canSave(name: CharSequence): Boolean =
-        name.isNotBlank() && ccNumberTextFieldState.text.isNotBlank()
+        name.isNotBlank() &&
+            ccNumberTextFieldState.text.isNotBlank() &&
+            ccExpirationDateTextFieldState.text.isNotBlank()
 }
