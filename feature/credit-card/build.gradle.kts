@@ -48,6 +48,7 @@ dependencies {
     implementation(libs.androidx.material3)
 
     api(projects.core.util)
+    implementation(projects.core.ui)
 
     // Koin DI
     implementation(project.dependencies.platform(libs.koin.bom))

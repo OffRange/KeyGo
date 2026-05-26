@@ -9,19 +9,13 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import de.davis.keygo.feature.credit_card.presentation.CardScanBottomSheet
-import de.davis.keygo.feature.credit_card.presentation.rememberIsNfcAvailable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
@@ -29,6 +23,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
+import de.davis.keygo.feature.credit_card.presentation.CardScanEntry
 import de.davis.keygo.feature.item.core.presentation.component.CreateOrModifyItemTopAppBar
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.component.gatherPendingItems
@@ -64,7 +59,7 @@ internal fun CreditCardContent(state: CreditCardUiState, onEvent: (CreditCardUiE
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun CreditCardReadyContent(
     state: CreditCardBaseState,
@@ -130,25 +125,16 @@ private fun CreditCardReadyContent(
                 .imePadding()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
         ) {
+            item(key = "cc_scan_entry") {
+                CardScanEntry(
+                    onCardRead = { onEvent(CreditCardUiEvent.OnCardScanned(it)) },
+                )
+            }
+
             item(key = "cc_information") {
                 FormGroup(
                     title = stringResource(R.string.cc_information),
                 ) {
-                    // Hardware-presence check only; the sheet handles the NFC-disabled case live.
-                    val nfcAvailable = rememberIsNfcAvailable()
-                    var showScanSheet by remember { mutableStateOf(false) }
-
-                    if (nfcAvailable)
-                        TextButton(onClick = { showScanSheet = true }) {
-                            Text(text = stringResource(R.string.cc_scan_card))
-                        }
-
-                    if (showScanSheet)
-                        CardScanBottomSheet(
-                            onCardRead = { onEvent(CreditCardUiEvent.OnCardScanned(it)) },
-                            onDismiss = { showScanSheet = false },
-                        )
-
                     KeyGoFormField(
                         state = state.ccHolderTextFieldState,
                         label = { Text(text = stringResource(ItemCoreR.string.cc_holder)) }
