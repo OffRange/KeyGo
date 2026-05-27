@@ -30,6 +30,12 @@ class FakeItemRepository(
 
     private val allStores = loginRepository.store
     private val envelopes = mutableMapOf<ItemId, ItemKeyEnvelope>()
+    private val itemTypes = mutableMapOf<ItemId, VaultItemType>()
+
+    /** Register the [type] returned by [getItemType] for [itemId]. */
+    fun seedItemType(itemId: ItemId, type: VaultItemType) {
+        itemTypes[itemId] = type
+    }
 
     fun seedEnvelope(envelope: ItemKeyEnvelope) {
         envelopes[envelope.itemId] = envelope
@@ -68,6 +74,9 @@ class FakeItemRepository(
 
     override suspend fun getItemName(itemId: ItemId): String? =
         allStores.value[itemId]?.name
+
+    override suspend fun getItemType(itemId: ItemId): VaultItemType? =
+        itemTypes[itemId] ?: allStores.value[itemId]?.itemType
 
     override suspend fun doesNameExist(
         name: String,

@@ -46,6 +46,9 @@ internal class ItemRepositoryImpl(
 
     override suspend fun getItemName(itemId: ItemId): String? = itemDao.getNameById(itemId)
 
+    override suspend fun getItemType(itemId: ItemId): VaultItemType? =
+        itemDao.getItemTypeById(itemId)
+
     override suspend fun doesNameExist(
         name: String,
         excludeId: ItemId?,

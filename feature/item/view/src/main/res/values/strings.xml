@@ -5,4 +5,9 @@
     <string name="add_domain">Add Domain</string>
     <string name="add_tag">Add Tag</string>
     <string name="add_note">Add Note</string>
+
+    <string name="add_holder">Add Cardholder</string>
+    <string name="add_card_number">Add Card Number</string>
+    <string name="add_cvv">Add CVV</string>
+    <string name="add_expiration">Add Expiration</string>
 </resources>
