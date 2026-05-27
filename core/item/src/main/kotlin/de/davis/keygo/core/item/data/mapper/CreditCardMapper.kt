@@ -8,7 +8,7 @@ import de.davis.keygo.core.item.domain.model.CreditCard
 internal fun CreditCard.toCreditCardEntity() = CreditCardEntity(
     id = id,
     holder = holder,
-    cardNumber = cardNumber.payload,
+    cardNumber = cardNumber?.payload,
     lastNumbers = lastNumbers,
     cvv = cvv?.payload,
     expirationDate = expirationDate
@@ -24,7 +24,7 @@ internal fun CreditCardProjection.toDomain() = CreditCard(
     pinned = item.itemEntity.pinned,
 
     holder = creditCardEntity.holder,
-    cardNumber = CreditCard.CardNumber(creditCardEntity.cardNumber),
+    cardNumber = creditCardEntity.cardNumber?.let { CreditCard.CardNumber(it) },
     lastNumbers = creditCardEntity.lastNumbers,
     cvv = creditCardEntity.cvv?.let { CreditCard.CVV(it) },
     expirationDate = creditCardEntity.expirationDate,

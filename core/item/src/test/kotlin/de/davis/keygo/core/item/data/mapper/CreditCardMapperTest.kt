@@ -16,6 +16,7 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import java.time.YearMonth
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import de.davis.keygo.core.item.data.local.entity.KeyInformation as EntityKeyInformation
 
 class CreditCardMapperTest {
@@ -67,10 +68,35 @@ class CreditCardMapperTest {
         assertEquals(true, card.pinned)
         assertEquals("Alice", card.holder)
         assertEquals("4242", card.lastNumbers)
-        assertEquals(cardNumber, card.cardNumber.payload)
+        assertEquals(cardNumber, card.cardNumber?.payload)
         assertEquals(cvv, card.cvv?.payload)
         assertEquals(YearMonth.of(2030, 12), card.expirationDate)
         assertEquals(VaultItemType.CreditCard, card.itemType)
+    }
+
+    @Test
+    fun `toCreditCardEntity with null cardNumber stores null payload`() {
+        val entity = baseCard(cardNumber = null).toCreditCardEntity()
+        assertEquals(null, entity.cardNumber)
+        assertEquals(null, entity.lastNumbers)
+    }
+
+    @Test
+    fun `toCreditCardEntity with null expirationDate stores null`() {
+        val entity = baseCard(expirationDate = null).toCreditCardEntity()
+        assertEquals(null, entity.expirationDate)
+    }
+
+    @Test
+    fun `toDomain with null cardNumber in entity maps to null CardNumber`() {
+        val projection = baseProjection(cardNumber = null)
+        assertNull(projection.toDomain().cardNumber)
+    }
+
+    @Test
+    fun `toDomain with null expirationDate in entity maps to null`() {
+        val projection = baseProjection(expirationDate = null)
+        assertNull(projection.toDomain().expirationDate)
     }
 
     @Test
@@ -90,8 +116,9 @@ class CreditCardMapperTest {
     private fun baseCard(
         id: ItemId = newItemId(),
         holder: String? = "Alice",
-        cardNumber: CreditCard.CardNumber = CreditCard.CardNumber(EncryptedPayload.EMPTY),
-        cvv: CreditCard.CVV = CreditCard.CVV(EncryptedPayload.EMPTY),
+        cardNumber: CreditCard.CardNumber? = CreditCard.CardNumber(EncryptedPayload.EMPTY),
+        cvv: CreditCard.CVV? = CreditCard.CVV(EncryptedPayload.EMPTY),
+        expirationDate: YearMonth? = YearMonth.of(2030, 12),
     ): CreditCard = CreditCard(
         id = id,
         vaultId = newVaultId(),
@@ -101,26 +128,27 @@ class CreditCardMapperTest {
         note = null,
         pinned = false,
         holder = holder,
-        lastNumbers = "4242",
+        lastNumbers = cardNumber?.let { "4242" },
         cardNumber = cardNumber,
         cvv = cvv,
-        expirationDate = YearMonth.of(2030, 12),
+        expirationDate = expirationDate,
     )
 
     private fun baseProjection(
         id: ItemId = newItemId(),
         vaultId: de.davis.keygo.core.item.domain.alias.VaultId = newVaultId(),
-        cardNumber: EncryptedPayload = EncryptedPayload.EMPTY,
+        cardNumber: EncryptedPayload? = EncryptedPayload.EMPTY,
         cvv: EncryptedPayload = EncryptedPayload.EMPTY,
+        expirationDate: YearMonth? = YearMonth.of(2030, 12),
         tags: Set<TagEntity> = emptySet(),
     ): CreditCardProjection = CreditCardProjection(
         creditCardEntity = CreditCardEntity(
             id = id,
             holder = "Alice",
             cardNumber = cardNumber,
-            lastNumbers = "4242",
+            lastNumbers = cardNumber?.let { "4242" },
             cvv = cvv,
-            expirationDate = YearMonth.of(2030, 12),
+            expirationDate = expirationDate,
         ),
         item = ItemProjection(
             itemEntity = ItemEntity(

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "acbc1bdd05d20fe72364cc0774dbd1b7",
+    "identityHash": "277f0df15cf3c39f8a3683c868c6303d",
     "entities": [
       {
         "tableName": "vault",
@@ -173,7 +173,7 @@
       },
       {
         "tableName": "credit_card",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `holder` TEXT, `last_numbers` TEXT NOT NULL, `expiration_date` INTEGER NOT NULL, `card_number_ciphertext` BLOB NOT NULL, `card_number_iv` BLOB NOT NULL, `cvv_ciphertext` BLOB, `cvv_iv` BLOB, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `item`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `holder` TEXT, `last_numbers` TEXT, `expiration_date` INTEGER, `card_number_ciphertext` BLOB, `card_number_iv` BLOB, `cvv_ciphertext` BLOB, `cvv_iv` BLOB, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `item`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -189,26 +189,22 @@
           {
             "fieldPath": "lastNumbers",
             "columnName": "last_numbers",
-            "affinity": "TEXT",
-            "notNull": true
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "expirationDate",
             "columnName": "expiration_date",
-            "affinity": "INTEGER",
-            "notNull": true
+            "affinity": "INTEGER"
           },
           {
             "fieldPath": "cardNumber.ciphertext",
             "columnName": "card_number_ciphertext",
-            "affinity": "BLOB",
-            "notNull": true
+            "affinity": "BLOB"
           },
           {
             "fieldPath": "cardNumber.iv",
             "columnName": "card_number_iv",
-            "affinity": "BLOB",
-            "notNull": true
+            "affinity": "BLOB"
           },
           {
             "fieldPath": "cvv.ciphertext",
@@ -606,7 +602,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'acbc1bdd05d20fe72364cc0774dbd1b7')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '277f0df15cf3c39f8a3683c868c6303d')"
     ]
   }
 }

@@ -25,11 +25,11 @@ internal data class CreditCardEntity(
     val id: ItemId,
     val holder: String?,
     @Embedded(prefix = "card_number_")
-    val cardNumber: EncryptedPayload,
+    val cardNumber: EncryptedPayload?,
     @ColumnInfo(name = "last_numbers")
-    val lastNumbers: String,
+    val lastNumbers: String?,
     @Embedded(prefix = "cvv_")
     val cvv: EncryptedPayload?,
     @ColumnInfo(name = "expiration_date")
-    val expirationDate: YearMonth
+    val expirationDate: YearMonth?
 )

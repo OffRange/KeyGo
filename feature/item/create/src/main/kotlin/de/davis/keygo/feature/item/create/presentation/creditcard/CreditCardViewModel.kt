@@ -90,19 +90,19 @@ internal class CreditCardViewModel(
             fetch = creditCardRepository::getCreditCardById,
         ) { card ->
             val (number, cvv) = coroutineScope {
-                val number = async { card.cardNumber.decrypt() }
+                val number = card.cardNumber?.let { number -> async { number.decrypt() } }
                 val cvv = card.cvv?.let { secret -> async { secret.decrypt() } }
-                number.await() to cvv?.await()
+                number?.await() to cvv?.await()
             }
 
             nameTextFieldState.setTextAndPlaceCursorAtEnd(card.name)
             notesTextFieldState.setTextAndPlaceCursorAtEnd(card.note ?: "")
             ccHolderTextFieldState.setTextAndPlaceCursorAtEnd(card.holder ?: "")
             // Set the number before the CVV so the network — and thus the CVV cap — is known.
-            ccNumberTextFieldState.setTextAndPlaceCursorAtEnd(number)
+            ccNumberTextFieldState.setTextAndPlaceCursorAtEnd(number ?: "")
             ccCVVTextFieldState.setTextAndPlaceCursorAtEnd(cvv ?: "")
             ccExpirationDateTextFieldState.setTextAndPlaceCursorAtEnd(
-                card.expirationDate.format(CC_EXPIRATION_FORMATTER),
+                card.expirationDate?.format(CC_EXPIRATION_FORMATTER) ?: "",
             )
             setSelectedVaultId(card.vaultId)
             setAssignedTags(card.tags)
