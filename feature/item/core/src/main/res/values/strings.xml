@@ -25,4 +25,5 @@
     <string name="login_identifier">Email, phone, or username</string>
 
     <string name="field_blank">This field can not be blank</string>
+    <string name="field_invalid">This input is invalid</string>
 </resources>

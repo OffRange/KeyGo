@@ -148,6 +148,7 @@ private fun CreditCardReadyContent(
                         ),
                         inputTransformation = ccNumberInputTransformation,
                         outputTransformation = ccNumberOutputTransformation,
+                        error = state.numberError,
                     )
 
                     KeyGoFormField(
@@ -168,6 +169,7 @@ private fun CreditCardReadyContent(
                             keyboardType = KeyboardType.Number
                         ),
                         inputTransformation = ccExpirationDateInputTransformation,
+                        error = state.expirationDateError,
                     )
                 }
             }

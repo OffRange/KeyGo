@@ -13,15 +13,14 @@ data class UpsertCreditCard private constructor(
     val holder: FieldUpdate<String>,
     val cardNumber: FieldUpdate<String>,
     val cvv: FieldUpdate<String>,
-    /** Raw `MM/yy` text; parsed to a `YearMonth` inside the use case. */
     val expirationDate: FieldUpdate<String>,
 ) : UpsertItem {
     companion object {
         fun create(
             vaultId: VaultId,
             name: String,
-            cardNumber: String,
-            expirationDate: String,
+            cardNumber: String? = null,
+            expirationDate: String? = null,
             holder: String? = null,
             cvv: String? = null,
             note: String? = null,
@@ -29,8 +28,8 @@ data class UpsertCreditCard private constructor(
         ) = UpsertCreditCard(
             upsertType = UpsertType.Create(vaultId),
             name = FieldUpdate.Set(name),
-            cardNumber = FieldUpdate.Set(cardNumber),
-            expirationDate = FieldUpdate.Set(expirationDate),
+            cardNumber = if (!cardNumber.isNullOrBlank()) FieldUpdate.Set(cardNumber) else FieldUpdate.Clear,
+            expirationDate = if (!expirationDate.isNullOrBlank()) FieldUpdate.Set(expirationDate) else FieldUpdate.Clear,
             holder = if (!holder.isNullOrBlank()) FieldUpdate.Set(holder) else FieldUpdate.Clear,
             cvv = if (!cvv.isNullOrBlank()) FieldUpdate.Set(cvv) else FieldUpdate.Clear,
             note = if (!note.isNullOrBlank()) FieldUpdate.Set(note) else FieldUpdate.Clear,

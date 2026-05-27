@@ -281,20 +281,18 @@ internal class LoginViewModel(
                     )
                 }
 
-                if (failure.any { it is ItemUpsertError.DatabaseError }) {
-                    failure.filterIsInstance<ItemUpsertError.DatabaseError>()
-                        .first()
-                        .let { dbError ->
-                            snackbarManager.sendMessage(
-                                message = SnackbarMessage(
-                                    message = ResourceString(
-                                        R.string.database_error,
-                                        dbError.throwable.message ?: "no message",
-                                    ),
+                failure.filterIsInstance<ItemUpsertError.DatabaseError>()
+                    .firstOrNull()
+                    ?.let { dbError ->
+                        snackbarManager.sendMessage(
+                            message = SnackbarMessage(
+                                message = ResourceString(
+                                    R.string.database_error,
+                                    dbError.throwable.message ?: "no message",
                                 ),
-                            )
-                        }
-                }
+                            ),
+                        )
+                    }
             }
         }
     }

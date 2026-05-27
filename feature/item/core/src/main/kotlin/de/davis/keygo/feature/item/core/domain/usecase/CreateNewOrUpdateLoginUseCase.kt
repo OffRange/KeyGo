@@ -68,8 +68,7 @@ class CreateNewOrUpdateLoginUseCase(
     override fun relocate(item: Login, vaultId: VaultId, keyInformation: KeyInformation): Login =
         item.copy(vaultId = vaultId, keyInformation = keyInformation)
 
-    context(scope: CryptographicScope)
-    override suspend fun buildCreate(
+    override suspend fun CryptographicScope.buildCreate(
         upsert: UpsertLogin,
         itemId: ItemId,
         vaultId: VaultId,
@@ -104,8 +103,10 @@ class CreateNewOrUpdateLoginUseCase(
         )
     }
 
-    context(scope: CryptographicScope)
-    override suspend fun buildUpdate(upsert: UpsertLogin, existing: Login): Login = coroutineScope {
+    override suspend fun CryptographicScope.buildUpdate(
+        upsert: UpsertLogin,
+        existing: Login
+    ): Login = coroutineScope {
         val newPasswordCredential = when (val pw = upsert.password) {
             is FieldUpdate.Keep -> existing.passwordCredential
             is FieldUpdate.Clear -> null

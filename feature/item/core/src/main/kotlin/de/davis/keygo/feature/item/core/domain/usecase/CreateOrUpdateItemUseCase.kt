@@ -44,18 +44,16 @@ abstract class CreateOrUpdateItemUseCase<U : UpsertItem, I : Item>(
     /** Loads the persisted item for an update, or null when the id is unknown. */
     protected abstract suspend fun fetchExisting(id: ItemId): I?
 
-    /** Builds a brand-new item inside [scope]; assign the supplied [keyInformation] to it. */
-    context(scope: CryptographicScope)
-    protected abstract suspend fun buildCreate(
+    /** Builds a brand-new item inside [CryptographicScope]; assign the supplied [keyInformation] to it. */
+    protected abstract suspend fun CryptographicScope.buildCreate(
         upsert: U,
         itemId: ItemId,
         vaultId: VaultId,
         keyInformation: KeyInformation,
     ): I
 
-    /** Applies [upsert] onto [existing] inside [scope]. */
-    context(scope: CryptographicScope)
-    protected abstract suspend fun buildUpdate(upsert: U, existing: I): I
+    /** Applies [upsert] onto [existing] inside [CryptographicScope]. */
+    protected abstract suspend fun CryptographicScope.buildUpdate(upsert: U, existing: I): I
 
     /** True when the built item has no meaningful content and should be rejected as [ItemUpsertError.Empty]. */
     protected open fun isEmpty(item: I, upsert: U): Boolean = false

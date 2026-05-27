@@ -19,6 +19,7 @@ import de.davis.keygo.feature.item.core.domain.model.getValue
 import de.davis.keygo.feature.item.core.domain.model.on
 import de.davis.keygo.feature.item.core.domain.model.onSet
 import de.davis.keygo.feature.item.core.domain.model.withoutClearingOn
+import de.davis.keygo.rust.card.CardFormatter
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import org.koin.core.annotation.Single
@@ -28,8 +29,9 @@ import java.time.format.DateTimeParseException
 
 @Single
 class CreateNewOrUpdateCreditCardUseCase(
-    cryptographicScopeProvider: CryptographicScopeProvider,
     private val creditCardRepository: CreditCardRepository,
+    private val cardFormatter: CardFormatter,
+    cryptographicScopeProvider: CryptographicScopeProvider,
     vaultRepository: VaultRepository,
     upsertVaultItem: UpsertVaultItemUseCase,
 ) : CreateOrUpdateItemUseCase<UpsertCreditCard, CreditCard>(
@@ -48,6 +50,9 @@ class CreateNewOrUpdateCreditCardUseCase(
         if (!isValidExpiration(upsert.expirationDate, allowKeep))
             errors.add(CreditCardUpsertError.InvalidExpiration)
 
+        if (!isValidCardNumber(upsert.cardNumber, allowKeep))
+            errors.add(CreditCardUpsertError.InvalidCardNumber)
+
         return errors
     }
 
@@ -60,15 +65,21 @@ class CreateNewOrUpdateCreditCardUseCase(
     private fun isValidExpiration(field: FieldUpdate<String>, allowKeep: Boolean): Boolean =
         when (field) {
             is FieldUpdate.Keep -> allowKeep
-            is FieldUpdate.Clear -> false
+            is FieldUpdate.Clear -> true
             is FieldUpdate.Set<String> -> field.value.toYearMonthOrNull() != null
+        }
+
+    private fun isValidCardNumber(field: FieldUpdate<String>, allowKeep: Boolean): Boolean =
+        when (field) {
+            is FieldUpdate.Keep -> allowKeep
+            is FieldUpdate.Clear -> true
+            is FieldUpdate.Set<String> -> cardFormatter.isLuhnValid(field.value)
         }
 
     override suspend fun fetchExisting(id: ItemId): CreditCard? =
         creditCardRepository.getCreditCardById(id)
 
-    override fun isEmpty(item: CreditCard, upsert: UpsertCreditCard): Boolean =
-        item.lastNumbers.isBlank()
+    override fun isEmpty(item: CreditCard, upsert: UpsertCreditCard): Boolean = !item.hasAnyContent
 
     override fun relocate(
         item: CreditCard,
@@ -76,15 +87,15 @@ class CreateNewOrUpdateCreditCardUseCase(
         keyInformation: KeyInformation,
     ): CreditCard = item.copy(vaultId = vaultId, keyInformation = keyInformation)
 
-    context(scope: CryptographicScope)
-    override suspend fun buildCreate(
+    override suspend fun CryptographicScope.buildCreate(
         upsert: UpsertCreditCard,
         itemId: ItemId,
         vaultId: VaultId,
         keyInformation: KeyInformation,
     ): CreditCard = coroutineScope {
-        val number = upsert.cardNumber.getValue().orEmpty()
-        val encryptedNumber = async { CreditCard.CardNumber.encrypt(number) }
+        val number = upsert.cardNumber.getValue()
+        val encryptedNumber =
+            number?.let { number -> async { CreditCard.CardNumber.encrypt(number) } }
         val encryptedCvv = upsert.cvv.onSet { cvv -> async { CreditCard.CVV.encrypt(cvv) } }
 
         CreditCard(
@@ -96,15 +107,15 @@ class CreateNewOrUpdateCreditCardUseCase(
             note = upsert.note.getValue(),
             pinned = false,
             holder = upsert.holder.getValue(),
-            lastNumbers = number.toLastNumbers(),
-            cardNumber = encryptedNumber.await(),
+            lastNumbers = number?.toLastNumbers(),
+            cardNumber = encryptedNumber?.await(),
             cvv = encryptedCvv?.await(),
-            expirationDate = upsert.expirationDate.getValue()!!.toYearMonthOrNull()!!,
+            expirationDate = upsert.expirationDate.getValue()
+                ?.toYearMonthOrNull(), // toYearMonthOrNull will not return null, since isValidExpiration ensures the date to be correct
         )
     }
 
-    context(scope: CryptographicScope)
-    override suspend fun buildUpdate(
+    override suspend fun CryptographicScope.buildUpdate(
         upsert: UpsertCreditCard,
         existing: CreditCard,
     ): CreditCard = coroutineScope {
@@ -118,11 +129,18 @@ class CreateNewOrUpdateCreditCardUseCase(
             note = upsert.note.on(existing.note),
             tags = upsert.tags.on(existing.tags).orEmpty(),
             holder = upsert.holder.on(existing.holder),
-            cardNumber = encryptedNumber?.await() ?: existing.cardNumber,
-            lastNumbers = upsert.cardNumber.getValue()?.toLastNumbers() ?: existing.lastNumbers,
+            cardNumber = upsert.cardNumber.on(existing.cardNumber, encryptedNumber),
+            lastNumbers = when (val cn = upsert.cardNumber) {
+                FieldUpdate.Keep -> existing.lastNumbers
+                FieldUpdate.Clear -> null
+                is FieldUpdate.Set -> cn.value.toLastNumbers()
+            },
             cvv = upsert.cvv.on(existing.cvv, encryptedCvv),
-            expirationDate = upsert.expirationDate.getValue()?.toYearMonthOrNull()
-                ?: existing.expirationDate,
+            expirationDate = when (val exp = upsert.expirationDate) {
+                FieldUpdate.Keep -> existing.expirationDate
+                FieldUpdate.Clear -> null
+                is FieldUpdate.Set -> exp.value.toYearMonthOrNull()
+            },
         )
     }
 

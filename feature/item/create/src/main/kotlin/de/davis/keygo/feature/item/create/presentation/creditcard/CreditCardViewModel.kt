@@ -143,19 +143,18 @@ internal class CreditCardViewModel(
             }.onFailure { failure ->
                 _base.update {
                     it.copy(
-                        numberError = if (failure.contains(ItemUpsertError.Empty)) InputFieldError.Empty else null,
+                        numberError = if (failure.contains(CreditCardUpsertError.InvalidCardNumber)) InputFieldError.Invalid else null,
+                        expirationDateError = if (failure.contains(CreditCardUpsertError.InvalidExpiration)) InputFieldError.Invalid else null,
                     )
                 }
 
-                if (failure.any { it is ItemUpsertError.InvalidVaultId })
+                if (failure.any { it is ItemUpsertError.InvalidVaultId }) {
                     snackbarManager.sendMessage(
-                        message = SnackbarMessage(message = ResourceString(R.string.invalid_vault_id)),
+                        message = SnackbarMessage(
+                            message = ResourceString(R.string.invalid_vault_id),
+                        ),
                     )
-
-                if (failure.contains(CreditCardUpsertError.InvalidExpiration))
-                    snackbarManager.sendMessage(
-                        message = SnackbarMessage(message = ResourceString(R.string.cc_invalid_expiration)),
-                    )
+                }
 
                 failure.filterIsInstance<ItemUpsertError.DatabaseError>()
                     .firstOrNull()

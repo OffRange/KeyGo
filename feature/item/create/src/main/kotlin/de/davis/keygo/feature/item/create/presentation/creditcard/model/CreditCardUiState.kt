@@ -14,10 +14,16 @@ internal data class CreditCardBaseState(
     val ccCVVTextFieldState: TextFieldState = TextFieldState(),
     val ccExpirationDateTextFieldState: TextFieldState = TextFieldState(),
     val numberError: InputFieldError? = null,
+    val expirationDateError: InputFieldError? = null,
     val updating: Boolean = false,
 ) {
+
+    val hasAnyContent: Boolean
+        get() = ccHolderTextFieldState.text.isNotBlank()
+                || ccNumberTextFieldState.text.isNotBlank()
+                || ccCVVTextFieldState.text.isNotBlank()
+                || ccExpirationDateTextFieldState.text.isNotBlank()
+
     fun canSave(name: CharSequence): Boolean =
-        name.isNotBlank() &&
-            ccNumberTextFieldState.text.isNotBlank() &&
-            ccExpirationDateTextFieldState.text.isNotBlank()
+        name.isNotBlank() && hasAnyContent
 }

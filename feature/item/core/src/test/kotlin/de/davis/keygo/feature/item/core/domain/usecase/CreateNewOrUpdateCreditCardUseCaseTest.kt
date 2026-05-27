@@ -4,6 +4,7 @@ import de.davis.keygo.core.item.FakeCreditCardRepository
 import de.davis.keygo.core.item.FakeItemRepository
 import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.FakeVaultRepository
+import de.davis.keygo.rust.FakeCardFormatter
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
@@ -50,6 +51,7 @@ class CreateNewOrUpdateCreditCardUseCaseTest {
 
     private val cryptoProvider =
         FakeCryptographicScopeProvider(FakeItemRepository(FakeLoginRepository()))
+    private val cardFormatter = FakeCardFormatter()
     private val useCase = makeUseCase()
 
     @BeforeTest
@@ -148,12 +150,13 @@ class CreateNewOrUpdateCreditCardUseCaseTest {
         val numberCall = cryptoProvider.encryptCalls.single { it.label == CreditCard.CardNumber.label }
         assertContentEquals(plaintextNumber.encodeToByteArray(), numberCall.plaintext)
 
-        assertFalse(stored.cardNumber.payload.ciphertext.contentEquals(plaintextNumber.encodeToByteArray()))
+        assertNotNull(stored.cardNumber)
+        assertFalse(stored.cardNumber!!.payload.ciphertext.contentEquals(plaintextNumber.encodeToByteArray()))
         assertContentEquals(
             FakeCryptographicScopeProvider.transform(plaintextNumber.encodeToByteArray()),
-            stored.cardNumber.payload.ciphertext,
+            stored.cardNumber!!.payload.ciphertext,
         )
-        assertContentEquals(FakeCryptographicScopeProvider.IV, stored.cardNumber.payload.iv)
+        assertContentEquals(FakeCryptographicScopeProvider.IV, stored.cardNumber!!.payload.iv)
     }
 
     @Test
@@ -251,11 +254,12 @@ class CreateNewOrUpdateCreditCardUseCaseTest {
 
         val stored = creditCardRepository.getCreditCardById(existing.id)
         assertNotNull(stored)
+        assertNotNull(stored.cardNumber)
         assertContentEquals(
             FakeCryptographicScopeProvider.transform(plaintextNumber.encodeToByteArray()),
-            stored.cardNumber.payload.ciphertext,
+            stored.cardNumber!!.payload.ciphertext,
         )
-        assertContentEquals(FakeCryptographicScopeProvider.IV, stored.cardNumber.payload.iv)
+        assertContentEquals(FakeCryptographicScopeProvider.IV, stored.cardNumber!!.payload.iv)
     }
 
     @Test
@@ -282,6 +286,60 @@ class CreateNewOrUpdateCreditCardUseCaseTest {
 
         assertTrue(result.isFailure())
         assertContains(result.error, CreditCardUpsertError.InvalidExpiration)
+    }
+
+    @Test
+    fun `create without card number stores null cardNumber and null lastNumbers`() = runTest {
+        val result = useCase(
+            UpsertCreditCard.create(
+                vaultId = defaultVault.id,
+                name = "My card",
+                holder = "Alice",
+            )
+        )
+
+        val stored = storedById(result.getOrNull())
+        assertNotNull(stored)
+        assertNull(stored.cardNumber)
+        assertNull(stored.lastNumbers)
+    }
+
+    @Test
+    fun `create with non-Luhn card number returns InvalidCardNumber error`() = runTest {
+        val result = makeUseCase(cardFormatter = FakeCardFormatter().also { it.luhnResult = false })(
+            UpsertCreditCard.create(
+                vaultId = defaultVault.id,
+                name = "My card",
+                cardNumber = "1234567890123456",
+            )
+        )
+
+        assertTrue(result.isFailure())
+        assertContains(result.error, CreditCardUpsertError.InvalidCardNumber)
+    }
+
+    @Test
+    fun `update clearing card number sets cardNumber and lastNumbers to null`() = runTest {
+        val existing = testCard()
+        creditCardRepository.seed(existing)
+
+        val result = useCase(UpsertCreditCard.update(itemId = existing.id, cardNumber = clear()))
+
+        assertTrue(result.isSuccess(), "result: $result")
+        val stored = creditCardRepository.getCreditCardById(existing.id)
+        assertNull(stored?.cardNumber)
+        assertNull(stored?.lastNumbers)
+    }
+
+    @Test
+    fun `update clearing expiration date sets expirationDate to null`() = runTest {
+        val existing = testCard()
+        creditCardRepository.seed(existing)
+
+        val result = useCase(UpsertCreditCard.update(itemId = existing.id, expirationDate = clear()))
+
+        assertTrue(result.isSuccess(), "result: $result")
+        assertNull(creditCardRepository.getCreditCardById(existing.id)?.expirationDate)
     }
 
     @Test
@@ -323,9 +381,11 @@ class CreateNewOrUpdateCreditCardUseCaseTest {
 
     private fun makeUseCase(
         cryptographicScopeProvider: CryptographicScopeProvider = cryptoProvider,
+        cardFormatter: FakeCardFormatter = this.cardFormatter,
     ) = CreateNewOrUpdateCreditCardUseCase(
         cryptographicScopeProvider = cryptographicScopeProvider,
         creditCardRepository = creditCardRepository,
+        cardFormatter = cardFormatter,
         vaultRepository = vaultRepository,
         upsertVaultItem = UpsertVaultItemUseCase(FakeLoginRepository(), creditCardRepository),
     )
