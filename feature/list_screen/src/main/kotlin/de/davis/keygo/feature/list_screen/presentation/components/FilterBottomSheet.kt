@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.list_screen.presentation.components
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -85,6 +86,7 @@ private fun FilterBottomSheetContent(
     LazyColumn(
         modifier = Modifier
             .fillMaxWidth()
+            .animateContentSize()
             .padding(horizontal = 16.dp)
             .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
