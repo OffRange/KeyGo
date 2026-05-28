@@ -28,7 +28,9 @@ import de.davis.keygo.feature.item.view.creditcard.model.CreditCardFieldType
 import de.davis.keygo.feature.item.view.creditcard.model.ModificationDialog
 import de.davis.keygo.feature.item.view.creditcard.model.ViewCreditCardState
 import de.davis.keygo.feature.item.view.creditcard.model.ViewCreditCardUiEvent
+import de.davis.keygo.feature.item.view.login.model.ObfuscatedString
 import de.davis.keygo.feature.item.view.login.model.asObfuscatedString
+import de.davis.keygo.rust.card.CardFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -60,6 +62,7 @@ internal class ViewCreditCardViewModel(
     private val observeCreditCardWithCryptoScope: ItemWithCryptoScopeUseCase,
     private val observeAllTags: ObserveAllTagsSortedUseCase,
     private val sort: SortUseCase,
+    private val cardFormatter: CardFormatter,
 ) : ViewModel() {
 
     private val _modificationDialogState = MutableStateFlow<ModificationDialog?>(null)
@@ -75,7 +78,16 @@ internal class ViewCreditCardViewModel(
                 source = creditCardRepository::observeCreditCardById,
             ) { card ->
                 val (number, cvv, vaultMetadata) = coroutineScope {
-                    val number = card.cardNumber?.let { async { it.decrypt().asObfuscatedString() } }
+                    val number = card.cardNumber?.let {
+                        async {
+                            val raw = it.decrypt()
+                            ObfuscatedString(
+                                raw = raw,
+                                formatted = cardFormatter.formatNumber(raw),
+                                visibleSuffixDigits = VISIBLE_CARD_NUMBER_SUFFIX,
+                            )
+                        }
+                    }
                     val cvv = card.cvv?.let { async { it.decrypt().asObfuscatedString() } }
                     val meta = async { vaultRepository.getVaultMetadata(card.vaultId) }
                     Triple(number?.await(), cvv?.await(), meta.await())
@@ -150,7 +162,8 @@ internal class ViewCreditCardViewModel(
                     CreditCardFieldType.Tag -> ""
                 }
                 val tagsToSuggest =
-                    if (fieldType == CreditCardFieldType.Tag) observeAllTags().first().toSet() - current.tags
+                    if (fieldType == CreditCardFieldType.Tag) observeAllTags().first()
+                        .toSet() - current.tags
                     else emptySet()
 
                 _modificationDialogState.update {
@@ -236,5 +249,6 @@ internal class ViewCreditCardViewModel(
     companion object {
         // "yy" parses into the 2000-2099 range, matching card expirations.
         private val EXPIRATION_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MM/yy")
+        private const val VISIBLE_CARD_NUMBER_SUFFIX = 4
     }
 }

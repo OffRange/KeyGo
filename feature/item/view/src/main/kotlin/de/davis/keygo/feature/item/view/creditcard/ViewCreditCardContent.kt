@@ -194,7 +194,7 @@ fun ViewCreditCardContent(state: ViewCreditCardState, onEvent: (ViewCreditCardUi
                 ) {
                     val scrollState = rememberScrollState()
                     Text(
-                        text = if (isCardNumberHidden) cardNum.hidden else cardNum.raw,
+                        text = if (isCardNumberHidden) cardNum.hidden else cardNum.formatted,
                         maxLines = 1,
                         modifier = Modifier.horizontalScroll(scrollState),
                     )
@@ -443,7 +443,11 @@ private fun ViewCreditCardContentPreview() {
                 state = ViewCreditCardState(
                     name = "My Visa",
                     holder = "John Doe",
-                    cardNumber = ObfuscatedString("4111111111111111"),
+                    cardNumber = ObfuscatedString(
+                        "4111111111111111",
+                        formatted = "4111 1111 1111 1111",
+                        visibleSuffixDigits = 4
+                    ),
                     cvv = ObfuscatedString("123"),
                     expirationDate = "12/26",
                     note = "Main travel card.",
