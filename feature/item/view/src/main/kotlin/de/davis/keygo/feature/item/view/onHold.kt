@@ -11,17 +11,19 @@ fun Modifier.onHold(onHold: (Boolean) -> Unit) = this.pointerInput(Unit) {
         val down = awaitFirstDown()
         onHold(true)
 
-        val pointerId = down.id
-        do {
-            val event = awaitPointerEvent()
-            val change = event.changes.firstOrNull { it.id == pointerId }
-            if (change == null || change.changedToUpIgnoreConsumed()) {
-                break
-            }
+        try {
+            val pointerId = down.id
+            do {
+                val event = awaitPointerEvent()
+                val change = event.changes.firstOrNull { it.id == pointerId }
+                if (change == null || change.changedToUpIgnoreConsumed()) {
+                    break
+                }
 
-            change.consume()
-        } while (true)
-
-        onHold(false)
+                change.consume()
+            } while (true)
+        } finally {
+            onHold(false)
+        }
     }
 }
