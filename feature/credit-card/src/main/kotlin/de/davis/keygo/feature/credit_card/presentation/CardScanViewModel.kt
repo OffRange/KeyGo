@@ -31,8 +31,9 @@ internal class CardScanViewModel(
     private var readJob: Job? = null
 
     fun onTransport(transport: ApduTransport?) {
-        // A tag arriving mid-read is ignored; a single read runs to completion.
-        if (_state.value is CardScanUiState.Reading) return
+        // Ignore new tags while a read is in progress or while the success animation plays.
+        val current = _state.value
+        if (current is CardScanUiState.Reading || current is CardScanUiState.Success) return
         if (transport == null) {
             _state.value = CardScanUiState.Failure(CardReadFailure.NotAnEmvCard)
             return
