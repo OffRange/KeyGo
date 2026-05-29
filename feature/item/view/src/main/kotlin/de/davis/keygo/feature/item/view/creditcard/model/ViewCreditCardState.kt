@@ -11,7 +11,6 @@ data class ViewCreditCardState(
     val vaultMetadata: VaultMetadata? = null,
     val holder: String = "",
     val cardNumber: ObfuscatedString? = null,
-    val lastNumbers: String = "",
     val cvv: ObfuscatedString? = null,
     val expirationDate: String = "",
     val tags: Set<Tag> = emptySet(),

@@ -65,7 +65,6 @@ class ViewCreditCardViewModelTest {
         note = null,
         pinned = false,
         holder = null,
-        lastNumbers = "1111",
         cardNumber = encryptedCardNumber,
         cvv = null,
         expirationDate = null,

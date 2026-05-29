@@ -144,6 +144,7 @@ internal class CreditCardViewModel(
                 _base.update {
                     it.copy(
                         numberError = if (failure.contains(CreditCardUpsertError.InvalidCardNumber)) InputFieldError.Invalid else null,
+                        cvvError = if (failure.contains(CreditCardUpsertError.InvalidCvv)) InputFieldError.Invalid else null,
                         expirationDateError = if (failure.contains(CreditCardUpsertError.InvalidExpiration)) InputFieldError.Invalid else null,
                     )
                 }

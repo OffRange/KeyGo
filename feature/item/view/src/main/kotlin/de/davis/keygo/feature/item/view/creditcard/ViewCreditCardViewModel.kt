@@ -98,7 +98,6 @@ internal class ViewCreditCardViewModel(
                     vaultMetadata = vaultMetadata,
                     holder = card.holder.orEmpty(),
                     cardNumber = number,
-                    lastNumbers = card.lastNumbers.orEmpty(),
                     cvv = cvv,
                     expirationDate = card.expirationDate?.format(EXPIRATION_FORMATTER).orEmpty(),
                     tags = sort(card.tags) { it.display }.toSet(),
@@ -225,6 +224,9 @@ internal class ViewCreditCardViewModel(
                                             InputFieldError.Invalid
 
                                         failure.contains(CreditCardUpsertError.InvalidExpiration) ->
+                                            InputFieldError.Invalid
+
+                                        failure.contains(CreditCardUpsertError.InvalidCvv) ->
                                             InputFieldError.Invalid
 
                                         failure.contains(ItemUpsertError.BlankName) ->

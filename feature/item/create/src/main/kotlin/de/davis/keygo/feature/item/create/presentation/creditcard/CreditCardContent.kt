@@ -159,6 +159,7 @@ private fun CreditCardReadyContent(
                             keyboardType = KeyboardType.NumberPassword
                         ),
                         inputTransformation = ccCvvInputTransformation,
+                        error = state.cvvError,
                     )
 
                     KeyGoFormField(
