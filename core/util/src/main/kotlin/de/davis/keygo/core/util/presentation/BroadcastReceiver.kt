@@ -34,7 +34,6 @@ fun BroadcastReceiver(
             filter,
             flags,
         )
-        context.registerReceiver(receiver, filter)
 
         onDispose { context.unregisterReceiver(receiver) }
     }
