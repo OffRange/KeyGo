@@ -28,8 +28,8 @@ impl CardFormatter {
             .collect()
     }
 
-    pub fn is_luhn_valid(&self, input: String) -> bool {
-        Card::parse(&input).is_luhn_valid()
+    pub fn is_valid(&self, input: String) -> bool {
+        Card::parse(&input).is_valid()
     }
 
     pub fn cvv_len(&self, input: String) -> i32 {

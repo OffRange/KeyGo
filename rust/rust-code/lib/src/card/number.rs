@@ -74,8 +74,12 @@ impl Card {
         sum.is_multiple_of(10)
     }
 
+    /// Structurally valid: a length the (possibly [`Unknown`](CardNetwork::Unknown)) network
+    /// accepts and a passing Luhn check. The network is deliberately *not* gated on being
+    /// recognised — an unrecognised IIN is still acceptable as long as its length is plausible
+    /// and the checksum holds.
     pub fn is_valid(&self) -> bool {
-        self.network != CardNetwork::Unknown && self.is_length_valid() && self.is_luhn_valid()
+        self.is_length_valid() && self.is_luhn_valid()
     }
 }
 
@@ -251,5 +255,16 @@ mod tests {
         assert!(!Card::parse("411111111111").is_valid());
         // Right length, but Luhn fails.
         assert!(!Card::parse("4111111111111112").is_valid());
+    }
+
+    #[test]
+    fn unknown_network_validates_on_length_and_luhn() {
+        // 9-prefix is an unrecognised network, but a plausible-length, Luhn-valid number is
+        // still accepted: validity is not gated on recognising the network.
+        let card = Card::parse("9999999999999995");
+        assert_eq!(card.network, crate::card::CardNetwork::Unknown);
+        assert!(card.is_valid());
+        // 11 digits is shorter than any plausible PAN -> rejected on length alone.
+        assert!(!Card::parse("99999999995").is_valid());
     }
 }

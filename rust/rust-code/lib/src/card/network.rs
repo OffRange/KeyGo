@@ -104,7 +104,9 @@ impl CardNetwork {
             CardNetwork::Jcb => &[16, 17, 18, 19],
             CardNetwork::UnionPay => &[16, 17, 18, 19],
             CardNetwork::Maestro => &[12, 13, 14, 15, 16, 17, 18, 19],
-            CardNetwork::Unknown => &[],
+            // Unrecognised IIN: accept the full plausible PAN range so an unknown network
+            // is still structurally validatable by length + Luhn (see `Card::is_valid`).
+            CardNetwork::Unknown => &[12, 13, 14, 15, 16, 17, 18, 19],
         }
     }
 
