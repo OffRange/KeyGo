@@ -90,7 +90,7 @@ class CreateNewOrUpdateCreditCardUseCaseTest {
     }
 
     @Test
-    fun `create stores card with name parsed expiration and derived last numbers`() = runTest {
+    fun `create stores card with name parsed expiration and vault`() = runTest {
         val result = useCase(
             UpsertCreditCard.create(
                 vaultId = defaultVault.id,
@@ -106,7 +106,6 @@ class CreateNewOrUpdateCreditCardUseCaseTest {
         assertEquals("My card", stored.name)
         assertEquals("ALICE SMITH", stored.holder)
         assertEquals(YearMonth.of(2030, 5), stored.expirationDate)
-        assertEquals("1111", stored.lastNumbers)
         assertEquals(defaultVault.id, stored.vaultId)
     }
 
@@ -195,17 +194,7 @@ class CreateNewOrUpdateCreditCardUseCaseTest {
         assertTrue(result.isSuccess(), "result: $result")
         val stored = creditCardRepository.getCreditCardById(existing.id)
         assertEquals("New name", stored?.name)
-        assertEquals(existing.lastNumbers, stored?.lastNumbers)
-    }
-
-    @Test
-    fun `update with new card number recomputes last numbers`() = runTest {
-        val existing = testCard()
-        creditCardRepository.seed(existing)
-
-        useCase(UpsertCreditCard.update(itemId = existing.id, cardNumber = set("5555444433332222")))
-
-        assertEquals("2222", creditCardRepository.getCreditCardById(existing.id)?.lastNumbers)
+        assertEquals(existing.cardNumber, stored?.cardNumber)
     }
 
     @Test
@@ -289,7 +278,7 @@ class CreateNewOrUpdateCreditCardUseCaseTest {
     }
 
     @Test
-    fun `create without card number stores null cardNumber and null lastNumbers`() = runTest {
+    fun `create without card number stores null cardNumber`() = runTest {
         val result = useCase(
             UpsertCreditCard.create(
                 vaultId = defaultVault.id,
@@ -301,12 +290,11 @@ class CreateNewOrUpdateCreditCardUseCaseTest {
         val stored = storedById(result.getOrNull())
         assertNotNull(stored)
         assertNull(stored.cardNumber)
-        assertNull(stored.lastNumbers)
     }
 
     @Test
-    fun `create with non-Luhn card number returns InvalidCardNumber error`() = runTest {
-        val result = makeUseCase(cardFormatter = FakeCardFormatter().also { it.luhnResult = false })(
+    fun `create with invalid card number returns InvalidCardNumber error`() = runTest {
+        val result = makeUseCase(cardFormatter = FakeCardFormatter().also { it.validResult = { false } })(
             UpsertCreditCard.create(
                 vaultId = defaultVault.id,
                 name = "My card",
@@ -319,7 +307,55 @@ class CreateNewOrUpdateCreditCardUseCaseTest {
     }
 
     @Test
-    fun `update clearing card number sets cardNumber and lastNumbers to null`() = runTest {
+    fun `create with cvv length not matching the network returns InvalidCvv error`() = runTest {
+        // Card number sets the network; the fake reports an expected CVV length of 4, so a
+        // 3-digit CVV is rejected.
+        val formatter = FakeCardFormatter().also { it.cvvLenResult = { 4 } }
+        val result = makeUseCase(cardFormatter = formatter)(
+            UpsertCreditCard.create(
+                vaultId = defaultVault.id,
+                name = "My card",
+                cardNumber = "378282246310005",
+                cvv = "123",
+            )
+        )
+
+        assertTrue(result.isFailure())
+        assertContains(result.error, CreditCardUpsertError.InvalidCvv)
+    }
+
+    @Test
+    fun `create with cvv length matching the network succeeds`() = runTest {
+        val formatter = FakeCardFormatter().also { it.cvvLenResult = { 4 } }
+        val result = makeUseCase(cardFormatter = formatter)(
+            UpsertCreditCard.create(
+                vaultId = defaultVault.id,
+                name = "My card",
+                cardNumber = "378282246310005",
+                cvv = "1234",
+            )
+        )
+
+        assertTrue(result.isSuccess(), "result: $result")
+    }
+
+    @Test
+    fun `update of cvv alone is not length-checked when the card number is kept`() = runTest {
+        // No card number in the upsert means the network is unknown here, so CVV length is not
+        // enforced even though the fake would report a different expected length.
+        val existing = testCard()
+        creditCardRepository.seed(existing)
+        val formatter = FakeCardFormatter().also { it.cvvLenResult = { 4 } }
+
+        val result = makeUseCase(cardFormatter = formatter)(
+            UpsertCreditCard.update(itemId = existing.id, cvv = set("123")),
+        )
+
+        assertTrue(result.isSuccess(), "result: $result")
+    }
+
+    @Test
+    fun `update clearing card number sets cardNumber to null`() = runTest {
         val existing = testCard()
         creditCardRepository.seed(existing)
 
@@ -328,7 +364,6 @@ class CreateNewOrUpdateCreditCardUseCaseTest {
         assertTrue(result.isSuccess(), "result: $result")
         val stored = creditCardRepository.getCreditCardById(existing.id)
         assertNull(stored?.cardNumber)
-        assertNull(stored?.lastNumbers)
     }
 
     @Test
@@ -402,7 +437,6 @@ class CreateNewOrUpdateCreditCardUseCaseTest {
         note = null,
         pinned = false,
         holder = "Test Holder",
-        lastNumbers = "1111",
         cardNumber = CreditCard.CardNumber(EncryptedPayload.EMPTY),
         cvv = cvv,
         expirationDate = YearMonth.of(2030, 5),

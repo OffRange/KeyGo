@@ -53,6 +53,9 @@ class CreateNewOrUpdateCreditCardUseCase(
         if (!isValidCardNumber(upsert.cardNumber, allowKeep))
             errors.add(CreditCardUpsertError.InvalidCardNumber)
 
+        if (!isValidCvv(upsert.cvv, upsert.cardNumber))
+            errors.add(CreditCardUpsertError.InvalidCvv)
+
         return errors
     }
 
@@ -73,8 +76,13 @@ class CreateNewOrUpdateCreditCardUseCase(
         when (field) {
             is FieldUpdate.Keep -> allowKeep
             is FieldUpdate.Clear -> true
-            is FieldUpdate.Set<String> -> cardFormatter.isLuhnValid(field.value)
+            is FieldUpdate.Set<String> -> cardFormatter.isValid(field.value)
         }
+
+    private fun isValidCvv(cvv: FieldUpdate<String>, cardNumber: FieldUpdate<String>): Boolean {
+        if (cvv !is FieldUpdate.Set || cardNumber !is FieldUpdate.Set) return true
+        return cvv.value.length == cardFormatter.cvvLen(cardNumber.value)
+    }
 
     override suspend fun fetchExisting(id: ItemId): CreditCard? =
         creditCardRepository.getCreditCardById(id)
@@ -107,7 +115,6 @@ class CreateNewOrUpdateCreditCardUseCase(
             note = upsert.note.getValue(),
             pinned = false,
             holder = upsert.holder.getValue(),
-            lastNumbers = number?.toLastNumbers(),
             cardNumber = encryptedNumber?.await(),
             cvv = encryptedCvv?.await(),
             expirationDate = upsert.expirationDate.getValue()
@@ -130,11 +137,6 @@ class CreateNewOrUpdateCreditCardUseCase(
             tags = upsert.tags.on(existing.tags).orEmpty(),
             holder = upsert.holder.on(existing.holder),
             cardNumber = upsert.cardNumber.on(existing.cardNumber, encryptedNumber),
-            lastNumbers = when (val cn = upsert.cardNumber) {
-                FieldUpdate.Keep -> existing.lastNumbers
-                FieldUpdate.Clear -> null
-                is FieldUpdate.Set -> cn.value.toLastNumbers()
-            },
             cvv = upsert.cvv.on(existing.cvv, encryptedCvv),
             expirationDate = when (val exp = upsert.expirationDate) {
                 FieldUpdate.Keep -> existing.expirationDate
@@ -143,8 +145,6 @@ class CreateNewOrUpdateCreditCardUseCase(
             },
         )
     }
-
-    private fun String.toLastNumbers(): String = filter(Char::isDigit).takeLast(4)
 
     private fun String.toYearMonthOrNull(): YearMonth? = try {
         YearMonth.parse(this, EXPIRATION_FORMATTER)
