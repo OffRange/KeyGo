@@ -180,43 +180,48 @@ internal class ViewCreditCardViewModel(
 
                 _itemId.value?.let { id ->
                     viewModelScope.launch {
-                        updateCreditCard(
-                            when (dialog.fieldType) {
-                                CreditCardFieldType.Holder -> UpsertCreditCard.update(
-                                    itemId = id,
-                                    holder = newText,
-                                )
+                        val request = when (dialog.fieldType) {
+                            CreditCardFieldType.Holder -> UpsertCreditCard.update(
+                                itemId = id,
+                                holder = newText,
+                            )
 
-                                CreditCardFieldType.CardNumber -> UpsertCreditCard.update(
-                                    itemId = id,
-                                    cardNumber = newText,
-                                )
+                            CreditCardFieldType.CardNumber -> UpsertCreditCard.update(
+                                itemId = id,
+                                cardNumber = newText,
+                            )
 
-                                CreditCardFieldType.Cvv -> UpsertCreditCard.update(
-                                    itemId = id,
-                                    cvv = newText,
-                                )
+                            CreditCardFieldType.Cvv -> UpsertCreditCard.update(
+                                itemId = id,
+                                cvv = newText,
+                            )
 
-                                CreditCardFieldType.Expiration -> UpsertCreditCard.update(
-                                    itemId = id,
-                                    expirationDate = newText,
-                                )
+                            CreditCardFieldType.Expiration -> UpsertCreditCard.update(
+                                itemId = id,
+                                expirationDate = newText,
+                            )
 
-                                CreditCardFieldType.Note -> UpsertCreditCard.update(
-                                    itemId = id,
-                                    note = newText,
-                                )
+                            CreditCardFieldType.Note -> UpsertCreditCard.update(
+                                itemId = id,
+                                note = newText,
+                            )
 
-                                CreditCardFieldType.Tag -> newText.onSet { raw ->
-                                    Tag.of(raw)?.let { tag ->
-                                        UpsertCreditCard.update(
-                                            itemId = id,
-                                            tags = set(state.value.tags + tag),
-                                        )
-                                    }
-                                } ?: return@launch
-                            },
-                        ).onFailure { failure ->
+                            CreditCardFieldType.Tag -> {
+                                val raw = newText.onSet { it } ?: run {
+                                    _modificationDialogState.update { dialog.copy(error = InputFieldError.Empty) }
+                                    return@launch
+                                }
+                                val tag = Tag.of(raw) ?: run {
+                                    _modificationDialogState.update { dialog.copy(error = InputFieldError.Invalid) }
+                                    return@launch
+                                }
+                                UpsertCreditCard.update(
+                                    itemId = id,
+                                    tags = set(state.value.tags + tag),
+                                )
+                            }
+                        }
+                        updateCreditCard(request).onFailure { failure ->
                             _modificationDialogState.update {
                                 dialog.copy(
                                     error = when {
@@ -235,7 +240,7 @@ internal class ViewCreditCardViewModel(
                                         failure.contains(ItemUpsertError.Empty) ->
                                             InputFieldError.Empty
 
-                                        else -> null
+                                        else -> InputFieldError.System
                                     },
                                 )
                             }

@@ -289,14 +289,20 @@ internal class ViewLoginViewModel(
                                     )
                                 } ?: return@launch
 
-                                FieldType.Tag -> newText.onSet { raw ->
-                                    Tag.of(raw)?.let { tag ->
-                                        UpsertLogin.update(
-                                            itemId = id,
-                                            tags = set(state.value.tags + tag),
-                                        )
+                                FieldType.Tag -> {
+                                    val raw = newText.onSet { it } ?: run {
+                                        _modificationDialogState.update { dialog.copy(error = InputFieldError.Empty) }
+                                        return@launch
                                     }
-                                } ?: return@launch
+                                    val tag = Tag.of(raw) ?: run {
+                                        _modificationDialogState.update { dialog.copy(error = InputFieldError.Invalid) }
+                                        return@launch
+                                    }
+                                    UpsertLogin.update(
+                                        itemId = id,
+                                        tags = set(state.value.tags + tag),
+                                    )
+                                }
 
                                 FieldType.Note -> UpsertLogin.update(
                                     itemId = id,
@@ -306,9 +312,11 @@ internal class ViewLoginViewModel(
                         ).onFailure { failure ->
                             _modificationDialogState.update {
                                 dialog.copy(
-                                    error = if (failure.contains(ItemUpsertError.Empty)
-                                        || failure.contains(ItemUpsertError.BlankName)
-                                    ) InputFieldError.Empty else null,
+                                    error = when {
+                                        failure.contains(ItemUpsertError.BlankName) ||
+                                            failure.contains(ItemUpsertError.Empty) -> InputFieldError.Empty
+                                        else -> InputFieldError.System
+                                    },
                                 )
                             }
                         }.onSuccess {
