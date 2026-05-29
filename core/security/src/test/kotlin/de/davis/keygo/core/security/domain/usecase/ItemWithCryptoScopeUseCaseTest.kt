@@ -49,7 +49,6 @@ class ItemWithCryptoScopeUseCaseTest {
         note = null,
         pinned = false,
         holder = "Alice",
-        lastNumbers = "4242",
         cardNumber = CreditCard.CardNumber(EncryptedPayload.EMPTY),
         cvv = CreditCard.CVV(EncryptedPayload.EMPTY),
         expirationDate = YearMonth.of(2030, 12),

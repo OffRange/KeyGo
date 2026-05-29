@@ -112,7 +112,6 @@ class CreditCardRepositoryImplTest {
 
         assertEquals(id, card?.id)
         assertEquals("Alice", card?.holder)
-        assertEquals("4242", card?.lastNumbers)
         assertEquals(YearMonth.of(2030, 12), card?.expirationDate)
     }
 
@@ -144,7 +143,6 @@ class CreditCardRepositoryImplTest {
         note = null,
         pinned = false,
         holder = "Alice",
-        lastNumbers = "4242",
         cardNumber = CreditCard.CardNumber(EncryptedPayload.EMPTY),
         cvv = CreditCard.CVV(EncryptedPayload.EMPTY),
         expirationDate = YearMonth.of(2030, 12),
@@ -155,7 +153,6 @@ class CreditCardRepositoryImplTest {
             id = id,
             holder = "Alice",
             cardNumber = EncryptedPayload.EMPTY,
-            lastNumbers = "4242",
             cvv = EncryptedPayload.EMPTY,
             expirationDate = YearMonth.of(2030, 12),
         ),

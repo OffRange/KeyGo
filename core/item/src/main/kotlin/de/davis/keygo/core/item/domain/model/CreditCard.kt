@@ -16,7 +16,6 @@ data class CreditCard(
     override val note: String?,
     override val pinned: Boolean,
     val holder: String?,
-    val lastNumbers: String?,
     val cardNumber: CardNumber?,
     val cvv: CVV?,
     val expirationDate: YearMonth?,
@@ -24,10 +23,9 @@ data class CreditCard(
     override val itemType: VaultItemType
         get() = VaultItemType.CreditCard
 
-
     val hasAnyContent: Boolean
         get() = !holder.isNullOrBlank()
-                || (cardNumber != null && !lastNumbers.isNullOrBlank())
+                || cardNumber != null
                 || cvv != null
                 || expirationDate != null
 

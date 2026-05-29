@@ -35,7 +35,6 @@ class CreditCardMapperTest {
         assertEquals(card.id, entity.id)
         assertEquals("Alice", entity.holder)
         assertEquals(cardNumber, entity.cardNumber)
-        assertEquals("4242", entity.lastNumbers)
         assertEquals(cvv, entity.cvv)
         assertEquals(YearMonth.of(2030, 12), entity.expirationDate)
     }
@@ -67,7 +66,6 @@ class CreditCardMapperTest {
         assertEquals("note", card.note)
         assertEquals(true, card.pinned)
         assertEquals("Alice", card.holder)
-        assertEquals("4242", card.lastNumbers)
         assertEquals(cardNumber, card.cardNumber?.payload)
         assertEquals(cvv, card.cvv?.payload)
         assertEquals(YearMonth.of(2030, 12), card.expirationDate)
@@ -78,7 +76,6 @@ class CreditCardMapperTest {
     fun `toCreditCardEntity with null cardNumber stores null payload`() {
         val entity = baseCard(cardNumber = null).toCreditCardEntity()
         assertEquals(null, entity.cardNumber)
-        assertEquals(null, entity.lastNumbers)
     }
 
     @Test
@@ -128,7 +125,6 @@ class CreditCardMapperTest {
         note = null,
         pinned = false,
         holder = holder,
-        lastNumbers = cardNumber?.let { "4242" },
         cardNumber = cardNumber,
         cvv = cvv,
         expirationDate = expirationDate,
@@ -146,7 +142,6 @@ class CreditCardMapperTest {
             id = id,
             holder = "Alice",
             cardNumber = cardNumber,
-            lastNumbers = cardNumber?.let { "4242" },
             cvv = cvv,
             expirationDate = expirationDate,
         ),

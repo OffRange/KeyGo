@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "277f0df15cf3c39f8a3683c868c6303d",
+    "identityHash": "d827ca95e51c22ef1dc56c2eb260f41c",
     "entities": [
       {
         "tableName": "vault",
@@ -173,7 +173,7 @@
       },
       {
         "tableName": "credit_card",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `holder` TEXT, `last_numbers` TEXT, `expiration_date` INTEGER, `card_number_ciphertext` BLOB, `card_number_iv` BLOB, `cvv_ciphertext` BLOB, `cvv_iv` BLOB, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `item`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `holder` TEXT, `expiration_date` INTEGER, `card_number_ciphertext` BLOB, `card_number_iv` BLOB, `cvv_ciphertext` BLOB, `cvv_iv` BLOB, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `item`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -184,11 +184,6 @@
           {
             "fieldPath": "holder",
             "columnName": "holder",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "lastNumbers",
-            "columnName": "last_numbers",
             "affinity": "TEXT"
           },
           {
@@ -602,7 +597,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '277f0df15cf3c39f8a3683c868c6303d')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd827ca95e51c22ef1dc56c2eb260f41c')"
     ]
   }
 }
