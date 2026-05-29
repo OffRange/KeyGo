@@ -26,4 +26,5 @@
 
     <string name="field_blank">This field can not be blank</string>
     <string name="field_invalid">This input is invalid</string>
+    <string name="field_system">Something went wrong. Please try again.</string>
 </resources>

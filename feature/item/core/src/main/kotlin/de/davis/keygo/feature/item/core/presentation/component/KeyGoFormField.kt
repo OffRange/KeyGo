@@ -60,6 +60,7 @@ fun KeyGoFormField(
             val text = when (error) {
                 InputFieldError.Empty -> stringResource(R.string.field_blank)
                 InputFieldError.Invalid -> stringResource(R.string.field_invalid)
+                InputFieldError.System -> stringResource(R.string.field_system)
             }
             Text(text = text, color = MaterialTheme.colorScheme.error)
         }
