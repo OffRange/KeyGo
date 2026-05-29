@@ -10,7 +10,7 @@ internal fun EmvCard.toDomain(): Card? {
     if (digits.isBlank()) return null
 
     return Card(
-        holder = "$holderFirstname $holderLastname".trim(),
+        holder = listOfNotNull(holderFirstname, holderLastname).joinToString(" ").trim(),
         cardNumber = cardNumber,
         expiry = expireDate.toInstant().atZone(ZoneId.systemDefault()).let { YearMonth.from(it) }
     )
