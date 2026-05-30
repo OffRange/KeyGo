@@ -15,6 +15,8 @@ repository.
 ## Build & Test
 
 ```bash
+make -C rust/rust-code test            # Rust unit tests
+make -C rust/rust-code bindgen         # Generate uniffi bindings
 ./gradlew build                        # Full build
 ./gradlew test                         # All unit tests
 ./gradlew :app:test                    # Module-specific tests (preferred for small changes)
@@ -22,7 +24,6 @@ repository.
 ```
 
 - Flavors: `playStore` (default), `fdroid`. Types: `debug`, `staging`, `release`.
-- Rust: `./gradlew :rust:buildRust -PbuildRust=true` (disabled by default)
 - CI branch: `v2`
 
 ## Tech Stack

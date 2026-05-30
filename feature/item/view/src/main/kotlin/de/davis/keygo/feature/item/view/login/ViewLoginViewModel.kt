@@ -6,18 +6,19 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.repository.ItemRepository
+import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.security.domain.crypto.decrypt
-import de.davis.keygo.core.security.domain.usecase.LoginWithCryptoScopeUseCase
+import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
-import de.davis.keygo.feature.item.core.domain.model.LoginError
+import de.davis.keygo.feature.item.core.domain.model.ItemUpsertError
 import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.fieldUpdate
 import de.davis.keygo.feature.item.core.domain.model.onSet
@@ -68,7 +69,8 @@ internal class ViewLoginViewModel(
     private val totpGenerator: TotpGenerator,
     private val registrableDomainResolver: RegistrableDomainResolver,
     private val totpService: TotpService,
-    private val observeLoginWithCryptoScope: LoginWithCryptoScopeUseCase,
+    private val observeLoginWithCryptoScope: ItemWithCryptoScopeUseCase,
+    private val loginRepository: LoginRepository,
     private val observeAllTags: ObserveAllTagsSortedUseCase,
 ) : ViewModel() {
 
@@ -81,7 +83,10 @@ internal class ViewLoginViewModel(
         .filterNotNull()
         .distinctUntilChanged()
         .flatMapLatest { id ->
-            observeLoginWithCryptoScope.observe(itemId = id) { login ->
+            observeLoginWithCryptoScope.observe(
+                itemId = id,
+                source = loginRepository::observeLoginById,
+            ) { login ->
                 val (obfuscated, vaultMetadata) = coroutineScope {
                     val obfuscated = login.passwordCredential?.let { pwd ->
                         async { pwd.secret.decrypt().asObfuscatedString() }
@@ -284,14 +289,20 @@ internal class ViewLoginViewModel(
                                     )
                                 } ?: return@launch
 
-                                FieldType.Tag -> newText.onSet { raw ->
-                                    Tag.of(raw)?.let { tag ->
-                                        UpsertLogin.update(
-                                            itemId = id,
-                                            tags = set(state.value.tags + tag),
-                                        )
+                                FieldType.Tag -> {
+                                    val raw = newText.onSet { it } ?: run {
+                                        _modificationDialogState.update { dialog.copy(error = InputFieldError.Empty) }
+                                        return@launch
                                     }
-                                } ?: return@launch
+                                    val tag = Tag.of(raw) ?: run {
+                                        _modificationDialogState.update { dialog.copy(error = InputFieldError.Invalid) }
+                                        return@launch
+                                    }
+                                    UpsertLogin.update(
+                                        itemId = id,
+                                        tags = set(state.value.tags + tag),
+                                    )
+                                }
 
                                 FieldType.Note -> UpsertLogin.update(
                                     itemId = id,
@@ -301,9 +312,11 @@ internal class ViewLoginViewModel(
                         ).onFailure { failure ->
                             _modificationDialogState.update {
                                 dialog.copy(
-                                    error = if (failure.contains(LoginError.EmptyLogin)
-                                        || failure.contains(LoginError.BlankName)
-                                    ) InputFieldError.Empty else null,
+                                    error = when {
+                                        failure.contains(ItemUpsertError.BlankName) ||
+                                            failure.contains(ItemUpsertError.Empty) -> InputFieldError.Empty
+                                        else -> InputFieldError.System
+                                    },
                                 )
                             }
                         }.onSuccess {

@@ -93,6 +93,7 @@ import de.davis.keygo.feature.item.view.login.model.ObfuscatedString
 import de.davis.keygo.feature.item.view.login.model.TotpState
 import de.davis.keygo.feature.item.view.login.model.ViewLoginState
 import de.davis.keygo.feature.item.view.login.model.ViewLoginUiEvent
+import de.davis.keygo.feature.item.view.onHold
 import de.davis.keygo.feature.totp.domain.model.TotpValue
 import de.davis.keygo.feature.totp.presentation.component.QRScanner
 import de.davis.keygo.core.item.R as CoreItemR
@@ -231,24 +232,8 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                 entry(
                     title = password,
                     leadingIcon = Icons.Default.Password,
-                    modifier = Modifier.pointerInput(Unit) {
-                        awaitEachGesture {
-                            val down = awaitFirstDown()
-                            isPasswordHidden = false
-
-                            val pointerId = down.id
-                            do {
-                                val event = awaitPointerEvent()
-                                val change = event.changes.firstOrNull { it.id == pointerId }
-                                if (change == null || change.changedToUpIgnoreConsumed()) {
-                                    break
-                                }
-
-                                change.consume()
-                            } while (true)
-
-                            isPasswordHidden = true
-                        }
+                    modifier = Modifier.onHold {
+                        isPasswordHidden = !it
                     },
                     trailingContent = {
                         CopyToClipboardButton(pwd.raw)

@@ -3,6 +3,7 @@
     <string name="general_information">General Information</string>
     <string name="additional_information">Additional Information</string>
     <string name="password_information">Password Information</string>
+    <string name="cc_information">Credit Card Information</string>
     <string name="domain_information">Domain Information</string>
     <string name="tag_information">Tag information</string>
 
@@ -51,8 +52,6 @@
     <string name="list_entry">\u2022 %s</string>
     <string name="list_before">\u2022 Before: %s</string>
     <string name="list_after">\u2022 After: %s</string>
-
-    <string name="update_item">Update your Item</string>
 
     <string name="submit_content_description">Submit</string>
     <string name="generate_password_content_description">Generate Password</string>

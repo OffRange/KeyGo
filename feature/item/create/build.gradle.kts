@@ -56,6 +56,7 @@ dependencies {
     implementation(projects.core.security)
     implementation(projects.feature.item.core)
     implementation(projects.feature.totp)
+    implementation(projects.feature.creditCard)
 
     implementation(libs.offrange.passgen)
 
@@ -63,6 +64,8 @@ dependencies {
     implementation(project.dependencies.platform(libs.koin.bom))
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.annotations)
+
+    testImplementation(libs.kotlin.test)
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

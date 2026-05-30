@@ -2,8 +2,6 @@ package de.davis.keygo.core.security.domain.usecase
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Item
-import de.davis.keygo.core.item.domain.model.Login
-import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
@@ -16,27 +14,28 @@ import kotlinx.coroutines.flow.map
 import org.koin.core.annotation.Single
 
 @Single
-class LoginWithCryptoScopeUseCase(
+class ItemWithCryptoScopeUseCase(
     private val vaultRepository: VaultRepository,
-    private val loginRepository: LoginRepository,
     private val cryptoScopeProvider: CryptographicScopeProvider,
 ) {
 
-    suspend fun <R> observe(
+    suspend fun <I : Item, R> oneShot(
         itemId: ItemId,
-        block: suspend CryptographicScope.(Login) -> R,
-    ): Flow<Result<R, CryptoScopeError>> = loginRepository.observeLoginById(itemId).map { login ->
-        login?.let { handleItem(it, block) }
-            ?: return@map Result.Failure(CryptoScopeError.IdNotFound)
+        fetch: suspend (ItemId) -> I?,
+        block: suspend CryptographicScope.(I) -> R,
+    ): Result<R, CryptoScopeError> {
+        val item = fetch(itemId)
+            ?: return Result.Failure(CryptoScopeError.IdNotFound)
+        return handleItem(item, block)
     }
 
-    suspend fun <R> oneShot(
+    suspend fun <I : Item, R> observe(
         itemId: ItemId,
-        block: suspend CryptographicScope.(Login) -> R,
-    ): Result<R, CryptoScopeError> {
-        val login = loginRepository.getLoginById(itemId)
-            ?: return Result.Failure(CryptoScopeError.IdNotFound)
-        return handleItem(login, block)
+        source: (ItemId) -> Flow<I?>,
+        block: suspend CryptographicScope.(I) -> R,
+    ): Flow<Result<R, CryptoScopeError>> = source(itemId).map { item ->
+        item?.let { handleItem(it, block) }
+            ?: Result.Failure(CryptoScopeError.IdNotFound)
     }
 
     private suspend fun <I : Item, R> handleItem(

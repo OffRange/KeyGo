@@ -2,8 +2,8 @@ package de.davis.keygo.feature.item.core.domain.usecase
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
-import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
+import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordSecret
@@ -14,15 +14,9 @@ import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.encrypt
-import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
-import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
-import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
-import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.fold
-import de.davis.keygo.core.util.mapFailure
-import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.item.core.domain.model.FieldUpdate
-import de.davis.keygo.feature.item.core.domain.model.LoginError
+import de.davis.keygo.feature.item.core.domain.model.ItemUpsertError
 import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.UpsertType
 import de.davis.keygo.feature.item.core.domain.model.getValue
@@ -31,23 +25,24 @@ import de.davis.keygo.feature.item.core.domain.model.onSet
 import de.davis.keygo.feature.item.core.domain.model.withoutClearingOn
 import de.davis.keygo.rust.totp.TotpService
 import de.davis.keygo.rust.totp.getInfoFromUriWithResult
-import de.davisalessandro.keygo.rust.ItemAad
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import org.koin.core.annotation.Single
-import kotlin.contracts.ExperimentalContracts
 
 @Single
 class CreateNewOrUpdateLoginUseCase(
-    private val cryptographicScopeProvider: CryptographicScopeProvider,
+    cryptographicScopeProvider: CryptographicScopeProvider,
     private val loginRepository: LoginRepository,
-    private val vaultRepository: VaultRepository,
-    private val upsertVaultItem: UpsertVaultItemUseCase,
+    vaultRepository: VaultRepository,
+    upsertVaultItem: UpsertVaultItemUseCase,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val totpService: TotpService,
+) : CreateOrUpdateItemUseCase<UpsertLogin, Login>(
+    cryptographicScopeProvider = cryptographicScopeProvider,
+    vaultRepository = vaultRepository,
+    upsertVaultItem = upsertVaultItem,
 ) {
 
-    @OptIn(ExperimentalContracts::class)
     private fun isValid(field: FieldUpdate<String>, allowKeep: Boolean = false): Boolean =
         when (field) {
             is FieldUpdate.Keep -> allowKeep
@@ -55,166 +50,84 @@ class CreateNewOrUpdateLoginUseCase(
             is FieldUpdate.Set<String> -> field.value.isNotBlank()
         }
 
-    private fun validate(upsert: UpsertLogin): Set<LoginError> {
-        val errors = mutableSetOf<LoginError>()
+    override fun validate(upsert: UpsertLogin): Set<ItemUpsertError> {
+        val errors = mutableSetOf<ItemUpsertError>()
         val allowKeep = upsert.upsertType is UpsertType.Update
 
         if (!isValid(field = upsert.name, allowKeep = allowKeep))
-            errors.add(LoginError.BlankName)
+            errors.add(ItemUpsertError.BlankName)
 
         return errors
     }
 
-    suspend operator fun invoke(upsert: UpsertLogin): Result<ItemId, Set<LoginError>> {
-        val errors = validate(upsert)
-        if (errors.isNotEmpty()) return Result.Failure(errors)
+    override suspend fun fetchExisting(id: ItemId): Login? = loginRepository.getLoginById(id)
 
-        val updatedLogin = when (upsert.upsertType) {
-            is UpsertType.Create -> buildCreate(upsert, upsert.upsertType.vaultId)
-            is UpsertType.Update -> buildUpdate(
-                upsert = upsert,
-                id = upsert.upsertType.id,
-                targetVaultId = upsert.upsertType.targetVaultId,
-            )
-        }
+    override fun isEmpty(item: Login, upsert: UpsertLogin): Boolean =
+        !item.hasAnyContent && !upsert.hasPendingPasskey
 
-        return when (updatedLogin) {
-            is Result.Success -> upsertVaultItem(updatedLogin.success).mapFailure {
-                setOf(LoginError.DatabaseError(it))
-            }
+    override fun relocate(item: Login, vaultId: VaultId, keyInformation: KeyInformation): Login =
+        item.copy(vaultId = vaultId, keyInformation = keyInformation)
 
-            is Result.Failure -> Result.Failure(setOf(updatedLogin.error))
-        }
-    }
-
-    private suspend fun buildCreate(
+    override suspend fun CryptographicScope.buildCreate(
         upsert: UpsertLogin,
+        itemId: ItemId,
         vaultId: VaultId,
-    ): Result<Login, LoginError> = resultBinding {
-        val itemId = newItemId()
+        keyInformation: KeyInformation,
+    ): Login = coroutineScope {
+        val newPasswordCredential = when (val pw = upsert.password) {
+            FieldUpdate.Keep,
+            FieldUpdate.Clear -> null
 
-        val vaultKeyInformation = vaultRepository.getKeyInformation(vaultId)
-            ?: return Result.Failure(LoginError.InvalidVaultId)
-        val aad = ItemAad(itemId = itemId, vaultId = vaultId)
-
-        val built = cryptographicScopeProvider.itemScope(
-            wrappedVaultKeyInformation = WrappedVaultKeyInformation(
-                wrappedVaultKey = vaultKeyInformation,
-                vaultId = vaultId,
-            ),
-            wrappedItemKeyInformation = WrappedItemKeyInformation(itemAad = aad),
-        ) {
-            coroutineScope {
-                val newPasswordCredential = when (val pw = upsert.password) {
-                    FieldUpdate.Keep,
-                    FieldUpdate.Clear -> null
-
-                    is FieldUpdate.Set<String> -> {
-                        val encrypted = async { PasswordSecret.encrypt(pw.value) }
-                        val strength = async { passwordStrengthEstimator(pw.value) }
-                        PasswordCredential(
-                            secret = encrypted.await(),
-                            score = strength.await(),
-                        )
-                    }
-                }
-                val totp = upsert.totpUriOrSecret.onSet { uriOrSecret ->
-                    async { uriOrSecret.convertTotpUriOrSecretToUri(itemId) }
-                }
-
-                val wrappedItemKey = async { wrapCurrentItemKey() }
-
-                Login(
-                    id = itemId,
-                    name = upsert.name.getValue()!!,
-                    username = upsert.username.getValue(),
-                    domainInfos = upsert.domains.getValue().orEmpty(),
-                    tags = upsert.tags.getValue().orEmpty(),
-                    passwordCredential = newPasswordCredential,
-                    totp = totp?.await(),
-                    note = upsert.note.getValue(),
-                    pinned = false,
-                    keyInformation = wrappedItemKey.await(),
-                    vaultId = vaultId,
-                )
+            is FieldUpdate.Set<String> -> {
+                val encrypted = async { PasswordSecret.encrypt(pw.value) }
+                val strength = async { passwordStrengthEstimator(pw.value) }
+                PasswordCredential(secret = encrypted.await(), score = strength.await())
             }
-        }.bind(LoginError::CryptoError)
+        }
+        val totp = upsert.totpUriOrSecret.onSet { uriOrSecret ->
+            async { uriOrSecret.convertTotpUriOrSecretToUri(itemId) }
+        }
 
-        if (!built.hasAnyContent && !upsert.hasPendingPasskey) return Result.Failure(LoginError.EmptyLogin)
-        built
+        Login(
+            id = itemId,
+            name = upsert.name.getValue()!!,
+            username = upsert.username.getValue(),
+            domainInfos = upsert.domains.getValue().orEmpty(),
+            tags = upsert.tags.getValue().orEmpty(),
+            passwordCredential = newPasswordCredential,
+            totp = totp?.await(),
+            note = upsert.note.getValue(),
+            pinned = false,
+            keyInformation = keyInformation,
+            vaultId = vaultId,
+        )
     }
 
-    private suspend fun buildUpdate(
+    override suspend fun CryptographicScope.buildUpdate(
         upsert: UpsertLogin,
-        id: ItemId,
-        targetVaultId: VaultId?,
-    ): Result<Login, LoginError> = resultBinding {
-        val existing = loginRepository.getLoginById(id)
-            ?: return Result.Failure(LoginError.InvalidItemId)
-
-        val sourceVaultKeyInfo = vaultRepository.getKeyInformation(existing.vaultId)
-            ?: return Result.Failure(LoginError.InvalidVaultId)
-        val sourceVault = WrappedVaultKeyInformation(
-            wrappedVaultKey = sourceVaultKeyInfo,
-            vaultId = existing.vaultId,
-        )
-
-        val login = cryptographicScopeProvider.itemScope(
-            wrappedVaultKeyInformation = sourceVault,
-            wrappedItemKeyInformation = existing.wrappedItemKeyInformation(),
-        ) {
-            coroutineScope {
-                val newPasswordCredential = when (val pw = upsert.password) {
-                    is FieldUpdate.Keep -> existing.passwordCredential
-                    is FieldUpdate.Clear -> null
-                    is FieldUpdate.Set<String> -> {
-                        val encrypted = async { PasswordSecret.encrypt(pw.value) }
-                        val strength = async { passwordStrengthEstimator(pw.value) }
-                        PasswordCredential(
-                            secret = encrypted.await(),
-                            score = strength.await(),
-                        )
-                    }
-                }
-                val totp = upsert.totpUriOrSecret.onSet { uriOrSecret ->
-                    async { uriOrSecret.convertTotpUriOrSecretToUri(existing.id) }
-                }
-
-                existing.copy(
-                    name = upsert.name.withoutClearingOn(existing.name),
-                    username = upsert.username.on(existing.username),
-                    domainInfos = upsert.domains.on(existing.domainInfos).orEmpty(),
-                    tags = upsert.tags.on(existing.tags).orEmpty(),
-                    passwordCredential = newPasswordCredential,
-                    totp = upsert.totpUriOrSecret.on(existing.totp, totp),
-                    note = upsert.note.on(existing.note),
-                )
+        existing: Login
+    ): Login = coroutineScope {
+        val newPasswordCredential = when (val pw = upsert.password) {
+            is FieldUpdate.Keep -> existing.passwordCredential
+            is FieldUpdate.Clear -> null
+            is FieldUpdate.Set<String> -> {
+                val encrypted = async { PasswordSecret.encrypt(pw.value) }
+                val strength = async { passwordStrengthEstimator(pw.value) }
+                PasswordCredential(secret = encrypted.await(), score = strength.await())
             }
-        }.bind(LoginError::CryptoError)
+        }
+        val totp = upsert.totpUriOrSecret.onSet { uriOrSecret ->
+            async { uriOrSecret.convertTotpUriOrSecretToUri(existing.id) }
+        }
 
-        if (!login.hasAnyContent) return Result.Failure(LoginError.EmptyLogin)
-
-        if (targetVaultId == null || targetVaultId == existing.vaultId)
-            return@resultBinding login
-
-        // Vault changed during edit: rewrap the item key under the destination vault. Encrypted
-        // secrets are bound only to the item id (see CryptographicScopeImpl.buildDataAad), so
-        // they remain valid under the same item key — no re-encryption needed.
-        val destinationVaultKeyInfo = vaultRepository.getKeyInformation(targetVaultId)
-            ?: return Result.Failure(LoginError.InvalidVaultId)
-
-        val rewrapped = cryptographicScopeProvider.rewrapItemKey(
-            sourceVault = sourceVault,
-            sourceItem = existing.wrappedItemKeyInformation(),
-            destinationVault = WrappedVaultKeyInformation(
-                wrappedVaultKey = destinationVaultKeyInfo,
-                vaultId = targetVaultId,
-            ),
-        ).bind(LoginError::CryptoError)
-
-        login.copy(
-            vaultId = targetVaultId,
-            keyInformation = rewrapped,
+        existing.copy(
+            name = upsert.name.withoutClearingOn(existing.name),
+            username = upsert.username.on(existing.username),
+            domainInfos = upsert.domains.on(existing.domainInfos).orEmpty(),
+            tags = upsert.tags.on(existing.tags).orEmpty(),
+            passwordCredential = newPasswordCredential,
+            totp = upsert.totpUriOrSecret.on(existing.totp, totp),
+            note = upsert.note.on(existing.note),
         )
     }
 
@@ -236,9 +149,9 @@ class CreateNewOrUpdateLoginUseCase(
                 // not valid uri - treat it as secret
                 Totp(
                     loginId = itemId,
-                    secret = Totp.Secret.encrypt(this@convertTotpUriOrSecretToUri)
+                    secret = Totp.Secret.encrypt(this@convertTotpUriOrSecretToUri),
                 )
-            }
+            },
         )
     }
 }

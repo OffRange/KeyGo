@@ -2,37 +2,31 @@ package de.davis.keygo.feature.item.create.presentation.login
 
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -47,15 +41,17 @@ import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultMetadata
+import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.presentation.StrengthIndicator
-import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.item.core.presentation.component.ChipFormGroup
+import de.davis.keygo.feature.item.core.presentation.component.CreateOrModifyItemTopAppBar
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.component.gatherPendingItems
 import de.davis.keygo.feature.item.core.presentation.transformation.rememberSchemeStrippingTransformation
 import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.presentation.component.FormGroup
+import de.davis.keygo.feature.item.create.presentation.component.ItemContentWrapper
 import de.davis.keygo.feature.item.create.presentation.component.KeyGoItemForm
 import de.davis.keygo.feature.item.create.presentation.component.OverrideTotpDialog
 import de.davis.keygo.feature.item.create.presentation.component.SelectItemForTotpModificationDialog
@@ -65,23 +61,25 @@ import de.davis.keygo.feature.item.create.presentation.login.model.DialogState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginBaseState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiEvent
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiState
+import de.davis.keygo.feature.item.create.presentation.model.ItemUiEvent
+import de.davis.keygo.feature.item.create.presentation.model.ItemUiState
+import de.davis.keygo.feature.item.create.presentation.model.SharedItemState
 import de.davis.keygo.feature.item.create.presentation.model.VaultsState
 import de.davis.keygo.feature.item.create.presentation.password.GeneratePasswordModalBottomSheet
 import de.davis.keygo.feature.totp.presentation.component.QRScanner
 import de.davis.keygo.core.item.R as CoreItemR
-import de.davis.keygo.core.ui.R as CoreUiR
 import de.davis.keygo.feature.item.core.R as ItemCoreR
 
 @Composable
 internal fun LoginContent(state: LoginUiState, onEvent: (LoginUiEvent) -> Unit) {
-    when (state) {
-        LoginUiState.Loading -> LoginLoadingScaffold(
-            onBackClick = { onEvent(LoginUiEvent.OnBackClick) },
-        )
-
-        is LoginUiState.Ready -> LoginReadyContent(
+    ItemContentWrapper(
+        itemType = VaultItemType.Login,
+        state = state,
+        onBackClick = { onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnBackClick)) },
+    ) { state ->
+        LoginReadyContent(
             state = state.base,
-            vaultsState = state.vaultsState,
+            shared = state.shared,
             onEvent = onEvent,
         )
     }
@@ -89,32 +87,9 @@ internal fun LoginContent(state: LoginUiState, onEvent: (LoginUiEvent) -> Unit) 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun LoginLoadingScaffold(onBackClick: () -> Unit) {
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = {
-            LoginTopAppBar(
-                updating = false,
-                onBackClick = onBackClick,
-            )
-        },
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentAlignment = Alignment.Center,
-        ) {
-            ContainedLoadingIndicator()
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Composable
 private fun LoginReadyContent(
     state: LoginBaseState,
-    vaultsState: VaultsState,
+    shared: SharedItemState,
     onEvent: (LoginUiEvent) -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
@@ -125,9 +100,10 @@ private fun LoginReadyContent(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            LoginTopAppBar(
+            CreateOrModifyItemTopAppBar(
+                itemType = VaultItemType.Login,
                 updating = state.updating,
-                onBackClick = { onEvent(LoginUiEvent.OnBackClick) },
+                onBackClick = { onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnBackClick)) },
                 actions = {
                     IconButton(
                         onClick = {
@@ -137,15 +113,17 @@ private fun LoginReadyContent(
 
                             tagsTextFieldState.gatherPendingItems(TAG_DELIMITERS) { strings ->
                                 onEvent(
-                                    LoginUiEvent.OnAddTags(
-                                        strings.mapNotNullTo(mutableSetOf(), Tag::of),
+                                    LoginUiEvent.ItemUi(
+                                        ItemUiEvent.OnAddTags(
+                                            strings.mapNotNullTo(mutableSetOf(), Tag::of),
+                                        )
                                     ),
                                 )
                             }
 
-                            onEvent(LoginUiEvent.OnSubmit)
+                            onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnSubmit))
                         },
-                        enabled = state.canSave,
+                        enabled = state.canSave(shared.nameTextFieldState.text),
                     ) {
                         Icon(
                             imageVector = Icons.Default.Done,
@@ -158,11 +136,11 @@ private fun LoginReadyContent(
         }
     ) { innerPadding ->
         KeyGoItemForm(
-            nameTextFieldState = state.nameTextFieldState,
-            notesTextFieldState = state.notesTextFieldState,
+            nameTextFieldState = shared.nameTextFieldState,
+            notesTextFieldState = shared.notesTextFieldState,
             tagsTextFieldState = tagsTextFieldState,
-            tagsForSuggestions = state.tagsForSuggestion,
-            assignedTags = state.itemAssignedTags,
+            tagsForSuggestions = shared.tagsForSuggestion,
+            assignedTags = shared.itemAssignedTags,
             modifier = Modifier
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)
@@ -170,11 +148,11 @@ private fun LoginReadyContent(
                 .imePadding()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             nameError = state.nameError,
-            nameExists = state.nameExists,
-            vaultsState = vaultsState,
-            onVaultSelect = { onEvent(LoginUiEvent.OnVaultSelected(it)) },
-            onTagSubmitted = { onEvent(LoginUiEvent.OnAddTags(it)) },
-            onDeleteTag = { onEvent(LoginUiEvent.OnRemoveTag(it)) },
+            nameExists = shared.nameExists,
+            vaultsState = shared.vaultsState,
+            onVaultSelect = { onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnVaultSelected(it))) },
+            onTagSubmitted = { onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnAddTags(it))) },
+            onDeleteTag = { onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnRemoveTag(it))) },
         ) {
             item(key = "password_information") {
                 var forceCompact by rememberSaveable { mutableStateOf(false) }
@@ -328,49 +306,12 @@ private fun LoginReadyContent(
 
     if (state.scanning) {
         QRScanner(
-            onClose = { onEvent(LoginUiEvent.OnBackClick) },
+            onClose = { onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnBackClick)) },
             success = {
                 onEvent(LoginUiEvent.OnCodesScanned(it))
             },
         )
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun LoginTopAppBar(
-    updating: Boolean,
-    onBackClick: () -> Unit,
-    actions: @Composable RowScope.() -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior? = null,
-) {
-    MediumFlexibleTopAppBar(
-        title = {
-            Text(
-                text = stringResource(
-                    when {
-                        updating -> R.string.update_item
-                        else -> CoreUiR.string.create_new_item
-                    },
-                ),
-            )
-        },
-        subtitle = {
-            Text(text = stringResource(CoreItemR.string.password))
-        },
-        navigationIcon = {
-            if (LocalIsInSinglePaneMode.current) {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Default.ArrowBack,
-                        contentDescription = stringResource(ItemCoreR.string.back_content_description),
-                    )
-                }
-            }
-        },
-        actions = actions,
-        scrollBehavior = scrollBehavior,
-    )
 }
 
 private val DELIMITERS = setOf(',', ' ')
@@ -382,7 +323,7 @@ private fun LoginContentPreview() {
     val selectedVaultId = newVaultId()
     KeyGoTheme {
         LoginContent(
-            state = LoginUiState.Ready(
+            state = ItemUiState.Ready(
                 base = LoginBaseState(
                     strengthScore = PasswordScore.Weak,
                     domains = setOf(
@@ -392,17 +333,23 @@ private fun LoginContentPreview() {
                             eTLD1 = "example.com",
                         ),
                     ),
-                    nameExists = true,
                 ),
-                vaultsState = VaultsState(
-                    vaults = listOf(
-                        VaultMetadata(
-                            vaultId = selectedVaultId,
-                            name = "Vault 1",
-                            icon = Vault.Icon.Default,
+                shared = SharedItemState(
+                    nameTextFieldState = TextFieldState(),
+                    notesTextFieldState = TextFieldState(),
+                    nameExists = true,
+                    vaultsState = VaultsState(
+                        vaults = listOf(
+                            VaultMetadata(
+                                vaultId = selectedVaultId,
+                                name = "Vault 1",
+                                icon = Vault.Icon.Default,
+                            ),
                         ),
+                        selectedVaultId = selectedVaultId,
                     ),
-                    selectedVaultId = selectedVaultId,
+                    itemAssignedTags = emptySet(),
+                    tagsForSuggestion = emptySet(),
                 ),
             ),
             onEvent = {},

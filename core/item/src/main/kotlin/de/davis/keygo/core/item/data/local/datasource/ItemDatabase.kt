@@ -4,6 +4,9 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
+import de.davis.keygo.core.item.data.local.converter.YearMonthConverter
+import de.davis.keygo.core.item.data.local.dao.CreditCardDao
 import de.davis.keygo.core.item.data.local.dao.DomainInfoDao
 import de.davis.keygo.core.item.data.local.dao.ItemDao
 import de.davis.keygo.core.item.data.local.dao.LoginDao
@@ -12,6 +15,7 @@ import de.davis.keygo.core.item.data.local.dao.PasswordDao
 import de.davis.keygo.core.item.data.local.dao.TagDao
 import de.davis.keygo.core.item.data.local.dao.TotpDao
 import de.davis.keygo.core.item.data.local.dao.VaultDao
+import de.davis.keygo.core.item.data.local.entity.CreditCardEntity
 import de.davis.keygo.core.item.data.local.entity.DomainInfoEntity
 import de.davis.keygo.core.item.data.local.entity.ItemEntity
 import de.davis.keygo.core.item.data.local.entity.LoginEntity
@@ -29,6 +33,7 @@ import org.koin.core.annotation.Single
         VaultEntity::class,
         ItemEntity::class,
         LoginEntity::class,
+        CreditCardEntity::class,
         TotpEntity::class,
         PasswordEntity::class,
         DomainInfoEntity::class,
@@ -38,6 +43,7 @@ import org.koin.core.annotation.Single
     ],
     version = 1,
 )
+@TypeConverters(YearMonthConverter::class)
 internal abstract class ItemDatabase : RoomDatabase() {
 
     abstract fun vaultDao(): VaultDao
@@ -45,6 +51,7 @@ internal abstract class ItemDatabase : RoomDatabase() {
     abstract fun itemDao(): ItemDao
 
     abstract fun loginDao(): LoginDao
+    abstract fun creditCardDao(): CreditCardDao
 
     abstract fun totpDao(): TotpDao
 
@@ -76,6 +83,9 @@ internal class DatabaseModule {
 
     @Single
     fun provideLoginDao(db: ItemDatabase) = db.loginDao()
+
+    @Single
+    fun provideCreditCardDao(db: ItemDatabase) = db.creditCardDao()
 
     @Single
     fun provideTotpDao(db: ItemDatabase) = db.totpDao()

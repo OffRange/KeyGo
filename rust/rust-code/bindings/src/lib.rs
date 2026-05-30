@@ -1,4 +1,5 @@
 mod account;
+mod card;
 mod item;
 mod key_derivation;
 mod key_wrap;

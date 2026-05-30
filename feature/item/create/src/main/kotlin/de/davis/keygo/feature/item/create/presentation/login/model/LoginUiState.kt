@@ -4,31 +4,17 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Stable
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.PasswordScore
-import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
-import de.davis.keygo.feature.item.create.presentation.model.VaultsState
+import de.davis.keygo.feature.item.create.presentation.model.ItemUiState
 
-@Stable
-internal sealed interface LoginUiState {
-    data object Loading : LoginUiState
-
-    data class Ready(
-        val base: LoginBaseState,
-        val vaultsState: VaultsState,
-    ) : LoginUiState
-}
+internal typealias LoginUiState = ItemUiState<LoginBaseState>
 
 @Stable
 internal data class LoginBaseState(
-    val nameTextFieldState: TextFieldState = TextFieldState(),
-    val notesTextFieldState: TextFieldState = TextFieldState(),
     val passwordTextFieldState: TextFieldState = TextFieldState(),
     val totpTextFieldState: TextFieldState = TextFieldState(),
     val usernameTextFieldState: TextFieldState = TextFieldState(),
     val domains: Set<DomainInfo> = emptySet(),
-    val tagsForSuggestion: Set<Tag> = emptySet(),
-    val itemAssignedTags: Set<Tag> = emptySet(),
-    val nameExists: Boolean = false,
     val strengthScore: PasswordScore = PasswordScore.None,
     val generatePasswordBottomSheetVisible: Boolean = false,
     val dialogState: DialogState = DialogState.None,
@@ -45,6 +31,5 @@ internal data class LoginBaseState(
                 || existingPasskeyCount > 0
                 || pendingPasskeyCount > 0
 
-    val canSave: Boolean
-        get() = nameTextFieldState.text.isNotBlank() && hasAnyContent
+    fun canSave(name: CharSequence): Boolean = name.isNotBlank() && hasAnyContent
 }

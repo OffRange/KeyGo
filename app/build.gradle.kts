@@ -110,6 +110,7 @@ dependencies {
     implementation(projects.feature.item.view)
     implementation(projects.feature.vault)
     implementation(projects.feature.totp)
+    implementation(projects.feature.creditCard)
     implementation(projects.feature.autofill)
     implementation(projects.migrationCreateAccess)
 

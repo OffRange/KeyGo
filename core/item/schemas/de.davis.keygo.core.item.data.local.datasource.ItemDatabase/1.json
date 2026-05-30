@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "40462f38d8b4873c28fe3aec0e192229",
+    "identityHash": "d827ca95e51c22ef1dc56c2eb260f41c",
     "entities": [
       {
         "tableName": "vault",
@@ -149,6 +149,67 @@
             "fieldPath": "username",
             "columnName": "username",
             "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "item",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "credit_card",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `holder` TEXT, `expiration_date` INTEGER, `card_number_ciphertext` BLOB, `card_number_iv` BLOB, `cvv_ciphertext` BLOB, `cvv_iv` BLOB, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `item`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "holder",
+            "columnName": "holder",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "expirationDate",
+            "columnName": "expiration_date",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "cardNumber.ciphertext",
+            "columnName": "card_number_ciphertext",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "cardNumber.iv",
+            "columnName": "card_number_iv",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "cvv.ciphertext",
+            "columnName": "cvv_ciphertext",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "cvv.iv",
+            "columnName": "cvv_iv",
+            "affinity": "BLOB"
           }
         ],
         "primaryKey": {
@@ -536,7 +597,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '40462f38d8b4873c28fe3aec0e192229')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd827ca95e51c22ef1dc56c2eb260f41c')"
     ]
   }
 }

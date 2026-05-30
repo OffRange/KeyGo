@@ -26,6 +26,9 @@ internal interface ItemDao {
     @Query("SELECT name FROM item WHERE id = :id")
     suspend fun getNameById(id: ItemId): String?
 
+    @Query("SELECT item_type FROM item WHERE id = :id")
+    suspend fun getItemTypeById(id: ItemId): VaultItemType?
+
     @Query("SELECT EXISTS(SELECT 1 FROM item WHERE name = :name AND (:excludeId IS NULL OR id != :excludeId) AND (:vaultId IS NULL OR vault_id = :vaultId))")
     suspend fun existsName(
         name: String,
