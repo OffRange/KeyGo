@@ -110,6 +110,17 @@ gms-mlkit-barcode-scanning = { group = "com.google.android.gms", name = "play-se
 zxing-barcode-scanning = { group = "com.google.zxing", name = "core", version.ref = "zxingBarcodeScanning" }
 devnied-emvnfccard = { group = "com.github.devnied.emvnfccard", name = "library", version.ref = "emvnfccard" }
 
+android-gradlePlugin = { group = "com.android.tools.build", name = "gradle", version.ref = "agp" }
+kotlin-gradlePlugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-plugin", version.ref = "kotlin" }
+koin-gradlePlugin = { group = "io.insert-koin", name = "koin-compiler-gradle-plugin", version.ref = "koin-plugin" }
+protobuf-gradlePlugin = { group = "com.google.protobuf", name = "protobuf-gradle-plugin", version.ref = "protobuf" }
+
+[bundles]
+koin-core = ["koin-core", "koin-annotations"]
+koin-compose = ["koin-androidx-compose", "koin-annotations"]
+android-compose = ["androidx-core-ktx", "androidx-lifecycle-runtime-ktx", "androidx-material-icons-extended", "androidx-ui", "androidx-ui-graphics", "androidx-ui-tooling-preview", "androidx-material3"]
+test-common = ["kotlin-test", "kotlinx-coroutines-test"]
+
 [plugins]
 google-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 google-protobuf = { id = "com.google.protobuf", version.ref = "protobuf" }
@@ -123,3 +134,7 @@ koin-compiler = { id = "io.insert-koin.compiler.plugin", version.ref = "koin-plu
 git-semantic-versioning = { id = "io.github.offrange.git-semantic-versioning", version.ref = "semver" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 
+keygo-android-compose = { id = "keygo.android.compose" }
+keygo-android-library = { id = "keygo.android.library" }
+keygo-android-protobuf = { id = "keygo.android.protobuf" }
+keygo-kotlin-jvm = { id = "keygo.kotlin.jvm" }

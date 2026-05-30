@@ -1,73 +1,13 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.koin.compiler)
-    alias(libs.plugins.google.protobuf)
+    alias(libs.plugins.keygo.android.library)
+    alias(libs.plugins.keygo.android.protobuf)
 }
 
 android {
     namespace = "de.davis.keygo.migration.create_access"
-    compileSdk = 36
-
-    defaultConfig {
-        minSdk = 26
-
-        consumerProguardFiles("consumer-rules.pro")
-    }
-
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget = JvmTarget.JVM_17
-    }
 }
 
 dependencies {
-    implementation(libs.androidx.core.ktx)
-
-    // Datastore
     implementation(libs.androidx.datastore)
-    implementation(libs.google.protobuf.kotlin.lite)
-
     implementation(libs.at.favre.bcrypt)
-
-    // Koin DI
-    implementation(project.dependencies.platform(libs.koin.bom))
-    implementation(libs.koin.androidx.compose)
-    implementation(libs.koin.annotations)
-}
-
-
-protobuf {
-    protoc {
-        artifact = libs.google.protobuf.protoc.get().toString()
-    }
-
-    generateProtoTasks {
-        all().forEach { task ->
-            task.builtins {
-                create("java") {
-                    option("lite")
-                }
-                create("kotlin") {
-                    option("lite")
-                }
-            }
-        }
-    }
 }
