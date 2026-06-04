@@ -5,7 +5,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
@@ -35,6 +34,7 @@ import de.davis.keygo.dashboard.presentation.DetailType
 import de.davis.keygo.dashboard.presentation.dashboardGraph
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.auth.presentation.authGraph
+import de.davis.keygo.feature.settings.presentation.SettingsScreen
 import de.davis.keygo.item.dialog.SelectItemContent
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -155,11 +155,8 @@ private fun App() {
                     dashboardGraph(listNavigator = listNavigator)
                 }
 
-                composable<RouteDestination.Connectivity> {
-                    Text("CONNECTIVITY")
-                }
                 composable<RouteDestination.Settings> {
-                    Text("SETTINGS")
+                    SettingsScreen()
                 }
             }
         }
