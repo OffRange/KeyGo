@@ -100,7 +100,6 @@ dependencies {
     implementation(projects.rust)
     implementation(projects.core.item)
     implementation(projects.core.identity)
-    implementation(projects.core.security)
     implementation(projects.core.ui)
     implementation(projects.feature.auth)
     implementation(projects.feature.listScreen)
