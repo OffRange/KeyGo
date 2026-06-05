@@ -47,7 +47,7 @@ internal fun SettingsContent(
                 toggle(
                     title = R.string.settings_autofill,
                     icon = Icons.Default.Password,
-                    checked = state.biometricsEnabled,
+                    checked = state.autofillEnabled,
                     onCheckedChange = { onEvent(SettingsUiEvent.SetAutofill(it)) },
                 )
             }
