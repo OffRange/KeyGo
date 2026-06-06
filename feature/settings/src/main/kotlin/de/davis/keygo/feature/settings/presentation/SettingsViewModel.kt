@@ -56,7 +56,10 @@ internal class SettingsViewModel(
     fun onEvent(event: SettingsUiEvent) {
         when (event) {
             is SettingsUiEvent.SetBiometrics -> _event.trySend(SettingsEvent.EnableBiometric(event.enabled))
-            is SettingsUiEvent.SetAutofill -> _event.trySend(SettingsEvent.OpenAutofillSelection)
+            is SettingsUiEvent.SetAutofill -> when {
+                event.enabledRequest -> autofillServiceRepository.disable()
+                else -> _event.trySend(SettingsEvent.OpenAutofillSelection)
+            }
 
             SettingsUiEvent.ResetPassword -> {}
         }
