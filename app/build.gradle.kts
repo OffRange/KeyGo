@@ -10,6 +10,8 @@ plugins {
     alias(libs.plugins.koin.compiler)
     alias(libs.plugins.git.semantic.versioning)
     alias(libs.plugins.google.protobuf)
+
+    alias(libs.plugins.mikepenz.aboutlibraries)
 }
 
 versioning {
@@ -97,6 +99,8 @@ dependencies {
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.annotations)
 
+    implementation(libs.aboutlibraries.compose.m3)
+    
     implementation(projects.rust)
     implementation(projects.core.item)
     implementation(projects.core.identity)

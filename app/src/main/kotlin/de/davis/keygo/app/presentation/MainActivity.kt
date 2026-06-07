@@ -156,7 +156,9 @@ private fun App() {
                 }
 
                 composable<RouteDestination.Settings> {
-                    SettingsScreen()
+                    SettingsScreen(
+                        showLibraries = {}
+                    )
                 }
             }
         }

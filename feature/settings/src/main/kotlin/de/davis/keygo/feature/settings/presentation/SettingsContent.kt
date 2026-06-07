@@ -3,6 +3,7 @@ package de.davis.keygo.feature.settings.presentation
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.LockReset
 import androidx.compose.material.icons.filled.Password
@@ -49,6 +50,15 @@ internal fun SettingsContent(
                     icon = Icons.Default.Password,
                     checked = state.autofillEnabled,
                     onCheckedChange = { onEvent(SettingsUiEvent.SetAutofill(it)) },
+                )
+            }
+
+            section(title = R.string.settings_about) {
+                action(
+                    title = R.string.settings_3rd_party_licenses,
+                    icon = Icons.Default.Code,
+                    isNavigation = true,
+                    onClick = { onEvent(SettingsUiEvent.LibrariesClicked) },
                 )
             }
         }

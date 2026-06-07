@@ -17,7 +17,7 @@ import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(showLibraries: () -> Unit) {
     val viewModel = koinViewModel<SettingsViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -37,6 +37,8 @@ fun SettingsScreen() {
     val context = LocalContext.current
     ObserveAsEvents(viewModel.event) {
         when (it) {
+            SettingsEvent.NavigateToLibraries -> showLibraries()
+
             SettingsEvent.OpenAutofillSelection -> {
                 enableAutofillLauncher.launch(
                     Intent(Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE).apply {
