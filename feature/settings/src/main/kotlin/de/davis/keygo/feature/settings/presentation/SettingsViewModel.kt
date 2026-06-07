@@ -6,6 +6,7 @@ import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.feature.autofill.domain.repository.AutofillServiceRepository
 import de.davis.keygo.feature.settings.domain.model.OsState
+import de.davis.keygo.feature.settings.domain.repository.AppVersionRepository
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,7 +21,10 @@ internal class SettingsViewModel(
     private val biometricAvailabilityRepository: BiometricAvailabilityRepository,
     private val autofillServiceRepository: AutofillServiceRepository,
     accountRepository: AccountRepository,
+    appVersionRepository: AppVersionRepository,
 ) : ViewModel() {
+
+    private val versionName = appVersionRepository.versionName
 
     private val _event = Channel<SettingsEvent>()
     val event = _event.receiveAsFlow()
@@ -37,11 +41,12 @@ internal class SettingsViewModel(
             autofillEnabled = os.autofillEnabled,
             biometricsAvailable = os.biometricsAvailable,
             biometricsEnabled = os.biometricsAvailable && account?.biometricWrappedArk != null,
+            version = versionName,
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = SettingsUiState(),
+        initialValue = SettingsUiState(version = versionName),
     )
 
     fun refreshSystemState() {

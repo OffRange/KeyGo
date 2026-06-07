@@ -4,6 +4,8 @@
     <string name="settings_use_biometrics">Use Biometrics</string>
     <string name="settings_reset_password">Reset Password</string>
     <string name="settings_autofill">Autofill</string>
+
     <string name="settings_about">About</string>
     <string name="settings_3rd_party_licenses">3rd Party Licenses</string>
+    <string name="settings_version">Version</string>
 </resources>

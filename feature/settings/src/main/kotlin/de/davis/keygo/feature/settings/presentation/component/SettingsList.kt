@@ -144,7 +144,6 @@ private fun SettingsEntryRow(
 
         is SettingsEntry.Value -> SegmentedListItem(
             onClick = entry.onClick ?: {},
-            enabled = entry.onClick != null,
             shapes = shapes,
             colors = colors,
             leadingContent = leadingContent,

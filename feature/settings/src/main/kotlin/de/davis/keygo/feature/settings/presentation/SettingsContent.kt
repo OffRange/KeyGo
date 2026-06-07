@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.LockReset
 import androidx.compose.material.icons.filled.Password
+import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -59,6 +60,12 @@ internal fun SettingsContent(
                     icon = Icons.Default.Code,
                     isNavigation = true,
                     onClick = { onEvent(SettingsUiEvent.LibrariesClicked) },
+                )
+
+                value(
+                    title = R.string.settings_version,
+                    value = state.version,
+                    icon = Icons.Default.Update,
                 )
             }
         }
