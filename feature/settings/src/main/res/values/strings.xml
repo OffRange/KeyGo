@@ -6,6 +6,7 @@
     <string name="settings_autofill">Autofill</string>
 
     <string name="settings_about">About</string>
+    <string name="settings_report_issue">Report an issue</string>
     <string name="settings_3rd_party_licenses">3rd Party Licenses</string>
     <string name="settings_version">Version</string>
 </resources>

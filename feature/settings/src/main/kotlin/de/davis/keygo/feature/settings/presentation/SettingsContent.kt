@@ -3,6 +3,8 @@ package de.davis.keygo.feature.settings.presentation
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.LockReset
@@ -60,6 +62,14 @@ internal fun SettingsContent(
                     icon = Icons.Default.Code,
                     isNavigation = true,
                     onClick = { onEvent(SettingsUiEvent.LibrariesClicked) },
+                )
+
+                action(
+                    title = R.string.settings_report_issue,
+                    icon = Icons.Default.BugReport,
+                    navigationIcon = Icons.AutoMirrored.Default.OpenInNew,
+                    isNavigation = true,
+                    onClick = { onEvent(SettingsUiEvent.ReportIssue) }
                 )
 
                 value(

@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -34,6 +35,7 @@ fun SettingsScreen(showLibraries: () -> Unit) {
         onPauseOrDispose {}
     }
 
+    val urlHandler = LocalUriHandler.current
     val context = LocalContext.current
     ObserveAsEvents(viewModel.event) {
         when (it) {
@@ -58,6 +60,8 @@ fun SettingsScreen(showLibraries: () -> Unit) {
                     else -> enrollmentAdapter.disableBiometric()
                 }
             }
+
+            SettingsEvent.ReportIssue -> urlHandler.openUri(ISSUES_URL)
         }
     }
 
@@ -66,3 +70,5 @@ fun SettingsScreen(showLibraries: () -> Unit) {
         onEvent = viewModel::onEvent
     )
 }
+
+private const val ISSUES_URL = "https://github.com/OffRange/KeyGo/issues/new"

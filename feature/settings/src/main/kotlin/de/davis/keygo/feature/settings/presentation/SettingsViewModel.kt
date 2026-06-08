@@ -68,6 +68,7 @@ internal class SettingsViewModel(
 
             SettingsUiEvent.ResetPassword -> {}
             SettingsUiEvent.LibrariesClicked -> _event.trySend(SettingsEvent.NavigateToLibraries)
+            SettingsUiEvent.ReportIssue -> _event.trySend(SettingsEvent.ReportIssue)
         }
     }
 }
