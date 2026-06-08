@@ -36,4 +36,10 @@ sealed interface RouteDestination {
         override val graphDest: RouteDestination
             get() = Settings
     }
+
+    @Serializable
+    data object Libraries : RouteDestination {
+        override val graphDest: RouteDestination
+            get() = Libraries
+    }
 }

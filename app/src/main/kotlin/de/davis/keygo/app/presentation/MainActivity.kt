@@ -3,6 +3,8 @@ package de.davis.keygo.app.presentation
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
@@ -13,6 +15,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.Wallpapers
 import androidx.fragment.app.FragmentActivity
@@ -24,6 +27,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
+import com.mikepenz.aboutlibraries.ui.compose.android.produceLibraries
+import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
 import de.davis.keygo.app.presentation.component.KeyGoNavigationWrapper
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.ui.theme.KeyGoTheme
@@ -157,7 +162,22 @@ private fun App() {
 
                 composable<RouteDestination.Settings> {
                     SettingsScreen(
-                        showLibraries = {}
+                        showLibraries = {
+                            navController.navigate(RouteDestination.Libraries)
+                        }
+                    )
+                }
+            }
+
+            composable<RouteDestination.Libraries> {
+                Scaffold(
+                    modifier = Modifier.fillMaxSize()
+                ) { innerPadding ->
+                    val libs by produceLibraries()
+                    LibrariesContainer(
+                        libraries = libs,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = innerPadding
                     )
                 }
             }
