@@ -39,7 +39,8 @@ import de.davis.keygo.dashboard.presentation.DetailType
 import de.davis.keygo.dashboard.presentation.dashboardGraph
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.auth.presentation.authGraph
-import de.davis.keygo.feature.settings.presentation.SettingsScreen
+import de.davis.keygo.feature.settings.presentation.ChangePasswordRoute
+import de.davis.keygo.feature.settings.presentation.settingsGraph
 import de.davis.keygo.item.dialog.SelectItemContent
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -160,13 +161,11 @@ private fun App() {
                     dashboardGraph(listNavigator = listNavigator)
                 }
 
-                composable<RouteDestination.Settings> {
-                    SettingsScreen(
-                        showLibraries = {
-                            navController.navigate(RouteDestination.Libraries)
-                        }
-                    )
-                }
+                settingsGraph(
+                    onOpenChangePassword = { navController.navigate(ChangePasswordRoute) },
+                    onShowLibraries = { navController.navigate(RouteDestination.Libraries) },
+                    onUp = { navController.navigateUp() },
+                )
             }
 
             composable<RouteDestination.Libraries> {
