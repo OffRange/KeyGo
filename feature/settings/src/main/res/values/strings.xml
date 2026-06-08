@@ -9,4 +9,16 @@
     <string name="settings_report_issue">Report an issue</string>
     <string name="settings_3rd_party_licenses">3rd Party Licenses</string>
     <string name="settings_version">Version</string>
+
+    <string name="change_password_title">Change password</string>
+    <string name="current_password">Current password</string>
+    <string name="new_password">New password</string>
+    <string name="confirm_password">Confirm new password</string>
+    <string name="change_password_action">Change password</string>
+    <string name="verify_with_biometric">Verify with biometric</string>
+    <string name="password_blank">Password must not be blank</string>
+    <string name="incorrect_password">Incorrect password</string>
+    <string name="passwords_do_not_match">Passwords do not match</string>
+    <string name="password_changed">Password changed</string>
+    <string name="change_password_failed">Could not change password</string>
 </resources>
