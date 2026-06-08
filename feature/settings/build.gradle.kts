@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.keygo.android.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -15,6 +16,8 @@ dependencies {
     implementation(projects.core.identity)
     implementation(projects.core.item)
     implementation(projects.feature.autofill)
+
+    implementation(libs.androidx.navigation.compose)
 
     testImplementation(testFixtures(projects.core.identity))
     testImplementation(testFixtures(projects.core.security))

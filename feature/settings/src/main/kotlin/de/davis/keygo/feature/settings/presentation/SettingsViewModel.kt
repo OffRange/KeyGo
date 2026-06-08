@@ -66,7 +66,7 @@ internal class SettingsViewModel(
                 else -> _event.trySend(SettingsEvent.OpenAutofillSelection)
             }
 
-            SettingsUiEvent.ResetPassword -> {}
+            SettingsUiEvent.ResetPassword -> _event.trySend(SettingsEvent.NavigateToChangePassword)
             SettingsUiEvent.LibrariesClicked -> _event.trySend(SettingsEvent.NavigateToLibraries)
             SettingsUiEvent.ReportIssue -> _event.trySend(SettingsEvent.ReportIssue)
         }

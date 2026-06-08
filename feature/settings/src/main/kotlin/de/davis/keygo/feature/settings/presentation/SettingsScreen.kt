@@ -18,7 +18,10 @@ import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
-fun SettingsScreen(showLibraries: () -> Unit) {
+fun SettingsScreen(
+    showLibraries: () -> Unit,
+    onOpenChangePassword: () -> Unit,
+) {
     val viewModel = koinViewModel<SettingsViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -40,6 +43,8 @@ fun SettingsScreen(showLibraries: () -> Unit) {
     ObserveAsEvents(viewModel.event) {
         when (it) {
             SettingsEvent.NavigateToLibraries -> showLibraries()
+
+            SettingsEvent.NavigateToChangePassword -> onOpenChangePassword()
 
             SettingsEvent.OpenAutofillSelection -> {
                 enableAutofillLauncher.launch(
