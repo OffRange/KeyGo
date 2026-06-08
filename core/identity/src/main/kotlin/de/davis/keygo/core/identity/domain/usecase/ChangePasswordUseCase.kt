@@ -66,11 +66,9 @@ class ChangePasswordUseCase(
             salt = newSalt,
         ).bind { ChangePasswordError.KeyDerivationFailed }
 
-        // Wrap a copy: `ark` is zeroed below, and the wrapper must not retain a live reference
-        // to key material we are about to scrub.
         val rewrapped = keyWrapper.wrapAccountRootKeyWithResult(
             kek = newKek,
-            ark = ark.copyOf(),
+            ark = ark,
             userId = account.id,
         ).bind { ChangePasswordError.WrappingFailed }
 

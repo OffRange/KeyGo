@@ -79,14 +79,19 @@ class FakeKeyWrapper : KeyWrapperInterface {
     private fun wrap(outerKey: ByteArray, innerKey: ByteArray, id: UUID): WrappedKeyBlob {
         val nonce = ByteArray(12).also { SecureRandom().nextBytes(it) }
         val ciphertext = xorStream(innerKey, outerKey, id, nonce)
-        wrapRecord[Triple(outerKey.toList(), ciphertext.toList(), id)] = innerKey
+        // Store a copy: the real UniFFI wrapper copies the key across the FFI boundary, so callers
+        // are free to scrub the array they passed in. Aliasing it here would let a caller's later
+        // `fill(0)` zero the recorded key material.
+        wrapRecord[Triple(outerKey.toList(), ciphertext.toList(), id)] = innerKey.copyOf()
         return WrappedKeyBlob(ciphertext = ciphertext, nonce = nonce)
     }
 
     private fun unwrap(outerKey: ByteArray, wrapped: WrappedKeyBlob, id: UUID): ByteArray {
         val recorded = wrapRecord[Triple(outerKey.toList(), wrapped.ciphertext.toList(), id)]
             ?: throw KeyWrapException.UnwrapFailed()
-        return recorded
+        // Return a fresh array, mirroring the real wrapper: scrubbing the unwrapped key must not
+        // corrupt the recorded ciphertext so a subsequent unwrap still round-trips.
+        return recorded.copyOf()
     }
 
     private fun xorStream(

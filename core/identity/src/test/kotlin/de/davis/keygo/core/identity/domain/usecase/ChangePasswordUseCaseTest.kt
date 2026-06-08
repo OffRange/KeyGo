@@ -41,9 +41,7 @@ class ChangePasswordUseCaseTest {
     ): Account {
         val salt = keyDeriver.generateSalt()
         val kek = keyDeriver.deriveRootKekFromPassword(password, salt)
-        // Wrap a copy so the test's `ark` field stays a stable expected value: the use case
-        // recovers the wrapped ARK and zeroes it, and FakeKeyWrapper retains it by reference.
-        val wrapped = keyWrapper.wrapAccountRootKey(kek, ark.copyOf(), accountId)
+        val wrapped = keyWrapper.wrapAccountRootKey(kek, ark, accountId)
         val account = Account(
             id = accountId,
             displayName = "Test",

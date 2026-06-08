@@ -12,6 +12,7 @@ import de.davis.keygo.rust.FakeKeyWrapper
 import kotlinx.coroutines.test.runTest
 import java.util.UUID
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -90,6 +91,6 @@ class UnlockWithPasswordUseCaseTest {
 
         assertTrue(result.isSuccess())
         assertTrue(session.startSessionCalled)
-        assertEquals(ark, session.ark)
+        assertContentEquals(ark, session.ark)
     }
 }
