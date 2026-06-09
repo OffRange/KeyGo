@@ -96,6 +96,16 @@ internal class ChangePasswordViewModel(
         change(Reauthentication.Password(current))
     }
 
+    /** Biometric user tapped the prompt's "Use password" negative button. */
+    fun onUseCurrentPassword() {
+        _state.update { it.copy(showReauthDialog = true) }
+    }
+
+    /** Dismiss the fallback dialog and clear any stale current-password error. */
+    fun dismissReauthDialog() {
+        _state.update { it.copy(showReauthDialog = false, currentPasswordError = FieldError.None) }
+    }
+
     /** Verify with biometric: [recoveredArk] was unwrapped by the screen via requestUnwrap. */
     fun submitWithBiometric(recoveredArk: ByteArray) {
         if (!validateNewPasswords()) {

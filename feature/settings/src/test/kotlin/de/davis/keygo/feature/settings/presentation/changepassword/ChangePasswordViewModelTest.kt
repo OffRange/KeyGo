@@ -208,4 +208,62 @@ class ChangePasswordViewModelTest {
 
         assertEquals(ChangePasswordEvent.Success, vm.event.first())
     }
+
+    @Test
+    fun `onUseCurrentPassword shows the reauth dialog`() = runTest(dispatcher) {
+        enableBiometric()
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.onUseCurrentPassword()
+
+        assertEquals(true, vm.state.value.showReauthDialog)
+    }
+
+    @Test
+    fun `dismissReauthDialog hides dialog and clears current password error`() = runTest(dispatcher) {
+        enableBiometric()
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.onUseCurrentPassword()
+
+        vm.dismissReauthDialog()
+
+        assertEquals(false, vm.state.value.showReauthDialog)
+        assertEquals(FieldError.None, vm.state.value.currentPasswordError)
+    }
+
+    @Test
+    fun `dialog confirm with wrong current password keeps dialog open with Incorrect error`() =
+        runTest(dispatcher) {
+            enableBiometric()
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.onUseCurrentPassword()
+            vm.state.value.newPassword.edit { append("brand-new") }
+            vm.state.value.confirmPassword.edit { append("brand-new") }
+            vm.state.value.currentPassword.edit { append("wrong") }
+
+            vm.submitWithPassword() // dialog Confirm action
+            advanceUntilIdle()
+
+            assertEquals(FieldError.Incorrect, vm.state.value.currentPasswordError)
+            assertEquals(true, vm.state.value.showReauthDialog)
+        }
+
+    @Test
+    fun `dialog confirm with correct current password emits Success`() = runTest(dispatcher) {
+        enableBiometric()
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.onUseCurrentPassword()
+        vm.state.value.newPassword.edit { append("brand-new") }
+        vm.state.value.confirmPassword.edit { append("brand-new") }
+        vm.state.value.currentPassword.edit { append("old") }
+
+        vm.submitWithPassword() // dialog Confirm action
+        advanceUntilIdle()
+
+        assertEquals(ChangePasswordEvent.Success, vm.event.first())
+    }
 }
