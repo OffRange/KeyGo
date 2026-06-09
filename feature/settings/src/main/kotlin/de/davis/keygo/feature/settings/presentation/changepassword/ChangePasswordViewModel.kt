@@ -131,12 +131,17 @@ internal class ChangePasswordViewModel(
                 else submitWithBiometric(recoveredArk)
             }
 
-            is Result.Failure -> {
-                val fallback = when (val error = result.error) {
-                    is BiometricAuthError.BiometricError -> biometricFallbackFor(error.errorCode)
-                    else -> BiometricFallback.UsePassword
-                }
-                if (fallback == BiometricFallback.UsePassword) onUseCurrentPassword()
+            is Result.Failure -> when (result.error) {
+                BiometricAuthError.Declined,
+                BiometricAuthError.LockedOut,
+                BiometricAuthError.NoCipher,
+                is BiometricAuthError.CanNotAuthenticate,
+                    -> onUseCurrentPassword()
+
+                // Transient dismissal (back press, system cancel, timeout): leave the form as-is.
+                BiometricAuthError.Canceled,
+                is BiometricAuthError.Unknown,
+                    -> Unit
             }
         }
     }

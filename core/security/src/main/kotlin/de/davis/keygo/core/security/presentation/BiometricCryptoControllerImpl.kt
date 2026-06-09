@@ -107,14 +107,7 @@ internal class BiometricCryptoControllerImpl(
                     errorCode: Int,
                     errString: CharSequence
                 ) {
-                    c.resume(
-                        Result.Failure(
-                            BiometricAuthError.BiometricError(
-                                errorCode,
-                                errString.toString()
-                            )
-                        )
-                    )
+                    c.resume(Result.Failure(biometricAuthErrorFrom(errorCode, errString)))
                 }
 
                 override fun onAuthenticationFailed() {
@@ -144,6 +137,27 @@ internal class BiometricCryptoControllerImpl(
     companion object {
         private const val AUTHENTICATORS = BiometricManager.Authenticators.BIOMETRIC_STRONG
     }
+}
+
+/**
+ * Classify a [BiometricPrompt] error code into a semantic [BiometricAuthError] once, at the source,
+ * so consumers branch on meaning instead of re-interpreting raw androidx error codes.
+ */
+internal fun biometricAuthErrorFrom(
+    errorCode: Int,
+    errString: CharSequence,
+): BiometricAuthError = when (errorCode) {
+    BiometricPrompt.ERROR_NEGATIVE_BUTTON -> BiometricAuthError.Declined
+
+    BiometricPrompt.ERROR_LOCKOUT,
+    BiometricPrompt.ERROR_LOCKOUT_PERMANENT,
+        -> BiometricAuthError.LockedOut
+
+    BiometricPrompt.ERROR_USER_CANCELED,
+    BiometricPrompt.ERROR_CANCELED,
+        -> BiometricAuthError.Canceled
+
+    else -> BiometricAuthError.Unknown(errorCode, errString.toString())
 }
 
 @Composable

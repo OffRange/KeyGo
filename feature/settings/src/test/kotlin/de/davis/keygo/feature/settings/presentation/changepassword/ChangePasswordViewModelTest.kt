@@ -323,4 +323,28 @@ class ChangePasswordViewModelTest {
 
             assertEquals(true, vm.state.value.showReauthDialog)
         }
+
+    @Test
+    fun `onBiometricResult Declined opens the reauth dialog`() = runTest(dispatcher) {
+        enableBiometric()
+        val vm = viewModel()
+        advanceUntilIdle()
+        val failure: Result<Key, BiometricAuthError> = Result.Failure(BiometricAuthError.Declined)
+
+        vm.onBiometricResult(failure)
+
+        assertEquals(true, vm.state.value.showReauthDialog)
+    }
+
+    @Test
+    fun `onBiometricResult Canceled leaves the form untouched`() = runTest(dispatcher) {
+        enableBiometric()
+        val vm = viewModel()
+        advanceUntilIdle()
+        val failure: Result<Key, BiometricAuthError> = Result.Failure(BiometricAuthError.Canceled)
+
+        vm.onBiometricResult(failure)
+
+        assertEquals(false, vm.state.value.showReauthDialog)
+    }
 }
