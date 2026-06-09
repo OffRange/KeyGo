@@ -18,6 +18,7 @@ dependencies {
     implementation(projects.feature.autofill)
 
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.biometric)
 
     testImplementation(testFixtures(projects.core.identity))
     testImplementation(testFixtures(projects.core.security))
