@@ -2,24 +2,28 @@ package de.davis.keygo.feature.settings.presentation.changepassword
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.TextObfuscationMode
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,6 +36,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.item.presentation.StrengthIndicator
+import de.davis.keygo.core.security.domain.model.BiometricAuthError
+import de.davis.keygo.core.security.domain.model.BiometricPolicy
+import de.davis.keygo.core.security.domain.model.BiometricString
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
 import de.davis.keygo.core.ui.components.VisibilityButton
@@ -54,7 +61,28 @@ internal fun ChangePasswordScreen(onUp: () -> Unit) {
         when (event) {
             ChangePasswordEvent.Success -> onUp()
             ChangePasswordEvent.GenericError -> Unit // surfaced inline; snackbar wiring is a follow-up
-            ChangePasswordEvent.LaunchBiometricPrompt -> Unit // biometric prompt wiring is a follow-up
+            ChangePasswordEvent.LaunchBiometricPrompt -> {
+                val ciphertext = state.biometricCiphertext ?: return@ObserveAsEvents
+                scope.launch {
+                    val result = controller.requestUnwrap(
+                        keyId = KeyId.BiometricVaultKek,
+                        ciphertextData = ciphertext,
+                        policy = BiometricPolicy(
+                            negativeButton = BiometricString.NegativeButton.Password,
+                        ),
+                    )
+                    when (result) {
+                        is Result.Success -> viewModel.submitWithBiometric(result.success.encoded ?: return@launch)
+                        is Result.Failure -> {
+                            val action = when (val error = result.error) {
+                                is BiometricAuthError.BiometricError -> biometricFallbackFor(error.errorCode)
+                                else -> BiometricFallback.UsePassword // hardware/cipher problem
+                            }
+                            if (action == BiometricFallback.UsePassword) viewModel.onUseCurrentPassword()
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -79,41 +107,22 @@ internal fun ChangePasswordScreen(onUp: () -> Unit) {
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            var currentHidden by rememberSaveable { mutableStateOf(true) }
-            OutlinedSecureTextField(
-                state = state.currentPassword,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.current_password)) },
-                isError = state.currentPasswordError !is FieldError.None,
-                supportingText = supportingTextFor(state.currentPasswordError),
-                textObfuscationMode = obfuscation(currentHidden),
-                trailingIcon = {
-                    VisibilityButton(
-                        isHidden = currentHidden,
-                        onClick = { currentHidden = !currentHidden },
-                    )
-                },
-            )
-
-            if (state.canUseBiometric) {
-                OutlinedButton(
-                    onClick = {
-                        val ciphertext = state.biometricCiphertext ?: return@OutlinedButton
-                        scope.launch {
-                            when (val r = controller.requestUnwrap(KeyId.BiometricVaultKek, ciphertext)) {
-                                is Result.Success -> viewModel.submitWithBiometric(r.success.encoded)
-                                is Result.Failure -> Unit // user cancelled / failed
-                            }
-                        }
-                    },
+            if (!state.canUseBiometric) {
+                var currentHidden by rememberSaveable { mutableStateOf(true) }
+                OutlinedSecureTextField(
+                    state = state.currentPassword,
                     modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Icon(Icons.Default.Fingerprint, contentDescription = null)
-                    Text(
-                        text = stringResource(R.string.verify_with_biometric),
-                        modifier = Modifier.padding(start = 8.dp),
-                    )
-                }
+                    label = { Text(stringResource(R.string.current_password)) },
+                    isError = state.currentPasswordError !is FieldError.None,
+                    supportingText = supportingTextFor(state.currentPasswordError),
+                    textObfuscationMode = obfuscation(currentHidden),
+                    trailingIcon = {
+                        VisibilityButton(
+                            isHidden = currentHidden,
+                            onClick = { currentHidden = !currentHidden },
+                        )
+                    },
+                )
             }
 
             var newHidden by rememberSaveable { mutableStateOf(true) }
@@ -151,14 +160,55 @@ internal fun ChangePasswordScreen(onUp: () -> Unit) {
             )
 
             Button(
-                onClick = { viewModel.submitWithPassword() },
+                onClick = { viewModel.onSubmit() },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !state.loading,
             ) {
                 if (state.loading) CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
+                if (state.canUseBiometric) {
+                    Icon(Icons.Default.Fingerprint, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                }
                 Text(stringResource(R.string.change_password_action))
             }
+
+            if (state.canUseBiometric) Text(
+                text = stringResource(R.string.biometric_confirm_helper),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
+    }
+
+    if (state.showReauthDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissReauthDialog() },
+            title = { Text(stringResource(R.string.reauth_dialog_title)) },
+            text = {
+                var hidden by rememberSaveable { mutableStateOf(true) }
+                OutlinedSecureTextField(
+                    state = state.currentPassword,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.current_password)) },
+                    isError = state.currentPasswordError !is FieldError.None,
+                    supportingText = supportingTextFor(state.currentPasswordError),
+                    textObfuscationMode = obfuscation(hidden),
+                    trailingIcon = {
+                        VisibilityButton(isHidden = hidden, onClick = { hidden = !hidden })
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.submitWithPassword() }, enabled = !state.loading) {
+                    Text(stringResource(R.string.change_password_action))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissReauthDialog() }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+        )
     }
 }
 
