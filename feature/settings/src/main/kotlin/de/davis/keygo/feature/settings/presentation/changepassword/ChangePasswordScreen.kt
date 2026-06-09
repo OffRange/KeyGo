@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.TextObfuscationMode
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -72,7 +73,11 @@ internal fun ChangePasswordScreen(onUp: () -> Unit) {
                         ),
                     )
                     when (result) {
-                        is Result.Success -> viewModel.submitWithBiometric(result.success.encoded ?: return@launch)
+                        is Result.Success -> {
+                            val ark = result.success.encoded
+                            if (ark == null) viewModel.onUseCurrentPassword()
+                            else viewModel.submitWithBiometric(ark)
+                        }
                         is Result.Failure -> {
                             val action = when (val error = result.error) {
                                 is BiometricAuthError.BiometricError -> biometricFallbackFor(error.errorCode)
@@ -107,23 +112,10 @@ internal fun ChangePasswordScreen(onUp: () -> Unit) {
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (!state.canUseBiometric) {
-                var currentHidden by rememberSaveable { mutableStateOf(true) }
-                OutlinedSecureTextField(
-                    state = state.currentPassword,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.current_password)) },
-                    isError = state.currentPasswordError !is FieldError.None,
-                    supportingText = supportingTextFor(state.currentPasswordError),
-                    textObfuscationMode = obfuscation(currentHidden),
-                    trailingIcon = {
-                        VisibilityButton(
-                            isHidden = currentHidden,
-                            onClick = { currentHidden = !currentHidden },
-                        )
-                    },
-                )
-            }
+            if (!state.canUseBiometric) CurrentPasswordField(
+                state = state.currentPassword,
+                error = state.currentPasswordError,
+            )
 
             var newHidden by rememberSaveable { mutableStateOf(true) }
             OutlinedSecureTextField(
@@ -184,22 +176,10 @@ internal fun ChangePasswordScreen(onUp: () -> Unit) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissReauthDialog() },
             title = { Text(stringResource(R.string.reauth_dialog_title)) },
-            text = {
-                var hidden by rememberSaveable { mutableStateOf(true) }
-                OutlinedSecureTextField(
-                    state = state.currentPassword,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.current_password)) },
-                    isError = state.currentPasswordError !is FieldError.None,
-                    supportingText = supportingTextFor(state.currentPasswordError),
-                    textObfuscationMode = obfuscation(hidden),
-                    trailingIcon = {
-                        VisibilityButton(isHidden = hidden, onClick = { hidden = !hidden })
-                    },
-                )
-            },
+            text = { CurrentPasswordField(state = state.currentPassword, error = state.currentPasswordError) },
             confirmButton = {
                 TextButton(onClick = { viewModel.submitWithPassword() }, enabled = !state.loading) {
+                    if (state.loading) CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
                     Text(stringResource(R.string.change_password_action))
                 }
             },
@@ -221,4 +201,24 @@ private fun supportingTextFor(error: FieldError): (@Composable () -> Unit)? = wh
     FieldError.Empty -> { { Text(stringResource(R.string.password_blank)) } }
     FieldError.Incorrect -> { { Text(stringResource(R.string.incorrect_password)) } }
     FieldError.Mismatch -> { { Text(stringResource(R.string.passwords_do_not_match)) } }
+}
+
+@Composable
+private fun CurrentPasswordField(
+    state: TextFieldState,
+    error: FieldError,
+    modifier: Modifier = Modifier,
+) {
+    var hidden by rememberSaveable { mutableStateOf(true) }
+    OutlinedSecureTextField(
+        state = state,
+        modifier = modifier.fillMaxWidth(),
+        label = { Text(stringResource(R.string.current_password)) },
+        isError = error !is FieldError.None,
+        supportingText = supportingTextFor(error),
+        textObfuscationMode = obfuscation(hidden),
+        trailingIcon = {
+            VisibilityButton(isHidden = hidden, onClick = { hidden = !hidden })
+        },
+    )
 }
