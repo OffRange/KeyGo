@@ -8,10 +8,13 @@ import de.davis.keygo.core.identity.domain.model.Reauthentication
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.identity.domain.usecase.ChangePasswordUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
+import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
+import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
+import java.security.Key
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -113,6 +116,29 @@ internal class ChangePasswordViewModel(
             return
         }
         change(Reauthentication.Biometric(recoveredArk))
+    }
+
+    /**
+     * Route the outcome of the screen's biometric prompt. The screen owns the prompt (it needs an
+     * Activity), but interpreting the result is ours: a recovered key changes the password, while a
+     * declined / locked-out / failed prompt falls back to the master-password dialog.
+     */
+    fun onBiometricResult(result: Result<Key, BiometricAuthError>) {
+        when (result) {
+            is Result.Success -> {
+                val recoveredArk = result.success.encoded
+                if (recoveredArk == null) onUseCurrentPassword()
+                else submitWithBiometric(recoveredArk)
+            }
+
+            is Result.Failure -> {
+                val fallback = when (val error = result.error) {
+                    is BiometricAuthError.BiometricError -> biometricFallbackFor(error.errorCode)
+                    else -> BiometricFallback.UsePassword
+                }
+                if (fallback == BiometricFallback.UsePassword) onUseCurrentPassword()
+            }
+        }
     }
 
     private fun validateNewPasswords(): Boolean {

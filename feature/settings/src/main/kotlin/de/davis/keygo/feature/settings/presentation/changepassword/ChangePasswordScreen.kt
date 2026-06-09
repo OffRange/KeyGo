@@ -37,13 +37,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.item.presentation.StrengthIndicator
-import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.BiometricString
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
 import de.davis.keygo.core.ui.components.VisibilityButton
-import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.settings.R
 import kotlinx.coroutines.launch
@@ -72,20 +70,7 @@ internal fun ChangePasswordScreen(onUp: () -> Unit) {
                             negativeButton = BiometricString.NegativeButton.Password,
                         ),
                     )
-                    when (result) {
-                        is Result.Success -> {
-                            val ark = result.success.encoded
-                            if (ark == null) viewModel.onUseCurrentPassword()
-                            else viewModel.submitWithBiometric(ark)
-                        }
-                        is Result.Failure -> {
-                            val action = when (val error = result.error) {
-                                is BiometricAuthError.BiometricError -> biometricFallbackFor(error.errorCode)
-                                else -> BiometricFallback.UsePassword // hardware/cipher problem
-                            }
-                            if (action == BiometricFallback.UsePassword) viewModel.onUseCurrentPassword()
-                        }
-                    }
+                    viewModel.onBiometricResult(result)
                 }
             }
         }

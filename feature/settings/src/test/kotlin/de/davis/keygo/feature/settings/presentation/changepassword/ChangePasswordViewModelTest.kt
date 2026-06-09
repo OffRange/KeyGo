@@ -8,6 +8,8 @@ import de.davis.keygo.core.identity.domain.usecase.ChangePasswordUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
+import de.davis.keygo.core.security.domain.model.BiometricAuthError
+import de.davis.keygo.core.util.Result
 import de.davis.keygo.rust.FakeKeyDeriver
 import de.davis.keygo.rust.FakeKeyWrapper
 import kotlinx.coroutines.Dispatchers
@@ -18,7 +20,9 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import java.security.Key
 import java.util.UUID
+import javax.crypto.spec.SecretKeySpec
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -272,4 +276,51 @@ class ChangePasswordViewModelTest {
 
         assertEquals(ChangePasswordEvent.Success, vm.event.first())
     }
+
+    @Test
+    fun `onBiometricResult with a recovered key changes password and emits Success`() =
+        runTest(dispatcher) {
+            enableBiometric()
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.state.value.newPassword.edit { append("brand-new") }
+            vm.state.value.confirmPassword.edit { append("brand-new") }
+            val recovered: Result<Key, BiometricAuthError> =
+                Result.Success(SecretKeySpec(ark.copyOf(), "AES"))
+
+            vm.onBiometricResult(recovered)
+            advanceUntilIdle()
+
+            assertEquals(ChangePasswordEvent.Success, vm.event.first())
+        }
+
+    @Test
+    fun `onBiometricResult failure opens the reauth dialog`() = runTest(dispatcher) {
+        enableBiometric()
+        val vm = viewModel()
+        advanceUntilIdle()
+        val failure: Result<Key, BiometricAuthError> = Result.Failure(BiometricAuthError.NoCipher)
+
+        vm.onBiometricResult(failure)
+
+        assertEquals(true, vm.state.value.showReauthDialog)
+    }
+
+    @Test
+    fun `onBiometricResult with a key lacking raw bytes opens the reauth dialog`() =
+        runTest(dispatcher) {
+            enableBiometric()
+            val vm = viewModel()
+            advanceUntilIdle()
+            val keyWithoutBytes = object : Key {
+                override fun getAlgorithm() = "AES"
+                override fun getFormat(): String? = null
+                override fun getEncoded(): ByteArray? = null
+            }
+            val recovered: Result<Key, BiometricAuthError> = Result.Success(keyWithoutBytes)
+
+            vm.onBiometricResult(recovered)
+
+            assertEquals(true, vm.state.value.showReauthDialog)
+        }
 }
