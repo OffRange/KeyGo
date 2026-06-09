@@ -173,12 +173,27 @@ class ChangePasswordViewModelTest {
     }
 
     @Test
+    fun `onSubmit with biometric available and mismatched passwords sets Mismatch and does not prompt`() =
+        runTest(dispatcher) {
+            enableBiometric()
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.state.value.newPassword.edit { append("aaa") }
+            vm.state.value.confirmPassword.edit { append("bbb") }
+
+            vm.onSubmit()
+            advanceUntilIdle()
+
+            assertEquals(FieldError.Mismatch, vm.state.value.confirmPasswordError)
+        }
+
+    @Test
     fun `biometric submit with valid new passwords emits Success`() = runTest(dispatcher) {
         // Account must have a biometric-wrapped ARK for the use case to accept biometric proof.
         val current = accountRepository.getOrNull()!!
         accountRepository.seed(
             current.copy(
-                biometricWrappedArk = de.davis.keygo.core.identity.domain.model.BiometricWrappedArk(
+                biometricWrappedArk = BiometricWrappedArk(
                     key = ByteArray(48) { it.toByte() },
                     keyIV = ByteArray(12) { it.toByte() },
                 )
