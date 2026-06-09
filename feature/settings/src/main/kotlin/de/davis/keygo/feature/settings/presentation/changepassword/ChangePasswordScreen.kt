@@ -54,6 +54,7 @@ internal fun ChangePasswordScreen(onUp: () -> Unit) {
         when (event) {
             ChangePasswordEvent.Success -> onUp()
             ChangePasswordEvent.GenericError -> Unit // surfaced inline; snackbar wiring is a follow-up
+            ChangePasswordEvent.LaunchBiometricPrompt -> Unit // biometric prompt wiring is a follow-up
         }
     }
 

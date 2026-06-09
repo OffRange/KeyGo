@@ -14,6 +14,8 @@ internal data class ChangePasswordState(
     val confirmPasswordError: FieldError = FieldError.None,
     /** Non-null when biometric verification is offered; carries the wrapped biometric ARK. */
     val biometricCiphertext: CiphertextData? = null,
+    /** True while the master-password fallback dialog is shown (biometric users). */
+    val showReauthDialog: Boolean = false,
     val loading: Boolean = false,
 ) {
     val canUseBiometric: Boolean get() = biometricCiphertext != null
@@ -29,4 +31,7 @@ internal sealed interface FieldError {
 internal sealed interface ChangePasswordEvent {
     data object Success : ChangePasswordEvent
     data object GenericError : ChangePasswordEvent
+
+    /** Ask the screen to launch the biometric prompt (it owns the controller). */
+    data object LaunchBiometricPrompt : ChangePasswordEvent
 }

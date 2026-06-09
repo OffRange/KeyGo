@@ -70,6 +70,20 @@ internal class ChangePasswordViewModel(
             .launchIn(viewModelScope)
     }
 
+    /**
+     * Primary "Change password" action. Validates the new passwords first so we never fire a
+     * biometric prompt for an invalid form, then routes to biometric (if available) or the
+     * typed-password path.
+     */
+    fun onSubmit() {
+        if (_state.value.canUseBiometric) {
+            if (!validateNewPasswords()) return
+            _event.trySend(ChangePasswordEvent.LaunchBiometricPrompt)
+            return
+        }
+        submitWithPassword()
+    }
+
     /** Verify with the typed current password, then change. */
     fun submitWithPassword() {
         val state = _state.value

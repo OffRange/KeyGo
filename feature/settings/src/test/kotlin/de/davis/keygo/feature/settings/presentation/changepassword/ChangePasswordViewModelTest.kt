@@ -2,6 +2,7 @@ package de.davis.keygo.feature.settings.presentation.changepassword
 
 import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.model.Account
+import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.usecase.ChangePasswordUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
@@ -59,6 +60,20 @@ class ChangePasswordViewModelTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
+    /** Re-seed the account with a biometric-wrapped ARK and mark hardware available. */
+    private suspend fun enableBiometric() {
+        biometricAvailability.isAvailable = true
+        val current = accountRepository.getOrNull()!!
+        accountRepository.seed(
+            current.copy(
+                biometricWrappedArk = BiometricWrappedArk(
+                    key = ByteArray(48) { it.toByte() },
+                    keyIV = ByteArray(12) { it.toByte() },
+                )
+            )
+        )
+    }
+
     private fun viewModel() = ChangePasswordViewModel(
         accountRepository = accountRepository,
         biometricAvailabilityRepository = biometricAvailability,
@@ -111,6 +126,47 @@ class ChangePasswordViewModelTest {
         vm.state.value.confirmPassword.edit { append("brand-new") }
 
         vm.submitWithPassword()
+        advanceUntilIdle()
+
+        assertEquals(ChangePasswordEvent.Success, vm.event.first())
+    }
+
+    @Test
+    fun `onSubmit with biometric available and valid passwords emits LaunchBiometricPrompt`() =
+        runTest(dispatcher) {
+            enableBiometric()
+            val vm = viewModel()
+            advanceUntilIdle() // let resolveBiometricAvailability() populate biometricCiphertext
+            vm.state.value.newPassword.edit { append("brand-new") }
+            vm.state.value.confirmPassword.edit { append("brand-new") }
+
+            vm.onSubmit()
+            advanceUntilIdle()
+
+            assertEquals(ChangePasswordEvent.LaunchBiometricPrompt, vm.event.first())
+        }
+
+    @Test
+    fun `onSubmit with biometric available and blank new password sets Empty and does not prompt`() =
+        runTest(dispatcher) {
+            enableBiometric()
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            vm.onSubmit()
+            advanceUntilIdle()
+
+            assertEquals(FieldError.Empty, vm.state.value.newPasswordError)
+        }
+
+    @Test
+    fun `onSubmit without biometric and valid passwords emits Success`() = runTest(dispatcher) {
+        val vm = viewModel() // setUp seeds an account with no biometric ARK; availability defaults false
+        vm.state.value.currentPassword.edit { append("old") }
+        vm.state.value.newPassword.edit { append("brand-new") }
+        vm.state.value.confirmPassword.edit { append("brand-new") }
+
+        vm.onSubmit()
         advanceUntilIdle()
 
         assertEquals(ChangePasswordEvent.Success, vm.event.first())
