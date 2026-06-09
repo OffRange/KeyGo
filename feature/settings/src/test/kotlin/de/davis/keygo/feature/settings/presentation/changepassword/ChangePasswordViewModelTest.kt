@@ -226,6 +226,12 @@ class ChangePasswordViewModelTest {
         val vm = viewModel()
         advanceUntilIdle()
         vm.onUseCurrentPassword()
+        vm.state.value.newPassword.edit { append("brand-new") }
+        vm.state.value.confirmPassword.edit { append("brand-new") }
+        vm.state.value.currentPassword.edit { append("wrong") }
+        vm.submitWithPassword()
+        advanceUntilIdle()
+        // currentPasswordError is now FieldError.Incorrect — the assertion below is load-bearing
 
         vm.dismissReauthDialog()
 
