@@ -9,6 +9,10 @@ android {
     defaultConfig {
         missingDimensionStrategy("store", "playStore")
     }
+
+    testFixtures {
+        enable = true
+    }
 }
 
 dependencies {
@@ -22,4 +26,10 @@ dependencies {
     testImplementation(testFixtures(projects.core.identity))
     testImplementation(testFixtures(projects.core.security))
     testImplementation(testFixtures(projects.rust))
+    testImplementation(testFixtures(projects.feature.autofill))
+
+    testFixturesImplementation(project.dependencies.platform(libs.androidx.compose.bom))
+    testFixturesImplementation(libs.androidx.compose.runtime) {
+        because("https://issuetracker.google.com/issues/259523353#comment32")
+    }
 }
