@@ -19,16 +19,21 @@ import androidx.compose.material3.SearchBarState
 import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.res.stringResource
 import de.davis.keygo.feature.list_screen.R
 import de.davis.keygo.feature.list_screen.presentation.model.FilterBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.ListItemState
 import de.davis.keygo.feature.list_screen.presentation.selectedVaultIcon
+import kotlinx.coroutines.android.awaitFrame
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -43,6 +48,14 @@ internal fun ListSearchTextField(
     onVaultSelectorClick: () -> Unit,
     filterBottomSheetState: FilterBottomSheetState,
 ) {
+    // TODO: remove this workaround, when https://issuetracker.google.com/issues/433382598 is fixed
+    //  Workaround: https://issuetracker.google.com/issues/433382598#comment6
+    var allowFocus by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        awaitFrame()
+        allowFocus = true
+    }
+
     val scope = rememberCoroutineScope()
     SearchBarDefaults.InputField(
         textFieldState = searchTextFieldState,
@@ -51,8 +64,11 @@ internal fun ListSearchTextField(
             onSubmitQuery()
             scope.launch { searchBarState.animateToCollapsed() }
         },
-        enabled = false, // TODO: remove when b/464761441 is fixed
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .focusProperties {
+                canFocus = allowFocus
+            },
         leadingIcon = {
             AnimatedContent(
                 targetState = !uiState.hasSearchQuery && searchBarState.targetValue == SearchBarValue.Collapsed
