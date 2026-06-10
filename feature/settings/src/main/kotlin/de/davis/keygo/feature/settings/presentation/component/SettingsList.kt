@@ -130,7 +130,7 @@ private fun SettingsEntryRow(
             leadingContent = leadingContent,
             supportingContent = supportingContent,
             verticalAlignment = verticalAlignment,
-            trailingContent = if (entry.isNavigation) {
+            trailingContent = if (entry.navigationIcon != null) {
                 {
                     Icon(
                         imageVector = entry.navigationIcon,

@@ -1,8 +1,6 @@
 package de.davis.keygo.feature.settings.presentation.component
 
 import androidx.annotation.StringRes
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.ui.graphics.vector.ImageVector
 
 @DslMarker
@@ -43,16 +41,14 @@ internal class SectionScope {
         @StringRes title: Int,
         onClick: () -> Unit,
         icon: ImageVector? = null,
-        navigationIcon: ImageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+        navigationIcon: ImageVector? = null,
         @StringRes supporting: Int? = null,
-        isNavigation: Boolean = false,
     ) {
         entries += SettingsEntry.Action(
             title = title,
             icon = icon,
             supporting = supporting,
             navigationIcon = navigationIcon,
-            isNavigation = isNavigation,
             onClick = onClick,
         )
     }

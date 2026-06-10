@@ -38,12 +38,14 @@ internal fun SettingsContent(
                 action(
                     title = R.string.settings_reset_password,
                     icon = Icons.Default.LockReset,
+                    supporting = R.string.settings_reset_password_description,
                     onClick = { onEvent(SettingsUiEvent.ResetPassword) },
                 )
 
                 toggle(
                     title = R.string.settings_use_biometrics,
                     icon = Icons.Default.Fingerprint,
+                    supporting = R.string.settings_use_biometrics_description,
                     checked = state.biometricsEnabled,
                     onCheckedChange = { onEvent(SettingsUiEvent.SetBiometrics(it)) },
                 )
@@ -51,6 +53,7 @@ internal fun SettingsContent(
                 toggle(
                     title = R.string.settings_autofill,
                     icon = Icons.Default.Password,
+                    supporting = R.string.settings_autofill_description,
                     checked = state.autofillEnabled,
                     onCheckedChange = { onEvent(SettingsUiEvent.SetAutofill(it)) },
                 )
@@ -60,7 +63,6 @@ internal fun SettingsContent(
                 action(
                     title = R.string.settings_3rd_party_licenses,
                     icon = Icons.Default.Code,
-                    isNavigation = true,
                     onClick = { onEvent(SettingsUiEvent.LibrariesClicked) },
                 )
 
@@ -68,7 +70,6 @@ internal fun SettingsContent(
                     title = R.string.settings_report_issue,
                     icon = Icons.Default.BugReport,
                     navigationIcon = Icons.AutoMirrored.Default.OpenInNew,
-                    isNavigation = true,
                     onClick = { onEvent(SettingsUiEvent.ReportIssue) }
                 )
 
