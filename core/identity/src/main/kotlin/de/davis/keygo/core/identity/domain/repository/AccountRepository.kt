@@ -2,6 +2,7 @@ package de.davis.keygo.core.identity.domain.repository
 
 import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.util.Result
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Persists account identity metadata and associated cryptographic key-wrapping data.
@@ -17,6 +18,12 @@ import de.davis.keygo.core.util.Result
  * These contain the wrapped keys and their respective Initialization Vectors (IVs)
  */
 interface AccountRepository {
+
+    /**
+     * Emits the currently active account (or null) and re-emits whenever the
+     * backing registry changes.
+     */
+    fun observe(): Flow<Account?>
 
     /**
      * Returns the currently active account, or null if no account is registered.

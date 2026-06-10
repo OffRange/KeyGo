@@ -99,7 +99,7 @@ import de.davis.keygo.R
 import de.davis.keygo.app.presentation.AppDestinations
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
-import de.davis.keygo.core.presentation.model.RouteDestination
+import de.davis.keygo.core.ui.RouteDestination
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import de.davis.keygo.core.ui.R as CoreUiR

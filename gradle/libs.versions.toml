@@ -38,6 +38,7 @@ nbvcxz = "1.5.1"
 passGen = "0.1.0-beta"
 robolectric = "4.16"
 emvnfccard = "3.1.0"
+aboutlibraries = "14.2.1"
 
 [libraries]
 google-protobuf-protoc = { group = "com.google.protobuf", name = "protoc", version.ref = "protoc" }
@@ -110,6 +111,8 @@ gms-mlkit-barcode-scanning = { group = "com.google.android.gms", name = "play-se
 zxing-barcode-scanning = { group = "com.google.zxing", name = "core", version.ref = "zxingBarcodeScanning" }
 devnied-emvnfccard = { group = "com.github.devnied.emvnfccard", name = "library", version.ref = "emvnfccard" }
 
+aboutlibraries-compose-m3 = { module = "com.mikepenz:aboutlibraries-compose-m3", version.ref = "aboutlibraries" }
+
 android-gradlePlugin = { group = "com.android.tools.build", name = "gradle", version.ref = "agp" }
 kotlin-gradlePlugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-plugin", version.ref = "kotlin" }
 koin-gradlePlugin = { group = "io.insert-koin", name = "koin-compiler-gradle-plugin", version.ref = "koin-plugin" }
@@ -133,6 +136,7 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 koin-compiler = { id = "io.insert-koin.compiler.plugin", version.ref = "koin-plugin" }
 git-semantic-versioning = { id = "io.github.offrange.git-semantic-versioning", version.ref = "semver" }
 android-library = { id = "com.android.library", version.ref = "agp" }
+mikepenz-aboutlibraries = { id = "com.mikepenz.aboutlibraries.plugin.android", version.ref = "aboutlibraries" }
 
 keygo-android-compose = { id = "keygo.android.compose" }
 keygo-android-library = { id = "keygo.android.library" }

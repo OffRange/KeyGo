@@ -12,7 +12,7 @@ android {
 }
 
 dependencies {
-    implementation(projects.core.security)
+    api(projects.core.security)
     implementation(projects.core.item)
     implementation(projects.rust)
 

@@ -3,6 +3,8 @@ package de.davis.keygo.app.presentation
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -14,6 +16,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.Wallpapers
 import androidx.fragment.app.FragmentActivity
@@ -25,6 +28,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
+import com.mikepenz.aboutlibraries.ui.compose.android.produceLibraries
+import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
 import de.davis.keygo.app.presentation.component.KeyGoNavigationWrapper
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.ui.theme.KeyGoTheme
@@ -35,6 +40,8 @@ import de.davis.keygo.dashboard.presentation.DetailType
 import de.davis.keygo.dashboard.presentation.dashboardGraph
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.auth.presentation.authGraph
+import de.davis.keygo.feature.settings.presentation.ChangePasswordRoute
+import de.davis.keygo.feature.settings.presentation.settingsGraph
 import de.davis.keygo.item.dialog.SelectItemContent
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -155,11 +162,27 @@ private fun App() {
                     dashboardGraph(listNavigator = listNavigator)
                 }
 
+                settingsGraph(
+                    onOpenChangePassword = { navController.navigate(ChangePasswordRoute) },
+                    onShowLibraries = { navController.navigate(RouteDestination.Libraries) },
+                    onUp = { navController.navigateUp() },
+                )
+
                 composable<RouteDestination.Connectivity> {
                     Text("CONNECTIVITY")
                 }
-                composable<RouteDestination.Settings> {
-                    Text("SETTINGS")
+            }
+
+            composable<RouteDestination.Libraries> {
+                Scaffold(
+                    modifier = Modifier.fillMaxSize()
+                ) { innerPadding ->
+                    val libs by produceLibraries()
+                    LibrariesContainer(
+                        libraries = libs,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = innerPadding
+                    )
                 }
             }
         }

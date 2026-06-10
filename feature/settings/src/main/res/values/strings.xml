@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_security">Security</string>
+    <string name="settings_use_biometrics">Use Biometrics</string>
+    <string name="settings_use_biometrics_description">Unlock KeyGo with your fingerprint or face</string>
+    <string name="settings_reset_password">Reset Password</string>
+    <string name="settings_reset_password_description">Change your main password that protects your data</string>
+    <string name="settings_autofill">Autofill</string>
+    <string name="settings_autofill_description">Fill in your logins in other apps and browsers</string>
+    <string name="settings_biometric_update_failed">Could not update biometric unlock</string>
+
+    <string name="settings_backup">Backup</string>
+    <string name="settings_export_data">Export Data</string>
+    <string name="settings_export_data_description">Save an encrypted backup of your vaults to a file</string>
+    <string name="settings_import_data">Import Data</string>
+    <string name="settings_import_data_description">Restore your vaults from a backup file</string>
+
+    <string name="settings_about">About</string>
+    <string name="settings_report_issue">Report an issue</string>
+    <string name="settings_3rd_party_licenses">3rd Party Licenses</string>
+    <string name="settings_version">Version</string>
+
+    <string name="change_password_title">Change password</string>
+    <string name="current_password">Current password</string>
+    <string name="new_password">New password</string>
+    <string name="confirm_password">Confirm new password</string>
+    <string name="change_password_action">Change password</string>
+    <string name="biometric_confirm_helper">You\'ll confirm with your fingerprint</string>
+    <string name="reauth_dialog_title">Enter your current password</string>
+    <string name="password_blank">Password must not be blank</string>
+    <string name="incorrect_password">Incorrect password</string>
+    <string name="passwords_do_not_match">Passwords do not match</string>
+    <string name="password_changed">Password changed</string>
+    <string name="change_password_failed">Could not change password</string>
+</resources>

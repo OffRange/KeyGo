@@ -10,4 +10,5 @@ plugins {
     alias(libs.plugins.google.ksp) apply false
     alias(libs.plugins.google.protobuf) apply false
     alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.mikepenz.aboutlibraries) apply false
 }

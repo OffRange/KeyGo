@@ -28,7 +28,6 @@ dependencies {
     implementation(projects.core.util)
     implementation(projects.core.ui)
     implementation(projects.core.identity)
-    implementation(projects.core.security)
     implementation(projects.feature.item.core)
     implementation(projects.feature.item.create)
     implementation(projects.feature.totp)

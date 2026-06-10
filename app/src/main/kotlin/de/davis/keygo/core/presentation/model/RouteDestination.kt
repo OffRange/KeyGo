@@ -1,10 +1,11 @@
 package de.davis.keygo.core.presentation.model
 
+import de.davis.keygo.core.ui.RouteDestination as UiRouteDestination
 import kotlinx.serialization.Serializable
 
-sealed interface RouteDestination {
+sealed interface RouteDestination : UiRouteDestination {
 
-    val graphDest: RouteDestination
+    override val graphDest: RouteDestination
         get() = this
 
     @Serializable
@@ -32,8 +33,8 @@ sealed interface RouteDestination {
     }
 
     @Serializable
-    data object Settings : RouteDestination {
+    data object Libraries : RouteDestination {
         override val graphDest: RouteDestination
-            get() = Settings
+            get() = Libraries
     }
 }

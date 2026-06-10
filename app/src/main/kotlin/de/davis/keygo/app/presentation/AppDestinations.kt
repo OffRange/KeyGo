@@ -8,9 +8,11 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 import de.davis.keygo.R
 import de.davis.keygo.core.presentation.model.RouteDestination
+import de.davis.keygo.core.ui.RouteDestination as UiRouteDestination
+import de.davis.keygo.feature.settings.presentation.SettingsGraphRoute
 
 enum class AppDestinations(
-    val route: RouteDestination,
+    val route: UiRouteDestination,
     @StringRes val label: Int,
     val icon: ImageVector,
     @StringRes val contentDescription: Int
@@ -23,7 +25,7 @@ enum class AppDestinations(
         R.string.connectivity
     ),
     SETTINGS(
-        RouteDestination.Settings,
+        SettingsGraphRoute,
         R.string.settings,
         Icons.Default.Settings,
         R.string.settings

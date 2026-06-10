@@ -2,6 +2,8 @@ package de.davis.keygo.feature.autofill.di
 
 import android.content.Context
 import android.os.Build
+import android.view.autofill.AutofillManager
+import androidx.core.content.getSystemService
 import de.davis.keygo.core.identity.di.CoreIdentityModule
 import de.davis.keygo.core.util.di.CoreUtilModule
 import de.davis.keygo.feature.autofill.presentation.dataset.DatasetBuilderApi33Impl
@@ -34,4 +36,8 @@ object AutofillModule {
             )
         )
         .build()
+
+    @Single
+    internal fun provideAutofillManager(applicationContext: Context) =
+        applicationContext.getSystemService<AutofillManager>()
 }

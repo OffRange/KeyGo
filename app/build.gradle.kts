@@ -10,6 +10,8 @@ plugins {
     alias(libs.plugins.koin.compiler)
     alias(libs.plugins.git.semantic.versioning)
     alias(libs.plugins.google.protobuf)
+
+    alias(libs.plugins.mikepenz.aboutlibraries)
 }
 
 versioning {
@@ -97,10 +99,11 @@ dependencies {
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.annotations)
 
+    implementation(libs.aboutlibraries.compose.m3)
+    
     implementation(projects.rust)
     implementation(projects.core.item)
     implementation(projects.core.identity)
-    implementation(projects.core.security)
     implementation(projects.core.ui)
     implementation(projects.feature.auth)
     implementation(projects.feature.listScreen)
@@ -112,6 +115,7 @@ dependencies {
     implementation(projects.feature.totp)
     implementation(projects.feature.creditCard)
     implementation(projects.feature.autofill)
+    implementation(projects.feature.settings)
     implementation(projects.migrationCreateAccess)
 
     implementation(libs.androidx.core.ktx)
