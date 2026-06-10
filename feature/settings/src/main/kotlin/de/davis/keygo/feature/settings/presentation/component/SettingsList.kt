@@ -45,12 +45,15 @@ internal fun SettingsList(
     ) {
         sections.forEach { section ->
             stickyHeader(key = "header_${section.title}") {
-                SettingsSectionHeader(title = section.title)
+                SettingsSectionHeader(
+                    title = section.title,
+                    modifier = Modifier.animateItem()
+                )
             }
 
             itemsIndexed(
                 items = section.entries,
-                key = { index, entry -> "${section.title}_${index}_${entry.title}" },
+                key = { _, entry -> "${section.title}_${entry.title}" },
             ) { index, entry ->
                 SettingsEntryRow(
                     entry = entry,
@@ -59,6 +62,7 @@ internal fun SettingsList(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     ),
                     verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.animateItem()
                 )
             }
         }
@@ -71,7 +75,8 @@ private fun SettingsEntryRow(
     entry: SettingsEntry,
     shapes: ListItemShapes,
     colors: ListItemColors,
-    verticalAlignment: Alignment.Vertical
+    verticalAlignment: Alignment.Vertical,
+    modifier: Modifier = Modifier,
 ) {
     val leadingContent: (@Composable () -> Unit)? = entry.icon?.let { icon ->
         {
@@ -120,6 +125,7 @@ private fun SettingsEntryRow(
                     }
                 )
             },
+            modifier = modifier,
             content = headlineContent,
         )
 
@@ -138,6 +144,7 @@ private fun SettingsEntryRow(
                     )
                 }
             } else null,
+            modifier = modifier,
             content = headlineContent,
         )
 
@@ -149,6 +156,7 @@ private fun SettingsEntryRow(
             supportingContent = supportingContent,
             verticalAlignment = verticalAlignment,
             trailingContent = { Text(text = entry.value) },
+            modifier = modifier,
             content = headlineContent,
         )
     }
