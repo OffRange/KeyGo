@@ -14,14 +14,6 @@ import de.davis.keygo.rust.wrap.wrapAccountRootKeyWithResult
 import de.davisalessandro.keygo.rust.WrappedKeyBlob
 import org.koin.core.annotation.Single
 
-/**
- * Changes the master password of the active account.
- *
- * The user has already proven identity ([reauthentication]); the use case recovers the ARK from
- * that proof and re-wraps the SAME ARK under [newPassword] with a freshly generated salt. Only the
- * password-wrapped ARK is rewritten: the ARK value, the biometric-wrapped ARK, vault keys, item
- * keys, and all ciphertext are unchanged, so biometric unlock keeps working without re-enrollment.
- */
 @Single
 class ChangePasswordUseCase(
     private val accountRepository: AccountRepository,

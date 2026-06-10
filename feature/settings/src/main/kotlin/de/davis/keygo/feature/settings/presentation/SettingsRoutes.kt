@@ -20,11 +20,6 @@ object ChangePasswordRoute : RouteDestination {
     override val graphDest: RouteDestination get() = SettingsGraphRoute
 }
 
-/**
- * Nested settings graph: the settings list ([SettingsHomeRoute], the graph start) and the
- * change-password screen ([ChangePasswordRoute]). Registered by `:app` inside `TopLevelAppGraph`,
- * which keeps the Settings tab selected on both destinations.
- */
 fun NavGraphBuilder.settingsGraph(
     onOpenChangePassword: () -> Unit,
     onShowLibraries: () -> Unit,

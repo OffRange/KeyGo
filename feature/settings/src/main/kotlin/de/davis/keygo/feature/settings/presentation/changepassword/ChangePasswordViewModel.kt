@@ -8,8 +8,10 @@ import de.davis.keygo.core.identity.domain.model.Reauthentication
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.identity.domain.usecase.ChangePasswordUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
+import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
+import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import kotlinx.coroutines.FlowPreview
@@ -24,6 +26,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
+import java.security.Key
 import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
@@ -53,7 +56,12 @@ internal class ChangePasswordViewModel(
             val available = biometricAvailabilityRepository.availability()
             if (wrapped == null || !available) return@launch
             _state.update {
-                it.copy(biometricCiphertext = CiphertextData(bytes = wrapped.key, iv = wrapped.keyIV))
+                it.copy(
+                    biometricCiphertext = CiphertextData(
+                        bytes = wrapped.key,
+                        iv = wrapped.keyIV
+                    )
+                )
             }
         }
     }
@@ -70,6 +78,20 @@ internal class ChangePasswordViewModel(
             .launchIn(viewModelScope)
     }
 
+    /**
+     * Primary "Change password" action. Validates the new passwords first so we never fire a
+     * biometric prompt for an invalid form, then routes to biometric (if available) or the
+     * typed-password path.
+     */
+    fun onSubmit() {
+        if (_state.value.canUseBiometric) {
+            if (!validateNewPasswords()) return
+            _event.trySend(ChangePasswordEvent.LaunchBiometricPrompt)
+            return
+        }
+        submitWithPassword()
+    }
+
     /** Verify with the typed current password, then change. */
     fun submitWithPassword() {
         val state = _state.value
@@ -82,13 +104,46 @@ internal class ChangePasswordViewModel(
         change(Reauthentication.Password(current))
     }
 
+    /** Dismiss the fallback dialog and clear any stale current-password error. */
+    fun dismissReauthDialog() {
+        _state.update { it.copy(showReauthDialog = false, currentPasswordError = FieldError.None) }
+    }
+
     /** Verify with biometric: [recoveredArk] was unwrapped by the screen via requestUnwrap. */
-    fun submitWithBiometric(recoveredArk: ByteArray) {
+    private fun submitWithBiometric(recoveredArk: ByteArray) {
         if (!validateNewPasswords()) {
             recoveredArk.fill(0)
             return
         }
         change(Reauthentication.Biometric(recoveredArk))
+    }
+
+    /**
+     * Route the outcome of the screen's biometric prompt. The screen owns the prompt (it needs an
+     * Activity), but interpreting the result is ours: a recovered key changes the password, while a
+     * declined / locked-out / failed prompt falls back to the master-password dialog.
+     */
+    fun onBiometricResult(result: Result<Key, BiometricAuthError>) {
+        when (result) {
+            is Result.Success -> {
+                // requestUnwrap returns a software SecretKeySpec (AES), so raw bytes always exist.
+                val recoveredArk = checkNotNull(result.success.encoded)
+                submitWithBiometric(recoveredArk)
+            }
+
+            is Result.Failure -> when (result.error) {
+                BiometricAuthError.Declined,
+                BiometricAuthError.LockedOut,
+                BiometricAuthError.NoCipher,
+                is BiometricAuthError.CanNotAuthenticate,
+                    -> _state.update { it.copy(showReauthDialog = true) }
+
+                // Transient dismissal (back press, system cancel, timeout): leave the form as-is.
+                BiometricAuthError.Canceled,
+                is BiometricAuthError.Unknown,
+                    -> Unit
+            }
+        }
     }
 
     private fun validateNewPasswords(): Boolean {
