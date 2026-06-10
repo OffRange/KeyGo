@@ -1,8 +1,11 @@
 package de.davis.keygo.feature.settings.presentation.component
 
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SettingsDslTest {
@@ -40,13 +43,24 @@ class SettingsDslTest {
     }
 
     @Test
-    fun `action entry marked as navigation when requested`() {
+    fun `action entry carries the navigation icon when provided`() {
+        val icon = testIcon()
         val entry = SectionScope().apply {
-            action(title = 11, onClick = {}, isNavigation = true)
+            action(title = 11, onClick = {}, navigationIcon = icon)
         }.build().single()
 
         val action = assertIs<SettingsEntry.Action>(entry)
-        assertTrue(action.isNavigation)
+        assertEquals(icon, action.navigationIcon)
+    }
+
+    @Test
+    fun `action entry has no navigation icon by default`() {
+        val entry = SectionScope().apply {
+            action(title = 11, onClick = {})
+        }.build().single()
+
+        val action = assertIs<SettingsEntry.Action>(entry)
+        assertNull(action.navigationIcon)
     }
 
     @Test
@@ -59,4 +73,12 @@ class SettingsDslTest {
 
         assertEquals(listOf(11), entries.map { it.title })
     }
+
+    private fun testIcon(): ImageVector = ImageVector.Builder(
+        name = "test",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).build()
 }

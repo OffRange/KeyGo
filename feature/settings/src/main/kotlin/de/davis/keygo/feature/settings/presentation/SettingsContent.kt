@@ -44,7 +44,7 @@ internal fun SettingsContent(
                     onClick = { onEvent(SettingsUiEvent.ResetPassword) },
                 )
 
-                toggle(
+                if (state.biometricsAvailable) toggle(
                     title = R.string.settings_use_biometrics,
                     icon = Icons.Default.Fingerprint,
                     supporting = R.string.settings_use_biometrics_description,

@@ -26,7 +26,10 @@ internal class SettingsViewModel(
 
     private val versionName = appVersionRepository.versionName
 
-    private val _event = Channel<SettingsEvent>()
+    // Buffered (not rendezvous): the screen handles events in a suspend collector (e.g. while the
+    // biometric enrollment prompt is open), and a rendezvous trySend would silently drop any tap
+    // made in the meantime.
+    private val _event = Channel<SettingsEvent>(Channel.BUFFERED)
     val event = _event.receiveAsFlow()
 
     // OS-owned state (autofill / biometric availability) has no observable stream of
@@ -62,8 +65,11 @@ internal class SettingsViewModel(
         when (event) {
             is SettingsUiEvent.SetBiometrics -> _event.trySend(SettingsEvent.EnableBiometric(event.enabled))
             is SettingsUiEvent.SetAutofill -> when {
-                event.enabledRequest -> autofillServiceRepository.disable()
-                else -> _event.trySend(SettingsEvent.OpenAutofillSelection)
+                event.enabledRequest -> _event.trySend(SettingsEvent.OpenAutofillSelection)
+                else -> {
+                    autofillServiceRepository.disable()
+                    refreshSystemState()
+                }
             }
 
             SettingsUiEvent.ResetPassword -> _event.trySend(SettingsEvent.NavigateToChangePassword)

@@ -11,10 +11,17 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import de.davis.keygo.core.identity.domain.model.BiometricEnrollmentError
 import de.davis.keygo.core.identity.presentation.rememberBiometricEnrollmentAdapter
 import de.davis.keygo.core.identity.presentation.useEnrollmentAdapter
+import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
+import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
+import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
+import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
+import de.davis.keygo.core.util.presentation.snackbar.LocalSnackbarManager
+import de.davis.keygo.feature.settings.R
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -42,6 +49,7 @@ fun SettingsScreen(
 
     val urlHandler = LocalUriHandler.current
     val context = LocalContext.current
+    val snackbarManager = LocalSnackbarManager.current
     ObserveAsEvents(viewModel.event) {
         when (it) {
             SettingsEvent.NavigateToLibraries -> showLibraries()
@@ -57,21 +65,27 @@ fun SettingsScreen(
             }
 
             is SettingsEvent.EnableBiometric -> {
-                when {
-                    it.enable -> {
-                        enrollmentAdapter.useEnrollmentAdapter {
-                            biometricController.requestEnableBiometric()
-                        }
+                val result = when {
+                    it.enable -> enrollmentAdapter.useEnrollmentAdapter {
+                        biometricController.requestEnableBiometric()
                     }
 
                     else -> enrollmentAdapter.disableBiometric()
+                }
+
+                result.onFailure { error ->
+                    if (!error.isUserDismissal()) snackbarManager.sendMessage(
+                        SnackbarMessage(
+                            message = ResourceString(R.string.settings_biometric_update_failed),
+                        ),
+                    )
                 }
             }
 
             SettingsEvent.ReportIssue -> urlHandler.openUri(ISSUES_URL)
 
-            SettingsEvent.ExportData -> onExportDataClicked
-            SettingsEvent.ImportData -> onImportDataClicked
+            SettingsEvent.ExportData -> onExportDataClicked()
+            SettingsEvent.ImportData -> onImportDataClicked()
         }
     }
 
@@ -80,5 +94,10 @@ fun SettingsScreen(
         onEvent = viewModel::onEvent
     )
 }
+
+/** The user backing out of the prompt is not an error worth a snackbar. */
+private fun BiometricEnrollmentError.isUserDismissal(): Boolean =
+    this is BiometricEnrollmentError.BiometricFailed &&
+            (error == BiometricAuthError.Declined || error == BiometricAuthError.Canceled)
 
 private const val ISSUES_URL = "https://github.com/OffRange/KeyGo/issues/new"

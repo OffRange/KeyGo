@@ -7,6 +7,7 @@
     <string name="settings_reset_password_description">Change your main password that protects your data</string>
     <string name="settings_autofill">Autofill</string>
     <string name="settings_autofill_description">Fill in your logins in other apps and browsers</string>
+    <string name="settings_biometric_update_failed">Could not update biometric unlock</string>
 
     <string name="settings_backup">Backup</string>
     <string name="settings_export_data">Export Data</string>

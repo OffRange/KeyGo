@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
@@ -166,6 +167,10 @@ private fun App() {
                     onShowLibraries = { navController.navigate(RouteDestination.Libraries) },
                     onUp = { navController.navigateUp() },
                 )
+
+                composable<RouteDestination.Connectivity> {
+                    Text("CONNECTIVITY")
+                }
             }
 
             composable<RouteDestination.Libraries> {
