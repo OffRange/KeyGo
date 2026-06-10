@@ -192,44 +192,11 @@ class ChangePasswordViewModelTest {
         }
 
     @Test
-    fun `biometric submit with valid new passwords emits Success`() = runTest(dispatcher) {
-        // Account must have a biometric-wrapped ARK for the use case to accept biometric proof.
-        val current = accountRepository.getOrNull()!!
-        accountRepository.seed(
-            current.copy(
-                biometricWrappedArk = BiometricWrappedArk(
-                    key = ByteArray(48) { it.toByte() },
-                    keyIV = ByteArray(12) { it.toByte() },
-                )
-            )
-        )
-        val vm = viewModel()
-        vm.state.value.newPassword.edit { append("brand-new") }
-        vm.state.value.confirmPassword.edit { append("brand-new") }
-
-        vm.submitWithBiometric(ark.copyOf())
-        advanceUntilIdle()
-
-        assertEquals(ChangePasswordEvent.Success, vm.event.first())
-    }
-
-    @Test
-    fun `onUseCurrentPassword shows the reauth dialog`() = runTest(dispatcher) {
-        enableBiometric()
-        val vm = viewModel()
-        advanceUntilIdle()
-
-        vm.onUseCurrentPassword()
-
-        assertEquals(true, vm.state.value.showReauthDialog)
-    }
-
-    @Test
     fun `dismissReauthDialog hides dialog and clears current password error`() = runTest(dispatcher) {
         enableBiometric()
         val vm = viewModel()
         advanceUntilIdle()
-        vm.onUseCurrentPassword()
+        vm.onBiometricResult(Result.Failure(BiometricAuthError.Declined)) // opens the dialog
         vm.state.value.newPassword.edit { append("brand-new") }
         vm.state.value.confirmPassword.edit { append("brand-new") }
         vm.state.value.currentPassword.edit { append("wrong") }
@@ -249,7 +216,7 @@ class ChangePasswordViewModelTest {
             enableBiometric()
             val vm = viewModel()
             advanceUntilIdle()
-            vm.onUseCurrentPassword()
+            vm.onBiometricResult(Result.Failure(BiometricAuthError.Declined)) // opens the dialog
             vm.state.value.newPassword.edit { append("brand-new") }
             vm.state.value.confirmPassword.edit { append("brand-new") }
             vm.state.value.currentPassword.edit { append("wrong") }
@@ -266,7 +233,7 @@ class ChangePasswordViewModelTest {
         enableBiometric()
         val vm = viewModel()
         advanceUntilIdle()
-        vm.onUseCurrentPassword()
+        vm.onBiometricResult(Result.Failure(BiometricAuthError.Declined)) // opens the dialog
         vm.state.value.newPassword.edit { append("brand-new") }
         vm.state.value.confirmPassword.edit { append("brand-new") }
         vm.state.value.currentPassword.edit { append("old") }
@@ -305,24 +272,6 @@ class ChangePasswordViewModelTest {
 
         assertEquals(true, vm.state.value.showReauthDialog)
     }
-
-    @Test
-    fun `onBiometricResult with a key lacking raw bytes opens the reauth dialog`() =
-        runTest(dispatcher) {
-            enableBiometric()
-            val vm = viewModel()
-            advanceUntilIdle()
-            val keyWithoutBytes = object : Key {
-                override fun getAlgorithm() = "AES"
-                override fun getFormat(): String? = null
-                override fun getEncoded(): ByteArray? = null
-            }
-            val recovered: Result<Key, BiometricAuthError> = Result.Success(keyWithoutBytes)
-
-            vm.onBiometricResult(recovered)
-
-            assertEquals(true, vm.state.value.showReauthDialog)
-        }
 
     @Test
     fun `onBiometricResult Declined opens the reauth dialog`() = runTest(dispatcher) {

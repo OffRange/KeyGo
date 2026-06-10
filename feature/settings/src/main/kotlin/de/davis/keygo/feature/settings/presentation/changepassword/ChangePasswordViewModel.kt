@@ -104,18 +104,13 @@ internal class ChangePasswordViewModel(
         change(Reauthentication.Password(current))
     }
 
-    /** Biometric user tapped the prompt's "Use password" negative button. */
-    fun onUseCurrentPassword() {
-        _state.update { it.copy(showReauthDialog = true) }
-    }
-
     /** Dismiss the fallback dialog and clear any stale current-password error. */
     fun dismissReauthDialog() {
         _state.update { it.copy(showReauthDialog = false, currentPasswordError = FieldError.None) }
     }
 
     /** Verify with biometric: [recoveredArk] was unwrapped by the screen via requestUnwrap. */
-    fun submitWithBiometric(recoveredArk: ByteArray) {
+    private fun submitWithBiometric(recoveredArk: ByteArray) {
         if (!validateNewPasswords()) {
             recoveredArk.fill(0)
             return
@@ -131,9 +126,9 @@ internal class ChangePasswordViewModel(
     fun onBiometricResult(result: Result<Key, BiometricAuthError>) {
         when (result) {
             is Result.Success -> {
-                val recoveredArk = result.success.encoded
-                if (recoveredArk == null) onUseCurrentPassword()
-                else submitWithBiometric(recoveredArk)
+                // requestUnwrap returns a software SecretKeySpec (AES), so raw bytes always exist.
+                val recoveredArk = checkNotNull(result.success.encoded)
+                submitWithBiometric(recoveredArk)
             }
 
             is Result.Failure -> when (result.error) {
@@ -141,7 +136,7 @@ internal class ChangePasswordViewModel(
                 BiometricAuthError.LockedOut,
                 BiometricAuthError.NoCipher,
                 is BiometricAuthError.CanNotAuthenticate,
-                    -> onUseCurrentPassword()
+                    -> _state.update { it.copy(showReauthDialog = true) }
 
                 // Transient dismissal (back press, system cancel, timeout): leave the form as-is.
                 BiometricAuthError.Canceled,
