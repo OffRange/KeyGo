@@ -181,3 +181,5 @@ google-services.json
 .kotlin/
 
 docs/superpowers/
+.superpowers/
+.claude/
