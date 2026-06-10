@@ -7,4 +7,7 @@ internal sealed interface SettingsEvent {
     data object OpenAutofillSelection : SettingsEvent
     data class EnableBiometric(val enable: Boolean) : SettingsEvent
     data object ReportIssue : SettingsEvent
+
+    data object ExportData : SettingsEvent
+    data object ImportData : SettingsEvent
 }

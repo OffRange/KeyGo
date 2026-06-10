@@ -8,6 +8,12 @@
     <string name="settings_autofill">Autofill</string>
     <string name="settings_autofill_description">Fill in your logins in other apps and browsers</string>
 
+    <string name="settings_backup">Backup</string>
+    <string name="settings_export_data">Export Data</string>
+    <string name="settings_export_data_description">Save an encrypted backup of your vaults to a file</string>
+    <string name="settings_import_data">Import Data</string>
+    <string name="settings_import_data_description">Restore your vaults from a backup file</string>
+
     <string name="settings_about">About</string>
     <string name="settings_report_issue">Report an issue</string>
     <string name="settings_3rd_party_licenses">3rd Party Licenses</string>

@@ -20,6 +20,8 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SettingsScreen(
     showLibraries: () -> Unit,
+    onExportDataClicked: () -> Unit,
+    onImportDataClicked: () -> Unit,
     onOpenChangePassword: () -> Unit,
 ) {
     val viewModel = koinViewModel<SettingsViewModel>()
@@ -67,6 +69,9 @@ fun SettingsScreen(
             }
 
             SettingsEvent.ReportIssue -> urlHandler.openUri(ISSUES_URL)
+
+            SettingsEvent.ExportData -> onExportDataClicked
+            SettingsEvent.ImportData -> onImportDataClicked
         }
     }
 

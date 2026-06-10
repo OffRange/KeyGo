@@ -4,11 +4,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.LockReset
 import androidx.compose.material.icons.filled.Password
+import androidx.compose.material.icons.filled.SettingsBackupRestore
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -56,6 +58,22 @@ internal fun SettingsContent(
                     supporting = R.string.settings_autofill_description,
                     checked = state.autofillEnabled,
                     onCheckedChange = { onEvent(SettingsUiEvent.SetAutofill(it)) },
+                )
+            }
+
+            section(title = R.string.settings_backup) {
+                action(
+                    title = R.string.settings_export_data,
+                    icon = Icons.Default.Backup,
+                    supporting = R.string.settings_export_data_description,
+                    onClick = { onEvent(SettingsUiEvent.ExportData) },
+                )
+
+                action(
+                    title = R.string.settings_import_data,
+                    icon = Icons.Default.SettingsBackupRestore,
+                    supporting = R.string.settings_import_data_description,
+                    onClick = { onEvent(SettingsUiEvent.ImportData) },
                 )
             }
 
