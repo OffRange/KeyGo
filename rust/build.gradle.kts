@@ -28,7 +28,11 @@ dependencies {
 
     api(projects.core.util)
 
-    implementation("net.java.dev.jna:jna:5.18.1@aar")
+    implementation(libs.jna) {
+        artifact {
+            type = "aar"
+        }
+    }
     implementation(libs.kotlinx.coroutines.core)
 
 }

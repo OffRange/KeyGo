@@ -21,7 +21,7 @@ versioning {
 android versionedBy versioning
 android {
     namespace = "de.davis.keygo"
-    compileSdk = 36
+    compileSdk = libs.versions.compileSdk.get().toInt()
 
     signingConfigs {
         getByName("debug") {
@@ -35,7 +35,7 @@ android {
     defaultConfig {
         applicationId = "de.davis.passwordmanager"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = libs.versions.compileSdk.get().toInt()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -100,7 +100,7 @@ dependencies {
     implementation(libs.koin.annotations)
 
     implementation(libs.aboutlibraries.compose.m3)
-    
+
     implementation(projects.rust)
     implementation(projects.core.item)
     implementation(projects.core.identity)
