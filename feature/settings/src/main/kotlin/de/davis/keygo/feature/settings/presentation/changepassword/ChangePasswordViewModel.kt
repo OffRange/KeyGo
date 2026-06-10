@@ -14,7 +14,6 @@ import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepos
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
-import java.security.Key
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +26,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
+import java.security.Key
 import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
@@ -56,7 +56,12 @@ internal class ChangePasswordViewModel(
             val available = biometricAvailabilityRepository.availability()
             if (wrapped == null || !available) return@launch
             _state.update {
-                it.copy(biometricCiphertext = CiphertextData(bytes = wrapped.key, iv = wrapped.keyIV))
+                it.copy(
+                    biometricCiphertext = CiphertextData(
+                        bytes = wrapped.key,
+                        iv = wrapped.keyIV
+                    )
+                )
             }
         }
     }
