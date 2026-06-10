@@ -54,7 +54,7 @@ class SettingsViewModelTest {
         }
 
     @Test
-    fun `requesting to disable autofill disables the service and refreshes the ui state`() =
+    fun `requesting to disable autofill disables the service and updates the ui`() =
         runTest(dispatcher) {
             autofillServiceRepository.enabled = true
             val vm = viewModel()

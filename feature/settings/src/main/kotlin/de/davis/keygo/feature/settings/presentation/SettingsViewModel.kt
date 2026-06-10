@@ -68,7 +68,10 @@ internal class SettingsViewModel(
                 event.enabledRequest -> _event.trySend(SettingsEvent.OpenAutofillSelection)
                 else -> {
                     autofillServiceRepository.disable()
-                    refreshSystemState()
+                    // disableAutofillServices() propagates through the system server
+                    // asynchronously, so re-polling isEnabled() here can still read true.
+                    // The outcome is deterministic — update the snapshot directly.
+                    osState.update { it.copy(autofillEnabled = false) }
                 }
             }
 
