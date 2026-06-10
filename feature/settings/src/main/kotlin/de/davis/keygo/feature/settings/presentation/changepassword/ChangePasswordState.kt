@@ -1,9 +1,11 @@
 package de.davis.keygo.feature.settings.presentation.changepassword
 
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.runtime.Stable
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.security.domain.model.CiphertextData
 
+@Stable
 internal data class ChangePasswordState(
     val currentPassword: TextFieldState = TextFieldState(),
     val newPassword: TextFieldState = TextFieldState(),
