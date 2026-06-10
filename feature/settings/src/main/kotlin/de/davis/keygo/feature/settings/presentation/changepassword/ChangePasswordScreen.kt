@@ -50,7 +50,10 @@ import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
 import de.davis.keygo.core.ui.components.VisibilityButton
+import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
+import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
+import de.davis.keygo.core.util.presentation.snackbar.LocalSnackbarManager
 import de.davis.keygo.feature.settings.R
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
@@ -62,11 +65,14 @@ internal fun ChangePasswordScreen(onUp: () -> Unit) {
 
     val controller = rememberBiometricCryptoController()
     val scope = rememberCoroutineScope()
+    val snackbarManager = LocalSnackbarManager.current
 
     ObserveAsEvents(viewModel.event) { event ->
         when (event) {
             ChangePasswordEvent.Success -> onUp()
-            ChangePasswordEvent.GenericError -> Unit // surfaced inline; snackbar wiring is a follow-up
+            ChangePasswordEvent.GenericError -> snackbarManager.sendMessage(
+                SnackbarMessage(message = ResourceString(R.string.change_password_failed)),
+            )
             ChangePasswordEvent.LaunchBiometricPrompt -> {
                 val ciphertext = state.biometricCiphertext ?: return@ObserveAsEvents
                 scope.launch {
