@@ -117,8 +117,10 @@ class ChangePasswordViewModelTest {
         vm.state.value.confirmPassword.edit { append("brand-new") }
 
         vm.submitWithPassword()
-        advanceUntilIdle()
 
+        // Await rather than advanceUntilIdle: key derivation hops to Dispatchers.Default,
+        // which the test scheduler cannot see.
+        vm.state.first { it.currentPasswordError != FieldError.None }
         assertEquals(FieldError.Incorrect, vm.state.value.currentPasswordError)
     }
 
@@ -201,8 +203,9 @@ class ChangePasswordViewModelTest {
         vm.state.value.confirmPassword.edit { append("brand-new") }
         vm.state.value.currentPassword.edit { append("wrong") }
         vm.submitWithPassword()
-        advanceUntilIdle()
-        // currentPasswordError is now FieldError.Incorrect — the assertion below is load-bearing
+        // Await rather than advanceUntilIdle: key derivation hops to Dispatchers.Default,
+        // which the test scheduler cannot see. The Incorrect error below is load-bearing.
+        vm.state.first { it.currentPasswordError == FieldError.Incorrect }
 
         vm.dismissReauthDialog()
 
@@ -222,8 +225,10 @@ class ChangePasswordViewModelTest {
             vm.state.value.currentPassword.edit { append("wrong") }
 
             vm.submitWithPassword() // dialog Confirm action
-            advanceUntilIdle()
 
+            // Await rather than advanceUntilIdle: key derivation hops to Dispatchers.Default,
+            // which the test scheduler cannot see.
+            vm.state.first { it.currentPasswordError != FieldError.None }
             assertEquals(FieldError.Incorrect, vm.state.value.currentPasswordError)
             assertEquals(true, vm.state.value.showReauthDialog)
         }

@@ -162,4 +162,35 @@ class ChangePasswordUseCaseTest {
         assertTrue(result.isFailure())
         assertEquals(ChangePasswordError.PersistenceFailed, result.error)
     }
+
+    @Test
+    fun `scrubs the supplied biometric ARK after a successful change`() = runTest {
+        seedAccount("old", withBiometric = true)
+        val recovered = ark.copyOf()
+
+        useCase(Reauthentication.Biometric(recovered), "new")
+
+        assertContentEquals(ByteArray(recovered.size), recovered)
+    }
+
+    @Test
+    fun `scrubs the supplied biometric ARK when persistence fails`() = runTest {
+        seedAccount("old", withBiometric = true)
+        accountRepository.setFails = true
+        val recovered = ark.copyOf()
+
+        useCase(Reauthentication.Biometric(recovered), "new")
+
+        assertContentEquals(ByteArray(recovered.size), recovered)
+    }
+
+    @Test
+    fun `scrubs the supplied biometric ARK when biometric reauth is not enrolled`() = runTest {
+        seedAccount("old", withBiometric = false)
+        val recovered = ark.copyOf()
+
+        useCase(Reauthentication.Biometric(recovered), "new")
+
+        assertContentEquals(ByteArray(recovered.size), recovered)
+    }
 }
