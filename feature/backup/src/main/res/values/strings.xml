@@ -2,6 +2,8 @@
 <resources>
     <string name="last_backup">Last Backup</string>
 
+    <string name="recommented">Recommended</string>
+
     <string name="schedule_new_backup">Schedule new Backup</string>
     <string name="restore_backup">Restore Backup</string>
 
@@ -29,4 +31,12 @@
     <string name="continue_step">Continue</string>
     <string name="passphrase">Passphrase</string>
     <string name="confirm_passphrase">Confirm Passphrase</string>
+
+    <string name="export_description_kdbx">Export all data, including vaults, logins, cards, and TOTP, to a secure, encrypted KDBX file.</string>
+    <string name="export_description_csv">Export logins only. Note: This format is unencrypted and stored as plain text.</string>
+
+    <string name="export_passphrase_instruction">Set a passphrase to encrypt your backup. You will need this to restore your data later.\nNote: This passphrase is securely saved on your device for periodic backups, but is never saved for one-time exports.</string>
+
+    <string name="select_file_format_title">Select File Format</string>
+    <string name="provide_passphrase_title">Provide Passphrase</string>
 </resources>
