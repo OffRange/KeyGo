@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="last_backup">Last Backup</string>
+
+    <string name="schedule_new_backup">Schedule new Backup</string>
+    <string name="restore_backup">Restore Backup</string>
+
+    <string name="scheduled_backups">Scheduled Backups</string>
+    <string name="no_scheduled_backups">No Scheduled Backups</string>
+
+    <string name="never_backed_up">Never Backed Up</string>
+
+    <string name="csv">CSV</string>
+    <string name="kdbx">KDBX</string>
+
+    <string name="scheduled_title">%1$s \u2022 %2$s</string>
+    <string name="file_type_backup">%1$s Backup</string>
+
+    <plurals name="backup_interval_days">
+        <item quantity="one">Daily</item>
+        <item quantity="other">Every %1$d days</item>
+    </plurals>
+
+    <plurals name="backup_interval_weeks">
+        <item quantity="one">Weekly</item>
+        <item quantity="other">Every %1$d weeks</item>
+    </plurals>
+
+    <string name="continue_step">Continue</string>
+    <string name="passphrase">Passphrase</string>
+    <string name="confirm_passphrase">Confirm Passphrase</string>
+</resources>
