@@ -116,6 +116,7 @@ dependencies {
     implementation(projects.feature.creditCard)
     implementation(projects.feature.autofill)
     implementation(projects.feature.settings)
+    implementation(projects.feature.backup)
     implementation(projects.migrationCreateAccess)
 
     implementation(libs.androidx.core.ktx)
