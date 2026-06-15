@@ -38,5 +38,74 @@
     <string name="export_passphrase_instruction">Set a passphrase to encrypt your backup. You will need this to restore your data later.\nNote: This passphrase is securely saved on your device for periodic backups, but is never saved for one-time exports.</string>
 
     <string name="select_file_format_title">Select File Format</string>
+    <string name="select_schedule_title">Backup Schedule</string>
+    <string name="select_destination_title">Backup Location</string>
     <string name="provide_passphrase_title">Provide Passphrase</string>
+    <string name="review_backup_title">Review Backup Info</string>
+
+    <string name="destination_choose_title">Choose where to save</string>
+    <string name="destination_choose_subtitle">Pick a folder on this device, or a cloud provider like Nextcloud, Drive, or Dropbox.</string>
+    <string name="destination_choose_action">Choose location</string>
+    <string name="destination_change">Change</string>
+    <string name="destination_filename_label">Saved as</string>
+
+    <string name="destination_behavior_one_time">Your backup is written here once.</string>
+    <string name="destination_behavior_recurring">A fresh backup is written here on schedule. Older backups are kept.</string>
+    <string name="destination_behavior_recurring_pruned">A fresh backup is written here on schedule. Older backups are deleted automatically.</string>
+
+    <string name="schedule_one_time_title">One-time backup</string>
+    <string name="schedule_one_time_description">Export once to a location you choose. Nothing is saved or repeated.</string>
+    <string name="schedule_recurring_title">Recurring backup</string>
+    <string name="schedule_recurring_description">KeyGo automatically creates a fresh backup on the schedule you set.</string>
+
+    <string name="schedule_repeat_every_label">Repeat every</string>
+    <string name="schedule_auto_delete_label">Auto-delete old backups</string>
+
+    <string name="interval_unit_days">Days</string>
+    <string name="interval_unit_weeks">Weeks</string>
+
+    <plurals name="schedule_keep_unit">
+        <item quantity="one">backup</item>
+        <item quantity="other">backups</item>
+    </plurals>
+
+    <plurals name="schedule_keep_summary">
+        <item quantity="one">Only the newest backup is kept. Older ones are deleted automatically.</item>
+        <item quantity="other">Only the newest %1$d backups are kept. Older ones are deleted automatically.</item>
+    </plurals>
+
+    <string name="schedule_keep_all_summary">Every backup is kept. Nothing is deleted automatically.</string>
+
+    <string name="schedule_backup">Schedule Backup</string>
+
+    <string name="review_ready_title">Ready to back up</string>
+    <string name="review_ready_subtitle">Double-check the details below before you export.</string>
+
+    <string name="review_section_format">Format</string>
+    <string name="review_section_schedule">Schedule</string>
+    <string name="review_section_retention">Retention</string>
+    <string name="review_section_destination">Destination</string>
+    <string name="review_section_encryption">Encryption</string>
+    <string name="review_section_contents">Contents</string>
+    <string name="review_section_passphrase">Passphrase strength</string>
+
+    <string name="review_schedule_one_time">One-time</string>
+
+    <string name="review_retention_all">All kept</string>
+    <plurals name="review_retention">
+        <item quantity="one">Last %1$d backup</item>
+        <item quantity="other">Last %1$d backups</item>
+    </plurals>
+
+    <string name="review_encryption_on">Encrypted</string>
+    <string name="review_encryption_off">Not encrypted</string>
+
+    <string name="review_contents_all">All vaults &amp; items</string>
+    <string name="review_contents_logins">Logins only</string>
+
+    <string name="review_plaintext_warning">This file is stored as plain text. Anyone who opens it can read your logins, so keep it somewhere safe.</string>
+
+    <string name="create_backup">Create Backup</string>
+
+    <string name="enable">Enable</string>
 </resources>

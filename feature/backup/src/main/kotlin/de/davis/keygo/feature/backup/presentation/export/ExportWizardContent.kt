@@ -6,58 +6,48 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.input.TextObfuscationMode
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Password
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
-import de.davis.keygo.core.item.presentation.StrengthIndicator
-import de.davis.keygo.core.ui.components.VisibilityButton
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.feature.backup.R
+import de.davis.keygo.feature.backup.domain.model.BackupInterval
 import de.davis.keygo.feature.backup.domain.model.FileFormat
-import de.davis.keygo.feature.backup.presentation.displayName
+import de.davis.keygo.feature.backup.presentation.export.model.BackupDestination
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardStep
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiEvent
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiState
 import de.davis.keygo.feature.backup.presentation.export.model.ProvidePassphraseState
+import de.davis.keygo.feature.backup.presentation.export.model.ScheduleMode
+import de.davis.keygo.feature.backup.presentation.export.model.SelectDestinationState
 import de.davis.keygo.feature.backup.presentation.export.model.SelectFormatState
-import de.davis.keygo.feature.backup.presentation.icon
+import de.davis.keygo.feature.backup.presentation.export.model.SelectScheduleState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,7 +84,9 @@ internal fun ExportWizardContent(
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(horizontal = 4.dp),
+                .consumeWindowInsets(innerPadding)
+                .padding(start = 4.dp, end = 4.dp, bottom = 16.dp)
+                .imePadding(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -123,10 +115,32 @@ internal fun ExportWizardContent(
                 ) {
                     when (ExportWizardStep.entries[page]) {
                         ExportWizardStep.SelectFormat -> SelectFileFormatContent(onEvent = onEvent)
+                        ExportWizardStep.Schedule -> SelectScheduleContent(
+                            state = state.scheduleState,
+                            onEvent = onEvent,
+                        )
+
+                        ExportWizardStep.SelectDestination -> SelectDestinationContent(
+                            state = state.destinationState,
+                            scheduleState = state.scheduleState,
+                            format = state.formatState.format,
+                            onEvent = onEvent,
+                        )
+
                         ExportWizardStep.ProvidePassphrase -> ProvidePassphraseContent(
                             state = state.providePassphraseState,
                             onEvent = onEvent
                         )
+
+                        ExportWizardStep.Review -> state.formatState.format?.let { format ->
+                            ReviewBackupContent(
+                                format = format,
+                                scheduleState = state.scheduleState,
+                                destinationState = state.destinationState,
+                                passphraseState = state.providePassphraseState,
+                                onEvent = onEvent,
+                            )
+                        }
                     }
                 }
             }
@@ -138,148 +152,31 @@ private val ExportWizardStep.title
     @Composable
     get() = when (this) {
         ExportWizardStep.SelectFormat -> stringResource(R.string.select_file_format_title)
+        ExportWizardStep.Schedule -> stringResource(R.string.select_schedule_title)
+        ExportWizardStep.SelectDestination -> stringResource(R.string.select_destination_title)
         ExportWizardStep.ProvidePassphrase -> stringResource(R.string.provide_passphrase_title)
+        ExportWizardStep.Review -> stringResource(R.string.review_backup_title)
     }
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun SelectFileFormatContent(onEvent: (ExportWizardUiEvent) -> Unit) {
-    Surface {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
-        ) {
-            FileFormat.entries.forEachIndexed { index, type ->
-                SegmentedListItem(
-                    onClick = { onEvent(ExportWizardUiEvent.FileFormatSelected(type)) },
-                    shapes = ListItemDefaults.segmentedShapes(index, FileFormat.entries.size),
-                    colors = ListItemDefaults.segmentedColors(
-                        containerColor = if (type.recommented) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.surfaceContainerHigh,
-                    ),
-                    supportingContent = {
-                        Text(text = type.description)
-                    },
-                    leadingContent = {
-                        Icon(
-                            imageVector = type.icon,
-                            contentDescription = null,
-                        )
-                    },
-                    overlineContent = when {
-                        type.recommented -> {
-                            { Text(text = stringResource(R.string.recommented)) }
-                        }
-
-                        else -> null
-                    },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(text = type.displayName)
-                }
-            }
-        }
-    }
-}
-
-
-private val FileFormat.description
-    @Composable
-    get() = when (this) {
-        FileFormat.KDBX -> stringResource(R.string.export_description_kdbx)
-        FileFormat.CSV -> stringResource(R.string.export_description_csv)
-    }
-
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun ProvidePassphraseContent(
-    state: ProvidePassphraseState,
-    onEvent: (ExportWizardUiEvent) -> Unit
-) {
-    var passphraseHidden by rememberSaveable { mutableStateOf(true) }
-    var confirmPassphraseHidden by rememberSaveable { mutableStateOf(true) }
-    var forceCompact by rememberSaveable { mutableStateOf(false) }
-    Surface {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.export_passphrase_instruction),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            OutlinedSecureTextField(
-                state = state.passphraseTextFieldState,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onFocusChanged {
-                        forceCompact = !it.hasFocus
-                    },
-                label = {
-                    Text(text = stringResource(R.string.passphrase))
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Password,
-                        contentDescription = null,
-                    )
-                },
-                textObfuscationMode = if (passphraseHidden) TextObfuscationMode.RevealLastTyped
-                else TextObfuscationMode.Visible,
-                trailingIcon = {
-                    VisibilityButton(
-                        isHidden = passphraseHidden,
-                        onClick = { passphraseHidden = !passphraseHidden },
-                    )
-                },
-            )
-            StrengthIndicator(
-                passwordScore = state.passphraseScore,
-                forceCompact = forceCompact,
-            )
-
-            OutlinedSecureTextField(
-                state = state.confirmPassphraseTextFieldState,
-                modifier = Modifier.fillMaxWidth(),
-                label = {
-                    Text(text = stringResource(R.string.confirm_passphrase))
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Password,
-                        contentDescription = null,
-                    )
-                },
-                textObfuscationMode = if (confirmPassphraseHidden) TextObfuscationMode.RevealLastTyped
-                else TextObfuscationMode.Visible,
-                trailingIcon = {
-                    VisibilityButton(
-                        isHidden = confirmPassphraseHidden,
-                        onClick = { confirmPassphraseHidden = !confirmPassphraseHidden },
-                    )
-                },
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-            Button(
-                onClick = { onEvent(ExportWizardUiEvent.Continue) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(text = stringResource(R.string.continue_step))
-            }
-        }
-    }
-}
 
 private class ExportWizardUiStateProvider : PreviewParameterProvider<ExportWizardUiState> {
 
     override val values = ExportWizardStep.entries.asSequence().map {
         ExportWizardUiState(
-            formatState = SelectFormatState(),
+            formatState = SelectFormatState(format = FileFormat.KDBX),
+            scheduleState = SelectScheduleState(
+                mode = ScheduleMode.Recurring,
+                interval = BackupInterval.Day(3),
+            ),
+            destinationState = SelectDestinationState(
+                destination = BackupDestination(
+                    providerLabel = "Nextcloud",
+                    displayPath = "Backups / KeyGo",
+                ),
+            ),
             providePassphraseState = ProvidePassphraseState(
                 passphraseTextFieldState = TextFieldState(),
                 confirmPassphraseTextFieldState = TextFieldState(),
+                passphraseScore = PasswordScore.Strong,
             ),
             step = it,
         )
