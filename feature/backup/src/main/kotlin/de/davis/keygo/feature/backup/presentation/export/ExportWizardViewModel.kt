@@ -13,6 +13,7 @@ import de.davis.keygo.feature.backup.presentation.export.model.ProvidePassphrase
 import de.davis.keygo.feature.backup.presentation.export.model.SelectDestinationState
 import de.davis.keygo.feature.backup.presentation.export.model.SelectFormatState
 import de.davis.keygo.feature.backup.presentation.export.model.SelectScheduleState
+import de.davis.keygo.feature.backup.presentation.export.model.exportStepsFor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -105,11 +106,13 @@ internal class ExportWizardViewModel : ViewModel() {
         }
     }
 
-    private fun nextStep() = _step.update {
-        ExportWizardStep.entries[(it.ordinal + 1).coerceAtMost(ExportWizardStep.entries.size - 1)]
+    private fun nextStep() = _step.update { current ->
+        val steps = exportStepsFor(_formatState.value.format)
+        steps[(steps.indexOf(current) + 1).coerceAtMost(steps.lastIndex)]
     }
 
-    private fun previousStep() = _step.update {
-        ExportWizardStep.entries[(it.ordinal - 1).coerceAtLeast(0)]
+    private fun previousStep() = _step.update { current ->
+        val steps = exportStepsFor(_formatState.value.format)
+        steps[(steps.indexOf(current) - 1).coerceAtLeast(0)]
     }
 }

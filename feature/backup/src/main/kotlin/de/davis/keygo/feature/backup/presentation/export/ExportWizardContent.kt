@@ -55,10 +55,12 @@ internal fun ExportWizardContent(
     state: ExportWizardUiState,
     onEvent: (ExportWizardUiEvent) -> Unit
 ) {
-    val pagerState = rememberPagerState(state.step.ordinal) { ExportWizardStep.entries.size }
-    LaunchedEffect(state.step) {
-        if (pagerState.currentPage != state.step.ordinal) {
-            pagerState.animateScrollToPage(state.step.ordinal)
+    val steps = state.steps
+    val currentPage = steps.indexOf(state.step).coerceAtLeast(0)
+    val pagerState = rememberPagerState(currentPage) { steps.size }
+    LaunchedEffect(currentPage) {
+        if (pagerState.currentPage != currentPage) {
+            pagerState.animateScrollToPage(currentPage)
         }
     }
 
@@ -113,7 +115,7 @@ internal fun ExportWizardContent(
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    when (ExportWizardStep.entries[page]) {
+                    when (steps[page]) {
                         ExportWizardStep.SelectFormat -> SelectFileFormatContent(onEvent = onEvent)
                         ExportWizardStep.Schedule -> SelectScheduleContent(
                             state = state.scheduleState,

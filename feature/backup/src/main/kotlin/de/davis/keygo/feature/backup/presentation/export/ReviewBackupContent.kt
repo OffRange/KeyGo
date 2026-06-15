@@ -68,7 +68,7 @@ internal fun ReviewBackupContent(
     passphraseState: ProvidePassphraseState,
     onEvent: (ExportWizardUiEvent) -> Unit,
 ) {
-    val encrypted = format == FileFormat.KDBX
+    val encrypted = format.encrypted
     val recurring = scheduleState.mode == ScheduleMode.Recurring
     Surface {
         Column(modifier = Modifier.fillMaxSize()) {

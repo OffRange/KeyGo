@@ -6,4 +6,7 @@ enum class FileFormat {
 
     val recommented: Boolean
         get() = this == KDBX
+
+    val encrypted: Boolean
+        get() = this == KDBX
 }

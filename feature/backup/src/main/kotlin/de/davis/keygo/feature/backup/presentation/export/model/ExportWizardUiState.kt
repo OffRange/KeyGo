@@ -13,7 +13,9 @@ internal data class ExportWizardUiState(
     val destinationState: SelectDestinationState,
     val providePassphraseState: ProvidePassphraseState,
     val step: ExportWizardStep = ExportWizardStep.SelectFormat,
-)
+) {
+    val steps: List<ExportWizardStep> = exportStepsFor(formatState.format)
+}
 
 @Stable
 internal data class SelectFormatState(
@@ -63,3 +65,13 @@ internal enum class ExportWizardStep {
     ProvidePassphrase,
     Review,
 }
+
+/**
+ * The wizard steps that apply to the chosen [format]. The passphrase step only makes sense for
+ * encrypted formats, so it is dropped for plaintext exports (e.g. CSV). While no format is chosen
+ * yet the full path is shown.
+ */
+internal fun exportStepsFor(format: FileFormat?): List<ExportWizardStep> =
+    ExportWizardStep.entries.filter { step ->
+        step != ExportWizardStep.ProvidePassphrase || (format?.encrypted ?: true)
+    }
