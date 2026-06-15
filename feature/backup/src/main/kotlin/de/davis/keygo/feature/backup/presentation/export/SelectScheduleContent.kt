@@ -40,63 +40,59 @@ internal fun SelectScheduleContent(
     onEvent: (ExportWizardUiEvent) -> Unit,
 ) {
     Surface {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
-            ) {
-                ScheduleMode.entries.forEachIndexed { index, mode ->
-                    val selected = state.mode == mode
-                    SegmentedListItem(
-                        checked = selected,
-                        onCheckedChange = { onEvent(ExportWizardUiEvent.ScheduleModeSelected(mode)) },
-                        shapes = ListItemDefaults.segmentedShapes(index, ScheduleMode.entries.size),
-                        colors = ListItemDefaults.segmentedColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainerHigh),
-                        ),
-                        leadingContent = {
-                            Icon(
-                                imageVector = mode.icon,
-                                contentDescription = null,
-                            )
-                        },
-                        supportingContent = {
-                            Text(text = stringResource(mode.descriptionRes))
-                        },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(text = stringResource(mode.titleRes))
-                    }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+        ) {
+            ScheduleMode.entries.forEachIndexed { index, mode ->
+                val selected = state.mode == mode
+                SegmentedListItem(
+                    checked = selected,
+                    onCheckedChange = { onEvent(ExportWizardUiEvent.ScheduleModeSelected(mode)) },
+                    shapes = ListItemDefaults.segmentedShapes(index, ScheduleMode.entries.size),
+                    colors = ListItemDefaults.segmentedColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainerHigh),
+                    ),
+                    leadingContent = {
+                        Icon(
+                            imageVector = mode.icon,
+                            contentDescription = null,
+                        )
+                    },
+                    supportingContent = {
+                        Text(text = stringResource(mode.descriptionRes))
+                    },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(text = stringResource(mode.titleRes))
+                }
 
-                    AnimatedVisibility(
-                        visible = selected && mode == ScheduleMode.Recurring,
-                        enter = expandVertically() + fadeIn(),
-                        exit = shrinkVertically() + fadeOut(),
+                AnimatedVisibility(
+                    visible = selected && mode == ScheduleMode.Recurring,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut(),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(top = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
                     ) {
-                        Column(
-                            modifier = Modifier.padding(top = 4.dp),
-                            verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
-                        ) {
-                            IntervalPicker(
-                                interval = state.interval,
-                                onEvent = onEvent,
-                                shape = SegmentTopShape
-                            )
-                            RetentionPicker(
-                                keepCount = state.keepCount,
-                                keepAll = state.keepAll,
-                                onEvent = onEvent,
-                                shape = SegmentBottomShape
-                            )
-                        }
+                        IntervalPicker(
+                            interval = state.interval,
+                            onEvent = onEvent,
+                            shape = SegmentTopShape
+                        )
+                        RetentionPicker(
+                            keepCount = state.keepCount,
+                            keepAll = state.keepAll,
+                            onEvent = onEvent,
+                            shape = SegmentBottomShape
+                        )
                     }
                 }
             }
-
-            ContinueButton(onEvent = onEvent)
         }
     }
 }

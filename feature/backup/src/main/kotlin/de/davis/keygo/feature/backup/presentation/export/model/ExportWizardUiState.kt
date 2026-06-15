@@ -15,6 +15,12 @@ internal data class ExportWizardUiState(
     val step: ExportWizardStep = ExportWizardStep.SelectFormat,
 ) {
     val steps: List<ExportWizardStep> = exportStepsFor(formatState.format)
+
+    val canContinue: Boolean = when (step) {
+        ExportWizardStep.SelectDestination -> destinationState.destination != null
+        ExportWizardStep.ProvidePassphrase -> providePassphraseState.valid
+        else -> true
+    }
 }
 
 @Stable
@@ -56,6 +62,7 @@ internal data class ProvidePassphraseState(
     val passphraseTextFieldState: TextFieldState,
     val confirmPassphraseTextFieldState: TextFieldState,
     val passphraseScore: PasswordScore = PasswordScore.None,
+    val valid: Boolean = false,
 )
 
 internal enum class ExportWizardStep {

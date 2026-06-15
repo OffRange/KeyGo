@@ -41,40 +41,36 @@ internal fun ProvidePassphraseContent(
     var confirmPassphraseHidden by rememberSaveable { mutableStateOf(true) }
     var forceCompact by rememberSaveable { mutableStateOf(false) }
     Surface {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.export_passphrase_instruction),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.export_passphrase_instruction),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
-                PassphraseField(
-                    state = state.passphraseTextFieldState,
-                    label = stringResource(R.string.passphrase),
-                    hidden = passphraseHidden,
-                    onToggleHidden = { passphraseHidden = !passphraseHidden },
-                    modifier = Modifier.onFocusChanged { forceCompact = !it.hasFocus },
-                )
-                StrengthIndicator(
-                    passwordScore = state.passphraseScore,
-                    forceCompact = forceCompact,
-                )
+            PassphraseField(
+                state = state.passphraseTextFieldState,
+                label = stringResource(R.string.passphrase),
+                hidden = passphraseHidden,
+                onToggleHidden = { passphraseHidden = !passphraseHidden },
+                modifier = Modifier.onFocusChanged { forceCompact = !it.hasFocus },
+            )
+            StrengthIndicator(
+                passwordScore = state.passphraseScore,
+                forceCompact = forceCompact,
+            )
 
-                PassphraseField(
-                    state = state.confirmPassphraseTextFieldState,
-                    label = stringResource(R.string.confirm_passphrase),
-                    hidden = confirmPassphraseHidden,
-                    onToggleHidden = { confirmPassphraseHidden = !confirmPassphraseHidden },
-                )
-            }
-
-            ContinueButton(onEvent = onEvent)
+            PassphraseField(
+                state = state.confirmPassphraseTextFieldState,
+                label = stringResource(R.string.confirm_passphrase),
+                hidden = confirmPassphraseHidden,
+                onToggleHidden = { confirmPassphraseHidden = !confirmPassphraseHidden },
+            )
         }
     }
 }

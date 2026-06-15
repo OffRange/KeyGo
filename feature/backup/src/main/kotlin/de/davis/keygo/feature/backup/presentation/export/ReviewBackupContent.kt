@@ -3,27 +3,20 @@ package de.davis.keygo.feature.backup.presentation.export
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Password
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.WarningAmber
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -52,7 +45,6 @@ import de.davis.keygo.feature.backup.domain.model.BackupInterval
 import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.presentation.displayName
 import de.davis.keygo.feature.backup.presentation.export.model.BackupDestination
-import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiEvent
 import de.davis.keygo.feature.backup.presentation.export.model.ProvidePassphraseState
 import de.davis.keygo.feature.backup.presentation.export.model.ScheduleMode
 import de.davis.keygo.feature.backup.presentation.export.model.SelectDestinationState
@@ -66,140 +58,117 @@ internal fun ReviewBackupContent(
     scheduleState: SelectScheduleState,
     destinationState: SelectDestinationState,
     passphraseState: ProvidePassphraseState,
-    onEvent: (ExportWizardUiEvent) -> Unit,
 ) {
     val encrypted = format.encrypted
     val recurring = scheduleState.mode == ScheduleMode.Recurring
     Surface {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            ReviewHeroCard(format = format)
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ),
             ) {
-                ReviewHeroCard(format = format)
+                Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                    ReviewRow(
+                        icon = format.icon,
+                        label = stringResource(R.string.review_section_format),
+                    ) {
+                        Text(text = format.displayName)
+                    }
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    ),
-                ) {
-                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                        ReviewRow(
-                            icon = format.icon,
-                            label = stringResource(R.string.review_section_format),
-                        ) {
-                            Text(text = format.displayName)
-                        }
+                    ReviewDivider()
 
+                    ReviewRow(
+                        icon = scheduleState.mode.icon,
+                        label = stringResource(R.string.review_section_schedule),
+                    ) {
+                        Text(
+                            text = if (recurring) scheduleState.interval.intervalDisplayName
+                            else stringResource(R.string.review_schedule_one_time),
+                        )
+                    }
+
+                    if (recurring) {
                         ReviewDivider()
-
                         ReviewRow(
-                            icon = scheduleState.mode.icon,
-                            label = stringResource(R.string.review_section_schedule),
+                            icon = Icons.Default.DeleteSweep,
+                            label = stringResource(R.string.review_section_retention),
                         ) {
                             Text(
-                                text = if (recurring) scheduleState.interval.intervalDisplayName
-                                else stringResource(R.string.review_schedule_one_time),
-                            )
-                        }
-
-                        if (recurring) {
-                            ReviewDivider()
-                            ReviewRow(
-                                icon = Icons.Default.DeleteSweep,
-                                label = stringResource(R.string.review_section_retention),
-                            ) {
-                                Text(
-                                    text = if (scheduleState.keepAll) stringResource(R.string.review_retention_all)
-                                    else pluralStringResource(
-                                        R.plurals.review_retention,
-                                        scheduleState.keepCount,
-                                        scheduleState.keepCount,
-                                    ),
-                                )
-                            }
-                        }
-
-                        ReviewDivider()
-
-                        ReviewRow(
-                            icon = Icons.Default.Folder,
-                            label = stringResource(R.string.review_section_destination),
-                        ) {
-                            destinationState.destination?.let { destination ->
-                                Text(text = destination.displayPath)
-                            }
-                        }
-
-                        ReviewDivider()
-
-                        ReviewRow(
-                            icon = Icons.Default.Inventory2,
-                            label = stringResource(R.string.review_section_contents),
-                        ) {
-                            Text(
-                                text = stringResource(
-                                    if (encrypted) R.string.review_contents_all
-                                    else R.string.review_contents_logins,
+                                text = if (scheduleState.keepAll) stringResource(R.string.review_retention_all)
+                                else pluralStringResource(
+                                    R.plurals.review_retention,
+                                    scheduleState.keepCount,
+                                    scheduleState.keepCount,
                                 ),
                             )
                         }
+                    }
 
-                        ReviewDivider()
+                    ReviewDivider()
 
-                        ReviewRow(
-                            icon = if (encrypted) Icons.Default.Shield else Icons.Default.LockOpen,
-                            label = stringResource(R.string.review_section_encryption),
-                            iconTint = if (encrypted) MaterialTheme.colorScheme.primary
+                    ReviewRow(
+                        icon = Icons.Default.Folder,
+                        label = stringResource(R.string.review_section_destination),
+                    ) {
+                        destinationState.destination?.let { destination ->
+                            Text(text = destination.displayPath)
+                        }
+                    }
+
+                    ReviewDivider()
+
+                    ReviewRow(
+                        icon = Icons.Default.Inventory2,
+                        label = stringResource(R.string.review_section_contents),
+                    ) {
+                        Text(
+                            text = stringResource(
+                                if (encrypted) R.string.review_contents_all
+                                else R.string.review_contents_logins,
+                            ),
+                        )
+                    }
+
+                    ReviewDivider()
+
+                    ReviewRow(
+                        icon = if (encrypted) Icons.Default.Shield else Icons.Default.LockOpen,
+                        label = stringResource(R.string.review_section_encryption),
+                        iconTint = if (encrypted) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.error,
+                    ) {
+                        Text(
+                            text = stringResource(
+                                if (encrypted) R.string.review_encryption_on
+                                else R.string.review_encryption_off,
+                            ),
+                            color = if (encrypted) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.error,
-                        ) {
-                            Text(
-                                text = stringResource(
-                                    if (encrypted) R.string.review_encryption_on
-                                    else R.string.review_encryption_off,
-                                ),
-                                color = if (encrypted) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.error,
-                            )
-                        }
+                        )
+                    }
 
-                        if (encrypted) {
-                            ReviewDivider()
-                            ReviewRow(
-                                icon = Icons.Default.Password,
-                                label = stringResource(R.string.review_section_passphrase),
-                            ) {
-                                StrengthIndicator(passwordScore = passphraseState.passphraseScore)
-                            }
+                    if (encrypted) {
+                        ReviewDivider()
+                        ReviewRow(
+                            icon = Icons.Default.Password,
+                            label = stringResource(R.string.review_section_passphrase),
+                        ) {
+                            StrengthIndicator(passwordScore = passphraseState.passphraseScore)
                         }
                     }
                 }
-
-                if (!encrypted) ReviewPlaintextWarning()
             }
 
-            Button(
-                onClick = { onEvent(ExportWizardUiEvent.Export) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
-            ) {
-                Icon(
-                    imageVector = if (recurring) Icons.Default.Schedule else Icons.Default.Backup,
-                    contentDescription = null,
-                    modifier = Modifier.size(ButtonDefaults.IconSize),
-                )
-                Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
-                Text(
-                    text = stringResource(
-                        if (recurring) R.string.schedule_backup
-                        else R.string.create_backup,
-                    ),
-                )
-            }
+            if (!encrypted) ReviewPlaintextWarning()
         }
     }
 }
@@ -345,7 +314,6 @@ private fun ReviewBackupContentPreview(
                     confirmPassphraseTextFieldState = TextFieldState(),
                     passphraseScore = PasswordScore.Strong,
                 ),
-                onEvent = {},
             )
         }
     }

@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.backup.presentation.export
 
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.feature.backup.backupInterval
@@ -14,12 +15,19 @@ import de.davis.keygo.feature.backup.presentation.export.model.SelectDestination
 import de.davis.keygo.feature.backup.presentation.export.model.SelectFormatState
 import de.davis.keygo.feature.backup.presentation.export.model.SelectScheduleState
 import de.davis.keygo.feature.backup.presentation.export.model.exportStepsFor
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import org.koin.core.annotation.KoinViewModel
+import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
 internal class ExportWizardViewModel : ViewModel() {
@@ -53,17 +61,33 @@ internal class ExportWizardViewModel : ViewModel() {
             providePassphraseState = providePassphraseState,
             step = step,
         )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = ExportWizardUiState(
-            formatState = _formatState.value,
-            scheduleState = _scheduleState.value,
-            destinationState = _destinationState.value,
-            providePassphraseState = _providePassphraseState.value,
-            step = _step.value,
+    }
+        .onStart {
+            observePassphrase()
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = ExportWizardUiState(
+                formatState = _formatState.value,
+                scheduleState = _scheduleState.value,
+                destinationState = _destinationState.value,
+                providePassphraseState = _providePassphraseState.value,
+                step = _step.value,
+            )
         )
-    )
+
+    @OptIn(FlowPreview::class)
+    private fun observePassphrase() {
+        snapshotFlow {
+            val passphrase = passphraseTextFieldState.text
+            passphrase.isNotEmpty() && passphrase.contentEquals(confirmPassphraseTextFieldState.text)
+        }
+            .debounce(150.milliseconds)
+            .distinctUntilChanged()
+            .onEach { valid -> _providePassphraseState.update { it.copy(valid = valid) } }
+            .launchIn(viewModelScope)
+    }
 
     fun onEvent(event: ExportWizardUiEvent) {
         when (event) {

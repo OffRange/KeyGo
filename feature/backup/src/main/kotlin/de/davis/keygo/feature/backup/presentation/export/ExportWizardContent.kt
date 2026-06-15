@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.backup.presentation.export
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -8,15 +9,21 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -140,10 +147,42 @@ internal fun ExportWizardContent(
                                 scheduleState = state.scheduleState,
                                 destinationState = state.destinationState,
                                 passphraseState = state.providePassphraseState,
-                                onEvent = onEvent,
                             )
                         }
                     }
+                }
+            }
+
+            AnimatedVisibility(visible = state.step != ExportWizardStep.SelectFormat) {
+                Button(
+                    onClick = { onEvent(ExportWizardUiEvent.Continue) },
+                    enabled = state.canContinue,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                ) {
+                    val recurring = state.scheduleState.mode == ScheduleMode.Recurring
+                    val isReview = state.step == ExportWizardStep.Review
+                    AnimatedVisibility(
+                        visible = isReview
+                    ) {
+                        Icon(
+                            imageVector = if (recurring) Icons.Default.Schedule else Icons.Default.Backup,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .padding(end = ButtonDefaults.IconSpacing)
+                                .size(ButtonDefaults.IconSize),
+                        )
+                    }
+                    Text(
+                        text = stringResource(
+                            when {
+                                isReview && recurring -> R.string.schedule_backup
+                                isReview -> R.string.create_backup
+                                else -> R.string.continue_step
+                            }
+                        ),
+                    )
                 }
             }
         }

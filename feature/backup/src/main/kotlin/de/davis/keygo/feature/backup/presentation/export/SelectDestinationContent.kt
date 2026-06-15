@@ -52,29 +52,25 @@ internal fun SelectDestinationContent(
     onEvent: (ExportWizardUiEvent) -> Unit,
 ) {
     Surface {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                when (val destination = state.destination) {
-                    null -> DestinationChooserCard(
-                        onChoose = { onEvent(ExportWizardUiEvent.ChooseDestination) },
-                    )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            when (val destination = state.destination) {
+                null -> DestinationChooserCard(
+                    onChoose = { onEvent(ExportWizardUiEvent.ChooseDestination) },
+                )
 
-                    else -> DestinationSelectedCard(
-                        destination = destination,
-                        fileName = format.previewFileName(),
-                        onChange = { onEvent(ExportWizardUiEvent.ChooseDestination) },
-                    )
-                }
-
-                BehaviorHint(mode = scheduleState.mode, keepAll = scheduleState.keepAll)
+                else -> DestinationSelectedCard(
+                    destination = destination,
+                    fileName = format.previewFileName(),
+                    onChange = { onEvent(ExportWizardUiEvent.ChooseDestination) },
+                )
             }
 
-            ContinueButton(onEvent = onEvent)
+            BehaviorHint(mode = scheduleState.mode, keepAll = scheduleState.keepAll)
         }
     }
 }
