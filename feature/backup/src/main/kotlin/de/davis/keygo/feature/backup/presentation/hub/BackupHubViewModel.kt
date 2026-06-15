@@ -20,6 +20,9 @@ internal class BackupHubViewModel : ViewModel() {
     val state = _state.asStateFlow()
 
     fun onEvent(event: BackupHubUiEvent) {
-
+        when (event) {
+            BackupHubUiEvent.OnRestoreBackup -> {} //TODO
+            BackupHubUiEvent.OnScheduleBackupClick -> _event.trySend(BackupHubEvent.NavigateToExport)
+        }
     }
 }
