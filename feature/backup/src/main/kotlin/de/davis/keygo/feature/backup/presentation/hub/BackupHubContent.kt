@@ -40,6 +40,7 @@ import de.davis.keygo.feature.backup.R
 import de.davis.keygo.feature.backup.displayName
 import de.davis.keygo.feature.backup.domain.model.BackupInterval
 import de.davis.keygo.feature.backup.domain.model.FileFormat
+import de.davis.keygo.feature.backup.domain.model.IntervalUnit
 import de.davis.keygo.feature.backup.presentation.displayName
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupHubUiEvent
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupHubUiState
@@ -203,13 +204,13 @@ private fun BackupHubContentPreview() {
                         ScheduledBackup(
                             provider = "Nextcloud",
                             type = FileFormat.CSV,
-                            scheduleInterval = BackupInterval.Week(1),
+                            scheduleInterval = BackupInterval(count = 1, unit = IntervalUnit.Weeks),
                             path = "/path/to/backup"
                         ),
                         ScheduledBackup(
                             provider = "Google Drive",
                             type = FileFormat.KDBX,
-                            scheduleInterval = BackupInterval.Day(1),
+                            scheduleInterval = BackupInterval(count = 1, unit = IntervalUnit.Days),
                             path = "/path/to/drive/backup"
                         )
                     )

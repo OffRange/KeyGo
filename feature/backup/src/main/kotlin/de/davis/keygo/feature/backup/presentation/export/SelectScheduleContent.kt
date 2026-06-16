@@ -29,6 +29,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.feature.backup.domain.model.BackupInterval
+import de.davis.keygo.feature.backup.domain.model.IntervalUnit
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiEvent
 import de.davis.keygo.feature.backup.presentation.export.model.ScheduleMode
 import de.davis.keygo.feature.backup.presentation.export.model.SelectScheduleState
@@ -102,7 +103,7 @@ private class SelectScheduleStateProvider : PreviewParameterProvider<SelectSched
         SelectScheduleState(mode = ScheduleMode.OneTime),
         SelectScheduleState(
             mode = ScheduleMode.Recurring,
-            interval = BackupInterval.Day(3),
+            interval = BackupInterval(count = 3, unit = IntervalUnit.Days),
         ),
     )
 }

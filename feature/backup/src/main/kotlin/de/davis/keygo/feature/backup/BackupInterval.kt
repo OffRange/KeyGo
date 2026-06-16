@@ -4,43 +4,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import de.davis.keygo.feature.backup.domain.model.BackupInterval
-import de.davis.keygo.feature.backup.presentation.export.model.IntervalUnit
+import de.davis.keygo.feature.backup.domain.model.IntervalUnit
 
 internal val BackupInterval.displayName
     @Composable
-    get() = when (this) {
-        is BackupInterval.Day -> pluralStringResource(
+    get() = when (unit) {
+        IntervalUnit.Days -> pluralStringResource(
             R.plurals.backup_interval_days,
             count = count,
             count
         )
 
-        is BackupInterval.Week -> pluralStringResource(
+        IntervalUnit.Weeks -> pluralStringResource(
             R.plurals.backup_interval_weeks,
             count = count,
             count
         )
     }
-
-internal val BackupInterval.intervalCount: Int
-    get() = when (this) {
-        is BackupInterval.Day -> count
-        is BackupInterval.Week -> count
-    }
-
-internal val BackupInterval.intervalUnit: IntervalUnit
-    get() = when (this) {
-        is BackupInterval.Day -> IntervalUnit.Days
-        is BackupInterval.Week -> IntervalUnit.Weeks
-    }
-
-internal fun backupInterval(unit: IntervalUnit, count: Int): BackupInterval {
-    val safeCount = count.coerceAtLeast(1)
-    return when (unit) {
-        IntervalUnit.Days -> BackupInterval.Day(safeCount)
-        IntervalUnit.Weeks -> BackupInterval.Week(safeCount)
-    }
-}
 
 internal val IntervalUnit.label
     @Composable

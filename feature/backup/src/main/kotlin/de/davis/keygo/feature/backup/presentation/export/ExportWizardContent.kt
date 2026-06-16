@@ -1,7 +1,15 @@
 package de.davis.keygo.feature.backup.presentation.export
 
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.SeekableTransitionState
+import androidx.compose.animation.core.rememberTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,8 +22,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
@@ -35,6 +41,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
@@ -44,7 +52,6 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.feature.backup.R
-import de.davis.keygo.feature.backup.domain.model.BackupInterval
 import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.presentation.export.model.BackupDestination
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardStep
@@ -55,19 +62,38 @@ import de.davis.keygo.feature.backup.presentation.export.model.ScheduleMode
 import de.davis.keygo.feature.backup.presentation.export.model.SelectDestinationState
 import de.davis.keygo.feature.backup.presentation.export.model.SelectFormatState
 import de.davis.keygo.feature.backup.presentation.export.model.SelectScheduleState
+import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ExportWizardContent(
     state: ExportWizardUiState,
-    onEvent: (ExportWizardUiEvent) -> Unit
+    onEvent: (ExportWizardUiEvent) -> Unit,
+    navigateUp: () -> Unit,
 ) {
     val steps = state.steps
-    val currentPage = steps.indexOf(state.step).coerceAtLeast(0)
-    val pagerState = rememberPagerState(currentPage) { steps.size }
-    LaunchedEffect(currentPage) {
-        if (pagerState.currentPage != currentPage) {
-            pagerState.animateScrollToPage(currentPage)
+    val currentStep = state.step
+    val currentIndex = steps.indexOf(currentStep).coerceAtLeast(0)
+
+    val transitionState = remember { SeekableTransitionState(currentStep) }
+    val transition = rememberTransition(transitionState, label = "export_wizard_step")
+    val resetScope = rememberCoroutineScope()
+
+    LaunchedEffect(currentStep) {
+        if (transitionState.currentState != currentStep)
+            transitionState.animateTo(currentStep)
+    }
+
+    PredictiveBackHandler(enabled = currentIndex > 0) { progress ->
+        val previousStep = steps[currentIndex - 1]
+        try {
+            progress.collect { backEvent ->
+                transitionState.seekTo(backEvent.progress, targetState = previousStep)
+            }
+            onEvent(ExportWizardUiEvent.Back)
+        } catch (_: CancellationException) {
+            resetScope.launch { transitionState.animateTo(transitionState.currentState) }
         }
     }
 
@@ -79,7 +105,10 @@ internal fun ExportWizardContent(
                 },
                 navigationIcon = {
                     IconButton(
-                        onClick = { onEvent(ExportWizardUiEvent.Back) }
+                        onClick = {
+                            if (currentIndex == 0) navigateUp()
+                            else onEvent(ExportWizardUiEvent.Back)
+                        }
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Default.ArrowBack,
@@ -88,78 +117,17 @@ internal fun ExportWizardContent(
                     }
                 },
             )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .consumeWindowInsets(innerPadding)
-                .padding(start = 4.dp, end = 4.dp, bottom = 16.dp)
-                .imePadding(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                repeat(pagerState.pageCount) { page ->
-                    val color by animateColorAsState(
-                        targetValue = if (page <= pagerState.currentPage) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.primaryContainer,
-                        label = "indicator_page=$page",
-                    )
-                    Box(
-                        modifier = Modifier
-                            .height(8.dp)
-                            .weight(1f)
-                            .clip(CircleShape)
-                            .background(color),
-                    )
-                }
-            }
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.weight(1f),
-                userScrollEnabled = false,
-            ) { page ->
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    when (steps[page]) {
-                        ExportWizardStep.SelectFormat -> SelectFileFormatContent(onEvent = onEvent)
-                        ExportWizardStep.Schedule -> SelectScheduleContent(
-                            state = state.scheduleState,
-                            onEvent = onEvent,
-                        )
-
-                        ExportWizardStep.SelectDestination -> SelectDestinationContent(
-                            state = state.destinationState,
-                            scheduleState = state.scheduleState,
-                            format = state.formatState.format,
-                            onEvent = onEvent,
-                        )
-
-                        ExportWizardStep.ProvidePassphrase -> ProvidePassphraseContent(
-                            state = state.providePassphraseState,
-                            onEvent = onEvent
-                        )
-
-                        ExportWizardStep.Review -> state.formatState.format?.let { format ->
-                            ReviewBackupContent(
-                                format = format,
-                                scheduleState = state.scheduleState,
-                                destinationState = state.destinationState,
-                                passphraseState = state.providePassphraseState,
-                            )
-                        }
-                    }
-                }
-            }
-
-            AnimatedVisibility(visible = state.step != ExportWizardStep.SelectFormat) {
+        },
+        bottomBar = {
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 12.dp, horizontal = 4.dp)
+                    .imePadding(),
+            ) {
                 Button(
                     onClick = { onEvent(ExportWizardUiEvent.Continue) },
                     enabled = state.canContinue,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     val recurring = state.scheduleState.mode == ScheduleMode.Recurring
                     val isReview = state.step == ExportWizardStep.Review
@@ -186,6 +154,71 @@ internal fun ExportWizardContent(
                 }
             }
         }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
+                .padding(start = 4.dp, end = 4.dp)
+                .imePadding(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                repeat(steps.size) { page ->
+                    val color by animateColorAsState(
+                        targetValue = if (page <= currentIndex) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.primaryContainer,
+                        label = "indicator_page=$page",
+                    )
+                    Box(
+                        modifier = Modifier
+                            .height(8.dp)
+                            .weight(1f)
+                            .clip(CircleShape)
+                            .background(color),
+                    )
+                }
+            }
+            transition.AnimatedContent(
+                modifier = Modifier.weight(1f),
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(700)) togetherWith
+                            fadeOut(animationSpec = tween(700))
+                },
+            ) { step ->
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    when (step) {
+                        ExportWizardStep.SelectFormat -> SelectFileFormatContent(onEvent = onEvent)
+                        ExportWizardStep.Schedule -> SelectScheduleContent(
+                            state = state.scheduleState,
+                            onEvent = onEvent,
+                        )
+
+                        ExportWizardStep.SelectDestination -> SelectDestinationContent(
+                            state = state.destinationState,
+                            scheduleState = state.scheduleState,
+                            format = state.formatState.format,
+                            onEvent = onEvent,
+                        )
+
+                        ExportWizardStep.ProvidePassphrase -> ProvidePassphraseContent(
+                            state = state.providePassphraseState,
+                        )
+
+                        ExportWizardStep.Review -> state.formatState.format?.let { format ->
+                            ReviewBackupContent(
+                                format = format,
+                                scheduleState = state.scheduleState,
+                                destinationState = state.destinationState,
+                                passphraseState = state.providePassphraseState,
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -204,10 +237,7 @@ private class ExportWizardUiStateProvider : PreviewParameterProvider<ExportWizar
     override val values = ExportWizardStep.entries.asSequence().map {
         ExportWizardUiState(
             formatState = SelectFormatState(format = FileFormat.KDBX),
-            scheduleState = SelectScheduleState(
-                mode = ScheduleMode.Recurring,
-                interval = BackupInterval.Day(3),
-            ),
+            scheduleState = SelectScheduleState(),
             destinationState = SelectDestinationState(
                 destination = BackupDestination(
                     providerLabel = "Nextcloud",
@@ -233,7 +263,8 @@ private fun BackupHubContentPreview(@PreviewParameter(ExportWizardUiStateProvide
         ) {
             ExportWizardContent(
                 state = state,
-                onEvent = {}
+                onEvent = {},
+                navigateUp = {},
             )
         }
     }

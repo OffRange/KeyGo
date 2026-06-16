@@ -189,7 +189,10 @@ private fun App() {
                 }
             }
 
-            backupGraph(navigateToDestination = navController::navigate)
+            backupGraph(
+                navigateToDestination = navController::navigate,
+                navigateUp = { navController.navigateUp() },
+            )
         }
     }
 }

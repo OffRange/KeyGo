@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.backup.presentation.export
+package de.davis.keygo.feature.backup.presentation.export.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box

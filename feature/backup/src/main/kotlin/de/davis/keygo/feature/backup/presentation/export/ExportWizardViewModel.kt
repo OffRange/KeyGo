@@ -4,9 +4,6 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import de.davis.keygo.feature.backup.backupInterval
-import de.davis.keygo.feature.backup.intervalCount
-import de.davis.keygo.feature.backup.intervalUnit
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardStep
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiEvent
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiState
@@ -113,11 +110,11 @@ internal class ExportWizardViewModel : ViewModel() {
             }
 
             is ExportWizardUiEvent.IntervalUnitSelected -> _scheduleState.update {
-                it.copy(interval = backupInterval(event.unit, it.interval.intervalCount))
+                it.copy(interval = it.interval.copy(unit = event.unit))
             }
 
             is ExportWizardUiEvent.IntervalCountChanged -> _scheduleState.update {
-                it.copy(interval = backupInterval(it.interval.intervalUnit, event.count))
+                it.copy(interval = it.interval.copy(count = event.count.coerceAtLeast(1)))
             }
 
             is ExportWizardUiEvent.KeepCountChanged -> _scheduleState.update {

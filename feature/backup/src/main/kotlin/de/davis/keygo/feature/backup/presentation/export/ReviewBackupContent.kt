@@ -43,7 +43,9 @@ import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.feature.backup.R
 import de.davis.keygo.feature.backup.domain.model.BackupInterval
 import de.davis.keygo.feature.backup.domain.model.FileFormat
+import de.davis.keygo.feature.backup.domain.model.IntervalUnit
 import de.davis.keygo.feature.backup.presentation.displayName
+import de.davis.keygo.feature.backup.presentation.export.component.IconBadge
 import de.davis.keygo.feature.backup.presentation.export.model.BackupDestination
 import de.davis.keygo.feature.backup.presentation.export.model.ProvidePassphraseState
 import de.davis.keygo.feature.backup.presentation.export.model.ScheduleMode
@@ -301,7 +303,7 @@ private fun ReviewBackupContentPreview(
                 format = format,
                 scheduleState = SelectScheduleState(
                     mode = ScheduleMode.Recurring,
-                    interval = BackupInterval.Day(3),
+                    interval = BackupInterval(count = 3, unit = IntervalUnit.Days),
                 ),
                 destinationState = SelectDestinationState(
                     destination = BackupDestination(

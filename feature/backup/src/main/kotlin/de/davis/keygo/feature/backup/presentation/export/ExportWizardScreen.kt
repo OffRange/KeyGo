@@ -6,12 +6,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
-fun ExportWizardScreen() {
+fun ExportWizardScreen(navigateUp: () -> Unit) {
     val viewModel = koinViewModel<ExportWizardViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     ExportWizardContent(
         state = state,
         onEvent = viewModel::onEvent,
+        navigateUp = navigateUp,
     )
 }

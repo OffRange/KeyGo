@@ -71,11 +71,9 @@ import de.davis.keygo.core.ui.components.KeyGoSwitch
 import de.davis.keygo.feature.backup.R
 import de.davis.keygo.feature.backup.displayName
 import de.davis.keygo.feature.backup.domain.model.BackupInterval
-import de.davis.keygo.feature.backup.intervalCount
-import de.davis.keygo.feature.backup.intervalUnit
+import de.davis.keygo.feature.backup.domain.model.IntervalUnit
 import de.davis.keygo.feature.backup.label
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiEvent
-import de.davis.keygo.feature.backup.presentation.export.model.IntervalUnit
 import de.davis.keygo.feature.backup.presentation.export.model.ScheduleMode
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
@@ -88,8 +86,8 @@ internal fun IntervalPicker(
     shape: Shape,
     modifier: Modifier = Modifier,
 ) {
-    val count = interval.intervalCount
-    val unit = interval.intervalUnit
+    val count = interval.count
+    val unit = interval.unit
     ScheduleCard(
         title = stringResource(R.string.schedule_repeat_every_label),
         footerText = interval.displayName,

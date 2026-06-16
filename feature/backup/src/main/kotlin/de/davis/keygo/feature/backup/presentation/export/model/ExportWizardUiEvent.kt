@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.backup.presentation.export.model
 
 import de.davis.keygo.feature.backup.domain.model.FileFormat
+import de.davis.keygo.feature.backup.domain.model.IntervalUnit
 
 internal sealed interface ExportWizardUiEvent {
     data object Back : ExportWizardUiEvent

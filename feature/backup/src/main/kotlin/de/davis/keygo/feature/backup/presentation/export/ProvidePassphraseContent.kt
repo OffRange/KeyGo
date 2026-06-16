@@ -28,14 +28,12 @@ import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.core.ui.components.VisibilityButton
 import de.davis.keygo.feature.backup.R
-import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiEvent
 import de.davis.keygo.feature.backup.presentation.export.model.ProvidePassphraseState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun ProvidePassphraseContent(
     state: ProvidePassphraseState,
-    onEvent: (ExportWizardUiEvent) -> Unit
 ) {
     var passphraseHidden by rememberSaveable { mutableStateOf(true) }
     var confirmPassphraseHidden by rememberSaveable { mutableStateOf(true) }
