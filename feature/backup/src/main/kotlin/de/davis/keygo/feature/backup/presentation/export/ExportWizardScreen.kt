@@ -1,14 +1,32 @@
 package de.davis.keygo.feature.backup.presentation.export
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import de.davis.keygo.core.util.presentation.ObserveAsEvents
+import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardEvent
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun ExportWizardScreen(navigateUp: () -> Unit) {
     val viewModel = koinViewModel<ExportWizardViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
+
+    val destinationPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        viewModel.onDestinationPicked(uri)
+    }
+
+    ObserveAsEvents(flow = viewModel.event) {
+        when (it) {
+            ExportWizardEvent.OpenDestinationPicker -> {
+                destinationPicker.launch(null)
+            }
+        }
+    }
 
     ExportWizardContent(
         state = state,

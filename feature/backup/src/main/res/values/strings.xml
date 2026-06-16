@@ -43,6 +43,9 @@
     <string name="provide_passphrase_title">Provide Passphrase</string>
     <string name="review_backup_title">Review Backup Info</string>
 
+    <string name="destination_provider_unknown">Unknown</string>
+    <string name="destination_provider_on_device">This Device</string>
+
     <string name="destination_choose_title">Choose where to save</string>
     <string name="destination_choose_subtitle">Pick a folder on this device, or a cloud provider like Nextcloud, Drive, or Dropbox.</string>
     <string name="destination_choose_action">Choose location</string>

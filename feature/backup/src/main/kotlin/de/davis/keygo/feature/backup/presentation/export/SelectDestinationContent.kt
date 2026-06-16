@@ -14,7 +14,6 @@ import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -37,9 +36,9 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.feature.backup.R
+import de.davis.keygo.feature.backup.domain.model.BackupDestination
 import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.presentation.export.component.IconBadge
-import de.davis.keygo.feature.backup.presentation.export.model.BackupDestination
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiEvent
 import de.davis.keygo.feature.backup.presentation.export.model.ScheduleMode
 import de.davis.keygo.feature.backup.presentation.export.model.SelectDestinationState
@@ -79,6 +78,7 @@ internal fun SelectDestinationContent(
 @Composable
 private fun DestinationChooserCard(onChoose: () -> Unit) {
     Card(
+        onClick = onChoose,
         modifier = Modifier
             .fillMaxWidth()
             .dashedBorder(
@@ -111,12 +111,10 @@ private fun DestinationChooserCard(onChoose: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
                 textAlign = TextAlign.Center,
             )
-            FilledTonalButton(
-                onClick = onChoose,
-                modifier = Modifier.padding(top = 4.dp),
-            ) {
-                Text(text = stringResource(R.string.destination_choose_action))
-            }
+            Text(
+                text = stringResource(R.string.destination_choose_action),
+                style = MaterialTheme.typography.labelLarge
+            )
         }
     }
 }
@@ -168,7 +166,7 @@ private fun DestinationSelectedCard(
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = destination.providerLabel,
+                        text = destination.provider.label,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -235,12 +233,20 @@ private fun FileFormat?.previewFileName(): String = when (this) {
     null -> "keygo-backup"
 }
 
+private val BackupDestination.Provider.label
+    @Composable
+    get() = when (this) {
+        BackupDestination.Provider.Unknown -> stringResource(R.string.destination_provider_unknown)
+        BackupDestination.Provider.OnDevice -> stringResource(R.string.destination_provider_on_device)
+        is BackupDestination.Provider.ThirdParty -> name
+    }
+
 private class SelectDestinationStateProvider : PreviewParameterProvider<SelectDestinationState> {
     override val values = sequenceOf(
         SelectDestinationState(),
         SelectDestinationState(
             destination = BackupDestination(
-                providerLabel = "Nextcloud",
+                provider = BackupDestination.Provider.ThirdParty("Nextcloud"),
                 displayPath = "Backups / KeyGo",
             ),
         ),
