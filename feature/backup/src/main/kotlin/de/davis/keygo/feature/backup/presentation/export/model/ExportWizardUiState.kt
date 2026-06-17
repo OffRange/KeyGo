@@ -18,8 +18,3 @@ internal data class ExportWizardUiState(
         else -> true
     }
 }
-
-internal enum class ScheduleMode {
-    OneTime,
-    Recurring,
-}
