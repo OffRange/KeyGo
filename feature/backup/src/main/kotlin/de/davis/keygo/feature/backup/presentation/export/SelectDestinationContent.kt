@@ -11,6 +11,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -43,6 +45,7 @@ import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiEve
 import de.davis.keygo.feature.backup.presentation.export.model.ScheduleMode
 import de.davis.keygo.feature.backup.presentation.export.model.SelectDestinationState
 import de.davis.keygo.feature.backup.presentation.export.model.SelectScheduleState
+import de.davis.keygo.feature.backup.presentation.export.model.backupFileName
 
 @Composable
 internal fun SelectDestinationContent(
@@ -58,14 +61,16 @@ internal fun SelectDestinationContent(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            val isFile = scheduleState.mode == ScheduleMode.OneTime
             when (val destination = state.destination) {
                 null -> DestinationChooserCard(
+                    isFile = isFile,
                     onChoose = { onEvent(ExportWizardUiEvent.ChooseDestination) },
                 )
 
                 else -> DestinationSelectedCard(
                     destination = destination,
-                    fileName = format.previewFileName(),
+                    fileName = destination.fileName ?: format.backupFileName(),
                     onChange = { onEvent(ExportWizardUiEvent.ChooseDestination) },
                 )
             }
@@ -76,7 +81,7 @@ internal fun SelectDestinationContent(
 }
 
 @Composable
-private fun DestinationChooserCard(onChoose: () -> Unit) {
+private fun DestinationChooserCard(isFile: Boolean, onChoose: () -> Unit) {
     Card(
         onClick = onChoose,
         modifier = Modifier
@@ -98,7 +103,7 @@ private fun DestinationChooserCard(onChoose: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Icon(
-                imageVector = Icons.Default.CreateNewFolder,
+                imageVector = if (isFile) Icons.Default.FileUpload else Icons.Default.CreateNewFolder,
                 contentDescription = null,
             )
             Text(
@@ -106,14 +111,20 @@ private fun DestinationChooserCard(onChoose: () -> Unit) {
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(
-                text = stringResource(R.string.destination_choose_subtitle),
+                text = stringResource(
+                    if (isFile) R.string.destination_choose_file_subtitle
+                    else R.string.destination_choose_subtitle,
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
                 textAlign = TextAlign.Center,
             )
             Text(
-                text = stringResource(R.string.destination_choose_action),
-                style = MaterialTheme.typography.labelLarge
+                text = stringResource(
+                    if (isFile) R.string.destination_choose_file_action
+                    else R.string.destination_choose_action,
+                ),
+                style = MaterialTheme.typography.labelLarge,
             )
         }
     }
@@ -158,7 +169,8 @@ private fun DestinationSelectedCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 IconBadge(
-                    icon = Icons.Default.Folder,
+                    icon = if (destination.fileName != null) Icons.Default.Description
+                    else Icons.Default.Folder,
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     size = 44.dp,
@@ -225,12 +237,6 @@ private fun BehaviorHint(mode: ScheduleMode, keepAll: Boolean) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
-}
-
-private fun FileFormat?.previewFileName(): String = when (this) {
-    FileFormat.KDBX -> "keygo-backup.kdbx"
-    FileFormat.CSV -> "keygo-backup.csv"
-    null -> "keygo-backup"
 }
 
 private val BackupDestination.Provider.label

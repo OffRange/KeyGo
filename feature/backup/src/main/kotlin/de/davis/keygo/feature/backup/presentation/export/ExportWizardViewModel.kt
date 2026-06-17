@@ -1,6 +1,5 @@
 package de.davis.keygo.feature.backup.presentation.export
 
-import android.net.Uri
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
@@ -14,7 +13,9 @@ import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiSta
 import de.davis.keygo.feature.backup.presentation.export.model.ProvidePassphraseState
 import de.davis.keygo.feature.backup.presentation.export.model.SelectDestinationState
 import de.davis.keygo.feature.backup.presentation.export.model.SelectFormatState
+import de.davis.keygo.feature.backup.presentation.export.model.ScheduleMode
 import de.davis.keygo.feature.backup.presentation.export.model.SelectScheduleState
+import de.davis.keygo.feature.backup.presentation.export.model.backupFileName
 import de.davis.keygo.feature.backup.presentation.export.model.exportStepsFor
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
@@ -83,7 +84,7 @@ internal class ExportWizardViewModel(
             )
         )
 
-    private val _event = Channel<ExportWizardEvent>()
+    private val _event = Channel<ExportWizardEvent>(Channel.BUFFERED)
     val event = _event.receiveAsFlow()
 
     @OptIn(FlowPreview::class)
@@ -105,7 +106,13 @@ internal class ExportWizardViewModel(
             ExportWizardUiEvent.Continue -> nextStep()
 
             ExportWizardUiEvent.ChooseDestination -> {
-                _event.trySend(ExportWizardEvent.OpenDestinationPicker)
+                val pickerEvent = when (_scheduleState.value.mode) {
+                    ScheduleMode.Recurring -> ExportWizardEvent.PickFolder
+                    ScheduleMode.OneTime -> ExportWizardEvent.CreateFile(
+                        suggestedName = _formatState.value.format.backupFileName(),
+                    )
+                }
+                _event.trySend(pickerEvent)
             }
 
             // TODO: trigger the actual export once the export use case is wired up
@@ -140,13 +147,12 @@ internal class ExportWizardViewModel(
         }
     }
 
-    fun onDestinationPicked(uri: Uri?) {
+    fun onDestinationPicked(uri: BackupDestinationUri?) {
         if (uri == null) return
 
         viewModelScope.launch {
-            val destination =
-                backupDestinationResolver.resolve(BackupDestinationUri(uri.toString()))
-            
+            val destination = backupDestinationResolver.resolve(uri)
+
             _destinationState.update {
                 it.copy(destination = destination)
             }

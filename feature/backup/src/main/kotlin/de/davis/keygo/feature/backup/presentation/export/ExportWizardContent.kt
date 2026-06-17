@@ -52,6 +52,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.feature.backup.R
+import de.davis.keygo.feature.backup.domain.model.BackupDestination
 import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardStep
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiEvent
@@ -239,7 +240,7 @@ private class ExportWizardUiStateProvider : PreviewParameterProvider<ExportWizar
             scheduleState = SelectScheduleState(),
             destinationState = SelectDestinationState(
                 destination = BackupDestination(
-                    providerLabel = "Nextcloud",
+                    provider = BackupDestination.Provider.ThirdParty("Nextcloud"),
                     displayPath = "Backups / KeyGo",
                 ),
             ),

@@ -49,6 +49,8 @@
     <string name="destination_choose_title">Choose where to save</string>
     <string name="destination_choose_subtitle">Pick a folder on this device, or a cloud provider like Nextcloud, Drive, or Dropbox.</string>
     <string name="destination_choose_action">Choose location</string>
+    <string name="destination_choose_file_subtitle">Pick a file location on this device, or a cloud provider like Nextcloud, Drive, or Dropbox.</string>
+    <string name="destination_choose_file_action">Choose file</string>
     <string name="destination_change">Change</string>
     <string name="destination_filename_label">Saved as</string>
 
