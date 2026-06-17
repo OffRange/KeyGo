@@ -40,6 +40,7 @@ passGen = "0.1.0-beta"
 robolectric = "4.16.1"
 emvnfccard = "3.1.0"
 aboutlibraries = "14.2.1"
+work = "2.11.2"
 
 [libraries]
 google-protobuf-protoc = { group = "com.google.protobuf", name = "protoc", version.ref = "protoc" }
@@ -80,12 +81,15 @@ androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.r
 androidx-camera-compose = { module = "androidx.camera:camera-compose", version.ref = "camera" }
 androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camera" }
 
+androidx-work = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
+
 com-google-accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist" }
 
 koin-bom = { group = "io.insert-koin", name = "koin-bom", version.ref = "koinBOM" }
 koin-core = { group = "io.insert-koin", name = "koin-core" }
 koin-annotations = { group = "io.insert-koin", name = "koin-annotations" }
 koin-androidx-compose = { group = "io.insert-koin", name = "koin-androidx-compose" }
+koin-androidx-workmanager = { group = "io.insert-koin", name = "koin-androidx-workmanager" }
 
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }

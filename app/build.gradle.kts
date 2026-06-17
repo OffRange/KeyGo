@@ -98,6 +98,7 @@ dependencies {
     implementation(project.dependencies.platform(libs.koin.bom))
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.annotations)
+    implementation(libs.koin.androidx.workmanager)
 
     implementation(libs.aboutlibraries.compose.m3)
 

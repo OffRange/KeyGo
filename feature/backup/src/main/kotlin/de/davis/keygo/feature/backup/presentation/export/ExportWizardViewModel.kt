@@ -5,8 +5,12 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
+import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.backup.domain.BackupDestinationResolver
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
+import de.davis.keygo.feature.backup.domain.model.ExportDetails
+import de.davis.keygo.feature.backup.domain.usecase.FinishExportWizardUseCase
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardEvent
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardStep
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiEvent
@@ -43,6 +47,7 @@ import kotlin.time.Duration.Companion.milliseconds
 internal class ExportWizardViewModel(
     private val backupDestinationResolver: BackupDestinationResolver,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
+    private val finishExportWizard: FinishExportWizardUseCase,
 ) : ViewModel() {
 
     private val passphraseTextFieldState = TextFieldState()
@@ -120,7 +125,12 @@ internal class ExportWizardViewModel(
         when (event) {
             ExportWizardUiEvent.Back -> previousStep()
 
-            ExportWizardUiEvent.Continue -> nextStep()
+            ExportWizardUiEvent.Continue -> {
+                when {
+                    _step.value == ExportWizardStep.Review -> finishExport()
+                    else -> nextStep()
+                }
+            }
 
             ExportWizardUiEvent.ChooseDestination -> {
                 val pickerEvent = when (_scheduleState.value.mode) {
@@ -131,9 +141,6 @@ internal class ExportWizardViewModel(
                 }
                 _event.trySend(pickerEvent)
             }
-
-            // TODO: trigger the actual export once the export use case is wired up
-            ExportWizardUiEvent.Export -> Unit
 
             is ExportWizardUiEvent.FileFormatSelected -> {
                 _formatState.update {
@@ -180,7 +187,26 @@ internal class ExportWizardViewModel(
             val destination = backupDestinationResolver.resolve(uri)
 
             _destinationState.update {
-                it.copy(destination = destination)
+                it.copy(destination = destination, uri = uri)
+            }
+        }
+    }
+
+    private fun finishExport() {
+        viewModelScope.launch {
+            finishExportWizard(
+                ExportDetails(
+                    uri = _destinationState.value.uri!!, // Uri is not null, when the user reached review
+                    format = _formatState.value.format!!,
+                    interval = _scheduleState.value
+                        .takeIf { it.mode == ScheduleMode.Recurring }
+                        ?.interval,
+                    passphrase = passphraseTextFieldState.text.toString()
+                )
+            ).onSuccess {
+                _event.trySend(ExportWizardEvent.Finished)
+            }.onFailure {
+                // TODO: handle failure
             }
         }
     }

@@ -1,13 +1,24 @@
 package de.davis.keygo.feature.backup.presentation.export
 
 import de.davis.keygo.core.item.FakePasswordStrengthEstimator
+import de.davis.keygo.core.security.domain.KeyStoreManager
+import de.davis.keygo.core.security.domain.model.CryptographicMode
+import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.util.Result
 import de.davis.keygo.feature.backup.data.FakeBackupDestinationResolver
+import de.davis.keygo.feature.backup.domain.BackupScheduler
+import de.davis.keygo.feature.backup.domain.PersistableUriManager
 import de.davis.keygo.feature.backup.domain.model.BackupDestination
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
+import de.davis.keygo.feature.backup.domain.model.BackupInterval
+import de.davis.keygo.feature.backup.domain.model.BackupSchedule
 import de.davis.keygo.feature.backup.domain.model.FileFormat
+import de.davis.keygo.feature.backup.domain.repository.BackupScheduleRepository
+import de.davis.keygo.feature.backup.domain.usecase.FinishExportWizardUseCase
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardEvent
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiEvent
 import de.davis.keygo.feature.backup.presentation.export.model.ScheduleMode
+import javax.crypto.Cipher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -26,6 +37,12 @@ class ExportWizardViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val resolver = FakeBackupDestinationResolver()
     private val estimator = FakePasswordStrengthEstimator()
+    private val finishExportWizard = FinishExportWizardUseCase(
+        backupScheduler = FakeBackupScheduler(),
+        keyStoreManager = FakeKeyStoreManager(),
+        persistableUriManager = FakePersistableUriManager(),
+        backupScheduleRepository = FakeBackupScheduleRepository(),
+    )
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(dispatcher)
@@ -36,6 +53,7 @@ class ExportWizardViewModelTest {
     private fun viewModel() = ExportWizardViewModel(
         backupDestinationResolver = resolver,
         passwordStrengthEstimator = estimator,
+        finishExportWizard = finishExportWizard,
     )
 
     @Test
@@ -159,4 +177,32 @@ class ExportWizardViewModelTest {
                 .scheduleState
             assertEquals(ScheduleMode.OneTime, schedule.mode)
         }
+}
+
+// Placeholder fakes: these wizard tests never reach the finish step, so the use
+// case is constructed but never invoked. Replace with shared testFixtures fakes
+// once the worker layer provides them.
+private class FakeBackupScheduler : BackupScheduler {
+    override fun scheduleRecurringBackup(interval: BackupInterval) = Unit
+    override fun scheduleOneTimeBackup() = Unit
+    override fun cancel() = Unit
+}
+
+private class FakePersistableUriManager : PersistableUriManager {
+    override fun takePersistableUriPermission(uri: BackupDestinationUri) = Unit
+    override fun releasePersistableUriPermission(uri: BackupDestinationUri) = Unit
+}
+
+private class FakeBackupScheduleRepository : BackupScheduleRepository {
+    override suspend fun getSchedule(): BackupSchedule? = null
+    override suspend fun setSchedule(schedule: BackupSchedule): Result<Unit, Unit> =
+        Result.Success(Unit)
+}
+
+private class FakeKeyStoreManager : KeyStoreManager {
+    override fun getOrCreateCipherFor(
+        keyId: KeyId,
+        cryptographicMode: CryptographicMode,
+        iv: ByteArray?,
+    ): Cipher = throw UnsupportedOperationException("not used in these tests")
 }

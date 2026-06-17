@@ -1,8 +1,12 @@
 package de.davis.keygo.core.security.domain.model
 
-data class KeyId(val id: String) {
+data class KeyId(
+    val id: String,
+    val needsAuthentication: Boolean,
+) {
 
     companion object {
-        val BiometricVaultKek = KeyId("biometric_vault_kek")
+        val BiometricVaultKek = KeyId("biometric_vault_kek", true)
+        val BackupPassphraseKey = KeyId("backup_passphrase_key", false)
     }
 }
