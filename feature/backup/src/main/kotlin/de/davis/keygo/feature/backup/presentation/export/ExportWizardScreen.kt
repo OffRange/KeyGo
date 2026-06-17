@@ -32,6 +32,7 @@ fun ExportWizardScreen(navigateUp: () -> Unit) {
 
     ObserveAsEvents(flow = viewModel.event) {
         when (it) {
+            ExportWizardEvent.Finished -> navigateUp()
             ExportWizardEvent.PickFolder -> folderPicker.launch(null)
             is ExportWizardEvent.CreateFile -> filePicker.launch(it.suggestedName)
         }

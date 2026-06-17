@@ -18,4 +18,5 @@ dependencies {
     implementation(projects.core.ui)
     implementation(projects.core.util)
     implementation(projects.core.item)
+    implementation(projects.core.security)
 }
