@@ -4,6 +4,7 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.feature.backup.domain.BackupDestinationResolver
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardEvent
@@ -11,12 +12,14 @@ import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardStep
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiEvent
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiState
 import de.davis.keygo.feature.backup.presentation.export.model.ProvidePassphraseState
+import de.davis.keygo.feature.backup.presentation.export.model.ScheduleMode
 import de.davis.keygo.feature.backup.presentation.export.model.SelectDestinationState
 import de.davis.keygo.feature.backup.presentation.export.model.SelectFormatState
-import de.davis.keygo.feature.backup.presentation.export.model.ScheduleMode
 import de.davis.keygo.feature.backup.presentation.export.model.SelectScheduleState
 import de.davis.keygo.feature.backup.presentation.export.model.backupFileName
 import de.davis.keygo.feature.backup.presentation.export.model.exportStepsFor
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +27,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -36,7 +41,8 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
 internal class ExportWizardViewModel(
-    private val backupDestinationResolver: BackupDestinationResolver
+    private val backupDestinationResolver: BackupDestinationResolver,
+    private val passwordStrengthEstimator: PasswordStrengthEstimator,
 ) : ViewModel() {
 
     private val passphraseTextFieldState = TextFieldState()
@@ -87,15 +93,26 @@ internal class ExportWizardViewModel(
     private val _event = Channel<ExportWizardEvent>(Channel.BUFFERED)
     val event = _event.receiveAsFlow()
 
-    @OptIn(FlowPreview::class)
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private fun observePassphrase() {
         snapshotFlow {
             val passphrase = passphraseTextFieldState.text
-            passphrase.isNotEmpty() && passphrase.contentEquals(confirmPassphraseTextFieldState.text)
+            val valid =
+                passphrase.isNotEmpty() && passphrase.contentEquals(confirmPassphraseTextFieldState.text)
+            passphrase to valid
         }
             .debounce(150.milliseconds)
             .distinctUntilChanged()
-            .onEach { valid -> _providePassphraseState.update { it.copy(valid = valid) } }
+            .mapLatest { (pwd, valid) -> passwordStrengthEstimator(pwd.toString()) to valid }
+            .onEach { (score, valid) ->
+                _providePassphraseState.update {
+                    it.copy(
+                        passphraseScore = score,
+                        valid = valid
+                    )
+                }
+            }
+            .flowOn(Dispatchers.Default)
             .launchIn(viewModelScope)
     }
 
