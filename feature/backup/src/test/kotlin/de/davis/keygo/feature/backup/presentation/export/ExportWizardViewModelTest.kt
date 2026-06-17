@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.backup.presentation.export
 
+import de.davis.keygo.core.item.FakePasswordStrengthEstimator
 import de.davis.keygo.feature.backup.data.FakeBackupDestinationResolver
 import de.davis.keygo.feature.backup.domain.model.BackupDestination
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
@@ -24,6 +25,7 @@ class ExportWizardViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
     private val resolver = FakeBackupDestinationResolver()
+    private val estimator = FakePasswordStrengthEstimator()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(dispatcher)
@@ -31,7 +33,10 @@ class ExportWizardViewModelTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun viewModel() = ExportWizardViewModel(backupDestinationResolver = resolver)
+    private fun viewModel() = ExportWizardViewModel(
+        backupDestinationResolver = resolver,
+        passwordStrengthEstimator = estimator,
+    )
 
     @Test
     fun `choosing a destination with the default schedule mode opens the folder picker`() =
@@ -110,5 +115,48 @@ class ExportWizardViewModelTest {
 
             assertEquals(null, resolver.lastUri)
             assertEquals(null, vm.state.first().destinationState.destination)
+        }
+
+    @Test
+    fun `selecting a non-encrypted format forces one-time and disables recurring`() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+
+            vm.onEvent(ExportWizardUiEvent.FileFormatSelected(FileFormat.CSV))
+
+            val schedule = vm.state
+                .first { it.scheduleState.mode == ScheduleMode.OneTime }
+                .scheduleState
+            assertEquals(ScheduleMode.OneTime, schedule.mode)
+            assertEquals(false, schedule.recurringAllowed)
+        }
+
+    @Test
+    fun `re-selecting an encrypted format re-enables recurring without overriding one-time`() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            vm.onEvent(ExportWizardUiEvent.FileFormatSelected(FileFormat.CSV))
+
+            vm.onEvent(ExportWizardUiEvent.FileFormatSelected(FileFormat.KDBX))
+
+            val schedule = vm.state
+                .first { it.scheduleState.mode == ScheduleMode.OneTime }
+                .scheduleState
+            assertEquals(true, schedule.recurringAllowed)
+            assertEquals(ScheduleMode.OneTime, schedule.mode)
+        }
+
+    @Test
+    fun `selecting recurring mode is ignored when recurring is not allowed`() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            vm.onEvent(ExportWizardUiEvent.FileFormatSelected(FileFormat.CSV))
+
+            vm.onEvent(ExportWizardUiEvent.ScheduleModeSelected(ScheduleMode.Recurring))
+
+            val schedule = vm.state
+                .first { it.scheduleState.mode == ScheduleMode.OneTime }
+                .scheduleState
+            assertEquals(ScheduleMode.OneTime, schedule.mode)
         }
 }

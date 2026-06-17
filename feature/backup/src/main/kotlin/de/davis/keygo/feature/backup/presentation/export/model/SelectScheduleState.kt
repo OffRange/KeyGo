@@ -10,4 +10,5 @@ internal data class SelectScheduleState(
     val interval: BackupInterval = BackupInterval(count = 3, unit = IntervalUnit.Days),
     val keepCount: Int = 5,
     val keepAll: Boolean = false,
+    val recurringAllowed: Boolean = true,
 )

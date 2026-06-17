@@ -62,6 +62,7 @@
     <string name="schedule_one_time_description">Export once to a location you choose. Nothing is saved or repeated.</string>
     <string name="schedule_recurring_title">Recurring backup</string>
     <string name="schedule_recurring_description">KeyGo automatically creates a fresh backup on the schedule you set.</string>
+    <string name="schedule_recurring_requires_encryption">Recurring backups require an encrypted format. Choose KDBX to schedule automatic backups.</string>
 
     <string name="schedule_repeat_every_label">Repeat every</string>
     <string name="schedule_auto_delete_label">Auto-delete old backups</string>

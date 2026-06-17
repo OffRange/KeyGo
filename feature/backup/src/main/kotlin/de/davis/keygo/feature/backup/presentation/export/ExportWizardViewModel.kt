@@ -139,11 +139,20 @@ internal class ExportWizardViewModel(
                 _formatState.update {
                     it.copy(format = event.format)
                 }
+                val recurringAllowed = event.format.encrypted
+                _scheduleState.update {
+                    it.copy(
+                        recurringAllowed = recurringAllowed,
+                        mode = if (!recurringAllowed && it.mode == ScheduleMode.Recurring) ScheduleMode.OneTime
+                        else it.mode,
+                    )
+                }
                 nextStep()
             }
 
             is ExportWizardUiEvent.ScheduleModeSelected -> _scheduleState.update {
-                it.copy(mode = event.mode)
+                if (event.mode == ScheduleMode.Recurring && !it.recurringAllowed) it
+                else it.copy(mode = event.mode)
             }
 
             is ExportWizardUiEvent.IntervalUnitSelected -> _scheduleState.update {

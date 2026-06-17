@@ -28,6 +28,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.feature.backup.R
 import de.davis.keygo.feature.backup.domain.model.BackupInterval
 import de.davis.keygo.feature.backup.domain.model.IntervalUnit
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiEvent
@@ -49,8 +50,10 @@ internal fun SelectScheduleContent(
         ) {
             ScheduleMode.entries.forEachIndexed { index, mode ->
                 val selected = state.mode == mode
+                val recurringDisabled = mode == ScheduleMode.Recurring && !state.recurringAllowed
                 SegmentedListItem(
                     checked = selected,
+                    enabled = !recurringDisabled,
                     onCheckedChange = { onEvent(ExportWizardUiEvent.ScheduleModeSelected(mode)) },
                     shapes = ListItemDefaults.segmentedShapes(index, ScheduleMode.entries.size),
                     colors = ListItemDefaults.segmentedColors(
@@ -64,7 +67,12 @@ internal fun SelectScheduleContent(
                         )
                     },
                     supportingContent = {
-                        Text(text = stringResource(mode.descriptionRes))
+                        Text(
+                            text = stringResource(
+                                if (recurringDisabled) R.string.schedule_recurring_requires_encryption
+                                else mode.descriptionRes,
+                            ),
+                        )
                     },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
