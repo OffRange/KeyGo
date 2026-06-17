@@ -17,4 +17,6 @@ internal data class ExportWizardUiState(
         ExportWizardStep.ProvidePassphrase -> providePassphraseState.valid
         else -> true
     }
+
+    val showsContinueButton: Boolean = step != ExportWizardStep.SelectFormat
 }

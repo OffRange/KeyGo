@@ -119,38 +119,40 @@ internal fun ExportWizardContent(
             )
         },
         bottomBar = {
-            Box(
-                modifier = Modifier
-                    .padding(vertical = 12.dp, horizontal = 4.dp)
-                    .imePadding(),
-            ) {
-                Button(
-                    onClick = { onEvent(ExportWizardUiEvent.Continue) },
-                    enabled = state.canContinue,
-                    modifier = Modifier.fillMaxWidth()
+            AnimatedVisibility(visible = state.showsContinueButton) {
+                Box(
+                    modifier = Modifier
+                        .padding(vertical = 12.dp, horizontal = 4.dp)
+                        .imePadding(),
                 ) {
-                    val recurring = state.scheduleState.mode == ScheduleMode.Recurring
-                    val isReview = state.step == ExportWizardStep.Review
-                    AnimatedVisibility(
-                        visible = isReview
+                    Button(
+                        onClick = { onEvent(ExportWizardUiEvent.Continue) },
+                        enabled = state.canContinue,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(
-                            imageVector = if (recurring) Icons.Default.Schedule else Icons.Default.Backup,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .padding(end = ButtonDefaults.IconSpacing)
-                                .size(ButtonDefaults.IconSize),
+                        val recurring = state.scheduleState.mode == ScheduleMode.Recurring
+                        val isReview = state.step == ExportWizardStep.Review
+                        AnimatedVisibility(
+                            visible = isReview
+                        ) {
+                            Icon(
+                                imageVector = if (recurring) Icons.Default.Schedule else Icons.Default.Backup,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .padding(end = ButtonDefaults.IconSpacing)
+                                    .size(ButtonDefaults.IconSize),
+                            )
+                        }
+                        Text(
+                            text = stringResource(
+                                when {
+                                    isReview && recurring -> R.string.schedule_backup
+                                    isReview -> R.string.create_backup
+                                    else -> R.string.continue_step
+                                }
+                            ),
                         )
                     }
-                    Text(
-                        text = stringResource(
-                            when {
-                                isReview && recurring -> R.string.schedule_backup
-                                isReview -> R.string.create_backup
-                                else -> R.string.continue_step
-                            }
-                        ),
-                    )
                 }
             }
         }
