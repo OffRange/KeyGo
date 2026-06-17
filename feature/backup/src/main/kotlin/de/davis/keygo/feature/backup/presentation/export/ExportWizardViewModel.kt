@@ -173,7 +173,7 @@ internal class ExportWizardViewModel(
             val destination = backupDestinationResolver.resolve(uri)
 
             _destinationState.update {
-                it.copy(destination = destination)
+                it.copy(destination = destination, uri = uri)
             }
         }
     }
