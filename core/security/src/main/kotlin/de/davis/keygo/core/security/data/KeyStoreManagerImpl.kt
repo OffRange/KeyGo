@@ -33,10 +33,9 @@ internal class KeyStoreManagerImpl(
         iv: ByteArray?,
     ): Cipher {
         val alias = keyId.id
-
         val key = when (keyStore.containsAlias(alias)) {
             true -> keyStore.getKey(alias, null)
-            else -> createKeyFor(alias)
+            else -> createKeyFor(keyId)
         }
 
         val cipher = Cipher.getInstance("$ALGORITHM/$BLOCK_MODE/$PADDING_MODE")
@@ -56,15 +55,17 @@ internal class KeyStoreManagerImpl(
         return cipher
     }
 
-    private fun createKeyFor(alias: String): SecretKey {
+    private fun createKeyFor(keyId: KeyId): SecretKey {
         val spec = KeyGenParameterSpec.Builder(
-            alias,
+            keyId.id,
             KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
         ).apply {
             setBlockModes(BLOCK_MODE)
             setEncryptionPaddings(PADDING_MODE)
 
-            setUserAuthenticationRequired(true)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) setUnlockedDeviceRequired(true)
+
+            setUserAuthenticationRequired(keyId.needsAuthentication)
             setInvalidatedByBiometricEnrollment(true)
 
             setRandomizedEncryptionRequired(true)
