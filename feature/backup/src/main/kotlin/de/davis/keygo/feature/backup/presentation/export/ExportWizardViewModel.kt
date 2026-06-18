@@ -5,9 +5,14 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
+import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
+import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
+import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
+import de.davis.keygo.feature.backup.R
 import de.davis.keygo.feature.backup.domain.BackupDestinationResolver
+import de.davis.keygo.feature.backup.domain.model.FinishExportWizardError
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
 import de.davis.keygo.feature.backup.domain.model.ExportDetails
 import de.davis.keygo.feature.backup.domain.usecase.FinishExportWizardUseCase
@@ -48,6 +53,7 @@ internal class ExportWizardViewModel(
     private val backupDestinationResolver: BackupDestinationResolver,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val finishExportWizard: FinishExportWizardUseCase,
+    private val snackbarManager: SnackbarManager,
 ) : ViewModel() {
 
     private val passphraseTextFieldState = TextFieldState()
@@ -205,8 +211,20 @@ internal class ExportWizardViewModel(
                 )
             ).onSuccess {
                 _event.trySend(ExportWizardEvent.Finished)
-            }.onFailure {
-                // TODO: handle failure
+            }.onFailure { error ->
+                if (error == FinishExportWizardError.PassphraseEmpty)
+                    _step.update { ExportWizardStep.ProvidePassphrase }
+
+                val messageRes = when (error) {
+                    FinishExportWizardError.PassphraseEmpty -> R.string.export_error_passphrase_empty
+                    FinishExportWizardError.CryptoFailed -> R.string.export_error_crypto
+                    FinishExportWizardError.SchedulePersistenceFailed -> R.string.export_error_schedule
+                    FinishExportWizardError.DestinationPermissionDenied -> R.string.export_error_destination_permission
+                }
+
+                snackbarManager.sendMessage(
+                    SnackbarMessage(message = ResourceString(messageRes)),
+                )
             }
         }
     }

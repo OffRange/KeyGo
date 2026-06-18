@@ -114,4 +114,9 @@
     <string name="create_backup">Create Backup</string>
 
     <string name="enable">Enable</string>
+
+    <string name="export_error_passphrase_empty">Enter a passphrase to encrypt the backup</string>
+    <string name="export_error_crypto">Couldn\'t secure the passphrase. Please try again</string>
+    <string name="export_error_schedule">Couldn\'t save the backup. Please try again</string>
+    <string name="export_error_destination_permission">Couldn\'t get access to the selected folder. Choose it again</string>
 </resources>

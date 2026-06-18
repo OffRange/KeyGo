@@ -4,4 +4,5 @@ sealed interface FinishExportWizardError {
     data object PassphraseEmpty : FinishExportWizardError
     data object CryptoFailed : FinishExportWizardError
     data object SchedulePersistenceFailed : FinishExportWizardError
+    data object DestinationPermissionDenied : FinishExportWizardError
 }

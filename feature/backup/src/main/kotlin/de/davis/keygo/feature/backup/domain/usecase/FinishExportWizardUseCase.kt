@@ -43,7 +43,11 @@ class FinishExportWizardUseCase(
                     .bind { FinishExportWizardError.SchedulePersistenceFailed }
 
                 else -> {
-                    persistableUriManager.takePersistableUriPermission(details.uri)
+                    runCatching { persistableUriManager.takePersistableUriPermission(details.uri) }
+                        .getOrNull()
+                        .asResult(FinishExportWizardError.DestinationPermissionDenied)
+                        .bind()
+
                     backupScheduler.scheduleRecurringBackup(job, interval)
                         .bind { FinishExportWizardError.SchedulePersistenceFailed }
                 }
