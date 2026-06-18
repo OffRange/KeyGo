@@ -12,9 +12,9 @@ import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.feature.backup.R
 import de.davis.keygo.feature.backup.domain.BackupDestinationResolver
-import de.davis.keygo.feature.backup.domain.model.FinishExportWizardError
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
 import de.davis.keygo.feature.backup.domain.model.ExportDetails
+import de.davis.keygo.feature.backup.domain.model.FinishExportWizardError
 import de.davis.keygo.feature.backup.domain.usecase.FinishExportWizardUseCase
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardEvent
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardStep
@@ -199,17 +199,10 @@ internal class ExportWizardViewModel(
     }
 
     private fun finishExport() {
+        val details = currentExportDetails() ?: return
+
         viewModelScope.launch {
-            finishExportWizard(
-                ExportDetails(
-                    uri = _destinationState.value.uri!!, // Uri is not null, when the user reached review
-                    format = _formatState.value.format!!,
-                    interval = _scheduleState.value
-                        .takeIf { it.mode == ScheduleMode.Recurring }
-                        ?.interval,
-                    passphrase = passphraseTextFieldState.text.toString()
-                )
-            ).onSuccess {
+            finishExportWizard(details).onSuccess {
                 _event.trySend(ExportWizardEvent.Finished)
             }.onFailure { error ->
                 if (error == FinishExportWizardError.PassphraseEmpty)
@@ -227,6 +220,20 @@ internal class ExportWizardViewModel(
                 )
             }
         }
+    }
+
+    private fun currentExportDetails(): ExportDetails? {
+        val format = _formatState.value.format ?: return null
+        val uri = _destinationState.value.uri ?: return null
+
+        return ExportDetails(
+            uri = uri,
+            format = format,
+            interval = _scheduleState.value
+                .takeIf { it.mode == ScheduleMode.Recurring }
+                ?.interval,
+            passphrase = passphraseTextFieldState.text.toString(),
+        )
     }
 
     private fun nextStep() = _step.update { current ->
