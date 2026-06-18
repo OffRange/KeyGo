@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package de.davis.keygo.feature.backup.data.local.model;
+option java_multiple_files = true;
+
+message ProtoBackupJob {
+  string uri = 1;
+  string format = 2;
+
+  optional bytes passphrase_ct = 3;
+  optional bytes passphrase_iv = 4;
+
+  int64 created_at = 5;
+}
+
+message ProtoBackupJobs {
+  map<string, ProtoBackupJob> jobs = 1;
+}

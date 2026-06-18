@@ -6,8 +6,8 @@ import androidx.datastore.dataStore
 import androidx.work.WorkManager
 import com.google.protobuf.MessageLite
 import com.google.protobuf.Parser
-import de.davis.keygo.feature.backup.data.local.model.ProtoBackupSchedule
-import de.davis.keygo.feature.backup.di.annotation.BackupScheduleQualifier
+import de.davis.keygo.feature.backup.data.local.model.ProtoBackupJobs
+import de.davis.keygo.feature.backup.di.annotation.BackupJobsQualifier
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Module
@@ -20,18 +20,18 @@ import java.io.OutputStream
 @ComponentScan("de.davis.keygo.feature.backup")
 object FeatureBackupModule {
 
-    private val Context.backupScheduleDataStore by dataStore(
-        "backup_schedule.pb",
+    private val Context.backupJobsDataStore by dataStore(
+        "backup_jobs.pb",
         DefaultProtoSerializer(
-            defaultInstance = ProtoBackupSchedule.getDefaultInstance(),
-            parser = ProtoBackupSchedule.parser()
+            defaultInstance = ProtoBackupJobs.getDefaultInstance(),
+            parser = ProtoBackupJobs.parser()
         )
     )
 
     @Single
-    @BackupScheduleQualifier
-    internal fun provideBackupScheduleDataStore(context: Context) =
-        context.backupScheduleDataStore
+    @BackupJobsQualifier
+    internal fun provideBackupJobsDataStore(context: Context) =
+        context.backupJobsDataStore
 
     @Single
     internal fun provideWorkManager(context: Context): WorkManager =

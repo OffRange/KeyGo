@@ -9,10 +9,9 @@ import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.backup.domain.BackupScheduler
 import de.davis.keygo.feature.backup.domain.PersistableUriManager
-import de.davis.keygo.feature.backup.domain.model.BackupSchedule
+import de.davis.keygo.feature.backup.domain.model.BackupJob
 import de.davis.keygo.feature.backup.domain.model.ExportDetails
 import de.davis.keygo.feature.backup.domain.model.FinishExportWizardError
-import de.davis.keygo.feature.backup.domain.repository.BackupScheduleRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.core.annotation.Single
@@ -22,7 +21,6 @@ class FinishExportWizardUseCase(
     private val backupScheduler: BackupScheduler,
     private val keyStoreManager: KeyStoreManager,
     private val persistableUriManager: PersistableUriManager,
-    private val backupScheduleRepository: BackupScheduleRepository,
 ) {
 
     suspend operator fun invoke(details: ExportDetails): Result<Unit, FinishExportWizardError> =
@@ -30,39 +28,43 @@ class FinishExportWizardUseCase(
             if (details.format.encrypted && details.passphrase.isBlank())
                 return Result.Failure(FinishExportWizardError.PassphraseEmpty)
 
+            val passphrase = if (details.format.encrypted)
+                wrapPassphrase(details.passphrase).bind()
+            else null
+
+            val job = BackupJob(
+                uri = details.uri,
+                passphrase = passphrase,
+                format = details.format,
+            )
+
             when (val interval = details.interval) {
-                null -> backupScheduler.scheduleOneTimeBackup()
+                null -> backupScheduler.scheduleOneTimeBackup(job)
+                    .bind { FinishExportWizardError.SchedulePersistenceFailed }
+
                 else -> {
-                    setupRecurringSchedule(details).bind()
                     persistableUriManager.takePersistableUriPermission(details.uri)
-                    backupScheduler.scheduleRecurringBackup(interval)
+                    backupScheduler.scheduleRecurringBackup(job, interval)
+                        .bind { FinishExportWizardError.SchedulePersistenceFailed }
                 }
             }
 
             return Result.Success(Unit)
         }
 
-    private suspend fun setupRecurringSchedule(details: ExportDetails) = resultBinding {
-        val encrypted = withContext(Dispatchers.Default) {
-            val cipher = keyStoreManager.getOrCreateCipherFor(
-                keyId = KeyId.BackupPassphraseKey,
-                cryptographicMode = CryptographicMode.Encrypt,
-            )
+    private suspend fun wrapPassphrase(
+        passphrase: String,
+    ): Result<CryptographicData, FinishExportWizardError> = withContext(Dispatchers.Default) {
+        val cipher = keyStoreManager.getOrCreateCipherFor(
+            keyId = KeyId.BackupPassphraseKey,
+            cryptographicMode = CryptographicMode.Encrypt,
+        )
 
-            runCatching {
-                CryptographicData(
-                    data = cipher.doFinal(details.passphrase.encodeToByteArray()),
-                    iv = cipher.iv
-                )
-            }.getOrNull().asResult(FinishExportWizardError.CryptoFailed).bind()
-        }
-
-        backupScheduleRepository.setSchedule(
-            BackupSchedule(
-                uri = details.uri,
-                passphrase = encrypted,
-                format = details.format,
+        runCatching {
+            CryptographicData(
+                data = cipher.doFinal(passphrase.encodeToByteArray()),
+                iv = cipher.iv,
             )
-        ).bind { FinishExportWizardError.SchedulePersistenceFailed }
+        }.getOrNull().asResult(FinishExportWizardError.CryptoFailed)
     }
 }
