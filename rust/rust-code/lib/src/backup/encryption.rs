@@ -3,14 +3,11 @@ use crate::backup::key::BackupKey;
 use crate::backup::BackupError;
 use crate::crypto::keys::AccountRootKey;
 use crate::crypto::primitive::aead_data::{AeadCiphertext, AeadEncryptor};
+use crate::crypto::primitive::argon2::Argon2Params;
 use crate::crypto::random::random_bytes;
 use serde::{Deserialize, Serialize};
 
 const NONCE_LEN: usize = 12;
-
-const ARGON2_MEM_KIB: u32 = 65536;
-const ARGON2_ITERS: u32 = 3;
-const ARGON2_LANES: u32 = 4;
 
 #[derive(Serialize, Deserialize)]
 pub struct EncryptionHeader {
@@ -50,17 +47,19 @@ pub enum Kdf {
     },
 }
 
-fn argon2id_kdf(salt: Vec<u8>) -> Kdf {
-    Kdf::Argon2id {
-        salt,
-        mem_kib: ARGON2_MEM_KIB,
-        iters: ARGON2_ITERS,
-        lanes: ARGON2_LANES,
+impl Kdf {
+    fn argon2id(salt: Vec<u8>, params: Argon2Params) -> Self {
+        Kdf::Argon2id {
+            salt,
+            mem_kib: params.mem_kib,
+            iters: params.iters,
+            lanes: params.lanes,
+        }
     }
-}
 
-fn hkdf_sha256_kdf(salt: Vec<u8>) -> Kdf {
-    Kdf::HkdfSha256 { salt }
+    fn hkdf_sha256(salt: Vec<u8>) -> Self {
+        Kdf::HkdfSha256 { salt }
+    }
 }
 
 /// Evolve it only via a version bump, never by editing fields in place.
@@ -93,15 +92,18 @@ pub fn seal(
 ) -> Result<SealedPayload, BackupError> {
     let salt = random_bytes::<16>();
     let (backup_key, source, kdf) = match cred {
-        BackupCredential::Passphrase(passphrase) => (
-            BackupKey::from_passphrase(passphrase, &salt)?,
-            KeySource::Passphrase,
-            argon2id_kdf(salt.to_vec()),
-        ),
+        BackupCredential::Passphrase(passphrase) => {
+            let argon_param = Argon2Params::default();
+            (
+                BackupKey::from_passphrase(passphrase, &salt, argon_param)?,
+                KeySource::Passphrase,
+                Kdf::argon2id(salt.to_vec(), argon_param),
+            )
+        }
         BackupCredential::Ark(ark) => (
             BackupKey::from_ark(ark, &salt)?,
             KeySource::Ark,
-            hkdf_sha256_kdf(salt.to_vec()),
+            Kdf::hkdf_sha256(salt.to_vec()),
         ),
     };
     let aad = BackupAad {
@@ -138,15 +140,28 @@ pub fn open(
         // Credential's source disagrees with the header's declared source.
         (KeySource::Passphrase, _, Some(BackupCredential::Ark(_)))
         | (KeySource::Ark, _, Some(BackupCredential::Passphrase(_))) => {
-            return Err(BackupError::CredentialMismatch)
+            return Err(BackupError::CredentialMismatch);
         }
 
         // Source matches credential and the KDF matches the source: derive.
         (
             KeySource::Passphrase,
-            Kdf::Argon2id { salt, .. },
+            Kdf::Argon2id {
+                salt,
+                mem_kib,
+                iters,
+                lanes,
+            },
             Some(BackupCredential::Passphrase(passphrase)),
-        ) => BackupKey::from_passphrase(passphrase, salt)?,
+        ) => BackupKey::from_passphrase(
+            passphrase,
+            salt,
+            Argon2Params {
+                mem_kib: *mem_kib,
+                iters: *iters,
+                lanes: *lanes,
+            },
+        )?,
         (KeySource::Ark, Kdf::HkdfSha256 { salt }, Some(BackupCredential::Ark(ark))) => {
             BackupKey::from_ark(ark, salt)?
         }
@@ -154,7 +169,7 @@ pub fn open(
         // Source matches credential but the KDF disagrees with the source.
         (KeySource::Passphrase, _, Some(BackupCredential::Passphrase(_)))
         | (KeySource::Ark, _, Some(BackupCredential::Ark(_))) => {
-            return Err(BackupError::MalformedHeader)
+            return Err(BackupError::MalformedHeader);
         }
     };
 
@@ -167,21 +182,6 @@ pub fn open(
     Ok(key.decrypt_data(&parts, &aad)?)
 }
 
-mod b64 {
-    use base64::engine::general_purpose::STANDARD;
-    use base64::Engine;
-    use serde::{Deserialize, Deserializer, Serializer};
-
-    pub fn serialize<S: Serializer>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(&STANDARD.encode(bytes))
-    }
-
-    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<u8>, D::Error> {
-        let s = String::deserialize(deserializer)?;
-        STANDARD.decode(s).map_err(serde::de::Error::custom)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -189,24 +189,7 @@ mod tests {
     use crate::crypto::error::CryptoError;
     use crate::crypto::key::KeyMaterial;
     use crate::crypto::keys::AccountRootKey;
-    use serde::{Deserialize, Serialize};
-
-    #[derive(Serialize, Deserialize, PartialEq, Debug)]
-    struct Holder {
-        #[serde(with = "super::b64")]
-        data: Vec<u8>,
-    }
-
-    #[test]
-    fn b64_round_trip() {
-        let h = Holder {
-            data: vec![0, 1, 2, 250, 255],
-        };
-        let json = serde_json::to_string(&h).unwrap();
-        assert_eq!(json, r#"{"data":"AAEC+v8="}"#);
-        let back: Holder = serde_json::from_str(&json).unwrap();
-        assert_eq!(back, h);
-    }
+    use crate::crypto::primitive::argon2::MAX_ARGON2_MEM_KIB;
 
     #[test]
     fn key_source_serialization() {
@@ -225,7 +208,7 @@ mod tests {
         let header = EncryptionHeader {
             source: KeySource::Passphrase,
             cipher: Cipher::Aes256GcmSiv,
-            kdf: argon2id_kdf(vec![1u8; 16]),
+            kdf: Kdf::argon2id(vec![1u8; 16], Argon2Params::default()),
             nonce: vec![2u8; 12],
         };
         let v = serde_json::to_value(&header).unwrap();
@@ -239,11 +222,11 @@ mod tests {
     #[test]
     fn backup_key_encrypts_and_decrypts_with_aad() {
         let salt = [4u8; 16];
-        let key = BackupKey::from_passphrase(b"pw", &salt).unwrap();
+        let key = BackupKey::from_passphrase(b"pw", &salt, Argon2Params::default()).unwrap();
         let aad = BackupAad {
             version: CURRENT_VERSION,
             source: KeySource::Passphrase,
-            kdf: argon2id_kdf(salt.to_vec()),
+            kdf: Kdf::argon2id(salt.to_vec(), Argon2Params::default()),
         };
         let ct = key.encrypt_data(b"secret-bytes", &aad).unwrap();
         let pt = key.decrypt_data(&ct, &aad).unwrap();
@@ -253,16 +236,16 @@ mod tests {
     #[test]
     fn backup_key_decrypt_fails_with_different_aad() {
         let salt = [4u8; 16];
-        let key = BackupKey::from_passphrase(b"pw", &salt).unwrap();
+        let key = BackupKey::from_passphrase(b"pw", &salt, Argon2Params::default()).unwrap();
         let aad = BackupAad {
             version: 1,
             source: KeySource::Passphrase,
-            kdf: argon2id_kdf(salt.to_vec()),
+            kdf: Kdf::argon2id(salt.to_vec(), Argon2Params::default()),
         };
         let wrong = BackupAad {
             version: 2,
             source: KeySource::Passphrase,
-            kdf: argon2id_kdf(salt.to_vec()),
+            kdf: Kdf::argon2id(salt.to_vec(), Argon2Params::default()),
         };
         let ct = key.encrypt_data(b"secret", &aad).unwrap();
         assert!(matches!(
@@ -313,7 +296,13 @@ mod tests {
         let ark = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
         let cred = BackupCredential::Ark(&ark);
         let sealed = seal(b"hello-ark", cred, CURRENT_VERSION).unwrap();
-        let pt = open(&sealed.header, &sealed.ciphertext, Some(cred), CURRENT_VERSION).unwrap();
+        let pt = open(
+            &sealed.header,
+            &sealed.ciphertext,
+            Some(cred),
+            CURRENT_VERSION,
+        )
+            .unwrap();
         assert_eq!(pt, b"hello-ark");
     }
 
@@ -323,8 +312,14 @@ mod tests {
         let cred = BackupCredential::Ark(&ark);
         let mut sealed = seal(b"x", cred, CURRENT_VERSION).unwrap();
         // Header still says source=Ark but now carries a passphrase-style KDF.
-        sealed.header.kdf = argon2id_kdf(vec![1u8; 16]);
-        let err = open(&sealed.header, &sealed.ciphertext, Some(cred), CURRENT_VERSION).unwrap_err();
+        sealed.header.kdf = Kdf::argon2id(vec![1u8; 16], Argon2Params::default());
+        let err = open(
+            &sealed.header,
+            &sealed.ciphertext,
+            Some(cred),
+            CURRENT_VERSION,
+        )
+            .unwrap_err();
         assert!(matches!(err, BackupError::MalformedHeader));
     }
 
@@ -332,8 +327,34 @@ mod tests {
     fn open_rejects_passphrase_source_with_hkdf_kdf() {
         let cred = BackupCredential::Passphrase(b"pw");
         let mut sealed = seal(b"x", cred, CURRENT_VERSION).unwrap();
-        sealed.header.kdf = hkdf_sha256_kdf(vec![1u8; 16]);
-        let err = open(&sealed.header, &sealed.ciphertext, Some(cred), CURRENT_VERSION).unwrap_err();
+        sealed.header.kdf = Kdf::hkdf_sha256(vec![1u8; 16]);
+        let err = open(
+            &sealed.header,
+            &sealed.ciphertext,
+            Some(cred),
+            CURRENT_VERSION,
+        )
+            .unwrap_err();
         assert!(matches!(err, BackupError::MalformedHeader));
+    }
+
+    #[test]
+    fn open_rejects_argon2_params_exceeding_memory_limit() {
+        let cred = BackupCredential::Passphrase(b"pw");
+        let mut sealed = seal(b"x", cred, CURRENT_VERSION).unwrap();
+        // A hostile header claiming an enormous memory cost must fail key
+        // derivation cleanly — not abort the process, and not be silently ignored
+        // (which is what happened before the params were threaded through).
+        if let Kdf::Argon2id { mem_kib, .. } = &mut sealed.header.kdf {
+            *mem_kib = MAX_ARGON2_MEM_KIB + 1;
+        }
+        let err = open(
+            &sealed.header,
+            &sealed.ciphertext,
+            Some(cred),
+            CURRENT_VERSION,
+        )
+            .unwrap_err();
+        assert!(matches!(err, BackupError::Crypto(CryptoError::KdfError(_)),));
     }
 }
