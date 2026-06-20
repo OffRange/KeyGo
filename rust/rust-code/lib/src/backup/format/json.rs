@@ -1,16 +1,9 @@
-//! The JSON backup format: a `{ version, encryption, payload }` envelope. Plain
-//! backups inline the model as a JSON object; encrypted ones carry a base64
-//! ciphertext string with the [`EncryptionHeader`] alongside it.
-
+use crate::b64;
 use crate::backup::encryption::{self, BackupCredential, EncryptionHeader};
 use crate::backup::{Backup, BackupError, CURRENT_VERSION, MIN_SUPPORTED_VERSION};
-use base64::Engine;
-use base64::engine::general_purpose::STANDARD;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
-// One type for both directions: serialize borrows the `Backup` (no clone of the
-// vault tree), deserialize lands in `Cow::Owned`.
 #[derive(Serialize, Deserialize)]
 pub struct BackupEnvelope<'a> {
     pub version: u32,
@@ -18,7 +11,6 @@ pub struct BackupEnvelope<'a> {
     pub payload: Payload<'a>,
 }
 
-// Variant order is load-bearing: `Encrypted` (a JSON string) must precede `Plain` (a JSON object) for untagged deserialization.
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Payload<'a> {
@@ -39,7 +31,7 @@ pub fn export(backup: &Backup, cred: Option<BackupCredential<'_>>) -> Result<Str
             BackupEnvelope {
                 version: CURRENT_VERSION,
                 encryption: Some(sealed.header),
-                payload: Payload::Encrypted(STANDARD.encode(sealed.ciphertext)),
+                payload: Payload::Encrypted(b64::encode(sealed.ciphertext)),
             }
         }
     };
@@ -60,9 +52,7 @@ pub fn import(data: &str, cred: Option<BackupCredential<'_>>) -> Result<Backup, 
             Ok(backup.into_owned())
         }
         (Some(header), Payload::Encrypted(ciphertext_b64)) => {
-            let ciphertext = STANDARD
-                .decode(&ciphertext_b64)
-                .map_err(|_| BackupError::Base64)?;
+            let ciphertext = b64::decode(&ciphertext_b64).map_err(|_| BackupError::Base64)?;
             let payload_bytes = encryption::open(&header, &ciphertext, cred, version)?;
             Ok(serde_json::from_slice(&payload_bytes)?)
         }
@@ -251,9 +241,9 @@ mod tests {
     fn tampered_ciphertext_fails() {
         let json = export(&sample_backup(), Some(BackupCredential::Passphrase(b"pw"))).unwrap();
         let mut v: serde_json::Value = serde_json::from_str(&json).unwrap();
-        let mut ct = STANDARD.decode(v["payload"].as_str().unwrap()).unwrap();
+        let mut ct = b64::decode(v["payload"].as_str().unwrap()).unwrap();
         ct[0] ^= 0x01;
-        v["payload"] = serde_json::Value::String(STANDARD.encode(&ct));
+        v["payload"] = serde_json::Value::String(b64::encode(&ct));
         let err = import(&v.to_string(), Some(BackupCredential::Passphrase(b"pw"))).unwrap_err();
         assert!(matches!(
             err,
@@ -265,7 +255,7 @@ mod tests {
     fn tampered_header_salt_fails() {
         let json = export(&sample_backup(), Some(BackupCredential::Passphrase(b"pw"))).unwrap();
         let mut v: serde_json::Value = serde_json::from_str(&json).unwrap();
-        v["encryption"]["kdf"]["salt"] = serde_json::Value::String(STANDARD.encode([0u8; 16]));
+        v["encryption"]["kdf"]["salt"] = serde_json::Value::String(b64::encode([0u8; 16]));
         let err = import(&v.to_string(), Some(BackupCredential::Passphrase(b"pw"))).unwrap_err();
         assert!(matches!(
             err,
@@ -287,8 +277,8 @@ mod tests {
             "encryption": {
                 "source": "passphrase",
                 "cipher": "aes-256-gcm-siv",
-                "kdf": { "type": "argon2id", "salt": STANDARD.encode([1u8; 16]), "mem_kib": 65536, "iters": 3, "lanes": 4 },
-                "nonce": STANDARD.encode([2u8; 12]),
+                "kdf": { "type": "argon2id", "salt": b64::encode([1u8; 16]), "mem_kib": 65536, "iters": 3, "lanes": 4 },
+                "nonce": b64::encode([2u8; 12]),
             },
             "payload": { "vaults": [] },
         });

@@ -1,3 +1,4 @@
+use crate::b64;
 use crate::backup::key::BackupKey;
 use crate::backup::BackupError;
 use crate::crypto::keys::AccountRootKey;
@@ -62,10 +63,7 @@ fn hkdf_sha256_kdf(salt: Vec<u8>) -> Kdf {
     Kdf::HkdfSha256 { salt }
 }
 
-/// Additional data bound to every backup ciphertext. It is never stored — it is
-/// rebuilt from the header at open time — so its BCS layout is a frozen wire
-/// format (see the `golden_v1_passphrase_still_decrypts` test). Evolve it only
-/// via a version bump, never by editing fields in place.
+/// Evolve it only via a version bump, never by editing fields in place.
 #[derive(Serialize)]
 pub struct BackupAad {
     pub version: u32,
@@ -77,26 +75,17 @@ impl AeadEncryptor for BackupKey {
     type Aad = BackupAad;
 }
 
-/// User secret supplied when reading or writing a backup. The credential is
-/// optional at the API boundary: a `None` credential (see [`open`] and the
-/// formats' `export`/`import`) means "no secret", i.e. a plaintext backup. This
-/// type therefore only ever names the variants that actually derive a key, so
-/// [`seal`] is total — it never has to reject a "no credential" case.
 #[derive(Clone, Copy)]
 pub enum BackupCredential<'a> {
     Passphrase(&'a [u8]),
     Ark(&'a AccountRootKey),
 }
 
-/// Result of [`seal`]: the header to record and the raw ciphertext to frame.
 pub struct SealedPayload {
     pub header: EncryptionHeader,
     pub ciphertext: Vec<u8>,
 }
 
-/// Encrypts `plaintext` under a freshly derived key, returning the header that
-/// describes the derivation and the raw ciphertext. Format-agnostic: the caller
-/// frames `header` + `ciphertext` however its format requires.
 pub fn seal(
     plaintext: &[u8],
     cred: BackupCredential<'_>,
@@ -132,9 +121,6 @@ pub fn seal(
     })
 }
 
-/// Re-derives the key from `header` + `cred`, rebuilds the AAD bound at seal time,
-/// and returns the decrypted plaintext. `version` must be the envelope's own
-/// version so the rebuilt AAD matches byte-for-byte.
 pub fn open(
     header: &EncryptionHeader,
     ciphertext: &[u8],

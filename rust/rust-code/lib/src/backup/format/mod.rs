@@ -1,26 +1,14 @@
-//! Backup serialization formats and the single entry point that dispatches to
-//! them.
-//!
-//! Adding a format (e.g. CSV) is three local steps:
-//!   1. add a `csv` sibling module that exposes `export`/`import`, reusing
-//!      [`crate::backup::model`] (the data), [`crate::backup::encryption`] (the
-//!      crypto), and [`crate::backup::BackupError`];
-//!   2. add a variant to [`BackupFormat`];
-//!   3. add the matching arm to `export`/`import` below.
-
 pub mod json;
 
 use crate::backup::encryption::BackupCredential;
 use crate::backup::{Backup, BackupError};
 
-/// The serialization format of a backup file.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum BackupFormat {
     Json,
 }
 
 impl BackupFormat {
-    /// Serializes `backup` in this format, encrypting it when `cred` is `Some`.
     pub fn export(
         self,
         backup: &Backup,
@@ -31,7 +19,6 @@ impl BackupFormat {
         }
     }
 
-    /// Parses a backup previously produced by [`export`](Self::export) in this format.
     pub fn import(
         self,
         data: &str,

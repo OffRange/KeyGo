@@ -1,11 +1,3 @@
-//! Backup export/import.
-//!
-//! Layered so new formats slot in cheaply:
-//! - [`model`] — the format-agnostic data ([`Backup`] and friends);
-//! - [`key`]/[`encryption`] — the shared crypto ([`BackupKey`], seal/open, AAD);
-//! - [`format`] — per-format wire codecs behind the [`BackupFormat`] dispatch;
-//! - [`error`] — [`BackupError`].
-
 pub mod encryption;
 pub mod error;
 pub mod format;

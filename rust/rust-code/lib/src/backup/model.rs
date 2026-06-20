@@ -1,6 +1,3 @@
-//! The format-agnostic data model: the in-memory shape of a backup that every
-//! format (JSON today, CSV later) serializes from and deserializes into.
-
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
