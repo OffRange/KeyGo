@@ -2,6 +2,7 @@ use crate::crypto::error::CryptoResult;
 use crate::crypto::key::KeyMaterial;
 use crate::crypto::keys::AccountRootKey;
 use crate::crypto::primitive::argon2::derive_argon2id;
+use crate::crypto::primitive::hkdf::derive_hkdf_sha256;
 use crate::define_aead_key;
 use aes_gcm_siv::Aes256GcmSiv;
 
@@ -19,7 +20,7 @@ impl BackupKey {
     }
 
     pub(crate) fn from_ark(ark: &AccountRootKey, salt: &[u8]) -> CryptoResult<Self> {
-        let derived = derive_argon2id(ark.as_bytes(), salt, DOMAIN_ARK)?;
+        let derived = derive_hkdf_sha256(ark.as_bytes(), salt, DOMAIN_ARK)?;
         Self::try_from_bytes(&derived)
     }
 }

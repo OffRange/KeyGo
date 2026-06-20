@@ -16,8 +16,6 @@ pub const DERIVED_KEY_LEN: usize = 32;
 ///
 /// HKDF accepts any salt length (including empty), so — unlike the Argon2id
 /// primitive — no minimum-salt check is enforced here.
-// TODO(ark-backup): remove once the ARK backup path consumes this.
-#[allow(dead_code)]
 pub(crate) fn derive_hkdf_sha256(
     ikm: &[u8],
     salt: &[u8],
