@@ -166,6 +166,24 @@ mod tests {
         json_eq(&restored, &original);
     }
 
+    // A real v1 ARK-encrypted backup, frozen at generation time, mirroring
+    // GOLDEN_V1. It fails loudly if the ARK wire format or HKDF derivation drifts.
+    // Regenerate ONLY alongside a deliberate version bump.
+    const GOLDEN_V1_ARK_KEY: [u8; 32] = [9u8; 32];
+    const GOLDEN_V1_ARK: &str = r#"{"version":1,"encryption":{"source":"ark","cipher":"aes-256-gcm-siv","kdf":{"type":"hkdf_sha256","salt":"JrVmjgENfDIdWs2q8Ka66g=="},"nonce":"gDGAG6degpngF2e0"},"payload":"NgURUo9UzuDmzh+D/Bd+9/OCjckyxR4q6kWrF6Sf8UK8xckSShxO6qVNA2PGnePJ2NCgxzko7c2oy2TZ6tALXjwKa35tO7/wJQ4AN9CrgVTfNs1O6s4amOzedkYg5gROIehmqDg/b9BfkWnhyDdyUh7jIAuxt9kCpzwq9ahwAxTQaRizqKHks+X+JKtLS+JGA2uwovbcrHLjBaOMljO5ZO0zcR6WM6y/nRGSw8b53lkjAJhAuXaYRF6iR5RjoIbbxUNGOvvLAI4sI5crxIjGz5AjayRxwHJgiQrpqLrLhVD4FXOqPWIl/DMbbrUwJ+uevbBLqf3TTFxWd6cJ1DXOBXaaZ+pRHasllVG185EsbSD79FsHWLO6L7GT0nEDM6Ho8N3HV2SdX+am1L5fN95lPIApJE3zW9fHhynuLktIFRwtIWjeOIRuYU68iEsWuY1Z+Zdq1hXBeYBhU8R3JDgPVeRx1cdawr8aShlnfxrXNMI84k2rxGP3bHm15hiTIGF7o267FfTofahlZFMJSG/+wuGtx3oc"}"#;
+
+    #[test]
+    fn golden_v1_ark_still_decrypts() {
+        let ark = AccountRootKey::try_from_bytes(&GOLDEN_V1_ARK_KEY).unwrap();
+        let backup = import(GOLDEN_V1_ARK, Some(BackupCredential::Ark(&ark))).unwrap();
+        let vault = &backup.vaults[0];
+        assert_eq!(vault.name, "Personal");
+        assert_eq!(vault.login.title, "Email");
+        assert_eq!(vault.login.password.as_deref(), Some("s3cr3t-password"));
+        assert_eq!(vault.card.number, "4111111111111111");
+        assert_eq!(vault.card.expiration_year, Some(2030));
+    }
+
     #[test]
     fn ark_round_trip() {
         let ark = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
@@ -186,6 +204,18 @@ mod tests {
         assert!(matches!(
             err,
             BackupError::Crypto(CryptoError::DecryptionFailed)
+        ));
+    }
+
+    #[test]
+    fn wrong_ark_fails() {
+        let right = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
+        let wrong = AccountRootKey::try_from_bytes(&[6u8; 32]).unwrap();
+        let json = export(&sample_backup(), Some(BackupCredential::Ark(&right))).unwrap();
+        let err = import(&json, Some(BackupCredential::Ark(&wrong))).unwrap_err();
+        assert!(matches!(
+            err,
+            BackupError::Crypto(CryptoError::DecryptionFailed),
         ));
     }
 
