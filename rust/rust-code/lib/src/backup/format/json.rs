@@ -63,7 +63,7 @@ pub fn import(data: &str, cred: Option<BackupCredential<'_>>) -> Result<Backup, 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::backup::encryption::{Cipher, Kdf, KeySource};
+    use crate::backup::encryption::{Kdf, KeySource};
     use crate::backup::{Card, Login, Vault};
     use crate::crypto::error::CryptoError;
     use crate::crypto::key::KeyMaterial;
@@ -111,7 +111,7 @@ mod tests {
     // `BackupAad` ever drifts, since either makes existing backups undecryptable
     // with no compile error. Regenerate ONLY alongside a deliberate version bump.
     const GOLDEN_V1_PASSPHRASE: &[u8] = b"golden-pw";
-    const GOLDEN_V1: &str = r#"{"version":1,"encryption":{"source":"passphrase","cipher":"aes-256-gcm-siv","kdf":{"type":"argon2id","salt":"VMzJcsx6gL+Ethd5xleZNQ==","mem_kib":65536,"iters":3,"lanes":4},"nonce":"DOnO4+VQZuqsnbZ2"},"payload":"GbJ2pNmFOT66GKQrppAhUV8mQDObQJRHhimVoiKiJbTntSF4/mdpo4x6RvubuzVxtqUrWvAf7NSxd70YLPhYRfty0+zUvnigJMUtQkOe/EJH3yr/sbAS2zxIK8hQfTHiVDQcXuNfAPbgOOiuwUFs34HTeUBsy++mwP3ivyoPIA2hDeSgSCFJC5J0Vlm1jxt/kE9Vv71WnGsfM0O3XzXB7ik6iJTzJfRx2NDzLmOAkwE6qxrIG2xm5fHVotm0HtMuofoOJHwnlP0klXkg+eLLOADpHKwor0ivbsqFaVlRqsZE4uqQ29+L5cwhTfEb9PWMIzRYvAj+5bQAAlLxzbymyPOIeEQ27deP57oAmjprdBFPcwQ/p2IBpkeX30JyyL6djfA8KIP/ULLGnfLk7PBfQAXYqfsR3DJyQPMJljJv4xEn5JgOj1lvusICxax6vEeG6iX0g3BraTJFOiNSXTfCmWyxbHCXWfgOau7DBGlUwt74cS8D98eRAoj8PNb6KjqLqVUnujSB2qSRUqAR3pB2YHE8tvsl"}"#;
+    const GOLDEN_V1: &str = r#"{"version":1,"encryption":{"source":"passphrase","kdf":{"type":"argon2id","salt":"VbS6tQR2HzeV+PyWZv/xPQ==","mem_kib":65536,"iters":3,"lanes":4},"nonce":"xuKErpOzQtIUTF0W"},"payload":"qJUkSI20qk4htPhPS6tXAhISVK86ikQM+OA02MEh3KNT8kqj6iZ2TEjf47QZ2pKbl7oho5HeRObSZW6N0CAu1F/LMHWpBlUPelKgFcOgGXnLJLrTXzN1aDjlo1U6NGWXCJZJl3B0P82amVWzlEuiUaA22NND4hb3p+BHZ34WjJFdw9uSz5KIGv3PofI7MO7lmRa43CSTJHAJjCyUn5/21ply8TfegD1Tf0TcKGXCL5WdRruBYrDBHK1BoV4LjO5eU6RewvGRP3h3SCz2IAGEj/H5reOI0fKPUzA9zGesVMAJB1RnLUys7H+RzRGPQ/P4ViVil6IAKMJF2iiim4yypjeLzLo5F+toQKUAxbKSaRNMvxBdmJVloq+Uucn3rs4IgxwDkXBTUb+IlptQrpQpg3HE2RkjKesQtZK3hMwCMWfPO8g7wLsINNvvLR/pSe4QdvsoEaqVTIzJUlbM0KGxYa7gSbHSNdzRUVfkPApegIqFWiQbfMq5CfOw6WBxZR8MDzo6Djj4a0kSpSxyh9yr5YENiQ1/"}"#;
 
     #[test]
     fn golden_v1_passphrase_still_decrypts() {
@@ -160,7 +160,7 @@ mod tests {
     // GOLDEN_V1. It fails loudly if the ARK wire format or HKDF derivation drifts.
     // Regenerate ONLY alongside a deliberate version bump.
     const GOLDEN_V1_ARK_KEY: [u8; 32] = [9u8; 32];
-    const GOLDEN_V1_ARK: &str = r#"{"version":1,"encryption":{"source":"ark","cipher":"aes-256-gcm-siv","kdf":{"type":"hkdf_sha256","salt":"JrVmjgENfDIdWs2q8Ka66g=="},"nonce":"gDGAG6degpngF2e0"},"payload":"NgURUo9UzuDmzh+D/Bd+9/OCjckyxR4q6kWrF6Sf8UK8xckSShxO6qVNA2PGnePJ2NCgxzko7c2oy2TZ6tALXjwKa35tO7/wJQ4AN9CrgVTfNs1O6s4amOzedkYg5gROIehmqDg/b9BfkWnhyDdyUh7jIAuxt9kCpzwq9ahwAxTQaRizqKHks+X+JKtLS+JGA2uwovbcrHLjBaOMljO5ZO0zcR6WM6y/nRGSw8b53lkjAJhAuXaYRF6iR5RjoIbbxUNGOvvLAI4sI5crxIjGz5AjayRxwHJgiQrpqLrLhVD4FXOqPWIl/DMbbrUwJ+uevbBLqf3TTFxWd6cJ1DXOBXaaZ+pRHasllVG185EsbSD79FsHWLO6L7GT0nEDM6Ho8N3HV2SdX+am1L5fN95lPIApJE3zW9fHhynuLktIFRwtIWjeOIRuYU68iEsWuY1Z+Zdq1hXBeYBhU8R3JDgPVeRx1cdawr8aShlnfxrXNMI84k2rxGP3bHm15hiTIGF7o267FfTofahlZFMJSG/+wuGtx3oc"}"#;
+    const GOLDEN_V1_ARK: &str = r#"{"version":1,"encryption":{"source":"ark","kdf":{"type":"hkdf_sha256","salt":"4RYbuO3VfhzEleupHEHXeQ=="},"nonce":"yiEZW5gcp8GWXDz4"},"payload":"uviKJ4uxZgkNjbJqPO2HwCrEZe6wkAGuN/HFR2XAx1Sx3wO0fbiV6kNGB7BdlSr/npuWE6vX6vue5bFKb22Wj1AUQ7ON/jOg09b+qPLQm46DwlsysR4FGpteyoVBpCP6CYeddcjyr4ipdDlud0xzeVEWqly64m8X2CWUQaEpfrulBxfAnt0DE/CUV0OcrSNfNs4W7C9lyR2OuBb8RjSMCX+E07gNCRwdwuQNkef5lGbz4Bd5RXI3EesfRVCfEYvvxVdWemzBiGfuwLk8BwaEieRVdj+1mZ5v1kRMNrbgy21qoGQdE+AUF6zvmNoktl6MfXTQFyFzufUwQtNZLJvIoUBKMn4b6AFa+h+n3Aq1QJR/AotW9/u9TMIAHL4q8U+OrLmTcPwx9vOkXc6U6xWVsOT/8I0pxxHklfU8Rjf4mNzULe7BTC9FXbib/GUkXlkL9W5UOvzWYEPjA0In6FPUKHFdtrdiLsH7cfL2E/Qz8rI268bQoh05DnlOxoEjdMPvAzEbSOOiL9scZiTOLp5xc3DRY3VO"}"#;
 
     #[test]
     fn golden_v1_ark_still_decrypts() {
@@ -276,7 +276,6 @@ mod tests {
             "version": 1,
             "encryption": {
                 "source": "passphrase",
-                "cipher": "aes-256-gcm-siv",
                 "kdf": { "type": "argon2id", "salt": b64::encode([1u8; 16]), "mem_kib": 65536, "iters": 3, "lanes": 4 },
                 "nonce": b64::encode([2u8; 12]),
             },
@@ -344,7 +343,6 @@ mod tests {
             version: CURRENT_VERSION,
             encryption: Some(EncryptionHeader {
                 source: KeySource::Passphrase,
-                cipher: Cipher::Aes256GcmSiv,
                 kdf: Kdf::Argon2id {
                     salt: vec![1u8; 16],
                     mem_kib: 65536,

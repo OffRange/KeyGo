@@ -12,7 +12,6 @@ const NONCE_LEN: usize = 12;
 #[derive(Serialize, Deserialize)]
 pub struct EncryptionHeader {
     pub source: KeySource,
-    pub cipher: Cipher,
     pub kdf: Kdf,
     #[serde(with = "b64")]
     pub nonce: Vec<u8>,
@@ -23,12 +22,6 @@ pub struct EncryptionHeader {
 pub enum KeySource {
     Passphrase,
     Ark,
-}
-
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
-pub enum Cipher {
-    #[serde(rename = "aes-256-gcm-siv")]
-    Aes256GcmSiv,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -67,7 +60,6 @@ impl Kdf {
 pub struct BackupAad {
     pub version: u32,
     pub source: KeySource,
-    pub kdf: Kdf,
 }
 
 impl AeadEncryptor for BackupKey {
@@ -106,16 +98,11 @@ pub fn seal(
             Kdf::hkdf_sha256(salt.to_vec()),
         ),
     };
-    let aad = BackupAad {
-        version,
-        source,
-        kdf: kdf.clone(),
-    };
+    let aad = BackupAad { version, source };
     let ciphertext = backup_key.encrypt_data(plaintext, &aad)?;
     Ok(SealedPayload {
         header: EncryptionHeader {
             source,
-            cipher: Cipher::Aes256GcmSiv,
             kdf,
             nonce: ciphertext.nonce_bytes().to_vec(),
         },
@@ -176,7 +163,6 @@ pub fn open(
     let aad = BackupAad {
         version,
         source: header.source,
-        kdf: header.kdf.clone(),
     };
     let parts = AeadCiphertext::<BackupKey>::from_parts_bytes(ciphertext.to_vec(), &header.nonce);
     Ok(key.decrypt_data(&parts, &aad)?)
@@ -207,13 +193,11 @@ mod tests {
     fn encryption_header_field_names() {
         let header = EncryptionHeader {
             source: KeySource::Passphrase,
-            cipher: Cipher::Aes256GcmSiv,
             kdf: Kdf::argon2id(vec![1u8; 16], Argon2Params::default()),
             nonce: vec![2u8; 12],
         };
         let v = serde_json::to_value(&header).unwrap();
         assert_eq!(v["source"], serde_json::json!("passphrase"));
-        assert_eq!(v["cipher"], serde_json::json!("aes-256-gcm-siv"));
         assert_eq!(v["kdf"]["type"], serde_json::json!("argon2id"));
         assert!(v["kdf"]["salt"].is_string());
         assert!(v["nonce"].is_string());
@@ -226,7 +210,6 @@ mod tests {
         let aad = BackupAad {
             version: CURRENT_VERSION,
             source: KeySource::Passphrase,
-            kdf: Kdf::argon2id(salt.to_vec(), Argon2Params::default()),
         };
         let ct = key.encrypt_data(b"secret-bytes", &aad).unwrap();
         let pt = key.decrypt_data(&ct, &aad).unwrap();
@@ -240,12 +223,10 @@ mod tests {
         let aad = BackupAad {
             version: 1,
             source: KeySource::Passphrase,
-            kdf: Kdf::argon2id(salt.to_vec(), Argon2Params::default()),
         };
         let wrong = BackupAad {
             version: 2,
             source: KeySource::Passphrase,
-            kdf: Kdf::argon2id(salt.to_vec(), Argon2Params::default()),
         };
         let ct = key.encrypt_data(b"secret", &aad).unwrap();
         assert!(matches!(

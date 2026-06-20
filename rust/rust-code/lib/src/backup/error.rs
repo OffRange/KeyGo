@@ -10,8 +10,6 @@ pub enum BackupError {
     Base64,
     #[error("unsupported backup version: {0}")]
     UnsupportedVersion(u32),
-    #[error("unsupported cipher")]
-    UnsupportedCipher,
     #[error("malformed encryption header")]
     MalformedHeader,
     #[error("encryption header and payload disagree")]
