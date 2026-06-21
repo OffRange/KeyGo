@@ -1,3 +1,4 @@
+pub mod csv;
 pub mod json;
 
 use crate::backup::encryption::BackupCredential;

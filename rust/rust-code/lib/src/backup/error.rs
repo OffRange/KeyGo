@@ -20,4 +20,8 @@ pub enum BackupError {
     UnexpectedCredential,
     #[error("credential does not match the backup's key source")]
     CredentialMismatch,
+    #[error("malformed csv: {0}")]
+    Csv(String),
+    #[error("csv contained no rows")]
+    EmptyCsv,
 }

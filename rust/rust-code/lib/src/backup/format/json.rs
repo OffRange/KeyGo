@@ -73,32 +73,28 @@ mod tests {
         Backup {
             vaults: vec![Vault {
                 name: "Personal".into(),
-                logins: vec![
-                    Login {
-                        title: "Email".into(),
-                        notes: Some("primary".into()),
-                        tags: vec!["mail".into()],
-                        pinned: true,
-                        username: Some("alice".into()),
-                        password: Some("s3cr3t-password".into()),
-                        totp_secret: None,
-                        website: Some("https://mail.example".into()),
-                        passkey: None,
-                    }
-                ],
-                cards: vec![
-                    Card {
-                        title: "Visa".into(),
-                        notes: None,
-                        tags: vec![],
-                        pinned: false,
-                        cardholder: Some("Alice".into()),
-                        number: "4111111111111111".into(),
-                        expiration_month: Some(12),
-                        expiration_year: Some(2030),
-                        cvv: Some("123".into()),
-                    }
-                ],
+                logins: vec![Login {
+                    title: "Email".into(),
+                    notes: Some("primary".into()),
+                    tags: vec!["mail".into()],
+                    pinned: true,
+                    username: Some("alice".into()),
+                    password: Some("s3cr3t-password".into()),
+                    totp_secret: None,
+                    website: Some("https://mail.example".into()),
+                    passkey: None,
+                }],
+                cards: vec![Card {
+                    title: "Visa".into(),
+                    notes: None,
+                    tags: vec![],
+                    pinned: false,
+                    cardholder: Some("Alice".into()),
+                    number: "4111111111111111".into(),
+                    expiration_month: Some(12),
+                    expiration_year: Some(2030),
+                    cvv: Some("123".into()),
+                }],
             }],
         }
     }
@@ -123,7 +119,7 @@ mod tests {
             GOLDEN_V1,
             Some(BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE)),
         )
-            .unwrap();
+        .unwrap();
         // Assert on stable, semantic values so the test survives future additive
         // schema changes (new Option fields) without needing a fresh golden.
         let vault = &backup.vaults[0];
@@ -197,7 +193,7 @@ mod tests {
             &sample_backup(),
             Some(BackupCredential::Passphrase(b"right")),
         )
-            .unwrap();
+        .unwrap();
         let err = import(&json, Some(BackupCredential::Passphrase(b"wrong"))).unwrap_err();
         assert!(matches!(
             err,

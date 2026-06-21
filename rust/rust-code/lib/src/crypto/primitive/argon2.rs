@@ -38,7 +38,7 @@ fn build_argon<'a>(params: Argon2Params) -> CryptoResult<Argon2<'a>> {
         params.lanes,
         Some(DERIVED_KEY_LEN),
     )
-        .map_err(|e| CryptoError::KdfError(e.to_string()))?;
+    .map_err(|e| CryptoError::KdfError(e.to_string()))?;
     Ok(Argon2::new(Algorithm::Argon2id, Version::V0x13, params))
 }
 
@@ -137,7 +137,7 @@ mod tests {
                 ..Argon2Params::default()
             },
         )
-            .unwrap();
+        .unwrap();
         assert_ne!(a, b);
     }
 
@@ -160,7 +160,7 @@ mod tests {
                 ..Argon2Params::default()
             },
         )
-            .unwrap_err();
+        .unwrap_err();
         assert!(matches!(err, CryptoError::KdfError(_)));
     }
 
@@ -175,7 +175,7 @@ mod tests {
                 ..Argon2Params::default()
             },
         )
-            .unwrap_err();
+        .unwrap_err();
         assert!(matches!(err, CryptoError::KdfError(_)));
     }
 }

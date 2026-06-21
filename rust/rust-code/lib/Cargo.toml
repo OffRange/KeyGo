@@ -27,4 +27,7 @@ bcs = "0.2.0"
 argon2 = "0.5.3"
 hkdf = "0.12"
 sha2 = "0.10"
-totp-rs = { version = "5.7.1", features = ["otpauth", "zeroize"] }
+totp-rs = { version = "5.7.1", features = ["otpauth", "zeroize", "serde_support"] }
+csv = "1.4.0"
+email_address = "0.2.9"
+base32 = "0.5.1"

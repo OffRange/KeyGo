@@ -1,6 +1,6 @@
 use crate::b64;
-use crate::backup::key::BackupKey;
 use crate::backup::BackupError;
+use crate::backup::key::BackupKey;
 use crate::crypto::keys::AccountRootKey;
 use crate::crypto::primitive::aead_data::{AeadCiphertext, AeadEncryptor};
 use crate::crypto::primitive::argon2::Argon2Params;
@@ -245,7 +245,7 @@ mod tests {
             Some(cred),
             CURRENT_VERSION,
         )
-            .unwrap();
+        .unwrap();
         assert_eq!(pt, b"hello-bytes");
     }
 
@@ -260,7 +260,7 @@ mod tests {
             Some(cred),
             CURRENT_VERSION,
         )
-            .unwrap_err();
+        .unwrap_err();
         assert!(matches!(err, BackupError::MalformedHeader));
     }
 
@@ -283,7 +283,7 @@ mod tests {
             Some(cred),
             CURRENT_VERSION,
         )
-            .unwrap();
+        .unwrap();
         assert_eq!(pt, b"hello-ark");
     }
 
@@ -300,7 +300,7 @@ mod tests {
             Some(cred),
             CURRENT_VERSION,
         )
-            .unwrap_err();
+        .unwrap_err();
         assert!(matches!(err, BackupError::MalformedHeader));
     }
 
@@ -315,7 +315,7 @@ mod tests {
             Some(cred),
             CURRENT_VERSION,
         )
-            .unwrap_err();
+        .unwrap_err();
         assert!(matches!(err, BackupError::MalformedHeader));
     }
 
@@ -335,7 +335,7 @@ mod tests {
             Some(cred),
             CURRENT_VERSION,
         )
-            .unwrap_err();
+        .unwrap_err();
         assert!(matches!(err, BackupError::Crypto(CryptoError::KdfError(_)),));
     }
 }
