@@ -208,7 +208,8 @@ fn build_reader(data: &str) -> csv::Reader<&[u8]> {
 }
 
 fn looks_like_email(s: &str) -> bool {
-    email_address::EmailAddress::parse_with_options(s, Options::default().with_required_tld()).is_ok()
+    email_address::EmailAddress::parse_with_options(s, Options::default().with_required_tld())
+        .is_ok()
 }
 
 fn looks_like_url(s: &str) -> bool {
@@ -504,10 +505,7 @@ pub fn analyze(data: &str) -> Result<CsvAnalysis, BackupError> {
     })
 }
 
-pub fn import(
-    data: &str,
-    mapping: &ColumnMapping,
-) -> Result<(Backup, ImportReport), BackupError> {
+pub fn import(data: &str, mapping: &ColumnMapping) -> Result<(Backup, ImportReport), BackupError> {
     let data = strip_bom(data);
     if data.trim().is_empty() {
         return Err(BackupError::EmptyCsv);
@@ -740,7 +738,10 @@ mod tests {
         let a2 = analyze(&csv).unwrap();
         assert_eq!(a1.columns[0].sample_values, a2.columns[0].sample_values);
         // Display samples are the first rows, in file order.
-        assert_eq!(a1.columns[0].sample_values, vec!["Site 0", "Site 1", "Site 2"]);
+        assert_eq!(
+            a1.columns[0].sample_values,
+            vec!["Site 0", "Site 1", "Site 2"]
+        );
         // Separator-styled headers map (and value sniffing agrees).
         assert_eq!(a1.suggested.url, Some(1));
         assert_eq!(a1.suggested.username, Some(2));

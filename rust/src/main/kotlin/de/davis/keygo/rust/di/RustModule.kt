@@ -4,8 +4,12 @@ import de.davisalessandro.keygo.rust.AccountManager
 import de.davisalessandro.keygo.rust.AccountManagerInterface
 import de.davisalessandro.keygo.rust.CardFormatter
 import de.davisalessandro.keygo.rust.CardFormatterInterface
+import de.davisalessandro.keygo.rust.CsvBackupManager
+import de.davisalessandro.keygo.rust.CsvBackupManagerInterface
 import de.davisalessandro.keygo.rust.ItemManager
 import de.davisalessandro.keygo.rust.ItemManagerInterface
+import de.davisalessandro.keygo.rust.JsonBackupManager
+import de.davisalessandro.keygo.rust.JsonBackupManagerInterface
 import de.davisalessandro.keygo.rust.KeyDeriver
 import de.davisalessandro.keygo.rust.KeyDeriverInterface
 import de.davisalessandro.keygo.rust.KeyWrapper
@@ -23,6 +27,12 @@ import org.koin.core.annotation.Single
 @Module
 @Configuration
 object RustModule {
+
+    @Single
+    internal fun provideBackupManager(): JsonBackupManagerInterface = JsonBackupManager()
+
+    @Single
+    internal fun provideCsvManager(): CsvBackupManagerInterface = CsvBackupManager()
 
     @Single
     internal fun providePasskeyManager(): RustPasskeyInterface = RustPasskey()

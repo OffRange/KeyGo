@@ -1035,6 +1035,7 @@ name = "keygo-bindings"
 version = "0.1.0"
 dependencies = [
  "lib",
+ "serde_json",
  "thiserror",
  "tokio",
  "uniffi",

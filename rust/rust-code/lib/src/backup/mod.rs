@@ -6,7 +6,10 @@ pub mod model;
 
 pub use encryption::BackupCredential;
 pub use error::BackupError;
-pub use format::BackupFormat;
+pub use format::csv::{
+    ColumnMapping, Confidence, CsvAnalysis, CsvColumn, ExportPreset, FieldConfidence, ImportReport,
+};
+pub use format::{csv, json};
 pub use key::BackupKey;
 pub use model::{Backup, Card, Login, Passkey, Vault};
 
