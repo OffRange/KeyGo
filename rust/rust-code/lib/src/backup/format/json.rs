@@ -73,28 +73,32 @@ mod tests {
         Backup {
             vaults: vec![Vault {
                 name: "Personal".into(),
-                login: Login {
-                    title: "Email".into(),
-                    notes: Some("primary".into()),
-                    tags: vec!["mail".into()],
-                    pinned: true,
-                    username: Some("alice".into()),
-                    password: Some("s3cr3t-password".into()),
-                    totp_secret: None,
-                    website: Some("https://mail.example".into()),
-                    passkey: None,
-                },
-                card: Card {
-                    title: "Visa".into(),
-                    notes: None,
-                    tags: vec![],
-                    pinned: false,
-                    cardholder: Some("Alice".into()),
-                    number: "4111111111111111".into(),
-                    expiration_month: Some(12),
-                    expiration_year: Some(2030),
-                    cvv: Some("123".into()),
-                },
+                logins: vec![
+                    Login {
+                        title: "Email".into(),
+                        notes: Some("primary".into()),
+                        tags: vec!["mail".into()],
+                        pinned: true,
+                        username: Some("alice".into()),
+                        password: Some("s3cr3t-password".into()),
+                        totp_secret: None,
+                        website: Some("https://mail.example".into()),
+                        passkey: None,
+                    }
+                ],
+                cards: vec![
+                    Card {
+                        title: "Visa".into(),
+                        notes: None,
+                        tags: vec![],
+                        pinned: false,
+                        cardholder: Some("Alice".into()),
+                        number: "4111111111111111".into(),
+                        expiration_month: Some(12),
+                        expiration_year: Some(2030),
+                        cvv: Some("123".into()),
+                    }
+                ],
             }],
         }
     }
@@ -111,7 +115,7 @@ mod tests {
     // `BackupAad` ever drifts, since either makes existing backups undecryptable
     // with no compile error. Regenerate ONLY alongside a deliberate version bump.
     const GOLDEN_V1_PASSPHRASE: &[u8] = b"golden-pw";
-    const GOLDEN_V1: &str = r#"{"version":1,"encryption":{"source":"passphrase","kdf":{"type":"argon2id","salt":"VbS6tQR2HzeV+PyWZv/xPQ==","mem_kib":65536,"iters":3,"lanes":4},"nonce":"xuKErpOzQtIUTF0W"},"payload":"qJUkSI20qk4htPhPS6tXAhISVK86ikQM+OA02MEh3KNT8kqj6iZ2TEjf47QZ2pKbl7oho5HeRObSZW6N0CAu1F/LMHWpBlUPelKgFcOgGXnLJLrTXzN1aDjlo1U6NGWXCJZJl3B0P82amVWzlEuiUaA22NND4hb3p+BHZ34WjJFdw9uSz5KIGv3PofI7MO7lmRa43CSTJHAJjCyUn5/21ply8TfegD1Tf0TcKGXCL5WdRruBYrDBHK1BoV4LjO5eU6RewvGRP3h3SCz2IAGEj/H5reOI0fKPUzA9zGesVMAJB1RnLUys7H+RzRGPQ/P4ViVil6IAKMJF2iiim4yypjeLzLo5F+toQKUAxbKSaRNMvxBdmJVloq+Uucn3rs4IgxwDkXBTUb+IlptQrpQpg3HE2RkjKesQtZK3hMwCMWfPO8g7wLsINNvvLR/pSe4QdvsoEaqVTIzJUlbM0KGxYa7gSbHSNdzRUVfkPApegIqFWiQbfMq5CfOw6WBxZR8MDzo6Djj4a0kSpSxyh9yr5YENiQ1/"}"#;
+    const GOLDEN_V1: &str = r#"{"version":1,"encryption":{"source":"passphrase","kdf":{"type":"argon2id","salt":"wFYCrxdwhGR19jk2BBUasQ==","mem_kib":65536,"iters":3,"lanes":4},"nonce":"V8dD5ja/CUoL2vYg"},"payload":"GpZBGMDvOgwOPVpst4TnyCMrC+lXMQ8KOPEgeK8GSTZafA/YGBCO+9J7BFmHvtuSuXAaNrlsEviPxFdQCCGJlljW1lJoGJ2Cny0RDlw+75fdH/a4MNwVplSvSJYxeZoYO3wEh8RDyHw3fHlXrQ/u+en1+0psRkdt1Gnvkv+ULxKEOsjTOz0fqzioOYWK/oyNW1h6qJ6x09aTOsBzv1Jv6Wx3vMNzqXGCgFxI9UTzWmdp7hs2JRHHcegTzMaX2cw1lV+shWNpyqEu1anSC6Zc8qfk1vxDj06xGjWZsFeBCfk/8j5Eu5y/c/nDKvcQKC8I3PmPXBBrCmoi/mRDHqu2sMSJQKqBebLv4MkWJUjV3CvfWDJcBHv/ovfNAgmNhNEzZJBA8iC5Pwat0vxopszcsU2bpwg0bPG3hawQkrLkz9sJGnJEsJHSpPSsBj/fS/FqnvkeyrEGH+4TbUqX26LSbFVgmLR3LJtLvP9M3xv99dWsdeqH+C9YmKsXtvXbXCcA20ygL7wc6oCgQbFWGwA7N1lnk1oKDDdaftCu"}"#;
 
     #[test]
     fn golden_v1_passphrase_still_decrypts() {
@@ -119,16 +123,18 @@ mod tests {
             GOLDEN_V1,
             Some(BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE)),
         )
-        .unwrap();
+            .unwrap();
         // Assert on stable, semantic values so the test survives future additive
         // schema changes (new Option fields) without needing a fresh golden.
         let vault = &backup.vaults[0];
+        let login = &vault.logins[0];
+        let card = &vault.cards[0];
         assert_eq!(vault.name, "Personal");
-        assert_eq!(vault.login.title, "Email");
-        assert_eq!(vault.login.password.as_deref(), Some("s3cr3t-password"));
-        assert_eq!(vault.login.totp_secret, None);
-        assert_eq!(vault.card.number, "4111111111111111");
-        assert_eq!(vault.card.expiration_year, Some(2030));
+        assert_eq!(login.title, "Email");
+        assert_eq!(login.password.as_deref(), Some("s3cr3t-password"));
+        assert_eq!(login.totp_secret, None);
+        assert_eq!(card.number, "4111111111111111");
+        assert_eq!(card.expiration_year, Some(2030));
     }
 
     #[test]
@@ -160,18 +166,20 @@ mod tests {
     // GOLDEN_V1. It fails loudly if the ARK wire format or HKDF derivation drifts.
     // Regenerate ONLY alongside a deliberate version bump.
     const GOLDEN_V1_ARK_KEY: [u8; 32] = [9u8; 32];
-    const GOLDEN_V1_ARK: &str = r#"{"version":1,"encryption":{"source":"ark","kdf":{"type":"hkdf_sha256","salt":"4RYbuO3VfhzEleupHEHXeQ=="},"nonce":"yiEZW5gcp8GWXDz4"},"payload":"uviKJ4uxZgkNjbJqPO2HwCrEZe6wkAGuN/HFR2XAx1Sx3wO0fbiV6kNGB7BdlSr/npuWE6vX6vue5bFKb22Wj1AUQ7ON/jOg09b+qPLQm46DwlsysR4FGpteyoVBpCP6CYeddcjyr4ipdDlud0xzeVEWqly64m8X2CWUQaEpfrulBxfAnt0DE/CUV0OcrSNfNs4W7C9lyR2OuBb8RjSMCX+E07gNCRwdwuQNkef5lGbz4Bd5RXI3EesfRVCfEYvvxVdWemzBiGfuwLk8BwaEieRVdj+1mZ5v1kRMNrbgy21qoGQdE+AUF6zvmNoktl6MfXTQFyFzufUwQtNZLJvIoUBKMn4b6AFa+h+n3Aq1QJR/AotW9/u9TMIAHL4q8U+OrLmTcPwx9vOkXc6U6xWVsOT/8I0pxxHklfU8Rjf4mNzULe7BTC9FXbib/GUkXlkL9W5UOvzWYEPjA0In6FPUKHFdtrdiLsH7cfL2E/Qz8rI268bQoh05DnlOxoEjdMPvAzEbSOOiL9scZiTOLp5xc3DRY3VO"}"#;
+    const GOLDEN_V1_ARK: &str = r#"{"version":1,"encryption":{"source":"ark","kdf":{"type":"hkdf_sha256","salt":"DbSH5vXm1d1XLo2gANptBQ=="},"nonce":"r2uEXqscOq6avV5g"},"payload":"6KlcJQxQ7q2SnHyJ/0YTWEs/GMZk4npIW8+0AUdVyA58gUMk4IUoNYpuCJEZ+6O0SAuaDd68JLpDgcTc3QmSCjxjCpSehOiPXIACk8+yXlb1oS9wlu1+cSuKrNqKJdMdvmSx/3UabH6rznZvN/qyHC6SMK71vtBoG9hgHt7wquYHNv1RIL7Rd5m1BMpmivooS6gfbviYHxVruxSXXSI/KBQ9wjf/XFpZeP5oTubY6snFkfTAJmpDIWY4K/ZVhQX8yLzqFnocRndYpSDHqCn7QbcKpalZcs6vKP5pJUsZl4SuX/3DhOQ1Sn2oHzfpUyVo6TB4+CuZ4fZppnbr4b+/A1kIphHkIMWkNgICnpvS25Yxc4XwtK31ytIa6Ngt2GK5pb6Wh5CS2gRWMWKC6qyexFhZR0UA9ZnczIzp1Y8YuLaTVqk5ZHH63IBqG0Z8pEpohIyyyaX80rmmv4MGwv89+VSCsRsR2+MeiMKe7YA/Gu1FlisLlpiO6Kw4w7P2N2f6JVBgtk/H9aLh3GfsgVHlfNHQzfN6zVXhRffk"}"#;
 
     #[test]
     fn golden_v1_ark_still_decrypts() {
         let ark = AccountRootKey::try_from_bytes(&GOLDEN_V1_ARK_KEY).unwrap();
         let backup = import(GOLDEN_V1_ARK, Some(BackupCredential::Ark(&ark))).unwrap();
         let vault = &backup.vaults[0];
+        let login = &vault.logins[0];
+        let card = &vault.cards[0];
         assert_eq!(vault.name, "Personal");
-        assert_eq!(vault.login.title, "Email");
-        assert_eq!(vault.login.password.as_deref(), Some("s3cr3t-password"));
-        assert_eq!(vault.card.number, "4111111111111111");
-        assert_eq!(vault.card.expiration_year, Some(2030));
+        assert_eq!(login.title, "Email");
+        assert_eq!(login.password.as_deref(), Some("s3cr3t-password"));
+        assert_eq!(card.number, "4111111111111111");
+        assert_eq!(card.expiration_year, Some(2030));
     }
 
     #[test]
@@ -189,7 +197,7 @@ mod tests {
             &sample_backup(),
             Some(BackupCredential::Passphrase(b"right")),
         )
-        .unwrap();
+            .unwrap();
         let err = import(&json, Some(BackupCredential::Passphrase(b"wrong"))).unwrap_err();
         assert!(matches!(
             err,

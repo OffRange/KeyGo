@@ -5,11 +5,11 @@ pub struct Backup {
     pub vaults: Vec<Vault>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Vault {
     pub name: String,
-    pub login: Login,
-    pub card: Card,
+    pub logins: Vec<Login>,
+    pub cards: Vec<Card>,
 }
 
 macro_rules! backup_item {
@@ -24,7 +24,7 @@ macro_rules! backup_item {
     ) => {
         $(#[$meta])*
 
-        #[derive(Debug, Clone, Serialize, Deserialize)]
+        #[derive(Debug, Clone, Default, Serialize, Deserialize)]
         $vis struct $name {
             pub title: String,
             pub notes: Option<String>,
