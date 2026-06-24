@@ -69,6 +69,6 @@ internal fun SelectFileFormatContent(onEvent: (ExportWizardUiEvent) -> Unit) {
 private val FileFormat.description
     @Composable
     get() = when (this) {
-        FileFormat.KDBX -> stringResource(R.string.export_description_kdbx)
+        FileFormat.JSON -> stringResource(R.string.export_description_json)
         FileFormat.CSV -> stringResource(R.string.export_description_csv)
     }

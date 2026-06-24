@@ -209,7 +209,7 @@ private fun BackupHubContentPreview() {
                         ),
                         ScheduledBackup(
                             provider = "Google Drive",
-                            type = FileFormat.KDBX,
+                            type = FileFormat.JSON,
                             scheduleInterval = BackupInterval(count = 1, unit = IntervalUnit.Days),
                             path = "/path/to/drive/backup"
                         )

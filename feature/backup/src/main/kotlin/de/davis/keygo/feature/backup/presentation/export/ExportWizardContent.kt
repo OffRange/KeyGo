@@ -238,7 +238,7 @@ private class ExportWizardUiStateProvider : PreviewParameterProvider<ExportWizar
 
     override val values = ExportWizardStep.entries.asSequence().map {
         ExportWizardUiState(
-            formatState = SelectFormatState(format = FileFormat.KDBX),
+            formatState = SelectFormatState(format = FileFormat.JSON),
             scheduleState = SelectScheduleState(),
             destinationState = SelectDestinationState(
                 destination = BackupDestination(

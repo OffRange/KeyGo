@@ -141,9 +141,12 @@ internal class ExportWizardViewModel(
             ExportWizardUiEvent.ChooseDestination -> {
                 val pickerEvent = when (_scheduleState.value.mode) {
                     ScheduleMode.Recurring -> ExportWizardEvent.PickFolder
-                    ScheduleMode.OneTime -> ExportWizardEvent.CreateFile(
-                        suggestedName = _formatState.value.format.backupFileName(),
-                    )
+                    ScheduleMode.OneTime -> _formatState.value.format?.let { format ->
+                        ExportWizardEvent.CreateFile(
+                            suggestedName = format.backupFileName(),
+                            mimeType = format.mimeType
+                        )
+                    } ?: return
                 }
                 _event.trySend(pickerEvent)
             }

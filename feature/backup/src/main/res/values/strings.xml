@@ -13,7 +13,7 @@
     <string name="never_backed_up">Never Backed Up</string>
 
     <string name="csv">CSV</string>
-    <string name="kdbx">KDBX</string>
+    <string name="json">JSON</string>
 
     <string name="scheduled_title">%1$s \u2022 %2$s</string>
     <string name="file_type_backup">%1$s Backup</string>
@@ -32,7 +32,7 @@
     <string name="passphrase">Passphrase</string>
     <string name="confirm_passphrase">Confirm Passphrase</string>
 
-    <string name="export_description_kdbx">Export all data, including vaults, logins, cards, and TOTP, to a secure, encrypted KDBX file.</string>
+    <string name="export_description_json">Export all data, including vaults, logins, cards, and TOTP, to a secure, encrypted JSON file.</string>
     <string name="export_description_csv">Export logins only. Note: This format is unencrypted and stored as plain text.</string>
 
     <string name="export_passphrase_instruction">Set a passphrase to encrypt your backup. You will need this to restore your data later.\nNote: This passphrase is securely saved on your device for periodic backups, but is never saved for one-time exports.</string>
@@ -62,7 +62,7 @@
     <string name="schedule_one_time_description">Export once to a location you choose. Nothing is saved or repeated.</string>
     <string name="schedule_recurring_title">Recurring backup</string>
     <string name="schedule_recurring_description">KeyGo automatically creates a fresh backup on the schedule you set.</string>
-    <string name="schedule_recurring_requires_encryption">Recurring backups require an encrypted format. Choose KDBX to schedule automatic backups.</string>
+    <string name="schedule_recurring_requires_encryption">Recurring backups require an encrypted format. Choose JSON to schedule automatic backups.</string>
 
     <string name="schedule_repeat_every_label">Repeat every</string>
     <string name="schedule_auto_delete_label">Auto-delete old backups</string>

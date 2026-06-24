@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
+import de.davis.keygo.feature.backup.presentation.contract.CreateDynamicDocument
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardEvent
 import org.koin.androidx.compose.koinViewModel
 
@@ -21,12 +22,7 @@ fun ExportWizardScreen(navigateUp: () -> Unit) {
         viewModel.onDestinationPicked(uri?.let { BackupDestinationUri(it.toString()) })
     }
 
-    // CreateDocument fixes its MIME type at construction. We use a generic binary
-    // type for both formats and let the suggested file name carry the extension
-    // (.kdbx / .csv); the user can still rename in the system dialog.
-    val filePicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/octet-stream"),
-    ) { uri ->
+    val filePicker = rememberLauncherForActivityResult(CreateDynamicDocument()) { uri ->
         viewModel.onDestinationPicked(uri?.let { BackupDestinationUri(it.toString()) })
     }
 
@@ -34,7 +30,7 @@ fun ExportWizardScreen(navigateUp: () -> Unit) {
         when (it) {
             ExportWizardEvent.Finished -> navigateUp()
             ExportWizardEvent.PickFolder -> folderPicker.launch(null)
-            is ExportWizardEvent.CreateFile -> filePicker.launch(it.suggestedName)
+            is ExportWizardEvent.CreateFile -> filePicker.launch(it)
         }
     }
 

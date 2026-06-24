@@ -4,5 +4,5 @@ internal sealed interface ExportWizardEvent {
 
     data object Finished : ExportWizardEvent
     data object PickFolder : ExportWizardEvent
-    data class CreateFile(val suggestedName: String) : ExportWizardEvent
+    data class CreateFile(val suggestedName: String, val mimeType: String) : ExportWizardEvent
 }

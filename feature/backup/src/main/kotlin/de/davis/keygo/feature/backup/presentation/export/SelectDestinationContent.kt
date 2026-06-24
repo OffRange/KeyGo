@@ -269,7 +269,7 @@ private fun SelectDestinationContentPreview(
             SelectDestinationContent(
                 state = state,
                 scheduleState = SelectScheduleState(mode = ScheduleMode.Recurring),
-                format = FileFormat.KDBX,
+                format = FileFormat.JSON,
                 onEvent = {},
             )
         }

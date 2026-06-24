@@ -18,5 +18,5 @@ internal val FileFormat.displayName
 internal val FileFormat.icon
     get() = when (this) {
         FileFormat.CSV -> Icons.AutoMirrored.Default.List
-        FileFormat.KDBX -> Icons.Default.Lock
+        FileFormat.JSON -> Icons.Default.Lock
     }
