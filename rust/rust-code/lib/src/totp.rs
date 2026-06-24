@@ -65,3 +65,7 @@ pub fn get_totp_url(
         .map_err(TotpError::Url)?;
     Ok(totp.get_url())
 }
+
+pub(crate) fn is_valid_totp_secret(s: &str) -> bool {
+    base32::decode(base32::Alphabet::Rfc4648 { padding: false }, s).is_some()
+}
