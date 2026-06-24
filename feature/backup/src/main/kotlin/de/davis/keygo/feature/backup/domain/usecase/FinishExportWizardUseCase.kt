@@ -28,13 +28,13 @@ class FinishExportWizardUseCase(
             if (details.format.encrypted && details.passphrase.isBlank())
                 return Result.Failure(FinishExportWizardError.PassphraseEmpty)
 
-            val passphrase = if (details.format.encrypted)
+            val wrappedPassphrase = if (details.format.encrypted)
                 wrapPassphrase(details.passphrase).bind()
             else null
 
             val job = BackupJob(
                 uri = details.uri,
-                passphrase = passphrase,
+                wrappedPassphrase = wrappedPassphrase,
                 format = details.format,
             )
 

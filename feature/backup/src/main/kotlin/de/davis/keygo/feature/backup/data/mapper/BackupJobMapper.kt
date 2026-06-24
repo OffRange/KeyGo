@@ -11,7 +11,7 @@ import de.davis.keygo.feature.backup.domain.model.FileFormat
 internal fun ProtoBackupJob.toDomain() = BackupJob(
     uri = BackupDestinationUri(uri),
     format = FileFormat.valueOf(this@toDomain.format),
-    passphrase = if (hasPassphraseCt() && hasPassphraseIv())
+    wrappedPassphrase = if (hasPassphraseCt() && hasPassphraseIv())
         CryptographicData(
             data = passphraseCt.toByteArray(),
             iv = passphraseIv.toByteArray()
@@ -22,7 +22,7 @@ internal fun ProtoBackupJob.toDomain() = BackupJob(
 internal fun BackupJob.toProto() = protoBackupJob {
     uri = this@toProto.uri.value
     format = this@toProto.format.name
-    passphrase?.let {
+    wrappedPassphrase?.let {
         passphraseCt = it.data.toByteString()
         passphraseIv = it.iv.toByteString()
     }

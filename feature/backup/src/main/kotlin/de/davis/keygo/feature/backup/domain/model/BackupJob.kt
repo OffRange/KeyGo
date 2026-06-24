@@ -4,6 +4,6 @@ import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 
 data class BackupJob(
     val uri: BackupDestinationUri,
-    val passphrase: CryptographicData?,
+    val wrappedPassphrase: CryptographicData?,
     val format: FileFormat,
 )
