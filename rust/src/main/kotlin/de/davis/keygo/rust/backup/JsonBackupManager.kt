@@ -8,7 +8,7 @@ import de.davisalessandro.keygo.rust.JsonBackupManagerInterface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-typealias BackupManager = JsonBackupManagerInterface
+typealias JsonBackupManager = JsonBackupManagerInterface
 
 suspend fun JsonBackupManagerInterface.exportWithResult(
     backup: Backup,

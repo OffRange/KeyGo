@@ -11,7 +11,7 @@ import de.davisalessandro.keygo.rust.ExportPreset
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-typealias CsvManager = CsvBackupManagerInterface
+typealias CsvBackupManager = CsvBackupManagerInterface
 
 suspend fun CsvBackupManagerInterface.analyzeWithResult(
     data: String,
