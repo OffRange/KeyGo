@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.feature.autofill.domain.repository.AutofillServiceRepository
-import de.davis.keygo.feature.settings.domain.model.OsState
 import de.davis.keygo.feature.settings.domain.repository.AppVersionRepository
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,18 +31,21 @@ internal class SettingsViewModel(
     private val _event = Channel<SettingsEvent>(Channel.BUFFERED)
     val event = _event.receiveAsFlow()
 
-    // OS-owned state (autofill / biometric availability) has no observable stream of
-    // its own; we snapshot it on lifecycle resume via refreshSystemState().
-    private val osState = MutableStateFlow(OsState())
+    // OS-owned state with no reliable change stream of its own; both are snapshotted on lifecycle
+    // resume via refreshSystemState(). Autofill also gets an optimistic write on in-app disable
+    // (see onEvent), since that action doesn't trigger a resume.
+    private val biometricsAvailable = MutableStateFlow(false)
+    private val autofillEnabled = MutableStateFlow(false)
 
     val state = combine(
         accountRepository.observe(),
-        osState,
-    ) { account, os ->
+        autofillEnabled,
+        biometricsAvailable,
+    ) { account, autofill, biometrics ->
         SettingsUiState(
-            autofillEnabled = os.autofillEnabled,
-            biometricsAvailable = os.biometricsAvailable,
-            biometricsEnabled = os.biometricsAvailable && account?.biometricWrappedArk != null,
+            autofillEnabled = autofill,
+            biometricsAvailable = biometrics,
+            biometricsEnabled = biometrics && account?.biometricWrappedArk != null,
             version = versionName,
         )
     }.stateIn(
@@ -53,12 +55,10 @@ internal class SettingsViewModel(
     )
 
     fun refreshSystemState() {
-        osState.update {
-            OsState(
-                autofillEnabled = autofillServiceRepository.isEnabled(),
-                biometricsAvailable = biometricAvailabilityRepository.availability(),
-            )
-        }
+        biometricsAvailable.update { biometricAvailabilityRepository.availability() }
+        // Re-read on resume: the autofill selection changes in the system picker/settings, which
+        // run in a separate activity, so this is where we learn KeyGo was enabled or disabled.
+        autofillEnabled.update { autofillServiceRepository.isEnabled() }
     }
 
     fun onEvent(event: SettingsUiEvent) {
@@ -68,10 +68,10 @@ internal class SettingsViewModel(
                 event.enabledRequest -> _event.trySend(SettingsEvent.OpenAutofillSelection)
                 else -> {
                     autofillServiceRepository.disable()
-                    // disableAutofillServices() propagates through the system server
-                    // asynchronously, so re-polling isEnabled() here can still read true.
-                    // The outcome is deterministic — update the snapshot directly.
-                    osState.update { it.copy(autofillEnabled = false) }
+                    // disable() propagates through the system server asynchronously and this action
+                    // doesn't trigger a resume, so reflect the intent immediately; the next resume
+                    // re-read confirms it.
+                    autofillEnabled.update { false }
                 }
             }
 
