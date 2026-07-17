@@ -101,6 +101,23 @@ class ItemWithCryptoScopeUseCaseTest {
     }
 
     @Test
+    fun `withItem runs block on an already fetched item and returns success`() = runTest {
+        val result = useCase.withItem(card(newItemId())) { it.name }
+
+        assertTrue(result.isSuccess())
+        assertEquals("Test Card", result.getOrNull())
+    }
+
+    @Test
+    fun `withItem returns IdNotFound when vault key is missing`() = runTest {
+        val result = useCase.withItem(card(newItemId()).copy(vaultId = newVaultId())) { it.name }
+
+        assertTrue(result.isFailure())
+        val failure = assertIs<Result.Failure<*, *>>(result)
+        assertIs<CryptoScopeError.IdNotFound>(failure.error)
+    }
+
+    @Test
     fun `observe emits success carrying the block result`() = runTest {
         val id = newItemId()
         creditCardRepository.seed(card(id))

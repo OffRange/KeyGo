@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.backup.presentation.export
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,15 +13,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedSecureTextField
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
@@ -28,12 +33,18 @@ import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.core.ui.components.VisibilityButton
 import de.davis.keygo.feature.backup.R
+import de.davis.keygo.feature.backup.domain.model.EncryptionMethod
+import de.davis.keygo.feature.backup.presentation.description
+import de.davis.keygo.feature.backup.presentation.displayName
+import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiEvent
 import de.davis.keygo.feature.backup.presentation.export.model.ProvidePassphraseState
+import de.davis.keygo.feature.backup.presentation.icon
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun ProvidePassphraseContent(
     state: ProvidePassphraseState,
+    onEvent: (ExportWizardUiEvent) -> Unit,
 ) {
     var passphraseHidden by rememberSaveable { mutableStateOf(true) }
     var confirmPassphraseHidden by rememberSaveable { mutableStateOf(true) }
@@ -45,30 +56,62 @@ internal fun ProvidePassphraseContent(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(
-                text = stringResource(R.string.export_passphrase_instruction),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            EncryptionMethod.entries.forEachIndexed { index, method ->
+                SegmentedListItem(
+                    onClick = { onEvent(ExportWizardUiEvent.EncryptionMethodSelected(method)) },
+                    shapes = ListItemDefaults.segmentedShapes(index, EncryptionMethod.entries.size),
+                    colors = ListItemDefaults.segmentedColors(
+                        containerColor = if (state.method == method)
+                            MaterialTheme.colorScheme.secondaryContainer
+                        else MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = contentColorFor(
+                            if (state.method == method) MaterialTheme.colorScheme.secondaryContainer
+                            else MaterialTheme.colorScheme.surfaceContainerHigh
+                        ),
+                    ),
+                    supportingContent = {
+                        Text(text = method.description)
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = method.icon,
+                            contentDescription = null,
+                        )
+                    },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(text = method.displayName)
+                }
+            }
 
-            PassphraseField(
-                state = state.passphraseTextFieldState,
-                label = stringResource(R.string.passphrase),
-                hidden = passphraseHidden,
-                onToggleHidden = { passphraseHidden = !passphraseHidden },
-                modifier = Modifier.onFocusChanged { forceCompact = !it.hasFocus },
-            )
-            StrengthIndicator(
-                passwordScore = state.passphraseScore,
-                forceCompact = forceCompact,
-            )
+            AnimatedVisibility(visible = state.method == EncryptionMethod.Passphrase) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = stringResource(R.string.export_passphrase_instruction),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
 
-            PassphraseField(
-                state = state.confirmPassphraseTextFieldState,
-                label = stringResource(R.string.confirm_passphrase),
-                hidden = confirmPassphraseHidden,
-                onToggleHidden = { confirmPassphraseHidden = !confirmPassphraseHidden },
-            )
+                    PassphraseField(
+                        state = state.passphraseTextFieldState,
+                        label = stringResource(R.string.passphrase),
+                        hidden = passphraseHidden,
+                        onToggleHidden = { passphraseHidden = !passphraseHidden },
+                        modifier = Modifier.onFocusChanged { forceCompact = !it.hasFocus },
+                    )
+                    StrengthIndicator(
+                        passwordScore = state.passphraseScore,
+                        forceCompact = forceCompact,
+                    )
+
+                    PassphraseField(
+                        state = state.confirmPassphraseTextFieldState,
+                        label = stringResource(R.string.confirm_passphrase),
+                        hidden = confirmPassphraseHidden,
+                        onToggleHidden = { confirmPassphraseHidden = !confirmPassphraseHidden },
+                    )
+                }
+            }
         }
     }
 }

@@ -17,7 +17,7 @@ pub struct EncryptionHeader {
     pub nonce: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum KeySource {
     Passphrase,
@@ -324,7 +324,7 @@ mod tests {
         let cred = BackupCredential::Passphrase(b"pw");
         let mut sealed = seal(b"x", cred, CURRENT_VERSION).unwrap();
         // A hostile header claiming an enormous memory cost must fail key
-        // derivation cleanly — not abort the process, and not be silently ignored
+        // derivation cleanly - not abort the process, and not be silently ignored
         // (which is what happened before the params were threaded through).
         if let Kdf::Argon2id { mem_kib, .. } = &mut sealed.header.kdf {
             *mem_kib = MAX_ARGON2_MEM_KIB + 1;

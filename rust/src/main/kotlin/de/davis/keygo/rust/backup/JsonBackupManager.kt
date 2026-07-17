@@ -5,6 +5,7 @@ import de.davisalessandro.keygo.rust.Backup
 import de.davisalessandro.keygo.rust.BackupCredential
 import de.davisalessandro.keygo.rust.BackupException
 import de.davisalessandro.keygo.rust.JsonBackupManagerInterface
+import de.davisalessandro.keygo.rust.JsonEncryption
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -28,6 +29,17 @@ suspend fun JsonBackupManagerInterface.importWithResult(
 ): Result<Backup, BackupException> = withContext(Dispatchers.Default) {
     runCatching {
         import(data, credential)
+    }.fold(
+        onSuccess = { Result.Success(it) },
+        onFailure = { Result.Failure(it as BackupException) }
+    )
+}
+
+suspend fun JsonBackupManagerInterface.inspectWithResult(
+    data: String,
+): Result<JsonEncryption, BackupException> = withContext(Dispatchers.Default) {
+    runCatching {
+        inspect(data)
     }.fold(
         onSuccess = { Result.Success(it) },
         onFailure = { Result.Failure(it as BackupException) }

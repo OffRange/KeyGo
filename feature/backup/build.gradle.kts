@@ -6,6 +6,10 @@ plugins {
 
 android {
     namespace = "de.davis.keygo.feature.backup"
+
+    defaultConfig {
+        missingDimensionStrategy("store", "playStore")
+    }
 }
 
 dependencies {
@@ -19,6 +23,12 @@ dependencies {
     implementation(projects.core.util)
     implementation(projects.core.item)
     implementation(projects.core.security)
+    implementation(projects.rust)
+    implementation(projects.feature.item.core)
+    implementation(projects.feature.vault)
 
     testImplementation(testFixtures(projects.core.item))
+    testImplementation(testFixtures(projects.core.security))
+    testImplementation(testFixtures(projects.rust))
+    testImplementation(libs.io.mockk)
 }

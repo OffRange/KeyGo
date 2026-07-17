@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.backup.presentation.export.model
 
 import androidx.compose.runtime.Stable
+import de.davis.keygo.feature.backup.domain.model.EncryptionMethod
 
 @Stable
 internal data class ExportWizardUiState(
@@ -14,7 +15,9 @@ internal data class ExportWizardUiState(
 
     val canContinue: Boolean = when (step) {
         ExportWizardStep.SelectDestination -> destinationState.destination != null
-        ExportWizardStep.ProvidePassphrase -> providePassphraseState.valid
+        ExportWizardStep.ProvidePassphrase ->
+            providePassphraseState.method == EncryptionMethod.Ark || providePassphraseState.valid
+
         else -> true
     }
 

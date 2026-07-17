@@ -61,7 +61,7 @@ pub(crate) fn derive_argon2id(
 /// credential so the same KEK can be re-derived on later logins. `domain` is mixed into the salt
 /// as a label to separate otherwise-identical derivations (e.g. password-KEK vs recovery-KEK).
 ///
-/// The password is not zeroized by this function — the caller owns the password buffer and must
+/// The password is not zeroized by this function - the caller owns the password buffer and must
 /// wrap it in `Zeroizing` / a secret type at the FFI boundary.
 pub(crate) fn derive_argon2id_with_params(
     password: &[u8],

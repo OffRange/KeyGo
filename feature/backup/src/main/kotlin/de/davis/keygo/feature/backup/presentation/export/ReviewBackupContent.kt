@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Inventory2
@@ -43,6 +44,8 @@ import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.feature.backup.R
 import de.davis.keygo.feature.backup.domain.model.BackupDestination
 import de.davis.keygo.feature.backup.domain.model.BackupInterval
+import de.davis.keygo.feature.backup.domain.model.CsvPreset
+import de.davis.keygo.feature.backup.domain.model.EncryptionMethod
 import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.domain.model.IntervalUnit
 import de.davis.keygo.feature.backup.presentation.displayName
@@ -60,6 +63,7 @@ internal fun ReviewBackupContent(
     scheduleState: SelectScheduleState,
     destinationState: SelectDestinationState,
     passphraseState: ProvidePassphraseState,
+    csvPreset: CsvPreset,
 ) {
     val encrypted = format.encrypted
     val recurring = scheduleState.mode == ScheduleMode.Recurring
@@ -160,11 +164,29 @@ internal fun ReviewBackupContent(
 
                     if (encrypted) {
                         ReviewDivider()
+                        if (passphraseState.method == EncryptionMethod.Passphrase)
+                            ReviewRow(
+                                icon = Icons.Default.Password,
+                                label = stringResource(R.string.review_section_passphrase),
+                            ) {
+                                StrengthIndicator(passwordScore = passphraseState.passphraseScore)
+                            }
+                        else
+                            ReviewRow(
+                                icon = EncryptionMethod.Ark.icon,
+                                label = stringResource(R.string.review_section_encryption),
+                            ) {
+                                Text(text = EncryptionMethod.Ark.displayName)
+                            }
+                    }
+
+                    if (format == FileFormat.CSV) {
+                        ReviewDivider()
                         ReviewRow(
-                            icon = Icons.Default.Password,
-                            label = stringResource(R.string.review_section_passphrase),
+                            icon = Icons.AutoMirrored.Default.List,
+                            label = stringResource(R.string.review_section_csv_preset),
                         ) {
-                            StrengthIndicator(passwordScore = passphraseState.passphraseScore)
+                            Text(text = csvPreset.displayName)
                         }
                     }
                 }
@@ -316,6 +338,7 @@ private fun ReviewBackupContentPreview(
                     confirmPassphraseTextFieldState = TextFieldState(),
                     passphraseScore = PasswordScore.Strong,
                 ),
+                csvPreset = CsvPreset.Browser,
             )
         }
     }

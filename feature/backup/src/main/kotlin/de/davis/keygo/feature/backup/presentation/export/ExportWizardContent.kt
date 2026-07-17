@@ -207,6 +207,12 @@ internal fun ExportWizardContent(
 
                         ExportWizardStep.ProvidePassphrase -> ProvidePassphraseContent(
                             state = state.providePassphraseState,
+                            onEvent = onEvent,
+                        )
+
+                        ExportWizardStep.SelectCsvPreset -> SelectCsvPresetContent(
+                            preset = state.formatState.csvPreset,
+                            onEvent = onEvent,
                         )
 
                         ExportWizardStep.Review -> state.formatState.format?.let { format ->
@@ -215,6 +221,7 @@ internal fun ExportWizardContent(
                                 scheduleState = state.scheduleState,
                                 destinationState = state.destinationState,
                                 passphraseState = state.providePassphraseState,
+                                csvPreset = state.formatState.csvPreset,
                             )
                         }
                     }
@@ -231,6 +238,7 @@ private val ExportWizardStep.title
         ExportWizardStep.Schedule -> stringResource(R.string.select_schedule_title)
         ExportWizardStep.SelectDestination -> stringResource(R.string.select_destination_title)
         ExportWizardStep.ProvidePassphrase -> stringResource(R.string.provide_passphrase_title)
+        ExportWizardStep.SelectCsvPreset -> stringResource(R.string.select_csv_preset_title)
         ExportWizardStep.Review -> stringResource(R.string.review_backup_title)
     }
 
@@ -238,7 +246,9 @@ private class ExportWizardUiStateProvider : PreviewParameterProvider<ExportWizar
 
     override val values = ExportWizardStep.entries.asSequence().map {
         ExportWizardUiState(
-            formatState = SelectFormatState(format = FileFormat.JSON),
+            formatState = SelectFormatState(
+                format = if (it == ExportWizardStep.SelectCsvPreset) FileFormat.CSV else FileFormat.JSON,
+            ),
             scheduleState = SelectScheduleState(),
             destinationState = SelectDestinationState(
                 destination = BackupDestination(

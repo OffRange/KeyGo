@@ -11,6 +11,19 @@ message ProtoBackupJob {
   optional bytes passphrase_iv = 4;
 
   int64 created_at = 5;
+  optional int64 finished_at = 6;
+  optional string last_result = 7;
+
+  optional int32 keep_count = 8;
+
+  // EncryptionMethod.name; absent on a JSON job means Passphrase (pre-existing jobs).
+  optional string encryption = 9;
+  // CsvPreset.name; absent on a CSV job means Browser (pre-existing jobs).
+  optional string csv_preset = 10;
+
+  // Set when the user cancels the job (or the schedule); a cancelled record is no longer live and
+  // its credentials are released.
+  optional bool cancelled = 11;
 }
 
 message ProtoBackupJobs {

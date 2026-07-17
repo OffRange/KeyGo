@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package de.davis.keygo.feature.backup.data.local.model;
+option java_multiple_files = true;
+
+// A copy of the Account Root Key, wrapped by the non-auth BackupArkKey keystore key,
+// so backups can run while the session is locked. ct/iv empty => not provisioned.
+message ProtoBackupArkData {
+  bytes ct = 1;
+  bytes iv = 2;
+}

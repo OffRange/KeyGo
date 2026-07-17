@@ -14,8 +14,8 @@ pub const DERIVED_KEY_LEN: usize = 32;
 /// extract salt (a fresh per-use random value); `info` is the HKDF expand label
 /// used to domain-separate otherwise-identical derivations.
 ///
-/// HKDF accepts any salt length (including empty), so — unlike the Argon2id
-/// primitive — no minimum-salt check is enforced here.
+/// HKDF accepts any salt length (including empty), so - unlike the Argon2id
+/// primitive - no minimum-salt check is enforced here.
 pub(crate) fn derive_hkdf_sha256(
     ikm: &[u8],
     salt: &[u8],

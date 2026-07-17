@@ -1,5 +1,6 @@
 package de.davis.keygo.core.item
 
+import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasskeyMetadata
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
@@ -23,4 +24,7 @@ class FakePasskeyRepository : PasskeyRepository {
 
     override suspend fun getPasskey(credentialId: ByteArray): Passkey? =
         store.firstOrNull { it.credentialId.contentEquals(credentialId) }
+
+    override suspend fun getPasskeysByLogin(loginId: ItemId): List<Passkey> =
+        store.filter { it.loginId == loginId }
 }

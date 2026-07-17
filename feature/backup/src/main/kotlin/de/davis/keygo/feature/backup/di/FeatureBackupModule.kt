@@ -6,7 +6,9 @@ import androidx.datastore.dataStore
 import androidx.work.WorkManager
 import com.google.protobuf.MessageLite
 import com.google.protobuf.Parser
+import de.davis.keygo.feature.backup.data.local.model.ProtoBackupArkData
 import de.davis.keygo.feature.backup.data.local.model.ProtoBackupJobs
+import de.davis.keygo.feature.backup.di.annotation.BackupArkQualifier
 import de.davis.keygo.feature.backup.di.annotation.BackupJobsQualifier
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
@@ -32,6 +34,19 @@ object FeatureBackupModule {
     @BackupJobsQualifier
     internal fun provideBackupJobsDataStore(context: Context) =
         context.backupJobsDataStore
+
+    private val Context.backupArkDataStore by dataStore(
+        "backup_ark_data.pb",
+        DefaultProtoSerializer(
+            defaultInstance = ProtoBackupArkData.getDefaultInstance(),
+            parser = ProtoBackupArkData.parser(),
+        ),
+    )
+
+    @Single
+    @BackupArkQualifier
+    internal fun provideBackupArkDataStore(context: Context) =
+        context.backupArkDataStore
 
     @Single
     internal fun provideWorkManager(context: Context): WorkManager =

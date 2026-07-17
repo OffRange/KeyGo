@@ -1,9 +1,11 @@
 package de.davis.keygo.core.item.data.repository
 
 import de.davis.keygo.core.item.data.local.dao.PasskeyDao
+import de.davis.keygo.core.item.data.local.entity.credential.PasskeyEntity
 import de.davis.keygo.core.item.data.local.pojo.PasskeyMetadataPojo
 import de.davis.keygo.core.item.data.mapper.toData
 import de.davis.keygo.core.item.data.mapper.toDomain
+import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasskeyMetadata
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
@@ -26,4 +28,7 @@ internal class PasskeyRepositoryImpl(
 
     override suspend fun getPasskey(credentialId: ByteArray): Passkey? =
         passkeyDao.getPasskey(credentialId)?.toDomain()
+
+    override suspend fun getPasskeysByLogin(loginId: ItemId): List<Passkey> =
+        passkeyDao.getPasskeysForLogin(loginId).map(PasskeyEntity::toDomain)
 }

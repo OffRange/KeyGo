@@ -12,6 +12,14 @@ import de.davisalessandro.keygo.rust.ImportReport
 
 class FakeCsvBackupManager : CsvBackupManagerInterface {
 
+    data class AnalyzeCall(val data: String)
+    data class ImportCall(val data: String, val mapping: ColumnMapping)
+    data class ExportCall(val backup: Backup, val preset: ExportPreset)
+
+    val analyzeCalls = mutableListOf<AnalyzeCall>()
+    val importCalls = mutableListOf<ImportCall>()
+    val exportCalls = mutableListOf<ExportCall>()
+
     var analyzeResult: CsvAnalysis = CsvAnalysis(
         columns = emptyList(),
         suggested = ColumnMapping(null, null, null, null, null, null),
@@ -27,16 +35,19 @@ class FakeCsvBackupManager : CsvBackupManagerInterface {
     var exportException: BackupException? = null
 
     override fun analyze(data: String): CsvAnalysis {
+        analyzeCalls += AnalyzeCall(data)
         analyzeException?.let { throw it }
         return analyzeResult
     }
 
     override fun import(data: String, mapping: ColumnMapping): CsvImportResult {
+        importCalls += ImportCall(data, mapping)
         importException?.let { throw it }
         return importResult
     }
 
     override fun export(backup: Backup, preset: ExportPreset): String {
+        exportCalls += ExportCall(backup, preset)
         exportException?.let { throw it }
         return exportResult
     }

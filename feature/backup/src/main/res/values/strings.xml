@@ -7,15 +7,24 @@
     <string name="schedule_new_backup">Schedule new Backup</string>
     <string name="restore_backup">Restore Backup</string>
 
-    <string name="scheduled_backups">Scheduled Backups</string>
-    <string name="no_scheduled_backups">No Scheduled Backups</string>
-
     <string name="never_backed_up">Never Backed Up</string>
 
     <string name="csv">CSV</string>
     <string name="json">JSON</string>
 
-    <string name="scheduled_title">%1$s \u2022 %2$s</string>
+    <string name="dispatched_backups">Backups</string>
+    <string name="no_dispatched_backups">No backups dispatched</string>
+    <string name="cancel_backup">Cancel</string>
+    <string name="backup_progress">%1$d / %2$d</string>
+
+    <string name="backup_state_enqueued">Queued</string>
+    <string name="backup_state_running">Running</string>
+    <string name="backup_state_succeeded">Completed</string>
+    <string name="backup_state_failed">Failed</string>
+    <string name="backup_state_cancelled">Cancelled</string>
+
+    <string name="backup_kind_one_time">One-time</string>
+    <string name="backup_kind_recurring">Recurring</string>
     <string name="file_type_backup">%1$s Backup</string>
 
     <plurals name="backup_interval_days">
@@ -37,10 +46,21 @@
 
     <string name="export_passphrase_instruction">Set a passphrase to encrypt your backup. You will need this to restore your data later.\nNote: This passphrase is securely saved on your device for periodic backups, but is never saved for one-time exports.</string>
 
+    <string name="encryption_method_passphrase">Passphrase</string>
+    <string name="encryption_method_passphrase_description">Choose a passphrase. The backup can be restored on any device with it.</string>
+    <string name="encryption_method_ark">This device &amp; account</string>
+    <string name="encryption_method_ark_description">Uses this account\'s key - nothing to remember. Restores only into this account.</string>
+
+    <string name="csv_preset_browser">Browser-compatible</string>
+    <string name="csv_preset_browser_description">Columns: name, url, username, password, note. Importable by Chrome, Edge and others. No TOTP.</string>
+    <string name="csv_preset_keygo">KeyGo</string>
+    <string name="csv_preset_keygo_description">Every column including TOTP. Re-imports into KeyGo without loss.</string>
+
     <string name="select_file_format_title">Select File Format</string>
     <string name="select_schedule_title">Backup Schedule</string>
     <string name="select_destination_title">Backup Location</string>
     <string name="provide_passphrase_title">Provide Passphrase</string>
+    <string name="select_csv_preset_title">Choose CSV layout</string>
     <string name="review_backup_title">Review Backup Info</string>
 
     <string name="destination_provider_unknown">Unknown</string>
@@ -49,8 +69,6 @@
     <string name="destination_choose_title">Choose where to save</string>
     <string name="destination_choose_subtitle">Pick a folder on this device, or a cloud provider like Nextcloud, Drive, or Dropbox.</string>
     <string name="destination_choose_action">Choose location</string>
-    <string name="destination_choose_file_subtitle">Pick a file location on this device, or a cloud provider like Nextcloud, Drive, or Dropbox.</string>
-    <string name="destination_choose_file_action">Choose file</string>
     <string name="destination_change">Change</string>
     <string name="destination_filename_label">Saved as</string>
 
@@ -94,6 +112,7 @@
     <string name="review_section_encryption">Encryption</string>
     <string name="review_section_contents">Contents</string>
     <string name="review_section_passphrase">Passphrase strength</string>
+    <string name="review_section_csv_preset">CSV layout</string>
 
     <string name="review_schedule_one_time">One-time</string>
 

@@ -55,6 +55,10 @@ internal class KeyStoreManagerImpl(
         return cipher
     }
 
+    override fun deleteKey(keyId: KeyId) {
+        if (keyStore.containsAlias(keyId.id)) keyStore.deleteEntry(keyId.id)
+    }
+
     private fun createKeyFor(keyId: KeyId): SecretKey {
         val spec = KeyGenParameterSpec.Builder(
             keyId.id,

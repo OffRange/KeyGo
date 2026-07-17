@@ -1,5 +1,5 @@
 use crate::b64;
-use crate::backup::encryption::{self, BackupCredential, EncryptionHeader};
+use crate::backup::encryption::{self, BackupCredential, EncryptionHeader, KeySource};
 use crate::backup::{Backup, BackupError, CURRENT_VERSION, MIN_SUPPORTED_VERSION};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
@@ -60,11 +60,25 @@ pub fn import(data: &str, cred: Option<BackupCredential<'_>>) -> Result<Backup, 
     }
 }
 
+/// Report which credential a backup file needs, without decrypting it.
+/// `Ok(None)` means the payload is plaintext.
+pub fn inspect(data: &str) -> Result<Option<KeySource>, BackupError> {
+    let env: BackupEnvelope = serde_json::from_str(data)?;
+    if !(MIN_SUPPORTED_VERSION..=CURRENT_VERSION).contains(&env.version) {
+        return Err(BackupError::UnsupportedVersion(env.version));
+    }
+    match (&env.encryption, &env.payload) {
+        (None, Payload::Plain(_)) => Ok(None),
+        (Some(header), Payload::Encrypted(_)) => Ok(Some(header.source)),
+        _ => Err(BackupError::EncryptionMismatch),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::backup::encryption::{Kdf, KeySource};
-    use crate::backup::{Card, Login, Vault};
+    use crate::backup::{Card, Login, Passkey, Vault};
     use crate::crypto::error::CryptoError;
     use crate::crypto::key::KeyMaterial;
     use crate::crypto::keys::AccountRootKey;
@@ -82,7 +96,7 @@ mod tests {
                     password: Some("s3cr3t-password".into()),
                     totp_secret: None,
                     website: Some("https://mail.example".into()),
-                    passkey: None,
+                    passkeys: vec![],
                 }],
                 cards: vec![Card {
                     title: "Visa".into(),
@@ -107,7 +121,7 @@ mod tests {
     }
 
     // A real v1 passphrase-encrypted backup, frozen at generation time. Its job is
-    // to fail loudly if the on-disk format or — critically — the BCS layout of
+    // to fail loudly if the on-disk format or - critically - the BCS layout of
     // `BackupAad` ever drifts, since either makes existing backups undecryptable
     // with no compile error. Regenerate ONLY alongside a deliberate version bump.
     const GOLDEN_V1_PASSPHRASE: &[u8] = b"golden-pw";
@@ -131,6 +145,47 @@ mod tests {
         assert_eq!(login.totp_secret, None);
         assert_eq!(card.number, "4111111111111111");
         assert_eq!(card.expiration_year, Some(2030));
+    }
+
+    #[test]
+    fn passkeys_round_trip_through_an_encrypted_backup() {
+        let mut original = sample_backup();
+        original.vaults[0].logins[0].passkeys = vec![
+            Passkey {
+                user_name: "alice".into(),
+                user_display_name: "Alice".into(),
+                credential_id: vec![1, 2, 3],
+                private_key: vec![4, 5, 6],
+                rp: "example.com".into(),
+            },
+            Passkey {
+                user_name: "alice".into(),
+                user_display_name: "Alice".into(),
+                credential_id: vec![7, 8, 9],
+                private_key: vec![10, 11, 12],
+                rp: "example.org".into(),
+            },
+        ];
+
+        let json = export(&original, Some(BackupCredential::Passphrase(b"pw"))).unwrap();
+        let restored = import(&json, Some(BackupCredential::Passphrase(b"pw"))).unwrap();
+
+        let passkeys = &restored.vaults[0].logins[0].passkeys;
+        assert_eq!(passkeys.len(), 2);
+        assert_eq!(passkeys[0].private_key, vec![4, 5, 6]);
+        assert_eq!(passkeys[1].rp, "example.org");
+    }
+
+    #[test]
+    fn golden_v1_login_has_no_passkeys() {
+        // The frozen golden predates the field; serde(default) must read it as an empty list
+        // rather than failing the whole import.
+        let backup = import(
+            GOLDEN_V1,
+            Some(BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE)),
+        )
+        .unwrap();
+        assert!(backup.vaults[0].logins[0].passkeys.is_empty());
     }
 
     #[test]
@@ -363,5 +418,53 @@ mod tests {
         let header = back.encryption.unwrap();
         assert!(matches!(header.source, KeySource::Passphrase));
         assert!(matches!(header.kdf, Kdf::Argon2id { .. }));
+    }
+
+    #[test]
+    fn inspect_reports_plaintext() {
+        let json = export(&sample_backup(), None).unwrap();
+        assert!(matches!(inspect(&json).unwrap(), None));
+    }
+
+    #[test]
+    fn inspect_reports_passphrase() {
+        let json = export(&sample_backup(), Some(BackupCredential::Passphrase(b"pw"))).unwrap();
+        assert!(matches!(inspect(&json).unwrap(), Some(KeySource::Passphrase)));
+    }
+
+    #[test]
+    fn inspect_reports_ark() {
+        let ark = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
+        let json = export(&sample_backup(), Some(BackupCredential::Ark(&ark))).unwrap();
+        assert!(matches!(inspect(&json).unwrap(), Some(KeySource::Ark)));
+    }
+
+    #[test]
+    fn inspect_rejects_unsupported_version() {
+        let json = export(&sample_backup(), None).unwrap();
+        let mut v: serde_json::Value = serde_json::from_str(&json).unwrap();
+        v["version"] = serde_json::json!(0);
+        assert!(matches!(
+            inspect(&v.to_string()).unwrap_err(),
+            BackupError::UnsupportedVersion(0),
+        ));
+    }
+
+    #[test]
+    fn inspect_rejects_malformed_json() {
+        assert!(matches!(inspect("not json").unwrap_err(), BackupError::Json(_)));
+    }
+
+    #[test]
+    fn inspect_rejects_header_with_plain_payload() {
+        let sealed = export(&sample_backup(), Some(BackupCredential::Passphrase(b"pw"))).unwrap();
+        let plain = export(&sample_backup(), None).unwrap();
+        let mut sealed_v: serde_json::Value = serde_json::from_str(&sealed).unwrap();
+        let plain_v: serde_json::Value = serde_json::from_str(&plain).unwrap();
+        sealed_v["payload"] = plain_v["payload"].clone();
+        assert!(matches!(
+            inspect(&sealed_v.to_string()).unwrap_err(),
+            BackupError::EncryptionMismatch,
+        ));
     }
 }

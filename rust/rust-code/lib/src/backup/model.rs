@@ -44,7 +44,10 @@ backup_item! {
         pub password: Option<String>,
         pub totp_secret: Option<String>,
         pub website: Option<String>,
-        pub passkey: Option<Passkey>,
+        /// A login can hold several passkeys (one per RP). `default` keeps pre-field backups -
+        /// including the frozen v1 goldens - readable.
+        #[serde(default)]
+        pub passkeys: Vec<Passkey>,
    }
 }
 

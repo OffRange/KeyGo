@@ -8,5 +8,6 @@ data class KeyId(
     companion object {
         val BiometricVaultKek = KeyId("biometric_vault_kek", true)
         val BackupPassphraseKey = KeyId("backup_passphrase_key", false)
+        val BackupArkKey = KeyId("backup_ark_key", false)
     }
 }

@@ -62,7 +62,7 @@ internal class BackupDestinationResolverImpl(
 
         // Strip the file name: the card shows it separately via fileName. A
         // third-party provider that doesn't answer the display-name query falls
-        // back to its app label (or "" for an unresolvable authority) — a cosmetic
+        // back to its app label (or "" for an unresolvable authority) - a cosmetic
         // gap, never a crash, in an error path CreateDocument shouldn't reach.
         val docId = DocumentsContract.getDocumentId(this)
         val (volume, path) = docId.splitVolumeAndPath()

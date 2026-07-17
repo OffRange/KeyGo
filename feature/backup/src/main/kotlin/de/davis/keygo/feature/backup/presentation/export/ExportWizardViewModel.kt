@@ -14,6 +14,7 @@ import de.davis.keygo.feature.backup.R
 import de.davis.keygo.feature.backup.domain.BackupDestinationResolver
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
 import de.davis.keygo.feature.backup.domain.model.ExportDetails
+import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.domain.model.FinishExportWizardError
 import de.davis.keygo.feature.backup.domain.usecase.FinishExportWizardUseCase
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardEvent
@@ -25,7 +26,6 @@ import de.davis.keygo.feature.backup.presentation.export.model.ScheduleMode
 import de.davis.keygo.feature.backup.presentation.export.model.SelectDestinationState
 import de.davis.keygo.feature.backup.presentation.export.model.SelectFormatState
 import de.davis.keygo.feature.backup.presentation.export.model.SelectScheduleState
-import de.davis.keygo.feature.backup.presentation.export.model.backupFileName
 import de.davis.keygo.feature.backup.presentation.export.model.exportStepsFor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -138,18 +138,7 @@ internal class ExportWizardViewModel(
                 }
             }
 
-            ExportWizardUiEvent.ChooseDestination -> {
-                val pickerEvent = when (_scheduleState.value.mode) {
-                    ScheduleMode.Recurring -> ExportWizardEvent.PickFolder
-                    ScheduleMode.OneTime -> _formatState.value.format?.let { format ->
-                        ExportWizardEvent.CreateFile(
-                            suggestedName = format.backupFileName(),
-                            mimeType = format.mimeType
-                        )
-                    } ?: return
-                }
-                _event.trySend(pickerEvent)
-            }
+            ExportWizardUiEvent.ChooseDestination -> _event.trySend(ExportWizardEvent.PickFolder)
 
             is ExportWizardUiEvent.FileFormatSelected -> {
                 _formatState.update {
@@ -185,6 +174,14 @@ internal class ExportWizardViewModel(
 
             is ExportWizardUiEvent.KeepAllChanged -> _scheduleState.update {
                 it.copy(keepAll = event.keepAll)
+            }
+
+            is ExportWizardUiEvent.EncryptionMethodSelected -> _providePassphraseState.update {
+                it.copy(method = event.method)
+            }
+
+            is ExportWizardUiEvent.CsvPresetSelected -> _formatState.update {
+                it.copy(csvPreset = event.preset)
             }
         }
     }
@@ -228,14 +225,17 @@ internal class ExportWizardViewModel(
     private fun currentExportDetails(): ExportDetails? {
         val format = _formatState.value.format ?: return null
         val uri = _destinationState.value.uri ?: return null
+        val schedule = _scheduleState.value
+        val recurring = schedule.mode == ScheduleMode.Recurring
 
         return ExportDetails(
             uri = uri,
             format = format,
-            interval = _scheduleState.value
-                .takeIf { it.mode == ScheduleMode.Recurring }
-                ?.interval,
+            interval = if (recurring) schedule.interval else null,
+            keepCount = if (recurring && !schedule.keepAll) schedule.keepCount else null,
             passphrase = passphraseTextFieldState.text.toString(),
+            encryption = if (format.encrypted) _providePassphraseState.value.method else null,
+            csvPreset = if (format == FileFormat.CSV) _formatState.value.csvPreset else null,
         )
     }
 

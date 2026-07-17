@@ -25,7 +25,7 @@ pub struct BackupLogin {
     pub password: Option<String>,
     pub totp_secret: Option<String>,
     pub website: Option<String>,
-    pub passkey: Option<BackupPasskey>,
+    pub passkeys: Vec<BackupPasskey>,
 }
 
 #[derive(uniffi::Record)]
@@ -85,7 +85,7 @@ impl From<core::Login> for BackupLogin {
             password: l.password,
             totp_secret: l.totp_secret,
             website: l.website,
-            passkey: l.passkey.map(Into::into),
+            passkeys: l.passkeys.into_iter().map(Into::into).collect(),
         }
     }
 }
@@ -101,7 +101,7 @@ impl From<BackupLogin> for core::Login {
             password: l.password,
             totp_secret: l.totp_secret,
             website: l.website,
-            passkey: l.passkey.map(Into::into),
+            passkeys: l.passkeys.into_iter().map(Into::into).collect(),
         }
     }
 }
@@ -231,6 +231,13 @@ pub struct CsvImportResult {
 pub enum ExportPreset {
     KeyGo,
     Browser,
+}
+
+#[derive(uniffi::Enum)]
+pub enum JsonEncryption {
+    None,
+    Passphrase,
+    Ark,
 }
 
 impl From<core::Confidence> for Confidence {
@@ -414,6 +421,14 @@ impl JsonBackupManager {
             }
         }?;
         Ok(backup.into())
+    }
+
+    pub fn inspect(&self, data: String) -> Result<JsonEncryption, BackupError> {
+        Ok(match core::json::inspect(&data)? {
+            None => JsonEncryption::None,
+            Some(core::encryption::KeySource::Passphrase) => JsonEncryption::Passphrase,
+            Some(core::encryption::KeySource::Ark) => JsonEncryption::Ark,
+        })
     }
 }
 

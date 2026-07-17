@@ -5,4 +5,8 @@ data class ExportDetails(
     val interval: BackupInterval?,
     val passphrase: String,
     val uri: BackupDestinationUri,
+    // null for one-time exports and for "keep all" recurring; otherwise the retention limit.
+    val keepCount: Int? = null,
+    val encryption: EncryptionMethod? = null,
+    val csvPreset: CsvPreset? = null,
 )

@@ -1,6 +1,8 @@
 package de.davis.keygo.feature.backup.presentation.hub
 
+import android.text.format.DateUtils
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SettingsBackupRestore
@@ -22,6 +25,8 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -37,21 +42,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.feature.backup.R
-import de.davis.keygo.feature.backup.displayName
-import de.davis.keygo.feature.backup.domain.model.BackupInterval
+import de.davis.keygo.feature.backup.domain.model.BackupDestination
+import de.davis.keygo.feature.backup.domain.model.DispatchedBackup
+import de.davis.keygo.feature.backup.domain.model.ExportProgress
 import de.davis.keygo.feature.backup.domain.model.FileFormat
-import de.davis.keygo.feature.backup.domain.model.IntervalUnit
+import de.davis.keygo.feature.backup.domain.model.LastBackup
 import de.davis.keygo.feature.backup.presentation.displayName
+import de.davis.keygo.feature.backup.presentation.hub.model.BackupGroup
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupHubUiEvent
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupHubUiState
-import de.davis.keygo.feature.backup.presentation.hub.model.ScheduledBackup
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-import java.util.Locale
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
 internal fun BackupHubContent(state: BackupHubUiState, onEvent: (BackupHubUiEvent) -> Unit) {
     Scaffold { innerPadding ->
@@ -74,21 +75,17 @@ internal fun BackupHubContent(state: BackupHubUiState, onEvent: (BackupHubUiEven
                     disabledSupportingContentColor = ListItemDefaults.colors().supportingContentColor,
                 ),
                 enabled = false,
-                overlineContent = {
-                    Text(text = stringResource(R.string.last_backup))
-                },
+                overlineContent = { Text(text = stringResource(R.string.last_backup)) },
                 leadingContent = {
                     Box(modifier = Modifier.wrapContentHeight()) {
-                        Icon(
-                            imageVector = Icons.Default.History,
-                            contentDescription = null,
-                        )
+                        Icon(imageVector = Icons.Default.History, contentDescription = null)
                     }
                 },
-                supportingContent = state.lastBackupProvider?.let { { Text(text = it) } },
-                verticalAlignment = Alignment.CenterVertically
+                supportingContent = state.lastBackup?.let { { Text(text = it.destination.displayText()) } },
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(text = state.lastBackupAt ?: stringResource(R.string.never_backed_up))
+                Text(text = state.lastBackup?.let { relativeTime(it.finishedAt) }
+                    ?: stringResource(R.string.never_backed_up))
             }
 
             FilledTonalButton(
@@ -101,9 +98,7 @@ internal fun BackupHubContent(state: BackupHubUiState, onEvent: (BackupHubUiEven
                     contentDescription = null,
                 )
                 Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
-                Text(
-                    text = stringResource(R.string.restore_backup),
-                )
+                Text(text = stringResource(R.string.restore_backup))
             }
 
             FilledTonalButton(
@@ -116,49 +111,40 @@ internal fun BackupHubContent(state: BackupHubUiState, onEvent: (BackupHubUiEven
                     contentDescription = null,
                 )
                 Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
-                Text(
-                    text = stringResource(R.string.schedule_new_backup),
-                )
+                Text(text = stringResource(R.string.schedule_new_backup))
             }
 
             HorizontalDivider()
 
             Text(
-                text = stringResource(R.string.scheduled_backups),
+                text = stringResource(R.string.dispatched_backups),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.fillMaxWidth(),
             )
 
-            Surface(
-                modifier = Modifier.weight(1f),
-            ) {
-                AnimatedContent(state.hasScheduledItems) { hasItems ->
+            Surface(modifier = Modifier.weight(1f)) {
+                AnimatedContent(state.hasItems) { hasItems ->
                     when {
                         hasItems -> LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
                         ) {
-                            itemsIndexed(items = state.scheduledBackups) { idx, item ->
-                                SegmentedListItem(
-                                    onClick = {},
-                                    shapes = ListItemDefaults.segmentedShapes(
-                                        idx,
-                                        state.scheduledBackups.size
-                                    ),
-                                    colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                                    overlineContent = {
-                                        Text(text = item.type.displayName)
-                                    },
-                                    supportingContent = {
-                                        Text(text = item.path)
-                                    },
-                                ) {
-                                    Text(
-                                        text = stringResource(
-                                            R.string.scheduled_title,
-                                            item.provider,
-                                            item.scheduleInterval.displayName
-                                        )
+                            state.groups.forEach { group ->
+                                stickyHeader(key = "header-${group.state}") {
+                                    BackupGroupHeader(group)
+                                }
+                                itemsIndexed(
+                                    items = group.items,
+                                    key = { _, item -> item.id },
+                                ) { idx, item ->
+                                    DispatchedBackupRow(
+                                        item = item,
+                                        index = idx,
+                                        count = group.items.size,
+                                        onCancel = {
+                                            onEvent(BackupHubUiEvent.OnCancelBackup(item.id, item.kind))
+                                        },
                                     )
                                 }
                             }
@@ -169,7 +155,7 @@ internal fun BackupHubContent(state: BackupHubUiState, onEvent: (BackupHubUiEven
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                text = stringResource(R.string.no_scheduled_backups),
+                                text = stringResource(R.string.no_dispatched_backups),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -181,39 +167,124 @@ internal fun BackupHubContent(state: BackupHubUiState, onEvent: (BackupHubUiEven
     }
 }
 
+@Composable
+private fun BackupGroupHeader(group: BackupGroup) {
+    Surface(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(group.state.label),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(vertical = 4.dp),
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun DispatchedBackupRow(
+    item: DispatchedBackup,
+    index: Int,
+    count: Int,
+    onCancel: () -> Unit,
+) {
+    val active = item.state == DispatchedBackup.State.Enqueued ||
+        item.state == DispatchedBackup.State.Running
+
+    SegmentedListItem(
+        onClick = {},
+        shapes = ListItemDefaults.segmentedShapes(index, count),
+        colors = ListItemDefaults.segmentedColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+        overlineContent = { Text(text = item.destination.displayText()) },
+        supportingContent = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                item.format?.let { Text(text = it.displayName) }
+                if (item.state == DispatchedBackup.State.Running)
+                    BackupProgress(progress = item.progress)
+            }
+        },
+        trailingContent = if (active) {
+            {
+                IconButton(onClick = onCancel) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = stringResource(R.string.cancel_backup),
+                    )
+                }
+            }
+        } else null,
+    ) {
+        Text(text = stringResource(item.kind.label))
+    }
+}
+
+@Composable
+private fun BackupProgress(progress: ExportProgress.InFlight?) {
+    when (progress) {
+        is ExportProgress.Running -> {
+            LinearProgressIndicator(
+                progress = { progress.processed.toFloat() / progress.total },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                text = stringResource(R.string.backup_progress, progress.processed, progress.total),
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
+
+        ExportProgress.Writing, null ->
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+    }
+}
+
+private fun relativeTime(epochMillis: Long): String =
+    DateUtils.getRelativeTimeSpanString(
+        epochMillis,
+        System.currentTimeMillis(),
+        DateUtils.MINUTE_IN_MILLIS,
+    ).toString()
 
 @Preview
 @Composable
 private fun BackupHubContentPreview() {
-    val currentTime = {
-        val zonedDateTime = Instant.now().atZone(ZoneId.systemDefault())
-        val formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT)
-            .withLocale(Locale.getDefault())
-        zonedDateTime.format(formatter)
-    }
-
     MaterialTheme {
-        Surface(
-            modifier = Modifier.fillMaxSize()
-        ) {
+        Surface(modifier = Modifier.fillMaxSize()) {
             BackupHubContent(
                 state = BackupHubUiState(
-                    lastBackupAt = currentTime(),
-                    lastBackupProvider = "Nextcloud",
-                    scheduledBackups = listOf(
-                        ScheduledBackup(
-                            provider = "Nextcloud",
-                            type = FileFormat.CSV,
-                            scheduleInterval = BackupInterval(count = 1, unit = IntervalUnit.Weeks),
-                            path = "/path/to/backup"
+                    lastBackup = LastBackup(
+                        finishedAt = System.currentTimeMillis(),
+                        destination = BackupDestination(
+                            provider = BackupDestination.Provider.ThirdParty("Drive"),
+                            displayPath = "Drive/Backups",
                         ),
-                        ScheduledBackup(
-                            provider = "Google Drive",
-                            type = FileFormat.JSON,
-                            scheduleInterval = BackupInterval(count = 1, unit = IntervalUnit.Days),
-                            path = "/path/to/drive/backup"
-                        )
-                    )
+                    ),
+                    groups = listOf(
+                        DispatchedBackup(
+                            id = "1",
+                            kind = DispatchedBackup.Kind.Recurring,
+                            state = DispatchedBackup.State.Running,
+                            format = FileFormat.JSON,
+                            destination = BackupDestination(
+                                provider = BackupDestination.Provider.ThirdParty("Drive"),
+                                displayPath = "Drive/Backups",
+                            ),
+                            progress = ExportProgress.Running(2, 5),
+                            timestamp = 2L,
+                        ),
+                        DispatchedBackup(
+                            id = "2",
+                            kind = DispatchedBackup.Kind.OneTime,
+                            state = DispatchedBackup.State.Succeeded,
+                            format = FileFormat.CSV,
+                            destination = BackupDestination(
+                                provider = BackupDestination.Provider.OnDevice,
+                                displayPath = "Internal storage/Backups",
+                            ),
+                            progress = null,
+                            timestamp = 1L,
+                        ),
+                    ).toGroups(),
                 ),
                 onEvent = {},
             )

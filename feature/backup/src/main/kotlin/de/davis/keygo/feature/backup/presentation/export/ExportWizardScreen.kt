@@ -7,7 +7,6 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
-import de.davis.keygo.feature.backup.presentation.contract.CreateDynamicDocument
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardEvent
 import org.koin.androidx.compose.koinViewModel
 
@@ -22,15 +21,10 @@ fun ExportWizardScreen(navigateUp: () -> Unit) {
         viewModel.onDestinationPicked(uri?.let { BackupDestinationUri(it.toString()) })
     }
 
-    val filePicker = rememberLauncherForActivityResult(CreateDynamicDocument()) { uri ->
-        viewModel.onDestinationPicked(uri?.let { BackupDestinationUri(it.toString()) })
-    }
-
     ObserveAsEvents(flow = viewModel.event) {
         when (it) {
             ExportWizardEvent.Finished -> navigateUp()
             ExportWizardEvent.PickFolder -> folderPicker.launch(null)
-            is ExportWizardEvent.CreateFile -> filePicker.launch(it)
         }
     }
 

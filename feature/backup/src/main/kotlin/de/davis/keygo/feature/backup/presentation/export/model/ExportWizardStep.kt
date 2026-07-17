@@ -7,10 +7,15 @@ internal enum class ExportWizardStep {
     Schedule,
     SelectDestination,
     ProvidePassphrase,
+    SelectCsvPreset,
     Review,
 }
 
 internal fun exportStepsFor(format: FileFormat?): List<ExportWizardStep> =
     ExportWizardStep.entries.filter { step ->
-        step != ExportWizardStep.ProvidePassphrase || (format?.encrypted ?: true)
+        when (step) {
+            ExportWizardStep.ProvidePassphrase -> format?.encrypted ?: true
+            ExportWizardStep.SelectCsvPreset -> format == FileFormat.CSV
+            else -> true
+        }
     }

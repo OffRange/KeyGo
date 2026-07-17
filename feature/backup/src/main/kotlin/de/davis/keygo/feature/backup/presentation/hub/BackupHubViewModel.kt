@@ -1,28 +1,50 @@
 package de.davis.keygo.feature.backup.presentation.hub
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import de.davis.keygo.feature.backup.domain.usecase.CancelBackupUseCase
+import de.davis.keygo.feature.backup.domain.usecase.ObserveDispatchedBackupsUseCase
+import de.davis.keygo.feature.backup.domain.usecase.ObserveLastBackupUseCase
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupHubEvent
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupHubUiEvent
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupHubUiState
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
 
 @KoinViewModel
-internal class BackupHubViewModel : ViewModel() {
+internal class BackupHubViewModel(
+    observeDispatchedBackups: ObserveDispatchedBackupsUseCase,
+    observeLastBackup: ObserveLastBackupUseCase,
+    private val cancelBackup: CancelBackupUseCase,
+) : ViewModel() {
 
     private val _event = Channel<BackupHubEvent>()
     val event = _event.receiveAsFlow()
 
-    private val _state = MutableStateFlow(BackupHubUiState())
-    val state = _state.asStateFlow()
+    val state: StateFlow<BackupHubUiState> =
+        combine(observeDispatchedBackups(), observeLastBackup()) { items, lastBackup ->
+            BackupHubUiState(lastBackup = lastBackup, groups = items.toGroups())
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = BackupHubUiState(),
+        )
 
     fun onEvent(event: BackupHubUiEvent) {
         when (event) {
-            BackupHubUiEvent.OnRestoreBackup -> {} //TODO
-            BackupHubUiEvent.OnScheduleBackupClick -> _event.trySend(BackupHubEvent.NavigateToExport)
+            BackupHubUiEvent.OnScheduleBackupClick ->
+                _event.trySend(BackupHubEvent.NavigateToExport)
+
+            BackupHubUiEvent.OnRestoreBackup -> {} // TODO: restore flow (existing placeholder)
+
+            is BackupHubUiEvent.OnCancelBackup ->
+                viewModelScope.launch { cancelBackup(event.id, event.kind) }
         }
     }
 }
