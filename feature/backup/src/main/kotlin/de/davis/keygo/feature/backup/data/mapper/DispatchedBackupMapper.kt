@@ -18,17 +18,22 @@ internal const val PROGRESS_PHASE_WRITING = "writing"
 internal fun WorkInfo.toStatus() = BackupWorkStatus(
     id = id.toString(),
     kind = toKind(tags),
-    state = toState(state),
-    progress = toProgress(
-        phase = progress.getString(PROGRESS_KEY_PHASE),
-        processed = progress.getInt(PROGRESS_KEY_PROCESSED, 0),
-        total = progress.getInt(PROGRESS_KEY_TOTAL, 0),
+    state = toState(
+        state = state,
+        progress = toProgress(
+            phase = progress.getString(PROGRESS_KEY_PHASE),
+            processed = progress.getInt(PROGRESS_KEY_PROCESSED, 0),
+            total = progress.getInt(PROGRESS_KEY_TOTAL, 0),
+        ),
     ),
 )
 
-internal fun toState(state: WorkInfo.State): DispatchedBackup.State = when (state) {
+internal fun toState(
+    state: WorkInfo.State,
+    progress: ExportProgress.InFlight? = null,
+): DispatchedBackup.State = when (state) {
     WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> DispatchedBackup.State.Enqueued
-    WorkInfo.State.RUNNING -> DispatchedBackup.State.Running
+    WorkInfo.State.RUNNING -> DispatchedBackup.State.Running(progress)
     WorkInfo.State.SUCCEEDED -> DispatchedBackup.State.Succeeded
     WorkInfo.State.FAILED -> DispatchedBackup.State.Failed
     WorkInfo.State.CANCELLED -> DispatchedBackup.State.Cancelled

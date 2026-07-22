@@ -17,6 +17,13 @@
     <string name="cancel_backup">Cancel</string>
     <string name="backup_progress">%1$d / %2$d</string>
 
+    <string name="export_backup">Export</string>
+    <string name="import_backup">Import</string>
+
+    <string name="backup_section_in_progress">In progress</string>
+    <string name="backup_section_scheduled">Scheduled</string>
+    <string name="backup_section_recent">Recent</string>
+
     <string name="backup_state_enqueued">Queued</string>
     <string name="backup_state_running">Running</string>
     <string name="backup_state_succeeded">Completed</string>
@@ -25,6 +32,14 @@
 
     <string name="backup_kind_one_time">One-time</string>
     <string name="backup_kind_recurring">Recurring</string>
+    <string name="backup_failure_nothing_to_export">There was nothing to back up</string>
+    <string name="backup_failure_crypto">Couldn\'t unlock your data</string>
+    <string name="backup_failure_serialization">Couldn\'t prepare the backup file</string>
+    <string name="backup_failure_serialization_crypto">Couldn\'t encrypt the backup</string>
+    <string name="backup_failure_write">Couldn\'t save the backup file</string>
+    <string name="backup_failure_not_provisioned">Backup isn\'t set up on this device</string>
+    <!-- Frames a reason on a row that still reads "Scheduled". %1$s is a backup_failure_* string. -->
+    <string name="backup_failure_last_run">Last run failed. %1$s</string>
     <string name="file_type_backup">%1$s Backup</string>
 
     <plurals name="backup_interval_days">

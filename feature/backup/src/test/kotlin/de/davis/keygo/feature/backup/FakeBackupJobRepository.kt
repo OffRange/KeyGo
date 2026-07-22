@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.backup
 
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.feature.backup.data.reository.retainedJobKeys
 import de.davis.keygo.feature.backup.domain.model.BackupJob
 import de.davis.keygo.feature.backup.domain.model.BackupResult
 import de.davis.keygo.feature.backup.domain.repository.BackupJobRepository
@@ -23,14 +24,20 @@ class FakeBackupJobRepository(
         return Result.Success(Unit)
     }
 
-    override suspend fun markFinished(workId: String, finishedAt: Long, result: BackupResult) {
+    override suspend fun markFinished(workId: String, result: BackupResult, finishedAt: Long) {
         val existing = jobs[workId] ?: return
-        jobs[workId] = existing.copy(finishedAt = finishedAt, lastResult = result)
+        upsertAndPrune(workId, existing.copy(finishedAt = finishedAt, lastResult = result))
     }
 
     override suspend fun markCancelled(workId: String, cancelledAt: Long) {
         val existing = jobs[workId] ?: return
-        jobs[workId] = existing.copy(cancelled = true, finishedAt = cancelledAt)
+        upsertAndPrune(workId, existing.copy(cancelled = true, finishedAt = cancelledAt))
+    }
+
+    private fun upsertAndPrune(workId: String, job: BackupJob) {
+        jobs[workId] = job
+        val keep = retainedJobKeys(jobs.mapValues { it.value.finishedAt })
+        jobs.keys.retainAll(keep)
     }
 
     override suspend fun clearPassphrase(workId: String) {

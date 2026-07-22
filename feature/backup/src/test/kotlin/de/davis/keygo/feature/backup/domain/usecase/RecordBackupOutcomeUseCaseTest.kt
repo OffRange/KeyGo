@@ -7,12 +7,14 @@ import de.davis.keygo.feature.backup.FakeBackupJobRepository
 import de.davis.keygo.feature.backup.FakePersistableUriManager
 import de.davis.keygo.feature.backup.domain.BackupProvisioningLock
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
+import de.davis.keygo.feature.backup.domain.model.BackupFailureReason
 import de.davis.keygo.feature.backup.domain.model.BackupJob
 import de.davis.keygo.feature.backup.domain.model.BackupResult
 import de.davis.keygo.feature.backup.domain.model.ExportError
 import de.davis.keygo.feature.backup.domain.model.ExportProgress
 import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.worker.BackupWorker
+import de.davisalessandro.keygo.rust.BackupException
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -64,7 +66,7 @@ class RecordBackupOutcomeUseCaseTest {
         useCase("w", ExportProgress.Failed(ExportError.WriteFailed))
 
         val saved = jobRepository.jobs.getValue("w")
-        assertEquals(BackupResult.Failure, saved.lastResult)
+        assertEquals(BackupResult.Failure(BackupFailureReason.WriteFailed), saved.lastResult)
         assertNotNull(saved.finishedAt)
     }
 
@@ -137,5 +139,44 @@ class RecordBackupOutcomeUseCaseTest {
         assertNotNull(saved.wrappedPassphrase)
         assertContentEquals(wrappedPassphrase.data, saved.wrappedPassphrase.data)
         assertContentEquals(wrappedPassphrase.iv, saved.wrappedPassphrase.iv)
+    }
+
+    @Test
+    fun `a write failure records its reason`() = runTest {
+        seed()
+        useCase("w", ExportProgress.Failed(ExportError.WriteFailed))
+
+        assertEquals(
+            BackupResult.Failure(BackupFailureReason.WriteFailed),
+            jobRepository.jobs.getValue("w").lastResult,
+        )
+    }
+
+    @Test
+    fun `a serialization failure records the generic reason without the cause message`() = runTest {
+        seed()
+        useCase("w", ExportProgress.Failed(ExportError.SerializationFailed(BackupException.Json("bad"))))
+
+        assertEquals(
+            BackupResult.Failure(BackupFailureReason.SerializationFailed),
+            jobRepository.jobs.getValue("w").lastResult,
+        )
+    }
+
+    @Test
+    fun `a success leaves no reason behind`() = runTest {
+        seed()
+        useCase("w", ExportProgress.Failed(ExportError.CryptoFailed))
+        useCase("w", ExportProgress.Succeeded(itemCount = 3))
+
+        assertEquals(BackupResult.Success, jobRepository.jobs.getValue("w").lastResult)
+    }
+
+    @Test
+    fun `a retryable failure records no reason`() = runTest {
+        seed()
+        useCase("w", ExportProgress.Failed(ExportError.SessionLocked))
+
+        assertNull(jobRepository.jobs.getValue("w").lastResult)
     }
 }

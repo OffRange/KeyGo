@@ -18,3 +18,25 @@ sealed interface ExportError {
  */
 internal val ExportError.retryable: Boolean
     get() = this == ExportError.DeviceLocked || this == ExportError.SessionLocked
+
+/**
+ * The persistable, user-facing reason for a terminal failure, or null when the error is
+ * [retryable] and so never becomes one.
+ */
+internal val ExportError.failureReason: BackupFailureReason?
+    get() = when (this) {
+        ExportError.SessionLocked, ExportError.DeviceLocked -> null
+        ExportError.NothingToExport -> BackupFailureReason.NothingToExport
+        ExportError.CryptoFailed -> BackupFailureReason.CryptoFailed
+        is ExportError.SerializationFailed -> cause.failureReason
+        ExportError.WriteFailed -> BackupFailureReason.WriteFailed
+        ExportError.NotProvisioned -> BackupFailureReason.NotProvisioned
+    }
+
+// The Rust cause names what went wrong; keep only the variants the export path can raise and fold
+// the import-only ones into the generic reason. The free-form message is intentionally dropped.
+private val BackupException.failureReason: BackupFailureReason
+    get() = when (this) {
+        is BackupException.Crypto -> BackupFailureReason.CryptoSerializationFailed
+        else -> BackupFailureReason.SerializationFailed
+    }

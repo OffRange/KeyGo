@@ -35,7 +35,7 @@ class ObserveLastBackupUseCaseTest {
     fun `picks the newest successful finish across jobs`() = runTest {
         jobRepository.jobs["one-time"] = job("content://one.json", 100L, BackupResult.Success)
         jobRepository.jobs["recurring"] = job("content://rec.json", 300L, BackupResult.Success)
-        jobRepository.jobs["failed"] = job("content://bad.json", 999L, BackupResult.Failure)
+        jobRepository.jobs["failed"] = job("content://bad.json", 999L, BackupResult.Failure())
         destinationResolver.result = BackupDestination(
             provider = BackupDestination.Provider.ThirdParty("Drive"),
             displayPath = "Drive/Backups",
@@ -50,7 +50,7 @@ class ObserveLastBackupUseCaseTest {
 
     @Test
     fun `null when no successful backup exists`() = runTest {
-        jobRepository.jobs["failed"] = job("content://bad.json", 5L, BackupResult.Failure)
+        jobRepository.jobs["failed"] = job("content://bad.json", 5L, BackupResult.Failure())
         jobRepository.jobs["never-run"] = job("content://idle.json", null, null)
 
         assertNull(useCase().first())

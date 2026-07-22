@@ -10,8 +10,13 @@ interface BackupJobRepository {
     suspend fun getJob(workId: String): BackupJob?
     suspend fun getJobs(): Map<String, BackupJob>
     suspend fun putJob(workId: String, job: BackupJob): Result<Unit, Unit>
-    suspend fun markFinished(workId: String, finishedAt: Long, result: BackupResult)
-    suspend fun markCancelled(workId: String, cancelledAt: Long)
+    suspend fun markFinished(
+        workId: String,
+        result: BackupResult,
+        finishedAt: Long = System.currentTimeMillis()
+    )
+
+    suspend fun markCancelled(workId: String, cancelledAt: Long = System.currentTimeMillis())
     suspend fun clearPassphrase(workId: String)
     fun observeJobs(): Flow<List<BackupJob>>
 }

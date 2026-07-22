@@ -18,6 +18,7 @@ import de.davis.keygo.feature.backup.domain.usecase.CleanupBackupResourcesUseCas
 import de.davis.keygo.feature.backup.domain.usecase.ObserveDispatchedBackupsUseCase
 import de.davis.keygo.feature.backup.domain.usecase.ObserveLastBackupUseCase
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupHubUiEvent
+import de.davis.keygo.feature.backup.presentation.hub.model.BackupSection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -65,13 +66,13 @@ class BackupHubViewModelTest {
     @Test
     fun `dispatched workers are grouped in the ui state`() = runTest(dispatcher) {
         repository.statuses.value = listOf(
-            BackupWorkStatus("w1", DispatchedBackup.Kind.OneTime, DispatchedBackup.State.Running, null),
+            BackupWorkStatus("w1", DispatchedBackup.Kind.OneTime, DispatchedBackup.State.Running()),
         )
         val vm = viewModel()
 
         val state = vm.state.first { it.hasItems }
 
-        assertEquals(DispatchedBackup.State.Running, state.groups.single().state)
+        assertEquals(BackupSection.InProgress, state.groups.single().section)
         assertEquals("w1", state.groups.single().items.single().id)
     }
 

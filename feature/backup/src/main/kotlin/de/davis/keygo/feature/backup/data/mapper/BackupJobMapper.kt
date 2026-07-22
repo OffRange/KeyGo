@@ -3,8 +3,10 @@ package de.davis.keygo.feature.backup.data.mapper
 import com.google.protobuf.kotlin.toByteString
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.feature.backup.data.local.model.ProtoBackupJob
+import de.davis.keygo.feature.backup.data.local.model.ProtoBackupJobKt
 import de.davis.keygo.feature.backup.data.local.model.protoBackupJob
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
+import de.davis.keygo.feature.backup.domain.model.BackupFailureReason
 import de.davis.keygo.feature.backup.domain.model.BackupJob
 import de.davis.keygo.feature.backup.domain.model.BackupResult
 import de.davis.keygo.feature.backup.domain.model.CsvPreset
@@ -33,9 +35,10 @@ internal fun ProtoBackupJob.toDomain(): BackupJob {
         keepCount = if (hasKeepCount()) keepCount else null,
         createdAt = createdAt,
         finishedAt = if (hasFinishedAt()) finishedAt else null,
-        lastResult = if (hasLastResult())
-            runCatching { BackupResult.valueOf(lastResult) }.getOrNull()
-        else null,
+        lastResult = backupResultFromProto(
+            resultName = if (hasLastResult()) lastResult else null,
+            errorName = if (hasLastError()) lastError else null,
+        ),
         cancelled = this.cancelled,
     )
 }
@@ -52,6 +55,39 @@ internal fun BackupJob.toProto() = protoBackupJob {
     this@toProto.keepCount?.let { keepCount = it }
     createdAt = this@toProto.createdAt
     this@toProto.finishedAt?.let { finishedAt = it }
-    this@toProto.lastResult?.let { lastResult = it.name }
+    this@toProto.lastResult?.let { writeResult(it) }
     cancelled = this@toProto.cancelled
 }
+
+// Encodes a result into the proto's two independent fields. The recurring record is reused every
+// run, so a stale reason must not outlive its run - clear it when the new result carries none.
+internal fun ProtoBackupJobKt.Dsl.writeResult(result: BackupResult) {
+    lastResult = result.protoResultName
+    val error = result.protoErrorName
+    if (error != null) lastError = error
+    else clearLastError()
+}
+
+// The proto persists the outcome as two independent strings (result + reason). Keep that layout so
+// no DataStore migration is needed, but resolve them into a single sealed BackupResult in the domain.
+private const val PROTO_RESULT_SUCCESS = "Success"
+private const val PROTO_RESULT_FAILURE = "Failure"
+
+internal val BackupResult.protoResultName: String
+    get() = when (this) {
+        BackupResult.Success -> PROTO_RESULT_SUCCESS
+        is BackupResult.Failure -> PROTO_RESULT_FAILURE
+    }
+
+internal val BackupResult.protoErrorName: String?
+    get() = (this as? BackupResult.Failure)?.reason?.name
+
+private fun backupResultFromProto(resultName: String?, errorName: String?): BackupResult? =
+    when (resultName) {
+        PROTO_RESULT_SUCCESS -> BackupResult.Success
+        PROTO_RESULT_FAILURE -> BackupResult.Failure(
+            errorName?.let { runCatching { BackupFailureReason.valueOf(it) }.getOrNull() },
+        )
+
+        else -> null
+    }

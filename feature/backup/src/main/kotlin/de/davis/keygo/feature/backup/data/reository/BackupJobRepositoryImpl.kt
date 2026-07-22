@@ -2,10 +2,12 @@ package de.davis.keygo.feature.backup.data.reository
 
 import androidx.datastore.core.DataStore
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.feature.backup.data.local.model.ProtoBackupJob
 import de.davis.keygo.feature.backup.data.local.model.ProtoBackupJobs
 import de.davis.keygo.feature.backup.data.local.model.copy
 import de.davis.keygo.feature.backup.data.mapper.toDomain
 import de.davis.keygo.feature.backup.data.mapper.toProto
+import de.davis.keygo.feature.backup.data.mapper.writeResult
 import de.davis.keygo.feature.backup.di.annotation.BackupJobsQualifier
 import de.davis.keygo.feature.backup.domain.model.BackupJob
 import de.davis.keygo.feature.backup.domain.model.BackupResult
@@ -42,27 +44,25 @@ internal class BackupJobRepositoryImpl(
         onFailure = { Result.Failure(Unit) },
     )
 
-    override suspend fun markFinished(workId: String, finishedAt: Long, result: BackupResult) {
+    override suspend fun markFinished(workId: String, result: BackupResult, finishedAt: Long) {
         dataStore.updateData { current ->
             val existing = current.jobsMap[workId] ?: return@updateData current
-            current.copy {
-                jobs[workId] = existing.copy {
-                    this.finishedAt = finishedAt
-                    lastResult = result.name
-                }
+            val updated = existing.copy {
+                this.finishedAt = finishedAt
+                writeResult(result)
             }
+            current.upsertAndPrune(workId, updated)
         }
     }
 
     override suspend fun markCancelled(workId: String, cancelledAt: Long) {
         dataStore.updateData { current ->
             val existing = current.jobsMap[workId] ?: return@updateData current
-            current.copy {
-                jobs[workId] = existing.copy {
-                    cancelled = true
-                    finishedAt = cancelledAt
-                }
+            val updated = existing.copy {
+                cancelled = true
+                finishedAt = cancelledAt
             }
+            current.upsertAndPrune(workId, updated)
         }
     }
 
@@ -75,6 +75,22 @@ internal class BackupJobRepositoryImpl(
                     clearPassphraseIv()
                 }
             }
+        }
+    }
+
+    // Writes [job] under [workId], then drops finished one-time records beyond the retention cap so the
+    // store cannot grow without bound as WorkManager silently prunes its own history.
+    private fun ProtoBackupJobs.upsertAndPrune(
+        workId: String,
+        job: ProtoBackupJob
+    ): ProtoBackupJobs {
+        val merged = jobsMap + (workId to job)
+        val keep = retainedJobKeys(
+            merged.mapValues { (_, j) -> if (j.hasFinishedAt()) j.finishedAt else null },
+        )
+        return copy {
+            jobs.clear()
+            jobs.putAll(merged.filterKeys { it in keep })
         }
     }
 }

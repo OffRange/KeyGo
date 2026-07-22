@@ -1,10 +1,12 @@
 package de.davis.keygo.feature.backup.worker
 
 import android.content.Context
+import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.ListenableWorker
 import androidx.work.WorkerParameters
 import de.davis.keygo.feature.backup.data.mapper.toProgressData
+import de.davis.keygo.feature.backup.domain.model.ExportError
 import de.davis.keygo.feature.backup.domain.model.ExportProgress
 import de.davis.keygo.feature.backup.domain.model.retryable
 import de.davis.keygo.feature.backup.domain.repository.BackupJobRepository
@@ -43,6 +45,11 @@ internal class BackupWorker(
                 setProgress(progress.toProgressData())
             terminal = progress
         }
+
+        // The Rust cause exists only here - it is never persisted and never shown to the user.
+        val error = (terminal as? ExportProgress.Failed)?.error
+        if (error is ExportError.SerializationFailed)
+            Log.e(TAG, "Backup serialization failed for $workId", error.cause)
 
         recordOutcome(workId, terminal)
 

@@ -14,10 +14,18 @@ class DispatchedBackupMapperTest {
     fun `maps work states to domain states`() {
         assertEquals(DispatchedBackup.State.Enqueued, toState(WorkInfo.State.ENQUEUED))
         assertEquals(DispatchedBackup.State.Enqueued, toState(WorkInfo.State.BLOCKED))
-        assertEquals(DispatchedBackup.State.Running, toState(WorkInfo.State.RUNNING))
+        assertEquals(DispatchedBackup.State.Running(), toState(WorkInfo.State.RUNNING))
         assertEquals(DispatchedBackup.State.Succeeded, toState(WorkInfo.State.SUCCEEDED))
         assertEquals(DispatchedBackup.State.Failed, toState(WorkInfo.State.FAILED))
         assertEquals(DispatchedBackup.State.Cancelled, toState(WorkInfo.State.CANCELLED))
+    }
+
+    @Test
+    fun `running state carries the reported progress`() {
+        assertEquals(
+            DispatchedBackup.State.Running(ExportProgress.Running(2, 5)),
+            toState(WorkInfo.State.RUNNING, ExportProgress.Running(2, 5)),
+        )
     }
 
     @Test

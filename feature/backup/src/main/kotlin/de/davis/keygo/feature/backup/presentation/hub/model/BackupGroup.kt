@@ -5,6 +5,6 @@ import de.davis.keygo.feature.backup.domain.model.DispatchedBackup
 
 @Immutable
 internal data class BackupGroup(
-    val state: DispatchedBackup.State,
+    val section: BackupSection,
     val items: List<DispatchedBackup>,
 )

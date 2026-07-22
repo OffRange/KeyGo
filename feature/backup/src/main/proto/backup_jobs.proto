@@ -24,6 +24,9 @@ message ProtoBackupJob {
   // Set when the user cancels the job (or the schedule); a cancelled record is no longer live and
   // its credentials are released.
   optional bool cancelled = 11;
+
+  // BackupFailureReason.name; set only alongside a last_result of "Failure".
+  optional string last_error = 12;
 }
 
 message ProtoBackupJobs {

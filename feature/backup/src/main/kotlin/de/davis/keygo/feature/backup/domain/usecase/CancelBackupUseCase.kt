@@ -22,7 +22,7 @@ internal class CancelBackupUseCase(
             DispatchedBackup.Kind.Recurring -> BackupWorker.RECURRING_WORK_ID
             DispatchedBackup.Kind.OneTime -> id
         }
-        jobRepository.markCancelled(workId, System.currentTimeMillis())
+        jobRepository.markCancelled(workId)
         cleanupBackupResources(workId)
     }
 }

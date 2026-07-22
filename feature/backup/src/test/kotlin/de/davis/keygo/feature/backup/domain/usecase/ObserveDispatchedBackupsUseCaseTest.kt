@@ -5,7 +5,9 @@ import de.davis.keygo.feature.backup.FakeDispatchedBackupRepository
 import de.davis.keygo.feature.backup.data.FakeBackupDestinationResolver
 import de.davis.keygo.feature.backup.domain.model.BackupDestination
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
+import de.davis.keygo.feature.backup.domain.model.BackupFailureReason
 import de.davis.keygo.feature.backup.domain.model.BackupJob
+import de.davis.keygo.feature.backup.domain.model.BackupResult
 import de.davis.keygo.feature.backup.domain.model.BackupWorkStatus
 import de.davis.keygo.feature.backup.domain.model.DispatchedBackup
 import de.davis.keygo.feature.backup.domain.model.ExportProgress
@@ -28,9 +30,8 @@ class ObserveDispatchedBackupsUseCaseTest {
     private fun status(
         id: String,
         kind: DispatchedBackup.Kind = DispatchedBackup.Kind.OneTime,
-        state: DispatchedBackup.State = DispatchedBackup.State.Running,
-        progress: ExportProgress.InFlight? = null,
-    ) = BackupWorkStatus(id, kind, state, progress)
+        state: DispatchedBackup.State = DispatchedBackup.State.Running(),
+    ) = BackupWorkStatus(id, kind, state)
 
     @Test
     fun `enriches a one-time worker from its persisted job`() = runTest {
@@ -80,25 +81,25 @@ class ObserveDispatchedBackupsUseCaseTest {
     }
 
     @Test
-    fun `progress passes through unchanged`() = runTest {
+    fun `running progress passes through unchanged`() = runTest {
         repository.statuses.value = listOf(
-            status(id = "w", progress = ExportProgress.Running(3, 7)),
+            status(id = "w", state = DispatchedBackup.State.Running(ExportProgress.Running(3, 7))),
         )
 
         val result = useCase().first().single()
 
-        assertEquals(ExportProgress.Running(3, 7), result.progress)
+        assertEquals(DispatchedBackup.State.Running(ExportProgress.Running(3, 7)), result.state)
     }
 
     @Test
     fun `writing progress passes through unchanged`() = runTest {
         repository.statuses.value = listOf(
-            status(id = "w", progress = ExportProgress.Writing),
+            status(id = "w", state = DispatchedBackup.State.Running(ExportProgress.Writing)),
         )
 
         val result = useCase().first().single()
 
-        assertEquals(ExportProgress.Writing, result.progress)
+        assertEquals(DispatchedBackup.State.Running(ExportProgress.Writing), result.state)
     }
 
     @Test
@@ -122,5 +123,80 @@ class ObserveDispatchedBackupsUseCaseTest {
 
         assertEquals(99L, result.first { it.id == "finished" }.timestamp)
         assertEquals(42L, result.first { it.id == "active" }.timestamp)
+    }
+
+    @Test
+    fun `a failed job surfaces its reason`() = runTest {
+        jobRepository.jobs["w"] = BackupJob(
+            uri = BackupDestinationUri("content://out.json"),
+            wrappedPassphrase = null,
+            format = FileFormat.JSON,
+            finishedAt = 9L,
+            lastResult = BackupResult.Failure(BackupFailureReason.WriteFailed),
+        )
+        repository.statuses.value = listOf(status(id = "w", state = DispatchedBackup.State.Failed))
+
+        assertEquals(BackupFailureReason.WriteFailed, useCase().first().single().failureReason)
+    }
+
+    @Test
+    fun `a still-scheduled recurring job surfaces the reason its last run failed with`() = runTest {
+        jobRepository.jobs[BackupWorker.RECURRING_WORK_ID] = BackupJob(
+            uri = BackupDestinationUri("content://out.json"),
+            wrappedPassphrase = null,
+            format = FileFormat.JSON,
+            finishedAt = 9L,
+            lastResult = BackupResult.Failure(BackupFailureReason.CryptoFailed),
+        )
+        repository.statuses.value = listOf(
+            status(
+                id = "runtime-id",
+                kind = DispatchedBackup.Kind.Recurring,
+                state = DispatchedBackup.State.Enqueued,
+            ),
+        )
+
+        assertEquals(BackupFailureReason.CryptoFailed, useCase().first().single().failureReason)
+    }
+
+    @Test
+    fun `a succeeded job surfaces no reason`() = runTest {
+        jobRepository.jobs["w"] = BackupJob(
+            uri = BackupDestinationUri("content://out.json"),
+            wrappedPassphrase = null,
+            format = FileFormat.JSON,
+            finishedAt = 9L,
+            lastResult = BackupResult.Success,
+        )
+        repository.statuses.value = listOf(status(id = "w", state = DispatchedBackup.State.Succeeded))
+
+        assertNull(useCase().first().single().failureReason)
+    }
+
+    @Test
+    fun `a cancelled recurring schedule with a failed last run surfaces no reason`() = runTest {
+        jobRepository.jobs[BackupWorker.RECURRING_WORK_ID] = BackupJob(
+            uri = BackupDestinationUri("content://out.json"),
+            wrappedPassphrase = null,
+            format = FileFormat.JSON,
+            finishedAt = 9L,
+            lastResult = BackupResult.Failure(BackupFailureReason.CryptoFailed),
+        )
+        repository.statuses.value = listOf(
+            status(
+                id = "runtime-id",
+                kind = DispatchedBackup.Kind.Recurring,
+                state = DispatchedBackup.State.Cancelled,
+            ),
+        )
+
+        assertNull(useCase().first().single().failureReason)
+    }
+
+    @Test
+    fun `a missing job surfaces no reason`() = runTest {
+        repository.statuses.value = listOf(status(id = "orphan"))
+
+        assertNull(useCase().first().single().failureReason)
     }
 }

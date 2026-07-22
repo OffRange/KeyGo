@@ -2,6 +2,7 @@ package de.davis.keygo.feature.backup.data.mapper
 
 import de.davis.keygo.feature.backup.data.local.model.protoBackupJob
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
+import de.davis.keygo.feature.backup.domain.model.BackupFailureReason
 import de.davis.keygo.feature.backup.domain.model.BackupJob
 import de.davis.keygo.feature.backup.domain.model.BackupResult
 import de.davis.keygo.feature.backup.domain.model.CsvPreset
@@ -160,5 +161,45 @@ class BackupJobMapperTest {
         )
 
         assertFalse(job.toProto().toDomain().cancelled)
+    }
+
+    @Test
+    fun `round-trips a failure reason`() {
+        val job = BackupJob(
+            uri = BackupDestinationUri("content://out.json"),
+            wrappedPassphrase = null,
+            format = FileFormat.JSON,
+            finishedAt = 200L,
+            lastResult = BackupResult.Failure(BackupFailureReason.WriteFailed),
+        )
+
+        val restored = job.toProto().toDomain()
+
+        assertEquals(BackupResult.Failure(BackupFailureReason.WriteFailed), restored.lastResult)
+    }
+
+    @Test
+    fun `a failure with no persisted reason decodes to a null reason`() {
+        val proto = protoBackupJob {
+            uri = "content://out.json"
+            format = FileFormat.JSON.name
+            createdAt = 5L
+            lastResult = "Failure"
+        }
+
+        assertEquals(BackupResult.Failure(null), proto.toDomain().lastResult)
+    }
+
+    @Test
+    fun `an unrecognised failure reason still decodes to a failure`() {
+        val proto = protoBackupJob {
+            uri = "content://out.json"
+            format = FileFormat.JSON.name
+            createdAt = 5L
+            lastResult = "Failure"
+            lastError = "ReasonFromANewerBuild"
+        }
+
+        assertEquals(BackupResult.Failure(null), proto.toDomain().lastResult)
     }
 }
