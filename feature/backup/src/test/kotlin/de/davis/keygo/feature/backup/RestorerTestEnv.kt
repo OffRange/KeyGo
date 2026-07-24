@@ -4,6 +4,7 @@ import de.davis.keygo.core.item.FakeCreditCardRepository
 import de.davis.keygo.core.item.FakeItemRepository
 import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.FakePasswordStrengthEstimator
+import de.davis.keygo.core.item.FakeTransactionRunner
 import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
@@ -22,6 +23,7 @@ internal class RestorerTestEnv {
     val vaultRepo = FakeVaultRepository()
     val loginRepo = FakeLoginRepository()
     val cardRepo = FakeCreditCardRepository()
+    val transactionRunner = FakeTransactionRunner()
     private val scope = FakeCryptographicScopeProvider(FakeItemRepository())
     private val upsert = UpsertVaultItemUseCase(loginRepo, cardRepo)
 
@@ -55,5 +57,6 @@ internal class RestorerTestEnv {
         createVault = createVault,
         createLogin = createLogin,
         createCard = createCard,
+        transactionRunner = transactionRunner,
     )
 }

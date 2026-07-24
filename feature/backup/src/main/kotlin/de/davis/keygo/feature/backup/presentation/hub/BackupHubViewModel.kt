@@ -24,7 +24,7 @@ internal class BackupHubViewModel(
     private val cancelBackup: CancelBackupUseCase,
 ) : ViewModel() {
 
-    private val _event = Channel<BackupHubEvent>()
+    private val _event = Channel<BackupHubEvent>(Channel.BUFFERED)
     val event = _event.receiveAsFlow()
 
     val state: StateFlow<BackupHubUiState> =
@@ -41,7 +41,7 @@ internal class BackupHubViewModel(
             BackupHubUiEvent.OnScheduleBackupClick ->
                 _event.trySend(BackupHubEvent.NavigateToExport)
 
-            BackupHubUiEvent.OnRestoreBackup -> {} // TODO: restore flow (existing placeholder)
+            BackupHubUiEvent.OnRestoreBackup -> _event.trySend(BackupHubEvent.NavigateToImport)
 
             is BackupHubUiEvent.OnCancelBackup ->
                 viewModelScope.launch { cancelBackup(event.id, event.kind) }

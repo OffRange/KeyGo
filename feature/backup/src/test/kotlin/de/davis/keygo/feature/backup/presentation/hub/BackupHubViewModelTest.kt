@@ -17,6 +17,7 @@ import de.davis.keygo.feature.backup.domain.usecase.CancelBackupUseCase
 import de.davis.keygo.feature.backup.domain.usecase.CleanupBackupResourcesUseCase
 import de.davis.keygo.feature.backup.domain.usecase.ObserveDispatchedBackupsUseCase
 import de.davis.keygo.feature.backup.domain.usecase.ObserveLastBackupUseCase
+import de.davis.keygo.feature.backup.presentation.hub.model.BackupHubEvent
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupHubUiEvent
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupSection
 import kotlinx.coroutines.Dispatchers
@@ -100,5 +101,14 @@ class BackupHubViewModelTest {
         advanceUntilIdle()
 
         assertEquals(listOf("w1"), repository.cancelledIds)
+    }
+
+    @Test
+    fun `OnRestoreBackup emits NavigateToImport`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.onEvent(BackupHubUiEvent.OnRestoreBackup)
+
+        assertEquals(BackupHubEvent.NavigateToImport, viewModel.event.first())
     }
 }

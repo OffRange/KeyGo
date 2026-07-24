@@ -49,7 +49,7 @@ import de.davis.keygo.feature.backup.domain.model.EncryptionMethod
 import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.domain.model.IntervalUnit
 import de.davis.keygo.feature.backup.presentation.displayName
-import de.davis.keygo.feature.backup.presentation.export.component.IconBadge
+import de.davis.keygo.feature.backup.presentation.component.IconBadge
 import de.davis.keygo.feature.backup.presentation.export.model.ProvidePassphraseState
 import de.davis.keygo.feature.backup.presentation.export.model.ScheduleMode
 import de.davis.keygo.feature.backup.presentation.export.model.SelectDestinationState

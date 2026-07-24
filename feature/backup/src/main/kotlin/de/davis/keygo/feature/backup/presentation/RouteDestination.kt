@@ -7,3 +7,6 @@ object BackupHubRoute
 
 @Serializable
 object BackupExportRoute
+
+@Serializable
+object BackupImportRoute

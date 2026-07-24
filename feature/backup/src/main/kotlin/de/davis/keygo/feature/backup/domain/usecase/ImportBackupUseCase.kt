@@ -2,9 +2,11 @@ package de.davis.keygo.feature.backup.domain.usecase
 
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.backup.domain.BackupFileStore
 import de.davis.keygo.feature.backup.domain.BackupRestorer
+import de.davis.keygo.feature.backup.domain.mapper.toImportError
 import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.domain.model.ImportError
 import de.davis.keygo.feature.backup.domain.model.ImportProgress
@@ -14,12 +16,11 @@ import de.davis.keygo.rust.backup.importWithResult
 import de.davis.keygo.rust.backup.inspectWithResult
 import de.davisalessandro.keygo.rust.Backup
 import de.davisalessandro.keygo.rust.BackupCredential
-import de.davisalessandro.keygo.rust.BackupException
 import de.davisalessandro.keygo.rust.CsvBackupManagerInterface
 import de.davisalessandro.keygo.rust.JsonBackupManagerInterface
 import de.davisalessandro.keygo.rust.JsonEncryption
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.channelFlow
 import org.koin.core.annotation.Single
 
 @Single
@@ -31,39 +32,35 @@ internal class ImportBackupUseCase(
     private val session: Session,
 ) {
 
-    operator fun invoke(request: ImportRequest): Flow<ImportProgress> = flow {
-        if (runCatching { session.ark }.isFailure) {
-            emit(ImportProgress.Failed(ImportError.SessionLocked))
-            return@flow
+    /**
+     * [channelFlow], not [kotlinx.coroutines.flow.flow]: [BackupRestorer] reports progress from
+     * inside a Room transaction, which runs the block in its own coroutine. `flow` forbids emitting
+     * across a coroutine boundary, so the progress ticks must go through a channel.
+     */
+    operator fun invoke(request: ImportRequest): Flow<ImportProgress> = channelFlow {
+        val outcome = resultBinding {
+            if (runCatching { session.ark }.isFailure)
+                Result.Failure<Nothing, ImportError>(ImportError.SessionLocked).bind()
+
+            send(ImportProgress.Reading)
+            val text = fileStore.read(request.uri).bind { ImportError.FileUnreadable }
+            if (text.isBlank())
+                Result.Failure<Nothing, ImportError>(ImportError.EmptyFile).bind()
+
+            send(ImportProgress.Parsing)
+            val backup = parse(request, text).bind()
+
+            restorer.restore(backup, request.target) { p, t ->
+                send(ImportProgress.Running(p, t))
+            }.bind()
         }
 
-        emit(ImportProgress.Reading)
-        val text = when (val read = fileStore.read(request.uri)) {
-            is Result.Success -> read.success
-            is Result.Failure -> {
-                emit(ImportProgress.Failed(ImportError.FileUnreadable))
-                return@flow
-            }
-        }
-        if (text.isBlank()) {
-            emit(ImportProgress.Failed(ImportError.EmptyFile))
-            return@flow
-        }
-
-        emit(ImportProgress.Parsing)
-        val backup = when (val parsed = parse(request, text)) {
-            is Result.Success -> parsed.success
-            is Result.Failure -> {
-                emit(ImportProgress.Failed(parsed.error))
-                return@flow
-            }
-        }
-
-        when (val restored =
-            restorer.restore(backup) { p, t -> emit(ImportProgress.Running(p, t)) }) {
-            is Result.Success -> emit(ImportProgress.Succeeded(restored.success))
-            is Result.Failure -> emit(ImportProgress.Failed(restored.error))
-        }
+        send(
+            outcome.fold(
+                onSuccess = { ImportProgress.Succeeded(it) },
+                onFailure = { ImportProgress.Failed(it) },
+            ),
+        )
     }
 
     private suspend fun parse(request: ImportRequest, text: String): Result<Backup, ImportError> =
@@ -89,23 +86,13 @@ internal class ImportBackupUseCase(
                 }
 
                 FileFormat.CSV -> {
-                    val analysis = csvBackupManager.analyzeWithResult(text)
-                        .bind { it.toImportError() }
-
-                    csvBackupManager.importWithResult(text, analysis.suggested)
+                    val mapping = request.csvMapping ?: csvBackupManager.analyzeWithResult(text)
+                        .bind { it.toImportError() }.suggested
+                    
+                    csvBackupManager.importWithResult(text, mapping)
                         .bind { it.toImportError() }
                         .backup
                 }
             }
         }
-
-    private fun BackupException.toImportError(): ImportError = when (this) {
-        is BackupException.Crypto,
-        is BackupException.CredentialMismatch,
-        is BackupException.MissingCredential,
-        is BackupException.UnexpectedCredential,
-        is BackupException.EncryptionMismatch -> ImportError.WrongCredential
-
-        else -> ImportError.ParseFailed(this)
-    }
 }

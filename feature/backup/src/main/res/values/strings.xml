@@ -84,8 +84,35 @@
     <string name="destination_choose_title">Choose where to save</string>
     <string name="destination_choose_subtitle">Pick a folder on this device, or a cloud provider like Nextcloud, Drive, or Dropbox.</string>
     <string name="destination_choose_action">Choose location</string>
-    <string name="destination_change">Change</string>
+    <string name="file_chooser_change">Change</string>
     <string name="destination_filename_label">Saved as</string>
+
+    <string name="select_import_file_title">Import Backup</string>
+    <string name="import_choose_title">Choose a backup file</string>
+    <string name="import_choose_subtitle">Pick a .json or .csv backup from this device or a cloud provider like Nextcloud, Drive, or Dropbox.</string>
+    <string name="import_choose_action">Choose file</string>
+    <string name="import_selected_label">Selected</string>
+    <string name="import_passphrase_instruction">This backup is encrypted. Enter its passphrase to continue.</string>
+    <string name="import_passphrase_error">Wrong passphrase. Please try again.</string>
+    <string name="import_running_title">Importing</string>
+    <string name="import_reading">Reading file...</string>
+    <string name="import_parsing">Decrypting backup...</string>
+    <string name="import_running">Importing items...</string>
+    <string name="import_progress">%1$d / %2$d</string>
+    <string name="import_result_title">Import complete</string>
+    <string name="import_result_imported">Imported</string>
+    <string name="import_result_skipped">Skipped (already present)</string>
+    <string name="import_result_failed">Failed</string>
+    <string name="import_result_vaults">New vaults</string>
+    <string name="import_done">Done</string>
+    <string name="import_error_title">Import failed</string>
+    <string name="import_try_again">Back</string>
+    <string name="import_error_file_unreadable">Couldn\'t read the selected file.</string>
+    <string name="import_error_empty">The selected file is empty.</string>
+    <string name="import_error_nothing">There was nothing to import in this backup.</string>
+    <string name="import_error_parse">This file isn\'t a valid KeyGo backup.</string>
+    <string name="import_error_session_locked">Your vault is locked. Unlock it and try again.</string>
+    <string name="import_error_generic">Something went wrong during import.</string>
 
     <string name="destination_behavior_one_time">Your backup is written here once.</string>
     <string name="destination_behavior_recurring">A fresh backup is written here on schedule. Older backups are kept.</string>
@@ -153,4 +180,38 @@
     <string name="export_error_crypto">Couldn\'t secure the passphrase. Please try again</string>
     <string name="export_error_schedule">Couldn\'t save the backup. Please try again</string>
     <string name="export_error_destination_permission">Couldn\'t get access to the selected folder. Choose it again</string>
+
+    <string name="map_columns_title">Map columns</string>
+    <string name="select_vault_title">Import into</string>
+    <string name="select_vault_new">New vault</string>
+    <string name="select_vault_name_label">Vault name</string>
+    <plurals name="select_vault_item_count">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+    <string name="csv_type_title">Title</string>
+    <string name="csv_type_url">URL</string>
+    <string name="csv_type_username">Username</string>
+    <string name="csv_type_password">Password</string>
+    <string name="csv_type_notes">Notes</string>
+    <string name="csv_type_totp">TOTP</string>
+    <string name="csv_type_ignore">Ignore</string>
+    <string name="csv_type_verify_hint">Auto-detected - please verify</string>
+    <string name="csv_type_duplicate_error">This type is used by another column</string>
+
+    <string name="map_columns_intro_title">Match your CSV to KeyGo</string>
+    <string name="csv_column_source_label">Column %1$d in your file</string>
+    <string name="csv_type_row_label">Import as</string>
+    <string name="csv_samples_label">Example values from this column</string>
+    <string name="csv_samples_empty">This column is empty</string>
+
+    <plurals name="map_columns_intro_subtitle">
+        <item quantity="one">%1$d column found in %2$s. Check it lands in the right field - anything set to Ignore is skipped.</item>
+        <item quantity="other">%1$d columns found in %2$s. Check each one lands in the right field - anything set to Ignore is skipped.</item>
+    </plurals>
+
+    <plurals name="map_columns_intro_subtitle_no_file">
+        <item quantity="one">%1$d column found. Check it lands in the right field - anything set to Ignore is skipped.</item>
+        <item quantity="other">%1$d columns found. Check each one lands in the right field - anything set to Ignore is skipped.</item>
+    </plurals>
 </resources>

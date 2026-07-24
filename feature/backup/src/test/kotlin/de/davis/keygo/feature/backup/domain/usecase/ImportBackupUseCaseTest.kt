@@ -10,6 +10,8 @@ import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.domain.model.ImportError
 import de.davis.keygo.feature.backup.domain.model.ImportProgress
 import de.davis.keygo.feature.backup.domain.model.ImportRequest
+import de.davis.keygo.feature.backup.domain.model.ImportTarget
+import de.davis.keygo.feature.backup.testVault
 import de.davis.keygo.rust.FakeCsvBackupManager
 import de.davis.keygo.rust.FakeJsonBackupManager
 import de.davisalessandro.keygo.rust.Backup
@@ -23,6 +25,7 @@ import de.davisalessandro.keygo.rust.CsvImportResult
 import de.davisalessandro.keygo.rust.FieldConfidence
 import de.davisalessandro.keygo.rust.ImportReport
 import de.davisalessandro.keygo.rust.JsonEncryption
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -174,6 +177,33 @@ class ImportBackupUseCaseTest {
     }
 
     @Test
+    fun `csv import prefers the caller-provided mapping over the suggestion`() = runTest {
+        fileStore.contents = "name,secret\nEmail,alice\n"
+        csv.analyzeResult = CsvAnalysis(
+            columns = emptyList(),
+            suggested = ColumnMapping(0u, null, 1u, null, null, null), // suggests username=1
+            confidence = FieldConfidence(null, null, null, null, null, null),
+        )
+        csv.importResult = CsvImportResult(
+            backup = Backup(listOf(BackupVault("CSV Import", listOf(login("Email")), emptyList()))),
+            report = ImportReport(imported = 1u, skipped = 0u),
+        )
+        val edited = ColumnMapping(0u, null, null, 1u, null, null) // user says col 1 = password
+
+        val emissions = useCase()(
+            ImportRequest(
+                uri = BackupDestinationUri("content://in.csv"),
+                format = FileFormat.CSV,
+                passphrase = null,
+                csvMapping = edited,
+            ),
+        ).toList()
+
+        assertIs<ImportProgress.Succeeded>(emissions.last())
+        assertEquals(edited, csv.importCalls.last().mapping)
+    }
+
+    @Test
     fun `csv analyze failure maps EncryptionMismatch to WrongCredential`() = runTest {
         fileStore.contents = "name\nEmail\n"
         csv.analyzeException = BackupException.EncryptionMismatch()
@@ -284,4 +314,64 @@ class ImportBackupUseCaseTest {
                 emissions,
             )
         }
+
+    @Test
+    fun `a request targeting an existing vault imports into it`() = runTest {
+        val existing = testVault(name = "Personal")
+        env.vaultRepo.seed(existing)
+        fileStore.contents = "name,username\nEmail,alice\n"
+        csv.analyzeResult = CsvAnalysis(
+            columns = emptyList(),
+            suggested = ColumnMapping(0u, null, 1u, null, null, null),
+            confidence = FieldConfidence(null, null, null, null, null, null),
+        )
+        csv.importResult = CsvImportResult(
+            backup = Backup(listOf(BackupVault("CSV Import", listOf(login("Email")), emptyList()))),
+            report = ImportReport(imported = 1u, skipped = 0u),
+        )
+
+        val emissions = useCase()(
+            ImportRequest(
+                uri = BackupDestinationUri("content://in.csv"),
+                format = FileFormat.CSV,
+                passphrase = null,
+                target = ImportTarget.Existing(existing.id),
+            ),
+        ).toList()
+
+        val success = assertIs<ImportProgress.Succeeded>(emissions.last())
+        assertEquals(1, success.summary.imported)
+        assertEquals(0, success.summary.vaultsCreated)
+        assertEquals(1, env.loginRepo.getLoginsByVault(existing.id).size)
+    }
+
+    @Test
+    fun `a request targeting a new vault creates it and ignores the parsed vault name`() = runTest {
+        fileStore.contents = "name,username\nEmail,alice\n"
+        csv.analyzeResult = CsvAnalysis(
+            columns = emptyList(),
+            suggested = ColumnMapping(0u, null, 1u, null, null, null),
+            confidence = FieldConfidence(null, null, null, null, null, null),
+        )
+        csv.importResult = CsvImportResult(
+            backup = Backup(listOf(BackupVault("CSV Import", listOf(login("Email")), emptyList()))),
+            report = ImportReport(imported = 1u, skipped = 0u),
+        )
+
+        val emissions = useCase()(
+            ImportRequest(
+                uri = BackupDestinationUri("content://in.csv"),
+                format = FileFormat.CSV,
+                passphrase = null,
+                target = ImportTarget.New("passwords"),
+            ),
+        ).toList()
+
+        val success = assertIs<ImportProgress.Succeeded>(emissions.last())
+        assertEquals(1, success.summary.vaultsCreated)
+        assertEquals(
+            listOf("passwords"),
+            env.vaultRepo.observeAllVaultMetadata().first().map { it.name },
+        )
+    }
 }

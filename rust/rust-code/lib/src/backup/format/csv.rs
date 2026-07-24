@@ -444,8 +444,8 @@ fn build_mapping(headers: &[String], samples: &[StringRecord]) -> (ColumnMapping
 }
 
 /// must be `>= DISPLAY_SAMPLES`.
-const SAMPLE_ROWS: usize = 7;
-const DISPLAY_SAMPLES: usize = 3;
+const SAMPLE_ROWS: usize = 10;
+const DISPLAY_SAMPLES: usize = 5;
 
 /// Inspect a CSV and return a review-ready analysis: the columns (with a few
 /// sample values each), a suggested editable mapping, and per-field confidence.
@@ -740,7 +740,7 @@ mod tests {
         // Display samples are the first rows, in file order.
         assert_eq!(
             a1.columns[0].sample_values,
-            vec!["Site 0", "Site 1", "Site 2"]
+            vec!["Site 0", "Site 1", "Site 2", "Site 3", "Site 4"]
         );
         // Separator-styled headers map (and value sniffing agrees).
         assert_eq!(a1.suggested.url, Some(1));
