@@ -3,6 +3,7 @@
 package de.davis.keygo.feature.backup.presentation.import
 
 import android.content.res.Configuration
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -192,7 +193,11 @@ private fun NewVaultSegment(
                 this.selected = selected
             },
         ) {
-            Text(text = stringResource(R.string.select_vault_new))
+            // The typed name stands in for the label only while this row is the destination. A
+            // deselected row would otherwise keep naming a vault the import is not going to
+            // create, and lose the wording that says what picking it does.
+            val fallback = stringResource(R.string.select_vault_new)
+            Text(text = if (selected) nameState.text.ifBlank { fallback }.toString() else fallback)
         }
 
         if (selected) {
@@ -204,12 +209,20 @@ private fun NewVaultSegment(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 4.dp),
+                leadingIcon = {
+                    AnimatedContent(icon) { icon ->
+                        Icon(
+                            imageVector = icon.toImageVector(),
+                            contentDescription = null
+                        )
+                    }
+                },
             )
 
             Text(
                 text = stringResource(R.string.select_vault_icon_label),
                 style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = 8.dp),
             )
 
             VaultIconPicker(
@@ -229,7 +242,12 @@ private fun NewVaultSegment(
 private val previewVaults = listOf(
     VaultMetadata(vaultId = newVaultId(), name = "Personal", icon = Vault.Icon.Person, count = 12),
     VaultMetadata(vaultId = newVaultId(), name = "Work", icon = Vault.Icon.Work, count = 4),
-    VaultMetadata(vaultId = newVaultId(), name = "Shopping", icon = Vault.Icon.ShoppingCart, count = 7),
+    VaultMetadata(
+        vaultId = newVaultId(),
+        name = "Shopping",
+        icon = Vault.Icon.ShoppingCart,
+        count = 7
+    ),
 )
 
 @Preview(showBackground = true)
