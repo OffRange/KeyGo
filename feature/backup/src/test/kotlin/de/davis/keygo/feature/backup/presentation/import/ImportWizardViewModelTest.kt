@@ -6,6 +6,7 @@ import de.davis.keygo.core.item.domain.model.VaultContext
 import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.backup.FakeBackupFileStore
+import de.davis.keygo.feature.backup.backupVault
 import de.davis.keygo.feature.backup.RestorerTestEnv
 import de.davis.keygo.feature.backup.data.FakeBackupDestinationResolver
 import de.davis.keygo.feature.backup.domain.model.BackupDestination
@@ -27,7 +28,6 @@ import de.davisalessandro.keygo.rust.Backup
 import de.davisalessandro.keygo.rust.BackupCredential
 import de.davisalessandro.keygo.rust.BackupException
 import de.davisalessandro.keygo.rust.BackupLogin
-import de.davisalessandro.keygo.rust.BackupVault
 import de.davisalessandro.keygo.rust.ColumnMapping
 import de.davisalessandro.keygo.rust.Confidence
 import de.davisalessandro.keygo.rust.CsvAnalysis
@@ -163,7 +163,7 @@ class ImportWizardViewModelTest {
     fun `Continue on selected JSON runs import and surfaces the summary`() = runTest {
         json.inspectResult = JsonEncryption.NONE
         fileStore.contents = """{"vaults":[]}"""
-        json.importResult = Backup(listOf(BackupVault("Imported", listOf(login("Email")), emptyList())))
+        json.importResult = Backup(listOf(backupVault("Imported", listOf(login("Email")))))
         val viewModel = viewModel(FakeBackupDestinationResolver(result = jsonDestination()))
         viewModel.selectJson()
         advanceUntilIdle()
@@ -306,7 +306,7 @@ class ImportWizardViewModelTest {
         fileStore.contents = "name,secret\nEmail,s3cr3t\n"
         csv.analyzeResult = csvAnalysis()
         csv.importResult = CsvImportResult(
-            backup = Backup(listOf(BackupVault("CSV Import", listOf(login("Email")), emptyList()))),
+            backup = Backup(listOf(backupVault("CSV Import", listOf(login("Email"))))),
             report = ImportReport(imported = 1u, skipped = 0u),
         )
         val viewModel = viewModel(FakeBackupDestinationResolver(result = csvDestination()))
@@ -384,7 +384,7 @@ class ImportWizardViewModelTest {
         fileStore.contents = "name,secret\nEmail,s3cr3t\n"
         csv.analyzeResult = csvAnalysis()
         csv.importResult = CsvImportResult(
-            backup = Backup(listOf(BackupVault("CSV Import", listOf(login("Email")), emptyList()))),
+            backup = Backup(listOf(backupVault("CSV Import", listOf(login("Email"))))),
             report = ImportReport(imported = 1u, skipped = 0u),
         )
         val viewModel = viewModel(FakeBackupDestinationResolver(result = csvDestination()))
@@ -407,7 +407,7 @@ class ImportWizardViewModelTest {
         fileStore.contents = "name,secret\nEmail,s3cr3t\n"
         csv.analyzeResult = csvAnalysis()
         csv.importResult = CsvImportResult(
-            backup = Backup(listOf(BackupVault("CSV Import", listOf(login("Email")), emptyList()))),
+            backup = Backup(listOf(backupVault("CSV Import", listOf(login("Email"))))),
             report = ImportReport(imported = 1u, skipped = 0u),
         )
         val viewModel = viewModel(FakeBackupDestinationResolver(result = csvDestination()))

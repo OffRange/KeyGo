@@ -3,6 +3,7 @@ package de.davis.keygo.feature.backup.domain.usecase
 import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.feature.backup.FakeBackupFileStore
+import de.davis.keygo.feature.backup.backupVault
 import de.davis.keygo.feature.backup.RestorerTestEnv
 import de.davis.keygo.feature.backup.domain.BackupFileStore
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
@@ -18,7 +19,6 @@ import de.davisalessandro.keygo.rust.Backup
 import de.davisalessandro.keygo.rust.BackupCredential
 import de.davisalessandro.keygo.rust.BackupException
 import de.davisalessandro.keygo.rust.BackupLogin
-import de.davisalessandro.keygo.rust.BackupVault
 import de.davisalessandro.keygo.rust.ColumnMapping
 import de.davisalessandro.keygo.rust.CsvAnalysis
 import de.davisalessandro.keygo.rust.CsvImportResult
@@ -144,7 +144,7 @@ class ImportBackupUseCaseTest {
     @Test
     fun `json import restores and succeeds`() = runTest {
         fileStore.contents = """{"vaults":[]}"""
-        json.importResult = Backup(listOf(BackupVault("Imported", listOf(login("Email")), emptyList())))
+        json.importResult = Backup(listOf(backupVault("Imported", listOf(login("Email")))))
 
         val emissions = useCase()(jsonRequest()).toList()
 
@@ -163,7 +163,7 @@ class ImportBackupUseCaseTest {
             confidence = FieldConfidence(null, null, null, null, null, null),
         )
         csv.importResult = CsvImportResult(
-            backup = Backup(listOf(BackupVault("CSV Import", listOf(login("Email")), emptyList()))),
+            backup = Backup(listOf(backupVault("CSV Import", listOf(login("Email"))))),
             report = ImportReport(imported = 1u, skipped = 0u),
         )
 
@@ -185,7 +185,7 @@ class ImportBackupUseCaseTest {
             confidence = FieldConfidence(null, null, null, null, null, null),
         )
         csv.importResult = CsvImportResult(
-            backup = Backup(listOf(BackupVault("CSV Import", listOf(login("Email")), emptyList()))),
+            backup = Backup(listOf(backupVault("CSV Import", listOf(login("Email"))))),
             report = ImportReport(imported = 1u, skipped = 0u),
         )
         val edited = ColumnMapping(0u, null, null, 1u, null, null) // user says col 1 = password
@@ -229,7 +229,7 @@ class ImportBackupUseCaseTest {
     fun `running progress is emitted during restore`() = runTest {
         fileStore.contents = """{"vaults":[]}"""
         json.importResult = Backup(
-            listOf(BackupVault("V", listOf(login("A"), login("B")), emptyList())),
+            listOf(backupVault("V", listOf(login("A"), login("B")))),
         )
 
         val emissions = useCase()(jsonRequest()).toList()
@@ -244,7 +244,7 @@ class ImportBackupUseCaseTest {
     fun `ark-sealed json imports with the session ark`() = runTest {
         fileStore.contents = "{}"
         json.inspectResult = JsonEncryption.ARK
-        json.importResult = Backup(listOf(BackupVault("V", listOf(login("A")), emptyList())))
+        json.importResult = Backup(listOf(backupVault("V", listOf(login("A")))))
         val session = FakeSession(startOnConstruct = true)
 
         val emissions = useCase(session)(jsonRequest(passphrase = null)).toList()
@@ -258,7 +258,7 @@ class ImportBackupUseCaseTest {
     fun `plaintext json imports without a credential`() = runTest {
         fileStore.contents = "{}"
         json.inspectResult = JsonEncryption.NONE
-        json.importResult = Backup(listOf(BackupVault("V", listOf(login("A")), emptyList())))
+        json.importResult = Backup(listOf(backupVault("V", listOf(login("A")))))
 
         val emissions = useCase()(jsonRequest(passphrase = null)).toList()
 
@@ -326,7 +326,7 @@ class ImportBackupUseCaseTest {
             confidence = FieldConfidence(null, null, null, null, null, null),
         )
         csv.importResult = CsvImportResult(
-            backup = Backup(listOf(BackupVault("CSV Import", listOf(login("Email")), emptyList()))),
+            backup = Backup(listOf(backupVault("CSV Import", listOf(login("Email"))))),
             report = ImportReport(imported = 1u, skipped = 0u),
         )
 
@@ -354,7 +354,7 @@ class ImportBackupUseCaseTest {
             confidence = FieldConfidence(null, null, null, null, null, null),
         )
         csv.importResult = CsvImportResult(
-            backup = Backup(listOf(BackupVault("CSV Import", listOf(login("Email")), emptyList()))),
+            backup = Backup(listOf(backupVault("CSV Import", listOf(login("Email"))))),
             report = ImportReport(imported = 1u, skipped = 0u),
         )
 

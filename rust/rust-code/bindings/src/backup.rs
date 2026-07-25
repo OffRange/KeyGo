@@ -11,6 +11,7 @@ pub struct Backup {
 #[derive(uniffi::Record)]
 pub struct BackupVault {
     pub name: String,
+    pub icon: String,
     pub logins: Vec<BackupLogin>,
     pub cards: Vec<BackupCard>,
 }
@@ -142,6 +143,7 @@ impl From<core::Vault> for BackupVault {
     fn from(v: core::Vault) -> Self {
         Self {
             name: v.name,
+            icon: v.icon,
             logins: v.logins.into_iter().map(Into::into).collect(),
             cards: v.cards.into_iter().map(Into::into).collect(),
         }
@@ -152,6 +154,7 @@ impl From<BackupVault> for core::Vault {
     fn from(v: BackupVault) -> Self {
         Self {
             name: v.name,
+            icon: v.icon,
             logins: v.logins.into_iter().map(Into::into).collect(),
             cards: v.cards.into_iter().map(Into::into).collect(),
         }

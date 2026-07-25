@@ -9,6 +9,7 @@ import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.feature.backup.domain.mapper.toUpsertCreditCard
 import de.davis.keygo.feature.backup.domain.mapper.toUpsertLogin
+import de.davis.keygo.feature.backup.domain.mapper.toVaultIcon
 import de.davis.keygo.feature.backup.domain.model.ImportError
 import de.davis.keygo.feature.backup.domain.model.ImportSummary
 import de.davis.keygo.feature.backup.domain.model.ImportTarget
@@ -51,7 +52,8 @@ internal class BackupRestorer(
 
             // Resolved once, ahead of the loop rather than inside it: a target collapses every
             // vault in the backup into the single one the user chose, so `New` has to create
-            // exactly one vault no matter how many vaults the backup describes.
+            // exactly one vault no matter how many vaults the backup describes. That collapse is
+            // also why it keeps the default icon: the sources it absorbs may disagree on one.
             val targetVaultId = when (target) {
                 null -> null
                 is ImportTarget.Existing -> target.vaultId
@@ -60,10 +62,12 @@ internal class BackupRestorer(
                     ?.also { acc.vaultCreated() }
             }
 
+            // A vault matched by name keeps whatever icon it already has - the backup describes
+            // how the vault looked when it was written, not how the user wants it to look now.
             for (bvault in backup.vaults) {
                 val vaultId = if (target != null) targetVaultId
                 else existingByName[bvault.name]
-                    ?: createVault(bvault.name, Vault.Icon.Default)
+                    ?: createVault(bvault.name, bvault.toVaultIcon())
                         .getOrNull()
                         ?.also { existingByName[bvault.name] = it; acc.vaultCreated() }
 

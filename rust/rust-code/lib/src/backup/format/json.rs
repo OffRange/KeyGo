@@ -87,6 +87,7 @@ mod tests {
         Backup {
             vaults: vec![Vault {
                 name: "Personal".into(),
+                icon: "Work".into(),
                 logins: vec![Login {
                     title: "Email".into(),
                     notes: Some("primary".into()),
@@ -174,6 +175,28 @@ mod tests {
         assert_eq!(passkeys.len(), 2);
         assert_eq!(passkeys[0].private_key, vec![4, 5, 6]);
         assert_eq!(passkeys[1].rp, "example.org");
+    }
+
+    #[test]
+    fn vault_icon_round_trips_through_an_encrypted_backup() {
+        let original = sample_backup();
+
+        let json = export(&original, Some(BackupCredential::Passphrase(b"pw"))).unwrap();
+        let restored = import(&json, Some(BackupCredential::Passphrase(b"pw"))).unwrap();
+
+        assert_eq!(restored.vaults[0].icon, "Work");
+    }
+
+    #[test]
+    fn golden_v1_vault_has_no_icon() {
+        // The frozen golden predates the field; serde(default) must read it as an empty string
+        // rather than failing the whole import.
+        let backup = import(
+            GOLDEN_V1,
+            Some(BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE)),
+        )
+        .unwrap();
+        assert!(backup.vaults[0].icon.is_empty());
     }
 
     #[test]

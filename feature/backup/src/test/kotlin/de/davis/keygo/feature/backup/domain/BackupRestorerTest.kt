@@ -1,8 +1,10 @@
 package de.davis.keygo.feature.backup.domain
 
 import de.davis.keygo.core.item.FakeLoginRepository
+import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.feature.backup.RestorerTestEnv
+import de.davis.keygo.feature.backup.backupVault
 import de.davis.keygo.feature.backup.domain.model.ImportTarget
 import de.davis.keygo.feature.backup.testLogin
 import de.davis.keygo.feature.backup.testVault
@@ -31,8 +33,8 @@ class BackupRestorerTest {
     )
 
     private fun backup(vararg vaults: BackupVault) = Backup(vaults.toList())
-    private fun vault(name: String, logins: List<BackupLogin>) =
-        BackupVault(name = name, logins = logins, cards = emptyList())
+    private fun vault(name: String, logins: List<BackupLogin>, icon: String = "") =
+        backupVault(name = name, logins = logins, icon = icon)
 
     @Test
     fun `empty backup fails with NothingImported`() = runTest {
@@ -66,6 +68,67 @@ class BackupRestorerTest {
         assertEquals(0, summary.vaultsCreated)
         assertEquals(1, summary.imported)
     }
+
+    @Test
+    fun `a created vault takes the icon the backup carries`() = runTest {
+        val env = RestorerTestEnv()
+
+        env.restorer.restore(
+            backup(vault("Work", listOf(login("Email")), icon = "Business")),
+        ) { _, _ -> }
+
+        assertEquals(
+            Vault.Icon.Business,
+            env.vaultRepo.observeAllVaultMetadata().first().single().icon,
+        )
+    }
+
+    @Test
+    fun `an icon this build does not know falls back to the default`() = runTest {
+        val env = RestorerTestEnv()
+
+        env.restorer.restore(
+            backup(vault("Work", listOf(login("Email")), icon = "Telescope")),
+        ) { _, _ -> }
+
+        val metadata = env.vaultRepo.observeAllVaultMetadata().first().single()
+        assertEquals(Vault.Icon.Default, metadata.icon)
+        assertEquals(1, env.loginRepo.observeLoginsCount())
+    }
+
+    @Test
+    fun `a vault matched by name keeps its own icon`() = runTest {
+        val env = RestorerTestEnv()
+        env.vaultRepo.seed(testVault(name = "Personal", icon = Vault.Icon.Star))
+
+        env.restorer.restore(
+            backup(vault("Personal", listOf(login("Email")), icon = "Business")),
+        ) { _, _ -> }
+
+        assertEquals(
+            Vault.Icon.Star,
+            env.vaultRepo.observeAllVaultMetadata().first().single().icon,
+        )
+    }
+
+    @Test
+    fun `a New target keeps the default icon rather than one of the sources it absorbs`() =
+        runTest {
+            val env = RestorerTestEnv()
+
+            env.restorer.restore(
+                backup(
+                    vault("First", listOf(login("Email")), icon = "Business"),
+                    vault("Second", listOf(login("Bank")), icon = "Work"),
+                ),
+                ImportTarget.New("passwords"),
+            ) { _, _ -> }
+
+            assertEquals(
+                Vault.Icon.Default,
+                env.vaultRepo.observeAllVaultMetadata().first().single().icon,
+            )
+        }
 
     @Test
     fun `skips a login that already exists by name and username`() = runTest {

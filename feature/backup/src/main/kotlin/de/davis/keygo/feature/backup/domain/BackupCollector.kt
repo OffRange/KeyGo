@@ -14,6 +14,7 @@ import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.backup.domain.mapper.toBackupCard
+import de.davis.keygo.feature.backup.domain.mapper.toBackupIcon
 import de.davis.keygo.feature.backup.domain.mapper.toBackupLogin
 import de.davis.keygo.feature.backup.domain.model.CollectedBackup
 import de.davis.keygo.feature.backup.domain.model.ExportError
@@ -75,6 +76,7 @@ internal class BackupCollector(
         val backupVaults = perVault.map { (meta, logins, cards) ->
             BackupVault(
                 name = meta.name,
+                icon = meta.icon.toBackupIcon(),
                 logins = logins.map { login ->
                     val passkeys = passkeyRepository.getPasskeysByLogin(login.id)
                     login.export { it.toBackupLogin(passkeys) }

@@ -3,6 +3,7 @@ package de.davis.keygo.feature.backup.domain.mapper
 import de.davis.keygo.core.item.domain.model.CreditCard
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.Passkey
+import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.feature.backup.domain.model.CsvPreset
@@ -10,6 +11,9 @@ import de.davisalessandro.keygo.rust.BackupCard
 import de.davisalessandro.keygo.rust.BackupLogin
 import de.davisalessandro.keygo.rust.BackupPasskey
 import de.davisalessandro.keygo.rust.ExportPreset
+
+/** The enum name is the wire vocabulary; [toVaultIcon] reads it back. */
+internal fun Vault.Icon.toBackupIcon(): String = name
 
 context(scope: CryptographicScope)
 internal suspend fun Login.toBackupLogin(passkeys: List<Passkey>): BackupLogin = BackupLogin(

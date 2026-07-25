@@ -6,6 +6,7 @@ import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.FakePasskeyRepository
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.item.domain.alias.newItemId
+import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProviderFactory
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
@@ -134,6 +135,23 @@ class BackupCollectorTest {
         assertEquals(listOf("InA"), byName.getValue("A").logins.map { it.title })
         assertEquals(listOf("InB"), byName.getValue("B").cards.map { it.title })
         assertEquals(2, collected.itemCount)
+    }
+
+    @Test
+    fun `exports each vault's icon under its enum name`() = runTest {
+        val work = testVault(name = "Work", icon = Vault.Icon.Business)
+        val personal = testVault(name = "Personal", icon = Vault.Icon.Home)
+        vaultRepo.seed(work, personal)
+        loginRepo.seed(testLogin(vaultId = work.id, name = "InWork"))
+        loginRepo.seed(testLogin(vaultId = personal.id, name = "InPersonal"))
+
+        val collected: CollectedBackup =
+            assertNotNull(collector().collect { _, _ -> }.getOrNull())
+
+        assertEquals(
+            mapOf("Work" to "Business", "Personal" to "Home"),
+            collected.backup.vaults.associate { it.name to it.icon },
+        )
     }
 
     @Test

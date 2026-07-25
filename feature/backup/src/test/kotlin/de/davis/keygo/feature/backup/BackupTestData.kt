@@ -18,6 +18,9 @@ import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
+import de.davisalessandro.keygo.rust.BackupCard
+import de.davisalessandro.keygo.rust.BackupLogin
+import de.davisalessandro.keygo.rust.BackupVault
 import java.time.YearMonth
 
 /** Encrypts [plaintext] the same way [FakeCryptographicScopeProvider]'s scope decrypts (XOR). */
@@ -28,12 +31,24 @@ fun secretPayload(plaintext: String) = EncryptedPayload(
 
 private val emptyKey get() = KeyInformation(byteArrayOf(), byteArrayOf())
 
-fun testVault(id: VaultId = newVaultId(), name: String) = Vault(
+fun testVault(
+    id: VaultId = newVaultId(),
+    name: String,
+    icon: Vault.Icon = Vault.Icon.Default,
+) = Vault(
     id = id,
     name = name,
     keyInformation = emptyKey,
-    icon = Vault.Icon.Default,
+    icon = icon,
 )
+
+/** A vault as it appears inside a backup document. [icon] is blank unless a test is about icons. */
+fun backupVault(
+    name: String,
+    logins: List<BackupLogin> = emptyList(),
+    cards: List<BackupCard> = emptyList(),
+    icon: String = "",
+) = BackupVault(name = name, icon = icon, logins = logins, cards = cards)
 
 fun testLogin(
     vaultId: VaultId,

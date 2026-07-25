@@ -8,6 +8,12 @@ pub struct Backup {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Vault {
     pub name: String,
+    /// Names an icon from the client's own set; the format assigns it no meaning beyond a label to
+    /// hand back on restore. `default` covers producers that have none to give - CSV imports, and
+    /// backups written before the field existed, including the frozen v1 goldens - which read as an
+    /// empty string and let the client fall back to its own default.
+    #[serde(default)]
+    pub icon: String,
     pub logins: Vec<Login>,
     pub cards: Vec<Card>,
 }
