@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.util.presentation.asString
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -96,8 +97,8 @@ private fun SettingsEntryRow(
             }
         }
     }
-    val supportingContent: (@Composable () -> Unit)? = entry.supporting?.let { res ->
-        { Text(text = stringResource(res)) }
+    val supportingContent: (@Composable () -> Unit)? = entry.supporting?.let { supporting ->
+        { Text(text = supporting.asString()) }
     }
     val headlineContent: @Composable () -> Unit = { Text(text = stringResource(entry.title)) }
 

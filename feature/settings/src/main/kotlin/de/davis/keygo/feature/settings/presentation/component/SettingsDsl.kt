@@ -2,6 +2,7 @@ package de.davis.keygo.feature.settings.presentation.component
 
 import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.vector.ImageVector
+import de.davis.keygo.core.util.presentation.UIText
 
 @DslMarker
 internal annotation class SettingsDsl
@@ -26,7 +27,7 @@ internal class SectionScope {
         checked: Boolean,
         onCheckedChange: (Boolean) -> Unit,
         icon: ImageVector? = null,
-        @StringRes supporting: Int? = null,
+        supporting: UIText? = null,
     ) {
         entries += SettingsEntry.Toggle(
             title = title,
@@ -42,7 +43,7 @@ internal class SectionScope {
         onClick: () -> Unit,
         icon: ImageVector? = null,
         navigationIcon: ImageVector? = null,
-        @StringRes supporting: Int? = null,
+        supporting: UIText? = null,
     ) {
         entries += SettingsEntry.Action(
             title = title,
@@ -57,7 +58,7 @@ internal class SectionScope {
         @StringRes title: Int,
         value: String,
         icon: ImageVector? = null,
-        @StringRes supporting: Int? = null,
+        supporting: UIText? = null,
         onClick: (() -> Unit)? = null,
     ) {
         entries += SettingsEntry.Value(

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.feature.autofill.domain.repository.AutofillServiceRepository
+import de.davis.keygo.feature.backup.domain.usecase.ObserveLastBackupUseCase
 import de.davis.keygo.feature.settings.domain.model.OsState
 import de.davis.keygo.feature.settings.domain.repository.AppVersionRepository
 import kotlinx.coroutines.channels.Channel
@@ -22,6 +23,7 @@ internal class SettingsViewModel(
     private val autofillServiceRepository: AutofillServiceRepository,
     accountRepository: AccountRepository,
     appVersionRepository: AppVersionRepository,
+    observeLastBackup: ObserveLastBackupUseCase,
 ) : ViewModel() {
 
     private val versionName = appVersionRepository.versionName
@@ -39,12 +41,14 @@ internal class SettingsViewModel(
     val state = combine(
         accountRepository.observe(),
         osState,
-    ) { account, os ->
+        observeLastBackup(),
+    ) { account, os, lastBackup ->
         SettingsUiState(
             autofillEnabled = os.autofillEnabled,
             biometricsAvailable = os.biometricsAvailable,
             biometricsEnabled = os.biometricsAvailable && account?.biometricWrappedArk != null,
             version = versionName,
+            lastBackupAt = lastBackup?.finishedAt,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -77,8 +81,7 @@ internal class SettingsViewModel(
 
             SettingsUiEvent.ResetPassword -> _event.trySend(SettingsEvent.NavigateToChangePassword)
 
-            SettingsUiEvent.ExportData -> _event.trySend(SettingsEvent.ExportData)
-            SettingsUiEvent.ImportData -> _event.trySend(SettingsEvent.ImportData)
+            SettingsUiEvent.OpenBackup -> _event.trySend(SettingsEvent.NavigateToBackup)
 
             SettingsUiEvent.LibrariesClicked -> _event.trySend(SettingsEvent.NavigateToLibraries)
             SettingsUiEvent.ReportIssue -> _event.trySend(SettingsEvent.ReportIssue)

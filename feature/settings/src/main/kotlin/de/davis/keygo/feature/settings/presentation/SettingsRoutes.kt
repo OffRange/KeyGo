@@ -30,10 +30,7 @@ fun NavGraphBuilder.settingsGraph(
         SettingsScreen(
             showLibraries = onShowLibraries,
             onOpenChangePassword = onOpenChangePassword,
-
-            // TODO: #51
-            onExportDataClicked = onOpenBackup,
-            onImportDataClicked = {}
+            onOpenBackup = onOpenBackup,
         )
     }
     composable<ChangePasswordRoute> {

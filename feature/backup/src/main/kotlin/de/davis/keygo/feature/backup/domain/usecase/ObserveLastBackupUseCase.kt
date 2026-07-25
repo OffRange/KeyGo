@@ -8,13 +8,24 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.koin.core.annotation.Single
 
+/**
+ * The most recent successful backup, or `null` while none has ever completed.
+ *
+ * An interface rather than a plain use case because other feature modules observe it to show backup
+ * health: the implementation's collaborators are module-internal, so an interface is what their
+ * tests can substitute.
+ */
+fun interface ObserveLastBackupUseCase {
+    operator fun invoke(): Flow<LastBackup?>
+}
+
 @Single
-internal class ObserveLastBackupUseCase(
+internal class ObserveLastBackupUseCaseImpl(
     private val jobRepository: BackupJobRepository,
     private val destinationResolver: BackupDestinationResolver,
-) {
+) : ObserveLastBackupUseCase {
 
-    operator fun invoke(): Flow<LastBackup?> =
+    override operator fun invoke(): Flow<LastBackup?> =
         jobRepository.observeJobs().map { jobs ->
             jobs.filter { it.lastResult == BackupResult.Success && it.finishedAt != null }
                 .maxByOrNull { it.finishedAt!! }

@@ -16,7 +16,7 @@ import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.domain.usecase.CancelBackupUseCase
 import de.davis.keygo.feature.backup.domain.usecase.CleanupBackupResourcesUseCase
 import de.davis.keygo.feature.backup.domain.usecase.ObserveDispatchedBackupsUseCase
-import de.davis.keygo.feature.backup.domain.usecase.ObserveLastBackupUseCase
+import de.davis.keygo.feature.backup.domain.usecase.ObserveLastBackupUseCaseImpl
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupHubEvent
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupHubUiEvent
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupSection
@@ -50,7 +50,7 @@ class BackupHubViewModelTest {
     private fun viewModel() = BackupHubViewModel(
         observeDispatchedBackups =
             ObserveDispatchedBackupsUseCase(repository, jobRepository, destinationResolver),
-        observeLastBackup = ObserveLastBackupUseCase(jobRepository, destinationResolver),
+        observeLastBackup = ObserveLastBackupUseCaseImpl(jobRepository, destinationResolver),
         cancelBackup = CancelBackupUseCase(
             repository = repository,
             jobRepository = jobRepository,

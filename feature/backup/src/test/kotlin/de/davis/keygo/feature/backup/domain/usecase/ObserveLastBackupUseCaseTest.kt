@@ -17,7 +17,7 @@ class ObserveLastBackupUseCaseTest {
 
     private val jobRepository = FakeBackupJobRepository()
     private val destinationResolver = FakeBackupDestinationResolver()
-    private val useCase = ObserveLastBackupUseCase(jobRepository, destinationResolver)
+    private val useCase = ObserveLastBackupUseCaseImpl(jobRepository, destinationResolver)
 
     private fun job(
         uri: String,

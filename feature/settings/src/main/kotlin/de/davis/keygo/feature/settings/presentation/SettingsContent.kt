@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.settings.presentation
 
+import android.text.format.DateUtils
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -10,7 +11,6 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.LockReset
 import androidx.compose.material.icons.filled.Password
-import androidx.compose.material.icons.filled.SettingsBackupRestore
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -19,6 +19,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.util.presentation.UIText
+import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.feature.settings.R
 import de.davis.keygo.feature.settings.presentation.component.SettingsList
 
@@ -40,14 +42,14 @@ internal fun SettingsContent(
                 action(
                     title = R.string.settings_reset_password,
                     icon = Icons.Default.LockReset,
-                    supporting = R.string.settings_reset_password_description,
+                    supporting = ResourceString(R.string.settings_reset_password_description),
                     onClick = { onEvent(SettingsUiEvent.ResetPassword) },
                 )
 
                 if (state.biometricsAvailable) toggle(
                     title = R.string.settings_use_biometrics,
                     icon = Icons.Default.Fingerprint,
-                    supporting = R.string.settings_use_biometrics_description,
+                    supporting = ResourceString(R.string.settings_use_biometrics_description),
                     checked = state.biometricsEnabled,
                     onCheckedChange = { onEvent(SettingsUiEvent.SetBiometrics(it)) },
                 )
@@ -55,7 +57,7 @@ internal fun SettingsContent(
                 toggle(
                     title = R.string.settings_autofill,
                     icon = Icons.Default.Password,
-                    supporting = R.string.settings_autofill_description,
+                    supporting = ResourceString(R.string.settings_autofill_description),
                     checked = state.autofillEnabled,
                     onCheckedChange = { onEvent(SettingsUiEvent.SetAutofill(it)) },
                 )
@@ -63,17 +65,10 @@ internal fun SettingsContent(
 
             section(title = R.string.settings_backup) {
                 action(
-                    title = R.string.settings_export_data,
+                    title = R.string.settings_backup_and_restore,
                     icon = Icons.Default.Backup,
-                    supporting = R.string.settings_export_data_description,
-                    onClick = { onEvent(SettingsUiEvent.ExportData) },
-                )
-
-                action(
-                    title = R.string.settings_import_data,
-                    icon = Icons.Default.SettingsBackupRestore,
-                    supporting = R.string.settings_import_data_description,
-                    onClick = { onEvent(SettingsUiEvent.ImportData) },
+                    supporting = lastBackupText(state.lastBackupAt),
+                    onClick = { onEvent(SettingsUiEvent.OpenBackup) },
                 )
             }
 
@@ -99,6 +94,22 @@ internal fun SettingsContent(
             }
         }
     }
+}
+
+/**
+ * Relative rather than absolute ("2 days ago", not a date): what matters at a glance is how stale
+ * the newest backup is, so the row doubles as a nudge once it starts reading in weeks.
+ */
+private fun lastBackupText(lastBackupAt: Long?): UIText = when (lastBackupAt) {
+    null -> ResourceString(R.string.settings_backup_none)
+    else -> ResourceString(
+        R.string.settings_backup_last,
+        DateUtils.getRelativeTimeSpanString(
+            lastBackupAt,
+            System.currentTimeMillis(),
+            DateUtils.MINUTE_IN_MILLIS,
+        ).toString(),
+    )
 }
 
 @Preview

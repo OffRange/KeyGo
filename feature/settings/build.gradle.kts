@@ -20,6 +20,7 @@ dependencies {
     implementation(projects.core.identity)
     implementation(projects.core.item)
     implementation(projects.feature.autofill)
+    implementation(projects.feature.backup)
 
     implementation(libs.androidx.navigation.compose)
 
