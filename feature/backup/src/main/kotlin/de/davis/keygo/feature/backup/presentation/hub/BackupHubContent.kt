@@ -53,7 +53,7 @@ import de.davis.keygo.feature.backup.domain.model.DispatchedBackup
 import de.davis.keygo.feature.backup.domain.model.ExportProgress
 import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.presentation.displayName
-import de.davis.keygo.feature.backup.presentation.export.component.IconBadge
+import de.davis.keygo.feature.backup.presentation.component.IconBadge
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupGroup
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupHubUiEvent
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupHubUiState
@@ -303,9 +303,11 @@ private fun FailureLine(item: DispatchedBackup, reason: BackupFailureReason) {
     )
 }
 
-// "Queued · JSON Backup" while it waits to dispatch, or "JSON Backup · 2 min ago" once it settles.
-// "Queued" is scoped to In progress: a recurring job sitting in Scheduled is waiting for its next
-// period, not queued to run now.
+/**
+ * Parts joined by [DETAIL_SEPARATOR]: "Queued" and the format while it waits to dispatch, or the
+ * format and "2 min ago" once it settles. "Queued" is scoped to In progress: a recurring job
+ * sitting in Scheduled is waiting for its next period, not queued to run now.
+ */
 @Composable
 private fun DispatchedBackup.detailText(): String {
     val queued = state == DispatchedBackup.State.Enqueued && section == BackupSection.InProgress

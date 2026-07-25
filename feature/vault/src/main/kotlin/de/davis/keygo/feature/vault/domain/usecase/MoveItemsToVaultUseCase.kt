@@ -61,7 +61,7 @@ class MoveItemsToVaultUseCase(
         }
 
         // Phase 2: commit all moves in one SQLite transaction. On failure, every row rolls
-        // back — items remain in the source vault, decryptable under the source vault key.
+        // back, so items remain in the source vault, decryptable under the source vault key.
         itemRepository.moveItemsToVault(rewrapped, dstVaultId)
             .bind { MoveItemsError.PersistFailed(it) }
     }

@@ -10,7 +10,7 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.PasswordScore
 
-// The primary key is shared with ItemEntity — one ItemId identifies both the base item row and
+// The primary key is shared with ItemEntity: one ItemId identifies both the base item row and
 // this password row. This models the "is-a" relationship at the DB level (joined-table
 // inheritance): there is no separate password-specific ID.
 @Entity(

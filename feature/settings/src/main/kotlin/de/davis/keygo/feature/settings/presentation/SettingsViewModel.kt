@@ -70,7 +70,7 @@ internal class SettingsViewModel(
                     autofillServiceRepository.disable()
                     // disableAutofillServices() propagates through the system server
                     // asynchronously, so re-polling isEnabled() here can still read true.
-                    // The outcome is deterministic — update the snapshot directly.
+                    // The outcome is deterministic, so update the snapshot directly.
                     osState.update { it.copy(autofillEnabled = false) }
                 }
             }

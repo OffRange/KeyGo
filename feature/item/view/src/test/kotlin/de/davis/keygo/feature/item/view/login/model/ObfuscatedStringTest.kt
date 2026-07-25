@@ -14,13 +14,13 @@ class ObfuscatedStringTest {
     @Test
     fun `hidden is all bullets when no formatted string given`() {
         val obs = ObfuscatedString("4111111111111111")
-        assertEquals("•".repeat(16), obs.hidden)
+        assertEquals(mask("*".repeat(16)), obs.hidden)
     }
 
     @Test
     fun `hidden preserves spaces from formatted string`() {
         val obs = ObfuscatedString(raw = "4111111111111111", formatted = "4111 1111 1111 1111")
-        assertEquals("•••• •••• •••• ••••", obs.hidden)
+        assertEquals(mask("**** **** **** ****"), obs.hidden)
     }
 
     @Test
@@ -36,7 +36,7 @@ class ObfuscatedStringTest {
             formatted = "4111 1111 1111 1234",
             visibleSuffixDigits = 4,
         )
-        assertEquals("•••• •••• •••• 1234", obs.hidden)
+        assertEquals(mask("**** **** **** 1234"), obs.hidden)
     }
 
     @Test
@@ -46,7 +46,7 @@ class ObfuscatedStringTest {
             formatted = "3782 822463 10005",
             visibleSuffixDigits = 4,
         )
-        assertEquals("•••• •••••• •0005", obs.hidden)
+        assertEquals(mask("**** ****** *0005"), obs.hidden)
     }
 
     @Test
@@ -56,6 +56,9 @@ class ObfuscatedStringTest {
             formatted = "1234",
             visibleSuffixDigits = 4,
         )
-        assertEquals("••••", obs.hidden)
+        assertEquals(mask("****"), obs.hidden)
     }
 }
+
+// Expected values are written with "*" so this file stays ASCII; the real glyph is U+2022.
+private fun mask(pattern: String): String = pattern.replace('*', '\u2022')

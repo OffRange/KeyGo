@@ -52,7 +52,7 @@ class SortUseCase {
     }
 
     private fun compareNumeric(a: String, b: String): Int {
-        // Fast path: different lengths means different magnitudes — no parsing
+        // Fast path: different lengths mean different magnitudes, so no parsing
         if (a.length != b.length) return a.length - b.length
         // Same length: lexicographic order == numeric order for digit-only strings
         return a.compareTo(b)

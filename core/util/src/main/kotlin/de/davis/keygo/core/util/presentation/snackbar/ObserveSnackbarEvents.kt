@@ -40,12 +40,12 @@ fun SnackbarHandler(
         }
     }
 
-    // One-shot messages (errors) — fire and forget, not replayed after rotation
+    // One-shot messages (errors): fire and forget, not replayed after rotation
     ObserveAsEvents(snackbarManager.oneShotEvents, snackbarManager) { msg ->
         show(msg)
     }
 
-    // Sticky messages (undo actions) — replayed after rotation via StateFlow
+    // Sticky messages (undo actions): replayed after rotation via StateFlow
     LaunchedEffect(snackbarManager) {
         snackbarManager.stickyMessage.filterNotNull().collect { msg ->
             show(msg)

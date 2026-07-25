@@ -92,7 +92,7 @@ internal fun SelectVaultContent(
 
 /**
  * Container behind every segment. Must not be left to [ListItemDefaults.segmentedColors]'s default,
- * which resolves to `colorScheme.surface` — identical to the wizard Scaffold's background in both
+ * which resolves to `colorScheme.surface`, identical to the wizard Scaffold's background in both
  * KeyGo themes, so the rows would have no visible edge at all. Same pin as `MapColumnsContent`.
  */
 private val segmentContainerColor

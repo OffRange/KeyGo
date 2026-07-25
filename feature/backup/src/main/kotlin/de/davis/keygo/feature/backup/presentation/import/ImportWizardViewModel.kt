@@ -165,7 +165,7 @@ internal class ImportWizardViewModel(
      * Seeds the destination on entry rather than in [ImportWizardUiState]'s initialiser: the file
      * name is only known once a file has been picked, and seeding on every state update would
      * overwrite a name the user has since typed. Falling back to a new vault when the context is
-     * [de.davis.keygo.core.item.domain.model.VaultContext.NoSpecific] matters — that is the "all
+     * [de.davis.keygo.core.item.domain.model.VaultContext.NoSpecific] matters: that is the "all
      * vaults" view, which is not somewhere an import can land.
      *
      * Seeding itself only ever happens once per file, guarded by [vaultStepSeeded]: re-entering

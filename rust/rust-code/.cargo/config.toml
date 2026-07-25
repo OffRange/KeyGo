@@ -7,7 +7,7 @@
 # if the app minSdk changes.
 #
 # Prefer `cargo ndk -t <abi> build --release -p keygo-bindings` over setting
-# PATH manually — it picks the right linker/sysroot automatically.
+# PATH manually, since it picks the right linker/sysroot automatically.
 
 [target.aarch64-linux-android]
 linker = "aarch64-linux-android26-clang"

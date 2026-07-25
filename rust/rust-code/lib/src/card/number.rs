@@ -76,7 +76,7 @@ impl Card {
 
     /// Structurally valid: a length the (possibly [`Unknown`](CardNetwork::Unknown)) network
     /// accepts and a passing Luhn check. The network is deliberately *not* gated on being
-    /// recognised — an unrecognised IIN is still acceptable as long as its length is plausible
+    /// recognised: an unrecognised IIN is still acceptable as long as its length is plausible
     /// and the checksum holds.
     pub fn is_valid(&self) -> bool {
         self.is_length_valid() && self.is_luhn_valid()

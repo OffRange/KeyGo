@@ -16,7 +16,7 @@ import java.util.UUID
  *
  * Wrapping XORs the plaintext key with a stream derived from (outer key, id, nonce) so that
  * wrap/unwrap round-trips correctly when the same outer key and id are supplied. Unwrapping
- * with a different outer key or id yields garbage — every `unwrap*` call throws
+ * with a different outer key or id yields garbage; every `unwrap*` call throws
  * [KeyWrapException.UnwrapFailed] when the result does not match a recorded ciphertext, which
  * is sufficient to exercise the wrong-password / wrong-key paths in use case tests.
  *

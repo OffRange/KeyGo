@@ -4,12 +4,12 @@ use thiserror::Error;
 pub enum CryptoError {
     #[error("AEAD encryption failed")]
     EncryptionFailed,
-    #[error("AEAD decryption failed — ciphertext invalid or tampered")]
+    #[error("AEAD decryption failed: ciphertext invalid or tampered")]
     DecryptionFailed,
 
     #[error("Key wrap failed")]
     KeyWrapFailed,
-    #[error("Key unwrap failed — wrong key or corrupted data")]
+    #[error("Key unwrap failed: wrong key or corrupted data")]
     KeyUnwrapFailed,
 
     #[error("CBOR serialisation failed: {0}")]

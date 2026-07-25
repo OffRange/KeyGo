@@ -105,7 +105,7 @@ class ViewCreditCardViewModelTest {
     @Test
     fun `card number hidden reveals only the last four digits`() = runTest(dispatcher) {
         val cardNumber = awaitCardNumber()
-        assertEquals("•••• •••• •••• 1111", cardNumber.hidden)
+        assertEquals("**** **** **** 1111".replace('*', '\u2022'), cardNumber.hidden)
     }
 
     private suspend fun awaitCardNumber(): ObfuscatedString {

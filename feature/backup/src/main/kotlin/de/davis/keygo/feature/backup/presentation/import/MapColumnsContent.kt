@@ -87,14 +87,14 @@ private val TYPE_OPTIONS: List<CsvColumnType?> = CsvColumnType.entries + null
 
 /**
  * Gap between one column's group of segments and the next. Deliberately several times
- * [ListItemDefaults.SegmentedGap] (2.dp), which separates the segments *within* a group — that
+ * [ListItemDefaults.SegmentedGap] (2.dp), which separates the segments *within* a group. That
  * ratio is what tells the reader where one column ends and the next begins.
  */
 private val COLUMN_GAP = 8.dp
 
 /**
  * Container behind every segment. Must not be left to [ListItemDefaults.segmentedColors]'s default,
- * which resolves to `colorScheme.surface` — identical to the wizard Scaffold's background in both
+ * which resolves to `colorScheme.surface`, identical to the wizard Scaffold's background in both
  * KeyGo themes, so the groups would have no visible edge at all. Every other `SegmentedListItem`
  * call site in the app pins this for the same reason.
  */
@@ -107,8 +107,8 @@ private const val SEGMENTS_PER_COLUMN = 3
 /**
  * Colours for a segment that exists only to display something.
  *
- * [SegmentedListItem] has no non-interactive overload — every overload carrying `ListItemShapes`
- * takes a click — so a display-only segment has to be a disabled one, and the disabled palette is
+ * [SegmentedListItem] has no non-interactive overload: every overload carrying `ListItemShapes`
+ * takes a click, so a display-only segment has to be a disabled one, and the disabled palette is
  * mapped back onto the enabled colours so it does not read as greyed out. Same workaround as
  * `BackupHubContent`.
  *
@@ -329,8 +329,8 @@ private fun TypeSegment(
  * Restores what the old read-only `OutlinedTextField` announced for free, and which
  * [SegmentedListItem] does not: that this row is a picker, and whether its setting is invalid.
  *
- * - [Role.DropdownList] — the segment's `onClick` otherwise marks it a generic button.
- * - [error] — `SegmentedListItem` has no `isError`, so a duplicated type currently announces as
+ * - [Role.DropdownList]: the segment's `onClick` otherwise marks it a generic button.
+ * - [error]: `SegmentedListItem` has no `isError`, so a duplicated type currently announces as
  *   valid even though the supporting text says otherwise.
  *
  * Deliberately does not set `stateDescription`: the headline `Text` already renders the selected
@@ -365,7 +365,7 @@ private fun SamplesSegment(samples: List<String>) {
     ) {
         // Toned down from the headline slot's default rather than shrunk: these are raw file
         // values, and they should not outrank the CSV header or the chosen type. onSurfaceVariant
-        // carries that on its own, so the size stays at bodyMedium — monospace runs visually
+        // carries that on its own, so the size stays at bodyMedium: monospace runs visually
         // smaller than the sans face at the same size, and these are the values the whole step
         // asks the user to read.
         if (samples.isEmpty()) Text(

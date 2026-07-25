@@ -5,7 +5,7 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 /**
  * Where an import should put its items.
  *
- * A `null` target — the absence of this type — means "use the vaults described by the backup", which
+ * A `null` target (the absence of this type) means "use the vaults described by the backup", which
  * is what JSON restores do: their vault names are real and worth preserving. CSV imports always
  * carry a target, because the vault name in a parsed CSV backup is a placeholder the parser invents.
  */

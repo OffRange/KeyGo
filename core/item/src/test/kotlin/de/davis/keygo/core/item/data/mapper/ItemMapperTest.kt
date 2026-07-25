@@ -42,7 +42,7 @@ class ItemMapperTest {
         keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),
     )
 
-    // Item.toData() → ItemEntity
+    // Item.toData() -> ItemEntity
 
     @Test
     fun `Login toData maps id and vaultId`() {
@@ -80,7 +80,7 @@ class ItemMapperTest {
         assertFalse((testLogin(pinned = false) as Item).toData().pinned)
     }
 
-    // LightweightItem.toDomain() → LiteItem.Concrete
+    // LightweightItem.toDomain() -> LiteItem.Concrete
 
     @Test
     fun `LightweightItem toDomain copies all fields`() {
@@ -100,7 +100,7 @@ class ItemMapperTest {
         assertTrue(lite.pinned)
     }
 
-    // LightweightItemSearchResult.toDomain() → LiteItemSearchResult
+    // LightweightItemSearchResult.toDomain() -> LiteItemSearchResult
 
     @Test
     fun `LightweightItemSearchResult toDomain copies all fields`() {
@@ -126,7 +126,7 @@ class ItemMapperTest {
         assertFalse(result.pinned)
     }
 
-    // MovableItemPojo.toDomain() → MovableItem
+    // MovableItemPojo.toDomain() -> MovableItem
 
     @Test
     fun `MovableItemPojo toDomain maps id`() {

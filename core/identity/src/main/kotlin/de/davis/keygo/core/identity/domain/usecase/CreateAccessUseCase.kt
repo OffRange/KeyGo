@@ -76,7 +76,7 @@ class CreateAccessUseCase(
 
         // Persist the account before the vault: the vault is encrypted under the account's
         // ARK, so a vault row without a recoverable account is dead weight. If the vault
-        // write fails after this, the half-state is recoverable on retry — `set` overwrites.
+        // write fails after this, the half-state is recoverable on retry, since `set` overwrites.
         accountRepository.set(
             Account(
                 id = accountHolder.account.id,

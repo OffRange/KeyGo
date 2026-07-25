@@ -196,7 +196,7 @@ private fun ScanIndicator(indicator: Indicator) {
 }
 
 // Mirrors which states in [toContent] carry an action, without building the
-// content — drives the reveal animation from the latest target state.
+// content. Drives the reveal animation from the latest target state.
 private fun CardScanUiState.hasAction(nfcEnabled: Boolean): Boolean = when (this) {
     CardScanUiState.Ready -> !nfcEnabled
     is CardScanUiState.Failure -> true

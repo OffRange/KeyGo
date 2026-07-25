@@ -98,7 +98,7 @@ internal class CreditCardViewModel(
             nameTextFieldState.setTextAndPlaceCursorAtEnd(card.name)
             notesTextFieldState.setTextAndPlaceCursorAtEnd(card.note ?: "")
             ccHolderTextFieldState.setTextAndPlaceCursorAtEnd(card.holder ?: "")
-            // Set the number before the CVV so the network — and thus the CVV cap — is known.
+            // Set the number before the CVV so the network (and thus the CVV cap) is known.
             ccNumberTextFieldState.setTextAndPlaceCursorAtEnd(number ?: "")
             ccCVVTextFieldState.setTextAndPlaceCursorAtEnd(cvv ?: "")
             ccExpirationDateTextFieldState.setTextAndPlaceCursorAtEnd(

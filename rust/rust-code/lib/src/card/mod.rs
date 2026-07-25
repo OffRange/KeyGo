@@ -1,12 +1,12 @@
 //! Credit-card field helpers, split by concern:
 //!
-//! - network detection — the issuing [`CardNetwork`] and its metadata (valid
+//! - network detection: the issuing [`CardNetwork`] and its metadata (valid
 //!   lengths, CVV length, grouping convention);
-//! - number handling — parse, cap, group, and validate a PAN via [`Card`];
-//! - expiration formatting — render an `MM/YY` date as it is typed or deleted.
+//! - number handling: parse, cap, group, and validate a PAN via [`Card`];
+//! - expiration formatting: render an `MM/YY` date as it is typed or deleted.
 //!
-//! All entry points accept "dirty" input — spaces, dashes, and any other
-//! non-digit characters are ignored — so they work equally well on a pasted
+//! All entry points accept "dirty" input: spaces, dashes, and any other
+//! non-digit characters are ignored, so they work equally well on a pasted
 //! value or on text being typed live into a field.
 //!
 //! ```

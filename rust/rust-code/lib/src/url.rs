@@ -46,7 +46,7 @@ pub fn sanitize_to_https_url(input: &str) -> Result<Url, UrlSanitizeError> {
         if input.starts_with("//") {
             input = format!("https:{input}");
         } else if !input.starts_with("http://") && !input.starts_with("https://") {
-            // 4) No scheme — default to https
+            // 4) No scheme: default to https
             input = format!("https://{input}");
         }
     }

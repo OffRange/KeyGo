@@ -104,7 +104,7 @@ fun QRScanner(
         }
 
         else -> {
-            // First time — request immediately
+            // First time: request immediately
             LaunchedEffect(Unit) {
                 permissionState.launchPermissionRequest()
             }

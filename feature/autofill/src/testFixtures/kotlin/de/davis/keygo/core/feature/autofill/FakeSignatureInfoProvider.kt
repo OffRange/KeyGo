@@ -9,7 +9,7 @@ import de.davis.keygo.feature.autofill.domain.SignatureInfoProvider
  * Returns an empty set for any package name not in [signatures].
  */
 class FakeSignatureInfoProvider : SignatureInfoProvider {
-    // Configurable: packageName → set of signatures (default: empty = no signatures)
+    // Configurable: packageName -> set of signatures (default: empty = no signatures)
     var signatures: Map<String, Set<String>> = emptyMap()
 
     override fun getSignatureInfo(packageName: String): Set<String> =

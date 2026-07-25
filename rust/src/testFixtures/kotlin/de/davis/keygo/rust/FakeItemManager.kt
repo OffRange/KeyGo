@@ -10,7 +10,7 @@ import java.security.SecureRandom
  * In-memory [ItemManagerInterface] for tests.
  *
  * Encryption XORs the plaintext with a stream derived from (item key, AAD, nonce). Decryption
- * reproduces the same stream and must match a recorded plaintext — passing the wrong key or AAD
+ * reproduces the same stream and must match a recorded plaintext; passing the wrong key or AAD
  * throws [ItemCryptoException.DecryptionFailed], exercising the authentication-failure path.
  */
 class FakeItemManager : ItemManagerInterface {
