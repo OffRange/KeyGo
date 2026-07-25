@@ -33,10 +33,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -47,7 +43,6 @@ import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.item.presentation.VaultIconPicker
 import de.davis.keygo.core.item.presentation.toImageVector
 import de.davis.keygo.feature.backup.R
-import de.davis.keygo.feature.backup.presentation.component.IconBadge
 
 /**
  * Where the import lands. A full step rather than a dropdown: the choice is worth the room, and a
@@ -113,16 +108,14 @@ private fun VaultSegment(
     onClick: () -> Unit,
 ) {
     SegmentedListItem(
+        selected = selected,
         onClick = onClick,
         shapes = shapes,
         colors = ListItemDefaults.segmentedColors(containerColor = segmentContainerColor),
         leadingContent = {
-            IconBadge(
-                icon = vault.icon.toImageVector(),
-                containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
-                else MaterialTheme.colorScheme.onSurfaceVariant,
+            Icon(
+                imageVector = vault.icon.toImageVector(),
+                contentDescription = null
             )
         },
         supportingContent = {
@@ -138,16 +131,9 @@ private fun VaultSegment(
             if (selected) Icon(
                 imageVector = Icons.Default.Check,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
             )
         },
         verticalAlignment = Alignment.CenterVertically,
-        // The row is a one-of-many choice, not a button; role announces that, selected announces
-        // whether this particular row is the one currently chosen.
-        modifier = Modifier.semantics {
-            role = Role.RadioButton
-            this.selected = selected
-        },
     ) {
         Text(text = vault.name)
     }
@@ -166,32 +152,23 @@ private fun NewVaultSegment(
 
     Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
         SegmentedListItem(
+            selected = selected,
             onClick = onClick,
             shapes = shapes,
             colors = ListItemDefaults.segmentedColors(containerColor = segmentContainerColor),
             leadingContent = {
-                IconBadge(
-                    // The badge previews the chosen icon once this row is the destination, the
-                    // way the existing-vault rows show theirs; until then it invites the choice.
-                    icon = if (selected) icon.toImageVector() else Icons.Default.Add,
-                    containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
-                    else MaterialTheme.colorScheme.surfaceContainerHighest,
-                    contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                Icon(
+                    imageVector = if (selected) icon.toImageVector() else Icons.Default.Add,
+                    contentDescription = null
                 )
             },
             trailingContent = {
                 if (selected) Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
                 )
             },
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.semantics {
-                role = Role.RadioButton
-                this.selected = selected
-            },
         ) {
             // The typed name stands in for the label only while this row is the destination. A
             // deselected row would otherwise keep naming a vault the import is not going to
