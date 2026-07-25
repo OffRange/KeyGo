@@ -1,7 +1,9 @@
 package de.davis.keygo.feature.backup.presentation.import.model
 
 import de.davis.keygo.core.item.domain.alias.newVaultId
+import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.feature.backup.domain.model.BackupDestination
+import de.davis.keygo.feature.backup.domain.model.ImportTarget
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -57,6 +59,31 @@ class ImportWizardUiStateTest {
         )
 
         assertTrue(state.canContinue)
+    }
+
+    @Test
+    fun `resolveTarget carries the chosen icon into the new vault`() {
+        val state = ImportWizardUiState(
+            creatingNewVault = true,
+            newVaultIcon = Vault.Icon.ShoppingCart,
+        )
+
+        assertEquals(
+            ImportTarget.New("passwords", Vault.Icon.ShoppingCart),
+            state.resolveTarget("passwords"),
+        )
+    }
+
+    @Test
+    fun `resolveTarget ignores the chosen icon when an existing vault is the target`() {
+        val vaultId = newVaultId()
+        val state = ImportWizardUiState(
+            creatingNewVault = false,
+            selectedVaultId = vaultId,
+            newVaultIcon = Vault.Icon.ShoppingCart,
+        )
+
+        assertEquals(ImportTarget.Existing(vaultId), state.resolveTarget("passwords"))
     }
 
     @Test

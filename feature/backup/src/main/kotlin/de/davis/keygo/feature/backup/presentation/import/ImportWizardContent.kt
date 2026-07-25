@@ -134,8 +134,12 @@ private fun InputWizard(
                 selectedVaultId = state.selectedVaultId,
                 creatingNewVault = state.creatingNewVault,
                 newVaultNameState = state.newVaultNameState,
+                newVaultIcon = state.newVaultIcon,
                 onSelectVault = { onEvent(ImportWizardUiEvent.SelectVault(it)) },
                 onCreateNewVault = { onEvent(ImportWizardUiEvent.CreateNewVault) },
+                onSelectNewVaultIcon = {
+                    onEvent(ImportWizardUiEvent.SelectNewVaultIcon(it))
+                },
             )
         }
     }

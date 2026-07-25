@@ -3,6 +3,7 @@ package de.davis.keygo.feature.backup.presentation.import.model
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Stable
 import de.davis.keygo.core.item.domain.alias.VaultId
+import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.feature.backup.domain.model.BackupDestination
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
@@ -27,6 +28,7 @@ internal data class ImportWizardUiState(
     val selectedVaultId: VaultId? = null,
     val creatingNewVault: Boolean = false,
     val newVaultNameValid: Boolean = false,
+    val newVaultIcon: Vault.Icon = Vault.Icon.Default,
     /** The vault the user is currently working in; seeds the destination choice. */
     val contextVaultId: VaultId? = null,
 ) {
@@ -61,6 +63,7 @@ internal data class ImportWizardUiState(
      * the user has typed since.
      */
     fun resolveTarget(newVaultName: String): ImportTarget? =
-        if (creatingNewVault) newVaultName.trim().takeIf(String::isNotBlank)?.let(ImportTarget::New)
+        if (creatingNewVault) newVaultName.trim().takeIf(String::isNotBlank)
+            ?.let { ImportTarget.New(it, newVaultIcon) }
         else selectedVaultId?.let(ImportTarget::Existing)
 }

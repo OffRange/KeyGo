@@ -185,6 +185,7 @@
     <string name="select_vault_title">Import into</string>
     <string name="select_vault_new">New vault</string>
     <string name="select_vault_name_label">Vault name</string>
+    <string name="select_vault_icon_label">Icon</string>
     <plurals name="select_vault_item_count">
         <item quantity="one">%1$d item</item>
         <item quantity="other">%1$d items</item>

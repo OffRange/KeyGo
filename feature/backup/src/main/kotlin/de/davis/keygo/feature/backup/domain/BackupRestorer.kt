@@ -52,12 +52,13 @@ internal class BackupRestorer(
 
             // Resolved once, ahead of the loop rather than inside it: a target collapses every
             // vault in the backup into the single one the user chose, so `New` has to create
-            // exactly one vault no matter how many vaults the backup describes. That collapse is
-            // also why it keeps the default icon: the sources it absorbs may disagree on one.
+            // exactly one vault no matter how many vaults the backup describes. Its icon comes
+            // from the user too, for the same reason the name does: the vaults it absorbs may
+            // disagree on one, and the user is the one who said what this vault is.
             val targetVaultId = when (target) {
                 null -> null
                 is ImportTarget.Existing -> target.vaultId
-                is ImportTarget.New -> createVault(target.name, Vault.Icon.Default)
+                is ImportTarget.New -> createVault(target.name, target.icon)
                     .getOrNull()
                     ?.also { acc.vaultCreated() }
             }

@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -42,6 +43,7 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultMetadata
+import de.davis.keygo.core.item.presentation.VaultIconPicker
 import de.davis.keygo.core.item.presentation.toImageVector
 import de.davis.keygo.feature.backup.R
 import de.davis.keygo.feature.backup.presentation.component.IconBadge
@@ -56,8 +58,10 @@ internal fun SelectVaultContent(
     selectedVaultId: VaultId?,
     creatingNewVault: Boolean,
     newVaultNameState: TextFieldState,
+    newVaultIcon: Vault.Icon,
     onSelectVault: (VaultId) -> Unit,
     onCreateNewVault: () -> Unit,
+    onSelectNewVaultIcon: (Vault.Icon) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // One segment per vault plus the "new vault" row, so the group's rounded ends land correctly.
@@ -83,8 +87,10 @@ internal fun SelectVaultContent(
             NewVaultSegment(
                 selected = creatingNewVault,
                 nameState = newVaultNameState,
+                icon = newVaultIcon,
                 shapes = ListItemDefaults.segmentedShapes(vaults.size, segmentCount),
                 onClick = onCreateNewVault,
+                onSelectIcon = onSelectNewVaultIcon,
             )
         }
     }
@@ -150,9 +156,13 @@ private fun VaultSegment(
 private fun NewVaultSegment(
     selected: Boolean,
     nameState: TextFieldState,
+    icon: Vault.Icon,
     shapes: ListItemShapes,
     onClick: () -> Unit,
+    onSelectIcon: (Vault.Icon) -> Unit,
 ) {
+    val focusManager = LocalFocusManager.current
+
     Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
         SegmentedListItem(
             onClick = onClick,
@@ -160,7 +170,9 @@ private fun NewVaultSegment(
             colors = ListItemDefaults.segmentedColors(containerColor = segmentContainerColor),
             leadingContent = {
                 IconBadge(
-                    icon = Icons.Default.Add,
+                    // The badge previews the chosen icon once this row is the destination, the
+                    // way the existing-vault rows show theirs; until then it invites the choice.
+                    icon = if (selected) icon.toImageVector() else Icons.Default.Add,
                     containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
                     else MaterialTheme.colorScheme.surfaceContainerHighest,
                     contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
@@ -183,15 +195,34 @@ private fun NewVaultSegment(
             Text(text = stringResource(R.string.select_vault_new))
         }
 
-        if (selected) OutlinedTextField(
-            state = nameState,
-            label = { Text(text = stringResource(R.string.select_vault_name_label)) },
-            lineLimits = TextFieldLineLimits.SingleLine,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 4.dp),
-        )
+        if (selected) {
+            OutlinedTextField(
+                state = nameState,
+                label = { Text(text = stringResource(R.string.select_vault_name_label)) },
+                lineLimits = TextFieldLineLimits.SingleLine,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+            )
+
+            Text(
+                text = stringResource(R.string.select_vault_icon_label),
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+
+            VaultIconPicker(
+                selected = icon,
+                // Picking an icon after typing a name means the keyboard is still up and covering
+                // the grid the user is reaching for.
+                onSelect = { picked ->
+                    onSelectIcon(picked)
+                    focusManager.clearFocus()
+                },
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+        }
     }
 }
 
@@ -211,8 +242,10 @@ private fun SelectVaultContentExistingPreview() {
                 selectedVaultId = previewVaults.first().vaultId,
                 creatingNewVault = false,
                 newVaultNameState = TextFieldState(),
+                newVaultIcon = Vault.Icon.Default,
                 onSelectVault = {},
                 onCreateNewVault = {},
+                onSelectNewVaultIcon = {},
             )
         }
     }
@@ -228,8 +261,10 @@ private fun SelectVaultContentNewVaultPreview() {
                 selectedVaultId = null,
                 creatingNewVault = true,
                 newVaultNameState = TextFieldState("passwords"),
+                newVaultIcon = Vault.Icon.Work,
                 onSelectVault = {},
                 onCreateNewVault = {},
+                onSelectNewVaultIcon = {},
             )
         }
     }

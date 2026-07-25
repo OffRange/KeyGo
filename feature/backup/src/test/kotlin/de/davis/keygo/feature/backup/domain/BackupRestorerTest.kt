@@ -112,7 +112,7 @@ class BackupRestorerTest {
     }
 
     @Test
-    fun `a New target keeps the default icon rather than one of the sources it absorbs`() =
+    fun `a New target takes the icon the user chose, not one of the sources it absorbs`() =
         runTest {
             val env = RestorerTestEnv()
 
@@ -121,11 +121,11 @@ class BackupRestorerTest {
                     vault("First", listOf(login("Email")), icon = "Business"),
                     vault("Second", listOf(login("Bank")), icon = "Work"),
                 ),
-                ImportTarget.New("passwords"),
+                ImportTarget.New("passwords", Vault.Icon.Star),
             ) { _, _ -> }
 
             assertEquals(
-                Vault.Icon.Default,
+                Vault.Icon.Star,
                 env.vaultRepo.observeAllVaultMetadata().first().single().icon,
             )
         }

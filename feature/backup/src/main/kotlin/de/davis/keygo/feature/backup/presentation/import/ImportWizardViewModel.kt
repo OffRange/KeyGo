@@ -102,6 +102,10 @@ internal class ImportWizardViewModel(
             ImportWizardUiEvent.CreateNewVault -> _state.update {
                 it.copy(creatingNewVault = true)
             }
+
+            is ImportWizardUiEvent.SelectNewVaultIcon -> _state.update {
+                it.copy(newVaultIcon = event.icon)
+            }
         }
     }
 

@@ -2,6 +2,7 @@ package de.davis.keygo.feature.backup.presentation.import
 
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import de.davis.keygo.core.item.FakeVaultContextRepository
+import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultContext
 import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
@@ -423,6 +424,51 @@ class ImportWizardViewModelTest {
         assertEquals(
             listOf("keygo"),
             env.vaultRepo.observeAllVaultMetadata().first().map { it.name },
+        )
+    }
+
+    @Test
+    fun `a new vault is created with the icon picked in the wizard`() = runTest {
+        fileStore.contents = "name,secret\nEmail,s3cr3t\n"
+        csv.analyzeResult = csvAnalysis()
+        csv.importResult = CsvImportResult(
+            backup = Backup(listOf(backupVault("CSV Import", listOf(login("Email"))))),
+            report = ImportReport(imported = 1u, skipped = 0u),
+        )
+        val viewModel = viewModel(FakeBackupDestinationResolver(result = csvDestination()))
+        viewModel.advanceToMapColumns()
+        viewModel.onEvent(ImportWizardUiEvent.Continue)
+        viewModel.state.first { it.step == ImportWizardStep.SelectVault }
+
+        viewModel.onEvent(ImportWizardUiEvent.SelectNewVaultIcon(Vault.Icon.ShoppingCart))
+        viewModel.onEvent(ImportWizardUiEvent.Continue)
+        viewModel.state.first { it.progress is ImportProgress.Succeeded }
+
+        assertEquals(
+            Vault.Icon.ShoppingCart,
+            env.vaultRepo.observeAllVaultMetadata().first().single().icon,
+        )
+    }
+
+    @Test
+    fun `a new vault falls back to the default icon when none is picked`() = runTest {
+        fileStore.contents = "name,secret\nEmail,s3cr3t\n"
+        csv.analyzeResult = csvAnalysis()
+        csv.importResult = CsvImportResult(
+            backup = Backup(listOf(backupVault("CSV Import", listOf(login("Email"))))),
+            report = ImportReport(imported = 1u, skipped = 0u),
+        )
+        val viewModel = viewModel(FakeBackupDestinationResolver(result = csvDestination()))
+        viewModel.advanceToMapColumns()
+        viewModel.onEvent(ImportWizardUiEvent.Continue)
+        viewModel.state.first { it.step == ImportWizardStep.SelectVault }
+
+        viewModel.onEvent(ImportWizardUiEvent.Continue)
+        viewModel.state.first { it.progress is ImportProgress.Succeeded }
+
+        assertEquals(
+            Vault.Icon.Default,
+            env.vaultRepo.observeAllVaultMetadata().first().single().icon,
         )
     }
 
