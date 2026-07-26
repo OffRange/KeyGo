@@ -94,7 +94,7 @@ class SettingsViewModelTest {
 
     @Test
     fun `state carries the newest successful backup timestamp`() = runTest(dispatcher) {
-        lastBackup.value = LastBackup(finishedAt = 1_700_000_000_000L, destination = null)
+        lastBackup.value = LastBackup(finishedAt = 1_700_000_000_000L)
         val vm = viewModel()
 
         assertEquals(1_700_000_000_000L, vm.state.first { it.lastBackupAt != null }.lastBackupAt)

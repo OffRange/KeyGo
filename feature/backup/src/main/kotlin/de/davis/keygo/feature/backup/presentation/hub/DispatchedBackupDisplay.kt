@@ -26,7 +26,6 @@ internal val DispatchedBackup.icon: ImageVector
         DispatchedBackup.State.Cancelled -> Icons.Default.Block
     }
 
-/** Container/content pair tinting both the leading badge and the trailing status pill. */
 internal data class StatusColors(val container: Color, val content: Color)
 
 @Composable

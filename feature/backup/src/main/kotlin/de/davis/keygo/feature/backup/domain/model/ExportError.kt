@@ -19,10 +19,7 @@ sealed interface ExportError {
 internal val ExportError.retryable: Boolean
     get() = this == ExportError.DeviceLocked || this == ExportError.SessionLocked
 
-/**
- * The persistable, user-facing reason for a terminal failure, or null when the error is
- * [retryable] and so never becomes one.
- */
+/** Null when the error is [retryable], and so never becomes a terminal failure. */
 internal val ExportError.failureReason: BackupFailureReason?
     get() = when (this) {
         ExportError.SessionLocked, ExportError.DeviceLocked -> null

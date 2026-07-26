@@ -6,11 +6,9 @@ import org.koin.core.annotation.Single
 /**
  * Serializes ARK-escrow provisioning against escrow teardown.
  *
- * Provisioning (FinishExportWizardUseCase) writes the escrow + auth-less key aliases to one
- * DataStore and the job record that marks a job "live" to another, with no cross-store transaction.
- * CleanupBackupResourcesUseCase decides what to tear down solely from the job records. Holding this
- * single lock across the whole of each section means a cleanup can never observe a half-provisioned
- * job (escrow written, record not yet) and destroy credentials the new job needs.
+ * The escrow and the job record live in separate DataStores with no cross-store transaction, so
+ * holding this one lock across each whole section is what stops a cleanup from observing a
+ * half-provisioned job (escrow written, record not yet) and destroying credentials the new job needs.
  */
 @Single
 class BackupProvisioningLock {

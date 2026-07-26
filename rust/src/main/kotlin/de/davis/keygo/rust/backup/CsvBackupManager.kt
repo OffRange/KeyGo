@@ -8,42 +8,17 @@ import de.davisalessandro.keygo.rust.CsvAnalysis
 import de.davisalessandro.keygo.rust.CsvBackupManagerInterface
 import de.davisalessandro.keygo.rust.CsvImportResult
 import de.davisalessandro.keygo.rust.ExportPreset
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-
-typealias CsvBackupManager = CsvBackupManagerInterface
 
 suspend fun CsvBackupManagerInterface.analyzeWithResult(
     data: String,
-): Result<CsvAnalysis, BackupException> = withContext(Dispatchers.Default) {
-    runCatching {
-        analyze(data)
-    }.fold(
-        onSuccess = { Result.Success(it) },
-        onFailure = { Result.Failure(it as BackupException) }
-    )
-}
+): Result<CsvAnalysis, BackupException> = backupResult { analyze(data) }
 
 suspend fun CsvBackupManagerInterface.importWithResult(
     data: String,
     mapping: ColumnMapping,
-): Result<CsvImportResult, BackupException> = withContext(Dispatchers.Default) {
-    runCatching {
-        import(data, mapping)
-    }.fold(
-        onSuccess = { Result.Success(it) },
-        onFailure = { Result.Failure(it as BackupException) }
-    )
-}
+): Result<CsvImportResult, BackupException> = backupResult { import(data, mapping) }
 
 suspend fun CsvBackupManagerInterface.exportWithResult(
     backup: Backup,
     preset: ExportPreset,
-): Result<String, BackupException> = withContext(Dispatchers.Default) {
-    runCatching {
-        export(backup, preset)
-    }.fold(
-        onSuccess = { Result.Success(it) },
-        onFailure = { Result.Failure(it as BackupException) }
-    )
-}
+): Result<String, BackupException> = backupResult { export(backup, preset) }

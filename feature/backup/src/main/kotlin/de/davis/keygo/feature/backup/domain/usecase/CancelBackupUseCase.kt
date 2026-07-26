@@ -16,8 +16,6 @@ internal class CancelBackupUseCase(
     suspend operator fun invoke(id: String, kind: DispatchedBackup.Kind) {
         repository.cancel(id)
 
-        // Recurring work is a singleton stored under a stable key; one-time records are keyed by
-        // the WorkManager id.
         val workId = when (kind) {
             DispatchedBackup.Kind.Recurring -> BackupWorker.RECURRING_WORK_ID
             DispatchedBackup.Kind.OneTime -> id

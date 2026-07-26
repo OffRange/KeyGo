@@ -2,7 +2,6 @@ package de.davis.keygo.feature.backup.presentation.component
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -11,9 +10,10 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.feature.backup.R
@@ -34,7 +35,6 @@ import de.davis.keygo.feature.backup.domain.model.BackupDestination
 @Composable
 internal fun BackupFileChooser(
     destination: BackupDestination?,
-    fileName: String,
     onChoose: () -> Unit,
     chooserIcon: ImageVector,
     chooserTitle: String,
@@ -56,7 +56,6 @@ internal fun BackupFileChooser(
 
         else -> SelectedCard(
             destination = destination,
-            fileName = fileName,
             changeLabel = changeLabel,
             fileNameLabel = fileNameLabel,
             onChange = onChoose,
@@ -110,62 +109,46 @@ private fun ChooserCard(
 @Composable
 private fun SelectedCard(
     destination: BackupDestination,
-    fileName: String,
     changeLabel: String,
     fileNameLabel: String,
     onChange: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
+    SegmentedListItem(
+        onClick = onChange,
+        shapes = ListItemDefaults.shapes(shape = MaterialTheme.shapes.large),
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
+        colors = ListItemDefaults.segmentedColors(containerColor = segmentContainerColor),
+        leadingContent = {
+            Icon(
+                imageVector = if (destination.fileName != null) Icons.Default.Description
+                else Icons.Default.Folder,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        },
+        overlineContent = { Text(text = destination.provider.label) },
+        supportingContent = {
+            Text(
+                text = fileNameLabel,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        // Not a button: the whole row already invokes onChange, and a nested control would give
+        // one action two focus stops and two ripples. This is the affordance's label.
+        trailingContent = {
+            Text(
+                text = changeLabel,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        },
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                IconBadge(
-                    icon = if (destination.fileName != null) Icons.Default.Description
-                    else Icons.Default.Folder,
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    size = 44.dp,
-                    iconSize = 24.dp,
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = destination.provider.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = destination.displayPath,
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                }
-                TextButton(onClick = onChange) {
-                    Text(text = changeLabel)
-                }
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = fileNameLabel,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(text = fileName, style = MaterialTheme.typography.bodyMedium)
-            }
-        }
+        Text(
+            text = destination.displayPath,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

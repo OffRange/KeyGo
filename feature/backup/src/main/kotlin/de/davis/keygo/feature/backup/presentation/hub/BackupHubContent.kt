@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -40,10 +39,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.backup.R
@@ -52,8 +53,9 @@ import de.davis.keygo.feature.backup.domain.model.BackupFailureReason
 import de.davis.keygo.feature.backup.domain.model.DispatchedBackup
 import de.davis.keygo.feature.backup.domain.model.ExportProgress
 import de.davis.keygo.feature.backup.domain.model.FileFormat
-import de.davis.keygo.feature.backup.presentation.displayName
 import de.davis.keygo.feature.backup.presentation.component.IconBadge
+import de.davis.keygo.feature.backup.presentation.component.segmentContainerColor
+import de.davis.keygo.feature.backup.presentation.displayName
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupGroup
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupHubUiEvent
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupHubUiState
@@ -61,7 +63,7 @@ import de.davis.keygo.feature.backup.presentation.hub.model.BackupSection
 
 private const val DETAIL_SEPARATOR = " \u2022 "
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun BackupHubContent(state: BackupHubUiState, onEvent: (BackupHubUiEvent) -> Unit) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
@@ -69,7 +71,7 @@ internal fun BackupHubContent(state: BackupHubUiState, onEvent: (BackupHubUiEven
         topBar = {
             MediumFlexibleTopAppBar(
                 title = {
-                    Text(text = "Backups")
+                    Text(text = stringResource(R.string.dispatched_backups))
                 },
                 scrollBehavior = scrollBehavior,
             )
@@ -141,50 +143,52 @@ internal fun BackupHubContent(state: BackupHubUiState, onEvent: (BackupHubUiEven
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun HubActions(onExport: () -> Unit, onImport: () -> Unit) {
     val buttonSize = ButtonDefaults.MediumContainerHeight
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        val actionModifier = Modifier
+            .heightIn(buttonSize)
+            .weight(1f)
+        val shapes = ButtonDefaults.shapesFor(buttonSize)
+        val contentPadding = ButtonDefaults.contentPaddingFor(buttonSize)
+
         OutlinedButton(
             onClick = onExport,
-            modifier = Modifier
-                .heightIn(buttonSize)
-                .weight(1f),
-            shapes = ButtonDefaults.shapesFor(buttonSize),
-            contentPadding = ButtonDefaults.contentPaddingFor(buttonSize),
+            modifier = actionModifier,
+            shapes = shapes,
+            contentPadding = contentPadding,
         ) {
-            Icon(
-                imageVector = Icons.Default.Upload,
-                contentDescription = null,
-                modifier = Modifier.size(ButtonDefaults.iconSizeFor(buttonSize)),
-            )
-            Spacer(Modifier.size(ButtonDefaults.iconSpacingFor(buttonSize)))
-            Text(
-                text = stringResource(R.string.export_backup),
-                style = ButtonDefaults.textStyleFor(buttonSize),
+            HubActionLabel(
+                buttonSize = buttonSize,
+                icon = Icons.Default.Upload,
+                label = stringResource(R.string.export_backup),
             )
         }
         Button(
             onClick = onImport,
-            modifier = Modifier
-                .heightIn(buttonSize)
-                .weight(1f),
-            shapes = ButtonDefaults.shapesFor(buttonSize),
-            contentPadding = ButtonDefaults.contentPaddingFor(buttonSize),
+            modifier = actionModifier,
+            shapes = shapes,
+            contentPadding = contentPadding,
         ) {
-            Icon(
-                imageVector = Icons.Default.Download,
-                contentDescription = null,
-                modifier = Modifier.size(ButtonDefaults.iconSizeFor(buttonSize)),
-            )
-            Spacer(Modifier.size(ButtonDefaults.iconSpacingFor(buttonSize)))
-            Text(
-                text = stringResource(R.string.import_backup),
-                style = ButtonDefaults.textStyleFor(buttonSize),
+            HubActionLabel(
+                buttonSize = buttonSize,
+                icon = Icons.Default.Download,
+                label = stringResource(R.string.import_backup),
             )
         }
     }
+}
+
+@Composable
+private fun HubActionLabel(buttonSize: Dp, icon: ImageVector, label: String) {
+    Icon(
+        imageVector = icon,
+        contentDescription = null,
+        modifier = Modifier.size(ButtonDefaults.iconSizeFor(buttonSize)),
+    )
+    Spacer(Modifier.size(ButtonDefaults.iconSpacingFor(buttonSize)))
+    Text(text = label, style = ButtonDefaults.textStyleFor(buttonSize))
 }
 
 @Composable
@@ -199,7 +203,6 @@ private fun BackupSectionHeader(group: BackupGroup) {
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun DispatchedBackupRow(
     item: DispatchedBackup,
@@ -215,15 +218,8 @@ private fun DispatchedBackupRow(
         if (count == 1) ListItemDefaults.shapes(shape = MaterialTheme.shapes.large) else
             ListItemDefaults.shapes()
     SegmentedListItem(
-        onClick = {},
-        shapes = ListItemDefaults.segmentedShapes(
-            index,
-            count,
-            defaultShapes = defaultShapes
-        ),
-        colors = ListItemDefaults.segmentedColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
+        shapes = ListItemDefaults.segmentedShapes(index, count, defaultShapes),
+        colors = ListItemDefaults.segmentedColors(containerColor = segmentContainerColor),
         leadingContent = {
             IconBadge(
                 icon = item.icon,
@@ -241,24 +237,16 @@ private fun DispatchedBackupRow(
             }
         },
         trailingContent = {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (cancellable)
-                    IconButton(onClick = onCancel, modifier = Modifier.size(32.dp)) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = stringResource(R.string.cancel_backup),
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
+            if (cancellable) IconButton(onClick = onCancel, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = stringResource(R.string.cancel_backup),
+                    modifier = Modifier.size(18.dp),
+                )
             }
         },
-        overlineContent = {
-            Text(text = item.kind.label)
-        },
-        verticalAlignment = Alignment.CenterVertically
+        overlineContent = { Text(text = item.kind.label) },
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = item.destination.displayText(),

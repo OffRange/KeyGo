@@ -28,7 +28,7 @@ import de.davis.keygo.feature.backup.R
 internal fun ProvidePassphraseContent(
     passphraseState: TextFieldState,
     isError: Boolean,
-    modifier: Modifier = Modifier.Companion,
+    modifier: Modifier = Modifier,
 ) {
     var hidden by rememberSaveable { mutableStateOf(true) }
     Column(

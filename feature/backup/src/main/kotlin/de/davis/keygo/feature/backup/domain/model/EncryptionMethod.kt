@@ -1,6 +1,6 @@
 package de.davis.keygo.feature.backup.domain.model
 
-/** How a JSON backup is sealed. Irrelevant for CSV (plaintext by design). */
+/** Irrelevant for CSV, which is plaintext by design. */
 enum class EncryptionMethod {
     /** Sealed with a user-chosen passphrase; restorable anywhere. */
     Passphrase,

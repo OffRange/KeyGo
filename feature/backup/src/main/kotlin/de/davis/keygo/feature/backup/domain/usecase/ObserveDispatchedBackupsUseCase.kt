@@ -2,6 +2,7 @@ package de.davis.keygo.feature.backup.domain.usecase
 
 import de.davis.keygo.feature.backup.domain.BackupDestinationResolver
 import de.davis.keygo.feature.backup.domain.DispatchedBackupRepository
+import de.davis.keygo.feature.backup.domain.model.BackupJob
 import de.davis.keygo.feature.backup.domain.model.BackupResult
 import de.davis.keygo.feature.backup.domain.model.BackupWorkStatus
 import de.davis.keygo.feature.backup.domain.model.DispatchedBackup
@@ -19,14 +20,18 @@ internal class ObserveDispatchedBackupsUseCase(
 ) {
 
     operator fun invoke(): Flow<List<DispatchedBackup>> =
-        repository.observe().map { statuses -> statuses.map { it.enrich() } }
+        repository.observe().map { statuses ->
+            // One read of the job store per emission, not one per row.
+            val jobs = jobRepository.getJobs()
+            statuses.map { it.enrich(jobs) }
+        }
 
-    private suspend fun BackupWorkStatus.enrich(): DispatchedBackup {
+    private suspend fun BackupWorkStatus.enrich(jobs: Map<String, BackupJob>): DispatchedBackup {
         val workId = when (kind) {
             DispatchedBackup.Kind.Recurring -> BackupWorker.RECURRING_WORK_ID
             DispatchedBackup.Kind.OneTime -> id
         }
-        val job = jobRepository.getJob(workId)
+        val job = jobs[workId]
         return DispatchedBackup(
             id = id,
             kind = kind,

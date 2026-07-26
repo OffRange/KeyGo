@@ -2,7 +2,6 @@ package de.davis.keygo.feature.backup.presentation.export
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -17,17 +16,15 @@ import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -48,8 +45,10 @@ import de.davis.keygo.feature.backup.domain.model.CsvPreset
 import de.davis.keygo.feature.backup.domain.model.EncryptionMethod
 import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.domain.model.IntervalUnit
-import de.davis.keygo.feature.backup.presentation.displayName
+import de.davis.keygo.feature.backup.presentation.component.BackupWarningCard
 import de.davis.keygo.feature.backup.presentation.component.IconBadge
+import de.davis.keygo.feature.backup.presentation.component.segmentContainerColor
+import de.davis.keygo.feature.backup.presentation.displayName
 import de.davis.keygo.feature.backup.presentation.export.model.ProvidePassphraseState
 import de.davis.keygo.feature.backup.presentation.export.model.ScheduleMode
 import de.davis.keygo.feature.backup.presentation.export.model.SelectDestinationState
@@ -67,133 +66,125 @@ internal fun ReviewBackupContent(
 ) {
     val encrypted = format.encrypted
     val recurring = scheduleState.mode == ScheduleMode.Recurring
-    Surface {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            ReviewHeroCard(format = format)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        ReviewHeroCard(format = format)
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                ),
+        Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+            // The segmented shapes need each row's position in the final group to round the
+            // group's outer corners, and which rows exist depends on the chosen format,
+            // schedule, and encryption. So collect the rows first, then draw them.
+            val rows = mutableListOf<ReviewRowSpec>()
+
+            rows += ReviewRowSpec(
+                icon = format.icon,
+                label = stringResource(R.string.review_section_format),
+            ) { Text(text = format.displayName) }
+
+            rows += ReviewRowSpec(
+                icon = scheduleState.mode.icon,
+                label = stringResource(R.string.review_section_schedule),
             ) {
-                Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                    ReviewRow(
-                        icon = format.icon,
-                        label = stringResource(R.string.review_section_format),
-                    ) {
-                        Text(text = format.displayName)
-                    }
+                Text(
+                    text = if (recurring) scheduleState.interval.intervalDisplayName
+                    else stringResource(R.string.review_schedule_one_time),
+                )
+            }
 
-                    ReviewDivider()
+            if (recurring) rows += ReviewRowSpec(
+                icon = Icons.Default.DeleteSweep,
+                label = stringResource(R.string.review_section_retention),
+            ) {
+                Text(
+                    text = if (scheduleState.keepAll) stringResource(R.string.review_retention_all)
+                    else pluralStringResource(
+                        R.plurals.review_retention,
+                        scheduleState.keepCount,
+                        scheduleState.keepCount,
+                    ),
+                )
+            }
 
-                    ReviewRow(
-                        icon = scheduleState.mode.icon,
-                        label = stringResource(R.string.review_section_schedule),
-                    ) {
-                        Text(
-                            text = if (recurring) scheduleState.interval.intervalDisplayName
-                            else stringResource(R.string.review_schedule_one_time),
-                        )
-                    }
-
-                    if (recurring) {
-                        ReviewDivider()
-                        ReviewRow(
-                            icon = Icons.Default.DeleteSweep,
-                            label = stringResource(R.string.review_section_retention),
-                        ) {
-                            Text(
-                                text = if (scheduleState.keepAll) stringResource(R.string.review_retention_all)
-                                else pluralStringResource(
-                                    R.plurals.review_retention,
-                                    scheduleState.keepCount,
-                                    scheduleState.keepCount,
-                                ),
-                            )
-                        }
-                    }
-
-                    ReviewDivider()
-
-                    ReviewRow(
-                        icon = Icons.Default.Folder,
-                        label = stringResource(R.string.review_section_destination),
-                    ) {
-                        destinationState.destination?.let { destination ->
-                            Text(text = destination.displayPath)
-                        }
-                    }
-
-                    ReviewDivider()
-
-                    ReviewRow(
-                        icon = Icons.Default.Inventory2,
-                        label = stringResource(R.string.review_section_contents),
-                    ) {
-                        Text(
-                            text = stringResource(
-                                if (encrypted) R.string.review_contents_all
-                                else R.string.review_contents_logins,
-                            ),
-                        )
-                    }
-
-                    ReviewDivider()
-
-                    ReviewRow(
-                        icon = if (encrypted) Icons.Default.Shield else Icons.Default.LockOpen,
-                        label = stringResource(R.string.review_section_encryption),
-                        iconTint = if (encrypted) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.error,
-                    ) {
-                        Text(
-                            text = stringResource(
-                                if (encrypted) R.string.review_encryption_on
-                                else R.string.review_encryption_off,
-                            ),
-                            color = if (encrypted) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.error,
-                        )
-                    }
-
-                    if (encrypted) {
-                        ReviewDivider()
-                        if (passphraseState.method == EncryptionMethod.Passphrase)
-                            ReviewRow(
-                                icon = Icons.Default.Password,
-                                label = stringResource(R.string.review_section_passphrase),
-                            ) {
-                                StrengthIndicator(passwordScore = passphraseState.passphraseScore)
-                            }
-                        else
-                            ReviewRow(
-                                icon = EncryptionMethod.Ark.icon,
-                                label = stringResource(R.string.review_section_encryption),
-                            ) {
-                                Text(text = EncryptionMethod.Ark.displayName)
-                            }
-                    }
-
-                    if (format == FileFormat.CSV) {
-                        ReviewDivider()
-                        ReviewRow(
-                            icon = Icons.AutoMirrored.Default.List,
-                            label = stringResource(R.string.review_section_csv_preset),
-                        ) {
-                            Text(text = csvPreset.displayName)
-                        }
-                    }
+            rows += ReviewRowSpec(
+                icon = Icons.Default.Folder,
+                label = stringResource(R.string.review_section_destination),
+            ) {
+                destinationState.destination?.let { destination ->
+                    Text(text = destination.displayPath)
                 }
             }
 
-            if (!encrypted) ReviewPlaintextWarning()
+            rows += ReviewRowSpec(
+                icon = Icons.Default.Inventory2,
+                label = stringResource(R.string.review_section_contents),
+            ) {
+                Text(
+                    text = stringResource(
+                        if (encrypted) R.string.review_contents_all
+                        else R.string.review_contents_logins,
+                    ),
+                )
+            }
+
+            // The one row whose icon carries a signal rather than decoration, so it takes the
+            // same colour as its value text instead of the neutral tint.
+            rows += ReviewRowSpec(
+                icon = if (encrypted) Icons.Default.Shield else Icons.Default.LockOpen,
+                label = stringResource(R.string.review_section_encryption),
+                iconTint = if (encrypted) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.error,
+            ) {
+                Text(
+                    text = stringResource(
+                        if (encrypted) R.string.review_encryption_on
+                        else R.string.review_encryption_off,
+                    ),
+                    color = if (encrypted) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.error,
+                )
+            }
+
+            if (encrypted) {
+                if (passphraseState.method == EncryptionMethod.Passphrase) rows += ReviewRowSpec(
+                    icon = Icons.Default.Password,
+                    label = stringResource(R.string.review_section_passphrase),
+                ) { StrengthIndicator(passwordScore = passphraseState.passphraseScore) }
+                else rows += ReviewRowSpec(
+                    icon = EncryptionMethod.Ark.icon,
+                    label = stringResource(R.string.review_section_encryption),
+                ) { Text(text = EncryptionMethod.Ark.displayName) }
+            }
+
+            if (format == FileFormat.CSV) rows += ReviewRowSpec(
+                icon = Icons.AutoMirrored.Default.List,
+                label = stringResource(R.string.review_section_csv_preset),
+            ) { Text(text = csvPreset.displayName) }
+
+            val neutralTint = MaterialTheme.colorScheme.onSurfaceVariant
+            rows.forEachIndexed { position, row ->
+                ReviewRow(
+                    index = position,
+                    count = rows.size,
+                    icon = row.icon,
+                    label = row.label,
+                    iconTint = row.iconTint ?: neutralTint,
+                    value = row.value,
+                )
+            }
         }
+
+        // Last stop before the export runs, so both irreversible outcomes get restated here:
+        // a readable file, or one bound to a key that a reinstall destroys.
+        if (!encrypted) BackupWarningCard(
+            text = stringResource(R.string.review_plaintext_warning),
+        )
+        else if (passphraseState.method == EncryptionMethod.Ark) BackupWarningCard(
+            text = stringResource(R.string.encryption_method_ark_warning),
+        )
     }
 }
 
@@ -236,77 +227,32 @@ private fun ReviewHeroCard(format: FileFormat) {
     }
 }
 
+/** A review row before it knows its position in the group. A null tint means the neutral default. */
+private class ReviewRowSpec(
+    val icon: ImageVector,
+    val label: String,
+    val iconTint: Color? = null,
+    val value: @Composable () -> Unit,
+)
+
 @Composable
 private fun ReviewRow(
+    index: Int,
+    count: Int,
     icon: ImageVector,
     label: String,
-    modifier: Modifier = Modifier,
     iconTint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     value: @Composable () -> Unit,
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    SegmentedListItem(
+        shapes = ListItemDefaults.segmentedShapes(index, count),
+        colors = ListItemDefaults.segmentedColors(containerColor = segmentContainerColor),
+        leadingContent = {
+            Icon(imageVector = icon, contentDescription = null, tint = iconTint)
+        },
+        overlineContent = { Text(text = label) },
     ) {
-        IconBadge(
-            icon = icon,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-            contentColor = iconTint,
-        )
-
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            CompositionLocalProvider(
-                LocalTextStyle provides MaterialTheme.typography.bodyLarge
-            ) {
-                value()
-            }
-        }
-    }
-}
-
-@Composable
-private fun ReviewDivider() {
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 72.dp, end = 16.dp),
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-    )
-}
-
-@Composable
-private fun ReviewPlaintextWarning() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-        ),
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Default.WarningAmber,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onErrorContainer,
-            )
-            Text(
-                text = stringResource(R.string.review_plaintext_warning),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-            )
-        }
+        value()
     }
 }
 

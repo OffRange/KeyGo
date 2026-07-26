@@ -1,8 +1,9 @@
-package de.davis.keygo.feature.backup.data.reository
+package de.davis.keygo.feature.backup.data.repository
 
 import androidx.datastore.core.DataStore
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.feature.backup.data.local.model.ProtoBackupJob
+import de.davis.keygo.feature.backup.data.local.model.ProtoBackupJobKt
 import de.davis.keygo.feature.backup.data.local.model.ProtoBackupJobs
 import de.davis.keygo.feature.backup.data.local.model.copy
 import de.davis.keygo.feature.backup.data.mapper.toDomain
@@ -44,37 +45,35 @@ internal class BackupJobRepositoryImpl(
         onFailure = { Result.Failure(Unit) },
     )
 
-    override suspend fun markFinished(workId: String, result: BackupResult, finishedAt: Long) {
-        dataStore.updateData { current ->
-            val existing = current.jobsMap[workId] ?: return@updateData current
-            val updated = existing.copy {
-                this.finishedAt = finishedAt
-                writeResult(result)
-            }
-            current.upsertAndPrune(workId, updated)
+    override suspend fun markFinished(workId: String, result: BackupResult, finishedAt: Long) =
+        updateJob(workId) {
+            this.finishedAt = finishedAt
+            writeResult(result)
         }
+
+    override suspend fun markCancelled(workId: String, cancelledAt: Long) = updateJob(workId) {
+        cancelled = true
+        finishedAt = cancelledAt
     }
 
-    override suspend fun markCancelled(workId: String, cancelledAt: Long) {
-        dataStore.updateData { current ->
-            val existing = current.jobsMap[workId] ?: return@updateData current
-            val updated = existing.copy {
-                cancelled = true
-                finishedAt = cancelledAt
-            }
-            current.upsertAndPrune(workId, updated)
-        }
+    // Clearing credentials must not prune: the record is still live and its retention position has
+    // not changed.
+    override suspend fun clearPassphrase(workId: String) = updateJob(workId, prune = false) {
+        clearPassphraseCt()
+        clearPassphraseIv()
     }
 
-    override suspend fun clearPassphrase(workId: String) {
+    /** Applies [edit] to the record under [workId]. A missing record is a no-op. */
+    private suspend fun updateJob(
+        workId: String,
+        prune: Boolean = true,
+        edit: ProtoBackupJobKt.Dsl.() -> Unit,
+    ) {
         dataStore.updateData { current ->
             val existing = current.jobsMap[workId] ?: return@updateData current
-            current.copy {
-                jobs[workId] = existing.copy {
-                    clearPassphraseCt()
-                    clearPassphraseIv()
-                }
-            }
+            val updated = existing.copy(edit)
+            if (prune) current.upsertAndPrune(workId, updated)
+            else current.copy { jobs[workId] = updated }
         }
     }
 

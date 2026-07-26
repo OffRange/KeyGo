@@ -35,7 +35,7 @@ internal class BackupArkUnlocker(
      * [Session.ark] is the app's own session key and is left alone.
      */
     suspend fun <R> withArk(block: suspend (ByteArray) -> R): Result<R, ExportError> {
-        val live = runCatching { session.ark }.getOrNull()
+        val live = session.arkOrNull()
         if (live != null) return Result.Success(block(live))
 
         return resultBinding {
@@ -53,7 +53,7 @@ internal class BackupArkUnlocker(
     suspend fun <R> withScope(
         block: suspend (ItemWithCryptoScopeUseCase) -> R,
     ): Result<R, ExportError> {
-        val live = runCatching { session.ark }.getOrNull()
+        val live = session.arkOrNull()
         if (live != null) return Result.Success(block(scopeFor(session)))
 
         return resultBinding {

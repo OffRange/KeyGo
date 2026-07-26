@@ -131,12 +131,9 @@ internal class ExportWizardViewModel(
         when (event) {
             ExportWizardUiEvent.Back -> previousStep()
 
-            ExportWizardUiEvent.Continue -> {
-                when {
-                    _step.value == ExportWizardStep.Review -> finishExport()
-                    else -> nextStep()
-                }
-            }
+            ExportWizardUiEvent.Continue ->
+                if (_step.value == ExportWizardStep.Review) finishExport()
+                else nextStep()
 
             ExportWizardUiEvent.ChooseDestination -> _event.trySend(ExportWizardEvent.PickFolder)
 

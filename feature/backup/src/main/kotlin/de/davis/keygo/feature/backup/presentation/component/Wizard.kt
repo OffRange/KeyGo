@@ -53,17 +53,7 @@ import kotlin.coroutines.cancellation.CancellationException
  * seeks the step transition, and an optional bottom continue [Button]. Callers supply only the
  * per-step [title] and body [content] plus the label/icon rendered inside the continue button.
  *
- * @param T the type identifying a step, typically an enum.
- * @param steps ordered list of steps the wizard walks through.
- * @param currentStep the currently displayed step; must be an element of [steps].
- * @param title the app-bar title for [currentStep], resolved by the caller.
- * @param onBack invoked when the user requests the previous step (nav icon or predictive back).
- * @param onContinue invoked when the continue button is tapped.
- * @param navigateUp invoked when back is requested while on the first step.
- * @param showContinueButton whether the bottom continue button is visible for the current step.
- * @param canContinue whether the continue button is enabled.
- * @param continueButtonContent the content (label, optional icon) rendered inside the button.
- * @param content the body for a given step.
+ * @param currentStep must be an element of [steps].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

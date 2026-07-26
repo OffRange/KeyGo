@@ -246,8 +246,6 @@ private fun NumberStepper(
     value: Int,
     onValueChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    min: Int = 1,
     supporting: @Composable (() -> Unit)? = null,
 ) {
     Row(
@@ -256,17 +254,15 @@ private fun NumberStepper(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         StepperButton(
-            onStep = { onValueChange((value - 1).coerceAtLeast(min)) },
+            onStep = { onValueChange((value - 1).coerceAtLeast(STEPPER_MIN)) },
             imageVector = Icons.Default.Remove,
-            enabled = enabled && value > min,
+            enabled = value > STEPPER_MIN,
         )
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             StepperValueField(
                 value = value,
                 onValueChange = onValueChange,
-                enabled = enabled,
-                min = min,
             )
 
             CompositionLocalProvider(
@@ -280,7 +276,7 @@ private fun NumberStepper(
         StepperButton(
             onStep = { onValueChange(value + 1) },
             imageVector = Icons.Default.Add,
-            enabled = enabled,
+            enabled = true,
         )
     }
 }
@@ -323,8 +319,6 @@ private fun StepperButton(
 private fun StepperValueField(
     value: Int,
     onValueChange: (Int) -> Unit,
-    enabled: Boolean,
-    min: Int,
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
@@ -336,7 +330,7 @@ private fun StepperValueField(
     }
 
     val commit = {
-        val committed = text.toIntOrNull()?.coerceAtLeast(min)
+        val committed = text.toIntOrNull()?.coerceAtLeast(STEPPER_MIN)
         if (committed != null) onValueChange(committed)
         text = (committed ?: value).toString()
     }
@@ -348,9 +342,6 @@ private fun StepperValueField(
         if (focused && !imeVisible) focusManager.clearFocus()
     }
 
-    val numberColor = if (enabled) MaterialTheme.colorScheme.onSurface
-    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-
     BasicTextField(
         value = text,
         onValueChange = { new -> if (new.all(Char::isDigit)) text = new },
@@ -360,9 +351,8 @@ private fun StepperValueField(
                 if (focused && !focusState.isFocused) commit()
                 focused = focusState.isFocused
             },
-        enabled = enabled,
         textStyle = MaterialTheme.typography.headlineMedium.copy(
-            color = numberColor,
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
         ),
         keyboardOptions = KeyboardOptions(
@@ -374,6 +364,8 @@ private fun StepperValueField(
         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
     )
 }
+
+private const val STEPPER_MIN = 1
 
 private val STEP_INITIAL_DELAY_MS = 350L.milliseconds
 private val STEP_REPEAT_START_MS = 280L.milliseconds

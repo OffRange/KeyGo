@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -31,75 +30,73 @@ import androidx.compose.ui.unit.dp
 import de.davis.keygo.feature.backup.R
 import de.davis.keygo.feature.backup.domain.model.BackupInterval
 import de.davis.keygo.feature.backup.domain.model.IntervalUnit
+import de.davis.keygo.feature.backup.presentation.component.segmentContainerColor
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiEvent
 import de.davis.keygo.feature.backup.presentation.export.model.ScheduleMode
 import de.davis.keygo.feature.backup.presentation.export.model.SelectScheduleState
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun SelectScheduleContent(
     state: SelectScheduleState,
     onEvent: (ExportWizardUiEvent) -> Unit,
 ) {
-    Surface {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
-        ) {
-            ScheduleMode.entries.forEachIndexed { index, mode ->
-                val selected = state.mode == mode
-                val recurringDisabled = mode == ScheduleMode.Recurring && !state.recurringAllowed
-                SegmentedListItem(
-                    checked = selected,
-                    enabled = !recurringDisabled,
-                    onCheckedChange = { onEvent(ExportWizardUiEvent.ScheduleModeSelected(mode)) },
-                    shapes = ListItemDefaults.segmentedShapes(index, ScheduleMode.entries.size),
-                    colors = ListItemDefaults.segmentedColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainerHigh),
-                    ),
-                    leadingContent = {
-                        Icon(
-                            imageVector = mode.icon,
-                            contentDescription = null,
-                        )
-                    },
-                    supportingContent = {
-                        Text(
-                            text = stringResource(
-                                if (recurringDisabled) R.string.schedule_recurring_requires_encryption
-                                else mode.descriptionRes,
-                            ),
-                        )
-                    },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(text = stringResource(mode.titleRes))
-                }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+    ) {
+        ScheduleMode.entries.forEachIndexed { index, mode ->
+            val selected = state.mode == mode
+            val recurringDisabled = mode == ScheduleMode.Recurring && !state.recurringAllowed
+            SegmentedListItem(
+                checked = selected,
+                enabled = !recurringDisabled,
+                onCheckedChange = { onEvent(ExportWizardUiEvent.ScheduleModeSelected(mode)) },
+                shapes = ListItemDefaults.segmentedShapes(index, ScheduleMode.entries.size),
+                colors = ListItemDefaults.segmentedColors(
+                    containerColor = segmentContainerColor,
+                    contentColor = contentColorFor(segmentContainerColor),
+                ),
+                leadingContent = {
+                    Icon(
+                        imageVector = mode.icon,
+                        contentDescription = null,
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        text = stringResource(
+                            if (recurringDisabled) R.string.schedule_recurring_requires_encryption
+                            else mode.descriptionRes,
+                        ),
+                    )
+                },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(text = stringResource(mode.titleRes))
+            }
 
-                AnimatedVisibility(
-                    visible = selected && mode == ScheduleMode.Recurring,
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut(),
+            AnimatedVisibility(
+                visible = selected && mode == ScheduleMode.Recurring,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                Column(
+                    modifier = Modifier.padding(top = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
                 ) {
-                    Column(
-                        modifier = Modifier.padding(top = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
-                    ) {
-                        IntervalPicker(
-                            interval = state.interval,
-                            onEvent = onEvent,
-                            shape = SegmentTopShape
-                        )
-                        RetentionPicker(
-                            keepCount = state.keepCount,
-                            keepAll = state.keepAll,
-                            onEvent = onEvent,
-                            shape = SegmentBottomShape
-                        )
-                    }
+                    IntervalPicker(
+                        interval = state.interval,
+                        onEvent = onEvent,
+                        shape = SegmentTopShape
+                    )
+                    RetentionPicker(
+                        keepCount = state.keepCount,
+                        keepAll = state.keepAll,
+                        onEvent = onEvent,
+                        shape = SegmentBottomShape
+                    )
                 }
             }
         }

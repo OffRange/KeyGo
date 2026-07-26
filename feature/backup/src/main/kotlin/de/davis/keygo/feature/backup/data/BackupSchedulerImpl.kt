@@ -65,7 +65,6 @@ internal class BackupSchedulerImpl(
             .addTag(BackupWorker.TAG_ONE_TIME)
             .build()
 
-        // Persist before enqueue so the worker can never start ahead of its own record.
         return backupJobRepository.putJob(request.id.toString(), job).onSuccess {
             workManager.enqueue(request)
         }

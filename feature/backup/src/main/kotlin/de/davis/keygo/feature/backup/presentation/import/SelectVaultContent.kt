@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
-
 package de.davis.keygo.feature.backup.presentation.import
 
 import android.content.res.Configuration
@@ -18,7 +16,6 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.ListItemShapes
@@ -43,6 +40,7 @@ import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.item.presentation.VaultIconPicker
 import de.davis.keygo.core.item.presentation.toImageVector
 import de.davis.keygo.feature.backup.R
+import de.davis.keygo.feature.backup.presentation.component.segmentContainerColor
 
 /**
  * Where the import lands. A full step rather than a dropdown: the choice is worth the room, and a
@@ -60,7 +58,6 @@ internal fun SelectVaultContent(
     onSelectNewVaultIcon: (Vault.Icon) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // One segment per vault plus the "new vault" row, so the group's rounded ends land correctly.
     val segmentCount = vaults.size + 1
 
     LazyColumn(
@@ -91,14 +88,6 @@ internal fun SelectVaultContent(
         }
     }
 }
-
-/**
- * Container behind every segment. Must not be left to [ListItemDefaults.segmentedColors]'s default,
- * which resolves to `colorScheme.surface`, identical to the wizard Scaffold's background in both
- * KeyGo themes, so the rows would have no visible edge at all. Same pin as `MapColumnsContent`.
- */
-private val segmentContainerColor
-    @Composable get() = MaterialTheme.colorScheme.surfaceContainerHigh
 
 @Composable
 private fun VaultSegment(

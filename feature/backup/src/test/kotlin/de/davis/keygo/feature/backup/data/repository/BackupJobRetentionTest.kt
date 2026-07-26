@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.backup.data.reository
+package de.davis.keygo.feature.backup.data.repository
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

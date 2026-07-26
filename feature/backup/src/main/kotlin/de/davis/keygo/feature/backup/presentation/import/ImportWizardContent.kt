@@ -104,14 +104,16 @@ private fun InputWizard(
             ImportWizardStep.SelectFile -> Column(modifier = Modifier.fillMaxSize()) {
                 BackupFileChooser(
                     destination = state.backupDestination,
-                    fileName = state.backupDestination?.fileName.orEmpty(),
                     onChoose = { onEvent(ImportWizardUiEvent.ChooseFile) },
                     chooserIcon = Icons.Default.FileOpen,
                     chooserTitle = stringResource(R.string.import_choose_title),
                     chooserSubtitle = stringResource(R.string.import_choose_subtitle),
                     chooserAction = stringResource(R.string.import_choose_action),
                     changeLabel = stringResource(R.string.file_chooser_change),
-                    fileNameLabel = stringResource(R.string.import_selected_label),
+                    fileNameLabel = stringResource(
+                        R.string.import_selected_label,
+                        state.backupDestination?.fileName.orEmpty()
+                    ),
                 )
             }
 

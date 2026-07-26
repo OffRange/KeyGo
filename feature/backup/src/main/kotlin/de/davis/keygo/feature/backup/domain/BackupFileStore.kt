@@ -21,12 +21,10 @@ interface BackupFileStore {
         text: String,
     ): Result<Unit, Throwable>
 
-    /** Lists documents inside [folder] whose display name starts with [baseName]. */
     suspend fun listBackups(
         folder: BackupDestinationUri,
         baseName: String,
     ): Result<List<BackupEntry>, Throwable>
 
-    /** Deletes the document at [uri]. */
     suspend fun delete(uri: BackupDestinationUri): Result<Unit, Throwable>
 }

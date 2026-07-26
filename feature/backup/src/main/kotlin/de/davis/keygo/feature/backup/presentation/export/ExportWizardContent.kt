@@ -147,10 +147,10 @@ private class ExportWizardUiStateProvider : PreviewParameterProvider<ExportWizar
 
 @Preview
 @Composable
-private fun BackupHubContentPreview(@PreviewParameter(ExportWizardUiStateProvider::class) state: ExportWizardUiState) {
+private fun ExportWizardContentPreview(@PreviewParameter(ExportWizardUiStateProvider::class) state: ExportWizardUiState) {
     MaterialTheme {
         Surface(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         ) {
             ExportWizardContent(
                 state = state,

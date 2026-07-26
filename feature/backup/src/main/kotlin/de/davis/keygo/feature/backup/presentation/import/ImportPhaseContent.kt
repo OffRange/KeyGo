@@ -2,30 +2,39 @@ package de.davis.keygo.feature.backup.presentation.import
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.feature.backup.R
 import de.davis.keygo.feature.backup.domain.model.ImportError
 import de.davis.keygo.feature.backup.domain.model.ImportProgress
 import de.davis.keygo.feature.backup.domain.model.ImportSummary
+import de.davis.keygo.feature.backup.presentation.component.segmentContainerColor
 
 @Composable
 internal fun ImportRunningContent(
@@ -35,7 +44,6 @@ internal fun ImportRunningContent(
     val label = when (progress) {
         ImportProgress.Reading -> stringResource(R.string.import_reading)
         ImportProgress.Parsing -> stringResource(R.string.import_parsing)
-        is ImportProgress.Running -> stringResource(R.string.import_running)
         else -> stringResource(R.string.import_running)
     }
     Column(
@@ -104,12 +112,47 @@ internal fun ImportResultContent(
         )
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
         ) {
-            SummaryRow(stringResource(R.string.import_result_imported), summary.imported)
-            SummaryRow(stringResource(R.string.import_result_skipped), summary.skipped)
-            SummaryRow(stringResource(R.string.import_result_failed), summary.failed)
-            SummaryRow(stringResource(R.string.import_result_vaults), summary.vaultsCreated)
+            val rows = listOf(
+                SummaryRowSpec(
+                    icon = Icons.Default.CheckCircle,
+                    label = stringResource(R.string.import_result_imported),
+                    value = summary.imported,
+                    iconTint = MaterialTheme.colorScheme.primary,
+                ),
+                SummaryRowSpec(
+                    icon = Icons.Default.RemoveCircleOutline,
+                    label = stringResource(R.string.import_result_skipped),
+                    value = summary.skipped,
+                ),
+                // Only tinted as an error when something actually failed; a zero here is good news
+                // and should not be shouted in red.
+                SummaryRowSpec(
+                    icon = Icons.Default.ErrorOutline,
+                    label = stringResource(R.string.import_result_failed),
+                    value = summary.failed,
+                    iconTint = if (summary.failed > 0) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+                SummaryRowSpec(
+                    icon = Icons.Default.Folder,
+                    label = stringResource(R.string.import_result_vaults),
+                    value = summary.vaultsCreated,
+                ),
+            )
+
+            val neutralTint = MaterialTheme.colorScheme.onSurfaceVariant
+            rows.forEachIndexed { position, row ->
+                SummaryRow(
+                    index = position,
+                    count = rows.size,
+                    icon = row.icon,
+                    label = row.label,
+                    value = row.value,
+                    iconTint = row.iconTint ?: neutralTint,
+                )
+            }
         }
         Button(
             onClick = onDone,
@@ -120,18 +163,34 @@ internal fun ImportResultContent(
     }
 }
 
+/** A summary row before it knows its position in the group. A null tint means the neutral default. */
+private class SummaryRowSpec(
+    val icon: ImageVector,
+    val label: String,
+    val value: Int,
+    val iconTint: Color? = null,
+)
+
 @Composable
-private fun SummaryRow(label: String, value: Int) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+private fun SummaryRow(
+    index: Int,
+    count: Int,
+    icon: ImageVector,
+    label: String,
+    value: Int,
+    iconTint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+) {
+    SegmentedListItem(
+        shapes = ListItemDefaults.segmentedShapes(index, count),
+        colors = ListItemDefaults.segmentedColors(containerColor = segmentContainerColor),
+        leadingContent = {
+            Icon(imageVector = icon, contentDescription = null, tint = iconTint)
+        },
+        trailingContent = {
+            Text(text = value.toString(), style = MaterialTheme.typography.titleMedium)
+        },
     ) {
-        Text(text = label, style = MaterialTheme.typography.bodyLarge)
-        Text(
-            text = value.toString(),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Text(text = label)
     }
 }
 
@@ -177,6 +236,24 @@ internal fun ImportErrorContent(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(text = stringResource(R.string.import_try_again))
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ImportResultContentPreview() {
+    MaterialTheme {
+        Surface(modifier = Modifier.fillMaxSize()) {
+            ImportResultContent(
+                summary = ImportSummary(
+                    imported = 42,
+                    skipped = 3,
+                    failed = 1,
+                    vaultsCreated = 1,
+                ),
+                onDone = {},
+            )
         }
     }
 }

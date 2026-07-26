@@ -18,11 +18,7 @@ import org.koin.core.annotation.Single
  *
  * Self-guarded: if `workId`'s record is still live, this does nothing. A recurring schedule's
  * record persists across runs and its next run reads its passphrase back out of it, so cleaning
- * up a still-live job would destroy credentials a future run needs. Calling this on a live job is
- * a programming error the caller must avoid; doing nothing is the safe response here.
- *
- * Runs after the backup file is already written, so every step is best-effort: a failure here must
- * never fail a backup.
+ * up a still-live job would destroy credentials a future run needs.
  */
 @Single
 internal class CleanupBackupResourcesUseCase(
@@ -36,7 +32,6 @@ internal class CleanupBackupResourcesUseCase(
     suspend operator fun invoke(workId: String): Unit = provisioningLock.mutex.withLock {
         val current = runCatching { jobRepository.getJobs() }.getOrNull() ?: return
 
-        // Calling this on a job that is still live would strip credentials its next run needs.
         if (current[workId]?.isLive(workId) == true) return
 
         runCatching { jobRepository.clearPassphrase(workId) }

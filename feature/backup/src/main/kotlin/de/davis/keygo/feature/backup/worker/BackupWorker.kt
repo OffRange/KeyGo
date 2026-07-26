@@ -35,7 +35,6 @@ internal class BackupWorker(
     private val isRecurring = TAG_RECURRING in tags
 
     override suspend fun doWork(): Result {
-        // Recurring is a singleton stored under a stable key; one-time records are keyed by workId.
         val workId = if (isRecurring) RECURRING_WORK_ID else id.toString()
         val job = backupJobRepository.getJob(workId) ?: return Result.failure()
 
@@ -58,6 +57,8 @@ internal class BackupWorker(
 
     companion object {
         const val UNIQUE_WORK_NAME = "backup_worker"
+
+        /** Recurring work is a singleton; one-time job records are keyed by their WorkManager id. */
         const val RECURRING_WORK_ID = "recurring_backup"
 
         const val TAG = "backup"

@@ -50,7 +50,7 @@ class BackupHubViewModelTest {
     private fun viewModel() = BackupHubViewModel(
         observeDispatchedBackups =
             ObserveDispatchedBackupsUseCase(repository, jobRepository, destinationResolver),
-        observeLastBackup = ObserveLastBackupUseCaseImpl(jobRepository, destinationResolver),
+        observeLastBackup = ObserveLastBackupUseCaseImpl(jobRepository),
         cancelBackup = CancelBackupUseCase(
             repository = repository,
             jobRepository = jobRepository,

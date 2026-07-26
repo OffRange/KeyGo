@@ -41,7 +41,6 @@ private fun Confidence.toDomain(): MappingConfidence = when (this) {
     Confidence.LOW -> MappingConfidence.Low
 }
 
-/** Turn a columnIndex -> type assignment into the Rust field-centric [ColumnMapping]. */
 internal fun Map<Int, CsvColumnType?>.toColumnMapping(): ColumnMapping {
     val byType: Map<CsvColumnType, UInt> = entries
         .mapNotNull { (index, type) -> type?.let { it to index.toUInt() } }

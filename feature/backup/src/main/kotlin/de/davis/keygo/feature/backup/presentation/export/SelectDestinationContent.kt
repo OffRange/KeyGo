@@ -40,27 +40,27 @@ internal fun SelectDestinationContent(
     format: FileFormat?,
     onEvent: (ExportWizardUiEvent) -> Unit,
 ) {
-    Surface {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            BackupFileChooser(
-                destination = state.destination,
-                fileName = state.destination?.fileName ?: format.backupFileName(),
-                onChoose = { onEvent(ExportWizardUiEvent.ChooseDestination) },
-                chooserIcon = Icons.Default.CreateNewFolder,
-                chooserTitle = stringResource(R.string.destination_choose_title),
-                chooserSubtitle = stringResource(R.string.destination_choose_subtitle),
-                chooserAction = stringResource(R.string.destination_choose_action),
-                changeLabel = stringResource(R.string.file_chooser_change),
-                fileNameLabel = stringResource(R.string.destination_filename_label),
-            )
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        BackupFileChooser(
+            destination = state.destination,
+            onChoose = { onEvent(ExportWizardUiEvent.ChooseDestination) },
+            chooserIcon = Icons.Default.CreateNewFolder,
+            chooserTitle = stringResource(R.string.destination_choose_title),
+            chooserSubtitle = stringResource(R.string.destination_choose_subtitle),
+            chooserAction = stringResource(R.string.destination_choose_action),
+            changeLabel = stringResource(R.string.file_chooser_change),
+            fileNameLabel = stringResource(
+                R.string.destination_filename_label,
+                state.destination?.fileName ?: format.backupFileName()
+            ),
+        )
 
-            BehaviorHint(mode = scheduleState.mode, keepAll = scheduleState.keepAll)
-        }
+        BehaviorHint(mode = scheduleState.mode, keepAll = scheduleState.keepAll)
     }
 }
 
