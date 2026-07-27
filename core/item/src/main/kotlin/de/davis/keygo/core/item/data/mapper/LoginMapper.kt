@@ -41,6 +41,7 @@ internal fun LoginProjection.toDomain(): Login = Login(
     name = item.itemEntity.name,
     note = item.itemEntity.note,
     keyInformation = item.itemEntity.keyInformation.toDomain(),
+    timestamp = item.itemEntity.timestamp.toDomain(),
     tags = item.tags.map(TagEntity::toDomain).toSet(),
     pinned = item.itemEntity.pinned,
 )

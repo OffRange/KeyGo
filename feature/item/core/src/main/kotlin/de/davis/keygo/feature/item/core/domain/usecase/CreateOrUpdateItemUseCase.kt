@@ -5,6 +5,7 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.Item
 import de.davis.keygo.core.item.domain.model.KeyInformation
+import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.security.domain.crypto.CryptographicScope
@@ -19,6 +20,7 @@ import de.davis.keygo.feature.item.core.domain.model.ItemUpsertError
 import de.davis.keygo.feature.item.core.domain.model.UpsertItem
 import de.davis.keygo.feature.item.core.domain.model.UpsertType
 import de.davisalessandro.keygo.rust.ItemAad
+import kotlin.time.Clock
 
 /**
  * Shared create/update orchestration for every vault item type. Owns the scaffolding that is
@@ -60,6 +62,9 @@ abstract class CreateOrUpdateItemUseCase<U : UpsertItem, I : Item>(
 
     /** Returns a copy of [item] moved to [vaultId] with the re-wrapped [keyInformation]. */
     protected abstract fun relocate(item: I, vaultId: VaultId, keyInformation: KeyInformation): I
+
+    /** Returns a copy of [item] with [timestamp] applied. */
+    protected abstract fun touch(item: I, timestamp: Timestamp): I
 
     suspend operator fun invoke(upsert: U): Result<ItemId, Set<ItemUpsertError>> {
         val errors = validate(upsert)
@@ -118,12 +123,14 @@ abstract class CreateOrUpdateItemUseCase<U : UpsertItem, I : Item>(
             vaultId = existing.vaultId,
         )
 
-        val item = cryptographicScopeProvider.itemScope(
+        val built = cryptographicScopeProvider.itemScope(
             wrappedVaultKeyInformation = sourceVault,
             wrappedItemKeyInformation = existing.wrappedItemKeyInformation(),
         ) {
             buildUpdate(upsert, existing)
         }.bind(ItemUpsertError::CryptoError)
+
+        val item = touch(built, built.timestamp.copy(modifiedAt = Clock.System.now()))
 
         if (isEmpty(item, upsert)) return Result.Failure(ItemUpsertError.Empty)
 

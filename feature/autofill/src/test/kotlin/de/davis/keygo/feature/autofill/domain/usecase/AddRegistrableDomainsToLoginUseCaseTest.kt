@@ -8,6 +8,7 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.Timestamp
 import kotlinx.coroutines.test.runTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -42,6 +43,7 @@ class AddRegistrableDomainsToLoginUseCaseTest {
         pinned = false,
         vaultId = vaultId,
         keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),
+        timestamp = Timestamp(),
     )
 
     @Test

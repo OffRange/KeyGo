@@ -4,6 +4,7 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.CreditCard
 import de.davis.keygo.core.item.domain.model.KeyInformation
+import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.repository.CreditCardRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
@@ -95,6 +96,9 @@ class CreateNewOrUpdateCreditCardUseCase(
         keyInformation: KeyInformation,
     ): CreditCard = item.copy(vaultId = vaultId, keyInformation = keyInformation)
 
+    override fun touch(item: CreditCard, timestamp: Timestamp): CreditCard =
+        item.copy(timestamp = timestamp)
+
     override suspend fun CryptographicScope.buildCreate(
         upsert: UpsertCreditCard,
         itemId: ItemId,
@@ -119,6 +123,7 @@ class CreateNewOrUpdateCreditCardUseCase(
             cvv = encryptedCvv?.await(),
             expirationDate = upsert.expirationDate.getValue()
                 ?.toYearMonthOrNull(), // toYearMonthOrNull will not return null, since isValidExpiration ensures the date to be correct
+            timestamp = Timestamp(),
         )
     }
 

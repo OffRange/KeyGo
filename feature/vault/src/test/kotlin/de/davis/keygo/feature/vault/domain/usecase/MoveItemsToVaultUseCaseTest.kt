@@ -14,6 +14,7 @@ import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
+import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.security.crypto.BindingCryptographicScopeProvider
@@ -370,6 +371,7 @@ class MoveItemsToVaultUseCaseTest {
                 pinned = pinned,
                 vaultId = vault.id,
                 keyInformation = wrapCurrentItemKey(),
+                timestamp = Timestamp(),
             )
         }.assertSuccess()
         loginRepository.seed(login)

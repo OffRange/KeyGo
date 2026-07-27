@@ -6,6 +6,7 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.Tag
+import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -34,6 +35,7 @@ class ObserveAllTagsSortedUseCaseTest {
         tags = tags,
         note = null,
         pinned = false,
+        timestamp = Timestamp(),
     )
 
     @Test

@@ -18,6 +18,7 @@ internal fun CreditCardProjection.toDomain() = CreditCard(
     vaultId = item.itemEntity.vaultId,
     name = item.itemEntity.name,
     keyInformation = item.itemEntity.keyInformation.toDomain(),
+    timestamp = item.itemEntity.timestamp.toDomain(),
     tags = item.tags.map(TagEntity::toDomain).toSet(),
     note = item.itemEntity.note,
     pinned = item.itemEntity.pinned,

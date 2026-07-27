@@ -9,6 +9,7 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.CreditCard
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
+import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.domain.model.CryptoScopeError
@@ -52,6 +53,7 @@ class ItemWithCryptoScopeUseCaseTest {
         cardNumber = CreditCard.CardNumber(EncryptedPayload.EMPTY),
         cvv = CreditCard.CVV(EncryptedPayload.EMPTY),
         expirationDate = YearMonth.of(2030, 12),
+        timestamp = Timestamp(),
     )
 
     @BeforeTest

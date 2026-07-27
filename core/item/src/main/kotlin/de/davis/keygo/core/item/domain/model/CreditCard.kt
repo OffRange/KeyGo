@@ -12,6 +12,7 @@ data class CreditCard(
     override val vaultId: VaultId,
     override val name: String,
     override val keyInformation: KeyInformation,
+    override val timestamp: Timestamp,
     override val tags: Set<Tag>,
     override val note: String?,
     override val pinned: Boolean,

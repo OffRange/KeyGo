@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "d827ca95e51c22ef1dc56c2eb260f41c",
+    "identityHash": "4f0b0d6a7ba5ff447e745fb0f08d8be3",
     "entities": [
       {
         "tableName": "vault",
@@ -54,7 +54,7 @@
       },
       {
         "tableName": "item",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `vault_id` BLOB NOT NULL, `name` TEXT NOT NULL, `note` TEXT, `item_type` TEXT NOT NULL, `pinned` INTEGER NOT NULL, `wrapped_key` BLOB NOT NULL, `key_nonce` BLOB NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`vault_id`) REFERENCES `vault`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `vault_id` BLOB NOT NULL, `name` TEXT NOT NULL, `note` TEXT, `item_type` TEXT NOT NULL, `pinned` INTEGER NOT NULL, `wrapped_key` BLOB NOT NULL, `key_nonce` BLOB NOT NULL, `created_at` INTEGER NOT NULL, `modified_at` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`vault_id`) REFERENCES `vault`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -102,6 +102,17 @@
             "columnName": "key_nonce",
             "affinity": "BLOB",
             "notNull": true
+          },
+          {
+            "fieldPath": "timestamp.createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp.modifiedAt",
+            "columnName": "modified_at",
+            "affinity": "INTEGER"
           }
         ],
         "primaryKey": {
@@ -597,7 +608,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd827ca95e51c22ef1dc56c2eb260f41c')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4f0b0d6a7ba5ff447e745fb0f08d8be3')"
     ]
   }
 }

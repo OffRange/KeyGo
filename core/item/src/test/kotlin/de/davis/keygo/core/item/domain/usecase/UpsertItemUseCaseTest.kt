@@ -11,6 +11,7 @@ import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
+import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
 import kotlinx.coroutines.test.runTest
@@ -43,6 +44,7 @@ class UpsertItemUseCaseTest {
             wrappedKey = byteArrayOf(),
             keyNonce = byteArrayOf(),
         ),
+        timestamp = Timestamp(),
     )
 
     private fun testCreditCard(name: String = "Test Card") = CreditCard(
@@ -60,6 +62,7 @@ class UpsertItemUseCaseTest {
         cardNumber = CreditCard.CardNumber(EncryptedPayload.EMPTY),
         cvv = CreditCard.CVV(EncryptedPayload.EMPTY),
         expirationDate = YearMonth.of(2030, 12),
+        timestamp = Timestamp(),
     )
 
     @Test

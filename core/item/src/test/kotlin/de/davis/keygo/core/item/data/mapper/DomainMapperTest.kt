@@ -10,6 +10,7 @@ import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
+import de.davis.keygo.core.item.domain.model.Timestamp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -34,6 +35,7 @@ class DomainMapperTest {
         keyInformation = KeyInformation(wrappedKey = byteArrayOf(), keyNonce = byteArrayOf()),
         note = null,
         pinned = false,
+        timestamp = Timestamp(),
     )
 
     // toData

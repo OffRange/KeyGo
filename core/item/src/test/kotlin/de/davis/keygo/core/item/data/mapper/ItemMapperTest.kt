@@ -12,6 +12,7 @@ import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
+import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -40,6 +41,7 @@ class ItemMapperTest {
         pinned = pinned,
         vaultId = newVaultId(),
         keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),
+        timestamp = Timestamp(),
     )
 
     // Item.toData() -> ItemEntity
