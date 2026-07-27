@@ -30,7 +30,7 @@ rootProject.name = "KeyGoV2"
 include(":app")
 include(":automation-processor")
 include(":automation")
-include(":migration-create-access")
+include(":migration:create-access")
 include(":core:item")
 include(":core:util")
 include(":core:security")

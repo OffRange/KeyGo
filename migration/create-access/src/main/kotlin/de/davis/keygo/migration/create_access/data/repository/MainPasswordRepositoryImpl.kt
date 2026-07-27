@@ -13,7 +13,7 @@ import org.koin.core.annotation.Single
 
 @Single
 internal class MainPasswordRepositoryImpl(
-    @MainPasswordQualifier
+    @param:MainPasswordQualifier
     private val dataStore: DataStore<ProtoMainPassword>,
 ) : MainPasswordRepository {
 
