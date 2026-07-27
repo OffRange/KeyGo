@@ -19,6 +19,11 @@ internal const val LEGACY_DATABASE_NAME = "secure_element_database"
  * can update to v2 directly from an early v1 build whose file never auto-migrated. The two
  * auto-migrations are generated from v1's own exported `1.json` and `2.json`, which is why 2-to-3
  * needs no hand-written SQL despite being a table recreate.
+ *
+ * Opening this over an inherited file is a one-way door. The first query runs the auto-migrations,
+ * which permanently rewrite the file to version 3 and drop its `MasterPassword` table. An import
+ * that fails partway and is retried therefore finds the file already at version 3, never at the
+ * version it started from, so retry paths must be written against a file that is already migrated.
  */
 @Database(
     version = 3,

@@ -10,9 +10,20 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * Room compares `room_master_table.identity_hash` against the hash derived from the declared
- * entities when it opens a file. If the ported entities drift from v1's schema by so much as a
- * column order, every real v1 database on every device stops opening.
+ * Guards the ported entities against drifting from v1's frozen schema, with two assertions that
+ * cover different things. Neither is redundant, and deleting either one leaves a real gap.
+ *
+ * The identity hash is what Room itself checks: it compares `room_master_table.identity_hash`
+ * against the hash derived from the declared entities and refuses to open the file on a mismatch.
+ * That hash is computed over sorted fields, so it pins column names, affinities, nullability,
+ * defaults, the primary key, indices and foreign keys, but it is blind to the order the columns are
+ * declared in. A drift on anything it covers stops every real v1 database on every device opening.
+ *
+ * The statement-for-statement DDL comparison is what pins column order. Order is runtime-inert,
+ * since Room validates an opened file by matching columns by name, so a drift here breaks nothing
+ * at runtime. It is asserted anyway so the schema we ship stays byte-identical to the one v1
+ * shipped, which is what makes the exported JSON trustworthy as a record of v1 rather than a
+ * near-miss.
  *
  * These hashes are v1's, read from `origin/v1:app/schemas/...KeyGoDatabase/`. They are frozen: v1
  * will never ship another version. A failure here means the port drifted, not that the expectation

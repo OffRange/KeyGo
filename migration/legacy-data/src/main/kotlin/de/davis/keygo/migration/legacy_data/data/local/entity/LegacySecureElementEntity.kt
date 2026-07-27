@@ -11,9 +11,16 @@ import androidx.room.PrimaryKey
  * The class shape is deliberately copied from v1 rather than tidied up. Room emits direct fields
  * before embedded ones, so v1's declaration order (title, data, favorite, embedded timestamps, id,
  * then the body property type) is what produces its column order of
- * `title, data, favorite, id, type, created_at, modified_at`. Reordering these declarations changes
- * the generated DDL, which changes the identity hash, which makes Room refuse to open real v1
- * files. `LegacySchemaIdentityTest` is the guard.
+ * `title, data, favorite, id, type, created_at, modified_at`.
+ *
+ * What that order does and does not buy is worth being precise about, because getting it wrong in
+ * either direction is expensive. Room derives its identity hash from sorted fields and validates an
+ * opened file by comparing columns by name, so column order is runtime-inert: reordering these
+ * declarations would neither change the hash nor stop a real v1 file from opening. What the hash
+ * does pin is column names, affinities, nullability, defaults, the primary key, indices and foreign
+ * keys, and drifting on any of those is what makes Room refuse the file. Column order is kept
+ * identical to v1 purely for byte-fidelity, so the schema we ship is the schema v1 shipped, and
+ * `LegacySchemaIdentityTest` guards both properties with separate assertions.
  *
  * `data` stays a raw `ByteArray` here. v1 decrypted it inside a Room `@TypeConverter`; keeping
  * decryption out of the DAO keeps the crypto injectable and the DAO fakeable.
