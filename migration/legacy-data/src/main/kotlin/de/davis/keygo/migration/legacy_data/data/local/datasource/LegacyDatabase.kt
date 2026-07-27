@@ -20,10 +20,16 @@ internal const val LEGACY_DATABASE_NAME = "secure_element_database"
  * auto-migrations are generated from v1's own exported `1.json` and `2.json`, which is why 2-to-3
  * needs no hand-written SQL despite being a table recreate.
  *
- * Opening this over an inherited file is a one-way door. The first query runs the auto-migrations,
- * which permanently rewrite the file to version 3 and drop its `MasterPassword` table. An import
- * that fails partway and is retried therefore finds the file already at version 3, never at the
- * version it started from, so retry paths must be written against a file that is already migrated.
+ * Opening this over an inherited file is a one-way door, but only once the open succeeds. The first
+ * query runs the auto-migrations, which permanently rewrite the file to version 3 and drop its
+ * `MasterPassword` table. An import that gets past that point and then fails is retried against a
+ * file already at version 3, never at the version it started from.
+ *
+ * A migration that fails is the other case and behaves the opposite way. Room runs each one in a
+ * transaction, so an abort rolls the file back to the version it came in at, measured as 2 in
+ * `LegacyDatabaseOpenTest`. That is what makes `LegacyDatabaseSanitizer`'s "below version 3 only"
+ * guard useful on a retry: a file whose recreate aborted still reads as version 2, so the sanitizer
+ * still sees it and can repair it.
  */
 @Database(
     version = 3,

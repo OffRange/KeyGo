@@ -37,19 +37,33 @@ internal class LegacyDatabaseSanitizer(
             // A version 3 file already survived the recreate, and its columns are NOT NULL anyway.
             if (connection.userVersion() >= 3) return@use 0
             // No SecureElement means this is not a v1 file. Leave it alone rather than throw.
-            if (!connection.hasTable("SecureElement")) return@use 0
+            if (!connection.hasSecureElementTable()) return@use 0
 
-            val repaired = connection.countRepairableRows()
-            connection.execSQL("UPDATE SecureElement SET title = '' WHERE title IS NULL")
-            connection.execSQL("UPDATE SecureElement SET data = x'' WHERE data IS NULL")
-            repaired
+            // The count read and both updates run as one transaction: this is the user's only copy
+            // of that data, and autocommit would let a crash between statements leave it half-repaired.
+            connection.execSQL("BEGIN")
+            try {
+                val repaired = connection.countRepairableRows()
+                connection.execSQL("UPDATE SecureElement SET title = '' WHERE title IS NULL")
+                connection.execSQL("UPDATE SecureElement SET data = x'' WHERE data IS NULL")
+                connection.execSQL("END")
+                repaired
+            } catch (e: Exception) {
+                connection.execSQL("ROLLBACK")
+                throw e
+            }
         }
     }
 
     private fun SQLiteConnection.userVersion(): Int = selectInt("PRAGMA user_version")
 
-    private fun SQLiteConnection.hasTable(name: String): Boolean =
-        selectInt("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = '$name'") > 0
+    // Inlined rather than parameterized: the one call site is a compile-time constant, and a
+    // private helper that only ever checks for "SecureElement" does not need a String parameter
+    // that invites an unescaped literal later.
+    private fun SQLiteConnection.hasSecureElementTable(): Boolean =
+        selectInt(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'SecureElement'",
+        ) > 0
 
     /**
      * Counted before the updates rather than summed from their change counts, so a row that is null
@@ -58,9 +72,10 @@ internal class LegacyDatabaseSanitizer(
     private fun SQLiteConnection.countRepairableRows(): Int =
         selectInt("SELECT COUNT(*) FROM SecureElement WHERE title IS NULL OR data IS NULL")
 
+    /** Every call site is a COUNT(*) or a PRAGMA, both of which always return exactly one row. */
     private fun SQLiteConnection.selectInt(sql: String): Int =
         prepare(sql).use { statement ->
-            statement.step()
+            check(statement.step()) { "expected a row from: $sql" }
             statement.getLong(0).toInt()
         }
 }

@@ -111,6 +111,25 @@ class LegacyDatabaseSanitizerTest {
     }
 
     @Test
+    fun `repairs a null title in a version 1 file so it survives both auto-migrations`() = runTest {
+        createDatabase(1).use { connection ->
+            connection.execSQL(
+                "INSERT INTO SecureElement (title, data, type) VALUES (NULL, x'0102', 1)",
+            )
+        }
+
+        assertEquals(1, sanitizer.sanitize(dbFile.absolutePath))
+
+        val db = openMigrated()
+        val rows = db.legacyElementDao().getAllWithTags()
+        db.close()
+
+        assertEquals(1, rows.size)
+        assertEquals("", rows.single().element.title)
+        assertContentEquals(byteArrayOf(1, 2), rows.single().element.data)
+    }
+
+    @Test
     fun `repairs null data so the row survives with an empty blob`() = runTest {
         createDatabase(2).use { connection ->
             connection.execSQL(
@@ -140,13 +159,21 @@ class LegacyDatabaseSanitizerTest {
         assertFalse(dbFile.exists(), "sanitizing must never bring a legacy database into existence")
     }
 
+    /**
+     * Seeds the version 2 schema, which still allows a NULL title, then stamps the file as version
+     * 3 without going through the recreate. That is the only way to get a NULL title into a file the
+     * guard sees as version 3: a real version 3 file's NOT NULL column could never hold one, so
+     * seeding with `createDatabase(3)` would make the UPDATEs match nothing whether or not the guard
+     * exists. Snapshotting the row before and after `sanitize` catches the guard being removed, where
+     * asserting only the return value would not.
+     */
     @Test
     fun `returns zero and leaves a version 3 file untouched`() {
-        createDatabase(3).use { connection ->
+        createDatabase(2).use { connection ->
             connection.execSQL(
-                "INSERT INTO SecureElement (title, data, favorite, type) " +
-                    "VALUES ('Kept', x'0909', 0, 1)",
+                "INSERT INTO SecureElement (title, data, type) VALUES (NULL, x'0909', 1)",
             )
+            connection.execSQL("PRAGMA user_version = 3")
         }
         val before = rowSnapshot()
 
