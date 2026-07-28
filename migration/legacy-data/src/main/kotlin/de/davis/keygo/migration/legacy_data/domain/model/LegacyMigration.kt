@@ -51,9 +51,25 @@ data class LegacyRowFailure(
 data class LegacyMigrationReport(
     val migratedItems: Int,
     val failures: List<LegacyRowFailure>,
+
+    /**
+     * Rows the sanitizer had to repair before the inherited file would open at all, counted across
+     * every open in this run. Surfaced so the user can be told that some of what came across was
+     * patched up on the way in rather than read as v1 left it.
+     */
+    val repairedRows: Int = 0,
 ) {
     val hasFailures: Boolean get() = failures.isNotEmpty()
 }
+
+/**
+ * Why a whole run stopped. Carried by [LegacyMigrationOutcome.Failed], which never reports a
+ * partial import: whatever this describes, the legacy file was left exactly as it was found.
+ */
+class LegacyMigrationException internal constructor(
+    message: String,
+    cause: Throwable? = null,
+) : Exception(message, cause)
 
 sealed interface LegacyMigrationOutcome {
 
