@@ -1,6 +1,9 @@
 package de.davis.keygo.migration.legacy_data.domain.usecase
 
+import de.davis.keygo.migration.legacy_data.domain.model.LegacyFailureReason
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyMigrationOutcome
+import de.davis.keygo.migration.legacy_data.domain.model.LegacyMigrationReport
+import de.davis.keygo.migration.legacy_data.domain.model.LegacyRowFailure
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
@@ -46,10 +49,10 @@ class LegacyImportRunnerTest {
 
     private fun TestScope.runnerFor(
         import: RecordingImport,
-        failures: MutableList<Throwable> = mutableListOf(),
+        diagnostics: MutableList<Pair<String, Throwable?>> = mutableListOf(),
     ) = LegacyImportRunner(
         scope = backgroundScope,
-        onFailure = { failures += it },
+        report = { message, cause -> diagnostics += message to cause },
         import = { import() },
     )
 
@@ -103,16 +106,16 @@ class LegacyImportRunnerTest {
     @Test
     fun `an import that throws is reported and leaves the next unlock free to retry`() = runTest {
         val boom = IllegalStateException("probing the legacy file blew up")
-        val failures = mutableListOf<Throwable>()
+        val diagnostics = mutableListOf<Pair<String, Throwable?>>()
         val import = RecordingImport { throw boom }
-        val runner = runnerFor(import, failures)
+        val runner = runnerFor(import, diagnostics)
 
         runner.start()
         runCurrent()
 
         assertEquals(
-            listOf<Throwable>(boom),
-            failures,
+            listOf(boom),
+            diagnostics.map { it.second },
             "A throw has to be reported. Nothing else in the app is watching this run, so a silent " +
                 "one is a user whose data never arrives and a bug report with nothing in it.",
         )
@@ -130,32 +133,32 @@ class LegacyImportRunnerTest {
 
     @Test
     fun `an import that fails with an Error is contained too`() = runTest {
-        val failures = mutableListOf<Throwable>()
+        val diagnostics = mutableListOf<Pair<String, Throwable?>>()
         val import = RecordingImport { throw NoClassDefFoundError("a driver this device lacks") }
-        val runner = runnerFor(import, failures)
+        val runner = runnerFor(import, diagnostics)
 
         runner.start()
         runCurrent()
 
         // Not Exception. This runs on an application scope, where anything that gets out takes the
         // process down, and a device missing a native library is not a reason to lose the vault.
-        assertIs<NoClassDefFoundError>(failures.single())
+        assertIs<NoClassDefFoundError>(diagnostics.single().second)
     }
 
     @Test
     fun `cancellation is passed through rather than reported as a failure`() = runTest {
-        val failures = mutableListOf<Throwable>()
+        val diagnostics = mutableListOf<Pair<String, Throwable?>>()
         val import = RecordingImport { call ->
             if (call == 1) throw CancellationException("the run was cancelled")
             LegacyMigrationOutcome.NothingToMigrate
         }
-        val runner = runnerFor(import, failures)
+        val runner = runnerFor(import, diagnostics)
 
         runner.start()
         runCurrent()
 
         assertTrue(
-            failures.isEmpty(),
+            diagnostics.isEmpty(),
             "A cancelled run has learned nothing about the user's file and must not answer for it.",
         )
 
@@ -163,5 +166,88 @@ class LegacyImportRunnerTest {
         runCurrent()
 
         assertEquals(2, import.invocations, "A cancelled run must release the runner as well.")
+    }
+
+    @Test
+    fun `a Failed outcome reports its cause through the seam`() = runTest {
+        val cause = IllegalStateException("the legacy database exists but could not be opened")
+        val diagnostics = mutableListOf<Pair<String, Throwable?>>()
+        val import = RecordingImport { LegacyMigrationOutcome.Failed(cause) }
+        val runner = runnerFor(import, diagnostics)
+
+        runner.start()
+        runCurrent()
+
+        assertEquals(
+            cause,
+            diagnostics.singleOrNull()?.second,
+            "Failed is this module's real channel for an expected failure, the same way a returned " +
+                "Result is everywhere else in this codebase. If it is not routed to the seam, the " +
+                "failures that actually happen in the field, like a database that opens but fails " +
+                "validation, produce no signal at all.",
+        )
+    }
+
+    @Test
+    fun `a Migrated outcome with row failures produces a diagnostic`() = runTest {
+        val report = LegacyMigrationReport(
+            migratedItems = 2,
+            failures = listOf(
+                LegacyRowFailure(
+                    legacyId = 1L,
+                    title = "Gmail",
+                    reason = LegacyFailureReason.Unparseable,
+                ),
+            ),
+        )
+        val diagnostics = mutableListOf<Pair<String, Throwable?>>()
+        val import = RecordingImport { LegacyMigrationOutcome.Migrated(report) }
+        val runner = runnerFor(import, diagnostics)
+
+        runner.start()
+        runCurrent()
+
+        assertEquals(
+            1,
+            diagnostics.size,
+            "Individual row skips are the designed behaviour, but a run that silently drops some " +
+                "of the user's entries with no trace at all is not acceptable either.",
+        )
+        assertTrue(
+            diagnostics.single().first.contains("Unparseable"),
+            "The diagnostic has to carry enough to work out what happened, not just that " +
+                "something was skipped.",
+        )
+        assertTrue(
+            !diagnostics.single().first.contains("Gmail"),
+            "A row's title is the user's own account name; it must not end up in logcat.",
+        )
+    }
+
+    @Test
+    fun `NothingToMigrate and a clean Migrated produce no diagnostic`() = runTest {
+        val diagnostics = mutableListOf<Pair<String, Throwable?>>()
+        val import = RecordingImport { call ->
+            if (call == 1)
+                LegacyMigrationOutcome.NothingToMigrate
+            else
+                LegacyMigrationOutcome.Migrated(
+                    LegacyMigrationReport(migratedItems = 3, failures = emptyList()),
+                )
+        }
+        val runner = runnerFor(import, diagnostics)
+
+        runner.start()
+        runCurrent()
+
+        runner.start()
+        runCurrent()
+
+        assertEquals(2, import.invocations)
+        assertTrue(
+            diagnostics.isEmpty(),
+            "NothingToMigrate and a Migrated with no row failures are the normal endings; neither " +
+                "may produce a diagnostic line.",
+        )
     }
 }
