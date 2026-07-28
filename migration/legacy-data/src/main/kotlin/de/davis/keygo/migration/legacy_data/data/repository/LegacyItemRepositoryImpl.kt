@@ -33,9 +33,12 @@ internal class LegacyItemRepositoryImpl(
     override val repairedRows: Int get() = databaseProvider.repairedRows
 
     override suspend fun state(): LegacyDatabaseState {
+        // Asked first, and of the file rather than of the provider. The provider also comes back
+        // empty for a file that is simply not there, and `Absent` and `Unreadable` lead to opposite
+        // places: one is a clean install with nothing to do, the other is a file we must not touch.
         if (!databaseFiles.exists()) return LegacyDatabaseState.Absent
-        // The provider only comes back empty when the file could not even be repaired, so this is
-        // the one place `Unreadable` can be told apart from a file Room simply does not recognise.
+        // Past that check the provider can only come back empty for a file it could not repair, so
+        // this is the one place `Unreadable` can be told apart from a file Room does not recognise.
         if (databaseProvider.get() == null) return LegacyDatabaseState.Unreadable
 
         // Room opens the file on the first query rather than when the object is built, so querying

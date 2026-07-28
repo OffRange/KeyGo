@@ -161,14 +161,14 @@ class SanitizingLegacyDatabaseProviderTest {
     }
 
     /**
-     * A clean v2 install has no legacy file, and bringing one into existence here would make the
-     * migration believe it inherited a database.
+     * A clean v2 install has no legacy file. Room creates any file it is asked to open, so opening
+     * one here would make every later run believe it inherited a database from v1.
      */
     @Test
-    fun `creates no file when there is nothing to migrate`() {
+    fun `opens nothing and creates nothing when there is no file`() {
         val provider = newProvider()
 
-        assertNotNull(provider.get())
+        assertNull(provider.get())
 
         assertEquals(0, provider.repairedRows)
         assertFalse(dbFile.exists(), "opening must never bring a legacy database into existence")

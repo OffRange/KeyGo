@@ -1,5 +1,6 @@
 package de.davis.keygo.migration.legacy_data.data.repository
 
+import android.content.Context
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import de.davis.keygo.core.util.assertFailure
@@ -7,8 +8,11 @@ import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.migration.legacy_data.data.crypto.LegacyCipher
 import de.davis.keygo.migration.legacy_data.data.crypto.LegacyKeyProvider
 import de.davis.keygo.migration.legacy_data.data.json.LegacyDetailParser
+import de.davis.keygo.migration.legacy_data.data.local.datasource.LEGACY_DATABASE_NAME
 import de.davis.keygo.migration.legacy_data.data.local.datasource.LegacyDatabase
 import de.davis.keygo.migration.legacy_data.data.local.datasource.LegacyDatabaseProvider
+import de.davis.keygo.migration.legacy_data.data.local.datasource.LegacyDatabaseSanitizer
+import de.davis.keygo.migration.legacy_data.data.local.datasource.SanitizingLegacyDatabaseProvider
 import de.davis.keygo.migration.legacy_data.data.local.entity.LegacySecureElementEntity
 import de.davis.keygo.migration.legacy_data.data.local.entity.LegacySecureElementTagCrossRef
 import de.davis.keygo.migration.legacy_data.data.local.entity.LegacyTagEntity
@@ -18,15 +22,18 @@ import de.davis.keygo.migration.legacy_data.domain.model.LegacyFailureReason
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyReadFailure
 import de.davis.keygo.migration.legacy_data.domain.repository.LegacyDatabaseFiles
 import de.davis.keygo.migration.legacy_data.domain.repository.LegacyDatabaseState
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
+import java.io.File
 import javax.crypto.SecretKey
 import javax.crypto.spec.SecretKeySpec
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -81,6 +88,14 @@ private class FakeLegacyDatabaseProvider(
     }
 }
 
+/** Answers from the real filesystem, so an empty directory models a clean install faithfully. */
+private class FileBackedLegacyDatabaseFiles(private val file: File) : LegacyDatabaseFiles {
+
+    override fun exists(): Boolean = file.exists()
+
+    override fun delete(): Boolean = file.delete()
+}
+
 private class FakeLegacyDatabaseFiles : LegacyDatabaseFiles {
 
     var present: Boolean = true
@@ -104,6 +119,37 @@ class LegacyItemRepositoryImplTest {
     private lateinit var databaseFiles: FakeLegacyDatabaseFiles
     private lateinit var repository: LegacyItemRepositoryImpl
 
+    /**
+     * A real path inside an empty directory, which is exactly what a clean v2 install looks like:
+     * no `secure_element_database`, and nothing allowed to bring one into being.
+     */
+    private val tempDir: File =
+        java.nio.file.Files.createTempDirectory("legacy-clean-install").toFile()
+    private val cleanInstallFile: File = File(tempDir, LEGACY_DATABASE_NAME)
+    private val cleanInstallContext: Context = mockk<Context>(relaxed = true).apply {
+        every { getDatabasePath(any()) } returns cleanInstallFile
+    }
+
+    /**
+     * Wired over the real provider and a real path rather than the in-memory database, because what
+     * is under test is whether a file turns up on disk. A fake provider could not show that.
+     *
+     * Room gets a real driver here for the same reason. Left on its framework helper it cannot
+     * create a file under a JVM test at all, so the assertion that no file appears would hold
+     * whether or not the guard existed, and a test that cannot fail proves nothing.
+     */
+    private fun cleanInstallRepository() = LegacyItemRepositoryImpl(
+        databaseProvider = SanitizingLegacyDatabaseProvider(
+            context = cleanInstallContext,
+            sanitizer = LegacyDatabaseSanitizer(BundledSQLiteDriver()),
+            driver = BundledSQLiteDriver(),
+        ),
+        keyProvider = keyProvider,
+        cipher = FakeLegacyCipher(),
+        parser = LegacyDetailParser(),
+        databaseFiles = FileBackedLegacyDatabaseFiles(cleanInstallFile),
+    )
+
     @BeforeTest
     fun setUp() {
         db = Room.inMemoryDatabaseBuilder(mockk(relaxed = true), LegacyDatabase::class.java)
@@ -119,6 +165,7 @@ class LegacyItemRepositoryImplTest {
     @AfterTest
     fun tearDown() {
         db.close()
+        tempDir.deleteRecursively()
     }
 
     private fun newRepository() = LegacyItemRepositoryImpl(
@@ -294,6 +341,37 @@ class LegacyItemRepositoryImplTest {
         databaseFiles.present = false
 
         assertEquals(LegacyDatabaseState.Absent, repository.state())
+    }
+
+    /**
+     * `Absent` and not `NotLegacy`, because the two lead to opposite places: `NotLegacy` gets the
+     * file deleted, and deleting a file that was never there is at best confusing. Nor `Unreadable`,
+     * which means a file we must leave alone.
+     */
+    @Test
+    fun `state is absent on a clean install`() = runTest {
+        assertEquals(LegacyDatabaseState.Absent, cleanInstallRepository().state())
+    }
+
+    /**
+     * The regression this guards is a file that should never have existed. This module only reads a
+     * database it inherited, and Room creates any file it is asked to open, so a read on an install
+     * that never ran v1 would leave an empty `secure_element_database` behind for every later run to
+     * find and treat as inherited data.
+     *
+     * The read goes through `readAll` rather than `state`, because `state` is the caller's gate and
+     * a gate nobody is forced through is not a guarantee. Asserting the disk rather than the return
+     * value is the other half: the return value looks the same either way.
+     */
+    @Test
+    fun `reading on a clean install leaves no legacy file behind`() = runTest {
+        val result = cleanInstallRepository().readAll()
+
+        assertFalse(
+            cleanInstallFile.exists(),
+            "reading must never bring a legacy database into existence",
+        )
+        assertEquals(LegacyReadFailure.DatabaseUnreadable, result.assertFailure())
     }
 
     @Test

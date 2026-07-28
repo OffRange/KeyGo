@@ -59,9 +59,13 @@ internal abstract class LegacyDatabase : RoomDatabase() {
 internal interface LegacyDatabaseProvider {
 
     /**
-     * Returns null when the file cannot be made openable, which means it is corrupt, truncated, or
-     * not a SQLite database at all. Null rather than a throw, because a foreign file sitting where
-     * v1's used to be is an ordinary thing to find on a migration path and the caller reports it.
+     * Returns null when there is no file to open, or when the file that is there cannot be made
+     * openable because it is corrupt, truncated, or not a SQLite database at all. Null rather than
+     * a throw, because a foreign file sitting where v1's used to be is an ordinary thing to find on
+     * a migration path and the caller reports it.
+     *
+     * An implementation must never bring the file into existence. This is a reader of an inherited
+     * database, and a database it created itself would be indistinguishable from one it inherited.
      */
     fun get(): LegacyDatabase?
 
