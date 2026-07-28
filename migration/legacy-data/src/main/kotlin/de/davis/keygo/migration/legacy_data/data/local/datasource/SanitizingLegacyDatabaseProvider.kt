@@ -15,8 +15,7 @@ import androidx.sqlite.SQLiteDriver
  *
  * Both of this class's guards are about the file's state before Room is allowed to touch it, which
  * is why they sit together: one repairs what is there, the other refuses to invent what is not.
- */
-/**
+ *
  * @param driver left null in production so Room keeps the framework helper it has always used here.
  * A JVM test has no framework helper to use, so it passes a bundled driver; without one, Room
  * cannot create a database file at all and a test asserting that no file appears could not fail.
