@@ -56,7 +56,18 @@ internal abstract class LegacyDatabase : RoomDatabase() {
  * never exists and eagerly opening it would create an empty one, and the repository re-opens after
  * `deleteDatabase` closes the previous handle.
  */
-internal fun interface LegacyDatabaseProvider {
+internal interface LegacyDatabaseProvider {
 
-    fun get(): LegacyDatabase
+    /**
+     * Returns null when the file cannot be made openable, which means it is corrupt, truncated, or
+     * not a SQLite database at all. Null rather than a throw, because a foreign file sitting where
+     * v1's used to be is an ordinary thing to find on a migration path and the caller reports it.
+     */
+    fun get(): LegacyDatabase?
+
+    /** Rows repaired to make the file openable, counted across every open so far. */
+    val repairedRows: Int
+
+    /** Closes the open handle, if there is one. The next [get] opens a fresh one. */
+    fun close()
 }
