@@ -12,13 +12,16 @@ import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
+import de.davis.keygo.core.item.domain.model.CreditCard
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Vault
+import de.davis.keygo.core.item.domain.repository.CreditCardRepository
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
+import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
 import de.davis.keygo.migration.legacy_data.data.crypto.LegacyAesGcmCipher
@@ -47,6 +50,7 @@ import kotlinx.coroutines.test.runTest
 import java.io.File
 import java.nio.file.Files
 import java.security.SecureRandom
+import java.time.YearMonth
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -156,6 +160,22 @@ class LegacyMigrationEndToEndTest {
 
     private val legacyCipher = LegacyAesGcmCipher(legacyKeyProvider)
 
+    /** Id the migration mints for the seeded card, learned through [cardIdCapturingRepository]. */
+    private var migratedCardId: ItemId? = null
+
+    /**
+     * `CreditCardRepository` only queries by id, and the id a migrated card gets is a fresh
+     * `newItemId()` minted deep inside the use case, not something this test can predict up front.
+     * Wrapping the write is how the test learns it, rather than adding a list query to production
+     * for the sake of this one assertion.
+     */
+    private val cardIdCapturingRepository = object : CreditCardRepository by creditCardRepository {
+        override suspend fun createOrUpdateCreditCard(card: CreditCard): Result<ItemId, Throwable> =
+            creditCardRepository.createOrUpdateCreditCard(card).also { result ->
+                if (result is Result.Success) migratedCardId = result.success
+            }
+    }
+
     private val legacyRepository = LegacyItemRepositoryImpl(
         databaseProvider = databaseProvider,
         // The production probe rather than a fake. This is the answer that decides whether the
@@ -189,7 +209,7 @@ class LegacyMigrationEndToEndTest {
         cryptographicScopeProvider = cryptoProvider,
         vaultRepository = vaultRepository,
         vaultContextRepository = vaultContextRepository,
-        upsertVaultItem = UpsertVaultItemUseCase(loginRepository, creditCardRepository),
+        upsertVaultItem = UpsertVaultItemUseCase(loginRepository, cardIdCapturingRepository),
         transactionRunner = transactionRunner,
     )
 
@@ -267,11 +287,47 @@ class LegacyMigrationEndToEndTest {
                 wrappedVaultKey = KeyInformation(byteArrayOf(1), byteArrayOf(2)),
                 vaultId = vaultId,
             ),
+            // No wrappedItemKeyInformation, so this mints a fresh key rather than unwrapping the
+            // item's stored one. That is only safe because FakeCryptographicScopeProvider XORs
+            // against one fixed key no matter what it is handed; a key-aware fake would break this
+            // in a way that would be confusing to track down.
             wrappedItemKeyInformation = WrappedItemKeyInformation(
                 itemAad = ItemAad(itemId = loginId, vaultId = vaultId),
             ),
         ) {
             loginRepository.getLoginById(loginId)!!.passwordCredential!!.secret.decrypt()
+        }.assertSuccess()
+
+    /** What a migrated card looks like once its secret fields are decrypted back to plaintext. */
+    private data class DecryptedCard(
+        val holder: String?,
+        val cardNumber: String?,
+        val cvv: String?,
+        val expirationDate: YearMonth?,
+    )
+
+    /**
+     * The card path has no nested encryption the way v1's password does: `cardNumber` and `cvv`
+     * are encrypted once, directly, under the item key. Reading them back only has to undo that
+     * one layer.
+     */
+    private suspend fun readBackCard(cardId: ItemId): DecryptedCard =
+        cryptoProvider.itemScope(
+            wrappedVaultKeyInformation = WrappedVaultKeyInformation(
+                wrappedVaultKey = KeyInformation(byteArrayOf(1), byteArrayOf(2)),
+                vaultId = vaultId,
+            ),
+            wrappedItemKeyInformation = WrappedItemKeyInformation(
+                itemAad = ItemAad(itemId = cardId, vaultId = vaultId),
+            ),
+        ) {
+            val card = creditCardRepository.getCreditCardById(cardId)!!
+            DecryptedCard(
+                holder = card.holder,
+                cardNumber = card.cardNumber?.decrypt(),
+                cvv = card.cvv?.decrypt(),
+                expirationDate = card.expirationDate,
+            )
         }.assertSuccess()
 
     @Test
@@ -304,6 +360,12 @@ class LegacyMigrationEndToEndTest {
             login.timestamp.modifiedAt,
         )
         assertEquals("hunter2", readBackPassword(login.id))
+
+        val card = readBackCard(migratedCardId!!)
+        assertEquals("Ada Lovelace", card.holder)
+        assertEquals("4111111111111111", card.cardNumber)
+        assertEquals("123", card.cvv)
+        assertEquals(YearMonth.of(2029, 4), card.expirationDate)
 
         assertTrue(keyStoreCleared)
         assertFalse(File(dbFile.absolutePath).exists())
@@ -397,6 +459,28 @@ class LegacyMigrationEndToEndTest {
         assertEquals(LegacyMigrationOutcome.NothingToMigrate, useCase())
         assertTrue(loginRepository.observeLogins().first().isEmpty())
         assertFalse(dbFile.exists())
+        assertFalse(keyStoreCleared)
+    }
+
+    /**
+     * The probe's contract is three-valued on purpose: true, false, or null for a file it could
+     * not even open. Null is not a no. `LegacyItemRepositoryImpl.state()` only reaches `NotLegacy`,
+     * the verdict that deletes the file, on a provable false; a file it cannot inspect at all has
+     * to fall to `Unreadable` and be left standing, because a corrupt page and a half-restored
+     * backup fail to open exactly the way a foreign file does, and answering "no v1 data here" on
+     * that guess would throw away a user's only copy of their data.
+     *
+     * Four arbitrary bytes are not a SQLite file, so the production probe hits its own catch and
+     * answers null, which is the one verdict nothing else in this suite drives.
+     */
+    @Test
+    fun `keeps a file it could not inspect at all`() = runTest {
+        seedVault()
+        vaultContextRepository.setContextAndLastInteracted(vaultId)
+        dbFile.writeBytes(byteArrayOf(0, 1, 2, 3))
+
+        assertIs<LegacyMigrationOutcome.Failed>(useCase())
+        assertTrue(dbFile.exists())
         assertFalse(keyStoreCleared)
     }
 
