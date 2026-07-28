@@ -22,6 +22,7 @@ import de.davis.keygo.feature.auth.presentation.model.UIPasswordError
 import de.davis.keygo.migration.create_access.domain.usecase.ClearMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.ValidateMainPassword
+import de.davis.keygo.migration.legacy_data.domain.usecase.MigrateLegacyDataUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -52,6 +53,7 @@ internal class AuthViewModel(
     hasV1MainPassword: HasMainPasswordUseCase,
     private val validateMainPassword: ValidateMainPassword,
     private val clearMainPasswordUseCase: ClearMainPasswordUseCase,
+    private val migrateLegacyData: MigrateLegacyDataUseCase,
     // -------------------
 
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
@@ -181,9 +183,10 @@ internal class AuthViewModel(
                         loading(setLoading = password.isNotBlank()) {
                             unlockWithPassword(
                                 password = password
-                            ).handleAuthenticationResult {
-                                copyDefaultState(passwordError = UIPasswordError.Incorrect)
-                            }
+                            ).onSuccess { importLegacyData { migrateLegacyData() } }
+                                .handleAuthenticationResult {
+                                    copyDefaultState(passwordError = UIPasswordError.Incorrect)
+                                }
                         }
                     }
 
@@ -249,7 +252,9 @@ internal class AuthViewModel(
     ) {
         if (!authState.biometricsAvailable || !authState.useBiometrics) {
             loading {
-                createAllAccesses(password = password).handleAuthenticationResult()
+                createAllAccesses(password = password)
+                    .onSuccess { importLegacyData { migrateLegacyData() } }
+                    .handleAuthenticationResult()
             }
 
             return
@@ -294,7 +299,29 @@ internal class AuthViewModel(
             createAllAccesses(
                 password = createAccessRequest.password,
                 biometricCipher = cipher
-            ).handleAuthenticationResult()
+            ).onSuccess { importLegacyData { migrateLegacyData() } }
+                .handleAuthenticationResult()
+        }
+    }
+
+    /**
+     * Biometric unlock completes in the composable rather than here, so it has to hand control back
+     * for the v1 import to get a chance to run. Without this the biometric path would be the one
+     * way into the app that never retries a partial import, and it is the way most returning users
+     * take every day.
+     *
+     * The import is waited for rather than left running, because navigating clears this ViewModel
+     * and cancels the scope underneath it. [importLegacyData] is what keeps that wait from turning
+     * into a lockout: it always returns, so the event below is always sent.
+     *
+     * Sent rather than offered, unlike the other paths. This one can take as long as the import
+     * does, and the screen may have stopped collecting by the time it finishes. A dropped event
+     * here would strand a user whose session is already live back on the lock screen.
+     */
+    fun onBiometricUnlockSucceeded() {
+        viewModelScope.launch {
+            importLegacyData { migrateLegacyData() }
+            navigationEventChannel.send(Unit)
         }
     }
 }

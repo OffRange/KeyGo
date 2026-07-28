@@ -47,7 +47,10 @@ fun AuthScreen(onSuccess: () -> Unit) {
                 biometricUnlockAdapter.useAdapter {
                     biometricCryptoController.requestUnlockVault()
                 }.onSuccess {
-                    currentOnSuccess()
+                    // Not currentOnSuccess() any more. Navigating straight from here would leave
+                    // the v1 import no scope to run in, so the ViewModel takes it from here and
+                    // navigates through navigationEvent, which is already collected above.
+                    viewModel.onBiometricUnlockSucceeded()
                 }
             }
         }
