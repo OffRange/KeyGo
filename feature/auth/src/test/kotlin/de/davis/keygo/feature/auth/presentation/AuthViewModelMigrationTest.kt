@@ -7,11 +7,11 @@ import kotlin.test.assertTrue
 
 /**
  * `AuthViewModel` cannot be built in a JVM unit test at all: its `SavedStateHandle.toRoute` call
- * lands in `android.os.BaseBundle`, which throws "not mocked" here. So the behaviour that matters
- * is covered where it can be, in `LegacyDataImportTest`, and what is left for this file is the
- * wiring those tests assume. What actually regresses is someone adding a fifth way into the app and
- * forgetting the import, or tidying [importLegacyData] out of a call site because it looks like
- * ceremony.
+ * lands in `android.os.BaseBundle`, which throws "not mocked" here. So what the import actually
+ * does is covered where it can be, in `LegacyImportRunnerTest` over in `:migration:legacy-data`,
+ * and what is left for this file is the wiring that test assumes. Asserting on source text is a
+ * weak way to do it, but the thing it catches is real: someone adding a fifth way into the app and
+ * forgetting the import.
  *
  * If you add another successful-session-start path, add the call and bump the expected count.
  */
@@ -25,22 +25,9 @@ class AuthViewModelMigrationTest {
     fun `every successful session start runs the legacy migration`() {
         assertEquals(
             4,
-            Regex("""migrateLegacyData\(\)""").findAll(viewModelSource).count(),
-            "Expected the migration on the password-create, biometric-create, password-unlock " +
+            Regex("""startLegacyDataImport\(\)""").findAll(viewModelSource).count(),
+            "Expected the import on the password-create, biometric-create, password-unlock " +
                 "and biometric-unlock paths.",
-        )
-    }
-
-    @Test
-    fun `no call site lets the migration into the unlock flow unguarded`() {
-        assertEquals(
-            4,
-            Regex("""importLegacyData\s*\{\s*migrateLegacyData\(\)\s*}""")
-                .findAll(viewModelSource)
-                .count(),
-            "Every migration call has to go through importLegacyData. Called bare, a throw or a " +
-                "hang in the import skips the navigation that follows it and strands the user on " +
-                "the lock screen with a live session behind it.",
         )
     }
 
