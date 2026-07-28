@@ -3,20 +3,25 @@ package de.davis.keygo.migration.legacy_data.data.repository
 import android.content.Context
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.sqlite.execSQL
 import de.davis.keygo.core.util.assertFailure
 import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.migration.legacy_data.data.crypto.LegacyCipher
 import de.davis.keygo.migration.legacy_data.data.crypto.LegacyKeyProvider
 import de.davis.keygo.migration.legacy_data.data.json.LegacyDetailParser
+import de.davis.keygo.migration.legacy_data.data.local.dao.LegacyElementDao
+import de.davis.keygo.migration.legacy_data.data.local.datasource.AndroidLegacySecureElementProbe
 import de.davis.keygo.migration.legacy_data.data.local.datasource.LEGACY_DATABASE_NAME
 import de.davis.keygo.migration.legacy_data.data.local.datasource.LegacyDatabase
 import de.davis.keygo.migration.legacy_data.data.local.datasource.LegacyDatabaseProvider
 import de.davis.keygo.migration.legacy_data.data.local.datasource.LegacyDatabaseSanitizer
+import de.davis.keygo.migration.legacy_data.data.local.datasource.LegacySecureElementProbe
 import de.davis.keygo.migration.legacy_data.data.local.datasource.SanitizingLegacyDatabaseProvider
 import de.davis.keygo.migration.legacy_data.data.local.entity.LegacySecureElementEntity
 import de.davis.keygo.migration.legacy_data.data.local.entity.LegacySecureElementTagCrossRef
 import de.davis.keygo.migration.legacy_data.data.local.entity.LegacyTagEntity
 import de.davis.keygo.migration.legacy_data.data.local.entity.LegacyTimestamps
+import de.davis.keygo.migration.legacy_data.data.local.pojo.LegacyElementWithTags
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyDetail
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyFailureReason
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyReadFailure
@@ -29,10 +34,12 @@ import kotlinx.coroutines.test.runTest
 import java.io.File
 import javax.crypto.SecretKey
 import javax.crypto.spec.SecretKeySpec
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
@@ -71,6 +78,38 @@ private class FakeLegacyKeyProvider(
     }
 }
 
+/**
+ * Answers the schema question without a file. [answer] carries the probe's three states: the table
+ * is there, the file opened and it provably is not, or nothing could be read at all.
+ */
+private class FakeLegacySecureElementProbe(
+    private val answer: Boolean? = true,
+) : LegacySecureElementProbe {
+
+    override fun hasSecureElementTable(): Boolean? = answer
+}
+
+/** Fails every read the way a cancelled unlock scope does, and nothing else. */
+private class CancellingLegacyElementDao : LegacyElementDao {
+
+    override suspend fun count(): Int = throw CancellationException("the unlock scope went away")
+
+    override suspend fun getAllWithTags(): List<LegacyElementWithTags> =
+        throw CancellationException("the unlock scope went away")
+
+    override suspend fun deleteByIds(ids: List<Long>): Unit =
+        throw CancellationException("the unlock scope went away")
+
+    override suspend fun insertElement(element: LegacySecureElementEntity): Long =
+        error("this fake is only ever read from")
+
+    override suspend fun insertTag(tag: LegacyTagEntity): Long =
+        error("this fake is only ever read from")
+
+    override suspend fun insertCrossRef(crossRef: LegacySecureElementTagCrossRef): Unit =
+        error("this fake is only ever read from")
+}
+
 /** Hands out one already-open in-memory database, or nothing when the file is unreadable. */
 private class FakeLegacyDatabaseProvider(
     private val database: LegacyDatabase?,
@@ -96,15 +135,27 @@ private class FileBackedLegacyDatabaseFiles(private val file: File) : LegacyData
     override fun delete(): Boolean = file.delete()
 }
 
-private class FakeLegacyDatabaseFiles : LegacyDatabaseFiles {
+/**
+ * @param databaseClosed reports whether the provider's handle was already closed. Captured at the
+ * moment [delete] runs rather than read afterwards, because the order of the two is the behaviour:
+ * asserting after the fact holds just as well when the file is deleted first.
+ */
+private class FakeLegacyDatabaseFiles(
+    private val databaseClosed: () -> Boolean = { false },
+) : LegacyDatabaseFiles {
 
     var present: Boolean = true
     var deleted: Boolean = false
         private set
 
+    /** Null until [delete] runs, then whatever the provider's handle was at that instant. */
+    var closedWhenDeleted: Boolean? = null
+        private set
+
     override fun exists(): Boolean = present
 
     override fun delete(): Boolean {
+        closedWhenDeleted = databaseClosed()
         deleted = true
         present = false
         return true
@@ -117,37 +168,44 @@ class LegacyItemRepositoryImplTest {
     private lateinit var keyProvider: FakeLegacyKeyProvider
     private lateinit var databaseProvider: FakeLegacyDatabaseProvider
     private lateinit var databaseFiles: FakeLegacyDatabaseFiles
+    private lateinit var secureElementProbe: LegacySecureElementProbe
     private lateinit var repository: LegacyItemRepositoryImpl
 
     /**
-     * A real path inside an empty directory, which is exactly what a clean v2 install looks like:
-     * no `secure_element_database`, and nothing allowed to bring one into being.
+     * A real path inside a directory that starts out empty, which is exactly what a clean v2
+     * install looks like: no `secure_element_database`, and nothing allowed to bring one into
+     * being. Tests that need a file to be there seed one at this path themselves.
      */
     private val tempDir: File =
-        java.nio.file.Files.createTempDirectory("legacy-clean-install").toFile()
-    private val cleanInstallFile: File = File(tempDir, LEGACY_DATABASE_NAME)
-    private val cleanInstallContext: Context = mockk<Context>(relaxed = true).apply {
-        every { getDatabasePath(any()) } returns cleanInstallFile
+        java.nio.file.Files.createTempDirectory("legacy-on-disk").toFile()
+    private val legacyFile: File = File(tempDir, LEGACY_DATABASE_NAME)
+    private val legacyContext: Context = mockk<Context>(relaxed = true).apply {
+        every { getDatabasePath(any()) } returns legacyFile
     }
 
     /**
-     * Wired over the real provider and a real path rather than the in-memory database, because what
-     * is under test is whether a file turns up on disk. A fake provider could not show that.
+     * Wired over the real provider, the real probe and a real path rather than the in-memory
+     * database, because these tests turn on what is actually on disk: whether a file appears that
+     * should not exist, and what the file that is there turns out to be. Fakes could not show that.
      *
      * Room gets a real driver here for the same reason. Left on its framework helper it cannot
      * create a file under a JVM test at all, so the assertion that no file appears would hold
      * whether or not the guard existed, and a test that cannot fail proves nothing.
      */
-    private fun cleanInstallRepository() = LegacyItemRepositoryImpl(
+    private fun fileBackedRepository() = LegacyItemRepositoryImpl(
         databaseProvider = SanitizingLegacyDatabaseProvider(
-            context = cleanInstallContext,
+            context = legacyContext,
             sanitizer = LegacyDatabaseSanitizer(BundledSQLiteDriver()),
+            driver = BundledSQLiteDriver(),
+        ),
+        secureElementProbe = AndroidLegacySecureElementProbe(
+            context = legacyContext,
             driver = BundledSQLiteDriver(),
         ),
         keyProvider = keyProvider,
         cipher = FakeLegacyCipher(),
         parser = LegacyDetailParser(),
-        databaseFiles = FileBackedLegacyDatabaseFiles(cleanInstallFile),
+        databaseFiles = FileBackedLegacyDatabaseFiles(legacyFile),
     )
 
     @BeforeTest
@@ -158,7 +216,8 @@ class LegacyItemRepositoryImplTest {
             .build()
         keyProvider = FakeLegacyKeyProvider()
         databaseProvider = FakeLegacyDatabaseProvider(db)
-        databaseFiles = FakeLegacyDatabaseFiles()
+        databaseFiles = FakeLegacyDatabaseFiles(databaseClosed = { databaseProvider.closed })
+        secureElementProbe = FakeLegacySecureElementProbe()
         repository = newRepository()
     }
 
@@ -170,6 +229,7 @@ class LegacyItemRepositoryImplTest {
 
     private fun newRepository() = LegacyItemRepositoryImpl(
         databaseProvider = databaseProvider,
+        secureElementProbe = secureElementProbe,
         keyProvider = keyProvider,
         cipher = FakeLegacyCipher(),
         parser = LegacyDetailParser(),
@@ -350,7 +410,7 @@ class LegacyItemRepositoryImplTest {
      */
     @Test
     fun `state is absent on a clean install`() = runTest {
-        assertEquals(LegacyDatabaseState.Absent, cleanInstallRepository().state())
+        assertEquals(LegacyDatabaseState.Absent, fileBackedRepository().state())
     }
 
     /**
@@ -365,10 +425,10 @@ class LegacyItemRepositoryImplTest {
      */
     @Test
     fun `reading on a clean install leaves no legacy file behind`() = runTest {
-        val result = cleanInstallRepository().readAll()
+        val result = fileBackedRepository().readAll()
 
         assertFalse(
-            cleanInstallFile.exists(),
+            legacyFile.exists(),
             "reading must never bring a legacy database into existence",
         )
         assertEquals(LegacyReadFailure.DatabaseUnreadable, result.assertFailure())
@@ -384,21 +444,80 @@ class LegacyItemRepositoryImplTest {
     /**
      * Unreadable rather than [LegacyDatabaseState.NotLegacy] on purpose: a file that cannot be
      * opened tells us nothing about what is inside it, and NotLegacy is the state that gets the
-     * file deleted.
+     * file deleted. The probe answers null here for the same reason it would in production, where
+     * a file the provider cannot open is a file the probe cannot read either.
      */
     @Test
     fun `state is unreadable when the file cannot be opened`() = runTest {
         databaseProvider = FakeLegacyDatabaseProvider(database = null)
+        secureElementProbe = FakeLegacySecureElementProbe(answer = null)
 
         assertEquals(LegacyDatabaseState.Unreadable, newRepository().state())
+    }
+
+    /**
+     * The leftover v2 database from before `ItemDatabase` was renamed. No `SecureElement` table
+     * means no v1 data, and this is the one shape of file that earns the verdict that deletes it.
+     *
+     * Run over a real file rather than a fake probe, because the claim is about what is inside the
+     * file and a fake could only restate the expectation.
+     */
+    @Test
+    fun `state is not legacy when the file has no SecureElement table`() = runTest {
+        BundledSQLiteDriver().open(legacyFile.absolutePath).use { connection ->
+            connection.execSQL("CREATE TABLE Leftover (id INTEGER PRIMARY KEY)")
+        }
+
+        assertEquals(LegacyDatabaseState.NotLegacy, fileBackedRepository().state())
+    }
+
+    /**
+     * The regression that matters most in this class. This file has the `SecureElement` table, so
+     * it is not a leftover v2 database, but Room refuses it on the first query. Folding that into
+     * [LegacyDatabaseState.NotLegacy] deletes a file that was never shown to be free of v1 data,
+     * and a corrupt page, a disk that fills up during the 2-to-3 recreate and a cancelled run all
+     * arrive here by the same route.
+     *
+     * Seeded with v1's table name but not v1's schema, which is what Room's own integrity check
+     * rejects. A real inherited file that fails deeper down produces the same shape of failure.
+     */
+    @Test
+    fun `state is unreadable when the file has the table but the query fails`() = runTest {
+        BundledSQLiteDriver().open(legacyFile.absolutePath).use { connection ->
+            connection.execSQL("CREATE TABLE SecureElement (id INTEGER PRIMARY KEY)")
+            connection.execSQL("PRAGMA user_version = 3")
+        }
+
+        assertEquals(LegacyDatabaseState.Unreadable, fileBackedRepository().state())
+    }
+
+    /**
+     * Cancelling the unlock scope is not a statement about the user's file. `runCatching` here
+     * would fold it into `DatabaseUnreadable` and let a run that never finished answer for what is
+     * on disk, so this seam rethrows where the other repositories in the codebase do not.
+     */
+    @Test
+    fun `lets a cancellation out instead of reporting the file as unreadable`() = runTest {
+        // mockk stands in for the Room-generated database container alone, which has no fake to
+        // build from; the DAO underneath it, which is what the behaviour is about, is a real fake.
+        val database = mockk<LegacyDatabase> {
+            every { legacyElementDao() } returns CancellingLegacyElementDao()
+        }
+        databaseProvider = FakeLegacyDatabaseProvider(database)
+
+        assertFailsWith<CancellationException> { newRepository().remainingCount() }
     }
 
     @Test
     fun `deleteDatabase closes the open handle before removing the file`() = runTest {
         assertTrue(repository.deleteDatabase())
 
-        assertTrue(databaseProvider.closed, "the file cannot be deleted from under an open handle")
         assertTrue(databaseFiles.deleted)
+        assertEquals(
+            true,
+            databaseFiles.closedWhenDeleted,
+            "the file cannot be deleted from under an open handle",
+        )
     }
 
     @Test

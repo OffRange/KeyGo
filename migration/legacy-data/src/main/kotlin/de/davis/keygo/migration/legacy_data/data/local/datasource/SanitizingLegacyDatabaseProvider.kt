@@ -28,6 +28,9 @@ internal class SanitizingLegacyDatabaseProvider(
 
     private var database: LegacyDatabase? = null
 
+    // Written under the lock in `get` but read through a plain getter from whatever thread reports
+    // the migration, so the write needs to be visible without the reader taking the lock too.
+    @Volatile
     override var repairedRows: Int = 0
         private set
 

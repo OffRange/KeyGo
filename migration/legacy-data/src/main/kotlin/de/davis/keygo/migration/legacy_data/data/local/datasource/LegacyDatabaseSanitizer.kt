@@ -57,25 +57,10 @@ internal class LegacyDatabaseSanitizer(
 
     private fun SQLiteConnection.userVersion(): Int = selectInt("PRAGMA user_version")
 
-    // Inlined rather than parameterized: the one call site is a compile-time constant, and a
-    // private helper that only ever checks for "SecureElement" does not need a String parameter
-    // that invites an unescaped literal later.
-    private fun SQLiteConnection.hasSecureElementTable(): Boolean =
-        selectInt(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'SecureElement'",
-        ) > 0
-
     /**
      * Counted before the updates rather than summed from their change counts, so a row that is null
      * in both columns is reported once instead of twice.
      */
     private fun SQLiteConnection.countRepairableRows(): Int =
         selectInt("SELECT COUNT(*) FROM SecureElement WHERE title IS NULL OR data IS NULL")
-
-    /** Every call site is a COUNT(*) or a PRAGMA, both of which always return exactly one row. */
-    private fun SQLiteConnection.selectInt(sql: String): Int =
-        prepare(sql).use { statement ->
-            check(statement.step()) { "expected a row from: $sql" }
-            statement.getLong(0).toInt()
-        }
 }

@@ -8,11 +8,6 @@ import de.davis.keygo.migration.legacy_data.data.local.datasource.LegacyDatabase
 import de.davis.keygo.migration.legacy_data.data.local.datasource.SanitizingLegacyDatabaseProvider
 import io.mockk.every
 import io.mockk.mockk
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -37,8 +32,6 @@ class SanitizingLegacyDatabaseProviderTest {
     private val tempDir: File = java.nio.file.Files.createTempDirectory("legacy-provider").toFile()
     private val dbFile: File = File(tempDir, "secure_element_database")
 
-    private val json = Json { ignoreUnknownKeys = true }
-
     /**
      * Room and the sanitizer both turn a database name into a path with `Context.getDatabasePath`.
      * A fully relaxed mock answers that with an empty path, which would quietly point both of them
@@ -58,29 +51,8 @@ class SanitizingLegacyDatabaseProviderTest {
         tempDir.deleteRecursively()
     }
 
-    /** Writes a file that looks exactly like one a v1 build at [version] would have left behind. */
-    private fun createDatabase(version: Int): SQLiteConnection {
-        val schema = json
-            .parseToJsonElement(File("src/test/resources/legacy-schemas/$version.json").readText())
-            .jsonObject
-            .getValue("database")
-            .jsonObject
-
-        return BundledSQLiteDriver().open(dbFile.absolutePath).apply {
-            schema.getValue("entities").jsonArray.forEach { entity ->
-                val table = entity.jsonObject.getValue("tableName").jsonPrimitive.content
-                execSQL(entity.jsonObject.createSqlFor(table))
-                entity.jsonObject.getValue("indices").jsonArray.forEach { index ->
-                    execSQL(index.jsonObject.createSqlFor(table))
-                }
-            }
-            schema.getValue("setupQueries").jsonArray.forEach { execSQL(it.jsonPrimitive.content) }
-            execSQL("PRAGMA user_version = $version")
-        }
-    }
-
-    private fun JsonObject.createSqlFor(tableName: String): String =
-        getValue("createSql").jsonPrimitive.content.replace("\${TABLE_NAME}", tableName)
+    private fun createDatabase(version: Int): SQLiteConnection =
+        seedLegacyDatabase(dbFile, version)
 
     private fun titlesOnDisk(): List<String> =
         BundledSQLiteDriver().open(dbFile.absolutePath).use { connection ->
@@ -88,14 +60,6 @@ class SanitizingLegacyDatabaseProviderTest {
                 buildList {
                     while (stmt.step()) add(if (stmt.isNull(0)) "<null>" else stmt.getText(0))
                 }
-            }
-        }
-
-    private fun userVersion(): Int =
-        BundledSQLiteDriver().open(dbFile.absolutePath).use { connection ->
-            connection.prepare("PRAGMA user_version").use { stmt ->
-                stmt.step()
-                stmt.getLong(0).toInt()
             }
         }
 
@@ -114,7 +78,7 @@ class SanitizingLegacyDatabaseProviderTest {
         assertEquals(listOf(""), titlesOnDisk())
         assertEquals(
             2,
-            userVersion(),
+            userVersionOf(dbFile),
             "the file must still be at version 2, which is what proves the repair ran before " +
                 "Room ever touched it",
         )

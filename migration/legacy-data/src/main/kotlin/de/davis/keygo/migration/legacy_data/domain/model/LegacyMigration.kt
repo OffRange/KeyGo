@@ -23,7 +23,7 @@ enum class LegacyFailureReason {
  * was found. That is what separates these from [LegacyFailureReason], which is always about one row
  * among many that were read fine.
  */
-enum class LegacyReadFailure {
+internal enum class LegacyReadFailure {
 
     /**
      * v1's Keystore alias is gone, so no blob in the file can ever be decrypted.

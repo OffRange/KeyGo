@@ -11,11 +11,6 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -34,8 +29,6 @@ class LegacyDatabaseSanitizerTest {
     private val tempDir: File = java.nio.file.Files.createTempDirectory("legacy-sanitize").toFile()
     private val dbFile: File = File(tempDir, "secure_element_database")
 
-    private val json = Json { ignoreUnknownKeys = true }
-
     private val sanitizer = LegacyDatabaseSanitizer(BundledSQLiteDriver())
 
     private val context: Context = mockk<Context>(relaxed = true).apply {
@@ -47,29 +40,8 @@ class LegacyDatabaseSanitizerTest {
         tempDir.deleteRecursively()
     }
 
-    /** Writes a file that looks exactly like one a v1 build at [version] would have left behind. */
-    private fun createDatabase(version: Int): SQLiteConnection {
-        val schema = json
-            .parseToJsonElement(File("src/test/resources/legacy-schemas/$version.json").readText())
-            .jsonObject
-            .getValue("database")
-            .jsonObject
-
-        return BundledSQLiteDriver().open(dbFile.absolutePath).apply {
-            schema.getValue("entities").jsonArray.forEach { entity ->
-                val table = entity.jsonObject.getValue("tableName").jsonPrimitive.content
-                execSQL(entity.jsonObject.createSqlFor(table))
-                entity.jsonObject.getValue("indices").jsonArray.forEach { index ->
-                    execSQL(index.jsonObject.createSqlFor(table))
-                }
-            }
-            schema.getValue("setupQueries").jsonArray.forEach { execSQL(it.jsonPrimitive.content) }
-            execSQL("PRAGMA user_version = $version")
-        }
-    }
-
-    private fun JsonObject.createSqlFor(tableName: String): String =
-        getValue("createSql").jsonPrimitive.content.replace("\${TABLE_NAME}", tableName)
+    private fun createDatabase(version: Int): SQLiteConnection =
+        seedLegacyDatabase(dbFile, version)
 
     private fun openMigrated(): LegacyDatabase =
         Room.databaseBuilder(context, LegacyDatabase::class.java, dbFile.name)

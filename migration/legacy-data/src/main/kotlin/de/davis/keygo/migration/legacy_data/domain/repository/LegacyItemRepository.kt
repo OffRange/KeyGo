@@ -12,9 +12,13 @@ internal sealed interface LegacyDatabaseState {
     data object Absent : LegacyDatabaseState
 
     /**
-     * A file exists but has no `SecureElement` table. On a developer device this is a leftover v2
-     * database from before `ItemDatabase` was renamed to `keygo_database`. It holds no v1 data, so
-     * it is deleted rather than read.
+     * A file exists, opened, and provably has no `SecureElement` table. On a developer device this
+     * is a leftover v2 database from before `ItemDatabase` was renamed to `keygo_database`. It
+     * holds no v1 data, so it is deleted rather than read.
+     *
+     * "Provably" is the whole of it. This is the one state that destroys the file, so it is only
+     * ever reached by looking for the table and not finding it, never by reading a failure as if it
+     * meant the table was gone.
      */
     data object NotLegacy : LegacyDatabaseState
 
