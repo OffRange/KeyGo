@@ -196,7 +196,7 @@ class LegacyImportRunnerTest {
                 LegacyRowFailure(
                     legacyId = 1L,
                     title = "Gmail",
-                    reason = LegacyFailureReason.Unparseable,
+                    reason = LegacyFailureReason.Unreadable,
                 ),
             ),
         )
@@ -214,7 +214,7 @@ class LegacyImportRunnerTest {
                 "of the user's entries with no trace at all is not acceptable either.",
         )
         assertTrue(
-            diagnostics.single().first.contains("Unparseable"),
+            diagnostics.single().first.contains("Unreadable"),
             "The diagnostic has to carry enough to work out what happened, not just that " +
                 "something was skipped.",
         )

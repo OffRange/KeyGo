@@ -1,8 +1,8 @@
 package de.davis.keygo.migration.legacy_data.data.local.entity
 
-import androidx.room.Entity
-import androidx.room.Index
-import androidx.room.PrimaryKey
+import androidx.room3.Entity
+import androidx.room3.Index
+import androidx.room3.PrimaryKey
 
 @Entity(tableName = "Tag", indices = [Index(value = ["name"], unique = true)])
 internal data class LegacyTagEntity(

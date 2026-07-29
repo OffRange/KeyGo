@@ -1,5 +1,6 @@
 package de.davis.keygo.migration.legacy_data.data.crypto
 
+import de.davis.keygo.migration.legacy_data.data.FakeLegacyKeyRepository
 import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -29,9 +30,7 @@ class LegacyAesGcmCipherTest {
     }
 
     private fun cipherWith(secretKey: SecretKey?) =
-        LegacyAesGcmCipher(object : LegacyKeyProvider {
-            override fun secretKey(): SecretKey? = secretKey
-        })
+        LegacyAesGcmCipher(FakeLegacyKeyRepository(secretKey))
 
     @Test
     fun `decrypts a blob written by v1`() {

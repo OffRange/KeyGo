@@ -1,7 +1,6 @@
 package de.davis.keygo.migration.legacy_data
 
-import android.content.Context
-import androidx.room.Room
+import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
 import de.davis.keygo.core.item.FakeCreditCardRepository
@@ -23,13 +22,12 @@ import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformatio
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.assertSuccess
-import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
+import de.davis.keygo.migration.legacy_data.data.FakeLegacyDatabaseProvider
+import de.davis.keygo.migration.legacy_data.data.FakeLegacyKeyRepository
+import de.davis.keygo.migration.legacy_data.data.FakeRegistrableDomainResolver
 import de.davis.keygo.migration.legacy_data.data.crypto.LegacyAesGcmCipher
-import de.davis.keygo.migration.legacy_data.data.crypto.LegacyKeyProvider
 import de.davis.keygo.migration.legacy_data.data.json.LegacyDetailParser
-import de.davis.keygo.migration.legacy_data.data.local.datasource.AndroidLegacySecureElementProbe
 import de.davis.keygo.migration.legacy_data.data.local.datasource.LegacyDatabase
-import de.davis.keygo.migration.legacy_data.data.local.datasource.LegacyDatabaseProvider
 import de.davis.keygo.migration.legacy_data.data.local.entity.LegacySecureElementEntity
 import de.davis.keygo.migration.legacy_data.data.local.entity.LegacySecureElementTagCrossRef
 import de.davis.keygo.migration.legacy_data.data.local.entity.LegacyTagEntity
@@ -38,12 +36,8 @@ import de.davis.keygo.migration.legacy_data.data.mapper.LegacyItemConverter
 import de.davis.keygo.migration.legacy_data.data.repository.LegacyItemRepositoryImpl
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyFailureReason
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyMigrationOutcome
-import de.davis.keygo.migration.legacy_data.domain.repository.LegacyDatabaseFiles
-import de.davis.keygo.migration.legacy_data.domain.repository.LegacyKeyStoreCleaner
 import de.davis.keygo.migration.legacy_data.domain.usecase.MigrateLegacyDataUseCase
 import de.davisalessandro.keygo.rust.ItemAad
-import io.mockk.every
-import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -79,7 +73,7 @@ import kotlin.time.Instant
  * this module owns, is the real cipher throughout.
  *
  * The other known ceiling is how Room is opened. Production goes through
- * `SanitizingLegacyDatabaseProvider`, which opens in compat mode on the framework helper; a JVM test
+ * `AndroidLegacyDatabaseProvider`, which opens in compat mode on the framework helper; a JVM test
  * has no framework helper, so this class opens in driver mode on the bundled driver. That gap is
  * accepted for the module rather than closed here.
  */
@@ -87,18 +81,6 @@ class LegacyMigrationEndToEndTest {
 
     private val tempDir: File = Files.createTempDirectory("legacy-e2e").toFile()
     private val dbFile = File(tempDir, "secure_element_database")
-
-    /**
-     * Room turns a database name into a path with `Context.getDatabasePath`, and so does the probe.
-     * A fully relaxed mock answers that with a mock of its own whose path is empty, which makes both
-     * of them quietly work on some other file: Room reports an empty database and the probe reports
-     * nothing at all. Stubbing it is what points the two at the file these tests seed.
-     *
-     * This is the only mock in the class. Nothing else here has an Android framework type in the way.
-     */
-    private val context: Context = mockk<Context>(relaxed = true).apply {
-        every { getDatabasePath(any()) } returns dbFile
-    }
 
     private val legacyKey: SecretKey = KeyGenerator.getInstance("AES")
         .apply { init(256, SecureRandom()) }
@@ -113,52 +95,26 @@ class LegacyMigrationEndToEndTest {
     private val transactionRunner = FakeItemTransactionRunner()
     private val cryptoProvider = FakeCryptographicScopeProvider(FakeItemRepository(loginRepository))
 
-    private var keyStoreCleared = false
-
-    private val database: LegacyDatabase = Room.databaseBuilder(
-        context,
-        LegacyDatabase::class.java,
-        dbFile.name,
-    )
+    /**
+     * File backed, not in memory, and that is the point of this class rather than an incidental
+     * choice. The import's whole verdict is read off the bytes at [dbFile] through Room, and the
+     * provider deletes that same path afterwards, so an in-memory database would leave the file
+     * absent, the run answering `DatabaseEmpty` for the wrong reason and the prune-before-delete
+     * ordering with nothing to order.
+     *
+     * Room opens lazily, so building this up front still leaves each test free to write the file
+     * underneath it first. Built with the path-only overload rather than the one taking a Context,
+     * so no Android framework type has to be stood in for at all.
+     */
+    private val database: LegacyDatabase = Room.databaseBuilder<LegacyDatabase>(dbFile.absolutePath)
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
         .build()
 
-    private val databaseFiles = object : LegacyDatabaseFiles {
-        override fun exists(): Boolean = dbFile.exists()
+    private val databaseProvider = FakeLegacyDatabaseProvider(file = dbFile, database = database)
 
-        override fun delete(): Boolean {
-            listOf("", "-wal", "-shm", "-journal").forEach { suffix ->
-                File(dbFile.absolutePath + suffix).delete()
-            }
-            return true
-        }
-    }
-
-    /**
-     * Hands out the one database this class builds, and closes it on request. Closing has to work:
-     * the tests that assert the file is gone would otherwise be deleting it from under an open Room
-     * handle, which is not what production does.
-     *
-     * Nothing repairs anything here. The sanitizer only runs inside
-     * `SanitizingLegacyDatabaseProvider`, which this class deliberately does not go through, so the
-     * honest count is zero.
-     */
-    private val databaseProvider = object : LegacyDatabaseProvider {
-
-        override val repairedRows: Int = 0
-
-        override fun get(): LegacyDatabase = database
-
-        override fun close() = database.close()
-    }
-
-    /** One key for the row blobs and the nested password blobs, because v1 used one alias for both. */
-    private val legacyKeyProvider = object : LegacyKeyProvider {
-        override fun secretKey(): SecretKey = legacyKey
-    }
-
-    private val legacyCipher = LegacyAesGcmCipher(legacyKeyProvider)
+    private val legacyKeyRepository = FakeLegacyKeyRepository(legacyKey)
+    private val legacyCipher = LegacyAesGcmCipher(legacyKeyRepository)
 
     /** Id the migration mints for the seeded card, learned through [cardIdCapturingRepository]. */
     private var migratedCardId: ItemId? = null
@@ -178,33 +134,17 @@ class LegacyMigrationEndToEndTest {
 
     private val legacyRepository = LegacyItemRepositoryImpl(
         databaseProvider = databaseProvider,
-        // The production probe rather than a fake. This is the answer that decides whether the
-        // user's file gets deleted, so each test earns its verdict from the bytes it actually put on
-        // disk instead of from a constant the test handed back to itself.
-        secureElementProbe = AndroidLegacySecureElementProbe(
-            context = context,
-            driver = BundledSQLiteDriver(),
-        ),
-        keyProvider = legacyKeyProvider,
+        keyRepository = legacyKeyRepository,
         cipher = legacyCipher,
         parser = LegacyDetailParser(),
-        databaseFiles = databaseFiles,
     )
 
     private val useCase = MigrateLegacyDataUseCase(
         legacyItemRepository = legacyRepository,
-        legacyKeyStoreCleaner = object : LegacyKeyStoreCleaner {
-            override fun deleteLegacyKey() {
-                keyStoreCleared = true
-            }
-        },
+        legacyKeyRepository = legacyKeyRepository,
         converter = LegacyItemConverter(
             cipher = legacyCipher,
-            registrableDomainResolver = object : RegistrableDomainResolver {
-                override fun resolve(domain: String): String? =
-                    domain.substringAfterLast('.', "").takeIf { it.isNotEmpty() }
-                        ?.let { "example.com" }
-            },
+            registrableDomainResolver = FakeRegistrableDomainResolver(),
         ),
         cryptographicScopeProvider = cryptoProvider,
         vaultRepository = vaultRepository,
@@ -237,6 +177,12 @@ class LegacyMigrationEndToEndTest {
         )
     }
 
+    /**
+     * Long enough to clear the IV length check and nothing but garbage after it, so it reaches
+     * AES-GCM and fails the tag there rather than being rejected on its size.
+     */
+    private fun undecryptableBlob(): ByteArray = ByteArray(13) { (it + 1).toByte() }
+
     private fun cardJson(): ByteArray = encryptLikeV1(
         """{"type":17,"cardholder":{"firstName":"Ada","lastName":"Lovelace"},
            "expirationDate":"04/29","cardNumber":"4111111111111111","cvv":"123"}"""
@@ -265,12 +211,13 @@ class LegacyMigrationEndToEndTest {
             // `Tag.name` is uniquely indexed, so a name another row already carries throws rather
             // than returning an id. Reusing it is not worth the query; the cross ref is what these
             // tests read back, and every one of them seeds distinct names.
-            val tagId = runCatching { dao.insertTag(LegacyTagEntity(name = name)) }.getOrElse { -1L }
+            val tagId =
+                runCatching { dao.insertTag(LegacyTagEntity(name = name)) }.getOrElse { -1L }
             if (tagId > 0) dao.insertCrossRef(LegacySecureElementTagCrossRef(id, tagId))
         }
     }
 
-    private fun seedVault() {
+    private suspend fun seedVault() {
         vaultRepository.seed(
             Vault(
                 id = vaultId,
@@ -279,6 +226,7 @@ class LegacyMigrationEndToEndTest {
                 icon = Vault.Icon.Default,
             ),
         )
+        vaultContextRepository.setContextAndLastInteracted(vaultId)
     }
 
     private suspend fun readBackPassword(loginId: ItemId): String =
@@ -333,7 +281,6 @@ class LegacyMigrationEndToEndTest {
     @Test
     fun `migrates a full v1 database and leaves nothing behind`() = runTest {
         seedVault()
-        vaultContextRepository.setContextAndLastInteracted(vaultId)
         seed(
             title = "Example",
             blob = passwordJson("ada", "https://example.com", "hunter2"),
@@ -367,8 +314,8 @@ class LegacyMigrationEndToEndTest {
         assertEquals("123", card.cvv)
         assertEquals(YearMonth.of(2029, 4), card.expirationDate)
 
-        assertTrue(keyStoreCleared)
-        assertFalse(File(dbFile.absolutePath).exists())
+        assertTrue(legacyKeyRepository.deleted)
+        assertFalse(dbFile.exists())
         assertFalse(File(dbFile.absolutePath + "-wal").exists())
         assertFalse(File(dbFile.absolutePath + "-shm").exists())
     }
@@ -376,16 +323,15 @@ class LegacyMigrationEndToEndTest {
     @Test
     fun `keeps the database and reports the row when a blob will not decrypt`() = runTest {
         seedVault()
-        vaultContextRepository.setContextAndLastInteracted(vaultId)
         seed(title = "Fine", blob = passwordJson("ada", "https://example.com", "pw"), type = 1)
-        seed(title = "Broken", blob = byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13), type = 1)
+        seed(title = "Broken", blob = undecryptableBlob(), type = 1)
 
         val outcome = assertIs<LegacyMigrationOutcome.Migrated>(useCase())
 
         assertEquals(1, outcome.report.migratedItems)
         assertEquals("Broken", outcome.report.failures.single().title)
-        assertEquals(LegacyFailureReason.Undecryptable, outcome.report.failures.single().reason)
-        assertFalse(keyStoreCleared)
+        assertEquals(LegacyFailureReason.Unreadable, outcome.report.failures.single().reason)
+        assertFalse(legacyKeyRepository.deleted)
         assertTrue(dbFile.exists())
         assertEquals(1, legacyRepository.remainingCount().assertSuccess())
     }
@@ -393,23 +339,21 @@ class LegacyMigrationEndToEndTest {
     @Test
     fun `keeps the database and reports the row when the json is malformed`() = runTest {
         seedVault()
-        vaultContextRepository.setContextAndLastInteracted(vaultId)
         seed(title = "Fine", blob = passwordJson("ada", "https://example.com", "pw"), type = 1)
         seed(title = "Garbled", blob = encryptLikeV1("not json".encodeToByteArray()), type = 1)
 
         val outcome = assertIs<LegacyMigrationOutcome.Migrated>(useCase())
 
         assertEquals(1, outcome.report.migratedItems)
-        assertEquals(LegacyFailureReason.Unparseable, outcome.report.failures.single().reason)
+        assertEquals(LegacyFailureReason.Unreadable, outcome.report.failures.single().reason)
         assertTrue(dbFile.exists())
     }
 
     @Test
     fun `a second run after a partial failure produces exactly one copy of everything`() = runTest {
         seedVault()
-        vaultContextRepository.setContextAndLastInteracted(vaultId)
         seed(title = "Fine", blob = passwordJson("ada", "https://example.com", "pw"), type = 1)
-        seed(title = "Broken", blob = byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13), type = 1)
+        seed(title = "Broken", blob = undecryptableBlob(), type = 1)
 
         assertIs<LegacyMigrationOutcome.Migrated>(useCase())
         val afterFirst = loginRepository.observeLogins().first().map { it.name }
@@ -425,7 +369,6 @@ class LegacyMigrationEndToEndTest {
     @Test
     fun `migrates a five hundred item database completely`() = runTest {
         seedVault()
-        vaultContextRepository.setContextAndLastInteracted(vaultId)
         repeat(500) { index ->
             seed(
                 title = "Entry $index",
@@ -445,13 +388,12 @@ class LegacyMigrationEndToEndTest {
     @Test
     fun `deletes a stale v2 development database without importing anything`() = runTest {
         seedVault()
-        vaultContextRepository.setContextAndLastInteracted(vaultId)
         // A file that exists but has no SecureElement table, the shape left behind by the
         // ItemDatabase rename. It has to be a database that really opens and really has no such
         // table, because that is the only evidence that earns the verdict that deletes it. A file of
-        // arbitrary bytes would be a corrupt file, which the probe answers null for and which must
-        // be left exactly where it was found.
-        database.close()
+        // arbitrary bytes would be a corrupt file, which comes back Unreadable and which must be
+        // left exactly where it was found. Nothing has the path open yet: Room waits for its first
+        // query.
         BundledSQLiteDriver().open(dbFile.absolutePath).use { connection ->
             connection.execSQL("CREATE TABLE Leftover (id INTEGER PRIMARY KEY)")
         }
@@ -459,40 +401,42 @@ class LegacyMigrationEndToEndTest {
         assertEquals(LegacyMigrationOutcome.NothingToMigrate, useCase())
         assertTrue(loginRepository.observeLogins().first().isEmpty())
         assertFalse(dbFile.exists())
-        assertFalse(keyStoreCleared)
+        // The alias goes with the file on every path that deletes it. Nothing it could open is left
+        // on disk, and the run that finds no file at all can no longer reach it.
+        assertTrue(legacyKeyRepository.deleted)
     }
 
     /**
-     * The probe's contract is three-valued on purpose: true, false, or null for a file it could
-     * not even open. Null is not a no. `LegacyItemRepositoryImpl.state()` only reaches `NotLegacy`,
-     * the verdict that deletes the file, on a provable false; a file it cannot inspect at all has
-     * to fall to `Unreadable` and be left standing, because a corrupt page and a half-restored
-     * backup fail to open exactly the way a foreign file does, and answering "no v1 data here" on
-     * that guess would throw away a user's only copy of their data.
+     * `Unreadable` is not a zero, and keeping the two apart is what makes the deletion safe. Only a
+     * count that was actually taken reaches `DatabaseEmpty`, the failure that deletes the file; a
+     * file that cannot be opened at all has to fall to `DatabaseUnreadable` and be left standing,
+     * because a corrupt page and a half-restored backup fail to open exactly the way a foreign file
+     * does, and answering "no v1 data here" on that guess would throw away a user's only copy of
+     * their data.
      *
-     * Four arbitrary bytes are not a SQLite file, so the production probe hits its own catch and
-     * answers null, which is the one verdict nothing else in this suite drives.
+     * Four arbitrary bytes are not a SQLite file, so Room throws on the first query and the read
+     * answers Unreadable, which is the one verdict nothing else in this suite drives.
      */
     @Test
     fun `keeps a file it could not inspect at all`() = runTest {
         seedVault()
-        vaultContextRepository.setContextAndLastInteracted(vaultId)
         dbFile.writeBytes(byteArrayOf(0, 1, 2, 3))
 
         assertIs<LegacyMigrationOutcome.Failed>(useCase())
         assertTrue(dbFile.exists())
-        assertFalse(keyStoreCleared)
+        assertFalse(legacyKeyRepository.deleted)
     }
 
     @Test
     fun `does nothing at all when no legacy file exists`() = runTest {
         seedVault()
-        vaultContextRepository.setContextAndLastInteracted(vaultId)
-        database.close()
-        databaseFiles.delete()
+        databaseProvider.delete()
 
         assertEquals(LegacyMigrationOutcome.NothingToMigrate, useCase())
         assertNull(loginRepository.observeLogins().first().firstOrNull())
-        assertFalse(keyStoreCleared)
+        // Nothing was deleted, because there was nothing to delete, so the alias has no reason to go
+        // and no file appeared at `dbFile` for the next run to find.
+        assertFalse(legacyKeyRepository.deleted)
+        assertFalse(dbFile.exists())
     }
 }

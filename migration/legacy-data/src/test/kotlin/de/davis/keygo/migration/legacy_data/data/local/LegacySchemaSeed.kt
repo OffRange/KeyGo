@@ -1,52 +1,82 @@
 package de.davis.keygo.migration.legacy_data.data.local
 
+import android.app.Instrumentation
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.res.AssetManager
+import androidx.room3.testing.MigrationTestHelper
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
-import androidx.sqlite.execSQL
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import de.davis.keygo.migration.legacy_data.data.local.datasource.LegacyDatabase
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.runBlocking
 import java.io.File
+import java.nio.file.Path
+import java.nio.file.Paths
 
-private val json = Json { ignoreUnknownKeys = true }
+/**
+ * Where v1's exported schema JSON lives, handed over by the `Test` task in `build.gradle.kts`.
+ *
+ * A system property rather than a relative path, because a relative path only resolves while the
+ * working directory happens to be the module directory, which is true under Gradle and not
+ * guaranteed in an IDE run configuration.
+ */
+internal val LEGACY_SCHEMA_DIR: Path = Paths.get(
+    checkNotNull(System.getProperty("legacySchemaDir")) {
+        "legacySchemaDir is unset; the Test task in build.gradle.kts is what supplies it"
+    },
+).resolve(LegacyDatabase::class.qualifiedName)
+
+private fun schemaInstrumentation(): Instrumentation {
+    val assets = mockk<AssetManager>()
+    every { assets.open(any()) } answers {
+        LEGACY_SCHEMA_DIR.parent.resolve(firstArg<String>()).toFile().inputStream()
+    }
+
+    val context = object : ContextWrapper(null) {
+        override fun getAssets(): AssetManager = assets
+
+        // Room asks for ActivityManager to decide whether it is on a low RAM device, and reads an
+        // absent service the same as a device that is not one.
+        override fun getSystemService(name: String): Any? = null
+
+        override fun getApplicationContext(): Context = this
+    }
+
+    return object : Instrumentation() {
+        override fun getContext(): Context = context
+
+        override fun getTargetContext(): Context = context
+    }
+}
 
 /**
  * Writes a file at [file] that looks exactly like one a v1 build at [version] would have left
  * behind, and hands back the open connection so the caller can seed rows into it.
  *
- * Built by replaying v1's own exported schema JSON rather than with Room's `MigrationTestHelper`,
- * whose Android artifact takes an `android.app.Instrumentation` in every constructor and so cannot
- * run on a plain JVM test. Replaying `createSql` and `setupQueries` is what the helper does anyway,
- * and it keeps the seed honest: it comes from v1's export, not from the ported entities under test.
+ * Room's own `MigrationTestHelper` does the writing, from v1's exported schema rather than from the
+ * ported entities under test, which is what keeps the proof honest. Versions 1 and 2 in that
+ * directory *are* v1's own files, copied in verbatim so Room can generate the 1-to-2 migration from
+ * them, which is why there is one copy of them rather than two.
  *
- * One copy for the whole test source set. The shape of that JSON is a detail every seeding test
- * would otherwise have to know, and three copies of it are three places to update when one of them
- * is wrong.
+ * Only the helper's `createDatabase` is used. Its `runMigrationsAndValidate` is deliberately left
+ * alone, because it takes the migration list from the caller: the tests instead open the seeded file
+ * through [de.davis.keygo.migration.legacy_data.data.local.datasource.AndroidLegacyDatabaseProvider],
+ * which validates the post-migration schema through real Room *and* fails if production ever stops
+ * registering the hand-written 2-to-3. See [LegacyMigrationTest].
+ *
+ * Not suspending, though `createDatabase` is, so that the handful of callers which have no reason to
+ * be coroutines do not have to become them.
  */
-internal fun seedLegacyDatabase(file: File, version: Int): SQLiteConnection {
-    val schema = json
-        .parseToJsonElement(File("src/test/resources/legacy-schemas/$version.json").readText())
-        .jsonObject
-        .getValue("database")
-        .jsonObject
-
-    return BundledSQLiteDriver().open(file.absolutePath).apply {
-        schema.getValue("entities").jsonArray.forEach { entity ->
-            val table = entity.jsonObject.getValue("tableName").jsonPrimitive.content
-            execSQL(entity.jsonObject.createSqlFor(table))
-            entity.jsonObject.getValue("indices").jsonArray.forEach { index ->
-                execSQL(index.jsonObject.createSqlFor(table))
-            }
-        }
-        schema.getValue("setupQueries").jsonArray.forEach { execSQL(it.jsonPrimitive.content) }
-        execSQL("PRAGMA user_version = $version")
-    }
+internal fun seedLegacyDatabase(file: File, version: Int): SQLiteConnection = runBlocking {
+    MigrationTestHelper(
+        instrumentation = schemaInstrumentation(),
+        file = file,
+        driver = BundledSQLiteDriver(),
+        databaseClass = LegacyDatabase::class,
+    ).createDatabase(version)
 }
-
-private fun JsonObject.createSqlFor(tableName: String): String =
-    getValue("createSql").jsonPrimitive.content.replace("\${TABLE_NAME}", tableName)
 
 /** The version stamp read straight off [file], which is how a test sees whether Room ran. */
 internal fun userVersionOf(file: File): Int =

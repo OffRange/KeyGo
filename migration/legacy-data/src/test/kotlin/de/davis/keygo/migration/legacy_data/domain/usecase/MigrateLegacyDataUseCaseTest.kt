@@ -19,7 +19,10 @@ import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformatio
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.model.CryptoScopeError
 import de.davis.keygo.core.util.Result
-import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
+import de.davis.keygo.migration.legacy_data.data.FakeLegacyCipher
+import de.davis.keygo.migration.legacy_data.data.FakeLegacyItemRepository
+import de.davis.keygo.migration.legacy_data.data.FakeLegacyKeyRepository
+import de.davis.keygo.migration.legacy_data.data.FakeRegistrableDomainResolver
 import de.davis.keygo.migration.legacy_data.data.crypto.LegacyCipher
 import de.davis.keygo.migration.legacy_data.data.mapper.LegacyItemConverter
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyDetail
@@ -28,7 +31,6 @@ import de.davis.keygo.migration.legacy_data.domain.model.LegacyItem
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyMigrationOutcome
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyReadFailure
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyRowFailure
-import de.davis.keygo.migration.legacy_data.domain.repository.LegacyDatabaseState
 import de.davis.keygo.migration.legacy_data.domain.repository.LegacyReadResult
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -37,20 +39,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
-
-/** Hands the blob straight back, so a legacy password arrives as its own plaintext. */
-private class PassthroughLegacyCipher : LegacyCipher {
-    override fun decrypt(blob: ByteArray): ByteArray? = blob
-}
-
-/** Fails every blob, which is how a v1 row whose nested password is unrecoverable is modelled. */
-private class FailingLegacyCipher : LegacyCipher {
-    override fun decrypt(blob: ByteArray): ByteArray? = null
-}
-
-private class StubDomainResolver : RegistrableDomainResolver {
-    override fun resolve(domain: String): String? = "example.com"
-}
 
 /**
  * Refuses to open a scope at all, standing in for a vault key that will not unwrap. Nothing about
@@ -81,7 +69,7 @@ class MigrateLegacyDataUseCaseTest {
     private val vaultId: VaultId = newVaultId()
 
     private val legacyRepository = FakeLegacyItemRepository()
-    private val keyStoreCleaner = FakeLegacyKeyStoreCleaner()
+    private val keyRepository = FakeLegacyKeyRepository()
     private val transactionRunner = FakeItemTransactionRunner()
     private val loginRepository = FakeLoginRepository()
     private val creditCardRepository = FakeCreditCardRepository()
@@ -89,13 +77,13 @@ class MigrateLegacyDataUseCaseTest {
     private val vaultContextRepository = FakeVaultContextRepository()
 
     private fun useCase(
-        cipher: LegacyCipher = PassthroughLegacyCipher(),
+        cipher: LegacyCipher = FakeLegacyCipher(),
         scopeProvider: CryptographicScopeProvider =
             FakeCryptographicScopeProvider(FakeItemRepository()),
     ) = MigrateLegacyDataUseCase(
         legacyItemRepository = legacyRepository,
-        legacyKeyStoreCleaner = keyStoreCleaner,
-        converter = LegacyItemConverter(cipher, StubDomainResolver()),
+        legacyKeyRepository = keyRepository,
+        converter = LegacyItemConverter(cipher, FakeRegistrableDomainResolver()),
         cryptographicScopeProvider = scopeProvider,
         vaultRepository = vaultRepository,
         vaultContextRepository = vaultContextRepository,
@@ -115,13 +103,19 @@ class MigrateLegacyDataUseCaseTest {
         vaultContextRepository.setContextAndLastInteracted(vaultId)
     }
 
-    private fun password(id: Long, title: String) = LegacyItem(
+    private fun legacyItem(id: Long, title: String, detail: LegacyDetail) = LegacyItem(
         legacyId = id,
         title = title,
         favorite = false,
         createdAt = 1_700_000_000_000L,
         modifiedAt = null,
         tags = emptySet(),
+        detail = detail,
+    )
+
+    private fun password(id: Long, title: String) = legacyItem(
+        id = id,
+        title = title,
         detail = LegacyDetail.Password(
             username = "ada",
             origin = "https://example.com",
@@ -130,13 +124,9 @@ class MigrateLegacyDataUseCaseTest {
         ),
     )
 
-    private fun creditCard(id: Long, title: String) = LegacyItem(
-        legacyId = id,
+    private fun creditCard(id: Long, title: String) = legacyItem(
+        id = id,
         title = title,
-        favorite = false,
-        createdAt = 1_700_000_000_000L,
-        modifiedAt = null,
-        tags = emptySet(),
         detail = LegacyDetail.CreditCard(
             firstName = "Ada",
             lastName = "Lovelace",
@@ -153,34 +143,57 @@ class MigrateLegacyDataUseCaseTest {
         legacyRepository.readResult = Result.Success(LegacyReadResult(items, failures))
     }
 
+    /**
+     * A clean install reaches the same branch an emptied file does, by way of a provider with no
+     * file to hand out. What keeps it apart is that there is nothing to delete: the deletion answers
+     * no, and the alias stays put rather than being cleaned up on an install that never ran v1.
+     */
     @Test
     fun `reports nothing to migrate when the legacy file is absent`() = runTest {
-        legacyRepository.state = LegacyDatabaseState.Absent
+        legacyRepository.readResult = Result.Failure(LegacyReadFailure.DatabaseEmpty)
+        legacyRepository.deleteSucceeds = false
 
         assertEquals(LegacyMigrationOutcome.NothingToMigrate, useCase()())
         assertFalse(legacyRepository.databaseDeleted)
-        assertFalse(keyStoreCleaner.deleted)
-        assertEquals(0, legacyRepository.readCalls)
+        assertFalse(keyRepository.deleted)
     }
 
+    /**
+     * The alias goes with the file. An already-imported v1 file reaches this branch on the run
+     * after the one that emptied it, and leaving the key behind there would strand it in the
+     * Keystore with nothing left able to reach it. Safe on the same evidence the deletion is: the
+     * rows were counted and there are none for the key to have protected.
+     */
     @Test
-    fun `deletes a stale non legacy database and reports nothing to migrate`() = runTest {
-        legacyRepository.state = LegacyDatabaseState.NotLegacy
+    fun `deletes an empty database and its legacy key, and reports nothing to migrate`() = runTest {
+        legacyRepository.readResult = Result.Failure(LegacyReadFailure.DatabaseEmpty)
 
         assertEquals(LegacyMigrationOutcome.NothingToMigrate, useCase()())
         assertTrue(legacyRepository.databaseDeleted)
-        assertFalse(keyStoreCleaner.deleted)
-        assertEquals(0, legacyRepository.readCalls)
+        assertTrue(keyRepository.deleted)
     }
 
+    /** The key may never outlive the ciphertext, so a file that would not go keeps its alias. */
+    @Test
+    fun `keeps the legacy key when the empty database could not be deleted`() = runTest {
+        legacyRepository.readResult = Result.Failure(LegacyReadFailure.DatabaseEmpty)
+        legacyRepository.deleteSucceeds = false
+
+        assertEquals(LegacyMigrationOutcome.NothingToMigrate, useCase()())
+        assertFalse(keyRepository.deleted)
+    }
+
+    /**
+     * Never folded into the branch above. A file that will not open says nothing about what is in
+     * it, and answering "nothing to migrate" would delete a copy nobody has ever read.
+     */
     @Test
     fun `leaves an unreadable database exactly where it found it`() = runTest {
-        legacyRepository.state = LegacyDatabaseState.Unreadable
+        legacyRepository.readResult = Result.Failure(LegacyReadFailure.DatabaseUnreadable)
 
         assertIs<LegacyMigrationOutcome.Failed>(useCase()())
         assertFalse(legacyRepository.databaseDeleted)
-        assertFalse(keyStoreCleaner.deleted)
-        assertEquals(0, legacyRepository.readCalls)
+        assertFalse(keyRepository.deleted)
     }
 
     @Test
@@ -195,7 +208,7 @@ class MigrateLegacyDataUseCaseTest {
         assertFalse(outcome.report.fileRetained)
         assertEquals(listOf(1L, 2L), legacyRepository.prunedIds)
         assertTrue(legacyRepository.databaseDeleted)
-        assertTrue(keyStoreCleaner.deleted)
+        assertTrue(keyRepository.deleted)
         assertEquals(2, loginRepository.observeLogins().first().size)
     }
 
@@ -222,22 +235,11 @@ class MigrateLegacyDataUseCaseTest {
     }
 
     @Test
-    fun `reports how many rows the sanitizer had to repair`() = runTest {
-        seedVault()
-        legacyRepository.repairedRows = 3
-        seedRows(items = listOf(password(1L, "One")))
-
-        val outcome = assertIs<LegacyMigrationOutcome.Migrated>(useCase()())
-
-        assertEquals(3, outcome.report.repairedRows)
-    }
-
-    @Test
     fun `keeps the database and the key when a row failed to read`() = runTest {
         seedVault()
         seedRows(
             items = listOf(password(1L, "Fine")),
-            failures = listOf(LegacyRowFailure(2L, "Broken", LegacyFailureReason.Undecryptable)),
+            failures = listOf(LegacyRowFailure(2L, "Broken", LegacyFailureReason.Unreadable)),
         )
 
         val outcome = assertIs<LegacyMigrationOutcome.Migrated>(useCase()())
@@ -246,7 +248,7 @@ class MigrateLegacyDataUseCaseTest {
         assertEquals(1, outcome.report.failures.size)
         assertEquals(listOf(1L), legacyRepository.prunedIds)
         assertFalse(legacyRepository.databaseDeleted)
-        assertFalse(keyStoreCleaner.deleted)
+        assertFalse(keyRepository.deleted)
     }
 
     @Test
@@ -254,7 +256,7 @@ class MigrateLegacyDataUseCaseTest {
         seedVault()
         seedRows(
             items = listOf(password(1L, "Fine")),
-            failures = listOf(LegacyRowFailure(2L, "Broken", LegacyFailureReason.Undecryptable)),
+            failures = listOf(LegacyRowFailure(2L, "Broken", LegacyFailureReason.Unreadable)),
         )
         // The count is forced to claim the file is empty. A row we know did not come across
         // outranks it: a file we could not read in full is not deleted on a row count's say-so.
@@ -264,7 +266,7 @@ class MigrateLegacyDataUseCaseTest {
 
         assertEquals(1, outcome.report.failures.size)
         assertFalse(legacyRepository.databaseDeleted)
-        assertFalse(keyStoreCleaner.deleted)
+        assertFalse(keyRepository.deleted)
     }
 
     @Test
@@ -273,7 +275,7 @@ class MigrateLegacyDataUseCaseTest {
         seedRows(items = listOf(password(1L, "Fine")))
 
         val outcome = assertIs<LegacyMigrationOutcome.Migrated>(
-            useCase(cipher = FailingLegacyCipher())(),
+            useCase(cipher = FakeLegacyCipher.Failing)(),
         )
 
         assertEquals(0, outcome.report.migratedItems)
@@ -283,7 +285,7 @@ class MigrateLegacyDataUseCaseTest {
         )
         assertTrue(legacyRepository.prunedIds.isEmpty())
         assertFalse(legacyRepository.databaseDeleted)
-        assertFalse(keyStoreCleaner.deleted)
+        assertFalse(keyRepository.deleted)
     }
 
     @Test
@@ -297,7 +299,7 @@ class MigrateLegacyDataUseCaseTest {
         assertEquals("database is locked", outcome.cause.message)
         assertTrue(legacyRepository.prunedIds.isEmpty())
         assertFalse(legacyRepository.databaseDeleted)
-        assertFalse(keyStoreCleaner.deleted)
+        assertFalse(keyRepository.deleted)
     }
 
     @Test
@@ -310,7 +312,7 @@ class MigrateLegacyDataUseCaseTest {
 
         assertTrue(legacyRepository.prunedIds.isEmpty())
         assertFalse(legacyRepository.databaseDeleted)
-        assertFalse(keyStoreCleaner.deleted)
+        assertFalse(keyRepository.deleted)
     }
 
     @Test
@@ -319,7 +321,7 @@ class MigrateLegacyDataUseCaseTest {
 
         assertIs<LegacyMigrationOutcome.Failed>(useCase()())
         assertFalse(legacyRepository.databaseDeleted)
-        assertFalse(keyStoreCleaner.deleted)
+        assertFalse(keyRepository.deleted)
     }
 
     @Test
@@ -332,7 +334,7 @@ class MigrateLegacyDataUseCaseTest {
         assertEquals(0, transactionRunner.transactionCount)
         assertTrue(legacyRepository.prunedIds.isEmpty())
         assertFalse(legacyRepository.databaseDeleted)
-        assertFalse(keyStoreCleaner.deleted)
+        assertFalse(keyRepository.deleted)
     }
 
     @Test
@@ -344,14 +346,14 @@ class MigrateLegacyDataUseCaseTest {
 
         assertEquals(0, outcome.report.migratedItems)
         assertTrue(legacyRepository.databaseDeleted)
-        assertTrue(keyStoreCleaner.deleted)
+        assertTrue(keyRepository.deleted)
     }
 
     @Test
     fun `a second run after a partial failure imports nothing new`() = runTest {
         seedVault()
         seedRows(
-            failures = listOf(LegacyRowFailure(2L, "Broken", LegacyFailureReason.Undecryptable)),
+            failures = listOf(LegacyRowFailure(2L, "Broken", LegacyFailureReason.Unreadable)),
         )
 
         val outcome = assertIs<LegacyMigrationOutcome.Migrated>(useCase()())
@@ -359,7 +361,7 @@ class MigrateLegacyDataUseCaseTest {
         assertEquals(0, outcome.report.migratedItems)
         assertTrue(loginRepository.observeLogins().first().isEmpty())
         assertFalse(legacyRepository.databaseDeleted)
-        assertFalse(keyStoreCleaner.deleted)
+        assertFalse(keyRepository.deleted)
     }
 
     @Test
@@ -370,7 +372,7 @@ class MigrateLegacyDataUseCaseTest {
         assertIs<LegacyMigrationOutcome.Failed>(useCase()())
 
         assertFalse(legacyRepository.databaseDeleted)
-        assertFalse(keyStoreCleaner.deleted)
+        assertFalse(keyRepository.deleted)
         assertEquals(0, transactionRunner.transactionCount)
     }
 
@@ -382,7 +384,7 @@ class MigrateLegacyDataUseCaseTest {
         assertIs<LegacyMigrationOutcome.Failed>(useCase()())
 
         assertFalse(legacyRepository.databaseDeleted)
-        assertFalse(keyStoreCleaner.deleted)
+        assertFalse(keyRepository.deleted)
     }
 
     @Test
@@ -399,11 +401,11 @@ class MigrateLegacyDataUseCaseTest {
 
         assertEquals(1, outcome.report.migratedItems)
         assertFalse(legacyRepository.databaseDeleted)
-        assertFalse(keyStoreCleaner.deleted)
+        assertFalse(keyRepository.deleted)
         assertTrue(
             outcome.report.fileRetained,
             "Every row imported, but the file survived. That has to be as loud as a row failure, " +
-                "or the next unlock reimports the whole vault with nothing in logcat to explain why.",
+                    "or the next unlock reimports the whole vault with nothing in logcat to explain why.",
         )
     }
 
@@ -417,7 +419,7 @@ class MigrateLegacyDataUseCaseTest {
 
         assertEquals(1, outcome.report.migratedItems)
         assertFalse(legacyRepository.databaseDeleted)
-        assertFalse(keyStoreCleaner.deleted)
+        assertFalse(keyRepository.deleted)
         assertTrue(outcome.report.fileRetained)
     }
 
@@ -430,7 +432,7 @@ class MigrateLegacyDataUseCaseTest {
         val outcome = assertIs<LegacyMigrationOutcome.Migrated>(useCase()())
 
         assertFalse(legacyRepository.databaseDeleted)
-        assertFalse(keyStoreCleaner.deleted)
+        assertFalse(keyRepository.deleted)
         assertTrue(outcome.report.fileRetained)
     }
 
@@ -444,7 +446,7 @@ class MigrateLegacyDataUseCaseTest {
 
         assertEquals(1, outcome.report.migratedItems)
         assertFalse(legacyRepository.databaseDeleted)
-        assertFalse(keyStoreCleaner.deleted)
+        assertFalse(keyRepository.deleted)
         assertTrue(outcome.report.fileRetained)
     }
 }

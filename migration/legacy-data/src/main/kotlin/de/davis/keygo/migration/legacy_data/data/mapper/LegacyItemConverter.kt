@@ -19,12 +19,12 @@ import de.davis.keygo.migration.legacy_data.data.crypto.LegacyCipher
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyDetail
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyItem
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyStrength
+import org.koin.core.annotation.Single
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import kotlin.time.Clock
 import kotlin.time.Instant
-import org.koin.core.annotation.Single
 
 @Single
 internal class LegacyItemConverter(
@@ -110,8 +110,12 @@ internal class LegacyItemConverter(
         note = null,
         pinned = item.favorite,
         holder = detail.fullName(),
+        // v1 stored whatever the user typed, separators included; v2's own entry form only ever
+        // stores digits (enforced by CardNumberInputTransformation), so migration normalizes here
+        // too rather than handing the rest of v2 a card number shape it never otherwise produces.
         cardNumber = detail.cardNumber
-            ?.takeIf { it.isNotBlank() }
+            ?.filter(Char::isDigit)
+            ?.takeIf { it.isNotEmpty() }
             ?.let { CreditCard.CardNumber.encrypt(it) },
         cvv = detail.cvv
             ?.takeIf { it.isNotBlank() }
@@ -119,6 +123,21 @@ internal class LegacyItemConverter(
         expirationDate = detail.expirationDate?.toYearMonthOrNull(),
         timestamp = item.toTimestamp(),
     )
+
+    /**
+     * v1 and v2 both score with nbvcxz over the same `basicScore`: v1 stored
+     * `Strength.entries[basicScore]`, v2 stores `PasswordScore(basicScore + 1)`. The mapping is
+     * therefore exact and needs no re-estimation, which also keeps a migration of hundreds of items
+     * from running nbvcxz hundreds of times.
+     */
+    private fun LegacyStrength?.toPasswordScore(): PasswordScore = when (this) {
+        LegacyStrength.RIDICULOUS -> PasswordScore.Ridiculous
+        LegacyStrength.WEAK -> PasswordScore.Weak
+        LegacyStrength.MODERATE -> PasswordScore.Moderate
+        LegacyStrength.STRONG -> PasswordScore.Strong
+        LegacyStrength.VERY_STRONG -> PasswordScore.Excellent
+        null -> PasswordScore.None
+    }
 
     /** Mirrors v1's `Name.getFullName`, which returned null unless both halves were present. */
     private fun LegacyDetail.CreditCard.fullName(): String? =
@@ -142,19 +161,4 @@ internal class LegacyItemConverter(
         // and v2's CreateNewOrUpdateCreditCardUseCase.
         val EXPIRATION_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MM/yy")
     }
-}
-
-/**
- * v1 and v2 both score with nbvcxz over the same `basicScore`: v1 stored
- * `Strength.entries[basicScore]`, v2 stores `PasswordScore(basicScore + 1)`. The mapping is
- * therefore exact and needs no re-estimation, which also keeps a migration of hundreds of items
- * from running nbvcxz hundreds of times.
- */
-internal fun LegacyStrength?.toPasswordScore(): PasswordScore = when (this) {
-    LegacyStrength.RIDICULOUS -> PasswordScore.Ridiculous
-    LegacyStrength.WEAK -> PasswordScore.Weak
-    LegacyStrength.MODERATE -> PasswordScore.Moderate
-    LegacyStrength.STRONG -> PasswordScore.Strong
-    LegacyStrength.VERY_STRONG -> PasswordScore.Excellent
-    null -> PasswordScore.None
 }

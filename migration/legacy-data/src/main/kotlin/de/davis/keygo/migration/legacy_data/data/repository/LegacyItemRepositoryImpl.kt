@@ -2,23 +2,19 @@ package de.davis.keygo.migration.legacy_data.data.repository
 
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
-import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.migration.legacy_data.data.crypto.LegacyCipher
-import de.davis.keygo.migration.legacy_data.data.crypto.LegacyKeyProvider
 import de.davis.keygo.migration.legacy_data.data.json.LegacyDetailParser
 import de.davis.keygo.migration.legacy_data.data.local.dao.LegacyElementDao
 import de.davis.keygo.migration.legacy_data.data.local.datasource.LegacyDatabaseProvider
-import de.davis.keygo.migration.legacy_data.data.local.datasource.LegacySecureElementProbe
 import de.davis.keygo.migration.legacy_data.data.local.pojo.LegacyElementWithTags
 import de.davis.keygo.migration.legacy_data.data.mapper.toLegacyItem
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyFailureReason
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyItem
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyReadFailure
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyRowFailure
-import de.davis.keygo.migration.legacy_data.domain.repository.LegacyDatabaseFiles
-import de.davis.keygo.migration.legacy_data.domain.repository.LegacyDatabaseState
 import de.davis.keygo.migration.legacy_data.domain.repository.LegacyItemRepository
+import de.davis.keygo.migration.legacy_data.domain.repository.LegacyKeyRepository
 import de.davis.keygo.migration.legacy_data.domain.repository.LegacyReadResult
 import org.koin.core.annotation.Single
 import kotlin.coroutines.cancellation.CancellationException
@@ -35,52 +31,22 @@ private const val PRUNE_CHUNK_SIZE = 500
 @Single
 internal class LegacyItemRepositoryImpl(
     private val databaseProvider: LegacyDatabaseProvider,
-    private val secureElementProbe: LegacySecureElementProbe,
-    private val keyProvider: LegacyKeyProvider,
+    private val keyRepository: LegacyKeyRepository,
     private val cipher: LegacyCipher,
     private val parser: LegacyDetailParser,
-    private val databaseFiles: LegacyDatabaseFiles,
 ) : LegacyItemRepository {
 
-    override val repairedRows: Int get() = databaseProvider.repairedRows
-
-    override suspend fun state(): LegacyDatabaseState {
-        // Asked first, and of the file rather than of the provider. The provider also comes back
-        // empty for a file that is simply not there, and `Absent` and `Unreadable` lead to opposite
-        // places: one is a clean install with nothing to do, the other is a file we must not touch.
-        if (!databaseFiles.exists()) return LegacyDatabaseState.Absent
-
-        // NotLegacy is the verdict that deletes the file, so it has to rest on evidence rather than
-        // on an inference from something going wrong. The probe reads the closed file and answers
-        // the only question that proves there is no v1 data in it. `== false` and not `!= true` on
-        // purpose: a file the probe could not read at all answers null, and null is not a no.
-        if (secureElementProbe.hasSecureElementTable() == false)
-            return LegacyDatabaseState.NotLegacy
-
-        // Past that check the provider can only come back empty for a file it could not repair.
-        if (databaseProvider.get() == null) return LegacyDatabaseState.Unreadable
-
-        // Room opens the file on the first query rather than when the object is built, so querying
-        // is what turns up everything else that can go wrong: a corrupt page, a disk that fills up
-        // during the 2-to-3 recreate, a table Room refuses to validate. None of those say the file
-        // holds no v1 data, so none of them may end up at NotLegacy.
-        return withDao { it.count() }.fold(
-            onSuccess = { LegacyDatabaseState.Present },
-            onFailure = { LegacyDatabaseState.Unreadable },
-        )
-    }
-
     override suspend fun readAll(): Result<LegacyReadResult, LegacyReadFailure> = resultBinding {
-        // Probed once for the whole run, never once per row. `LegacyCipher.decrypt` folds four
-        // different failures into one null, and a gone alias is the only one of them that says
-        // nothing in this file is recoverable. Letting it arrive as one Undecryptable per row would
-        // tell the user every entry was individually damaged when the entries are intact, and it
-        // could not be told apart from a file that really is corrupt end to end.
-        //
-        // Note this does not gate the 2-to-3 recreate: `state()`'s own `count()` query is the first
-        // one against the file and has already run the recreate by the time this is reached. What
-        // this probe still buys is not putting the row loop through a key that is already known gone.
-        keyProvider.secretKey().asResult(LegacyReadFailure.KeyUnavailable).bind()
+        // Asked first, and it is what decides whether the file is deleted. Zero is the destructive
+        // verdict, so it rests on a count that was actually taken: a file that will not open fails
+        // as DatabaseUnreadable here and never reaches the comparison.
+        (remainingCount().bind() > 0).asResult(LegacyReadFailure.DatabaseEmpty).bind()
+
+        // Probed once for the whole run rather than inferred from a run of nulls; see
+        // [LegacyReadFailure.KeyUnavailable]. This does not gate the 2-to-3 recreate, which the
+        // count above already triggered as the first query against the file. What it still buys is
+        // not putting the row loop through a key that is already known gone.
+        keyRepository.secretKey().asResult(LegacyReadFailure.KeyUnavailable).bind()
 
         val rows = withDao { it.getAllWithTags() }.bind()
 
@@ -88,15 +54,9 @@ internal class LegacyItemRepositoryImpl(
         val failures = mutableListOf<LegacyRowFailure>()
 
         for (row in rows) {
-            val decrypted = cipher.decrypt(row.element.data)
-            if (decrypted == null) {
-                failures += row.failure(LegacyFailureReason.Undecryptable)
-                continue
-            }
-
-            val detail = parser.parse(decrypted)
+            val detail = cipher.decrypt(row.element.data)?.let(parser::parse)
             if (detail == null) {
-                failures += row.failure(LegacyFailureReason.Unparseable)
+                failures += row.failure(LegacyFailureReason.Unreadable)
                 continue
             }
 
@@ -108,26 +68,29 @@ internal class LegacyItemRepositoryImpl(
 
     override suspend fun prune(legacyIds: List<Long>): Result<Unit, LegacyReadFailure> {
         if (legacyIds.isEmpty()) return Result.Success(Unit)
-        return withDao { dao -> legacyIds.chunked(PRUNE_CHUNK_SIZE).forEach { dao.deleteByIds(it) } }
+        return withDao { dao ->
+            legacyIds.chunked(PRUNE_CHUNK_SIZE).forEach { dao.deleteByIds(it) }
+        }
     }
 
     override suspend fun remainingCount(): Result<Int, LegacyReadFailure> = withDao { it.count() }
 
-    override fun deleteDatabase(): Boolean {
-        databaseProvider.close()
-        return databaseFiles.delete()
-    }
+    override fun deleteDatabase(): Boolean = databaseProvider.delete()
 
     /**
-     * Runs [block] against the legacy DAO, turning both ways the file can refuse to be read into
-     * the same failure: the provider could not repair it, or Room could not validate it on the
-     * first query. Neither leaves anything to import, and neither should surface as a raw throw.
+     * Runs [block] against the legacy DAO, turning the ways the file can refuse to be read into a
+     * failure rather than a raw throw.
+     *
+     * The two are not the same failure. No provider means no file to open at all, which is a clean
+     * install and holds nothing to lose, so it answers [LegacyReadFailure.DatabaseEmpty]. A file
+     * that is there but that Room could not validate on the first query answers
+     * [LegacyReadFailure.DatabaseUnreadable] and is left standing.
      */
     private suspend fun <T> withDao(
         block: suspend (LegacyElementDao) -> T,
     ): Result<T, LegacyReadFailure> {
         val dao = databaseProvider.get()?.legacyElementDao()
-            ?: return Result.Failure(LegacyReadFailure.DatabaseUnreadable)
+            ?: return Result.Failure(LegacyReadFailure.DatabaseEmpty)
 
         return try {
             Result.Success(block(dao))

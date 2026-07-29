@@ -1,10 +1,8 @@
-package de.davis.keygo.migration.legacy_data.domain.usecase
+package de.davis.keygo.migration.legacy_data.data
 
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyReadFailure
-import de.davis.keygo.migration.legacy_data.domain.repository.LegacyDatabaseState
 import de.davis.keygo.migration.legacy_data.domain.repository.LegacyItemRepository
-import de.davis.keygo.migration.legacy_data.domain.repository.LegacyKeyStoreCleaner
 import de.davis.keygo.migration.legacy_data.domain.repository.LegacyReadResult
 
 /**
@@ -17,8 +15,6 @@ import de.davis.keygo.migration.legacy_data.domain.repository.LegacyReadResult
  */
 internal class FakeLegacyItemRepository : LegacyItemRepository {
 
-    var state: LegacyDatabaseState = LegacyDatabaseState.Present
-
     var readResult: Result<LegacyReadResult, LegacyReadFailure> =
         Result.Success(LegacyReadResult(emptyList(), emptyList()))
 
@@ -30,22 +26,12 @@ internal class FakeLegacyItemRepository : LegacyItemRepository {
     /** What [deleteDatabase] answers, so a file that refuses to go away can be modelled. */
     var deleteSucceeds: Boolean = true
 
-    override var repairedRows: Int = 0
-
     val prunedIds = mutableListOf<Long>()
 
     var databaseDeleted: Boolean = false
         private set
 
-    var readCalls: Int = 0
-        private set
-
-    override suspend fun state(): LegacyDatabaseState = state
-
-    override suspend fun readAll(): Result<LegacyReadResult, LegacyReadFailure> {
-        readCalls++
-        return readResult
-    }
+    override suspend fun readAll(): Result<LegacyReadResult, LegacyReadFailure> = readResult
 
     override suspend fun prune(legacyIds: List<Long>): Result<Unit, LegacyReadFailure> {
         if (pruneResult is Result.Success) prunedIds += legacyIds
@@ -62,18 +48,8 @@ internal class FakeLegacyItemRepository : LegacyItemRepository {
 
     private fun rowsInFile(): Int = when (val result = readResult) {
         is Result.Success -> result.success.items.size + result.success.failures.size -
-            prunedIds.size
+                prunedIds.size
 
         is Result.Failure -> 0
-    }
-}
-
-internal class FakeLegacyKeyStoreCleaner : LegacyKeyStoreCleaner {
-
-    var deleted: Boolean = false
-        private set
-
-    override fun deleteLegacyKey() {
-        deleted = true
     }
 }

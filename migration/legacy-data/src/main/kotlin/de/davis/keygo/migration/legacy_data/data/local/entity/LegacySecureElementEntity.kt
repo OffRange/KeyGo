@@ -1,9 +1,9 @@
 package de.davis.keygo.migration.legacy_data.data.local.entity
 
-import androidx.room.ColumnInfo
-import androidx.room.Embedded
-import androidx.room.Entity
-import androidx.room.PrimaryKey
+import androidx.room3.ColumnInfo
+import androidx.room3.Embedded
+import androidx.room3.Entity
+import androidx.room3.PrimaryKey
 
 /**
  * v1's `SecureElement`, ported so the legacy database can be read through Room instead of raw SQL.

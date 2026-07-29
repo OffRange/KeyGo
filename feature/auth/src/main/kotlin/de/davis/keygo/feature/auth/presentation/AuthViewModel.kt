@@ -21,7 +21,7 @@ import de.davis.keygo.feature.auth.presentation.model.BiometricRequest
 import de.davis.keygo.feature.auth.presentation.model.UIPasswordError
 import de.davis.keygo.migration.create_access.domain.usecase.ClearMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
-import de.davis.keygo.migration.create_access.domain.usecase.ValidateMainPassword
+import de.davis.keygo.migration.create_access.domain.usecase.ValidateMainPasswordUseCase
 import de.davis.keygo.migration.legacy_data.domain.usecase.StartLegacyDataImportUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -51,7 +51,7 @@ internal class AuthViewModel(
 
     // ---- Migration ----
     hasV1MainPassword: HasMainPasswordUseCase,
-    private val validateMainPassword: ValidateMainPassword,
+    private val validateMainPassword: ValidateMainPasswordUseCase,
     private val clearMainPasswordUseCase: ClearMainPasswordUseCase,
     private val startLegacyDataImport: StartLegacyDataImportUseCase,
     // -------------------
@@ -183,10 +183,9 @@ internal class AuthViewModel(
                         loading(setLoading = password.isNotBlank()) {
                             unlockWithPassword(
                                 password = password
-                            ).onSuccess { startLegacyDataImport() }
-                                .handleAuthenticationResult {
-                                    copyDefaultState(passwordError = UIPasswordError.Incorrect)
-                                }
+                            ).handleAuthenticationResult {
+                                copyDefaultState(passwordError = UIPasswordError.Incorrect)
+                            }
                         }
                     }
 
@@ -252,9 +251,7 @@ internal class AuthViewModel(
     ) {
         if (!authState.biometricsAvailable || !authState.useBiometrics) {
             loading {
-                createAllAccesses(password = password)
-                    .onSuccess { startLegacyDataImport() }
-                    .handleAuthenticationResult()
+                createAllAccesses(password = password).handleAuthenticationResult()
             }
 
             return
@@ -283,7 +280,10 @@ internal class AuthViewModel(
 
                 LoadingScope(
                     state = it,
-                    onSuccess = { navigationEventChannel.trySend(Unit) },
+                    onSuccess = {
+                        startLegacyDataImport()
+                        navigationEventChannel.trySend(Unit)
+                    },
                 ).apply {
                     block()
                 }.updatedState.copyDefaultState(loading = false)
@@ -299,8 +299,7 @@ internal class AuthViewModel(
             createAllAccesses(
                 password = createAccessRequest.password,
                 biometricCipher = cipher
-            ).onSuccess { startLegacyDataImport() }
-                .handleAuthenticationResult()
+            ).handleAuthenticationResult()
         }
     }
 

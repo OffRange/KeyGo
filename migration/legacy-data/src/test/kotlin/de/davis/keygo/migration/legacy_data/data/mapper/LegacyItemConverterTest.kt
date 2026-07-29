@@ -12,7 +12,8 @@ import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.util.assertSuccess
-import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
+import de.davis.keygo.migration.legacy_data.data.FakeLegacyCipher
+import de.davis.keygo.migration.legacy_data.data.FakeRegistrableDomainResolver
 import de.davis.keygo.migration.legacy_data.data.crypto.LegacyCipher
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyDetail
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyItem
@@ -27,27 +28,15 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
-/** Passes the plaintext straight through, so tests control the nested password bytes directly. */
-private class PassthroughLegacyCipher(
-    private val failFor: ByteArray? = null,
-) : LegacyCipher {
-
-    override fun decrypt(blob: ByteArray): ByteArray? =
-        if (failFor != null && blob.contentEquals(failFor)) null else blob
-}
-
-private class StubDomainResolver : RegistrableDomainResolver {
-    override fun resolve(domain: String): String? =
-        if (domain.contains("example")) "example.com" else null
-}
-
-class LegacyItemToDomainMapperTest {
+class LegacyItemConverterTest {
 
     private val vaultId = newVaultId()
     private val provider = FakeCryptographicScopeProvider(FakeItemRepository())
 
-    private fun converter(cipher: LegacyCipher = PassthroughLegacyCipher()) =
-        LegacyItemConverter(cipher = cipher, registrableDomainResolver = StubDomainResolver())
+    private fun converter(cipher: LegacyCipher = FakeLegacyCipher()) = LegacyItemConverter(
+        cipher = cipher,
+        registrableDomainResolver = FakeRegistrableDomainResolver(),
+    )
 
     private fun legacyItem(
         detail: LegacyDetail,
@@ -68,7 +57,7 @@ class LegacyItemToDomainMapperTest {
 
     private suspend fun convert(
         item: LegacyItem,
-        cipher: LegacyCipher = PassthroughLegacyCipher(),
+        cipher: LegacyCipher = FakeLegacyCipher(),
     ) = provider.itemScope(
         wrappedVaultKeyInformation = WrappedVaultKeyInformation(
             wrappedVaultKey = KeyInformation(byteArrayOf(), byteArrayOf()),
@@ -213,7 +202,7 @@ class LegacyItemToDomainMapperTest {
 
         val converted = convert(
             item = legacyItem(LegacyDetail.Password("ada", null, blob, null)),
-            cipher = PassthroughLegacyCipher(failFor = blob),
+            cipher = FakeLegacyCipher(failFor = blob),
         )
 
         assertNull(converted)

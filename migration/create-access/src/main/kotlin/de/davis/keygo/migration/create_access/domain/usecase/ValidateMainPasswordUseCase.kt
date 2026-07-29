@@ -5,9 +5,9 @@ import de.davis.keygo.migration.create_access.domain.repository.MainPasswordRepo
 import org.koin.core.annotation.Single
 
 @Single
-class ValidateMainPassword internal constructor(
+class ValidateMainPasswordUseCase internal constructor(
     private val hashValidator: HashValidator,
-    private val mainPasswordRepository: MainPasswordRepository
+    private val mainPasswordRepository: MainPasswordRepository,
 ) {
 
     @OptIn(ExperimentalStdlibApi::class)
@@ -15,7 +15,7 @@ class ValidateMainPassword internal constructor(
         mainPasswordRepository.getMainPassword().hash.let {
             hashValidator.validateHash(
                 plainText = password.toByteArray(),
-                hash = it.hexToByteArray()
+                hash = it.hexToByteArray(),
             )
         }
 }

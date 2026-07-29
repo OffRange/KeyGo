@@ -23,10 +23,10 @@ import de.davis.keygo.migration.legacy_data.domain.model.LegacyItem
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyMigrationException
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyMigrationOutcome
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyMigrationReport
+import de.davis.keygo.migration.legacy_data.domain.model.LegacyReadFailure
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyRowFailure
-import de.davis.keygo.migration.legacy_data.domain.repository.LegacyDatabaseState
 import de.davis.keygo.migration.legacy_data.domain.repository.LegacyItemRepository
-import de.davis.keygo.migration.legacy_data.domain.repository.LegacyKeyStoreCleaner
+import de.davis.keygo.migration.legacy_data.domain.repository.LegacyKeyRepository
 import de.davisalessandro.keygo.rust.ItemAad
 import kotlinx.coroutines.flow.first
 import org.koin.core.annotation.Single
@@ -48,7 +48,7 @@ import kotlin.coroutines.cancellation.CancellationException
 @Single
 class MigrateLegacyDataUseCase internal constructor(
     private val legacyItemRepository: LegacyItemRepository,
-    private val legacyKeyStoreCleaner: LegacyKeyStoreCleaner,
+    private val legacyKeyRepository: LegacyKeyRepository,
     private val converter: LegacyItemConverter,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val vaultRepository: VaultRepository,
@@ -57,28 +57,7 @@ class MigrateLegacyDataUseCase internal constructor(
     private val transactionRunner: ItemTransactionRunner,
 ) {
 
-    suspend operator fun invoke(): LegacyMigrationOutcome = when (legacyItemRepository.state()) {
-        // A clean install. Nothing to read, and nothing may be created either: opening the file
-        // would bring one into existence for every later run to find.
-        LegacyDatabaseState.Absent -> LegacyMigrationOutcome.NothingToMigrate
-
-        // The one state that destroys the file without importing it, and only because it is the one
-        // state that proves there is nothing to import: the table v1 kept its data in is not there.
-        LegacyDatabaseState.NotLegacy -> {
-            legacyItemRepository.deleteDatabase()
-            LegacyMigrationOutcome.NothingToMigrate
-        }
-
-        // A file that will not open tells us nothing about what is inside it, so it is left exactly
-        // where it was found. Never folded into NotLegacy, which is the branch above that deletes.
-        LegacyDatabaseState.Unreadable -> LegacyMigrationOutcome.Failed(
-            LegacyMigrationException("The legacy database exists but could not be opened"),
-        )
-
-        LegacyDatabaseState.Present -> runMigration()
-    }
-
-    private suspend fun runMigration(): LegacyMigrationOutcome = try {
+    suspend operator fun invoke(): LegacyMigrationOutcome = try {
         migrate()
     } catch (e: CancellationException) {
         // Rethrown rather than reported, for the same reason the repository rethrows it. A run cut
@@ -89,6 +68,22 @@ class MigrateLegacyDataUseCase internal constructor(
         LegacyMigrationOutcome.Failed(e)
     }
 
+    /**
+     * Removes a file that was counted and found to hold no v1 rows, and v1's Keystore alias with it.
+     *
+     * The alias has to go on this path too. An already-imported v1 file lands here rather than in
+     * the import below on the run after the one that emptied it, and if only the file went, the key
+     * that used to protect it would be left in the Keystore with no later run able to reach it.
+     * Deleting it is safe for exactly the reason the file is: there is no ciphertext left for it to
+     * open. Gated on the file actually going, so a key never outlives rows that are still on disk.
+     *
+     * A clean install reaches this too, by way of a provider with no file to hand out. There is
+     * nothing to delete, [LegacyItemRepository.deleteDatabase] says so, and the alias stays.
+     */
+    private fun discardEmptyDatabase() {
+        if (legacyItemRepository.deleteDatabase()) legacyKeyRepository.deleteLegacyKey()
+    }
+
     private suspend fun migrate(): LegacyMigrationOutcome {
         // The read is the gate on everything below it. A failed read is not an empty file: it is
         // not knowing what is in the file. Reading it as "no rows" would fall straight through to
@@ -96,9 +91,23 @@ class MigrateLegacyDataUseCase internal constructor(
         val read = when (val result = legacyItemRepository.readAll()) {
             is Result.Success -> result.success
 
-            is Result.Failure -> return LegacyMigrationOutcome.Failed(
-                LegacyMigrationException("Could not read the legacy database: ${result.error}"),
-            )
+            // Exhaustive rather than an `else`, so a failure added later cannot default into the
+            // branch that deletes.
+            is Result.Failure -> return when (result.error) {
+                // The one branch that destroys the file, and only because it is the one that proves
+                // there is nothing to destroy: the rows were counted and there are none.
+                LegacyReadFailure.DatabaseEmpty -> {
+                    discardEmptyDatabase()
+                    LegacyMigrationOutcome.NothingToMigrate
+                }
+
+                LegacyReadFailure.DatabaseUnreadable, LegacyReadFailure.KeyUnavailable ->
+                    LegacyMigrationOutcome.Failed(
+                        LegacyMigrationException(
+                            "Could not read the legacy database: ${result.error}",
+                        ),
+                    )
+            }
         }
 
         val vaultId = targetVaultId()
@@ -156,17 +165,13 @@ class MigrateLegacyDataUseCase internal constructor(
         // thing that could turn it into a loss.
         val pruned = legacyItemRepository.prune(writtenIds).isSuccess()
 
-        // Read before the deletion below, which can close the provider. The count itself survives
-        // that close, but reading it first means the report never depends on that being true.
-        val repairedRows = legacyItemRepository.repairedRows
-
-        val fileDeleted = deleteWhenFullyImported(hasFailures = failures.isNotEmpty(), pruned = pruned)
+        val fileDeleted =
+            deleteWhenFullyImported(hasFailures = failures.isNotEmpty(), pruned = pruned)
 
         return LegacyMigrationOutcome.Migrated(
             LegacyMigrationReport(
                 migratedItems = writtenIds.size,
                 failures = failures,
-                repairedRows = repairedRows,
                 fileRetained = !fileDeleted,
             ),
         )
@@ -190,7 +195,7 @@ class MigrateLegacyDataUseCase internal constructor(
         if (legacyItemRepository.remainingCount().getOrNull() != 0) return false
 
         if (!legacyItemRepository.deleteDatabase()) return false
-        legacyKeyStoreCleaner.deleteLegacyKey()
+        legacyKeyRepository.deleteLegacyKey()
         return true
     }
 
