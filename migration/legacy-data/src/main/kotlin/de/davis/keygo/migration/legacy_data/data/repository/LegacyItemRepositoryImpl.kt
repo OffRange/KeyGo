@@ -23,6 +23,15 @@ import de.davis.keygo.migration.legacy_data.domain.repository.LegacyReadResult
 import org.koin.core.annotation.Single
 import kotlin.coroutines.cancellation.CancellationException
 
+/**
+ * SQLite's bound-parameter limit was 999 until 3.32.0, and that ceiling is what Android's system
+ * SQLite still enforces through API 30. A single `DELETE ... WHERE id IN (...)` over more than
+ * that many ids throws rather than deletes, so a v1 install with a four-figure vault would have
+ * every prune fail and reimport its whole vault on every unlock. Chunked well under the limit so
+ * the split holds regardless of which SQLite build a device is actually running.
+ */
+private const val PRUNE_CHUNK_SIZE = 500
+
 @Single
 internal class LegacyItemRepositoryImpl(
     private val databaseProvider: LegacyDatabaseProvider,
@@ -68,9 +77,9 @@ internal class LegacyItemRepositoryImpl(
         // tell the user every entry was individually damaged when the entries are intact, and it
         // could not be told apart from a file that really is corrupt end to end.
         //
-        // Asked before the rows are read, because reading them is the first query and the first
-        // query is what runs the 2-to-3 recreate. That rewrite is a one-way door, and a run that
-        // cannot decrypt a single blob has no business putting the user's file through it.
+        // Note this does not gate the 2-to-3 recreate: `state()`'s own `count()` query is the first
+        // one against the file and has already run the recreate by the time this is reached. What
+        // this probe still buys is not putting the row loop through a key that is already known gone.
         keyProvider.secretKey().asResult(LegacyReadFailure.KeyUnavailable).bind()
 
         val rows = withDao { it.getAllWithTags() }.bind()
@@ -99,7 +108,7 @@ internal class LegacyItemRepositoryImpl(
 
     override suspend fun prune(legacyIds: List<Long>): Result<Unit, LegacyReadFailure> {
         if (legacyIds.isEmpty()) return Result.Success(Unit)
-        return withDao { it.deleteByIds(legacyIds) }
+        return withDao { dao -> legacyIds.chunked(PRUNE_CHUNK_SIZE).forEach { dao.deleteByIds(it) } }
     }
 
     override suspend fun remainingCount(): Result<Int, LegacyReadFailure> = withDao { it.count() }

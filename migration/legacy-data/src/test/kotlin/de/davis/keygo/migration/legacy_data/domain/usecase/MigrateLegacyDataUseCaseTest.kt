@@ -192,6 +192,7 @@ class MigrateLegacyDataUseCaseTest {
 
         assertEquals(2, outcome.report.migratedItems)
         assertFalse(outcome.report.hasFailures)
+        assertFalse(outcome.report.fileRetained)
         assertEquals(listOf(1L, 2L), legacyRepository.prunedIds)
         assertTrue(legacyRepository.databaseDeleted)
         assertTrue(keyStoreCleaner.deleted)
@@ -399,6 +400,11 @@ class MigrateLegacyDataUseCaseTest {
         assertEquals(1, outcome.report.migratedItems)
         assertFalse(legacyRepository.databaseDeleted)
         assertFalse(keyStoreCleaner.deleted)
+        assertTrue(
+            outcome.report.fileRetained,
+            "Every row imported, but the file survived. That has to be as loud as a row failure, " +
+                "or the next unlock reimports the whole vault with nothing in logcat to explain why.",
+        )
     }
 
     @Test
@@ -412,6 +418,7 @@ class MigrateLegacyDataUseCaseTest {
         assertEquals(1, outcome.report.migratedItems)
         assertFalse(legacyRepository.databaseDeleted)
         assertFalse(keyStoreCleaner.deleted)
+        assertTrue(outcome.report.fileRetained)
     }
 
     @Test
@@ -420,10 +427,11 @@ class MigrateLegacyDataUseCaseTest {
         seedRows(items = listOf(password(1L, "One")))
         legacyRepository.countResult = Result.Failure(LegacyReadFailure.DatabaseUnreadable)
 
-        assertIs<LegacyMigrationOutcome.Migrated>(useCase()())
+        val outcome = assertIs<LegacyMigrationOutcome.Migrated>(useCase()())
 
         assertFalse(legacyRepository.databaseDeleted)
         assertFalse(keyStoreCleaner.deleted)
+        assertTrue(outcome.report.fileRetained)
     }
 
     @Test
@@ -437,5 +445,6 @@ class MigrateLegacyDataUseCaseTest {
         assertEquals(1, outcome.report.migratedItems)
         assertFalse(legacyRepository.databaseDeleted)
         assertFalse(keyStoreCleaner.deleted)
+        assertTrue(outcome.report.fileRetained)
     }
 }

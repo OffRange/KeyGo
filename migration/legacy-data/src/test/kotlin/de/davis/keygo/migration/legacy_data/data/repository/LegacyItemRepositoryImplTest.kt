@@ -1,6 +1,7 @@
 package de.davis.keygo.migration.legacy_data.data.repository
 
 import android.content.Context
+import androidx.room.InvalidationTracker
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
@@ -108,6 +109,39 @@ private class CancellingLegacyElementDao : LegacyElementDao {
 
     override suspend fun insertCrossRef(crossRef: LegacySecureElementTagCrossRef): Unit =
         error("this fake is only ever read from")
+}
+
+/** Records how many ids each delete call carried, and actually removes them from [ids]. */
+private class RecordingLegacyElementDao(private val ids: MutableSet<Long>) : LegacyElementDao {
+
+    val deleteCalls = mutableListOf<List<Long>>()
+
+    override suspend fun count(): Int = ids.size
+
+    override suspend fun getAllWithTags(): List<LegacyElementWithTags> =
+        error("this fake is only ever pruned from")
+
+    override suspend fun deleteByIds(ids: List<Long>) {
+        deleteCalls += ids
+        this.ids -= ids.toSet()
+    }
+
+    override suspend fun insertElement(element: LegacySecureElementEntity): Long =
+        error("this fake is only ever pruned from")
+
+    override suspend fun insertTag(tag: LegacyTagEntity): Long =
+        error("this fake is only ever pruned from")
+
+    override suspend fun insertCrossRef(crossRef: LegacySecureElementTagCrossRef): Unit =
+        error("this fake is only ever pruned from")
+}
+
+/** A plain subclass rather than Room's builder, since only [legacyElementDao] is ever called. */
+private class RecordingLegacyDatabase(private val dao: LegacyElementDao) : LegacyDatabase() {
+    override fun legacyElementDao(): LegacyElementDao = dao
+    override fun createInvalidationTracker(): InvalidationTracker =
+        error("this fake is only ever pruned through")
+    override fun clearAllTables(): Unit = error("this fake is only ever pruned through")
 }
 
 /** Hands out one already-open in-memory database, or nothing when the file is unreadable. */
@@ -347,6 +381,39 @@ class LegacyItemRepositoryImplTest {
         assertEquals(listOf("Keep"), repository.readAll().assertSuccess().items.map { it.title })
         assertEquals(1, repository.remainingCount().assertSuccess())
         assertTrue(keep > 0)
+    }
+
+    /**
+     * SQLite's bound-parameter limit was 999 until 3.32.0, and Android's system SQLite still holds
+     * to it through API 30: a single `DELETE ... WHERE id IN (...)` over more ids than that throws
+     * instead of deleting. This repository runs on [BundledSQLiteDriver] in every JVM test, whose
+     * bundled SQLite has no such ceiling, so this test cannot reproduce the throw itself; what it
+     * proves instead is the invariant that makes the throw impossible regardless of which SQLite a
+     * device is actually running: no call to the DAO ever carries more than a safe number of ids.
+     */
+    @Test
+    fun `prune splits large batches across several deletes`() = runTest {
+        val ids = (1L..1200L).toMutableSet()
+        val dao = RecordingLegacyElementDao(ids)
+        val repo = LegacyItemRepositoryImpl(
+            databaseProvider = FakeLegacyDatabaseProvider(RecordingLegacyDatabase(dao)),
+            secureElementProbe = secureElementProbe,
+            keyProvider = keyProvider,
+            cipher = FakeLegacyCipher(),
+            parser = LegacyDetailParser(),
+            databaseFiles = databaseFiles,
+        )
+
+        repo.prune((1L..1200L).toList()).assertSuccess()
+
+        assertTrue(
+            dao.deleteCalls.all { it.size <= 500 },
+            "A v1 vault above SQLite's parameter limit must still prune in one call to prune(), " +
+                "just split across several deletes underneath. A single oversized call throws, the " +
+                "prune is reported as failed, and the whole vault reimports on the next unlock.",
+        )
+        assertEquals(1200, dao.deleteCalls.sumOf { it.size })
+        assertTrue(ids.isEmpty())
     }
 
     @Test

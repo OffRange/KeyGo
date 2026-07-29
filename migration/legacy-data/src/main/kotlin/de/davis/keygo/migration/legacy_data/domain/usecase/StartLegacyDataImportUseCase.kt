@@ -57,8 +57,11 @@ class StartLegacyDataImportUseCase internal constructor(
  * not a clean success is turned into one call to [report]. [LegacyMigrationOutcome.Failed] reports
  * its cause directly. A [LegacyMigrationOutcome.Migrated] whose report carries row failures also
  * reports, because a run that silently drops some of the user's entries needs a trace even though
- * skipping a bad row is the designed behaviour. [LegacyMigrationOutcome.NothingToMigrate] and a
- * [LegacyMigrationOutcome.Migrated] with no row failures are the normal endings and report nothing.
+ * skipping a bad row is the designed behaviour. So does one whose file could not be cleared even
+ * though every row it looked at imported cleanly: that run will reimport the whole vault on the
+ * next unlock, and that is exactly the kind of ending "no row failures" must not be allowed to
+ * paper over. [LegacyMigrationOutcome.NothingToMigrate] and a [LegacyMigrationOutcome.Migrated]
+ * with no row failures and no file left behind are the only endings that report nothing.
  *
  * Nothing thrown may reach [scope], where an uncaught throwable would take the process down. That
  * covers [import] itself and also [report]: a throwing reporting implementation must not be able to
@@ -101,22 +104,32 @@ internal class LegacyImportRunner(
             is LegacyMigrationOutcome.Failed ->
                 reportSafely("v1 import failed, retrying on the next unlock", outcome.cause)
 
-            is LegacyMigrationOutcome.Migrated -> if (outcome.report.hasFailures)
-                reportSafely(rowFailureSummary(outcome.report), null)
+            is LegacyMigrationOutcome.Migrated -> if (
+                outcome.report.hasFailures || outcome.report.fileRetained
+            )
+                reportSafely(migrationSummary(outcome.report), null)
 
             LegacyMigrationOutcome.NothingToMigrate -> Unit
         }
     }
 
-    private fun rowFailureSummary(migrationReport: LegacyMigrationReport): String {
-        // Grouped by reason rather than by row: a row's title is the user's own account name, and
-        // logcat is not the place for it. Counts and reasons are enough to work out what happened.
-        val byReason = migrationReport.failures.groupingBy { it.reason }.eachCount().entries
-            .joinToString { (reason, count) -> "$reason=$count" }
-        val total = migrationReport.migratedItems + migrationReport.failures.size
+    private fun migrationSummary(migrationReport: LegacyMigrationReport): String {
+        val parts = mutableListOf<String>()
 
-        return "v1 import finished with ${migrationReport.failures.size} of $total row(s) " +
-            "skipped: $byReason"
+        if (migrationReport.hasFailures) {
+            // Grouped by reason rather than by row: a row's title is the user's own account name,
+            // and logcat is not the place for it. Counts and reasons are enough to work out what
+            // happened.
+            val byReason = migrationReport.failures.groupingBy { it.reason }.eachCount().entries
+                .joinToString { (reason, count) -> "$reason=$count" }
+            val total = migrationReport.migratedItems + migrationReport.failures.size
+            parts += "${migrationReport.failures.size} of $total row(s) skipped: $byReason"
+        }
+
+        if (migrationReport.fileRetained)
+            parts += "the legacy file could not be cleared and will be retried on the next unlock"
+
+        return "v1 import finished: ${parts.joinToString("; ")}"
     }
 
     /**

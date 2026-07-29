@@ -225,6 +225,26 @@ class LegacyImportRunnerTest {
     }
 
     @Test
+    fun `a Migrated outcome with no row failures but a retained file still reports`() = runTest {
+        val report = LegacyMigrationReport(migratedItems = 3, failures = emptyList(), fileRetained = true)
+        val diagnostics = mutableListOf<Pair<String, Throwable?>>()
+        val import = RecordingImport { LegacyMigrationOutcome.Migrated(report) }
+        val runner = runnerFor(import, diagnostics)
+
+        runner.start()
+        runCurrent()
+
+        assertEquals(
+            1,
+            diagnostics.size,
+            "Every row imported cleanly, but the legacy file survived the run. That is exactly the " +
+                "ending that duplicates the whole vault on the next unlock, and `hasFailures` alone " +
+                "cannot see it: there were none.",
+        )
+        assertTrue(diagnostics.single().first.contains("retried"))
+    }
+
+    @Test
     fun `NothingToMigrate and a clean Migrated produce no diagnostic`() = runTest {
         val diagnostics = mutableListOf<Pair<String, Throwable?>>()
         val import = RecordingImport { call ->
@@ -248,6 +268,31 @@ class LegacyImportRunnerTest {
             diagnostics.isEmpty(),
             "NothingToMigrate and a Migrated with no row failures are the normal endings; neither " +
                 "may produce a diagnostic line.",
+        )
+    }
+
+    @Test
+    fun `a reporter that throws is contained, and the runner still releases`() = runTest {
+        val cause = IllegalStateException("the legacy database exists but could not be opened")
+        val import = RecordingImport { LegacyMigrationOutcome.Failed(cause) }
+        val runner = LegacyImportRunner(
+            scope = backgroundScope,
+            report = { _, _ -> throw RuntimeException("the reporter itself is broken") },
+            import = { import() },
+        )
+
+        runner.start()
+        runCurrent()
+
+        runner.start()
+        runCurrent()
+
+        assertEquals(
+            2,
+            import.invocations,
+            "A throwing reporter is a bug in the reporting seam, not in the import. It must not be " +
+                "able to do what a throwing import already cannot: take the whole application scope " +
+                "down with it.",
         )
     }
 }

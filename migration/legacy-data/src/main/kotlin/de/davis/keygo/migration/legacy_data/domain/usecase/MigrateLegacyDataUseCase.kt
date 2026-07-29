@@ -156,20 +156,26 @@ class MigrateLegacyDataUseCase internal constructor(
         // thing that could turn it into a loss.
         val pruned = legacyItemRepository.prune(writtenIds).isSuccess()
 
-        deleteWhenFullyImported(hasFailures = failures.isNotEmpty(), pruned = pruned)
+        // Read before the deletion below, which can close the provider. The count itself survives
+        // that close, but reading it first means the report never depends on that being true.
+        val repairedRows = legacyItemRepository.repairedRows
+
+        val fileDeleted = deleteWhenFullyImported(hasFailures = failures.isNotEmpty(), pruned = pruned)
 
         return LegacyMigrationOutcome.Migrated(
             LegacyMigrationReport(
                 migratedItems = writtenIds.size,
                 failures = failures,
-                repairedRows = legacyItemRepository.repairedRows,
+                repairedRows = repairedRows,
+                fileRetained = !fileDeleted,
             ),
         )
     }
 
     /**
      * Removes the inherited file and v1's Keystore alias, and only once everything that was in the
-     * file is in v2.
+     * file is in v2. Returns whether the file actually went, so the caller can tell a run that
+     * cleaned up fully apart from one that quietly could not.
      *
      * Three things have to hold, and any one of them missing leaves the file alone. No row failed
      * to read or convert; the prune succeeded, so the rows are gone from the file rather than
@@ -179,11 +185,13 @@ class MigrateLegacyDataUseCase internal constructor(
      * The alias goes last and only if the file actually went. Removing the key while encrypted rows
      * are still on disk would make them unreadable for good.
      */
-    private suspend fun deleteWhenFullyImported(hasFailures: Boolean, pruned: Boolean) {
-        if (hasFailures || !pruned) return
-        if (legacyItemRepository.remainingCount().getOrNull() != 0) return
+    private suspend fun deleteWhenFullyImported(hasFailures: Boolean, pruned: Boolean): Boolean {
+        if (hasFailures || !pruned) return false
+        if (legacyItemRepository.remainingCount().getOrNull() != 0) return false
 
-        if (legacyItemRepository.deleteDatabase()) legacyKeyStoreCleaner.deleteLegacyKey()
+        if (!legacyItemRepository.deleteDatabase()) return false
+        legacyKeyStoreCleaner.deleteLegacyKey()
+        return true
     }
 
     private suspend fun convert(

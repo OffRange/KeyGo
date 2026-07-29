@@ -58,13 +58,26 @@ data class LegacyMigrationReport(
      * patched up on the way in rather than read as v1 left it.
      */
     val repairedRows: Int = 0,
+
+    /**
+     * True when the run ended with the legacy file still on disk despite every row it looked at
+     * having imported cleanly. [hasFailures] alone would miss this: a prune, a recount, or a delete
+     * that failed for reasons that have nothing to do with any one row still leaves a file behind
+     * that reimports the whole vault on the next unlock, and that has to be reported just as loudly
+     * as a row failure is.
+     */
+    val fileRetained: Boolean = false,
 ) {
     val hasFailures: Boolean get() = failures.isNotEmpty()
 }
 
 /**
  * Why a whole run stopped. Carried by [LegacyMigrationOutcome.Failed], which never reports a
- * partial import: whatever this describes, the legacy file was left exactly as it was found.
+ * partial import: no row was written to v2. The legacy file itself may already have gone through
+ * Room's one-way 1/2-to-3 recreate by this point, since that runs on the first query against the
+ * file and `state()` issues one before this run is ever attempted; that recreate only drops a
+ * table v2 never reads and carries every v1 row across, so it costs nothing this run would have
+ * protected anyway.
  */
 class LegacyMigrationException internal constructor(
     message: String,
