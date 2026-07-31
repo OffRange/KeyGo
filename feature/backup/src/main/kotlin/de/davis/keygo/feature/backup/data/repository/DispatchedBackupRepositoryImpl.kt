@@ -1,9 +1,9 @@
-package de.davis.keygo.feature.backup.data
+package de.davis.keygo.feature.backup.data.repository
 
 import androidx.work.WorkManager
 import de.davis.keygo.feature.backup.data.mapper.toStatus
-import de.davis.keygo.feature.backup.domain.DispatchedBackupRepository
 import de.davis.keygo.feature.backup.domain.model.BackupWorkStatus
+import de.davis.keygo.feature.backup.domain.repository.DispatchedBackupRepository
 import de.davis.keygo.feature.backup.worker.BackupWorker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
