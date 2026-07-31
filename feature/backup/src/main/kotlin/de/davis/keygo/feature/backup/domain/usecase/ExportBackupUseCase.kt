@@ -93,7 +93,7 @@ internal class ExportBackupUseCase(
                     }.bind()
 
                     // null on a persisted pre-field job means passphrase (see mapper).
-                    else -> {
+                    EncryptionMethod.Passphrase, null -> {
                         val passphrase = decryptPassphrase(job).bind()
                         try {
                             jsonBackupManager
