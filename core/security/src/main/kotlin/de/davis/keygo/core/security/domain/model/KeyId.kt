@@ -9,7 +9,7 @@ package de.davis.keygo.core.security.domain.model
  * intended, so the set of aliases is closed here by construction.
  */
 enum class KeyId(val id: String, val needsAuthentication: Boolean) {
-    /** Wraps the escrowed ARK; this key can only be used once unlocked via biometrics */
+    /** Wraps the account's ARK for biometric unlock; this key can only be used once unlocked via biometrics */
     BiometricVaultKek("biometric_vault_kek", true),
 
     /** Wraps the escrowed backup passphrase; auth-free so a scheduled backup can run unattended. */
