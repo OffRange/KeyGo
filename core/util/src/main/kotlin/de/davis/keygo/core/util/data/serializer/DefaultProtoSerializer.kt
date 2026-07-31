@@ -1,4 +1,4 @@
-package de.davis.keygo.core.identity.di
+package de.davis.keygo.core.util.data.serializer
 
 import androidx.datastore.core.Serializer
 import com.google.protobuf.MessageLite
@@ -6,7 +6,7 @@ import com.google.protobuf.Parser
 import java.io.InputStream
 import java.io.OutputStream
 
-internal class DefaultProtoSerializer<T : MessageLite>(
+class DefaultProtoSerializer<T : MessageLite>(
     private val defaultInstance: T,
     private val parser: Parser<T>
 ) : Serializer<T> {
