@@ -6,6 +6,7 @@ import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
 import de.davis.keygo.feature.backup.FakeBackupJobRepository
+import de.davis.keygo.feature.backup.FakeBackupScheduler
 import de.davis.keygo.feature.backup.FakePersistableUriManager
 import de.davis.keygo.feature.backup.domain.BackupProvisioningLock
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
@@ -29,6 +30,7 @@ class CleanupBackupResourcesUseCaseTest {
         FakeBackupArkKeyStore(CryptographicData(byteArrayOf(1), byteArrayOf(2)))
     private val keyStoreManager = FakeKeyStoreManager()
     private val uriManager = FakePersistableUriManager()
+    private val scheduler = FakeBackupScheduler(jobRepository)
 
     private val useCase = CleanupBackupResourcesUseCase(
         jobRepository = jobRepository,
@@ -36,6 +38,7 @@ class CleanupBackupResourcesUseCaseTest {
         keyStoreManager = keyStoreManager,
         persistableUriManager = uriManager,
         provisioningLock = BackupProvisioningLock(),
+        scheduler = scheduler,
     )
 
     private val folder = BackupDestinationUri("content://folder")
@@ -153,6 +156,102 @@ class CleanupBackupResourcesUseCaseTest {
     }
 
     @Test
+    fun `reconcile frees the escrow of a job the scheduler has dropped`() = runTest {
+        // The record still reads live - nothing ever closed it - but the platform gave the work up,
+        // so no run can come of it and its escrowed ARK must not outlive it.
+        jobRepository.jobs["w"] = job(finishedAt = null)
+        scheduler.abandon("w")
+        seedKey(KeyId.BackupArkKey)
+
+        useCase.reconcile()
+
+        assertNull(arkKeyStore.load())
+        assertTrue(KeyId.BackupArkKey !in keyStoreManager.keys)
+    }
+
+    @Test
+    fun `reconcile keeps the escrow while the scheduler still has the work`() = runTest {
+        jobRepository.jobs["w"] = job(finishedAt = null)
+        seedKey(KeyId.BackupArkKey)
+
+        useCase.reconcile()
+
+        val escrow = arkKeyStore.load()
+        assertContentEquals(byteArrayOf(1), escrow?.data)
+        assertTrue(KeyId.BackupArkKey in keyStoreManager.keys)
+    }
+
+    @Test
+    fun `reconcile keeps the escrow when the scheduler cannot be read`() = runTest {
+        // An unreadable scheduler must never read as "nothing is scheduled" - that would tear down
+        // credentials a perfectly live job still needs.
+        jobRepository.jobs["w"] = job(finishedAt = null)
+        scheduler.abandon("w")
+        scheduler.outstandingFailure = IOException("boom")
+        seedKey(KeyId.BackupArkKey)
+
+        useCase.reconcile()
+
+        val escrow = arkKeyStore.load()
+        assertContentEquals(byteArrayOf(1), escrow?.data)
+        assertTrue(KeyId.BackupArkKey in keyStoreManager.keys)
+    }
+
+    @Test
+    fun `reconcile hands back the passphrase of a job the scheduler has dropped`() = runTest {
+        // No dispatch ever ended this job, so nothing ever cleared its passphrase. Freeing the ARK
+        // escrow without freeing this too would strand the wrapped passphrase and the auth-less
+        // alias that opens it.
+        jobRepository.jobs["w"] = job(finishedAt = null)
+        scheduler.abandon("w")
+        seedKey(KeyId.BackupPassphraseKey)
+
+        useCase.reconcile()
+
+        assertNull(jobRepository.jobs.getValue("w").wrappedPassphrase)
+        assertTrue(KeyId.BackupPassphraseKey !in keyStoreManager.keys)
+    }
+
+    @Test
+    fun `reconcile leaves a live job's passphrase alone`() = runTest {
+        jobRepository.jobs["w"] = job(finishedAt = null)
+        seedKey(KeyId.BackupPassphraseKey)
+
+        useCase.reconcile()
+
+        assertEquals(
+            CryptographicData(byteArrayOf(9), byteArrayOf(8)),
+            jobRepository.jobs.getValue("w").wrappedPassphrase,
+        )
+        assertTrue(KeyId.BackupPassphraseKey in keyStoreManager.keys)
+    }
+
+    @Test
+    fun `a finished job also hands back a dropped sibling's passphrase`() = runTest {
+        jobRepository.jobs["w"] = job(finishedAt = 1L)
+        jobRepository.jobs["dropped"] = job(finishedAt = null)
+        scheduler.abandon("dropped")
+        seedKey(KeyId.BackupPassphraseKey)
+
+        useCase("w")
+
+        assertNull(jobRepository.jobs.getValue("dropped").wrappedPassphrase)
+        assertTrue(KeyId.BackupPassphraseKey !in keyStoreManager.keys)
+    }
+
+    @Test
+    fun `a dropped job no longer holds the escrow open for a finished one`() = runTest {
+        jobRepository.jobs["w"] = job(finishedAt = 1L)
+        jobRepository.jobs["dropped"] = job(finishedAt = null)
+        scheduler.abandon("dropped")
+
+        useCase("w")
+
+        assertNull(arkKeyStore.load())
+        assertTrue(KeyId.BackupArkKey !in keyStoreManager.keys)
+    }
+
+    @Test
     fun `cleanup returns normally even when reading jobs throws`() = runTest {
         jobRepository.jobs["w"] = job(finishedAt = 1L)
         val failingReads = object : BackupJobRepository by jobRepository {
@@ -164,6 +263,7 @@ class CleanupBackupResourcesUseCaseTest {
             keyStoreManager = keyStoreManager,
             persistableUriManager = uriManager,
             provisioningLock = BackupProvisioningLock(),
+            scheduler = scheduler,
         )
 
         useCase("w")
@@ -187,6 +287,7 @@ class CleanupBackupResourcesUseCaseTest {
             keyStoreManager = keyStoreManager,
             persistableUriManager = uriManager,
             provisioningLock = BackupProvisioningLock(),
+            scheduler = scheduler,
         )
         seedKey(KeyId.BackupArkKey)
 
@@ -212,6 +313,7 @@ class CleanupBackupResourcesUseCaseTest {
             keyStoreManager = keyStoreManager,
             persistableUriManager = uriManager,
             provisioningLock = BackupProvisioningLock(),
+            scheduler = scheduler,
         )
         seedKey(KeyId.BackupPassphraseKey)
 

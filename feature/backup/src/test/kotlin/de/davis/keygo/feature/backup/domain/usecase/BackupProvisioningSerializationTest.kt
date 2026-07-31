@@ -40,6 +40,7 @@ class BackupProvisioningSerializationTest {
     private val uriManager = FakePersistableUriManager()
     private val session = FakeSession(startOnConstruct = true)
     private val lock = BackupProvisioningLock()
+    private val scheduler = FakeBackupScheduler(jobRepository)
 
     // Provisioning parks here after saving B's escrow but before B's record is written.
     private val gate = CompletableDeferred<Unit>()
@@ -63,6 +64,7 @@ class BackupProvisioningSerializationTest {
         keyStoreManager = keyStoreManager,
         persistableUriManager = uriManager,
         provisioningLock = lock,
+        scheduler = scheduler,
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)

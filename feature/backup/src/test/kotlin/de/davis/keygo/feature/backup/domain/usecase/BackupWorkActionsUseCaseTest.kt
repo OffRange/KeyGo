@@ -3,6 +3,7 @@ package de.davis.keygo.feature.backup.domain.usecase
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
 import de.davis.keygo.feature.backup.FakeBackupJobRepository
+import de.davis.keygo.feature.backup.FakeBackupScheduler
 import de.davis.keygo.feature.backup.FakeDispatchedBackupRepository
 import de.davis.keygo.feature.backup.FakePersistableUriManager
 import de.davis.keygo.feature.backup.domain.BackupProvisioningLock
@@ -21,6 +22,7 @@ class BackupWorkActionsUseCaseTest {
     private val repository = FakeDispatchedBackupRepository()
     private val jobRepository = FakeBackupJobRepository()
     private val uriManager = FakePersistableUriManager()
+    private val scheduler = FakeBackupScheduler(jobRepository)
 
     private val cancelBackup = CancelBackupUseCase(
         repository = repository,
@@ -31,6 +33,7 @@ class BackupWorkActionsUseCaseTest {
             keyStoreManager = FakeKeyStoreManager(),
             persistableUriManager = uriManager,
             provisioningLock = BackupProvisioningLock(),
+            scheduler = scheduler,
         ),
     )
 

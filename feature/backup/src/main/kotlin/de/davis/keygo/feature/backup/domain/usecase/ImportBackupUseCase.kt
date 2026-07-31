@@ -71,8 +71,6 @@ internal class ImportBackupUseCase(
                     val credential = when (
                         jsonBackupManager.inspectWithResult(text).bind { it.toImportError() }
                     ) {
-                        JsonEncryption.NONE -> null
-
                         JsonEncryption.PASSPHRASE -> request.passphrase
                             ?.takeIf(String::isNotBlank)
                             ?.let { BackupCredential.Passphrase(it.encodeToByteArray()) }
@@ -83,13 +81,20 @@ internal class ImportBackupUseCase(
                                 ?: return Result.Failure(ImportError.SessionLocked),
                         )
                     }
-                    jsonBackupManager.importWithResult(text, credential).bind { it.toImportError() }
+                    // Zero the derived passphrase bytes once Rust is done with them, mirroring the
+                    // export path. The live ARK belongs to the session and is left alone.
+                    try {
+                        jsonBackupManager.importWithResult(text, credential)
+                            .bind { it.toImportError() }
+                    } finally {
+                        (credential as? BackupCredential.Passphrase)?.bytes?.fill(0)
+                    }
                 }
 
                 FileFormat.CSV -> {
                     val mapping = request.csvMapping ?: csvBackupManager.analyzeWithResult(text)
                         .bind { it.toImportError() }.suggested
-                    
+
                     csvBackupManager.importWithResult(text, mapping)
                         .bind { it.toImportError() }
                         .backup

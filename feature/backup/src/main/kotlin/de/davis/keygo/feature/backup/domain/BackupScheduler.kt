@@ -13,4 +13,16 @@ interface BackupScheduler {
 
     suspend fun scheduleOneTimeBackup(job: BackupJob): Result<Unit, Unit>
     fun cancel()
+
+    /**
+     * Work ids the scheduler still has outstanding - enqueued, blocked, or running.
+     *
+     * This is the ground truth for whether a job record can still produce a run. A record that
+     * looks live by its own bookkeeping but has no outstanding work behind it can never run again,
+     * so nothing may keep holding its credentials open.
+     *
+     * Throws if the scheduler cannot be read; callers must treat that as "unknown" and release
+     * nothing, never as "no work outstanding".
+     */
+    suspend fun outstandingWorkIds(): Set<String>
 }

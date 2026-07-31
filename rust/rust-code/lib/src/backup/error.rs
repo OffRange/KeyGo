@@ -12,12 +12,6 @@ pub enum BackupError {
     UnsupportedVersion(u32),
     #[error("malformed encryption header")]
     MalformedHeader,
-    #[error("encryption header and payload disagree")]
-    EncryptionMismatch,
-    #[error("a credential is required to read this encrypted backup")]
-    MissingCredential,
-    #[error("a credential was supplied for a plaintext backup")]
-    UnexpectedCredential,
     #[error("credential does not match the backup's key source")]
     CredentialMismatch,
     #[error("malformed csv: {0}")]

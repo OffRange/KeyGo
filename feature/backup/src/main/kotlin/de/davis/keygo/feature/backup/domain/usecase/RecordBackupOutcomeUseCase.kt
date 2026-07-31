@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.backup.domain.usecase
 
+import de.davis.keygo.feature.backup.domain.model.BackupFailureReason
 import de.davis.keygo.feature.backup.domain.model.BackupResult
 import de.davis.keygo.feature.backup.domain.model.ExportProgress
 import de.davis.keygo.feature.backup.domain.model.failureReason
@@ -14,18 +15,33 @@ internal class RecordBackupOutcomeUseCase(
     private val cleanupBackupResources: CleanupBackupResourcesUseCase,
 ) {
 
-    suspend operator fun invoke(workId: String, terminal: ExportProgress?) {
+    /**
+     * [canRetry] is false on the job's last attempt: a retryable error then becomes terminal, so the
+     * record closes and the cleanup below can hand back the job's credentials.
+     */
+    suspend operator fun invoke(
+        workId: String,
+        terminal: ExportProgress?,
+        canRetry: Boolean = true,
+    ) {
         val result = when (terminal) {
             is ExportProgress.Succeeded -> BackupResult.Success
-            is ExportProgress.Failed ->
-                if (terminal.error.retryable) return
-                else BackupResult.Failure(terminal.error.failureReason)
+            is ExportProgress.Failed -> when {
+                terminal.error.retryable && canRetry -> return
+                // failureReason is null exactly for the retryable errors, which reach here only
+                // once their attempts are spent.
+                else -> BackupResult.Failure(
+                    terminal.error.failureReason ?: BackupFailureReason.RetriesExhausted,
+                )
+            }
 
             else -> return
         }
         jobRepository.markFinished(workId, result)
 
-        // A recurring schedule still needs its credentials for the next run.
-        if (workId != BackupWorker.RECURRING_WORK_ID) cleanupBackupResources(workId)
+        // A recurring schedule still needs its credentials for the next run - but a run finishing
+        // is a good moment to notice that some *other* job no longer needs its own.
+        if (workId == BackupWorker.RECURRING_WORK_ID) cleanupBackupResources.reconcile()
+        else cleanupBackupResources(workId)
     }
 }

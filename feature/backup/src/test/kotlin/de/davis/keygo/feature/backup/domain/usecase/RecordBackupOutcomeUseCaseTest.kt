@@ -4,6 +4,7 @@ import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
 import de.davis.keygo.feature.backup.FakeBackupJobRepository
+import de.davis.keygo.feature.backup.FakeBackupScheduler
 import de.davis.keygo.feature.backup.FakePersistableUriManager
 import de.davis.keygo.feature.backup.domain.BackupProvisioningLock
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
@@ -29,6 +30,7 @@ class RecordBackupOutcomeUseCaseTest {
     private val arkKeyStore = FakeBackupArkKeyStore()
     private val keyStoreManager = FakeKeyStoreManager()
     private val uriManager = FakePersistableUriManager()
+    private val scheduler = FakeBackupScheduler(jobRepository)
     private val useCase = RecordBackupOutcomeUseCase(
         jobRepository = jobRepository,
         cleanupBackupResources = CleanupBackupResourcesUseCase(
@@ -37,6 +39,7 @@ class RecordBackupOutcomeUseCaseTest {
             keyStoreManager = keyStoreManager,
             persistableUriManager = uriManager,
             provisioningLock = BackupProvisioningLock(),
+            scheduler = scheduler,
         ),
     )
 
@@ -99,6 +102,26 @@ class RecordBackupOutcomeUseCaseTest {
     }
 
     @Test
+    fun `device locked on the last attempt records RetriesExhausted`() = runTest {
+        seed()
+        useCase("w", ExportProgress.Failed(ExportError.DeviceLocked), canRetry = false)
+
+        val saved = jobRepository.jobs.getValue("w")
+        assertNotNull(saved.finishedAt)
+        assertEquals(BackupResult.Failure(BackupFailureReason.RetriesExhausted), saved.lastResult)
+    }
+
+    @Test
+    fun `a spent one-time job releases its escrow instead of holding it for a retry`() = runTest {
+        seed()
+        arkKeyStore.save(CryptographicData(byteArrayOf(1), byteArrayOf(2)))
+
+        useCase("w", ExportProgress.Failed(ExportError.DeviceLocked), canRetry = false)
+
+        assertNull(arkKeyStore.load())
+    }
+
+    @Test
     fun `a finished one-time backup releases its credentials`() = runTest {
         seed()
         useCase("w", ExportProgress.Succeeded(itemCount = 1))
@@ -108,9 +131,11 @@ class RecordBackupOutcomeUseCaseTest {
 
     @Test
     fun `a recurring run keeps its credentials for the next run`() = runTest {
+        val wrappedPassphrase =
+            CryptographicData(data = byteArrayOf(1, 2, 3), iv = byteArrayOf(4, 5, 6))
         jobRepository.jobs[BackupWorker.RECURRING_WORK_ID] = BackupJob(
             uri = BackupDestinationUri("content://out.json"),
-            wrappedPassphrase = null,
+            wrappedPassphrase = wrappedPassphrase,
             format = FileFormat.JSON,
             createdAt = 1L,
         )
@@ -118,14 +143,20 @@ class RecordBackupOutcomeUseCaseTest {
         useCase(BackupWorker.RECURRING_WORK_ID, ExportProgress.Succeeded(itemCount = 1))
 
         assertTrue(uriManager.released.isEmpty())
+        // The schedule is still live, so the reconcile this outcome triggers must leave alone the
+        // passphrase the next run reads back out of the record.
+        val saved = jobRepository.jobs.getValue(BackupWorker.RECURRING_WORK_ID)
+        assertNotNull(saved.wrappedPassphrase)
+        assertContentEquals(wrappedPassphrase.data, saved.wrappedPassphrase.data)
+        assertContentEquals(wrappedPassphrase.iv, saved.wrappedPassphrase.iv)
     }
 
     @Test
-    fun `a late outcome on a cancelled recurring schedule cleans nothing`() = runTest {
-        val wrappedPassphrase = CryptographicData(data = byteArrayOf(1, 2, 3), iv = byteArrayOf(4, 5, 6))
+    fun `a late outcome on a cancelled recurring schedule hands back its passphrase`() = runTest {
         jobRepository.jobs[BackupWorker.RECURRING_WORK_ID] = BackupJob(
             uri = BackupDestinationUri("content://out.json"),
-            wrappedPassphrase = wrappedPassphrase,
+            wrappedPassphrase =
+                CryptographicData(data = byteArrayOf(1, 2, 3), iv = byteArrayOf(4, 5, 6)),
             format = FileFormat.JSON,
             createdAt = 1L,
             cancelled = true,
@@ -133,12 +164,13 @@ class RecordBackupOutcomeUseCaseTest {
 
         useCase(BackupWorker.RECURRING_WORK_ID, ExportProgress.Succeeded(itemCount = 1))
 
+        // Cancelled can never read as live again, so no run can ever need this passphrase. The
+        // cancel path already clears it via CleanupBackupResourcesUseCase.invoke; a late outcome
+        // arriving afterwards reaches the same conclusion instead of stranding it.
+        assertNull(jobRepository.jobs.getValue(BackupWorker.RECURRING_WORK_ID).wrappedPassphrase)
+        // reconcile still touches no folder grants - only invoke releases those.
         assertTrue(uriManager.released.isEmpty())
         assertTrue(keyStoreManager.keys.isEmpty())
-        val saved = jobRepository.jobs.getValue(BackupWorker.RECURRING_WORK_ID)
-        assertNotNull(saved.wrappedPassphrase)
-        assertContentEquals(wrappedPassphrase.data, saved.wrappedPassphrase.data)
-        assertContentEquals(wrappedPassphrase.iv, saved.wrappedPassphrase.iv)
     }
 
     @Test

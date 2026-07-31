@@ -3,8 +3,8 @@ package de.davis.keygo.feature.backup.domain.usecase
 import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.feature.backup.FakeBackupFileStore
-import de.davis.keygo.feature.backup.backupVault
 import de.davis.keygo.feature.backup.RestorerTestEnv
+import de.davis.keygo.feature.backup.backupVault
 import de.davis.keygo.feature.backup.domain.BackupFileStore
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
 import de.davis.keygo.feature.backup.domain.model.FileFormat
@@ -32,7 +32,6 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertNull
 
 class ImportBackupUseCaseTest {
 
@@ -103,26 +102,6 @@ class ImportBackupUseCaseTest {
     fun `json parse failure maps Crypto to WrongCredential`() = runTest {
         fileStore.contents = """{"vaults":[]}"""
         json.importException = BackupException.Crypto("bad key")
-
-        val emissions = useCase()(jsonRequest()).toList()
-
-        assertEquals(ImportProgress.Failed(ImportError.WrongCredential), emissions.last())
-    }
-
-    @Test
-    fun `json parse failure maps MissingCredential to WrongCredential`() = runTest {
-        fileStore.contents = """{"vaults":[]}"""
-        json.importException = BackupException.MissingCredential()
-
-        val emissions = useCase()(jsonRequest()).toList()
-
-        assertEquals(ImportProgress.Failed(ImportError.WrongCredential), emissions.last())
-    }
-
-    @Test
-    fun `json parse failure maps UnexpectedCredential to WrongCredential`() = runTest {
-        fileStore.contents = """{"vaults":[]}"""
-        json.importException = BackupException.UnexpectedCredential()
 
         val emissions = useCase()(jsonRequest()).toList()
 
@@ -204,9 +183,9 @@ class ImportBackupUseCaseTest {
     }
 
     @Test
-    fun `csv analyze failure maps EncryptionMismatch to WrongCredential`() = runTest {
+    fun `csv analyze failure maps CredentialMismatch to WrongCredential`() = runTest {
         fileStore.contents = "name\nEmail\n"
-        csv.analyzeException = BackupException.EncryptionMismatch()
+        csv.analyzeException = BackupException.CredentialMismatch()
 
         val emissions = useCase()(
             ImportRequest(BackupDestinationUri("content://in.csv"), FileFormat.CSV, null),
@@ -255,15 +234,20 @@ class ImportBackupUseCaseTest {
     }
 
     @Test
-    fun `plaintext json imports without a credential`() = runTest {
+    fun `passphrase bytes are zeroed once the import returns`() = runTest {
         fileStore.contents = "{}"
-        json.inspectResult = JsonEncryption.NONE
+        json.inspectResult = JsonEncryption.PASSPHRASE
         json.importResult = Backup(listOf(backupVault("V", listOf(login("A")))))
+        // Hold the array the use case hands to Rust, rather than the fake's defensive copy.
+        var handed: ByteArray? = null
+        json.onImport = { _, credential ->
+            handed = (credential as BackupCredential.Passphrase).bytes
+        }
 
-        val emissions = useCase()(jsonRequest(passphrase = null)).toList()
+        val emissions = useCase()(jsonRequest(passphrase = "hunter2")).toList()
 
         assertIs<ImportProgress.Succeeded>(emissions.last())
-        assertNull(json.importCalls.single().credential)
+        assertContentEquals(ByteArray(7), handed)
     }
 
     @Test

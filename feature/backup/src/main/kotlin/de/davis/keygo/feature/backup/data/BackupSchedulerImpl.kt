@@ -5,6 +5,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.await
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.backup.domain.BackupScheduler
@@ -13,6 +14,7 @@ import de.davis.keygo.feature.backup.domain.model.BackupJob
 import de.davis.keygo.feature.backup.domain.model.IntervalUnit
 import de.davis.keygo.feature.backup.domain.repository.BackupJobRepository
 import de.davis.keygo.feature.backup.worker.BackupWorker
+import kotlinx.coroutines.flow.first
 import org.koin.core.annotation.Single
 import kotlin.time.Duration.Companion.days
 import kotlin.time.toJavaDuration
@@ -54,7 +56,7 @@ internal class BackupSchedulerImpl(
                     uniqueWorkName = BackupWorker.UNIQUE_WORK_NAME,
                     existingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.UPDATE,
                     request = request,
-                )
+                ).await()
             }
     }
 
@@ -66,11 +68,21 @@ internal class BackupSchedulerImpl(
             .build()
 
         return backupJobRepository.putJob(request.id.toString(), job).onSuccess {
-            workManager.enqueue(request)
+            workManager.enqueue(request).await()
         }
     }
 
     override fun cancel() {
         workManager.cancelUniqueWork(BackupWorker.UNIQUE_WORK_NAME)
     }
+
+    override suspend fun outstandingWorkIds(): Set<String> =
+        workManager.getWorkInfosByTagFlow(BackupWorker.TAG).first()
+            .filterNot { it.state.isFinished }
+            .mapTo(mutableSetOf()) { info ->
+                // Periodic work keeps one WorkManager id across runs, but its record lives under
+                // the stable recurring key.
+                if (BackupWorker.TAG_RECURRING in info.tags) BackupWorker.RECURRING_WORK_ID
+                else info.id.toString()
+            }
 }

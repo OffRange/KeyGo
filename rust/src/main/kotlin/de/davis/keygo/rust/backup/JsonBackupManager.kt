@@ -9,12 +9,12 @@ import de.davisalessandro.keygo.rust.JsonEncryption
 
 suspend fun JsonBackupManagerInterface.exportWithResult(
     backup: Backup,
-    credential: BackupCredential?,
+    credential: BackupCredential,
 ): Result<String, BackupException> = backupResult { export(backup, credential) }
 
 suspend fun JsonBackupManagerInterface.importWithResult(
     data: String,
-    credential: BackupCredential?,
+    credential: BackupCredential,
 ): Result<Backup, BackupException> = backupResult { import(data, credential) }
 
 suspend fun JsonBackupManagerInterface.inspectWithResult(

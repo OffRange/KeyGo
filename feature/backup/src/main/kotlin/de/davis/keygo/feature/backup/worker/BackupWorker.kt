@@ -14,14 +14,15 @@ import de.davis.keygo.feature.backup.domain.usecase.ExportBackupUseCase
 import de.davis.keygo.feature.backup.domain.usecase.RecordBackupOutcomeUseCase
 import org.koin.android.annotation.KoinWorker
 
-internal fun resultFor(terminal: ExportProgress?): ListenableWorker.Result = when (terminal) {
-    is ExportProgress.Succeeded -> ListenableWorker.Result.success()
-    is ExportProgress.Failed ->
-        if (terminal.error.retryable) ListenableWorker.Result.retry()
-        else ListenableWorker.Result.failure()
+internal fun resultFor(terminal: ExportProgress?, canRetry: Boolean): ListenableWorker.Result =
+    when (terminal) {
+        is ExportProgress.Succeeded -> ListenableWorker.Result.success()
+        is ExportProgress.Failed ->
+            if (terminal.error.retryable && canRetry) ListenableWorker.Result.retry()
+            else ListenableWorker.Result.failure()
 
-    else -> ListenableWorker.Result.failure()
-}
+        else -> ListenableWorker.Result.failure()
+    }
 
 @KoinWorker
 internal class BackupWorker(
@@ -38,6 +39,8 @@ internal class BackupWorker(
         val workId = if (isRecurring) RECURRING_WORK_ID else id.toString()
         val job = backupJobRepository.getJob(workId) ?: return Result.failure()
 
+        val canRetry = runAttemptCount + 1 < MAX_ATTEMPTS
+
         var terminal: ExportProgress? = null
         exportBackup(job).collect { progress ->
             if (progress is ExportProgress.InFlight)
@@ -50,13 +53,19 @@ internal class BackupWorker(
         if (error is ExportError.SerializationFailed)
             Log.e(TAG, "Backup serialization failed for $workId", error.cause)
 
-        recordOutcome(workId, terminal)
+        recordOutcome(workId, terminal, canRetry)
 
-        return resultFor(terminal)
+        return resultFor(terminal, canRetry)
     }
 
     companion object {
         const val UNIQUE_WORK_NAME = "backup_worker"
+
+        /**
+         * Attempts a single dispatch gets before its retryable failures are recorded as terminal.
+         * Bounded so an escrowed ARK is never held open by a job that keeps deferring forever.
+         */
+        const val MAX_ATTEMPTS = 5
 
         /** Recurring work is a singleton; one-time job records are keyed by their WorkManager id. */
         const val RECURRING_WORK_ID = "recurring_backup"

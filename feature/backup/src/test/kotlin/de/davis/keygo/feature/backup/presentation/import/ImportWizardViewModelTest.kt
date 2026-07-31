@@ -7,15 +7,14 @@ import de.davis.keygo.core.item.domain.model.VaultContext
 import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.backup.FakeBackupFileStore
-import de.davis.keygo.feature.backup.backupVault
 import de.davis.keygo.feature.backup.RestorerTestEnv
+import de.davis.keygo.feature.backup.backupVault
 import de.davis.keygo.feature.backup.data.FakeBackupDestinationResolver
 import de.davis.keygo.feature.backup.domain.model.BackupDestination
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
 import de.davis.keygo.feature.backup.domain.model.CsvColumnType
 import de.davis.keygo.feature.backup.domain.model.ImportError
 import de.davis.keygo.feature.backup.domain.model.ImportProgress
-import de.davis.keygo.feature.backup.domain.model.ImportTarget
 import de.davis.keygo.feature.backup.domain.usecase.AnalyzeCsvUseCase
 import de.davis.keygo.feature.backup.domain.usecase.ImportBackupUseCase
 import de.davis.keygo.feature.backup.presentation.import.model.ImportWizardEvent
@@ -162,7 +161,8 @@ class ImportWizardViewModelTest {
 
     @Test
     fun `Continue on selected JSON runs import and surfaces the summary`() = runTest {
-        json.inspectResult = JsonEncryption.NONE
+        // ARK-sealed: the one JSON shape that imports straight through without a passphrase step.
+        json.inspectResult = JsonEncryption.ARK
         fileStore.contents = """{"vaults":[]}"""
         json.importResult = Backup(listOf(backupVault("Imported", listOf(login("Email")))))
         val viewModel = viewModel(FakeBackupDestinationResolver(result = jsonDestination()))
@@ -174,7 +174,7 @@ class ImportWizardViewModelTest {
 
         val succeeded = assertIs<ImportProgress.Succeeded>(finalState.progress)
         assertEquals(1, succeeded.summary.imported)
-        assertNull(json.importCalls.single().credential)
+        assertIs<BackupCredential.Ark>(json.importCalls.single().credential)
     }
 
     @Test
@@ -215,7 +215,7 @@ class ImportWizardViewModelTest {
 
     @Test
     fun `terminal import error surfaces as failure`() = runTest {
-        json.inspectResult = JsonEncryption.NONE
+        json.inspectResult = JsonEncryption.ARK
         fileStore.contents = """{"vaults":[]}"""
         json.importResult = Backup(emptyList())
         val viewModel = viewModel(FakeBackupDestinationResolver(result = jsonDestination()))

@@ -26,6 +26,27 @@ class FakeBackupScheduler(
     var cancelled = false
     var result: Result<Unit, Unit> = Result.Success(Unit)
 
+    private val scheduled = mutableSetOf<String>()
+    private val abandoned = mutableSetOf<String>()
+
+    /** When set, [outstandingWorkIds] throws - the "scheduler unreadable" case. */
+    var outstandingFailure: Throwable? = null
+
+    /**
+     * Defaults to every id [jobRepository] knows about (or, without one, every id scheduled through
+     * this fake): a healthy scheduler whose view agrees with the records. [abandon] takes an id back
+     * out, which is how a job the platform quietly gave up on looks - the record still reads live,
+     * but no run can ever come of it.
+     */
+    override suspend fun outstandingWorkIds(): Set<String> {
+        outstandingFailure?.let { throw it }
+        return (jobRepository?.jobs?.keys ?: scheduled) - abandoned
+    }
+
+    fun abandon(workId: String) {
+        abandoned += workId
+    }
+
     override suspend fun scheduleRecurringBackup(
         job: BackupJob,
         interval: BackupInterval,
@@ -50,6 +71,7 @@ class FakeBackupScheduler(
         gate?.await()
         if (result is Result.Failure) return result
         jobRepository?.putJob(workId, job)
+        scheduled += workId
         return result
     }
 }

@@ -291,6 +291,42 @@ class ExportBackupUseCaseTest {
     }
 
     @Test
+    fun `pruning leaves files it did not write alone`() = runTest {
+        seedSingleLogin()
+        csv.exportResult = "data"
+        // Shares the base name and extension but carries no epoch-millis stamp, so it is not a
+        // document this app wrote - a user's own renamed copy, kept in the same folder.
+        seedExistingBackup("keygo-backup-before-trip.csv")
+        seedExistingBackup("keygo-backup-1.csv")
+        seedExistingBackup("keygo-backup-2.csv")
+
+        useCase(unlocked())(csvJob.copy(keepCount = 1)).toList()
+
+        assertEquals(
+            setOf("${folder.value}/keygo-backup-1.csv", "${folder.value}/keygo-backup-2.csv"),
+            fileStore.deleted.map { it.value }.toSet(),
+        )
+    }
+
+    @Test
+    fun `pruning leaves a collision-renamed document alone`() = runTest {
+        seedSingleLogin()
+        csv.exportResult = "data"
+        // What SAF produces when the name it is asked for is already taken. It parses as neither a
+        // timestamp nor anything else orderable, so it must not be treated as the oldest backup.
+        seedExistingBackup("keygo-backup-1700000000000 (1).csv")
+        seedExistingBackup("keygo-backup-1.csv")
+        seedExistingBackup("keygo-backup-2.csv")
+
+        useCase(unlocked())(csvJob.copy(keepCount = 1)).toList()
+
+        assertEquals(
+            setOf("${folder.value}/keygo-backup-1.csv", "${folder.value}/keygo-backup-2.csv"),
+            fileStore.deleted.map { it.value }.toSet(),
+        )
+    }
+
+    @Test
     fun `prune failure does not fail a successful backup`() = runTest {
         seedSingleLogin()
         csv.exportResult = "data"

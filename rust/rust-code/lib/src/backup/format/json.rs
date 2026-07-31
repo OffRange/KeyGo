@@ -2,76 +2,45 @@ use crate::b64;
 use crate::backup::encryption::{self, BackupCredential, EncryptionHeader, KeySource};
 use crate::backup::{Backup, BackupError, CURRENT_VERSION, MIN_SUPPORTED_VERSION};
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 
+/// A JSON backup is always sealed - there is no plaintext envelope. `payload` is the base64
+/// ciphertext whose header sits in `encryption`.
 #[derive(Serialize, Deserialize)]
-pub struct BackupEnvelope<'a> {
+pub struct BackupEnvelope {
     pub version: u32,
-    pub encryption: Option<EncryptionHeader>,
-    pub payload: Payload<'a>,
+    pub encryption: EncryptionHeader,
+    pub payload: String,
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum Payload<'a> {
-    Encrypted(String),
-    Plain(Cow<'a, Backup>),
-}
-
-pub fn export(backup: &Backup, cred: Option<BackupCredential<'_>>) -> Result<String, BackupError> {
-    let env = match cred {
-        None => BackupEnvelope {
-            version: CURRENT_VERSION,
-            encryption: None,
-            payload: Payload::Plain(Cow::Borrowed(backup)),
-        },
-        Some(cred) => {
-            let payload_bytes = serde_json::to_vec(backup)?;
-            let sealed = encryption::seal(&payload_bytes, cred, CURRENT_VERSION)?;
-            BackupEnvelope {
-                version: CURRENT_VERSION,
-                encryption: Some(sealed.header),
-                payload: Payload::Encrypted(b64::encode(sealed.ciphertext)),
-            }
-        }
+pub fn export(backup: &Backup, cred: BackupCredential<'_>) -> Result<String, BackupError> {
+    let payload_bytes = serde_json::to_vec(backup)?;
+    let sealed = encryption::seal(&payload_bytes, cred, CURRENT_VERSION)?;
+    let env = BackupEnvelope {
+        version: CURRENT_VERSION,
+        encryption: sealed.header,
+        payload: b64::encode(sealed.ciphertext),
     };
     Ok(serde_json::to_string(&env)?)
 }
 
-pub fn import(data: &str, cred: Option<BackupCredential<'_>>) -> Result<Backup, BackupError> {
-    let env: BackupEnvelope = serde_json::from_str(data)?;
-    let version = env.version;
-    if !(MIN_SUPPORTED_VERSION..=CURRENT_VERSION).contains(&version) {
-        return Err(BackupError::UnsupportedVersion(version));
-    }
-    match (env.encryption, env.payload) {
-        (None, Payload::Plain(backup)) => {
-            if cred.is_some() {
-                return Err(BackupError::UnexpectedCredential);
-            }
-            Ok(backup.into_owned())
-        }
-        (Some(header), Payload::Encrypted(ciphertext_b64)) => {
-            let ciphertext = b64::decode(&ciphertext_b64).map_err(|_| BackupError::Base64)?;
-            let payload_bytes = encryption::open(&header, &ciphertext, cred, version)?;
-            Ok(serde_json::from_slice(&payload_bytes)?)
-        }
-        _ => Err(BackupError::EncryptionMismatch),
-    }
+pub fn import(data: &str, cred: BackupCredential<'_>) -> Result<Backup, BackupError> {
+    let env = parse_envelope(data)?;
+    let ciphertext = b64::decode(&env.payload).map_err(|_| BackupError::Base64)?;
+    let payload_bytes = encryption::open(&env.encryption, &ciphertext, cred, env.version)?;
+    Ok(serde_json::from_slice(&payload_bytes)?)
 }
 
 /// Report which credential a backup file needs, without decrypting it.
-/// `Ok(None)` means the payload is plaintext.
-pub fn inspect(data: &str) -> Result<Option<KeySource>, BackupError> {
+pub fn inspect(data: &str) -> Result<KeySource, BackupError> {
+    Ok(parse_envelope(data)?.encryption.source)
+}
+
+fn parse_envelope(data: &str) -> Result<BackupEnvelope, BackupError> {
     let env: BackupEnvelope = serde_json::from_str(data)?;
     if !(MIN_SUPPORTED_VERSION..=CURRENT_VERSION).contains(&env.version) {
         return Err(BackupError::UnsupportedVersion(env.version));
     }
-    match (&env.encryption, &env.payload) {
-        (None, Payload::Plain(_)) => Ok(None),
-        (Some(header), Payload::Encrypted(_)) => Ok(Some(header.source)),
-        _ => Err(BackupError::EncryptionMismatch),
-    }
+    Ok(env)
 }
 
 #[cfg(test)]
@@ -130,11 +99,7 @@ mod tests {
 
     #[test]
     fn golden_v1_passphrase_still_decrypts() {
-        let backup = import(
-            GOLDEN_V1,
-            Some(BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE)),
-        )
-        .unwrap();
+        let backup = import(GOLDEN_V1, BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE)).unwrap();
         // Assert on stable, semantic values so the test survives future additive
         // schema changes (new Option fields) without needing a fresh golden.
         let vault = &backup.vaults[0];
@@ -168,8 +133,8 @@ mod tests {
             },
         ];
 
-        let json = export(&original, Some(BackupCredential::Passphrase(b"pw"))).unwrap();
-        let restored = import(&json, Some(BackupCredential::Passphrase(b"pw"))).unwrap();
+        let json = export(&original, BackupCredential::Passphrase(b"pw")).unwrap();
+        let restored = import(&json, BackupCredential::Passphrase(b"pw")).unwrap();
 
         let passkeys = &restored.vaults[0].logins[0].passkeys;
         assert_eq!(passkeys.len(), 2);
@@ -181,8 +146,8 @@ mod tests {
     fn vault_icon_round_trips_through_an_encrypted_backup() {
         let original = sample_backup();
 
-        let json = export(&original, Some(BackupCredential::Passphrase(b"pw"))).unwrap();
-        let restored = import(&json, Some(BackupCredential::Passphrase(b"pw"))).unwrap();
+        let json = export(&original, BackupCredential::Passphrase(b"pw")).unwrap();
+        let restored = import(&json, BackupCredential::Passphrase(b"pw")).unwrap();
 
         assert_eq!(restored.vaults[0].icon, "Work");
     }
@@ -191,11 +156,7 @@ mod tests {
     fn golden_v1_vault_has_no_icon() {
         // The frozen golden predates the field; serde(default) must read it as an empty string
         // rather than failing the whole import.
-        let backup = import(
-            GOLDEN_V1,
-            Some(BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE)),
-        )
-        .unwrap();
+        let backup = import(GOLDEN_V1, BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE)).unwrap();
         assert!(backup.vaults[0].icon.is_empty());
     }
 
@@ -203,36 +164,24 @@ mod tests {
     fn golden_v1_login_has_no_passkeys() {
         // The frozen golden predates the field; serde(default) must read it as an empty list
         // rather than failing the whole import.
-        let backup = import(
-            GOLDEN_V1,
-            Some(BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE)),
-        )
-        .unwrap();
+        let backup = import(GOLDEN_V1, BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE)).unwrap();
         assert!(backup.vaults[0].logins[0].passkeys.is_empty());
     }
 
     #[test]
     fn version_below_minimum_fails() {
-        let json = export(&sample_backup(), None).unwrap();
+        let json = export(&sample_backup(), BackupCredential::Passphrase(b"pw")).unwrap();
         let mut v: serde_json::Value = serde_json::from_str(&json).unwrap();
         v["version"] = serde_json::json!(0);
-        let err = import(&v.to_string(), None).unwrap_err();
+        let err = import(&v.to_string(), BackupCredential::Passphrase(b"pw")).unwrap_err();
         assert!(matches!(err, BackupError::UnsupportedVersion(0)));
-    }
-
-    #[test]
-    fn plaintext_round_trip() {
-        let original = sample_backup();
-        let json = export(&original, None).unwrap();
-        let restored = import(&json, None).unwrap();
-        json_eq(&restored, &original);
     }
 
     #[test]
     fn passphrase_round_trip() {
         let original = sample_backup();
-        let json = export(&original, Some(BackupCredential::Passphrase(b"pw"))).unwrap();
-        let restored = import(&json, Some(BackupCredential::Passphrase(b"pw"))).unwrap();
+        let json = export(&original, BackupCredential::Passphrase(b"pw")).unwrap();
+        let restored = import(&json, BackupCredential::Passphrase(b"pw")).unwrap();
         json_eq(&restored, &original);
     }
 
@@ -245,7 +194,7 @@ mod tests {
     #[test]
     fn golden_v1_ark_still_decrypts() {
         let ark = AccountRootKey::try_from_bytes(&GOLDEN_V1_ARK_KEY).unwrap();
-        let backup = import(GOLDEN_V1_ARK, Some(BackupCredential::Ark(&ark))).unwrap();
+        let backup = import(GOLDEN_V1_ARK, BackupCredential::Ark(&ark)).unwrap();
         let vault = &backup.vaults[0];
         let login = &vault.logins[0];
         let card = &vault.cards[0];
@@ -260,19 +209,15 @@ mod tests {
     fn ark_round_trip() {
         let ark = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
         let original = sample_backup();
-        let json = export(&original, Some(BackupCredential::Ark(&ark))).unwrap();
-        let restored = import(&json, Some(BackupCredential::Ark(&ark))).unwrap();
+        let json = export(&original, BackupCredential::Ark(&ark)).unwrap();
+        let restored = import(&json, BackupCredential::Ark(&ark)).unwrap();
         json_eq(&restored, &original);
     }
 
     #[test]
     fn wrong_passphrase_fails() {
-        let json = export(
-            &sample_backup(),
-            Some(BackupCredential::Passphrase(b"right")),
-        )
-        .unwrap();
-        let err = import(&json, Some(BackupCredential::Passphrase(b"wrong"))).unwrap_err();
+        let json = export(&sample_backup(), BackupCredential::Passphrase(b"right")).unwrap();
+        let err = import(&json, BackupCredential::Passphrase(b"wrong")).unwrap_err();
         assert!(matches!(
             err,
             BackupError::Crypto(CryptoError::DecryptionFailed)
@@ -283,8 +228,8 @@ mod tests {
     fn wrong_ark_fails() {
         let right = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
         let wrong = AccountRootKey::try_from_bytes(&[6u8; 32]).unwrap();
-        let json = export(&sample_backup(), Some(BackupCredential::Ark(&right))).unwrap();
-        let err = import(&json, Some(BackupCredential::Ark(&wrong))).unwrap_err();
+        let json = export(&sample_backup(), BackupCredential::Ark(&right)).unwrap();
+        let err = import(&json, BackupCredential::Ark(&wrong)).unwrap_err();
         assert!(matches!(
             err,
             BackupError::Crypto(CryptoError::DecryptionFailed),
@@ -293,40 +238,26 @@ mod tests {
 
     #[test]
     fn empty_passphrase_is_rejected() {
-        let err = export(&sample_backup(), Some(BackupCredential::Passphrase(b""))).unwrap_err();
+        let err = export(&sample_backup(), BackupCredential::Passphrase(b"")).unwrap_err();
         assert!(matches!(err, BackupError::Crypto(CryptoError::KdfError(_))));
     }
 
     #[test]
     fn credential_source_mismatch_fails() {
         let ark = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
-        let json = export(&sample_backup(), Some(BackupCredential::Ark(&ark))).unwrap();
-        let err = import(&json, Some(BackupCredential::Passphrase(b"x"))).unwrap_err();
+        let json = export(&sample_backup(), BackupCredential::Ark(&ark)).unwrap();
+        let err = import(&json, BackupCredential::Passphrase(b"x")).unwrap_err();
         assert!(matches!(err, BackupError::CredentialMismatch));
     }
 
     #[test]
-    fn missing_credential_fails() {
-        let json = export(&sample_backup(), Some(BackupCredential::Passphrase(b"pw"))).unwrap();
-        let err = import(&json, None).unwrap_err();
-        assert!(matches!(err, BackupError::MissingCredential));
-    }
-
-    #[test]
-    fn unexpected_credential_fails() {
-        let json = export(&sample_backup(), None).unwrap();
-        let err = import(&json, Some(BackupCredential::Passphrase(b"x"))).unwrap_err();
-        assert!(matches!(err, BackupError::UnexpectedCredential));
-    }
-
-    #[test]
     fn tampered_ciphertext_fails() {
-        let json = export(&sample_backup(), Some(BackupCredential::Passphrase(b"pw"))).unwrap();
+        let json = export(&sample_backup(), BackupCredential::Passphrase(b"pw")).unwrap();
         let mut v: serde_json::Value = serde_json::from_str(&json).unwrap();
         let mut ct = b64::decode(v["payload"].as_str().unwrap()).unwrap();
         ct[0] ^= 0x01;
         v["payload"] = serde_json::Value::String(b64::encode(&ct));
-        let err = import(&v.to_string(), Some(BackupCredential::Passphrase(b"pw"))).unwrap_err();
+        let err = import(&v.to_string(), BackupCredential::Passphrase(b"pw")).unwrap_err();
         assert!(matches!(
             err,
             BackupError::Crypto(CryptoError::DecryptionFailed)
@@ -335,10 +266,10 @@ mod tests {
 
     #[test]
     fn tampered_header_salt_fails() {
-        let json = export(&sample_backup(), Some(BackupCredential::Passphrase(b"pw"))).unwrap();
+        let json = export(&sample_backup(), BackupCredential::Passphrase(b"pw")).unwrap();
         let mut v: serde_json::Value = serde_json::from_str(&json).unwrap();
         v["encryption"]["kdf"]["salt"] = serde_json::Value::String(b64::encode([0u8; 16]));
-        let err = import(&v.to_string(), Some(BackupCredential::Passphrase(b"pw"))).unwrap_err();
+        let err = import(&v.to_string(), BackupCredential::Passphrase(b"pw")).unwrap_err();
         assert!(matches!(
             err,
             BackupError::Crypto(CryptoError::DecryptionFailed)
@@ -346,57 +277,52 @@ mod tests {
     }
 
     #[test]
-    fn guard_rejects_null_encryption_with_string_payload() {
-        let v = serde_json::json!({ "version": 1, "encryption": null, "payload": "AAAA" });
-        let err = import(&v.to_string(), None).unwrap_err();
-        assert!(matches!(err, BackupError::EncryptionMismatch));
+    fn plaintext_envelope_is_rejected() {
+        // An envelope with no encryption header is no longer a shape this format admits: the
+        // field is required, so a plaintext file fails to parse rather than importing silently.
+        let v = serde_json::json!({
+            "version": 1,
+            "encryption": null,
+            "payload": { "vaults": [] },
+        });
+        let err = import(&v.to_string(), BackupCredential::Passphrase(b"pw")).unwrap_err();
+        assert!(matches!(err, BackupError::Json(_)));
     }
 
     #[test]
-    fn guard_rejects_encryption_with_object_payload() {
+    fn inspect_rejects_plaintext_envelope() {
         let v = serde_json::json!({
             "version": 1,
-            "encryption": {
-                "source": "passphrase",
-                "kdf": { "type": "argon2id", "salt": b64::encode([1u8; 16]), "mem_kib": 65536, "iters": 3, "lanes": 4 },
-                "nonce": b64::encode([2u8; 12]),
-            },
+            "encryption": null,
             "payload": { "vaults": [] },
         });
-        let err = import(&v.to_string(), Some(BackupCredential::Passphrase(b"pw"))).unwrap_err();
-        assert!(matches!(err, BackupError::EncryptionMismatch));
+        assert!(matches!(
+            inspect(&v.to_string()).unwrap_err(),
+            BackupError::Json(_),
+        ));
     }
 
     #[test]
     fn unknown_version_fails() {
-        let json = export(&sample_backup(), None).unwrap();
+        let json = export(&sample_backup(), BackupCredential::Passphrase(b"pw")).unwrap();
         let mut v: serde_json::Value = serde_json::from_str(&json).unwrap();
         v["version"] = serde_json::json!(2);
-        let err = import(&v.to_string(), None).unwrap_err();
+        let err = import(&v.to_string(), BackupCredential::Passphrase(b"pw")).unwrap_err();
         assert!(matches!(err, BackupError::UnsupportedVersion(2)));
     }
 
     #[test]
     fn malformed_base64_payload_fails() {
-        let json = export(&sample_backup(), Some(BackupCredential::Passphrase(b"pw"))).unwrap();
+        let json = export(&sample_backup(), BackupCredential::Passphrase(b"pw")).unwrap();
         let mut v: serde_json::Value = serde_json::from_str(&json).unwrap();
         v["payload"] = serde_json::json!("not valid base64!!!");
-        let err = import(&v.to_string(), Some(BackupCredential::Passphrase(b"pw"))).unwrap_err();
+        let err = import(&v.to_string(), BackupCredential::Passphrase(b"pw")).unwrap_err();
         assert!(matches!(err, BackupError::Base64));
     }
 
     #[test]
-    fn plaintext_envelope_shape() {
-        let json = export(&sample_backup(), None).unwrap();
-        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
-        assert_eq!(v["version"], serde_json::json!(1));
-        assert!(v["encryption"].is_null());
-        assert!(v["payload"].is_object());
-    }
-
-    #[test]
     fn encrypted_envelope_hides_plaintext() {
-        let json = export(&sample_backup(), Some(BackupCredential::Passphrase(b"pw"))).unwrap();
+        let json = export(&sample_backup(), BackupCredential::Passphrase(b"pw")).unwrap();
         let v: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(v["encryption"]["source"], serde_json::json!("passphrase"));
         assert!(v["encryption"]["kdf"]["salt"].is_string());
@@ -407,23 +333,10 @@ mod tests {
     }
 
     #[test]
-    fn plaintext_envelope_serde_round_trip() {
-        let env = BackupEnvelope {
-            version: CURRENT_VERSION,
-            encryption: None,
-            payload: Payload::Plain(Cow::Owned(Backup { vaults: vec![] })),
-        };
-        let json = serde_json::to_string(&env).unwrap();
-        let back: BackupEnvelope = serde_json::from_str(&json).unwrap();
-        assert!(back.encryption.is_none());
-        assert!(matches!(back.payload, Payload::Plain(_)));
-    }
-
-    #[test]
     fn encrypted_envelope_serde_round_trip() {
         let env = BackupEnvelope {
             version: CURRENT_VERSION,
-            encryption: Some(EncryptionHeader {
+            encryption: EncryptionHeader {
                 source: KeySource::Passphrase,
                 kdf: Kdf::Argon2id {
                     salt: vec![1u8; 16],
@@ -432,39 +345,32 @@ mod tests {
                     lanes: 4,
                 },
                 nonce: vec![2u8; 12],
-            }),
-            payload: Payload::Encrypted("AAAA".into()),
+            },
+            payload: "AAAA".into(),
         };
         let json = serde_json::to_string(&env).unwrap();
         let back: BackupEnvelope = serde_json::from_str(&json).unwrap();
-        assert!(matches!(back.payload, Payload::Encrypted(_)));
-        let header = back.encryption.unwrap();
-        assert!(matches!(header.source, KeySource::Passphrase));
-        assert!(matches!(header.kdf, Kdf::Argon2id { .. }));
-    }
-
-    #[test]
-    fn inspect_reports_plaintext() {
-        let json = export(&sample_backup(), None).unwrap();
-        assert!(matches!(inspect(&json).unwrap(), None));
+        assert_eq!(back.payload, "AAAA");
+        assert!(matches!(back.encryption.source, KeySource::Passphrase));
+        assert!(matches!(back.encryption.kdf, Kdf::Argon2id { .. }));
     }
 
     #[test]
     fn inspect_reports_passphrase() {
-        let json = export(&sample_backup(), Some(BackupCredential::Passphrase(b"pw"))).unwrap();
-        assert!(matches!(inspect(&json).unwrap(), Some(KeySource::Passphrase)));
+        let json = export(&sample_backup(), BackupCredential::Passphrase(b"pw")).unwrap();
+        assert!(matches!(inspect(&json).unwrap(), KeySource::Passphrase));
     }
 
     #[test]
     fn inspect_reports_ark() {
         let ark = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
-        let json = export(&sample_backup(), Some(BackupCredential::Ark(&ark))).unwrap();
-        assert!(matches!(inspect(&json).unwrap(), Some(KeySource::Ark)));
+        let json = export(&sample_backup(), BackupCredential::Ark(&ark)).unwrap();
+        assert!(matches!(inspect(&json).unwrap(), KeySource::Ark));
     }
 
     #[test]
     fn inspect_rejects_unsupported_version() {
-        let json = export(&sample_backup(), None).unwrap();
+        let json = export(&sample_backup(), BackupCredential::Passphrase(b"pw")).unwrap();
         let mut v: serde_json::Value = serde_json::from_str(&json).unwrap();
         v["version"] = serde_json::json!(0);
         assert!(matches!(
@@ -476,18 +382,5 @@ mod tests {
     #[test]
     fn inspect_rejects_malformed_json() {
         assert!(matches!(inspect("not json").unwrap_err(), BackupError::Json(_)));
-    }
-
-    #[test]
-    fn inspect_rejects_header_with_plain_payload() {
-        let sealed = export(&sample_backup(), Some(BackupCredential::Passphrase(b"pw"))).unwrap();
-        let plain = export(&sample_backup(), None).unwrap();
-        let mut sealed_v: serde_json::Value = serde_json::from_str(&sealed).unwrap();
-        let plain_v: serde_json::Value = serde_json::from_str(&plain).unwrap();
-        sealed_v["payload"] = plain_v["payload"].clone();
-        assert!(matches!(
-            inspect(&sealed_v.to_string()).unwrap_err(),
-            BackupError::EncryptionMismatch,
-        ));
     }
 }

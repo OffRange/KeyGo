@@ -56,6 +56,7 @@ internal val BackupFailureReason.label: String
         BackupFailureReason.CryptoSerializationFailed -> R.string.backup_failure_serialization_crypto
         BackupFailureReason.WriteFailed -> R.string.backup_failure_write
         BackupFailureReason.NotProvisioned -> R.string.backup_failure_not_provisioned
+        BackupFailureReason.RetriesExhausted -> R.string.backup_failure_retries_exhausted
     }.let { stringResource(it) }
 
 @Composable

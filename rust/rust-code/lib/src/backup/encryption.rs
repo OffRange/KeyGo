@@ -113,7 +113,7 @@ pub fn seal(
 pub fn open(
     header: &EncryptionHeader,
     ciphertext: &[u8],
-    cred: Option<BackupCredential<'_>>,
+    cred: BackupCredential<'_>,
     version: u32,
 ) -> Result<Vec<u8>, BackupError> {
     if header.nonce.len() != NONCE_LEN {
@@ -121,12 +121,9 @@ pub fn open(
     }
 
     let key = match (header.source, &header.kdf, cred) {
-        // No credential supplied for an encrypted backup.
-        (_, _, None) => return Err(BackupError::MissingCredential),
-
         // Credential's source disagrees with the header's declared source.
-        (KeySource::Passphrase, _, Some(BackupCredential::Ark(_)))
-        | (KeySource::Ark, _, Some(BackupCredential::Passphrase(_))) => {
+        (KeySource::Passphrase, _, BackupCredential::Ark(_))
+        | (KeySource::Ark, _, BackupCredential::Passphrase(_)) => {
             return Err(BackupError::CredentialMismatch);
         }
 
@@ -139,7 +136,7 @@ pub fn open(
                 iters,
                 lanes,
             },
-            Some(BackupCredential::Passphrase(passphrase)),
+            BackupCredential::Passphrase(passphrase),
         ) => BackupKey::from_passphrase(
             passphrase,
             salt,
@@ -149,13 +146,13 @@ pub fn open(
                 lanes: *lanes,
             },
         )?,
-        (KeySource::Ark, Kdf::HkdfSha256 { salt }, Some(BackupCredential::Ark(ark))) => {
+        (KeySource::Ark, Kdf::HkdfSha256 { salt }, BackupCredential::Ark(ark)) => {
             BackupKey::from_ark(ark, salt)?
         }
 
         // Source matches credential but the KDF disagrees with the source.
-        (KeySource::Passphrase, _, Some(BackupCredential::Passphrase(_)))
-        | (KeySource::Ark, _, Some(BackupCredential::Ark(_))) => {
+        (KeySource::Passphrase, _, BackupCredential::Passphrase(_))
+        | (KeySource::Ark, _, BackupCredential::Ark(_)) => {
             return Err(BackupError::MalformedHeader);
         }
     };
@@ -242,7 +239,7 @@ mod tests {
         let pt = open(
             &sealed.header,
             &sealed.ciphertext,
-            Some(cred),
+            cred,
             CURRENT_VERSION,
         )
         .unwrap();
@@ -257,7 +254,7 @@ mod tests {
         let err = open(
             &sealed.header,
             &sealed.ciphertext,
-            Some(cred),
+            cred,
             CURRENT_VERSION,
         )
         .unwrap_err();
@@ -280,7 +277,7 @@ mod tests {
         let pt = open(
             &sealed.header,
             &sealed.ciphertext,
-            Some(cred),
+            cred,
             CURRENT_VERSION,
         )
         .unwrap();
@@ -297,7 +294,7 @@ mod tests {
         let err = open(
             &sealed.header,
             &sealed.ciphertext,
-            Some(cred),
+            cred,
             CURRENT_VERSION,
         )
         .unwrap_err();
@@ -312,7 +309,7 @@ mod tests {
         let err = open(
             &sealed.header,
             &sealed.ciphertext,
-            Some(cred),
+            cred,
             CURRENT_VERSION,
         )
         .unwrap_err();
@@ -332,7 +329,7 @@ mod tests {
         let err = open(
             &sealed.header,
             &sealed.ciphertext,
-            Some(cred),
+            cred,
             CURRENT_VERSION,
         )
         .unwrap_err();

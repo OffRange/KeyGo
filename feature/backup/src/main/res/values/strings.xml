@@ -27,6 +27,7 @@
     <string name="backup_failure_serialization_crypto">Couldn\'t encrypt the backup</string>
     <string name="backup_failure_write">Couldn\'t save the backup file</string>
     <string name="backup_failure_not_provisioned">Backup isn\'t set up on this device</string>
+    <string name="backup_failure_retries_exhausted">Couldn\'t run while the device stayed locked</string>
     <!-- Frames a reason on a row that still reads "Scheduled". %1$s is a backup_failure_* string. -->
     <string name="backup_failure_last_run">Last run failed. %1$s</string>
     <string name="file_type_backup">%1$s Backup</string>

@@ -238,7 +238,6 @@ pub enum ExportPreset {
 
 #[derive(uniffi::Enum)]
 pub enum JsonEncryption {
-    None,
     Passphrase,
     Ark,
 }
@@ -348,12 +347,6 @@ pub enum BackupError {
     UnsupportedVersion(u32),
     #[error("malformed encryption header")]
     MalformedHeader,
-    #[error("encryption header and payload disagree")]
-    EncryptionMismatch,
-    #[error("a credential is required to read this encrypted backup")]
-    MissingCredential,
-    #[error("a credential was supplied for a plaintext backup")]
-    UnexpectedCredential,
     #[error("credential does not match the backup's key source")]
     CredentialMismatch,
     #[error("malformed csv: {0}")]
@@ -371,9 +364,6 @@ impl From<core::BackupError> for BackupError {
             E::Base64 => Self::Base64,
             E::UnsupportedVersion(v) => Self::UnsupportedVersion(v),
             E::MalformedHeader => Self::MalformedHeader,
-            E::EncryptionMismatch => Self::EncryptionMismatch,
-            E::MissingCredential => Self::MissingCredential,
-            E::UnexpectedCredential => Self::UnexpectedCredential,
             E::CredentialMismatch => Self::CredentialMismatch,
             E::Csv(s) => Self::Csv(s),
             E::EmptyCsv => Self::EmptyCsv,
@@ -394,16 +384,15 @@ impl JsonBackupManager {
     pub fn export(
         &self,
         backup: Backup,
-        credential: Option<BackupCredential>,
+        credential: BackupCredential,
     ) -> Result<String, BackupError> {
         let backup: core::Backup = backup.into();
         let json = match credential {
-            None => core::json::export(&backup, None),
-            Some(BackupCredential::Passphrase { bytes }) => {
-                core::json::export(&backup, Some(core::BackupCredential::Passphrase(&bytes)))
+            BackupCredential::Passphrase { bytes } => {
+                core::json::export(&backup, core::BackupCredential::Passphrase(&bytes))
             }
-            Some(BackupCredential::Ark { key }) => {
-                core::json::export(&backup, Some(core::BackupCredential::Ark(&key)))
+            BackupCredential::Ark { key } => {
+                core::json::export(&backup, core::BackupCredential::Ark(&key))
             }
         }?;
         Ok(json)
@@ -412,15 +401,14 @@ impl JsonBackupManager {
     pub fn import(
         &self,
         data: String,
-        credential: Option<BackupCredential>,
+        credential: BackupCredential,
     ) -> Result<Backup, BackupError> {
         let backup = match credential {
-            None => core::json::import(&data, None),
-            Some(BackupCredential::Passphrase { bytes }) => {
-                core::json::import(&data, Some(core::BackupCredential::Passphrase(&bytes)))
+            BackupCredential::Passphrase { bytes } => {
+                core::json::import(&data, core::BackupCredential::Passphrase(&bytes))
             }
-            Some(BackupCredential::Ark { key }) => {
-                core::json::import(&data, Some(core::BackupCredential::Ark(&key)))
+            BackupCredential::Ark { key } => {
+                core::json::import(&data, core::BackupCredential::Ark(&key))
             }
         }?;
         Ok(backup.into())
@@ -428,9 +416,8 @@ impl JsonBackupManager {
 
     pub fn inspect(&self, data: String) -> Result<JsonEncryption, BackupError> {
         Ok(match core::json::inspect(&data)? {
-            None => JsonEncryption::None,
-            Some(core::encryption::KeySource::Passphrase) => JsonEncryption::Passphrase,
-            Some(core::encryption::KeySource::Ark) => JsonEncryption::Ark,
+            core::encryption::KeySource::Passphrase => JsonEncryption::Passphrase,
+            core::encryption::KeySource::Ark => JsonEncryption::Ark,
         })
     }
 }

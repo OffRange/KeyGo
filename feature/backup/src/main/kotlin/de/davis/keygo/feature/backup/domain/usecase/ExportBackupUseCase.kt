@@ -72,16 +72,22 @@ internal class ExportBackupUseCase(
         val keep = job.keepCount ?: return
         val existing = fileStore.listBackups(job.uri, BACKUP_BASE_NAME).getOrNull() ?: return
         existing
-            .filter { it.name.endsWith(".${job.format.extension}") }
-            .sortedByDescending { it.timestamp(job.format) }
+            // Only documents this app wrote are prune candidates. Anything else that happens to
+            // share the base name - a user's own renamed copy, or a SAF collision rename like
+            // "keygo-backup-1700000000000 (1).json" - has no parsable timestamp, and must be left
+            // alone rather than sorted to the end and deleted as if it were the oldest backup.
+            .mapNotNull { entry -> entry.timestamp(job.format)?.let { entry to it } }
+            .sortedByDescending { (_, timestamp) -> timestamp }
             .drop(keep)
-            .forEach { fileStore.delete(it.uri) }
+            .forEach { (entry, _) -> fileStore.delete(entry.uri) }
     }
 
-    private fun BackupEntry.timestamp(format: FileFormat): Long =
-        name.removePrefix("$BACKUP_BASE_NAME-")
-            .removeSuffix(".${format.extension}")
-            .toLongOrNull() ?: Long.MIN_VALUE
+    /** The embedded epoch-millis stamp, or null if this is not a document this app wrote. */
+    private fun BackupEntry.timestamp(format: FileFormat): Long? =
+        name.takeIf { it.endsWith(".${format.extension}") }
+            ?.removePrefix("$BACKUP_BASE_NAME-")
+            ?.removeSuffix(".${format.extension}")
+            ?.toLongOrNull()
 
     private suspend fun serialize(job: BackupJob, backup: Backup): Result<String, ExportError> =
         resultBinding {

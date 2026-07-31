@@ -5,10 +5,7 @@ import de.davisalessandro.keygo.rust.BackupException
 
 internal fun BackupException.toImportError(): ImportError = when (this) {
     is BackupException.Crypto,
-    is BackupException.CredentialMismatch,
-    is BackupException.MissingCredential,
-    is BackupException.UnexpectedCredential,
-    is BackupException.EncryptionMismatch -> ImportError.WrongCredential
+    is BackupException.CredentialMismatch -> ImportError.WrongCredential
 
     else -> ImportError.ParseFailed(this)
 }

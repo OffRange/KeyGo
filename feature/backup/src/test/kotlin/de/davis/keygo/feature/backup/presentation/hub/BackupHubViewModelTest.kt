@@ -3,6 +3,7 @@ package de.davis.keygo.feature.backup.presentation.hub
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
 import de.davis.keygo.feature.backup.FakeBackupJobRepository
+import de.davis.keygo.feature.backup.FakeBackupScheduler
 import de.davis.keygo.feature.backup.FakeDispatchedBackupRepository
 import de.davis.keygo.feature.backup.FakePersistableUriManager
 import de.davis.keygo.feature.backup.data.FakeBackupDestinationResolver
@@ -47,6 +48,15 @@ class BackupHubViewModelTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
+    private val cleanup = CleanupBackupResourcesUseCase(
+        jobRepository = jobRepository,
+        arkKeyStore = FakeBackupArkKeyStore(),
+        keyStoreManager = FakeKeyStoreManager(),
+        persistableUriManager = FakePersistableUriManager(),
+        provisioningLock = BackupProvisioningLock(),
+        scheduler = FakeBackupScheduler(jobRepository),
+    )
+
     private fun viewModel() = BackupHubViewModel(
         observeDispatchedBackups =
             ObserveDispatchedBackupsUseCase(repository, jobRepository, destinationResolver),
@@ -54,13 +64,7 @@ class BackupHubViewModelTest {
         cancelBackup = CancelBackupUseCase(
             repository = repository,
             jobRepository = jobRepository,
-            cleanupBackupResources = CleanupBackupResourcesUseCase(
-                jobRepository = jobRepository,
-                arkKeyStore = FakeBackupArkKeyStore(),
-                keyStoreManager = FakeKeyStoreManager(),
-                persistableUriManager = FakePersistableUriManager(),
-                provisioningLock = BackupProvisioningLock(),
-            ),
+            cleanupBackupResources = cleanup,
         ),
     )
 
