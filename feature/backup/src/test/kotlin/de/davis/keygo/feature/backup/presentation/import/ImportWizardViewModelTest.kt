@@ -83,7 +83,7 @@ class ImportWizardViewModelTest {
         username = null,
         password = "pw",
         totpSecret = null,
-        website = null,
+        websites = emptyList(),
         passkeys = emptyList(),
     )
 

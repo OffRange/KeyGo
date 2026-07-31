@@ -25,7 +25,7 @@ pub struct BackupLogin {
     pub username: Option<String>,
     pub password: Option<String>,
     pub totp_secret: Option<String>,
-    pub website: Option<String>,
+    pub websites: Vec<String>,
     pub passkeys: Vec<BackupPasskey>,
 }
 
@@ -85,7 +85,7 @@ impl From<core::Login> for BackupLogin {
             username: l.username,
             password: l.password,
             totp_secret: l.totp_secret,
-            website: l.website,
+            websites: l.websites,
             passkeys: l.passkeys.into_iter().map(Into::into).collect(),
         }
     }
@@ -101,7 +101,7 @@ impl From<BackupLogin> for core::Login {
             username: l.username,
             password: l.password,
             totp_secret: l.totp_secret,
-            website: l.website,
+            websites: l.websites,
             passkeys: l.passkeys.into_iter().map(Into::into).collect(),
         }
     }

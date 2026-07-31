@@ -87,7 +87,7 @@ impl Field {
     fn read(self, login: &Login) -> Option<&str> {
         match self {
             Field::Title => Some(login.title.as_str()),
-            Field::Url => login.website.as_deref(),
+            Field::Url => login.websites.first().map(String::as_str),
             Field::Username => login.username.as_deref(),
             Field::Password => login.password.as_deref(),
             Field::Notes => login.notes.as_deref(),
@@ -559,7 +559,7 @@ pub fn import(data: &str, mapping: &ColumnMapping) -> Result<(Backup, ImportRepo
             username,
             password,
             totp_secret: totp,
-            website: url,
+            websites: url.into_iter().collect(),
             notes,
             ..Default::default()
         });
@@ -847,7 +847,7 @@ Bank,https://bank.example,bob,hunter2,\n";
         assert_eq!(v.logins[0].title, "Email");
         assert_eq!(v.logins[0].username.as_deref(), Some("alice"));
         assert_eq!(v.logins[0].password.as_deref(), Some("s3cr3t"));
-        assert_eq!(v.logins[0].website.as_deref(), Some("https://mail.example"));
+        assert_eq!(v.logins[0].websites, vec!["https://mail.example".to_string()]);
         assert_eq!(v.logins[0].notes.as_deref(), Some("primary"));
         assert_eq!(v.logins[1].notes, None); // empty cell -> None
     }
@@ -944,7 +944,7 @@ Bank,https://bank.example,bob,hunter2,\n";
                 username: Some("alice".into()),
                 password: Some("s3cr3t".into()),
                 totp_secret: Some("JBSWY3DPEHPK3PXP".into()),
-                website: Some("https://mail.example".into()),
+                websites: vec!["https://mail.example".into()],
                 notes: Some("primary".into()),
                 ..Default::default()
             },
@@ -968,7 +968,7 @@ Bank,https://bank.example,bob,hunter2,\n";
             username: Some("alice".into()),
             password: Some("s3cr3t".into()),
             totp_secret: Some("JBSWY3DPEHPK3PXP".into()),
-            website: Some("https://mail.example".into()),
+            websites: vec!["https://mail.example".into()],
             notes: Some("primary".into()),
             ..Default::default()
         }]);
@@ -1020,7 +1020,7 @@ Bank,https://bank.example,bob,hunter2,\n";
             username: Some("alice".into()),
             password: Some("s3cr3t".into()),
             totp_secret: Some("JBSWY3DPEHPK3PXP".into()),
-            website: Some("https://mail.example".into()),
+            websites: vec!["https://mail.example".into()],
             notes: Some("primary".into()),
             ..Default::default()
         }]);
@@ -1032,7 +1032,7 @@ Bank,https://bank.example,bob,hunter2,\n";
         assert_eq!(l.title, "Email");
         assert_eq!(l.username.as_deref(), Some("alice"));
         assert_eq!(l.password.as_deref(), Some("s3cr3t"));
-        assert_eq!(l.website.as_deref(), Some("https://mail.example"));
+        assert_eq!(l.websites, vec!["https://mail.example".to_string()]);
         assert_eq!(l.notes.as_deref(), Some("primary"));
         assert_eq!(l.totp_secret.as_deref(), Some("JBSWY3DPEHPK3PXP"));
     }

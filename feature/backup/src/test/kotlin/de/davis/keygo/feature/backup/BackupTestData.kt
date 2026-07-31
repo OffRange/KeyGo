@@ -57,7 +57,7 @@ fun testLogin(
     username: String? = null,
     password: String? = null,
     totpSecret: String? = null,
-    website: String? = null,
+    websites: Set<String> = emptySet(),
     tags: Set<String> = emptySet(),
     note: String? = null,
     passkeyRPs: Set<String> = emptySet(),
@@ -66,7 +66,7 @@ fun testLogin(
     vaultId = vaultId,
     name = name,
     username = username,
-    domainInfos = website?.let { setOf(DomainInfo(loginId = id, value = it, eTLD1 = null)) }.orEmpty(),
+    domainInfos = websites.map { DomainInfo(loginId = id, value = it, eTLD1 = null) }.toSet(),
     passwordCredential = password?.let {
         PasswordCredential(secret = PasswordSecret(secretPayload(it)), score = PasswordScore.Strong)
     },

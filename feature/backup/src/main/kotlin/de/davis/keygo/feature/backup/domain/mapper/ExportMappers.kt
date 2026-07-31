@@ -24,7 +24,7 @@ internal suspend fun Login.toBackupLogin(passkeys: List<Passkey>): BackupLogin =
     username = username,
     password = passwordCredential?.secret?.decrypt(),
     totpSecret = totp?.secret?.decrypt(),
-    website = domainInfos.firstOrNull()?.value,
+    websites = domainInfos.map { it.value },
     passkeys = passkeys.map { it.toBackupPasskey() },
 )
 

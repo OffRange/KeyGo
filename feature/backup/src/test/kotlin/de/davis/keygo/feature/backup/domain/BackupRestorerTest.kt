@@ -9,7 +9,6 @@ import de.davis.keygo.feature.backup.domain.model.ImportTarget
 import de.davis.keygo.feature.backup.testLogin
 import de.davis.keygo.feature.backup.testVault
 import de.davisalessandro.keygo.rust.Backup
-import de.davisalessandro.keygo.rust.BackupCard
 import de.davisalessandro.keygo.rust.BackupLogin
 import de.davisalessandro.keygo.rust.BackupVault
 import kotlinx.coroutines.flow.first
@@ -20,7 +19,11 @@ import kotlin.test.assertIs
 
 class BackupRestorerTest {
 
-    private fun login(title: String, username: String? = null) = BackupLogin(
+    private fun login(
+        title: String,
+        username: String? = null,
+        websites: List<String> = emptyList(),
+    ) = BackupLogin(
         title = title,
         notes = null,
         tags = emptyList(),
@@ -28,7 +31,7 @@ class BackupRestorerTest {
         username = username,
         password = "pw",
         totpSecret = null,
-        website = null,
+        websites = websites,
         passkeys = emptyList(),
     )
 
@@ -54,6 +57,32 @@ class BackupRestorerTest {
         assertEquals(2, summary.imported)
         assertEquals(1, summary.vaultsCreated)
         assertEquals(2, env.loginRepo.observeLoginsCount())
+    }
+
+    @Test
+    fun `a login with multiple websites imports all of them`() = runTest {
+        val env = RestorerTestEnv()
+
+        env.restorer.restore(
+            backup(
+                vault(
+                    "Imported",
+                    listOf(
+                        login(
+                            "Email",
+                            websites = listOf("https://mail.example", "https://mail.example.org")
+                        )
+                    ),
+                ),
+            ),
+        ) { _, _ -> }
+
+        val vaultId = env.vaultRepo.observeAllVaultMetadata().first().single().vaultId
+        val imported = env.loginRepo.getLoginsByVault(vaultId).single()
+        assertEquals(
+            setOf("https://mail.example", "https://mail.example.org"),
+            imported.domainInfos.map { it.value }.toSet(),
+        )
     }
 
     @Test

@@ -73,7 +73,7 @@ class BackupCollectorTest {
                 username = "alice",
                 password = "s3cr3t",
                 totpSecret = "JBSWY3DPEHPK3PXP",
-                website = "https://mail.example",
+                websites = setOf("https://mail.example"),
                 tags = setOf("work"),
                 note = "remember",
             )
@@ -86,10 +86,31 @@ class BackupCollectorTest {
         assertEquals("alice", login.username)
         assertEquals("s3cr3t", login.password)
         assertEquals("JBSWY3DPEHPK3PXP", login.totpSecret)
-        assertEquals("https://mail.example", login.website)
+        assertEquals(listOf("https://mail.example"), login.websites)
         assertEquals(listOf("work"), login.tags)
         assertEquals("remember", login.notes)
         assertEquals(1, collected.itemCount)
+    }
+
+    @Test
+    fun `a login with multiple websites exports all of them`() = runTest {
+        val vault = testVault(name = "Personal")
+        vaultRepo.seed(vault)
+        loginRepo.seed(
+            testLogin(
+                vaultId = vault.id,
+                name = "Email",
+                websites = setOf("https://mail.example", "https://mail.example.org"),
+            )
+        )
+
+        val result = collector().collect { _, _ -> }
+        val login = assertNotNull(result.getOrNull()).backup.vaults.single().logins.single()
+
+        assertEquals(
+            setOf("https://mail.example", "https://mail.example.org"),
+            login.websites.toSet(),
+        )
     }
 
     @Test

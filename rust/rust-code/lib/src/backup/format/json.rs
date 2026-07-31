@@ -65,7 +65,7 @@ mod tests {
                     username: Some("alice".into()),
                     password: Some("s3cr3t-password".into()),
                     totp_secret: None,
-                    website: Some("https://mail.example".into()),
+                    websites: vec!["https://mail.example".into()],
                     passkeys: vec![],
                 }],
                 cards: vec![Card {
@@ -166,6 +166,32 @@ mod tests {
         // rather than failing the whole import.
         let backup = import(GOLDEN_V1, BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE)).unwrap();
         assert!(backup.vaults[0].logins[0].passkeys.is_empty());
+    }
+
+    #[test]
+    fn golden_v1_login_has_no_websites() {
+        // The frozen golden predates the field (and its predecessor was a single `website`
+        // string, not this list); serde(default) must read it as an empty list rather than
+        // failing the whole import.
+        let backup = import(GOLDEN_V1, BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE)).unwrap();
+        assert!(backup.vaults[0].logins[0].websites.is_empty());
+    }
+
+    #[test]
+    fn multiple_websites_round_trip_through_an_encrypted_backup() {
+        let mut original = sample_backup();
+        original.vaults[0].logins[0].websites = vec![
+            "https://mail.example".into(),
+            "https://mail.example.org".into(),
+        ];
+
+        let json = export(&original, BackupCredential::Passphrase(b"pw")).unwrap(); // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        let restored = import(&json, BackupCredential::Passphrase(b"pw")).unwrap(); // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+
+        assert_eq!(
+            restored.vaults[0].logins[0].websites,
+            vec!["https://mail.example".to_string(), "https://mail.example.org".to_string()],
+        );
     }
 
     #[test]

@@ -23,7 +23,7 @@ internal fun BackupLogin.toUpsertLogin(vaultId: VaultId): UpsertLogin = UpsertLo
     password = password,
     totpUriOrSecret = totpSecret,
     username = username,
-    domains = website?.let { setOf(DomainInfo(value = it, eTLD1 = null)) }.orEmpty(),
+    domains = websites.map { DomainInfo(value = it, eTLD1 = null) }.toSet(),
     tags = tags.mapNotNull { Tag.of(it) }.toSet(),
     note = notes,
 )

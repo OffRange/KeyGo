@@ -49,7 +49,10 @@ backup_item! {
         pub username: Option<String>,
         pub password: Option<String>,
         pub totp_secret: Option<String>,
-        pub website: Option<String>,
+        /// A login can be associated with several sites. `default` keeps pre-field backups -
+        /// including the frozen v1 goldens - readable.
+        #[serde(default)]
+        pub websites: Vec<String>,
         /// A login can hold several passkeys (one per RP). `default` keeps pre-field backups -
         /// including the frozen v1 goldens - readable.
         #[serde(default)]
