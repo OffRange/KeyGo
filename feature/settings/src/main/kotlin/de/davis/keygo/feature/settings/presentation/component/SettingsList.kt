@@ -58,7 +58,11 @@ internal fun SettingsList(
             ) { index, entry ->
                 SettingsEntryRow(
                     entry = entry,
-                    shapes = ListItemDefaults.segmentedShapes(index, section.entries.size),
+                    shapes = if (section.entries.size == 1) ListItemDefaults.shapes(MaterialTheme.shapes.large)
+                    else ListItemDefaults.segmentedShapes(
+                        index,
+                        section.entries.size,
+                    ),
                     colors = ListItemDefaults.segmentedColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     ),
