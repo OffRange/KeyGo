@@ -117,4 +117,4 @@ jobs:
         run: ./gradlew test --continue
 
       - name: Assemble debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --stacktrace
