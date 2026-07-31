@@ -14,7 +14,7 @@ import kotlin.test.assertNull
 class ObserveLastBackupUseCaseTest {
 
     private val jobRepository = FakeBackupJobRepository()
-    private val useCase = ObserveLastBackupUseCaseImpl(jobRepository)
+    private val useCase = ObserveLastBackupUseCase(jobRepository)
 
     private fun job(
         uri: String,
