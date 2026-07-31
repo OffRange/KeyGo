@@ -98,8 +98,10 @@ pub(crate) fn derive_argon2id_with_params(
 mod tests {
     use super::*;
 
-    const PW: &[u8] = b"correct horse battery staple"; // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
-    const SALT: [u8; 16] = [0x11; 16]; // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+    // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+    const PW: &[u8] = b"correct horse battery staple";
+    // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+    const SALT: [u8; 16] = [0x11; 16];
 
     #[test]
     fn deterministic_for_same_inputs() {
@@ -111,18 +113,21 @@ mod tests {
     #[test]
     fn different_salt_different_key() {
         let a = derive_argon2id(PW, &SALT, b"pwd").unwrap();
-        let b = derive_argon2id(PW, &[0x22; 16], b"pwd").unwrap(); // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        let b = derive_argon2id(PW, &[0x22; 16], b"pwd").unwrap();
         assert_ne!(a, b);
     }
 
     #[test]
     fn rejects_empty_password() {
-        assert!(derive_argon2id(b"", &SALT, b"pwd").is_err()); // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        assert!(derive_argon2id(b"", &SALT, b"pwd").is_err());
     }
 
     #[test]
     fn rejects_short_salt() {
-        assert!(derive_argon2id(PW, &[0u8; 8], b"pwd").is_err()); // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        assert!(derive_argon2id(PW, &[0u8; 8], b"pwd").is_err());
     }
 
     #[test]

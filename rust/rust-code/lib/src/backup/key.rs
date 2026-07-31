@@ -35,28 +35,35 @@ mod tests {
     use crate::crypto::key::KeyMaterial;
     use crate::crypto::keys::AccountRootKey;
 
-    const SALT: &[u8] = &[3u8; 16]; // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+    // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+    const SALT: &[u8] = &[3u8; 16];
 
     #[test]
     fn passphrase_key_is_deterministic() {
-        let a = BackupKey::from_passphrase(b"hunter2", SALT, Argon2Params::default()).unwrap(); // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
-        let b = BackupKey::from_passphrase(b"hunter2", SALT, Argon2Params::default()).unwrap(); // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        let a = BackupKey::from_passphrase(b"hunter2", SALT, Argon2Params::default()).unwrap();
+        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        let b = BackupKey::from_passphrase(b"hunter2", SALT, Argon2Params::default()).unwrap();
         assert_eq!(a.as_bytes(), b.as_bytes());
     }
 
     #[test]
     fn passphrase_key_changes_with_salt() {
-        let a = BackupKey::from_passphrase(b"hunter2", SALT, Argon2Params::default()).unwrap(); // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        let a = BackupKey::from_passphrase(b"hunter2", SALT, Argon2Params::default()).unwrap();
         let b =
-            BackupKey::from_passphrase(b"hunter2", &[9u8; 16], Argon2Params::default()).unwrap(); // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+            // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+            BackupKey::from_passphrase(b"hunter2", &[9u8; 16], Argon2Params::default()).unwrap();
         assert_ne!(a.as_bytes(), b.as_bytes());
     }
 
     #[test]
     fn passphrase_key_changes_with_params() {
-        let a = BackupKey::from_passphrase(b"hunter2", SALT, Argon2Params::default()).unwrap(); // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        let a = BackupKey::from_passphrase(b"hunter2", SALT, Argon2Params::default()).unwrap();
         let b = BackupKey::from_passphrase(
-            b"hunter2", // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+            // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+            b"hunter2",
             SALT,
             Argon2Params {
                 iters: Argon2Params::default().iters + 1,
@@ -69,7 +76,8 @@ mod tests {
 
     #[test]
     fn ark_key_is_deterministic() {
-        let ark = AccountRootKey::try_from_bytes(&[7u8; 32]).unwrap(); // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        let ark = AccountRootKey::try_from_bytes(&[7u8; 32]).unwrap();
         let a = BackupKey::from_ark(&ark, SALT).unwrap();
         let b = BackupKey::from_ark(&ark, SALT).unwrap();
         assert_eq!(a.as_bytes(), b.as_bytes());
@@ -77,7 +85,8 @@ mod tests {
 
     #[test]
     fn passphrase_and_ark_paths_are_domain_separated() {
-        let raw = [7u8; 32]; // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        let raw = [7u8; 32];
         let ark = AccountRootKey::try_from_bytes(&raw).unwrap();
         let pass = BackupKey::from_passphrase(&raw, SALT, Argon2Params::default()).unwrap();
         let ark_key = BackupKey::from_ark(&ark, SALT).unwrap();
