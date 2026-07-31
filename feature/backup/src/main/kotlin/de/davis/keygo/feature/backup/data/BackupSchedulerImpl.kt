@@ -9,6 +9,7 @@ import androidx.work.await
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.backup.domain.BackupScheduler
+import de.davis.keygo.feature.backup.domain.alias.WorkId
 import de.davis.keygo.feature.backup.domain.model.BackupInterval
 import de.davis.keygo.feature.backup.domain.model.BackupJob
 import de.davis.keygo.feature.backup.domain.model.IntervalUnit
@@ -76,7 +77,7 @@ internal class BackupSchedulerImpl(
         workManager.cancelUniqueWork(BackupWorker.UNIQUE_WORK_NAME)
     }
 
-    override suspend fun outstandingWorkIds(): Set<String> =
+    override suspend fun outstandingWorkIds(): Set<WorkId> =
         workManager.getWorkInfosByTagFlow(BackupWorker.TAG).first()
             .filterNot { it.state.isFinished }
             .mapTo(mutableSetOf()) { info ->

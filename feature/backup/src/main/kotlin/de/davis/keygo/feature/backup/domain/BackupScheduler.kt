@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.backup.domain
 
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.feature.backup.domain.alias.WorkId
 import de.davis.keygo.feature.backup.domain.model.BackupInterval
 import de.davis.keygo.feature.backup.domain.model.BackupJob
 
@@ -24,5 +25,5 @@ interface BackupScheduler {
      * Throws if the scheduler cannot be read; callers must treat that as "unknown" and release
      * nothing, never as "no work outstanding".
      */
-    suspend fun outstandingWorkIds(): Set<String>
+    suspend fun outstandingWorkIds(): Set<WorkId>
 }

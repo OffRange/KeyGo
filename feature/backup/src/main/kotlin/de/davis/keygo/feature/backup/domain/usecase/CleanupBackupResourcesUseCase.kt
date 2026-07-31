@@ -5,6 +5,7 @@ import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.feature.backup.domain.BackupProvisioningLock
 import de.davis.keygo.feature.backup.domain.BackupScheduler
 import de.davis.keygo.feature.backup.domain.PersistableUriManager
+import de.davis.keygo.feature.backup.domain.alias.WorkId
 import de.davis.keygo.feature.backup.domain.model.BackupJob
 import de.davis.keygo.feature.backup.domain.repository.BackupArkKeyStore
 import de.davis.keygo.feature.backup.domain.repository.BackupJobRepository
@@ -31,7 +32,7 @@ internal class CleanupBackupResourcesUseCase(
     private val scheduler: BackupScheduler,
 ) {
 
-    suspend operator fun invoke(workId: String): Unit = provisioningLock.mutex.withLock {
+    suspend operator fun invoke(workId: WorkId): Unit = provisioningLock.mutex.withLock {
         val outstanding = outstandingWorkIds()
         val current = runCatching { jobRepository.getJobs() }.getOrNull() ?: return
 
@@ -72,7 +73,7 @@ internal class CleanupBackupResourcesUseCase(
      * entry points share this so a dropped job cannot hand back its escrowed ARK while leaving the
      * wrapped passphrase - and the auth-less alias that opens it - behind.
      */
-    private suspend fun sweep(current: Map<String, BackupJob>, outstanding: Set<String>?) {
+    private suspend fun sweep(current: Map<WorkId, BackupJob>, outstanding: Set<WorkId>?) {
         current.forEach { (id, job) ->
             if (job.wrappedPassphrase != null && !job.isLive(id, outstanding))
                 runCatching { jobRepository.clearPassphrase(id) }
@@ -85,8 +86,8 @@ internal class CleanupBackupResourcesUseCase(
     }
 
     private suspend fun releaseUnusedKeys(
-        jobs: Map<String, BackupJob>,
-        live: Map<String, BackupJob>,
+        jobs: Map<WorkId, BackupJob>,
+        live: Map<WorkId, BackupJob>,
     ) {
         if (jobs.values.none { it.wrappedPassphrase != null })
             runCatching { keyStoreManager.deleteKey(KeyId.BackupPassphraseKey) }
@@ -99,7 +100,7 @@ internal class CleanupBackupResourcesUseCase(
 
     /** Null when the scheduler cannot be read - never an empty set, which would read as "nothing
      * is scheduled" and tear down credentials that are still in use. */
-    private suspend fun outstandingWorkIds(): Set<String>? =
+    private suspend fun outstandingWorkIds(): Set<WorkId>? =
         runCatching { scheduler.outstandingWorkIds() }.getOrNull()
 
     // A recurring schedule stamps finishedAt after every run, so only its absence - or cancellation
@@ -107,7 +108,7 @@ internal class CleanupBackupResourcesUseCase(
     // while the scheduler still has work behind it: once it does not, no future run can read these
     // credentials. A null `outstanding` means the scheduler could not be read, so the record's own
     // bookkeeping is trusted and nothing is released on its account.
-    private fun BackupJob.isLive(workId: String, outstanding: Set<String>?): Boolean =
+    private fun BackupJob.isLive(workId: WorkId, outstanding: Set<WorkId>?): Boolean =
         (outstanding == null || workId in outstanding) &&
                 !cancelled &&
                 (workId == BackupWorker.RECURRING_WORK_ID || finishedAt == null)

@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.backup.domain.usecase
 
 import de.davis.keygo.feature.backup.domain.DispatchedBackupRepository
+import de.davis.keygo.feature.backup.domain.alias.WorkId
 import de.davis.keygo.feature.backup.domain.model.DispatchedBackup
 import de.davis.keygo.feature.backup.domain.repository.BackupJobRepository
 import de.davis.keygo.feature.backup.worker.BackupWorker
@@ -16,7 +17,7 @@ internal class CancelBackupUseCase(
     suspend operator fun invoke(id: String, kind: DispatchedBackup.Kind) {
         repository.cancel(id)
 
-        val workId = when (kind) {
+        val workId: WorkId = when (kind) {
             DispatchedBackup.Kind.Recurring -> BackupWorker.RECURRING_WORK_ID
             DispatchedBackup.Kind.OneTime -> id
         }

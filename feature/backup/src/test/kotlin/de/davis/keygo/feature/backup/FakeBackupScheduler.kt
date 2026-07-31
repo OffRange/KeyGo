@@ -2,6 +2,7 @@ package de.davis.keygo.feature.backup
 
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.feature.backup.domain.BackupScheduler
+import de.davis.keygo.feature.backup.domain.alias.WorkId
 import de.davis.keygo.feature.backup.domain.model.BackupInterval
 import de.davis.keygo.feature.backup.domain.model.BackupJob
 import de.davis.keygo.feature.backup.worker.BackupWorker
@@ -17,7 +18,7 @@ import kotlinx.coroutines.CompletableDeferred
 class FakeBackupScheduler(
     private val jobRepository: FakeBackupJobRepository? = null,
     private val gate: CompletableDeferred<Unit>? = null,
-    private val oneTimeWorkId: String = "one-time",
+    private val oneTimeWorkId: WorkId = "one-time",
 ) : BackupScheduler {
 
     var recurringJob: BackupJob? = null
@@ -26,8 +27,8 @@ class FakeBackupScheduler(
     var cancelled = false
     var result: Result<Unit, Unit> = Result.Success(Unit)
 
-    private val scheduled = mutableSetOf<String>()
-    private val abandoned = mutableSetOf<String>()
+    private val scheduled = mutableSetOf<WorkId>()
+    private val abandoned = mutableSetOf<WorkId>()
 
     /** When set, [outstandingWorkIds] throws - the "scheduler unreadable" case. */
     var outstandingFailure: Throwable? = null
@@ -38,12 +39,12 @@ class FakeBackupScheduler(
      * out, which is how a job the platform quietly gave up on looks - the record still reads live,
      * but no run can ever come of it.
      */
-    override suspend fun outstandingWorkIds(): Set<String> {
+    override suspend fun outstandingWorkIds(): Set<WorkId> {
         outstandingFailure?.let { throw it }
         return (jobRepository?.jobs?.keys ?: scheduled) - abandoned
     }
 
-    fun abandon(workId: String) {
+    fun abandon(workId: WorkId) {
         abandoned += workId
     }
 
@@ -67,7 +68,7 @@ class FakeBackupScheduler(
 
     // Mirror BackupSchedulerImpl: on success the record is written (putJob), on failure it is not,
     // so a failed schedule leaves no record - exactly the case the URI-grant release compensates.
-    private suspend fun persist(workId: String, job: BackupJob): Result<Unit, Unit> {
+    private suspend fun persist(workId: WorkId, job: BackupJob): Result<Unit, Unit> {
         gate?.await()
         if (result is Result.Failure) return result
         jobRepository?.putJob(workId, job)

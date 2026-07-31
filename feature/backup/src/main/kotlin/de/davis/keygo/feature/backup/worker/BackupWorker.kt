@@ -6,6 +6,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.ListenableWorker
 import androidx.work.WorkerParameters
 import de.davis.keygo.feature.backup.data.mapper.toProgressData
+import de.davis.keygo.feature.backup.domain.alias.WorkId
 import de.davis.keygo.feature.backup.domain.model.ExportError
 import de.davis.keygo.feature.backup.domain.model.ExportProgress
 import de.davis.keygo.feature.backup.domain.model.retryable
@@ -36,7 +37,7 @@ internal class BackupWorker(
     private val isRecurring = TAG_RECURRING in tags
 
     override suspend fun doWork(): Result {
-        val workId = if (isRecurring) RECURRING_WORK_ID else id.toString()
+        val workId: WorkId = if (isRecurring) RECURRING_WORK_ID else id.toString()
         val job = backupJobRepository.getJob(workId) ?: return Result.failure()
 
         val canRetry = runAttemptCount + 1 < MAX_ATTEMPTS
@@ -68,7 +69,7 @@ internal class BackupWorker(
         const val MAX_ATTEMPTS = 5
 
         /** Recurring work is a singleton; one-time job records are keyed by their WorkManager id. */
-        const val RECURRING_WORK_ID = "recurring_backup"
+        const val RECURRING_WORK_ID: WorkId = "recurring_backup"
 
         const val TAG = "backup"
         const val TAG_RECURRING = "backup_recurring"

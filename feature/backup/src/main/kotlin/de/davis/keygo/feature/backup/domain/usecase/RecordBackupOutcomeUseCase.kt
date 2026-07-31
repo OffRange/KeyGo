@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.backup.domain.usecase
 
+import de.davis.keygo.feature.backup.domain.alias.WorkId
 import de.davis.keygo.feature.backup.domain.model.BackupFailureReason
 import de.davis.keygo.feature.backup.domain.model.BackupResult
 import de.davis.keygo.feature.backup.domain.model.ExportProgress
@@ -20,7 +21,7 @@ internal class RecordBackupOutcomeUseCase(
      * record closes and the cleanup below can hand back the job's credentials.
      */
     suspend operator fun invoke(
-        workId: String,
+        workId: WorkId,
         terminal: ExportProgress?,
         canRetry: Boolean = true,
     ) {

@@ -10,6 +10,7 @@ import de.davis.keygo.feature.backup.data.mapper.toDomain
 import de.davis.keygo.feature.backup.data.mapper.toProto
 import de.davis.keygo.feature.backup.data.mapper.writeResult
 import de.davis.keygo.feature.backup.di.annotation.BackupJobsQualifier
+import de.davis.keygo.feature.backup.domain.alias.WorkId
 import de.davis.keygo.feature.backup.domain.model.BackupJob
 import de.davis.keygo.feature.backup.domain.model.BackupResult
 import de.davis.keygo.feature.backup.domain.repository.BackupJobRepository
@@ -25,16 +26,16 @@ internal class BackupJobRepositoryImpl(
     private val dataStore: DataStore<ProtoBackupJobs>,
 ) : BackupJobRepository {
 
-    override suspend fun getJob(workId: String): BackupJob? =
+    override suspend fun getJob(workId: WorkId): BackupJob? =
         dataStore.data.map { it.jobsMap[workId]?.toDomain() }.firstOrNull()
 
-    override suspend fun getJobs(): Map<String, BackupJob> =
+    override suspend fun getJobs(): Map<WorkId, BackupJob> =
         dataStore.data.first().jobsMap.mapValues { (_, proto) -> proto.toDomain() }
 
     override fun observeJobs(): Flow<List<BackupJob>> =
         dataStore.data.map { it.jobsMap.values.map { proto -> proto.toDomain() } }
 
-    override suspend fun putJob(workId: String, job: BackupJob): Result<Unit, Unit> = runCatching {
+    override suspend fun putJob(workId: WorkId, job: BackupJob): Result<Unit, Unit> = runCatching {
         dataStore.updateData { current ->
             current.copy {
                 jobs[workId] = job.copy(createdAt = System.currentTimeMillis()).toProto()
@@ -45,27 +46,27 @@ internal class BackupJobRepositoryImpl(
         onFailure = { Result.Failure(Unit) },
     )
 
-    override suspend fun markFinished(workId: String, result: BackupResult, finishedAt: Long) =
+    override suspend fun markFinished(workId: WorkId, result: BackupResult, finishedAt: Long) =
         updateJob(workId) {
             this.finishedAt = finishedAt
             writeResult(result)
         }
 
-    override suspend fun markCancelled(workId: String, cancelledAt: Long) = updateJob(workId) {
+    override suspend fun markCancelled(workId: WorkId, cancelledAt: Long) = updateJob(workId) {
         cancelled = true
         finishedAt = cancelledAt
     }
 
     // Clearing credentials must not prune: the record is still live and its retention position has
     // not changed.
-    override suspend fun clearPassphrase(workId: String) = updateJob(workId, prune = false) {
+    override suspend fun clearPassphrase(workId: WorkId) = updateJob(workId, prune = false) {
         clearPassphraseCt()
         clearPassphraseIv()
     }
 
     /** Applies [edit] to the record under [workId]. A missing record is a no-op. */
     private suspend fun updateJob(
-        workId: String,
+        workId: WorkId,
         prune: Boolean = true,
         edit: ProtoBackupJobKt.Dsl.() -> Unit,
     ) {
@@ -80,7 +81,7 @@ internal class BackupJobRepositoryImpl(
     // Writes [job] under [workId], then drops finished one-time records beyond the retention cap so the
     // store cannot grow without bound as WorkManager silently prunes its own history.
     private fun ProtoBackupJobs.upsertAndPrune(
-        workId: String,
+        workId: WorkId,
         job: ProtoBackupJob
     ): ProtoBackupJobs {
         val merged = jobsMap + (workId to job)

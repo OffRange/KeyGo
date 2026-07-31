@@ -2,6 +2,7 @@ package de.davis.keygo.feature.backup.domain.usecase
 
 import de.davis.keygo.feature.backup.domain.BackupDestinationResolver
 import de.davis.keygo.feature.backup.domain.DispatchedBackupRepository
+import de.davis.keygo.feature.backup.domain.alias.WorkId
 import de.davis.keygo.feature.backup.domain.model.BackupJob
 import de.davis.keygo.feature.backup.domain.model.BackupResult
 import de.davis.keygo.feature.backup.domain.model.BackupWorkStatus
@@ -26,8 +27,8 @@ internal class ObserveDispatchedBackupsUseCase(
             statuses.map { it.enrich(jobs) }
         }
 
-    private suspend fun BackupWorkStatus.enrich(jobs: Map<String, BackupJob>): DispatchedBackup {
-        val workId = when (kind) {
+    private suspend fun BackupWorkStatus.enrich(jobs: Map<WorkId, BackupJob>): DispatchedBackup {
+        val workId: WorkId = when (kind) {
             DispatchedBackup.Kind.Recurring -> BackupWorker.RECURRING_WORK_ID
             DispatchedBackup.Kind.OneTime -> id
         }

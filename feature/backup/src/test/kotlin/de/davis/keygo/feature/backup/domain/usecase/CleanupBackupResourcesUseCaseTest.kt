@@ -9,6 +9,7 @@ import de.davis.keygo.feature.backup.FakeBackupJobRepository
 import de.davis.keygo.feature.backup.FakeBackupScheduler
 import de.davis.keygo.feature.backup.FakePersistableUriManager
 import de.davis.keygo.feature.backup.domain.BackupProvisioningLock
+import de.davis.keygo.feature.backup.domain.alias.WorkId
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
 import de.davis.keygo.feature.backup.domain.model.BackupJob
 import de.davis.keygo.feature.backup.domain.model.FileFormat
@@ -305,7 +306,7 @@ class CleanupBackupResourcesUseCaseTest {
     fun `a failed passphrase clear leaves the passphrase key alone`() = runTest {
         jobRepository.jobs["w"] = job(finishedAt = 1L)
         val failingClear = object : BackupJobRepository by jobRepository {
-            override suspend fun clearPassphrase(workId: String): Unit = throw IOException("boom")
+            override suspend fun clearPassphrase(workId: WorkId): Unit = throw IOException("boom")
         }
         val useCase = CleanupBackupResourcesUseCase(
             jobRepository = failingClear,
