@@ -28,27 +28,27 @@ impl<'a> TryDeriveFrom<&'a [u8]> for RootKEK {
 mod tests {
     use super::*;
 
-    const SALT: &[u8] = &[6; 16];
+    const SALT: &[u8] = &[6; 16]; // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
     const DOMAIN: &[u8] = b"v1:kek/pwd";
 
     #[test]
     fn same_credential_same_password_same_key() {
-        let a = RootKEK::try_derive_from(b"hunter2", SALT, DOMAIN).unwrap();
-        let b = RootKEK::try_derive_from(b"hunter2", SALT, DOMAIN).unwrap();
+        let a = RootKEK::try_derive_from(b"hunter2", SALT, DOMAIN).unwrap(); // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        let b = RootKEK::try_derive_from(b"hunter2", SALT, DOMAIN).unwrap(); // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         assert_eq!(a.as_bytes(), b.as_bytes());
     }
 
     #[test]
     fn different_salt_different_keys() {
-        let a = RootKEK::try_derive_from(b"hunter2", &[7; 16], DOMAIN).unwrap();
-        let b = RootKEK::try_derive_from(b"hunter2", SALT, DOMAIN).unwrap();
+        let a = RootKEK::try_derive_from(b"hunter2", &[7; 16], DOMAIN).unwrap(); // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        let b = RootKEK::try_derive_from(b"hunter2", SALT, DOMAIN).unwrap(); // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         assert_ne!(a.as_bytes(), b.as_bytes());
     }
 
     #[test]
     fn different_domain_different_keys() {
-        let a = RootKEK::try_derive_from(b"hunter2", SALT, DOMAIN).unwrap();
-        let b = RootKEK::try_derive_from(b"hunter2", SALT, b"v2:kek/pwd").unwrap();
+        let a = RootKEK::try_derive_from(b"hunter2", SALT, DOMAIN).unwrap(); // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+        let b = RootKEK::try_derive_from(b"hunter2", SALT, b"v2:kek/pwd").unwrap(); // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         assert_ne!(a.as_bytes(), b.as_bytes());
     }
 }

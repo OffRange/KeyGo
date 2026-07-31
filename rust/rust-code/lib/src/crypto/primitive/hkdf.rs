@@ -32,8 +32,8 @@ pub(crate) fn derive_hkdf_sha256(
 mod tests {
     use super::*;
 
-    const IKM: &[u8] = &[7u8; 32];
-    const SALT: &[u8] = &[0x11; 16];
+    const IKM: &[u8] = &[7u8; 32]; // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
+    const SALT: &[u8] = &[0x11; 16]; // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
 
     #[test]
     fn deterministic_for_same_inputs() {
@@ -45,7 +45,7 @@ mod tests {
     #[test]
     fn different_salt_different_key() {
         let a = derive_hkdf_sha256(IKM, SALT, b"info").unwrap();
-        let b = derive_hkdf_sha256(IKM, &[0x22; 16], b"info").unwrap();
+        let b = derive_hkdf_sha256(IKM, &[0x22; 16], b"info").unwrap(); // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         assert_ne!(a, b);
     }
 
@@ -59,7 +59,7 @@ mod tests {
     #[test]
     fn different_ikm_different_key() {
         let a = derive_hkdf_sha256(IKM, SALT, b"info").unwrap();
-        let b = derive_hkdf_sha256(&[8u8; 32], SALT, b"info").unwrap();
+        let b = derive_hkdf_sha256(&[8u8; 32], SALT, b"info").unwrap(); // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         assert_ne!(a, b);
     }
 }
