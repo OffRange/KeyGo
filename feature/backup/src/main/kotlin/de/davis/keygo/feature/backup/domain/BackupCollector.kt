@@ -21,8 +21,11 @@ import de.davis.keygo.feature.backup.domain.model.ExportError
 import de.davisalessandro.keygo.rust.Backup
 import de.davisalessandro.keygo.rust.BackupVault
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.koin.core.annotation.Single
 
 @Single
@@ -54,34 +57,45 @@ internal class BackupCollector(
     ): Result<CollectedBackup, ExportError> = resultBinding {
         val perVault = coroutineScope {
             vaultRepository.observeAllVaultMetadata().first().map { meta ->
-                val logins = async { loginRepository.getLoginsByVault(meta.vaultId) }
-                val cards = async { creditCardRepository.getCreditCardsByVault(meta.vaultId) }
-                VaultItems(
-                    meta = meta,
-                    logins = logins.await(),
-                    cards = cards.await(),
-                )
-            }
+                async {
+                    val logins = async { loginRepository.getLoginsByVault(meta.vaultId) }
+                    val cards = async { creditCardRepository.getCreditCardsByVault(meta.vaultId) }
+                    VaultItems(
+                        meta = meta,
+                        logins = logins.await(),
+                        cards = cards.await(),
+                    )
+                }
+            }.awaitAll()
         }
 
         val total = perVault.sumOf { it.items }
         (total > 0).asResult(ExportError.NothingToExport).bind()
 
         var processed = 0
+        val progressMutex = Mutex()
         suspend fun <I : Item, R> I.export(map: suspend CryptographicScope.(I) -> R): R =
             scope.withItem(this, map)
                 .bind { ExportError.CryptoFailed }
-                .also { onProgress(++processed, total) }
+                .also { progressMutex.withLock { onProgress(++processed, total) } }
 
         val backupVaults = perVault.map { (meta, logins, cards) ->
+            val (exportedLogins, exportedCards) = coroutineScope {
+                val loginResults = logins.map { login ->
+                    async {
+                        val passkeys = passkeyRepository.getPasskeysByLogin(login.id)
+                        login.export { it.toBackupLogin(passkeys) }
+                    }
+                }
+                val cardResults = cards.map { card -> async { card.export { it.toBackupCard() } } }
+                loginResults.awaitAll() to cardResults.awaitAll()
+            }
+
             BackupVault(
                 name = meta.name,
                 icon = meta.icon.toBackupIcon(),
-                logins = logins.map { login ->
-                    val passkeys = passkeyRepository.getPasskeysByLogin(login.id)
-                    login.export { it.toBackupLogin(passkeys) }
-                },
-                cards = cards.map { it.export { card -> card.toBackupCard() } },
+                logins = exportedLogins,
+                cards = exportedCards,
             )
         }
 

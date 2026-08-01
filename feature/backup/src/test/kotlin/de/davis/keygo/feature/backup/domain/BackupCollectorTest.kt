@@ -20,8 +20,11 @@ import de.davis.keygo.feature.backup.testCard
 import de.davis.keygo.feature.backup.testLogin
 import de.davis.keygo.feature.backup.testPasskey
 import de.davis.keygo.feature.backup.testVault
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import java.time.YearMonth
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -179,7 +182,10 @@ class BackupCollectorTest {
     fun `reports progress up to the total`() = runTest {
         val vault = testVault(name = "V")
         vaultRepo.seed(vault)
-        loginRepo.seed(testLogin(vaultId = vault.id, name = "L1"), testLogin(vaultId = vault.id, name = "L2"))
+        loginRepo.seed(
+            testLogin(vaultId = vault.id, name = "L1"),
+            testLogin(vaultId = vault.id, name = "L2")
+        )
 
         val seen = mutableListOf<Pair<Int, Int>>()
         val result = collector().collect { processed, total -> seen += processed to total }
@@ -187,6 +193,31 @@ class BackupCollectorTest {
         assertIs<Result.Success<*, *>>(result)
         assertEquals(listOf(1 to 2, 2 to 2), seen)
     }
+
+    // Logins and cards now export concurrently, so this uses real threads (Dispatchers.Default)
+    // rather than runTest's single-threaded virtual scheduler, which can't reproduce a genuine
+    // interleaving race, and repeats it hundreds of times since a race is a probabilistic failure,
+    // not a deterministic one - a single run passing proves nothing.
+    @Test
+    fun `progress never arrives out of order across many concurrent runs`() =
+        runBlocking(Dispatchers.Default) {
+            val vault = testVault(name = "V")
+            vaultRepo.seed(vault)
+            val logins = (1..25).map { testLogin(vaultId = vault.id, name = "L$it") }
+            val cards = (1..25).map { testCard(vaultId = vault.id, name = "C$it") }
+            loginRepo.seed(*logins.toTypedArray())
+            cardRepo.seed(*cards.toTypedArray())
+            val total = logins.size + cards.size
+
+            repeat(1000) {
+                val seen = CopyOnWriteArrayList<Int>()
+
+                val result = collector().collect { processed, _ -> seen += processed }
+
+                assertIs<Result.Success<*, *>>(result)
+                assertEquals((1..total).toList(), seen.toList())
+            }
+        }
 
     @Test
     fun `crypto scope failure surfaces CryptoFailed`() = runTest {

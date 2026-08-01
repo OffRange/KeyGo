@@ -31,7 +31,7 @@ import de.davisalessandro.keygo.rust.BackupException
 import de.davisalessandro.keygo.rust.CsvBackupManagerInterface
 import de.davisalessandro.keygo.rust.JsonBackupManagerInterface
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.channelFlow
 import org.koin.core.annotation.Single
 
 @Single
@@ -44,11 +44,11 @@ internal class ExportBackupUseCase(
     private val arkUnlocker: BackupArkUnlocker,
 ) {
 
-    operator fun invoke(job: BackupJob): Flow<ExportProgress> = flow {
+    operator fun invoke(job: BackupJob): Flow<ExportProgress> = channelFlow {
         resultBinding {
-            val collected = collector.collect { p, t -> emit(ExportProgress.Running(p, t)) }.bind()
+            val collected = collector.collect { p, t -> send(ExportProgress.Running(p, t)) }.bind()
 
-            emit(ExportProgress.Writing)
+            send(ExportProgress.Writing)
 
             val serialized = serialize(job, collected.backup).bind()
 
@@ -60,9 +60,9 @@ internal class ExportBackupUseCase(
             collected.itemCount
         }.onSuccess { count ->
             prune(job)
-            emit(ExportProgress.Succeeded(count))
+            send(ExportProgress.Succeeded(count))
         }.onFailure { failure ->
-            emit(ExportProgress.Failed(failure))
+            send(ExportProgress.Failed(failure))
         }
     }
 
