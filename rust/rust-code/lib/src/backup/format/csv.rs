@@ -155,7 +155,7 @@ impl ExportPreset {
     }
 }
 
-const DELIMITERS: [u8; 4] = [b',', b';', b'\t', b'|'];
+const DELIMITERS: [u8; 4] = *b",;\t|";
 
 /// Strip a leading UTF-8 BOM, if present.
 fn strip_bom(data: &str) -> &str {
