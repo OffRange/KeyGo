@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.feature.autofill.domain.repository.AutofillServiceRepository
+import de.davis.keygo.feature.backup.domain.usecase.ObserveLastBackupUseCase
 import de.davis.keygo.feature.settings.domain.repository.AppVersionRepository
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,7 +43,8 @@ internal class SettingsViewModel(
         accountRepository.observe(),
         autofillEnabled,
         biometricsAvailable,
-    ) { account, autofill, biometrics ->
+        observeLastBackup(),
+    ) { account, autofill, biometrics, lastBackup ->
         SettingsUiState(
             autofillEnabled = autofill,
             biometricsAvailable = biometrics,
