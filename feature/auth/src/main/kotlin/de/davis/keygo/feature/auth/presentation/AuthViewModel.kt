@@ -297,11 +297,6 @@ internal class AuthViewModel(
             ).handleAuthenticationResult()
         }
     }
-
-    /** Biometric unlock completes in the composable, which hands control back here to navigate. */
-    fun onBiometricUnlockSucceeded() {
-        viewModelScope.launch { navigationEventChannel.send(Unit) }
-    }
 }
 
 private class LoadingScope<State>(
