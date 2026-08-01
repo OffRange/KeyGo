@@ -12,6 +12,7 @@ import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
+import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.security.domain.usecase.GetTdlMatchedLoginsUseCase
 import de.davis.keygo.feature.autofill.presentation.model.FieldType
@@ -58,6 +59,7 @@ internal class SuggestionFinderTest {
         keyInformation = keyInfo,
         note = null,
         pinned = false,
+        timestamp = Timestamp(),
     )
     private val lPassOnly = Login(
         id = newItemId(),
@@ -70,6 +72,7 @@ internal class SuggestionFinderTest {
         keyInformation = keyInfo,
         note = null,
         pinned = false,
+        timestamp = Timestamp(),
     )
     private val lBoth = Login(
         id = newItemId(),
@@ -82,6 +85,7 @@ internal class SuggestionFinderTest {
         keyInformation = keyInfo,
         note = null,
         pinned = false,
+        timestamp = Timestamp(),
     )
     private val lNeither = Login(
         id = newItemId(),
@@ -94,6 +98,7 @@ internal class SuggestionFinderTest {
         keyInformation = keyInfo,
         note = null,
         pinned = false,
+        timestamp = Timestamp(),
     )
 
     @Before
@@ -196,6 +201,7 @@ internal class SuggestionFinderTest {
             keyInformation = keyInfo,
             note = null,
             pinned = false,
+            timestamp = Timestamp(),
         )
         val extra2 = Login(
             id = newItemId(),
@@ -208,6 +214,7 @@ internal class SuggestionFinderTest {
             keyInformation = keyInfo,
             note = null,
             pinned = false,
+            timestamp = Timestamp(),
         )
         val extra3 = Login(
             id = newItemId(),
@@ -220,6 +227,7 @@ internal class SuggestionFinderTest {
             keyInformation = keyInfo,
             note = null,
             pinned = false,
+            timestamp = Timestamp(),
         )
         loginRepo.seed(extra1, extra2, extra3)
         val form = credentialsForm(listOf(field(FieldType.Credentials.Username)))

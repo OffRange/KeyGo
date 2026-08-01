@@ -72,7 +72,7 @@ internal class DatabaseModule {
         Room.databaseBuilder(
             context,
             ItemDatabase::class.java,
-            "secure_element_database",
+            "keygo_database",
         ).build()
 
     @Single

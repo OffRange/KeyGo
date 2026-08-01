@@ -51,6 +51,9 @@ out/
 build/
 !gradle/wrapper/gradle-wrapper.jar
 
+# Lock file the Room Gradle plugin drops in a module root when it copies schemas
+*.lck
+
 # Signing files
 .signing/
 

@@ -13,4 +13,5 @@ sealed interface Item : LiteItem {
     val keyInformation: KeyInformation
     val tags: Set<Tag>
     val note: String?
+    val timestamp: Timestamp
 }

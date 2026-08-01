@@ -35,4 +35,5 @@ internal data class ItemEntity(
     val pinned: Boolean,
 
     @Embedded val keyInformation: KeyInformation,
+    @Embedded val timestamp: Timestamp,
 )

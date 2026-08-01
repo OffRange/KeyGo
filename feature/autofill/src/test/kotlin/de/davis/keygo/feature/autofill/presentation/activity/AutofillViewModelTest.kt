@@ -18,6 +18,7 @@ import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.util.Result
@@ -147,6 +148,7 @@ internal class AutofillViewModelTest {
         keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),
         note = null,
         pinned = false,
+        timestamp = Timestamp(),
     )
 
     private fun minimalTotp(loginId: ItemId) = Totp(

@@ -14,6 +14,7 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.CreditCard
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
+import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
@@ -34,6 +35,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import de.davis.keygo.core.item.data.local.entity.KeyInformation as EntityKeyInformation
+import de.davis.keygo.core.item.data.local.entity.Timestamp as EntityTimestamp
 
 class CreditCardRepositoryImplTest {
 
@@ -146,6 +148,7 @@ class CreditCardRepositoryImplTest {
         cardNumber = CreditCard.CardNumber(EncryptedPayload.EMPTY),
         cvv = CreditCard.CVV(EncryptedPayload.EMPTY),
         expirationDate = YearMonth.of(2030, 12),
+        timestamp = Timestamp(),
     )
 
     private fun projection(id: ItemId) = CreditCardProjection(
@@ -168,6 +171,7 @@ class CreditCardRepositoryImplTest {
                     wrappedKey = byteArrayOf(),
                     keyNonce = byteArrayOf(),
                 ),
+                timestamp = EntityTimestamp(createdAt = 0L, modifiedAt = null),
             ),
             tags = emptySet(),
         ),

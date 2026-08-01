@@ -16,7 +16,9 @@ import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Tag
+import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
+import de.davis.keygo.core.item.data.local.entity.Timestamp as EntityTimestamp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -103,6 +105,7 @@ class LoginMapperTest {
                     wrappedKey = byteArrayOf(),
                     keyNonce = byteArrayOf(),
                 ),
+                timestamp = EntityTimestamp(createdAt = 0L, modifiedAt = null),
             ),
             tags = tags,
         ),
@@ -125,5 +128,6 @@ class LoginMapperTest {
         keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),
         note = null,
         pinned = false,
+        timestamp = Timestamp(),
     )
 }

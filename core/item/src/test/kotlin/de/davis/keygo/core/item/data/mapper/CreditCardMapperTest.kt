@@ -12,12 +12,14 @@ import de.davis.keygo.core.item.domain.model.CreditCard
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Tag
+import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import java.time.YearMonth
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import de.davis.keygo.core.item.data.local.entity.KeyInformation as EntityKeyInformation
+import de.davis.keygo.core.item.data.local.entity.Timestamp as EntityTimestamp
 
 class CreditCardMapperTest {
 
@@ -128,6 +130,7 @@ class CreditCardMapperTest {
         cardNumber = cardNumber,
         cvv = cvv,
         expirationDate = expirationDate,
+        timestamp = Timestamp(),
     )
 
     private fun baseProjection(
@@ -157,6 +160,7 @@ class CreditCardMapperTest {
                     wrappedKey = byteArrayOf(),
                     keyNonce = byteArrayOf(),
                 ),
+                timestamp = EntityTimestamp(createdAt = 0L, modifiedAt = null),
             ),
             tags = tags,
         ),

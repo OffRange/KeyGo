@@ -15,6 +15,7 @@ import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Tag
+import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
@@ -76,6 +77,7 @@ fun testLogin(
     tags = tags.mapNotNull { Tag.of(it) }.toSet(),
     note = note,
     pinned = false,
+    timestamp = Timestamp(),
 )
 
 fun testPasskey(
@@ -114,4 +116,5 @@ fun testCard(
     cardNumber = number?.let { CreditCard.CardNumber(secretPayload(it)) },
     cvv = cvv?.let { CreditCard.CVV(secretPayload(it)) },
     expirationDate = expiration,
+    timestamp = Timestamp(),
 )

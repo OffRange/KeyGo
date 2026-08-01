@@ -11,6 +11,7 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.CreditCard
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
+import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
@@ -26,6 +27,7 @@ import de.davis.keygo.feature.item.core.domain.model.clear
 import de.davis.keygo.feature.item.core.domain.model.set
 import kotlinx.coroutines.test.runTest
 import java.time.YearMonth
+import kotlin.time.Clock
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -414,6 +416,40 @@ class CreateNewOrUpdateCreditCardUseCaseTest {
         assertContentEquals(rewrapped.wrappedKey, stored.keyInformation.wrappedKey)
     }
 
+    // Timestamps
+
+    @Test
+    fun `create sets createdAt to now and leaves modifiedAt null`() = runTest {
+        val before = Clock.System.now()
+
+        val result = useCase(
+            UpsertCreditCard.create(vaultId = defaultVault.id, name = "My card", holder = "Holder")
+        )
+
+        val after = Clock.System.now()
+        val stored = storedById(result.getOrNull())
+        assertNotNull(stored)
+        assertTrue(stored.timestamp.createdAt >= before && stored.timestamp.createdAt <= after)
+        assertNull(stored.timestamp.modifiedAt)
+    }
+
+    @Test
+    fun `update sets modifiedAt to now and preserves createdAt`() = runTest {
+        val existing = testCard()
+        creditCardRepository.seed(existing)
+
+        val before = Clock.System.now()
+        useCase(UpsertCreditCard.update(itemId = existing.id, name = set("New name")))
+        val after = Clock.System.now()
+
+        val updated = creditCardRepository.getCreditCardById(existing.id)
+        assertNotNull(updated)
+        assertEquals(existing.timestamp.createdAt, updated.timestamp.createdAt)
+        val modifiedAt = updated.timestamp.modifiedAt
+        assertNotNull(modifiedAt)
+        assertTrue(modifiedAt >= before && modifiedAt <= after)
+    }
+
     private fun makeUseCase(
         cryptographicScopeProvider: CryptographicScopeProvider = cryptoProvider,
         cardFormatter: FakeCardFormatter = this.cardFormatter,
@@ -428,6 +464,7 @@ class CreateNewOrUpdateCreditCardUseCaseTest {
     private fun testCard(
         name: String = "Test card",
         cvv: CreditCard.CVV? = null,
+        timestamp: Timestamp = Timestamp(),
     ) = CreditCard(
         id = newItemId(),
         vaultId = defaultVault.id,
@@ -440,6 +477,7 @@ class CreateNewOrUpdateCreditCardUseCaseTest {
         cardNumber = CreditCard.CardNumber(EncryptedPayload.EMPTY),
         cvv = cvv,
         expirationDate = YearMonth.of(2030, 5),
+        timestamp = timestamp,
     )
 
     private suspend fun storedById(id: ItemId?): CreditCard? {

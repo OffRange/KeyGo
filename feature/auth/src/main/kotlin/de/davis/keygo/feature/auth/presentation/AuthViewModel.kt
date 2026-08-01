@@ -21,7 +21,7 @@ import de.davis.keygo.feature.auth.presentation.model.BiometricRequest
 import de.davis.keygo.feature.auth.presentation.model.UIPasswordError
 import de.davis.keygo.migration.create_access.domain.usecase.ClearMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
-import de.davis.keygo.migration.create_access.domain.usecase.ValidateMainPassword
+import de.davis.keygo.migration.create_access.domain.usecase.ValidateMainPasswordUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -50,7 +50,7 @@ internal class AuthViewModel(
 
     // ---- Migration ----
     hasV1MainPassword: HasMainPasswordUseCase,
-    private val validateMainPassword: ValidateMainPassword,
+    private val validateMainPassword: ValidateMainPasswordUseCase,
     private val clearMainPasswordUseCase: ClearMainPasswordUseCase,
     // -------------------
 

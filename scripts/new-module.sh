@@ -84,7 +84,7 @@ read_key() {
     case "$key" in
         $'\x1b')
             rest=""
-            IFS= read -rsn2 -t 0.05 rest || true
+            IFS= read -rsn2 -t 1 rest || true
             case "$rest" in
                 '[A') KEY=up ;;
                 '[B') KEY=down ;;
@@ -394,10 +394,12 @@ PLUGIN_ACCESSOR="libs.plugins.${PLUGIN//-/.}"
 
 # DI class: PascalCase of location + name, e.g. feature/item + create -> FeatureItemCreateModule
 pascal_case() {
-    local out="" part
+    local out="" part first rest
     IFS='/-_' read -ra parts <<<"$1"
     for part in "${parts[@]}"; do
-        out+="${part^}"
+        first=$(echo "${part:0:1}" | tr '[:lower:]' '[:upper:]')
+        rest="${part:1}"
+        out+="${first}${rest}"
     done
     printf '%s' "$out"
 }

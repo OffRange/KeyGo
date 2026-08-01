@@ -61,5 +61,6 @@ class CreditCardTest {
         cardNumber = CreditCard.CardNumber(EncryptedPayload.EMPTY),
         cvv = CreditCard.CVV(EncryptedPayload.EMPTY),
         expirationDate = YearMonth.of(2030, 12),
+        timestamp = Timestamp(),
     )
 }

@@ -7,6 +7,7 @@ import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordSecret
+import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
@@ -68,6 +69,8 @@ class CreateNewOrUpdateLoginUseCase(
     override fun relocate(item: Login, vaultId: VaultId, keyInformation: KeyInformation): Login =
         item.copy(vaultId = vaultId, keyInformation = keyInformation)
 
+    override fun touch(item: Login, timestamp: Timestamp): Login = item.copy(timestamp = timestamp)
+
     override suspend fun CryptographicScope.buildCreate(
         upsert: UpsertLogin,
         itemId: ItemId,
@@ -100,6 +103,7 @@ class CreateNewOrUpdateLoginUseCase(
             pinned = false,
             keyInformation = keyInformation,
             vaultId = vaultId,
+            timestamp = Timestamp(),
         )
     }
 

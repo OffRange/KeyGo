@@ -5,6 +5,7 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
 import de.davis.keygo.core.item.data.local.entity.ItemEntity
 import de.davis.keygo.core.item.data.local.entity.TagEntity
+import de.davis.keygo.core.item.data.local.entity.Timestamp
 import de.davis.keygo.core.item.data.local.entity.VaultEntity
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
@@ -67,6 +68,7 @@ internal class ItemDaoSearchTest {
                 itemType = VaultItemType.Login,
                 pinned = false,
                 keyInformation = EntityKeyInformation(byteArrayOf(), byteArrayOf()),
+                timestamp = Timestamp(createdAt = 0L, modifiedAt = null),
             )
         )
         if (tags.isNotEmpty())

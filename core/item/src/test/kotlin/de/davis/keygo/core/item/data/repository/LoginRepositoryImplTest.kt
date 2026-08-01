@@ -21,6 +21,7 @@ import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Tag
+import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
@@ -228,6 +229,7 @@ class LoginRepositoryImplTest {
             vaultId = newVaultId(),
             keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),
             tags = tags,
+            timestamp = Timestamp(),
         )
     }
 

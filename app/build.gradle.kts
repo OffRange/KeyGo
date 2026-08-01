@@ -118,7 +118,8 @@ dependencies {
     implementation(projects.feature.autofill)
     implementation(projects.feature.settings)
     implementation(projects.feature.backup)
-    implementation(projects.migrationCreateAccess)
+    implementation(projects.migration.createAccess)
+    implementation(projects.migration.legacyData)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

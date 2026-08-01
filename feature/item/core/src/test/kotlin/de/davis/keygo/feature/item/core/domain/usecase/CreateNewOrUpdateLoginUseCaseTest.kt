@@ -14,6 +14,7 @@ import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
+import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
@@ -32,6 +33,7 @@ import de.davis.keygo.rust.totp.TotpService
 import de.davisalessandro.keygo.rust.Algorithm
 import de.davisalessandro.keygo.rust.TotpInfo
 import kotlinx.coroutines.test.runTest
+import kotlin.time.Clock
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -745,6 +747,40 @@ class CreateNewOrUpdateLoginUseCaseTest {
         assertEquals("alice@github.com", totp.accountName)
     }
 
+    // Timestamps
+
+    @Test
+    fun `create sets createdAt to now and leaves modifiedAt null`() = runTest {
+        val before = Clock.System.now()
+
+        val result = useCase(
+            UpsertLogin.create(vaultId = defaultVault.id, name = "My site", password = "s3cr3t")
+        )
+
+        val after = Clock.System.now()
+        val stored = storedById(result.getOrNull())
+        assertNotNull(stored)
+        assertTrue(stored.timestamp.createdAt >= before && stored.timestamp.createdAt <= after)
+        assertNull(stored.timestamp.modifiedAt)
+    }
+
+    @Test
+    fun `update sets modifiedAt to now and preserves createdAt`() = runTest {
+        val existing = testLogin()
+        loginRepository.seed(existing)
+
+        val before = Clock.System.now()
+        useCase(UpsertLogin.update(itemId = existing.id, name = set("New name")))
+        val after = Clock.System.now()
+
+        val updated = loginRepository.getLoginById(existing.id)
+        assertNotNull(updated)
+        assertEquals(existing.timestamp.createdAt, updated.timestamp.createdAt)
+        val modifiedAt = updated.timestamp.modifiedAt
+        assertNotNull(modifiedAt)
+        assertTrue(modifiedAt >= before && modifiedAt <= after)
+    }
+
     // Helpers
 
     private fun makeUseCase(
@@ -771,6 +807,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
             score = passwordScore,
         ),
         totp: Totp? = null,
+        timestamp: Timestamp = Timestamp(),
     ) = Login(
         id = newItemId(),
         name = name,
@@ -782,6 +819,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         pinned = false,
         vaultId = defaultVault.id,
         keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),
+        timestamp = timestamp,
     )
 
     private suspend fun storedById(id: ItemId?): Login? {

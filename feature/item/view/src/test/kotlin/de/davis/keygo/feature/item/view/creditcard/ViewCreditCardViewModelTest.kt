@@ -10,6 +10,7 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.CreditCard
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
+import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
@@ -68,6 +69,7 @@ class ViewCreditCardViewModelTest {
         cardNumber = encryptedCardNumber,
         cvv = null,
         expirationDate = null,
+        timestamp = Timestamp(),
     )
 
     private val vaultRepository = FakeVaultRepository()

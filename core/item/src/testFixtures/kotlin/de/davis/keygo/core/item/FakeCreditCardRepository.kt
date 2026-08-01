@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.update
  */
 class FakeCreditCardRepository : CreditCardRepository {
 
-    internal val store = MutableStateFlow<Map<ItemId, CreditCard>>(emptyMap())
+    val store = MutableStateFlow<Map<ItemId, CreditCard>>(emptyMap())
 
     /** Error returned by the next [createOrUpdateCreditCard] call (cleared after use). */
     var createOrUpdateError: Throwable? = null

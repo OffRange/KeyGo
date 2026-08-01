@@ -73,5 +73,6 @@ class LoginTest {
         keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),
         note = null,
         pinned = false,
+        timestamp = Timestamp(),
     )
 }
