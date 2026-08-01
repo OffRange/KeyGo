@@ -47,8 +47,8 @@ internal class FakeLegacyItemRepository : LegacyItemRepository {
     }
 
     private fun rowsInFile(): Int = when (val result = readResult) {
-        is Result.Success -> result.success.items.size + result.success.failures.size -
-                prunedIds.size
+        is Result.Success -> (result.success.items.size + result.success.failures.size -
+                prunedIds.size).coerceAtLeast(0)
 
         is Result.Failure -> 0
     }

@@ -22,6 +22,7 @@ internal class FakeLegacyDatabaseProvider(
 
     override fun close() {
         closed = true
+        runCatching { database?.close() }
     }
 
     /**

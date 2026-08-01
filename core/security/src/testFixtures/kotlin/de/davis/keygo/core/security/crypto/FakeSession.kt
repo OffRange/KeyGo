@@ -26,7 +26,10 @@ class FakeSession(
     override val sessionStarts: Flow<Unit> = _sessionStarts
 
     init {
-        if (startOnConstruct) _ark = ByteArray(32) { it.toByte() }
+        if (startOnConstruct) {
+            _ark = ByteArray(32) { it.toByte() }
+            _sessionStarts.tryEmit(Unit)
+        }
     }
 
     override fun startSession(ark: ByteArray) {
