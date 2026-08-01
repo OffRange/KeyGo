@@ -3,18 +3,20 @@ package de.davis.keygo.feature.item.view.login.model
 data class ObfuscatedString(
     val raw: String,
     val formatted: String = raw,
-    val visibleSuffixDigits: Int = 0,
+    val visibleSuffixChars: Int = 0,
+    val preservedChars: Set<Char> = emptySet(),
 ) {
     val hidden: String by lazy {
-        val totalDigits = formatted.count(Char::isDigit)
-        val reveal = if (totalDigits > visibleSuffixDigits) visibleSuffixDigits else 0
-        var digitsSeen = 0
+        val totalChars = formatted.count { it !in preservedChars }
+        val reveal = if (totalChars > visibleSuffixChars) visibleSuffixChars else 0
+        var charsSeen = 0
         buildString(formatted.length) {
             for (c in formatted) {
-                if (c.isDigit()) {
-                    digitsSeen++
-                    append(if (totalDigits - digitsSeen < reveal) c else DEFAULT_OBFUSCATION_CHAR)
-                } else append(c)
+                if (c in preservedChars) append(c)
+                else {
+                    charsSeen++
+                    append(if (totalChars - charsSeen < reveal) c else DEFAULT_OBFUSCATION_CHAR)
+                }
             }
         }
     }
