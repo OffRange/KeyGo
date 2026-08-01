@@ -167,7 +167,7 @@ fun <ID : Any> KeyGoColumn(
         val headerOffset by remember(listState, lastInGroupIndices, density) {
             derivedStateOf {
                 val offset = with(density) {
-                    IntOffset(16.dp.roundToPx(), 12.dp.roundToPx())
+                    IntOffset(16.dp.roundToPx(), (10.dp + 6.dp).roundToPx())
                 }
 
                 if (listState.firstVisibleItemIndex in lastInGroupIndices)
