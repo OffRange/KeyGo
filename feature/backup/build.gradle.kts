@@ -10,6 +10,10 @@ android {
     defaultConfig {
         missingDimensionStrategy("store", "playStore")
     }
+
+    testFixtures {
+        enable = true
+    }
 }
 
 dependencies {
@@ -30,4 +34,12 @@ dependencies {
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.security))
     testImplementation(testFixtures(projects.rust))
+
+    testFixturesApi(projects.core.util)
+    testFixturesApi(projects.core.security)
+    testFixturesImplementation(libs.kotlinx.coroutines.core)
+    testFixturesImplementation(project.dependencies.platform(libs.androidx.compose.bom))
+    testFixturesImplementation(libs.androidx.compose.runtime) {
+        because("https://issuetracker.google.com/issues/259523353#comment32")
+    }
 }
