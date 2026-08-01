@@ -54,7 +54,7 @@ import de.davis.keygo.feature.backup.presentation.export.model.ScheduleMode
 import de.davis.keygo.feature.backup.presentation.export.model.SelectDestinationState
 import de.davis.keygo.feature.backup.presentation.export.model.SelectScheduleState
 import de.davis.keygo.feature.backup.presentation.icon
-import de.davis.keygo.feature.backup.displayName as intervalDisplayName
+import de.davis.keygo.feature.backup.presentation.displayName as intervalDisplayName
 
 @Composable
 internal fun ReviewBackupContent(

@@ -69,12 +69,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.ui.components.KeyGoSwitch
 import de.davis.keygo.feature.backup.R
-import de.davis.keygo.feature.backup.displayName
 import de.davis.keygo.feature.backup.domain.model.BackupInterval
 import de.davis.keygo.feature.backup.domain.model.IntervalUnit
-import de.davis.keygo.feature.backup.label
+import de.davis.keygo.feature.backup.presentation.displayName
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiEvent
 import de.davis.keygo.feature.backup.presentation.export.model.ScheduleMode
+import de.davis.keygo.feature.backup.presentation.label
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 

@@ -1,8 +1,9 @@
-package de.davis.keygo.feature.backup
+package de.davis.keygo.feature.backup.presentation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import de.davis.keygo.feature.backup.R
 import de.davis.keygo.feature.backup.domain.model.BackupInterval
 import de.davis.keygo.feature.backup.domain.model.IntervalUnit
 
