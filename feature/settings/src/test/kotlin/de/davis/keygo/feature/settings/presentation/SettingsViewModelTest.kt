@@ -74,6 +74,22 @@ class SettingsViewModelTest {
         }
 
     @Test
+    fun `refreshSystemState reflects an enable made from the system picker while backgrounded`() =
+        runTest(dispatcher) {
+            autofillServiceRepository.enabled = false
+            val vm = viewModel()
+            vm.refreshSystemState()
+            vm.state.first { !it.autofillEnabled }
+
+            // The user selected KeyGo from the system picker (a separate activity); on returning,
+            // LifecycleResumeEffect calls refreshSystemState() and the chip must follow.
+            autofillServiceRepository.enabled = true
+            vm.refreshSystemState()
+
+            vm.state.first { it.autofillEnabled }
+        }
+
+    @Test
     fun `toggling biometrics forwards the requested value as an EnableBiometric event`() =
         runTest(dispatcher) {
             val vm = viewModel()

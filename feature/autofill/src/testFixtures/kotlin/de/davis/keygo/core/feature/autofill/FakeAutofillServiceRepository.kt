@@ -4,15 +4,16 @@ import de.davis.keygo.feature.autofill.domain.repository.AutofillServiceReposito
 
 class FakeAutofillServiceRepository : AutofillServiceRepository {
 
-    // Mirrors the OS: disableAutofillServices() propagates asynchronously, so
-    // isEnabled() can keep reporting true right after disable(). Tests control
-    // `enabled` explicitly instead of disable() flipping it synchronously.
+    // The authoritative OS state. Tests set it directly to mirror the user selecting/clearing
+    // KeyGo as the autofill service (e.g. from the system picker) between refreshSystemState reads.
     var enabled: Boolean = false
+
     var disableCalled: Boolean = false
 
     override fun isEnabled(): Boolean = enabled
 
     override fun disable() {
         disableCalled = true
+        enabled = false
     }
 }
