@@ -5,8 +5,10 @@ import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.feature.autofill.domain.repository.AutofillServiceRepository
+import de.davis.keygo.feature.autofill.domain.repository.ChromeAutofillRepository
 import de.davis.keygo.feature.backup.domain.usecase.ObserveLastBackupUseCase
 import de.davis.keygo.feature.settings.domain.repository.AppVersionRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -14,12 +16,14 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
 
 @KoinViewModel
 internal class SettingsViewModel(
     private val biometricAvailabilityRepository: BiometricAvailabilityRepository,
     private val autofillServiceRepository: AutofillServiceRepository,
+    private val chromeAutofillRepository: ChromeAutofillRepository,
     accountRepository: AccountRepository,
     appVersionRepository: AppVersionRepository,
     observeLastBackup: ObserveLastBackupUseCase,
@@ -38,15 +42,18 @@ internal class SettingsViewModel(
     // (see onEvent), since that action doesn't trigger a resume.
     private val biometricsAvailable = MutableStateFlow(false)
     private val autofillEnabled = MutableStateFlow(false)
+    private val chromeAutofillEnabled = MutableStateFlow(false)
 
     val state = combine(
         accountRepository.observe(),
         autofillEnabled,
+        chromeAutofillEnabled,
         biometricsAvailable,
         observeLastBackup(),
-    ) { account, autofill, biometrics, lastBackup ->
+    ) { account, autofill, chromeAutofill, biometrics, lastBackup ->
         SettingsUiState(
             autofillEnabled = autofill,
+            chromeAutofillEnabled = chromeAutofill,
             biometricsAvailable = biometrics,
             biometricsEnabled = biometrics && account?.biometricWrappedArk != null,
             version = versionName,
@@ -63,6 +70,11 @@ internal class SettingsViewModel(
         // Re-read on resume: the autofill selection changes in the system picker/settings, which
         // run in a separate activity, so this is where we learn KeyGo was enabled or disabled.
         autofillEnabled.update { autofillServiceRepository.isEnabled() }
+        // Chrome's read is a cross-process ContentProvider query (binder IPC, can cold-start
+        // Chrome's process) — unlike the two reads above, keep it off the main thread.
+        viewModelScope.launch(Dispatchers.IO) {
+            chromeAutofillEnabled.update { chromeAutofillRepository.isAutofillEnabled() }
+        }
     }
 
     fun onEvent(event: SettingsUiEvent) {
@@ -78,6 +90,8 @@ internal class SettingsViewModel(
                     autofillEnabled.update { false }
                 }
             }
+
+            SettingsUiEvent.OpenChromeAutofillSettings -> chromeAutofillRepository.openChromeAutofillSettings()
 
             SettingsUiEvent.ResetPassword -> _event.trySend(SettingsEvent.NavigateToChangePassword)
 

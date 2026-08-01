@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <queries>
+        <provider android:authorities="com.android.chrome.AutofillThirdPartyModeContentProvider" />
+    </queries>
+
     <application>
         <service
             android:name=".presentation.KeyGoAutofillService"

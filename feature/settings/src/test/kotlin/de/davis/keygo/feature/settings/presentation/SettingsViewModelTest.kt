@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.settings.presentation
 
 import de.davis.keygo.core.feature.autofill.FakeAutofillServiceRepository
+import de.davis.keygo.core.feature.autofill.FakeChromeAutofillRepository
 import de.davis.keygo.core.feature.settings.FakeAppVersionRepository
 import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
@@ -33,6 +34,7 @@ class SettingsViewModelTest {
     private val accountRepository = FakeAccountRepository()
     private val biometricAvailability = FakeBiometricAvailabilityRepository()
     private val autofillServiceRepository = FakeAutofillServiceRepository()
+    private val chromeAutofillRepository = FakeChromeAutofillRepository()
     private val appVersionRepository = FakeAppVersionRepository()
     private val backupJobRepository = FakeBackupJobRepository()
 
@@ -45,6 +47,7 @@ class SettingsViewModelTest {
     private fun viewModel() = SettingsViewModel(
         biometricAvailabilityRepository = biometricAvailability,
         autofillServiceRepository = autofillServiceRepository,
+        chromeAutofillRepository = chromeAutofillRepository,
         accountRepository = accountRepository,
         appVersionRepository = appVersionRepository,
         observeLastBackup = ObserveLastBackupUseCase(backupJobRepository),
@@ -131,4 +134,25 @@ class SettingsViewModelTest {
 
         assertNull(vm.state.first().lastBackupAt)
     }
+
+    @Test
+    fun `refreshSystemState reflects the chrome autofill state from the repository`() =
+        runTest(dispatcher) {
+            chromeAutofillRepository.enabled = true
+            val vm = viewModel()
+
+            vm.refreshSystemState()
+
+            vm.state.first { it.chromeAutofillEnabled }
+        }
+
+    @Test
+    fun `opening chrome autofill settings calls the repository directly without emitting an event`() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+
+            vm.onEvent(SettingsUiEvent.OpenChromeAutofillSettings)
+
+            assertTrue(chromeAutofillRepository.openCalled)
+        }
 }

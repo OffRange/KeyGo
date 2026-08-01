@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.settings.presentation.component
 
 import androidx.annotation.StringRes
+import androidx.compose.material3.ListItemColors
 import androidx.compose.ui.graphics.vector.ImageVector
 import de.davis.keygo.core.util.presentation.UIText
 
@@ -26,6 +27,7 @@ internal class SectionScope {
         @StringRes title: Int,
         checked: Boolean,
         onCheckedChange: (Boolean) -> Unit,
+        colors: ListItemColors,
         icon: ImageVector? = null,
         supporting: UIText? = null,
     ) {
@@ -33,6 +35,7 @@ internal class SectionScope {
             title = title,
             icon = icon,
             supporting = supporting,
+            colors = colors,
             checked = checked,
             onCheckedChange = onCheckedChange,
         )
@@ -41,6 +44,7 @@ internal class SectionScope {
     fun action(
         @StringRes title: Int,
         onClick: () -> Unit,
+        colors: ListItemColors,
         icon: ImageVector? = null,
         navigationIcon: ImageVector? = null,
         supporting: UIText? = null,
@@ -49,6 +53,7 @@ internal class SectionScope {
             title = title,
             icon = icon,
             supporting = supporting,
+            colors = colors,
             navigationIcon = navigationIcon,
             onClick = onClick,
         )
@@ -57,6 +62,7 @@ internal class SectionScope {
     fun value(
         @StringRes title: Int,
         value: String,
+        colors: ListItemColors,
         icon: ImageVector? = null,
         supporting: UIText? = null,
         onClick: (() -> Unit)? = null,
@@ -65,6 +71,7 @@ internal class SectionScope {
             title = title,
             icon = icon,
             supporting = supporting,
+            colors = colors,
             value = value,
             onClick = onClick,
         )

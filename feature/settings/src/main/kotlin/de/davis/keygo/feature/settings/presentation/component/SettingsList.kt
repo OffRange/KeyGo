@@ -63,9 +63,7 @@ internal fun SettingsList(
                         index,
                         section.entries.size,
                     ),
-                    colors = ListItemDefaults.segmentedColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    ),
+                    colors = entry.colors,
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.animateItem()
                 )
@@ -86,7 +84,7 @@ private fun SettingsEntryRow(
     val leadingContent: (@Composable () -> Unit)? = entry.icon?.let { icon ->
         {
             Surface(
-                color = MaterialTheme.colorScheme.primaryContainer,
+                color = colors.leadingContentColor,
                 shape = CircleShape,
                 modifier = Modifier.size(40.dp),
             ) {

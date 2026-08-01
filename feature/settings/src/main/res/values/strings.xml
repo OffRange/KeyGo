@@ -7,6 +7,8 @@
     <string name="settings_reset_password_description">Change your main password that protects your data</string>
     <string name="settings_autofill">Autofill</string>
     <string name="settings_autofill_description">Fill in your logins in other apps and browsers</string>
+    <string name="settings_autofill_finish_setup">Finish setting up autofill</string>
+    <string name="settings_autofill_finish_setup_needs_chrome">Turn on third-party autofill in Chrome to finish</string>
     <string name="settings_biometric_update_failed">Could not update biometric unlock</string>
 
     <string name="settings_backup">Backup</string>

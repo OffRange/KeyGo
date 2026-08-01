@@ -11,7 +11,10 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.LockReset
 import androidx.compose.material.icons.filled.Password
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Update
+import androidx.compose.material3.ListItemColors
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -22,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.util.presentation.UIText
 import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.feature.settings.R
+import de.davis.keygo.feature.settings.presentation.component.SectionScope
 import de.davis.keygo.feature.settings.presentation.component.SettingsList
 
 @Composable
@@ -29,6 +33,18 @@ internal fun SettingsContent(
     state: SettingsUiState,
     onEvent: (SettingsUiEvent) -> Unit,
 ) {
+    val defaultColors = ListItemDefaults.segmentedColors(
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        leadingContentColor = MaterialTheme.colorScheme.primaryContainer,
+    )
+    val warningColors = ListItemDefaults.segmentedColors(
+        containerColor = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        supportingContentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+        leadingContentColor = MaterialTheme.colorScheme.primary,
+        trailingContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+    )
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
     ) { innerPadding ->
@@ -43,6 +59,7 @@ internal fun SettingsContent(
                     title = R.string.settings_reset_password,
                     icon = Icons.Default.LockReset,
                     supporting = ResourceString(R.string.settings_reset_password_description),
+                    colors = defaultColors,
                     onClick = { onEvent(SettingsUiEvent.ResetPassword) },
                 )
 
@@ -50,6 +67,7 @@ internal fun SettingsContent(
                     title = R.string.settings_use_biometrics,
                     icon = Icons.Default.Fingerprint,
                     supporting = ResourceString(R.string.settings_use_biometrics_description),
+                    colors = defaultColors,
                     checked = state.biometricsEnabled,
                     onCheckedChange = { onEvent(SettingsUiEvent.SetBiometrics(it)) },
                 )
@@ -58,9 +76,12 @@ internal fun SettingsContent(
                     title = R.string.settings_autofill,
                     icon = Icons.Default.Password,
                     supporting = ResourceString(R.string.settings_autofill_description),
+                    colors = defaultColors,
                     checked = state.autofillEnabled,
                     onCheckedChange = { onEvent(SettingsUiEvent.SetAutofill(it)) },
                 )
+
+                autofillEntries(state, warningColors, onEvent)
             }
 
             section(title = R.string.settings_backup) {
@@ -68,6 +89,7 @@ internal fun SettingsContent(
                     title = R.string.settings_backup_and_restore,
                     icon = Icons.Default.Backup,
                     supporting = lastBackupText(state.lastBackupAt),
+                    colors = defaultColors,
                     onClick = { onEvent(SettingsUiEvent.OpenBackup) },
                 )
             }
@@ -76,6 +98,7 @@ internal fun SettingsContent(
                 action(
                     title = R.string.settings_3rd_party_licenses,
                     icon = Icons.Default.Code,
+                    colors = defaultColors,
                     onClick = { onEvent(SettingsUiEvent.LibrariesClicked) },
                 )
 
@@ -83,6 +106,7 @@ internal fun SettingsContent(
                     title = R.string.settings_report_issue,
                     icon = Icons.Default.BugReport,
                     navigationIcon = Icons.AutoMirrored.Default.OpenInNew,
+                    colors = defaultColors,
                     onClick = { onEvent(SettingsUiEvent.ReportIssue) }
                 )
 
@@ -90,9 +114,27 @@ internal fun SettingsContent(
                     title = R.string.settings_version,
                     value = state.version,
                     icon = Icons.Default.Update,
+                    colors = defaultColors,
                 )
             }
         }
+    }
+}
+
+internal fun SectionScope.autofillEntries(
+    state: SettingsUiState,
+    warningColors: ListItemColors,
+    onEvent: (SettingsUiEvent) -> Unit,
+) {
+    if (state.autofillEnabled && !state.chromeAutofillEnabled) {
+        action(
+            title = R.string.settings_autofill_finish_setup,
+            icon = Icons.Default.Public,
+            supporting = ResourceString(R.string.settings_autofill_finish_setup_needs_chrome),
+            colors = warningColors,
+            navigationIcon = Icons.AutoMirrored.Default.OpenInNew,
+            onClick = { onEvent(SettingsUiEvent.OpenChromeAutofillSettings) },
+        )
     }
 }
 
@@ -120,7 +162,7 @@ private fun SettingsContentPreview() {
             modifier = Modifier.fillMaxSize(),
         ) {
             SettingsContent(
-                state = SettingsUiState(),
+                state = SettingsUiState(autofillEnabled = true),
                 onEvent = {},
             )
         }
