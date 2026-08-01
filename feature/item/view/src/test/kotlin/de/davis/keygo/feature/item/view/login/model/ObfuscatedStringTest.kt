@@ -18,9 +18,46 @@ class ObfuscatedStringTest {
     }
 
     @Test
-    fun `hidden preserves spaces from formatted string`() {
-        val obs = ObfuscatedString(raw = "4111111111111111", formatted = "4111 1111 1111 1111")
+    fun `hidden preserves spaces from formatted string when configured`() {
+        val obs = ObfuscatedString(
+            raw = "4111111111111111",
+            formatted = "4111 1111 1111 1111",
+            preservedChars = setOf(' '),
+        )
         assertEquals(mask("**** **** **** ****"), obs.hidden)
+    }
+
+    @Test
+    fun `hidden obfuscates spaces by default`() {
+        val obs = ObfuscatedString(raw = "4111111111111111", formatted = "4111 1111 1111 1111")
+        assertEquals(mask("****" + "*".repeat(15)), obs.hidden)
+    }
+
+    @Test
+    fun `hidden obfuscates letters and symbols, not just digits`() {
+        val obs = ObfuscatedString("Sup3r\$ecret!")
+        assertEquals(mask("*".repeat(12)), obs.hidden)
+    }
+
+    @Test
+    fun `hidden preserves only chars configured via preservedChars`() {
+        val obs = ObfuscatedString(
+            raw = "555-01-2345",
+            formatted = "555-01-2345",
+            preservedChars = setOf('-'),
+        )
+        assertEquals(mask("***-**-****"), obs.hidden)
+    }
+
+    @Test
+    fun `hidden reveals suffix among preserved chars for mixed content`() {
+        val obs = ObfuscatedString(
+            raw = "555-01-2345",
+            formatted = "555-01-2345",
+            visibleSuffixDigits = 3,
+            preservedChars = setOf('-'),
+        )
+        assertEquals(mask("***-**-*345"), obs.hidden)
     }
 
     @Test
@@ -35,6 +72,7 @@ class ObfuscatedStringTest {
             raw = "4111111111111234",
             formatted = "4111 1111 1111 1234",
             visibleSuffixDigits = 4,
+            preservedChars = setOf(' '),
         )
         assertEquals(mask("**** **** **** 1234"), obs.hidden)
     }
@@ -45,6 +83,7 @@ class ObfuscatedStringTest {
             raw = "378282246310005",
             formatted = "3782 822463 10005",
             visibleSuffixDigits = 4,
+            preservedChars = setOf(' '),
         )
         assertEquals(mask("**** ****** *0005"), obs.hidden)
     }
