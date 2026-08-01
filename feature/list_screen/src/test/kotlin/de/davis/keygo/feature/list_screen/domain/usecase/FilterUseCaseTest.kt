@@ -82,7 +82,7 @@ class FilterUseCaseTest {
             emptyMap()
         )
 
-        // At Collator.PRIMARY, Apple/apple are equal and banana/Banana are equal —
+        // At Collator.PRIMARY, Apple/apple are equal and banana/Banana are equal, so
         // only assert the group ordering, not internal order within equal-strength items
         val lastAppleIndex = maxOf(
             result.indexOfFirst { it.name == "Apple" },
@@ -111,7 +111,7 @@ class FilterUseCaseTest {
         assertTrue(result.all { it.name == "same" })
     }
 
-    // Edge: special characters ─────────────────────────────────────────────
+    // Edge: special characters ---------------------------------------------
     @Test
     fun `names starting with special characters sort before letters`() {
         val result = useCase(filterStateAsc, items("banana", "apple", "/path", "&tag"), emptyMap())
@@ -150,7 +150,7 @@ class FilterUseCaseTest {
         assertEquals(asc.reversed(), desc)
     }
 
-    // Edge: numbers ────────────────────────────────────────────────────────
+    // Edge: numbers --------------------------------------------------------
     @Test
     fun `names that are purely numeric`() =
         sorting("100", "9", "10", "2", "1")

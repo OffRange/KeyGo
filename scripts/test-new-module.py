@@ -244,7 +244,7 @@ def test_one_liner_jvm():
                            "core", "toolkit")
         check("di module generated",
               os.path.isfile(os.path.join(pkg, "di", "CoreToolkitModule.kt")))
-        check("packages none → no domain/data",
+        check("packages none -> no domain/data",
               not os.path.isdir(os.path.join(pkg, "domain"))
               and not os.path.isdir(os.path.join(pkg, "data")))
     finally:
@@ -263,7 +263,7 @@ def test_one_liner_protobuf_and_naming():
               "alias(libs.plugins.keygo.android.library)" in build, build)
         check("applies protobuf add-on",
               "alias(libs.plugins.keygo.android.protobuf)" in build, build)
-        check("dash → underscore in namespace",
+        check("dash -> underscore in namespace",
               'namespace = "de.davis.keygo.core.proto_store"' in build, build)
         pkg = os.path.join(mod, "src", "main", "kotlin", "de", "davis", "keygo",
                            "core", "proto_store")
@@ -337,7 +337,7 @@ SPACE = b" "
 
 def selected_line(term):
     for line in term.lines:
-        if "▶" in line:
+        if ">" in line:
             return line
     return None
 
@@ -355,8 +355,8 @@ def test_interactive_visuals():
               "Module location:" in screen and "core" in screen and "feature" in screen,
               screen)
         check("first item highlighted initially",
-              (selected_line(s.term) or "").strip().startswith("▶ core"), screen)
-        check("hint line shown", "↑/↓ move" in screen, screen)
+              (selected_line(s.term) or "").strip().startswith("> core"), screen)
+        check("hint line shown", "Up/Down move" in screen, screen)
         check("cursor hidden while menu open",
               b"\x1b[?25l" in s.term.raw and not s.term.cursor_visible)
         check("highlight uses color",
@@ -365,18 +365,18 @@ def test_interactive_visuals():
         s.send(ARROW_DOWN)
         sel = selected_line(s.term) or ""
         check("arrow down moves highlight to feature",
-              sel.strip().startswith("▶ feature"), s.term.screen())
+              sel.strip().startswith("> feature"), s.term.screen())
         check("only one item highlighted",
-              sum("▶" in l for l in s.term.lines) == 1, s.term.screen())
+              sum(">" in l for l in s.term.lines) == 1, s.term.screen())
 
         s.send(ARROW_UP)
         sel = selected_line(s.term) or ""
         check("arrow up moves highlight back to core",
-              sel.strip().startswith("▶ core"), s.term.screen())
+              sel.strip().startswith("> core"), s.term.screen())
         s.send(ARROW_UP)
         sel = selected_line(s.term) or ""
         check("arrow up clamps at top",
-              sel.strip().startswith("▶ core"), s.term.screen())
+              sel.strip().startswith("> core"), s.term.screen())
 
         s.send(ARROW_DOWN)
         s.send(ENTER)
@@ -384,7 +384,7 @@ def test_interactive_visuals():
         check("menu collapses to inline answer",
               "Module location: feature" in screen, screen)
         check("menu items cleared after select",
-              "▶" not in screen and "↑/↓ move" not in screen, screen)
+              ">" not in screen and "Up/Down move" not in screen, screen)
         check("cursor restored after select", s.term.cursor_visible)
 
         s.send(b"demo\r")
@@ -406,7 +406,7 @@ def test_interactive_visuals():
         check("compose defaults preselect presentation",
               "[x] presentation" in screen, screen)
 
-        s.send(ARROW_DOWN)  # → data
+        s.send(ARROW_DOWN)  # -> data
         s.send(SPACE)       # untoggle
         sel = selected_line(s.term) or ""
         check("space untoggles item under cursor",
@@ -420,11 +420,11 @@ def test_interactive_visuals():
         code = s.finish()
         screen = s.term.screen()
         check("exits 0 after interactive flow", code == 0, screen)
-        check("success banner shown", "✔ Module created" in screen, screen)
+        check("success banner shown", "[OK] Module created" in screen, screen)
         check("summary shows gradle path", ":feature:demo" in screen, screen)
         check("summary shows Koin module", "FeatureDemoModule" in screen, screen)
         check("final screen has no menu artifacts",
-              "▶" not in screen and "Enter select" not in screen, screen)
+              ">" not in screen and "Enter select" not in screen, screen)
         check("cursor visible at exit", s.term.cursor_visible)
 
         di = os.path.join(root, "feature", "demo", "src", "main", "kotlin", "de",

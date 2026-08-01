@@ -40,6 +40,8 @@ import de.davis.keygo.dashboard.presentation.DetailType
 import de.davis.keygo.dashboard.presentation.dashboardGraph
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.auth.presentation.authGraph
+import de.davis.keygo.feature.backup.presentation.BackupHubRoute
+import de.davis.keygo.feature.backup.presentation.backupGraph
 import de.davis.keygo.feature.settings.presentation.ChangePasswordRoute
 import de.davis.keygo.feature.settings.presentation.settingsGraph
 import de.davis.keygo.item.dialog.SelectItemContent
@@ -165,6 +167,7 @@ private fun App() {
                 settingsGraph(
                     onOpenChangePassword = { navController.navigate(ChangePasswordRoute) },
                     onShowLibraries = { navController.navigate(RouteDestination.Libraries) },
+                    onOpenBackup = { navController.navigate(BackupHubRoute) },
                     onUp = { navController.navigateUp() },
                 )
 
@@ -185,6 +188,11 @@ private fun App() {
                     )
                 }
             }
+
+            backupGraph(
+                navigateToDestination = navController::navigate,
+                navigateUp = { navController.navigateUp() },
+            )
         }
     }
 }

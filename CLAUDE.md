@@ -74,7 +74,8 @@ Password / Biometric
       ↓ derive / unlock
    RootKek ───────────────────── never persisted
       ↓ unwrap
-   ARK (Account Root Key) ────── in-memory only (Session); wrapped in account_registry.pb
+   ARK (Account Root Key) ────── Session (in-memory); wrapped in account_registry.pb;
+                                 optionally escrowed in backup_ark_data.pb (see Backup Escrow)
       ↓ unwrap (one per vault)
    VaultKey ──────────────────── wrapped in VaultEntity.keyInformation (Room)
       ↓ unwrap (one per item)
@@ -91,6 +92,30 @@ Password / Biometric
   re-wraps only the ItemKey, not the ciphertext.
 - **AAD** (`itemId + vaultId`) — bound to every ciphertext; prevents transplant attacks.
 - **Rust FFI** (`de.davis.keygo.rust`) implements all wrap/unwrap/derive operations.
+
+## Backup Escrow
+
+A scheduled backup runs with no user present, so it cannot reach the ARK the normal way. Scheduling
+one therefore escrows a second copy of the ARK, and the export passphrase alongside it, under
+Keystore aliases that deliberately do **not** require user authentication (`KeyId.BackupArkKey`,
+`KeyId.BackupPassphraseKey`; see `BackupArkUnlocker`).
+
+This is the one place the "ARK is never readable without authenticating" rule is relaxed, so it
+carries its own rules:
+
+- The escrow exists **only while a job is scheduled**. `CleanupBackupResourcesUseCase` releases it
+  the moment no live job remains, and `reconcile()` sweeps up jobs the scheduler dropped without a
+  run. `BackupWorker.MAX_ATTEMPTS` bounds retries so a deferring job cannot hold it open forever.
+- `reconcile()` runs once per process start (`BackupEscrowReconciler`, an eager Koin singleton), not
+  on entry to the backup screen. A dropped job produces no run to clean up after it, so the trigger
+  must not depend on the user navigating anywhere; process start bounds the escrow's stale lifetime
+  to a single process. Do not move it back behind a UI event.
+- Both aliases set `setUnlockedDeviceRequired(true)` on API 28+. On API 26-27 that constraint does
+  not exist, so on those levels the escrow is readable whenever the process runs.
+- A passphrase-sealed scheduled backup is not stronger than an ARK-sealed one: both keys sit under
+  the same auth-free policy.
+- Do not widen the escrow's lifetime, its auth policy, or the set of callers that can read it
+  without explicit instruction.
 
 ## Sensitive Areas
 

@@ -24,7 +24,7 @@ class CvvInputTransformation(private val maxLength: () -> Int) : InputTransforma
 
 /**
  * The CVV cap depends on the card network, which is derived from [numberState]'s current
- * digits — so the transformation reads that sibling field live at transform time.
+ * digits, so the transformation reads that sibling field live at transform time.
  */
 @Composable
 fun rememberCvvInputTransformation(numberState: TextFieldState): CvvInputTransformation {

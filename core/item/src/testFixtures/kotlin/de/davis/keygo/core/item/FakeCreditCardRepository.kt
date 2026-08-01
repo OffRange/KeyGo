@@ -1,6 +1,7 @@
 package de.davis.keygo.core.item
 
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.CreditCard
 import de.davis.keygo.core.item.domain.repository.CreditCardRepository
 import de.davis.keygo.core.util.Result
@@ -50,4 +51,7 @@ class FakeCreditCardRepository : CreditCardRepository {
         store.map { it[itemId] }
 
     override suspend fun getCreditCardById(itemId: ItemId): CreditCard? = store.value[itemId]
+
+    override suspend fun getCreditCardsByVault(vaultId: VaultId): List<CreditCard> =
+        store.value.values.filter { it.vaultId == vaultId }
 }

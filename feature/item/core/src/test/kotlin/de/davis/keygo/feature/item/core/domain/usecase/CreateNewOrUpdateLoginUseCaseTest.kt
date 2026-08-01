@@ -64,7 +64,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
     }
 
 
-    // Validation — Create
+    // Validation - Create
 
     @Test
     fun `create with blank name returns BlankName error`() = runTest {
@@ -140,7 +140,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         assertTrue(result.isSuccess())
     }
 
-    // Validation — Update
+    // Validation - Update
 
     @Test
     fun `update with Keep name and Keep password is valid`() = runTest {
@@ -206,7 +206,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         assertEquals(setOf(ItemUpsertError.Empty), result.error)
     }
 
-    // Success — Create
+    // Success - Create
 
     @Test
     fun `create with valid fields returns Success`() = runTest {
@@ -293,7 +293,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         assertEquals(PasswordScore.Strong, updated?.passwordCredential!!.score)
     }
 
-    // Success — Update
+    // Success - Update
 
     @Test
     fun `update with new name replaces name`() = runTest {
@@ -560,7 +560,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         assertEquals(cause, error.throwable)
     }
 
-    // TOTP handling — Create
+    // TOTP handling - Create
 
     @Test
     fun `create with plain secret stores totp with only the secret and default fields`() = runTest {
@@ -642,7 +642,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         assertNull(storedById(result.getOrNull())?.totp)
     }
 
-    // TOTP handling — Update
+    // TOTP handling - Update
 
     @Test
     fun `update replacing totp uri with plain secret resets algorithm digits period issuer and account name`() =

@@ -1,0 +1,255 @@
+package de.davis.keygo.feature.backup.presentation.import
+
+import android.content.res.Configuration
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.ListItemShapes
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.item.domain.alias.VaultId
+import de.davis.keygo.core.item.domain.alias.newVaultId
+import de.davis.keygo.core.item.domain.model.Vault
+import de.davis.keygo.core.item.domain.model.VaultMetadata
+import de.davis.keygo.core.item.presentation.VaultIconPicker
+import de.davis.keygo.core.item.presentation.toImageVector
+import de.davis.keygo.feature.backup.R
+import de.davis.keygo.feature.backup.presentation.component.segmentContainerColor
+
+/**
+ * Where the import lands. A full step rather than a dropdown: the choice is worth the room, and a
+ * dropdown has nowhere to put the name field the "new vault" option needs.
+ */
+@Composable
+internal fun SelectVaultContent(
+    vaults: List<VaultMetadata>,
+    selectedVaultId: VaultId?,
+    creatingNewVault: Boolean,
+    newVaultNameState: TextFieldState,
+    newVaultIcon: Vault.Icon,
+    onSelectVault: (VaultId) -> Unit,
+    onCreateNewVault: () -> Unit,
+    onSelectNewVaultIcon: (Vault.Icon) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val segmentCount = vaults.size + 1
+
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+        contentPadding = PaddingValues(vertical = 12.dp),
+    ) {
+        itemsIndexed(vaults, key = { _, vault -> vault.vaultId }) { index, vault ->
+            VaultSegment(
+                vault = vault,
+                selected = !creatingNewVault && vault.vaultId == selectedVaultId,
+                shapes = ListItemDefaults.segmentedShapes(index, segmentCount),
+                onClick = { onSelectVault(vault.vaultId) },
+            )
+        }
+
+        item(key = "new-vault") {
+            NewVaultSegment(
+                selected = creatingNewVault,
+                nameState = newVaultNameState,
+                icon = newVaultIcon,
+                shapes = ListItemDefaults.segmentedShapes(vaults.size, segmentCount),
+                onClick = onCreateNewVault,
+                onSelectIcon = onSelectNewVaultIcon,
+            )
+        }
+    }
+}
+
+@Composable
+private fun VaultSegment(
+    vault: VaultMetadata,
+    selected: Boolean,
+    shapes: ListItemShapes,
+    onClick: () -> Unit,
+) {
+    SegmentedListItem(
+        selected = selected,
+        onClick = onClick,
+        shapes = shapes,
+        colors = ListItemDefaults.segmentedColors(containerColor = segmentContainerColor),
+        leadingContent = {
+            Icon(
+                imageVector = vault.icon.toImageVector(),
+                contentDescription = null
+            )
+        },
+        supportingContent = {
+            Text(
+                text = pluralStringResource(
+                    R.plurals.select_vault_item_count,
+                    vault.count,
+                    vault.count,
+                ),
+            )
+        },
+        trailingContent = {
+            if (selected) Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = null,
+            )
+        },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = vault.name)
+    }
+}
+
+@Composable
+private fun NewVaultSegment(
+    selected: Boolean,
+    nameState: TextFieldState,
+    icon: Vault.Icon,
+    shapes: ListItemShapes,
+    onClick: () -> Unit,
+    onSelectIcon: (Vault.Icon) -> Unit,
+) {
+    val focusManager = LocalFocusManager.current
+
+    Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+        SegmentedListItem(
+            selected = selected,
+            onClick = onClick,
+            shapes = shapes,
+            colors = ListItemDefaults.segmentedColors(containerColor = segmentContainerColor),
+            leadingContent = {
+                Icon(
+                    imageVector = if (selected) icon.toImageVector() else Icons.Default.Add,
+                    contentDescription = null
+                )
+            },
+            trailingContent = {
+                if (selected) Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                )
+            },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // The typed name stands in for the label only while this row is the destination. A
+            // deselected row would otherwise keep naming a vault the import is not going to
+            // create, and lose the wording that says what picking it does.
+            val fallback = stringResource(R.string.select_vault_new)
+            Text(text = if (selected) nameState.text.ifBlank { fallback }.toString() else fallback)
+        }
+
+        if (selected) {
+            OutlinedTextField(
+                state = nameState,
+                label = { Text(text = stringResource(R.string.select_vault_name_label)) },
+                lineLimits = TextFieldLineLimits.SingleLine,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                leadingIcon = {
+                    AnimatedContent(icon) { icon ->
+                        Icon(
+                            imageVector = icon.toImageVector(),
+                            contentDescription = null
+                        )
+                    }
+                },
+            )
+
+            Text(
+                text = stringResource(R.string.select_vault_icon_label),
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+
+            VaultIconPicker(
+                selected = icon,
+                // Picking an icon after typing a name means the keyboard is still up and covering
+                // the grid the user is reaching for.
+                onSelect = { picked ->
+                    onSelectIcon(picked)
+                    focusManager.clearFocus()
+                },
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+        }
+    }
+}
+
+private val previewVaults = listOf(
+    VaultMetadata(vaultId = newVaultId(), name = "Personal", icon = Vault.Icon.Person, count = 12),
+    VaultMetadata(vaultId = newVaultId(), name = "Work", icon = Vault.Icon.Work, count = 4),
+    VaultMetadata(
+        vaultId = newVaultId(),
+        name = "Shopping",
+        icon = Vault.Icon.ShoppingCart,
+        count = 7
+    ),
+)
+
+@Preview(showBackground = true)
+@Composable
+private fun SelectVaultContentExistingPreview() {
+    MaterialTheme {
+        Surface(modifier = Modifier.fillMaxSize()) {
+            SelectVaultContent(
+                vaults = previewVaults,
+                selectedVaultId = previewVaults.first().vaultId,
+                creatingNewVault = false,
+                newVaultNameState = TextFieldState(),
+                newVaultIcon = Vault.Icon.Default,
+                onSelectVault = {},
+                onCreateNewVault = {},
+                onSelectNewVaultIcon = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun SelectVaultContentNewVaultPreview() {
+    MaterialTheme {
+        Surface(modifier = Modifier.fillMaxSize()) {
+            SelectVaultContent(
+                vaults = previewVaults,
+                selectedVaultId = null,
+                creatingNewVault = true,
+                newVaultNameState = TextFieldState("passwords"),
+                newVaultIcon = Vault.Icon.Work,
+                onSelectVault = {},
+                onCreateNewVault = {},
+                onSelectNewVaultIcon = {},
+            )
+        }
+    }
+}

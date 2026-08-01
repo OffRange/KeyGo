@@ -10,10 +10,9 @@
     <string name="settings_biometric_update_failed">Could not update biometric unlock</string>
 
     <string name="settings_backup">Backup</string>
-    <string name="settings_export_data">Export Data</string>
-    <string name="settings_export_data_description">Save an encrypted backup of your vaults to a file</string>
-    <string name="settings_import_data">Import Data</string>
-    <string name="settings_import_data_description">Restore your vaults from a backup file</string>
+    <string name="settings_backup_and_restore">Backup &amp; Restore</string>
+    <string name="settings_backup_last">Last backup %1$s</string>
+    <string name="settings_backup_none">No backups yet</string>
 
     <string name="settings_about">About</string>
     <string name="settings_report_issue">Report an issue</string>

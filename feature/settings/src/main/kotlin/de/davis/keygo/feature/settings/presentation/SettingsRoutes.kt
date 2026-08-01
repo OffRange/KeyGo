@@ -23,16 +23,14 @@ object ChangePasswordRoute : RouteDestination {
 fun NavGraphBuilder.settingsGraph(
     onOpenChangePassword: () -> Unit,
     onShowLibraries: () -> Unit,
+    onOpenBackup: () -> Unit,
     onUp: () -> Unit,
 ) = navigation<SettingsGraphRoute>(startDestination = SettingsHomeRoute) {
     composable<SettingsHomeRoute> {
         SettingsScreen(
             showLibraries = onShowLibraries,
             onOpenChangePassword = onOpenChangePassword,
-
-            // TODO: #51
-            onExportDataClicked = {},
-            onImportDataClicked = {}
+            onOpenBackup = onOpenBackup,
         )
     }
     composable<ChangePasswordRoute> {

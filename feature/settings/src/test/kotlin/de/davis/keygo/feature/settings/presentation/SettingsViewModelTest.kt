@@ -4,6 +4,12 @@ import de.davis.keygo.core.feature.autofill.FakeAutofillServiceRepository
 import de.davis.keygo.core.feature.settings.FakeAppVersionRepository
 import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
+import de.davis.keygo.feature.backup.FakeBackupJobRepository
+import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
+import de.davis.keygo.feature.backup.domain.model.BackupJob
+import de.davis.keygo.feature.backup.domain.model.BackupResult
+import de.davis.keygo.feature.backup.domain.model.FileFormat
+import de.davis.keygo.feature.backup.domain.usecase.ObserveLastBackupUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -16,6 +22,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -27,6 +34,7 @@ class SettingsViewModelTest {
     private val biometricAvailability = FakeBiometricAvailabilityRepository()
     private val autofillServiceRepository = FakeAutofillServiceRepository()
     private val appVersionRepository = FakeAppVersionRepository()
+    private val backupJobRepository = FakeBackupJobRepository()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(dispatcher)
@@ -39,6 +47,7 @@ class SettingsViewModelTest {
         autofillServiceRepository = autofillServiceRepository,
         accountRepository = accountRepository,
         appVersionRepository = appVersionRepository,
+        observeLastBackup = ObserveLastBackupUseCase(backupJobRepository),
     )
 
     @Test
@@ -92,4 +101,34 @@ class SettingsViewModelTest {
 
             assertEquals(SettingsEvent.EnableBiometric(enable = true), vm.event.first())
         }
+
+    @Test
+    fun `opening backup emits NavigateToBackup`() = runTest(dispatcher) {
+        val vm = viewModel()
+
+        vm.onEvent(SettingsUiEvent.OpenBackup)
+
+        assertEquals(SettingsEvent.NavigateToBackup, vm.event.first())
+    }
+
+    @Test
+    fun `state carries the newest successful backup timestamp`() = runTest(dispatcher) {
+        backupJobRepository.jobs["one-time"] = BackupJob(
+            uri = BackupDestinationUri("content://backup.json"),
+            wrappedPassphrase = null,
+            format = FileFormat.JSON,
+            finishedAt = 1_700_000_000_000L,
+            lastResult = BackupResult.Success,
+        )
+        val vm = viewModel()
+
+        assertEquals(1_700_000_000_000L, vm.state.first { it.lastBackupAt != null }.lastBackupAt)
+    }
+
+    @Test
+    fun `state reports no last backup while none has completed`() = runTest(dispatcher) {
+        val vm = viewModel()
+
+        assertNull(vm.state.first().lastBackupAt)
+    }
 }

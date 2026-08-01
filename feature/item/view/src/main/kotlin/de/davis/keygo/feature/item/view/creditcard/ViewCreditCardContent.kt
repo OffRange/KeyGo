@@ -106,7 +106,7 @@ fun ViewCreditCardContent(state: ViewCreditCardState, onEvent: (ViewCreditCardUi
                                 )
                                 Text(text = metadata.name)
                             }
-                            Text(text = "•")
+                            Text(text = "\u2022")
                             Text(text = stringResource(CoreItemR.string.credit_card))
                         }
                     }

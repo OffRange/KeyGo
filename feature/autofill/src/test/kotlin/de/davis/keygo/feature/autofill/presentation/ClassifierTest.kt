@@ -19,7 +19,7 @@ class ClassifierTest {
     @Test
     fun `autofill hints take precedence over html attributes`() {
         // autofillHints = {"password"}, htmlAttributes = {"type":"email"}, tokens = {"username"}
-        // → Password (autofillHints win)
+        // -> Password (autofillHints win)
         val result = classify(
             autofillHints = setOf("password"),
             htmlAttributes = mapOf("type" to "email"),
@@ -31,7 +31,7 @@ class ClassifierTest {
     @Test
     fun `html attributes take precedence over tokens`() {
         // autofillHints = {}, htmlAttributes = {"type":"email"}, tokens = {"username"}
-        // → EMail (htmlAttributes win over tokens)
+        // -> EMail (htmlAttributes win over tokens)
         val result = classify(
             autofillHints = emptySet(),
             htmlAttributes = mapOf("type" to "email"),
@@ -43,7 +43,7 @@ class ClassifierTest {
     @Test
     fun `tokens are used when no hints or attributes match`() {
         // autofillHints = {}, htmlAttributes = {}, tokens = {"username"}
-        // → Username (tokens win over nothing)
+        // -> Username (tokens win over nothing)
         val result = classify(
             autofillHints = emptySet(),
             htmlAttributes = emptyMap(),
@@ -230,7 +230,7 @@ class ClassifierTest {
 
     @Test
     fun `token emailaddress is not recognized due to boundary`() {
-        // "email" is followed by "a" (alphanumeric) — boundary check fails
+        // "email" is followed by "a" (alphanumeric), so the boundary check fails
         val result = classify(tokens = setOf("emailaddress"))
         assertEquals(FieldType.Undefined, result)
     }

@@ -98,6 +98,7 @@ dependencies {
     implementation(project.dependencies.platform(libs.koin.bom))
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.annotations)
+    implementation(libs.koin.androidx.workmanager)
 
     implementation(libs.aboutlibraries.compose.m3)
 
@@ -116,6 +117,7 @@ dependencies {
     implementation(projects.feature.creditCard)
     implementation(projects.feature.autofill)
     implementation(projects.feature.settings)
+    implementation(projects.feature.backup)
     implementation(projects.migrationCreateAccess)
 
     implementation(libs.androidx.core.ktx)

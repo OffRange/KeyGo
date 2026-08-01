@@ -1,4 +1,5 @@
 mod account;
+mod backup;
 mod card;
 mod item;
 mod key_derivation;

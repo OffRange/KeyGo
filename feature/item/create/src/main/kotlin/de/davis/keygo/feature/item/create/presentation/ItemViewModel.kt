@@ -89,7 +89,7 @@ internal abstract class ItemViewModel<S>(
     protected abstract val itemState: Flow<S>
 
     /**
-     * Lazy so the `combine` body — which reads the abstract [itemState] — runs on first collection
+     * Lazy so the `combine` body, which reads the abstract [itemState], runs on first collection
      * rather than during construction, by which point the subclass is fully initialized (base
      * property initializers otherwise run before the subclass').
      */

@@ -25,7 +25,7 @@ pub struct WrappedKeyBlob {
 pub enum KeyWrapError {
     #[error("Key wrap failed")]
     WrapFailed,
-    #[error("Key unwrap failed — wrong key or corrupted data")]
+    #[error("Key unwrap failed: wrong key or corrupted data")]
     UnwrapFailed,
     #[error("Invalid key material")]
     InvalidKey,

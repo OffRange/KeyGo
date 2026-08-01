@@ -20,7 +20,7 @@ data class ObfuscatedString(
     }
 
     companion object {
-        private const val DEFAULT_OBFUSCATION_CHAR: Char = '•'
+        private const val DEFAULT_OBFUSCATION_CHAR: Char = '\u2022'
     }
 }
 

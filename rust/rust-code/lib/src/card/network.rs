@@ -39,11 +39,11 @@ impl CardNetwork {
         if matches!(prefix(digits, 2), Some(34 | 37)) {
             return Amex;
         }
-        // JCB: 3528–3589 (checked before the broader Diners "3" ranges)
+        // JCB: 3528-3589 (checked before the broader Diners "3" ranges)
         if matches!(prefix(digits, 4), Some(3528..=3589)) {
             return Jcb;
         }
-        // Diners Club: 300–305, 36, 38, 39
+        // Diners Club: 300-305, 36, 38, 39
         if matches!(prefix(digits, 3), Some(300..=305))
             || matches!(prefix(digits, 2), Some(36 | 38 | 39))
         {
@@ -53,13 +53,13 @@ impl CardNetwork {
         if digits.starts_with('4') {
             return Visa;
         }
-        // Mastercard: 51–55, 2221–2720
+        // Mastercard: 51-55, 2221-2720
         if matches!(prefix(digits, 2), Some(51..=55))
             || matches!(prefix(digits, 4), Some(2221..=2720))
         {
             return Mastercard;
         }
-        // Discover: 6011, 644–649, 65, and the 622126–622925 co-brand range
+        // Discover: 6011, 644-649, 65, and the 622126-622925 co-brand range
         // (checked before UnionPay's broad "62").
         if matches!(prefix(digits, 4), Some(6011))
             || matches!(prefix(digits, 3), Some(644..=649))

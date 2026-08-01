@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# new-module.sh — scaffold a new Gradle module in the KeyGo Android project.
+# new-module.sh - scaffold a new Gradle module in the KeyGo Android project.
 #
 # Interactive (arrow-key menus):
 #   scripts/new-module.sh
@@ -68,7 +68,7 @@ USAGE
 }
 
 # ---------------------------------------------------------------------------
-# Interactive widgets — drawn on stderr, result in $MENU_RESULT.
+# Interactive widgets - drawn on stderr, result in $MENU_RESULT.
 # ---------------------------------------------------------------------------
 MENU_RESULT=""
 
@@ -77,7 +77,7 @@ menu_abort() {
     exit 130
 }
 
-# read_key — reads one keypress into $KEY: up|down|enter|space|quit|other
+# read_key - reads one keypress into $KEY: up|down|enter|space|quit|other
 read_key() {
     local key rest
     IFS= read -rsn1 key
@@ -100,7 +100,7 @@ read_key() {
     esac
 }
 
-# erase_menu <line_count> — erase the last <line_count> drawn lines.
+# erase_menu <line_count> - erase the last <line_count> drawn lines.
 erase_menu() {
     local n=$1 i
     printf '\033[%dA' "$n" >&2
@@ -108,7 +108,7 @@ erase_menu() {
     printf '\033[%dA' "$n" >&2
 }
 
-# choose_one <title> <default_idx> <item>... — single-select arrow menu.
+# choose_one <title> <default_idx> <item>... - single-select arrow menu.
 choose_one() {
     local title=$1 current=$2
     shift 2
@@ -138,12 +138,12 @@ choose_one() {
         for (( i=0; i<count; i++ )); do
             printf '\033[2K' >&2
             if (( i == current )); then
-                printf '  %s▶ %s%s\n' "$C_CYAN" "${items[$i]}" "$C_RESET" >&2
+                printf '  %s> %s%s\n' "$C_CYAN" "${items[$i]}" "$C_RESET" >&2
             else
                 printf '    %s\n' "${items[$i]}" >&2
             fi
         done
-        printf '\033[2K%s  ↑/↓ move · Enter select · q quit%s\n' "$C_DIM" "$C_RESET" >&2
+        printf '\033[2K%s  Up/Down move | Enter select | q quit%s\n' "$C_DIM" "$C_RESET" >&2
     }
     draw
 
@@ -166,7 +166,7 @@ choose_one() {
     done
 }
 
-# choose_multi <title> <checked_csv> <item>... — multi-select; result is CSV.
+# choose_multi <title> <checked_csv> <item>... - multi-select; result is CSV.
 choose_multi() {
     local title=$1 checked_csv=$2
     shift 2
@@ -211,12 +211,12 @@ choose_multi() {
             if (( checked[j] )); then box="[x]"; else box="[ ]"; fi
             printf '\033[2K' >&2
             if (( j == current )); then
-                printf '  %s▶ %s %s%s\n' "$C_CYAN" "$box" "${items[$j]}" "$C_RESET" >&2
+                printf '  %s> %s %s%s\n' "$C_CYAN" "$box" "${items[$j]}" "$C_RESET" >&2
             else
                 printf '    %s %s\n' "$box" "${items[$j]}" >&2
             fi
         done
-        printf '\033[2K%s  ↑/↓ move · Space toggle · Enter confirm · q quit%s\n' "$C_DIM" "$C_RESET" >&2
+        printf '\033[2K%s  Up/Down move | Space toggle | Enter confirm | q quit%s\n' "$C_DIM" "$C_RESET" >&2
     }
     draw
 
@@ -240,7 +240,7 @@ choose_multi() {
     done
 }
 
-# confirm <question> <default y|n> — result in $MENU_RESULT (1 or 0).
+# confirm <question> <default y|n> - result in $MENU_RESULT (1 or 0).
 confirm() {
     local question=$1 default=$2 hint answer
     if [[ "$default" == y ]]; then hint="Y/n"; else hint="y/N"; fi
@@ -295,10 +295,10 @@ if [[ -z "$LOCATION" ]]; then
     for d in core feature; do
         [[ -d "$REPO_ROOT/$d" ]] && LOCATION_OPTS+=("$d")
     done
-    LOCATION_OPTS+=("custom…")
+    LOCATION_OPTS+=("custom...")
     choose_one "Module location:" 0 "${LOCATION_OPTS[@]}"
     LOCATION="$MENU_RESULT"
-    if [[ "$LOCATION" == "custom…" ]]; then
+    if [[ "$LOCATION" == "custom..." ]]; then
         printf '%sLocation path (e.g. feature/item):%s ' "$C_BOLD" "$C_RESET" >&2
         read -r LOCATION
     fi
@@ -325,9 +325,9 @@ MODULE_DIR="$REPO_ROOT/$LOCATION/$NAME"
 # Resolve convention plugin
 # ---------------------------------------------------------------------------
 PLUGIN_LABELS=(
-    "keygo.android.compose — Android library + Compose"
-    "keygo.android.library — Android library (no Compose)"
-    "keygo.kotlin.jvm — pure Kotlin/JVM"
+    "keygo.android.compose - Android library + Compose"
+    "keygo.android.library - Android library (no Compose)"
+    "keygo.kotlin.jvm - pure Kotlin/JVM"
 )
 
 if [[ -z "$PLUGIN_ARG" ]]; then
@@ -392,7 +392,7 @@ PKG_PATH="${NAMESPACE//.//}"
 GRADLE_PATH=":${LOCATION//\//:}:${NAME}"
 PLUGIN_ACCESSOR="libs.plugins.${PLUGIN//-/.}"
 
-# DI class: PascalCase of location + name, e.g. feature/item + create → FeatureItemCreateModule
+# DI class: PascalCase of location + name, e.g. feature/item + create -> FeatureItemCreateModule
 pascal_case() {
     local out="" part
     IFS='/-_' read -ra parts <<<"$1"
@@ -447,7 +447,7 @@ dependencies {
 }
 GRADLE
 else
-    # keygo.kotlin.jvm doesn't wire Koin — add what the DI module needs.
+    # keygo.kotlin.jvm doesn't wire Koin - add what the DI module needs.
     cat > "$MODULE_DIR/build.gradle.kts" <<GRADLE
 plugins {
 ${PLUGINS_BLOCK}
@@ -470,7 +470,7 @@ INCLUDE_LINE="include(\"${GRADLE_PATH}\")"
 if [[ ! -f "$SETTINGS" ]]; then
     die "settings.gradle.kts not found at $SETTINGS"
 elif grep -qF "$INCLUDE_LINE" "$SETTINGS"; then
-    printf '%sNote:%s %s already present in settings.gradle.kts — skipping.\n' \
+    printf '%sNote:%s %s already present in settings.gradle.kts, skipping.\n' \
         "$C_DIM" "$C_RESET" "$INCLUDE_LINE" >&2
 else
     awk -v line="$INCLUDE_LINE" '
@@ -492,7 +492,7 @@ fi
 PKG_SUMMARY="di"
 [[ -n "$PACKAGES" ]] && PKG_SUMMARY="$PACKAGES,di"
 
-printf '\n%s✔ Module created%s\n' "$C_GREEN" "$C_RESET" >&2
+printf '\n%s[OK] Module created%s\n' "$C_GREEN" "$C_RESET" >&2
 printf '  Directory   : %s/%s\n' "$LOCATION" "$NAME" >&2
 printf '  Gradle path : %s\n' "$GRADLE_PATH" >&2
 printf '  Namespace   : %s\n' "$NAMESPACE" >&2
@@ -500,6 +500,6 @@ printf '  Plugin      : %s%s\n' "$PLUGIN" "$( (( PROTOBUF )) && echo ' + keygo.a
 printf '  Packages    : %s\n' "$PKG_SUMMARY" >&2
 printf '  Koin module : %s\n' "$DI_CLASS" >&2
 printf '\nNext steps:\n' >&2
-printf '  · add implementation(projects.%s) where the module is consumed\n' \
+printf '  - add implementation(projects.%s) where the module is consumed\n' \
     "$(echo "${LOCATION//\//.}.${NAME}" | sed -E 's/[-_]([a-z])/\U\1/g')" >&2
-printf '  · sync Gradle (./gradlew %s:help)\n' "$GRADLE_PATH" >&2
+printf '  - sync Gradle (./gradlew %s:help)\n' "$GRADLE_PATH" >&2

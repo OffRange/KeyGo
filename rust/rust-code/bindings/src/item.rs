@@ -30,7 +30,7 @@ pub struct EncryptedItemBlob {
 pub enum ItemCryptoError {
     #[error("Encryption failed")]
     EncryptionFailed,
-    #[error("Decryption failed — ciphertext invalid or tampered")]
+    #[error("Decryption failed: ciphertext invalid or tampered")]
     DecryptionFailed,
     #[error("Invalid key material")]
     InvalidKey,

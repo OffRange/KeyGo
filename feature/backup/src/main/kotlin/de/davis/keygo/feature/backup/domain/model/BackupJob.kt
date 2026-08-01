@@ -1,0 +1,27 @@
+package de.davis.keygo.feature.backup.domain.model
+
+import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
+
+data class BackupJob(
+    val uri: BackupDestinationUri,
+    val wrappedPassphrase: CryptographicData?,
+    val format: FileFormat,
+    /** How JSON payloads are sealed; null for CSV. Persisted jobs without the field are Passphrase. */
+    val encryption: EncryptionMethod? = null,
+    /** CSV column layout; null for JSON. Persisted jobs without the field are Browser. */
+    val csvPreset: CsvPreset? = null,
+    /** Number of backups to retain in the destination folder; null means keep all (never prune). */
+    val keepCount: Int? = null,
+    val createdAt: Long = 0L,
+    val finishedAt: Long? = null,
+    /** Outcome of the last run; null when never run. A Failure carries its own reason. */
+    val lastResult: BackupResult? = null,
+    val cancelled: Boolean = false,
+    /**
+     * What [uri] is called, resolved while the folder grant was live. Only the provider can answer
+     * that, and only while it honours the grant - which ends before this record does - so the name
+     * is captured once at scheduling time and read back from here forever after. Null on records
+     * written before the field existed; those fall back to asking the provider.
+     */
+    val destinationName: String? = null,
+)

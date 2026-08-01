@@ -17,6 +17,9 @@ uuid = "1.23.1"
 [build-dependencies]
 uniffi = { version = "0.32.0", features = ["build"] }
 
+[dev-dependencies]
+serde_json = "1.0"
+
 [[bin]]
 name = "uniffi-bindgen"
 path = "uniffi-bindgen.rs"

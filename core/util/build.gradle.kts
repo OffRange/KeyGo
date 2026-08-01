@@ -13,6 +13,9 @@ android {
 dependencies {
     implementation(libs.okhttp)
 
+    api(libs.androidx.datastore)
+    api(libs.google.protobuf.kotlin.lite)
+
     testImplementation(libs.okhttp.jvm)
 
     testFixturesImplementation(libs.kotlin.test)

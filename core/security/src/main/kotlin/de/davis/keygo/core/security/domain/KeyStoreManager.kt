@@ -11,4 +11,6 @@ interface KeyStoreManager {
         cryptographicMode: CryptographicMode,
         iv: ByteArray? = null
     ): Cipher
+
+    fun deleteKey(keyId: KeyId)
 }

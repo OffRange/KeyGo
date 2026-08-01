@@ -5,6 +5,7 @@ import androidx.datastore.dataStore
 import de.davis.keygo.core.identity.data.local.model.ProtoAccountState
 import de.davis.keygo.core.identity.di.annotation.AccountRegistryQualifier
 import de.davis.keygo.core.security.di.CoreSecurityModule
+import de.davis.keygo.core.util.data.serializer.DefaultProtoSerializer
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Module

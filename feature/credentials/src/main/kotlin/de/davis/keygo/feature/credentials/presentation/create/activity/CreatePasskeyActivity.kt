@@ -161,7 +161,7 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                 val authState by viewModel.authState.collectAsStateWithLifecycle()
                 when (authState) {
                     SessionAuthState.TryBiometric -> {
-                        // render nothing — activity stays transparent while system biometric prompt is shown
+                        // render nothing: activity stays transparent while system biometric prompt is shown
                     }
 
                     SessionAuthState.NeedsPassword -> {

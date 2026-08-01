@@ -10,6 +10,7 @@ import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformatio
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.model.CryptoScopeError
 import de.davis.keygo.core.util.Result
+import java.util.Collections
 import kotlin.coroutines.CoroutineContext
 import kotlin.experimental.xor
 
@@ -28,7 +29,9 @@ class FakeCryptographicScopeProvider(
         ) : CallHistory
     }
 
-    val callHistory = mutableListOf<CallHistory>()
+    // Synchronized: BackupCollector calls encrypt/decrypt concurrently across items, and this
+    // list is written from whichever real thread each call lands on.
+    val callHistory: MutableList<CallHistory> = Collections.synchronizedList(mutableListOf())
     val encryptCalls
         get() = callHistory.filterIsInstance<CallHistory.EncryptCall>()
     val rewrapCalls

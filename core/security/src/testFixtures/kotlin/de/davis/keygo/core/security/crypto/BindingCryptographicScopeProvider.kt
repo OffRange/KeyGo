@@ -10,7 +10,7 @@ import de.davisalessandro.keygo.rust.KeyWrapperInterface
 /**
  * Constructs the production [CryptographicScopeProvider] backed by the supplied fakes.
  *
- * Use when a test depends on the AAD-binding semantics — ciphertext bound to
+ * Use when a test depends on the AAD-binding semantics: ciphertext bound to
  * (vaultId, itemId, label), item keys wrapped under the vault key. For tests
  * that only need a deterministic round-trip with no AAD enforcement,
  * [FakeCryptographicScopeProvider] is simpler.

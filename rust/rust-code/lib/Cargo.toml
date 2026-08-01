@@ -15,6 +15,7 @@ passkey-authenticator = { version = "0.5.0", features = ["tokio", "testable"] }
 # Needed so passkey JSON responses are serialized into base64 strings
 passkey-types = { version = "0.5.0", features = ["serialize_bytes_as_base64_string"] }
 
+base64 = "0.22"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 thiserror = "2.0.18"
@@ -24,4 +25,9 @@ uuid = { version = "1.23.0", features = ["serde", "v4"] }
 rand = { version = "0.10.0", features = ["sys_rng"] }
 bcs = "0.2.0"
 argon2 = "0.5.3"
-totp-rs = { version = "5.7.1", features = ["otpauth", "zeroize"] }
+hkdf = "0.12"
+sha2 = "0.10"
+totp-rs = { version = "5.7.1", features = ["otpauth", "zeroize", "serde_support"] }
+csv = "1.4.0"
+email_address = "0.2.9"
+base32 = "0.5.1"

@@ -1,0 +1,80 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Backup {
+    pub vaults: Vec<Vault>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Vault {
+    pub name: String,
+    /// Names an icon from the client's own set; the format assigns it no meaning beyond a label to
+    /// hand back on restore. `default` covers producers that have none to give - CSV imports, and
+    /// backups written before the field existed, including the frozen v1 goldens - which read as an
+    /// empty string and let the client fall back to its own default.
+    #[serde(default)]
+    pub icon: String,
+    pub logins: Vec<Login>,
+    pub cards: Vec<Card>,
+}
+
+macro_rules! backup_item {
+    (
+        $(#[$meta:meta])*
+        $vis:vis struct $name:ident {
+            $(
+                $(#[$field_meta:meta])*
+                $field_vis:vis $field:ident : $field_ty:ty
+            ),*$(,)?
+        }
+    ) => {
+        $(#[$meta])*
+
+        #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+        $vis struct $name {
+            pub title: String,
+            pub notes: Option<String>,
+            pub tags: Vec<String>,
+            pub pinned: bool,
+            $(
+                $(#[$field_meta])*
+                $field_vis $field: $field_ty,
+            )*
+        }
+    };
+}
+
+backup_item! {
+    pub struct Login {
+        pub username: Option<String>,
+        pub password: Option<String>,
+        pub totp_secret: Option<String>,
+        /// A login can be associated with several sites. `default` keeps pre-field backups -
+        /// including the frozen v1 goldens - readable.
+        #[serde(default)]
+        pub websites: Vec<String>,
+        /// A login can hold several passkeys (one per RP). `default` keeps pre-field backups -
+        /// including the frozen v1 goldens - readable.
+        #[serde(default)]
+        pub passkeys: Vec<Passkey>,
+   }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Passkey {
+    pub user_name: String,
+    pub user_display_name: String,
+    pub credential_id: Vec<u8>,
+    pub private_key: Vec<u8>,
+    pub rp: String,
+}
+
+backup_item! {
+    pub struct Card {
+        pub cardholder: Option<String>,
+        pub number: String,
+        pub expiration_month: Option<u8>,
+        pub expiration_year: Option<u16>,
+        pub cvv: Option<String>,
+    }
+}

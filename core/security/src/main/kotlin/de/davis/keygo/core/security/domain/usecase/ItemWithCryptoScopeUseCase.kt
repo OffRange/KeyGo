@@ -26,7 +26,7 @@ class ItemWithCryptoScopeUseCase(
     ): Result<R, CryptoScopeError> {
         val item = fetch(itemId)
             ?: return Result.Failure(CryptoScopeError.IdNotFound)
-        return handleItem(item, block)
+        return withItem(item, block)
     }
 
     suspend fun <I : Item, R> observe(
@@ -34,11 +34,11 @@ class ItemWithCryptoScopeUseCase(
         source: (ItemId) -> Flow<I?>,
         block: suspend CryptographicScope.(I) -> R,
     ): Flow<Result<R, CryptoScopeError>> = source(itemId).map { item ->
-        item?.let { handleItem(it, block) }
+        item?.let { withItem(it, block) }
             ?: Result.Failure(CryptoScopeError.IdNotFound)
     }
 
-    private suspend fun <I : Item, R> handleItem(
+    suspend fun <I : Item, R> withItem(
         item: I,
         block: suspend CryptographicScope.(I) -> R,
     ): Result<R, CryptoScopeError> {
