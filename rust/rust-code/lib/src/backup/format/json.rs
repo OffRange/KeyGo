@@ -94,13 +94,16 @@ mod tests {
     // to fail loudly if the on-disk format or - critically - the BCS layout of
     // `BackupAad` ever drifts, since either makes existing backups undecryptable
     // with no compile error. Regenerate ONLY alongside a deliberate version bump.
-    // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
     const GOLDEN_V1_PASSPHRASE: &[u8] = b"golden-pw";
     const GOLDEN_V1: &str = r#"{"version":1,"encryption":{"source":"passphrase","kdf":{"type":"argon2id","salt":"wFYCrxdwhGR19jk2BBUasQ==","mem_kib":65536,"iters":3,"lanes":4},"nonce":"V8dD5ja/CUoL2vYg"},"payload":"GpZBGMDvOgwOPVpst4TnyCMrC+lXMQ8KOPEgeK8GSTZafA/YGBCO+9J7BFmHvtuSuXAaNrlsEviPxFdQCCGJlljW1lJoGJ2Cny0RDlw+75fdH/a4MNwVplSvSJYxeZoYO3wEh8RDyHw3fHlXrQ/u+en1+0psRkdt1Gnvkv+ULxKEOsjTOz0fqzioOYWK/oyNW1h6qJ6x09aTOsBzv1Jv6Wx3vMNzqXGCgFxI9UTzWmdp7hs2JRHHcegTzMaX2cw1lV+shWNpyqEu1anSC6Zc8qfk1vxDj06xGjWZsFeBCfk/8j5Eu5y/c/nDKvcQKC8I3PmPXBBrCmoi/mRDHqu2sMSJQKqBebLv4MkWJUjV3CvfWDJcBHv/ovfNAgmNhNEzZJBA8iC5Pwat0vxopszcsU2bpwg0bPG3hawQkrLkz9sJGnJEsJHSpPSsBj/fS/FqnvkeyrEGH+4TbUqX26LSbFVgmLR3LJtLvP9M3xv99dWsdeqH+C9YmKsXtvXbXCcA20ygL7wc6oCgQbFWGwA7N1lnk1oKDDdaftCu"}"#;
 
     #[test]
     fn golden_v1_passphrase_still_decrypts() {
-        let backup = import(GOLDEN_V1, BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE)).unwrap();
+        let backup = import(
+            GOLDEN_V1,
+            BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE),
+        )
+        .unwrap();
         // Assert on stable, semantic values so the test survives future additive
         // schema changes (new Option fields) without needing a fresh golden.
         let vault = &backup.vaults[0];
@@ -134,9 +137,7 @@ mod tests {
             },
         ];
 
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let json = export(&original, BackupCredential::Passphrase(b"pw")).unwrap();
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let restored = import(&json, BackupCredential::Passphrase(b"pw")).unwrap();
 
         let passkeys = &restored.vaults[0].logins[0].passkeys;
@@ -149,9 +150,7 @@ mod tests {
     fn vault_icon_round_trips_through_an_encrypted_backup() {
         let original = sample_backup();
 
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let json = export(&original, BackupCredential::Passphrase(b"pw")).unwrap();
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let restored = import(&json, BackupCredential::Passphrase(b"pw")).unwrap();
 
         assert_eq!(restored.vaults[0].icon, "Work");
@@ -161,7 +160,11 @@ mod tests {
     fn golden_v1_vault_has_no_icon() {
         // The frozen golden predates the field; serde(default) must read it as an empty string
         // rather than failing the whole import.
-        let backup = import(GOLDEN_V1, BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE)).unwrap();
+        let backup = import(
+            GOLDEN_V1,
+            BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE),
+        )
+        .unwrap();
         assert!(backup.vaults[0].icon.is_empty());
     }
 
@@ -169,7 +172,11 @@ mod tests {
     fn golden_v1_login_has_no_passkeys() {
         // The frozen golden predates the field; serde(default) must read it as an empty list
         // rather than failing the whole import.
-        let backup = import(GOLDEN_V1, BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE)).unwrap();
+        let backup = import(
+            GOLDEN_V1,
+            BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE),
+        )
+        .unwrap();
         assert!(backup.vaults[0].logins[0].passkeys.is_empty());
     }
 
@@ -178,7 +185,11 @@ mod tests {
         // The frozen golden predates the field (and its predecessor was a single `website`
         // string, not this list); serde(default) must read it as an empty list rather than
         // failing the whole import.
-        let backup = import(GOLDEN_V1, BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE)).unwrap();
+        let backup = import(
+            GOLDEN_V1,
+            BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE),
+        )
+        .unwrap();
         assert!(backup.vaults[0].logins[0].websites.is_empty());
     }
 
@@ -190,24 +201,23 @@ mod tests {
             "https://mail.example.org".into(),
         ];
 
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let json = export(&original, BackupCredential::Passphrase(b"pw")).unwrap();
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let restored = import(&json, BackupCredential::Passphrase(b"pw")).unwrap();
 
         assert_eq!(
             restored.vaults[0].logins[0].websites,
-            vec!["https://mail.example".to_string(), "https://mail.example.org".to_string()],
+            vec![
+                "https://mail.example".to_string(),
+                "https://mail.example.org".to_string()
+            ],
         );
     }
 
     #[test]
     fn version_below_minimum_fails() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let json = export(&sample_backup(), BackupCredential::Passphrase(b"pw")).unwrap();
         let mut v: serde_json::Value = serde_json::from_str(&json).unwrap();
         v["version"] = serde_json::json!(0);
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let err = import(&v.to_string(), BackupCredential::Passphrase(b"pw")).unwrap_err();
         assert!(matches!(err, BackupError::UnsupportedVersion(0)));
     }
@@ -215,9 +225,7 @@ mod tests {
     #[test]
     fn passphrase_round_trip() {
         let original = sample_backup();
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let json = export(&original, BackupCredential::Passphrase(b"pw")).unwrap();
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let restored = import(&json, BackupCredential::Passphrase(b"pw")).unwrap();
         json_eq(&restored, &original);
     }
@@ -225,7 +233,6 @@ mod tests {
     // A real v1 ARK-encrypted backup, frozen at generation time, mirroring
     // GOLDEN_V1. It fails loudly if the ARK wire format or HKDF derivation drifts.
     // Regenerate ONLY alongside a deliberate version bump.
-    // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
     const GOLDEN_V1_ARK_KEY: [u8; 32] = [9u8; 32];
     const GOLDEN_V1_ARK: &str = r#"{"version":1,"encryption":{"source":"ark","kdf":{"type":"hkdf_sha256","salt":"DbSH5vXm1d1XLo2gANptBQ=="},"nonce":"r2uEXqscOq6avV5g"},"payload":"6KlcJQxQ7q2SnHyJ/0YTWEs/GMZk4npIW8+0AUdVyA58gUMk4IUoNYpuCJEZ+6O0SAuaDd68JLpDgcTc3QmSCjxjCpSehOiPXIACk8+yXlb1oS9wlu1+cSuKrNqKJdMdvmSx/3UabH6rznZvN/qyHC6SMK71vtBoG9hgHt7wquYHNv1RIL7Rd5m1BMpmivooS6gfbviYHxVruxSXXSI/KBQ9wjf/XFpZeP5oTubY6snFkfTAJmpDIWY4K/ZVhQX8yLzqFnocRndYpSDHqCn7QbcKpalZcs6vKP5pJUsZl4SuX/3DhOQ1Sn2oHzfpUyVo6TB4+CuZ4fZppnbr4b+/A1kIphHkIMWkNgICnpvS25Yxc4XwtK31ytIa6Ngt2GK5pb6Wh5CS2gRWMWKC6qyexFhZR0UA9ZnczIzp1Y8YuLaTVqk5ZHH63IBqG0Z8pEpohIyyyaX80rmmv4MGwv89+VSCsRsR2+MeiMKe7YA/Gu1FlisLlpiO6Kw4w7P2N2f6JVBgtk/H9aLh3GfsgVHlfNHQzfN6zVXhRffk"}"#;
 
@@ -245,7 +252,6 @@ mod tests {
 
     #[test]
     fn ark_round_trip() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let ark = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
         let original = sample_backup();
         let json = export(&original, BackupCredential::Ark(&ark)).unwrap();
@@ -255,9 +261,7 @@ mod tests {
 
     #[test]
     fn wrong_passphrase_fails() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let json = export(&sample_backup(), BackupCredential::Passphrase(b"right")).unwrap();
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let err = import(&json, BackupCredential::Passphrase(b"wrong")).unwrap_err();
         assert!(matches!(
             err,
@@ -267,9 +271,7 @@ mod tests {
 
     #[test]
     fn wrong_ark_fails() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let right = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let wrong = AccountRootKey::try_from_bytes(&[6u8; 32]).unwrap();
         let json = export(&sample_backup(), BackupCredential::Ark(&right)).unwrap();
         let err = import(&json, BackupCredential::Ark(&wrong)).unwrap_err();
@@ -281,30 +283,25 @@ mod tests {
 
     #[test]
     fn empty_passphrase_is_rejected() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let err = export(&sample_backup(), BackupCredential::Passphrase(b"")).unwrap_err();
         assert!(matches!(err, BackupError::Crypto(CryptoError::KdfError(_))));
     }
 
     #[test]
     fn credential_source_mismatch_fails() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let ark = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
         let json = export(&sample_backup(), BackupCredential::Ark(&ark)).unwrap();
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let err = import(&json, BackupCredential::Passphrase(b"x")).unwrap_err();
         assert!(matches!(err, BackupError::CredentialMismatch));
     }
 
     #[test]
     fn tampered_ciphertext_fails() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let json = export(&sample_backup(), BackupCredential::Passphrase(b"pw")).unwrap();
         let mut v: serde_json::Value = serde_json::from_str(&json).unwrap();
         let mut ct = b64::decode(v["payload"].as_str().unwrap()).unwrap();
         ct[0] ^= 0x01;
         v["payload"] = serde_json::Value::String(b64::encode(&ct));
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let err = import(&v.to_string(), BackupCredential::Passphrase(b"pw")).unwrap_err();
         assert!(matches!(
             err,
@@ -314,11 +311,9 @@ mod tests {
 
     #[test]
     fn tampered_header_salt_fails() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let json = export(&sample_backup(), BackupCredential::Passphrase(b"pw")).unwrap();
         let mut v: serde_json::Value = serde_json::from_str(&json).unwrap();
         v["encryption"]["kdf"]["salt"] = serde_json::Value::String(b64::encode([0u8; 16]));
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let err = import(&v.to_string(), BackupCredential::Passphrase(b"pw")).unwrap_err();
         assert!(matches!(
             err,
@@ -335,7 +330,6 @@ mod tests {
             "encryption": null,
             "payload": { "vaults": [] },
         });
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let err = import(&v.to_string(), BackupCredential::Passphrase(b"pw")).unwrap_err();
         assert!(matches!(err, BackupError::Json(_)));
     }
@@ -355,29 +349,24 @@ mod tests {
 
     #[test]
     fn unknown_version_fails() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let json = export(&sample_backup(), BackupCredential::Passphrase(b"pw")).unwrap();
         let mut v: serde_json::Value = serde_json::from_str(&json).unwrap();
         v["version"] = serde_json::json!(2);
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let err = import(&v.to_string(), BackupCredential::Passphrase(b"pw")).unwrap_err();
         assert!(matches!(err, BackupError::UnsupportedVersion(2)));
     }
 
     #[test]
     fn malformed_base64_payload_fails() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let json = export(&sample_backup(), BackupCredential::Passphrase(b"pw")).unwrap();
         let mut v: serde_json::Value = serde_json::from_str(&json).unwrap();
         v["payload"] = serde_json::json!("not valid base64!!!");
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let err = import(&v.to_string(), BackupCredential::Passphrase(b"pw")).unwrap_err();
         assert!(matches!(err, BackupError::Base64));
     }
 
     #[test]
     fn encrypted_envelope_hides_plaintext() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let json = export(&sample_backup(), BackupCredential::Passphrase(b"pw")).unwrap();
         let v: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(v["encryption"]["source"], serde_json::json!("passphrase"));
@@ -413,14 +402,12 @@ mod tests {
 
     #[test]
     fn inspect_reports_passphrase() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let json = export(&sample_backup(), BackupCredential::Passphrase(b"pw")).unwrap();
         assert!(matches!(inspect(&json).unwrap(), KeySource::Passphrase));
     }
 
     #[test]
     fn inspect_reports_ark() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let ark = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
         let json = export(&sample_backup(), BackupCredential::Ark(&ark)).unwrap();
         assert!(matches!(inspect(&json).unwrap(), KeySource::Ark));
@@ -428,7 +415,6 @@ mod tests {
 
     #[test]
     fn inspect_rejects_unsupported_version() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let json = export(&sample_backup(), BackupCredential::Passphrase(b"pw")).unwrap();
         let mut v: serde_json::Value = serde_json::from_str(&json).unwrap();
         v["version"] = serde_json::json!(0);
@@ -440,6 +426,9 @@ mod tests {
 
     #[test]
     fn inspect_rejects_malformed_json() {
-        assert!(matches!(inspect("not json").unwrap_err(), BackupError::Json(_)));
+        assert!(matches!(
+            inspect("not json").unwrap_err(),
+            BackupError::Json(_)
+        ));
     }
 }

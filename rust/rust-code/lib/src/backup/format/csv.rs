@@ -847,7 +847,10 @@ Bank,https://bank.example,bob,hunter2,\n";
         assert_eq!(v.logins[0].title, "Email");
         assert_eq!(v.logins[0].username.as_deref(), Some("alice"));
         assert_eq!(v.logins[0].password.as_deref(), Some("s3cr3t"));
-        assert_eq!(v.logins[0].websites, vec!["https://mail.example".to_string()]);
+        assert_eq!(
+            v.logins[0].websites,
+            vec!["https://mail.example".to_string()]
+        );
         assert_eq!(v.logins[0].notes.as_deref(), Some("primary"));
         assert_eq!(v.logins[1].notes, None); // empty cell -> None
     }

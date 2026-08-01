@@ -28,33 +28,26 @@ impl<'a> TryDeriveFrom<&'a [u8]> for RootKEK {
 mod tests {
     use super::*;
 
-    // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
     const SALT: &[u8] = &[6; 16];
     const DOMAIN: &[u8] = b"v1:kek/pwd";
 
     #[test]
     fn same_credential_same_password_same_key() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let a = RootKEK::try_derive_from(b"hunter2", SALT, DOMAIN).unwrap();
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let b = RootKEK::try_derive_from(b"hunter2", SALT, DOMAIN).unwrap();
         assert_eq!(a.as_bytes(), b.as_bytes());
     }
 
     #[test]
     fn different_salt_different_keys() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let a = RootKEK::try_derive_from(b"hunter2", &[7; 16], DOMAIN).unwrap();
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let b = RootKEK::try_derive_from(b"hunter2", SALT, DOMAIN).unwrap();
         assert_ne!(a.as_bytes(), b.as_bytes());
     }
 
     #[test]
     fn different_domain_different_keys() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let a = RootKEK::try_derive_from(b"hunter2", SALT, DOMAIN).unwrap();
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let b = RootKEK::try_derive_from(b"hunter2", SALT, b"v2:kek/pwd").unwrap();
         assert_ne!(a.as_bytes(), b.as_bytes());
     }

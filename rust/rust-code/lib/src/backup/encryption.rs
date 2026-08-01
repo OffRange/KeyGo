@@ -202,9 +202,7 @@ mod tests {
 
     #[test]
     fn backup_key_encrypts_and_decrypts_with_aad() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let salt = [4u8; 16];
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let key = BackupKey::from_passphrase(b"pw", &salt, Argon2Params::default()).unwrap();
         let aad = BackupAad {
             version: CURRENT_VERSION,
@@ -217,9 +215,7 @@ mod tests {
 
     #[test]
     fn backup_key_decrypt_fails_with_different_aad() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let salt = [4u8; 16];
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let key = BackupKey::from_passphrase(b"pw", &salt, Argon2Params::default()).unwrap();
         let aad = BackupAad {
             version: 1,
@@ -238,38 +234,23 @@ mod tests {
 
     #[test]
     fn seal_then_open_round_trips() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let cred = BackupCredential::Passphrase(b"pw");
         let sealed = seal(b"hello-bytes", cred, CURRENT_VERSION).unwrap();
-        let pt = open(
-            &sealed.header,
-            &sealed.ciphertext,
-            cred,
-            CURRENT_VERSION,
-        )
-        .unwrap();
+        let pt = open(&sealed.header, &sealed.ciphertext, cred, CURRENT_VERSION).unwrap();
         assert_eq!(pt, b"hello-bytes");
     }
 
     #[test]
     fn open_rejects_wrong_nonce_length() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let cred = BackupCredential::Passphrase(b"pw");
         let mut sealed = seal(b"x", cred, CURRENT_VERSION).unwrap();
         sealed.header.nonce.push(0);
-        let err = open(
-            &sealed.header,
-            &sealed.ciphertext,
-            cred,
-            CURRENT_VERSION,
-        )
-        .unwrap_err();
+        let err = open(&sealed.header, &sealed.ciphertext, cred, CURRENT_VERSION).unwrap_err();
         assert!(matches!(err, BackupError::MalformedHeader));
     }
 
     #[test]
     fn ark_seal_records_hkdf_kdf() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let ark = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
         let sealed = seal(b"x", BackupCredential::Ark(&ark), CURRENT_VERSION).unwrap();
         assert!(matches!(sealed.header.source, KeySource::Ark));
@@ -278,57 +259,35 @@ mod tests {
 
     #[test]
     fn ark_seal_then_open_round_trips() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let ark = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
         let cred = BackupCredential::Ark(&ark);
         let sealed = seal(b"hello-ark", cred, CURRENT_VERSION).unwrap();
-        let pt = open(
-            &sealed.header,
-            &sealed.ciphertext,
-            cred,
-            CURRENT_VERSION,
-        )
-        .unwrap();
+        let pt = open(&sealed.header, &sealed.ciphertext, cred, CURRENT_VERSION).unwrap();
         assert_eq!(pt, b"hello-ark");
     }
 
     #[test]
     fn open_rejects_ark_source_with_argon2id_kdf() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let ark = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
         let cred = BackupCredential::Ark(&ark);
         let mut sealed = seal(b"x", cred, CURRENT_VERSION).unwrap();
         // Header still says source=Ark but now carries a passphrase-style KDF.
         sealed.header.kdf = Kdf::argon2id(vec![1u8; 16], Argon2Params::default());
-        let err = open(
-            &sealed.header,
-            &sealed.ciphertext,
-            cred,
-            CURRENT_VERSION,
-        )
-        .unwrap_err();
+        let err = open(&sealed.header, &sealed.ciphertext, cred, CURRENT_VERSION).unwrap_err();
         assert!(matches!(err, BackupError::MalformedHeader));
     }
 
     #[test]
     fn open_rejects_passphrase_source_with_hkdf_kdf() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let cred = BackupCredential::Passphrase(b"pw");
         let mut sealed = seal(b"x", cred, CURRENT_VERSION).unwrap();
         sealed.header.kdf = Kdf::hkdf_sha256(vec![1u8; 16]);
-        let err = open(
-            &sealed.header,
-            &sealed.ciphertext,
-            cred,
-            CURRENT_VERSION,
-        )
-        .unwrap_err();
+        let err = open(&sealed.header, &sealed.ciphertext, cred, CURRENT_VERSION).unwrap_err();
         assert!(matches!(err, BackupError::MalformedHeader));
     }
 
     #[test]
     fn open_rejects_argon2_params_exceeding_memory_limit() {
-        // codeql[rust/hard-coded-cryptographic-value] test-only value, not a real secret
         let cred = BackupCredential::Passphrase(b"pw");
         let mut sealed = seal(b"x", cred, CURRENT_VERSION).unwrap();
         // A hostile header claiming an enormous memory cost must fail key
@@ -337,13 +296,7 @@ mod tests {
         if let Kdf::Argon2id { mem_kib, .. } = &mut sealed.header.kdf {
             *mem_kib = MAX_ARGON2_MEM_KIB + 1;
         }
-        let err = open(
-            &sealed.header,
-            &sealed.ciphertext,
-            cred,
-            CURRENT_VERSION,
-        )
-        .unwrap_err();
+        let err = open(&sealed.header, &sealed.ciphertext, cred, CURRENT_VERSION).unwrap_err();
         assert!(matches!(err, BackupError::Crypto(CryptoError::KdfError(_)),));
     }
 }
