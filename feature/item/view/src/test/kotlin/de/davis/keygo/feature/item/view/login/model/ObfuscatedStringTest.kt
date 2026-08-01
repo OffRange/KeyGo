@@ -54,7 +54,7 @@ class ObfuscatedStringTest {
         val obs = ObfuscatedString(
             raw = "555-01-2345",
             formatted = "555-01-2345",
-            visibleSuffixDigits = 3,
+            visibleSuffixChars = 3,
             preservedChars = setOf('-'),
         )
         assertEquals(mask("***-**-*345"), obs.hidden)
@@ -71,7 +71,7 @@ class ObfuscatedStringTest {
         val obs = ObfuscatedString(
             raw = "4111111111111234",
             formatted = "4111 1111 1111 1234",
-            visibleSuffixDigits = 4,
+            visibleSuffixChars = 4,
             preservedChars = setOf(' '),
         )
         assertEquals(mask("**** **** **** 1234"), obs.hidden)
@@ -82,7 +82,7 @@ class ObfuscatedStringTest {
         val obs = ObfuscatedString(
             raw = "378282246310005",
             formatted = "3782 822463 10005",
-            visibleSuffixDigits = 4,
+            visibleSuffixChars = 4,
             preservedChars = setOf(' '),
         )
         assertEquals(mask("**** ****** *0005"), obs.hidden)
@@ -93,7 +93,7 @@ class ObfuscatedStringTest {
         val obs = ObfuscatedString(
             raw = "1234",
             formatted = "1234",
-            visibleSuffixDigits = 4,
+            visibleSuffixChars = 4,
         )
         assertEquals(mask("****"), obs.hidden)
     }

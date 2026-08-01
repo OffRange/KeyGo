@@ -446,7 +446,7 @@ private fun ViewCreditCardContentPreview() {
                     cardNumber = ObfuscatedString(
                         "4111111111111111",
                         formatted = "4111 1111 1111 1111",
-                        visibleSuffixDigits = 4,
+                        visibleSuffixChars = 4,
                         preservedChars = setOf(' '),
                     ),
                     cvv = ObfuscatedString("123"),

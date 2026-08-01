@@ -84,7 +84,7 @@ internal class ViewCreditCardViewModel(
                             ObfuscatedString(
                                 raw = raw,
                                 formatted = cardFormatter.formatNumber(raw),
-                                visibleSuffixDigits = VISIBLE_CARD_NUMBER_SUFFIX,
+                                visibleSuffixChars = VISIBLE_CARD_NUMBER_SUFFIX,
                                 preservedChars = setOf(' '),
                             )
                         }
