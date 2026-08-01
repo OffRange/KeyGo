@@ -15,17 +15,17 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 /**
- * Verifies that [ItemTransactionRunnerImpl] delegates to [ItemDatabase.withTransaction]
+ * Verifies that [TransactionRunnerImpl] delegates to [ItemDatabase.withTransaction]
  * transparently: it returns whatever the block returns, propagates whatever the block throws, and
  * invokes the block exactly once inside the transaction.
  *
  * This does not cover real SQLite commit/rollback. That is Room's own behaviour, and this project
  * has no way to exercise it in a JVM unit test without Robolectric, which is not used here.
  */
-internal class ItemTransactionRunnerImplTest {
+internal class TransactionRunnerImplTest {
 
     private val database = mockk<ItemDatabase>()
-    private val runner = ItemTransactionRunnerImpl(database)
+    private val runner = TransactionRunnerImpl(database)
 
     @BeforeTest
     fun setUp() {

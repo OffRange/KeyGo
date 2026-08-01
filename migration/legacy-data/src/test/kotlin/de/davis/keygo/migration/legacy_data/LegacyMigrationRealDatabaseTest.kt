@@ -4,8 +4,8 @@ import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import de.davis.keygo.core.item.FakeCreditCardRepository
 import de.davis.keygo.core.item.FakeItemRepository
-import de.davis.keygo.core.item.FakeItemTransactionRunner
 import de.davis.keygo.core.item.FakeLoginRepository
+import de.davis.keygo.core.item.FakeTransactionRunner
 import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.item.domain.alias.ItemId
@@ -80,7 +80,7 @@ class LegacyMigrationRealDatabaseTest {
     private val creditCardRepository = FakeCreditCardRepository()
     private val vaultRepository = FakeVaultRepository()
     private val vaultContextRepository = FakeVaultContextRepository()
-    private val transactionRunner = FakeItemTransactionRunner()
+    private val transactionRunner = FakeTransactionRunner()
     private val cryptoProvider = FakeCryptographicScopeProvider(FakeItemRepository(loginRepository))
 
     private val database: LegacyDatabase = Room.databaseBuilder<LegacyDatabase>(dbFile.absolutePath)

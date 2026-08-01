@@ -5,7 +5,7 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.Item
 import de.davis.keygo.core.item.domain.model.KeyInformation
-import de.davis.keygo.core.item.domain.repository.ItemTransactionRunner
+import de.davis.keygo.core.item.domain.repository.TransactionRunner
 import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
@@ -55,7 +55,7 @@ class MigrateLegacyDataUseCase internal constructor(
     private val vaultRepository: VaultRepository,
     private val vaultContextRepository: VaultContextRepository,
     private val upsertVaultItem: UpsertVaultItemUseCase,
-    private val transactionRunner: ItemTransactionRunner,
+    private val transactionRunner: TransactionRunner,
 ) {
 
     suspend operator fun invoke(): LegacyMigrationOutcome = try {
