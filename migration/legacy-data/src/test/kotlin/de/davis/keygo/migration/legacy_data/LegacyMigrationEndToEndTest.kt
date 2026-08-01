@@ -376,7 +376,7 @@ class LegacyMigrationEndToEndTest {
 
         assertEquals(500, outcome.report.migratedItems)
         assertEquals(500, loginRepository.observeLogins().first().size)
-        assertEquals(1, transactionRunner.transactionCount)
+        assertEquals(1, transactionRunner.enteredCount)
         assertFalse(dbFile.exists())
     }
 

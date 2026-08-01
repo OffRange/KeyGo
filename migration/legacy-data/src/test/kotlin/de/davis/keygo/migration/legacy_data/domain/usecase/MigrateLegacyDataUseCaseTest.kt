@@ -195,7 +195,7 @@ class MigrateLegacyDataUseCaseTest {
 
         useCase()()
 
-        assertEquals(1, transactionRunner.transactionCount)
+        assertEquals(1, transactionRunner.enteredCount)
     }
 
     @Test
@@ -301,7 +301,7 @@ class MigrateLegacyDataUseCaseTest {
 
         assertIs<LegacyMigrationOutcome.Failed>(useCase(scopeProvider = unopenable)())
 
-        assertEquals(0, transactionRunner.transactionCount)
+        assertEquals(0, transactionRunner.enteredCount)
         assertTrue(legacyRepository.prunedIds.isEmpty())
         assertFalse(legacyRepository.databaseDeleted)
         assertFalse(keyRepository.deleted)
@@ -343,7 +343,7 @@ class MigrateLegacyDataUseCaseTest {
 
         assertFalse(legacyRepository.databaseDeleted)
         assertFalse(keyRepository.deleted)
-        assertEquals(0, transactionRunner.transactionCount)
+        assertEquals(0, transactionRunner.enteredCount)
     }
 
     @Test

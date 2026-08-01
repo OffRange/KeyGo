@@ -42,7 +42,7 @@ internal class TransactionRunnerImplTest {
 
     @Test
     fun `returns the block result`() = runTest {
-        assertEquals(42, runner.inTransaction { 42 })
+        assertEquals(42, runner.runInTransaction { 42 })
     }
 
     @Test
@@ -50,7 +50,7 @@ internal class TransactionRunnerImplTest {
         val error = IllegalStateException("boom")
 
         val thrown = assertFailsWith<IllegalStateException> {
-            runner.inTransaction { throw error }
+            runner.runInTransaction { throw error }
         }
 
         assertEquals(error, thrown)
@@ -60,7 +60,7 @@ internal class TransactionRunnerImplTest {
     fun `invokes the block exactly once inside the transaction`() = runTest {
         var invocations = 0
 
-        runner.inTransaction { invocations++ }
+        runner.runInTransaction { invocations++ }
 
         assertEquals(1, invocations)
         coVerify(exactly = 1) { database.withTransaction(any<suspend () -> Any?>()) }

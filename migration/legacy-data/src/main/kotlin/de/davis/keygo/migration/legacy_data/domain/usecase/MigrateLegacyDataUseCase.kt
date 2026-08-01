@@ -135,7 +135,7 @@ class MigrateLegacyDataUseCase internal constructor(
         // behind for a retry to duplicate. The throw is what rolls it back, and it also means
         // everything in `converted` is written by the time the prune below runs.
         if (converted.isNotEmpty())
-            transactionRunner.inTransaction {
+            transactionRunner.runInTransaction {
                 for ((legacyId, item) in converted)
                     upsertVaultItem(item).onFailure {
                         throw LegacyMigrationException("Could not write legacy row $legacyId", it)
