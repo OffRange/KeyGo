@@ -28,6 +28,7 @@ dependencies {
     testImplementation(testFixtures(projects.core.security))
     testImplementation(testFixtures(projects.rust))
     testImplementation(testFixtures(projects.feature.autofill))
+    testImplementation(testFixtures(projects.feature.backup))
 
     testFixturesImplementation(project.dependencies.platform(libs.androidx.compose.bom))
     testFixturesImplementation(libs.androidx.compose.runtime) {
