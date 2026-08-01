@@ -6,8 +6,8 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -146,7 +146,11 @@ internal fun BackupHubContent(state: BackupHubUiState, onEvent: (BackupHubUiEven
 @Composable
 private fun HubActions(onExport: () -> Unit, onImport: () -> Unit) {
     val buttonSize = ButtonDefaults.MediumContainerHeight
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
         val actionModifier = Modifier
             .heightIn(buttonSize)
             .weight(1f)
@@ -188,7 +192,12 @@ private fun HubActionLabel(buttonSize: Dp, icon: ImageVector, label: String) {
         modifier = Modifier.size(ButtonDefaults.iconSizeFor(buttonSize)),
     )
     Spacer(Modifier.size(ButtonDefaults.iconSpacingFor(buttonSize)))
-    Text(text = label, style = ButtonDefaults.textStyleFor(buttonSize))
+    Text(
+        text = label,
+        style = ButtonDefaults.textStyleFor(buttonSize),
+        softWrap = false,
+        maxLines = 1
+    )
 }
 
 @Composable
