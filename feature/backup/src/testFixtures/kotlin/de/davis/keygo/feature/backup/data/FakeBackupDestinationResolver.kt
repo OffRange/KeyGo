@@ -12,9 +12,14 @@ class FakeBackupDestinationResolver(
 ) : BackupDestinationResolver {
 
     var lastUri: BackupDestinationUri? = null
+    var lastCachedName: String? = null
 
-    override suspend fun resolve(uri: BackupDestinationUri): BackupDestination {
+    override suspend fun resolve(
+        uri: BackupDestinationUri,
+        cachedName: String?,
+    ): BackupDestination {
         lastUri = uri
+        lastCachedName = cachedName
         return result
     }
 }

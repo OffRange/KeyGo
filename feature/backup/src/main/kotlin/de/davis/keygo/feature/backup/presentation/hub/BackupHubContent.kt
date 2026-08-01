@@ -254,7 +254,17 @@ private fun DispatchedBackupRow(
                 )
             }
         },
-        overlineContent = { Text(text = item.kind.label) },
+        // The provider rides in the overline rather than in the supporting line, which a running
+        // backup replaces with its progress bar - that is exactly when "where is this going?" is
+        // worth answering.
+        overlineContent = {
+            Text(
+                text = listOfNotNull(item.kind.label, item.destination.providerText())
+                    .joinToString(DETAIL_SEPARATOR),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(

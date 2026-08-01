@@ -38,7 +38,7 @@ internal class ObserveDispatchedBackupsUseCase(
             kind = kind,
             state = state,
             format = job?.format,
-            destination = job?.let { destinationResolver.resolve(it.uri) },
+            destination = job?.let { destinationResolver.resolve(it.uri, it.destinationName) },
             timestamp = job?.let { it.finishedAt ?: it.createdAt } ?: 0L,
             // Read from the persisted result, not the live state (a failed recurring run is ENQUEUED
             // again by the time it is observed, so its record is the only witness) - but a cancelled

@@ -10,6 +10,7 @@ import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.resultBinding
+import de.davis.keygo.feature.backup.domain.BackupDestinationResolver
 import de.davis.keygo.feature.backup.domain.BackupProvisioningLock
 import de.davis.keygo.feature.backup.domain.BackupScheduler
 import de.davis.keygo.feature.backup.domain.PersistableUriManager
@@ -25,6 +26,7 @@ import org.koin.core.annotation.Single
 @Single
 class FinishExportWizardUseCase(
     private val backupScheduler: BackupScheduler,
+    private val destinationResolver: BackupDestinationResolver,
     private val keyStoreManager: KeyStoreManager,
     private val persistableUriManager: PersistableUriManager,
     private val session: Session,
@@ -48,6 +50,19 @@ class FinishExportWizardUseCase(
                     wrapPassphrase(details.passphrase).bind()
                 else null
 
+                // The worker may run long after the wizard closes (and across reboots), so hold on
+                // to folder access for both one-time and recurring backups.
+                runCatching { persistableUriManager.takePersistableUriPermission(details.uri) }
+                    .getOrNull()
+                    .asResult(FinishExportWizardError.DestinationPermissionDenied)
+                    .bind()
+
+                // Read the name here, under the grant just taken - this is the last moment it is
+                // guaranteed readable. The record outlives the grant, and the hub still has to say
+                // where the backup went after the grant is handed back. The wizard picks with
+                // OpenDocumentTree, so this is always a folder's name.
+                val destination = destinationResolver.resolve(details.uri)
+
                 val job = BackupJob(
                     uri = details.uri,
                     wrappedPassphrase = wrappedPassphrase,
@@ -55,14 +70,8 @@ class FinishExportWizardUseCase(
                     encryption = details.encryption,
                     csvPreset = details.csvPreset,
                     keepCount = details.keepCount,
+                    destinationName = destination.displayPath,
                 )
-
-                // The worker may run long after the wizard closes (and across reboots), so hold on
-                // to folder access for both one-time and recurring backups.
-                runCatching { persistableUriManager.takePersistableUriPermission(details.uri) }
-                    .getOrNull()
-                    .asResult(FinishExportWizardError.DestinationPermissionDenied)
-                    .bind()
 
                 provisionBackupArk().bind()
 

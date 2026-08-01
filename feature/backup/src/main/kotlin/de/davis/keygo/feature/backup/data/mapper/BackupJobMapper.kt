@@ -40,6 +40,7 @@ internal fun ProtoBackupJob.toDomain(): BackupJob {
             errorName = if (hasLastError()) lastError else null,
         ),
         cancelled = this.cancelled,
+        destinationName = if (hasDestinationName()) destinationName else null,
     )
 }
 
@@ -57,6 +58,7 @@ internal fun BackupJob.toProto() = protoBackupJob {
     this@toProto.finishedAt?.let { finishedAt = it }
     this@toProto.lastResult?.let { writeResult(it) }
     cancelled = this@toProto.cancelled
+    this@toProto.destinationName?.let { destinationName = it }
 }
 
 // Encodes a result into the proto's two independent fields. The recurring record is reused every

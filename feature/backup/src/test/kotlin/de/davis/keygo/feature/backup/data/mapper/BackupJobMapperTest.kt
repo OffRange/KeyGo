@@ -48,6 +48,28 @@ class BackupJobMapperTest {
     }
 
     @Test
+    fun `round-trips the destination name`() {
+        val job = BackupJob(
+            uri = BackupDestinationUri("content://tree"),
+            wrappedPassphrase = null,
+            format = FileFormat.JSON,
+            destinationName = "Backups",
+        )
+
+        assertEquals("Backups", job.toProto().toDomain().destinationName)
+    }
+
+    @Test
+    fun `a record written before the destination name existed decodes to null`() {
+        val proto = protoBackupJob {
+            uri = "content://tree"
+            format = FileFormat.JSON.name
+        }
+
+        assertNull(proto.toDomain().destinationName)
+    }
+
+    @Test
     fun `absent finished fields decode to null`() {
         val proto = protoBackupJob {
             uri = "content://out.csv"

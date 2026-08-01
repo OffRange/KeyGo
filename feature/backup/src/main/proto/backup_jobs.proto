@@ -27,6 +27,11 @@ message ProtoBackupJob {
 
   // BackupFailureReason.name; set only alongside a last_result of "Failure".
   optional string last_error = 12;
+
+  // Destination label captured while the folder grant was still live. The grant is handed back once
+  // no live job needs it, and the provider refuses to name the document afterwards - so the record
+  // carries the name it will be shown under. Absent on jobs written before this field existed.
+  optional string destination_name = 13;
 }
 
 message ProtoBackupJobs {

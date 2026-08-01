@@ -54,6 +54,21 @@ class ObserveDispatchedBackupsUseCaseTest {
     }
 
     @Test
+    fun `the stored destination name is handed to the resolver instead of the provider`() = runTest {
+        jobRepository.jobs["work-1"] = BackupJob(
+            uri = BackupDestinationUri("content://out.json"),
+            wrappedPassphrase = null,
+            format = FileFormat.JSON,
+            destinationName = "Backups",
+        )
+        repository.statuses.value = listOf(status(id = "work-1"))
+
+        useCase().first()
+
+        assertEquals("Backups", destinationResolver.lastCachedName)
+    }
+
+    @Test
     fun `recurring worker is enriched from the recurring job key`() = runTest {
         jobRepository.jobs[BackupWorker.RECURRING_WORK_ID] = BackupJob(
             uri = BackupDestinationUri("content://recurring.csv"),

@@ -34,6 +34,7 @@ dependencies {
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.security))
     testImplementation(testFixtures(projects.rust))
+    testImplementation(libs.robolectric)
 
     testFixturesApi(projects.core.util)
     testFixturesApi(projects.core.security)

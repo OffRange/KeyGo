@@ -17,4 +17,11 @@ data class BackupJob(
     /** Outcome of the last run; null when never run. A Failure carries its own reason. */
     val lastResult: BackupResult? = null,
     val cancelled: Boolean = false,
+    /**
+     * What [uri] is called, resolved while the folder grant was live. Only the provider can answer
+     * that, and only while it honours the grant - which ends before this record does - so the name
+     * is captured once at scheduling time and read back from here forever after. Null on records
+     * written before the field existed; those fall back to asking the provider.
+     */
+    val destinationName: String? = null,
 )

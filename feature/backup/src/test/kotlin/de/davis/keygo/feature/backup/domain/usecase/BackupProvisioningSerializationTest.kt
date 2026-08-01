@@ -8,6 +8,7 @@ import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
 import de.davis.keygo.feature.backup.FakeBackupJobRepository
 import de.davis.keygo.feature.backup.FakeBackupScheduler
 import de.davis.keygo.feature.backup.FakePersistableUriManager
+import de.davis.keygo.feature.backup.data.FakeBackupDestinationResolver
 import de.davis.keygo.feature.backup.domain.BackupProvisioningLock
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
 import de.davis.keygo.feature.backup.domain.model.BackupJob
@@ -51,6 +52,7 @@ class BackupProvisioningSerializationTest {
             gate = gate,
             oneTimeWorkId = "B",
         ),
+        destinationResolver = FakeBackupDestinationResolver(),
         keyStoreManager = keyStoreManager,
         persistableUriManager = uriManager,
         session = session,

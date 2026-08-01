@@ -8,7 +8,9 @@ import de.davis.keygo.core.util.Result
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
 import de.davis.keygo.feature.backup.FakeBackupScheduler
 import de.davis.keygo.feature.backup.FakePersistableUriManager
+import de.davis.keygo.feature.backup.data.FakeBackupDestinationResolver
 import de.davis.keygo.feature.backup.domain.BackupProvisioningLock
+import de.davis.keygo.feature.backup.domain.model.BackupDestination
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
 import de.davis.keygo.feature.backup.domain.model.BackupInterval
 import de.davis.keygo.feature.backup.domain.model.CsvPreset
@@ -33,9 +35,11 @@ class FinishExportWizardUseCaseTest {
     private val session = FakeSession(startOnConstruct = true)
     private val keyStoreManager = FakeKeyStoreManager()
     private val arkKeyStore = FakeBackupArkKeyStore()
+    private val destinationResolver = FakeBackupDestinationResolver()
 
     private fun useCase() = FinishExportWizardUseCase(
         backupScheduler = scheduler,
+        destinationResolver = destinationResolver,
         keyStoreManager = keyStoreManager,
         persistableUriManager = persistable,
         session = session,
@@ -84,6 +88,29 @@ class FinishExportWizardUseCaseTest {
         assertIs<Result.Success<Unit, FinishExportWizardError>>(result)
         assertNull(scheduler.oneTimeJob?.keepCount)
         assertEquals(listOf(uri), persistable.taken)
+    }
+
+    @Test
+    fun `the destination name is captured into the record while the grant is live`() = runTest {
+        destinationResolver.result = BackupDestination(
+            provider = BackupDestination.Provider.ThirdParty("Drive"),
+            displayPath = "Backups",
+        )
+
+        useCase()(details(interval = BackupInterval(count = 3, unit = IntervalUnit.Days)))
+
+        assertEquals("Backups", scheduler.recurringJob?.destinationName)
+    }
+
+    @Test
+    fun `the name is read only after the grant is secured`() = runTest {
+        persistable.throwOnTake = SecurityException("denied")
+
+        useCase()(details())
+
+        // Asking a provider we were just refused would only ever return the fallback, and storing
+        // that would bake a wrong label into the record for good.
+        assertNull(destinationResolver.lastUri)
     }
 
     @Test

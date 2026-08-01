@@ -18,23 +18,27 @@ internal class BackupDestinationResolverImpl(
 
     override suspend fun resolve(
         uri: BackupDestinationUri,
+        cachedName: String?,
     ): BackupDestination = withContext(Dispatchers.IO) {
         val parsed = uri.value.toUri()
 
-        if (DocumentsContract.isTreeUri(parsed)) parsed.asFolderDestination()
-        else parsed.asFileDestination()
+        if (DocumentsContract.isTreeUri(parsed)) parsed.asFolderDestination(cachedName)
+        else parsed.asFileDestination(cachedName)
     }
 
-    private fun Uri.asFolderDestination() = BackupDestination(
+    // The provider is only ever asked for the one part it alone knows - a folder's name, or a
+    // file's. The provider label and the on-device path are derived locally, so they stay correct
+    // whether or not a grant is still behind the uri.
+    private fun Uri.asFolderDestination(cachedName: String?) = BackupDestination(
         provider = providerLabel(),
-        displayPath = treeDisplayPath(),
+        displayPath = cachedName ?: treeDisplayPath(),
         fileName = null,
     )
 
-    private fun Uri.asFileDestination() = BackupDestination(
+    private fun Uri.asFileDestination(cachedName: String?) = BackupDestination(
         provider = providerLabel(),
         displayPath = documentDisplayPath(),
-        fileName = queryDisplayName(),
+        fileName = cachedName ?: queryDisplayName(),
     )
 
     private fun Uri.providerLabel(): BackupDestination.Provider {
@@ -86,15 +90,26 @@ internal class BackupDestinationResolverImpl(
             DocumentsContract.getTreeDocumentId(this),
         ).queryDisplayName()
 
+    // The grant behind a stored destination is not guaranteed to outlive the record that names it:
+    // it is handed back once no live job needs the folder any more, and the user can revoke it - or
+    // uninstall the provider - at any point. Every caller already degrades a missing name to the
+    // document id or the app label, so a provider that refuses to answer takes that same path
+    // instead of the whole resolve() throwing at whoever is rendering the destination.
     private fun Uri.queryDisplayName(): String? =
-        context.contentResolver.query(
-            this,
-            arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME),
-            null,
-            null,
-            null,
-        )?.use { cursor ->
-            if (cursor.moveToFirst()) cursor.getString(0) else null
+        try {
+            context.contentResolver.query(
+                this,
+                arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+                null,
+                null,
+                null,
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.getString(0) else null
+            }
+        } catch (_: SecurityException) {
+            null
+        } catch (_: IllegalArgumentException) {
+            null
         }
 
     companion object {

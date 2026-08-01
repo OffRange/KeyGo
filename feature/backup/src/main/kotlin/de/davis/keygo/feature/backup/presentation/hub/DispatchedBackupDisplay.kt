@@ -59,6 +59,17 @@ internal val BackupFailureReason.label: String
         BackupFailureReason.RetriesExhausted -> R.string.backup_failure_retries_exhausted
     }.let { stringResource(it) }
 
+/**
+ * Where the backup went, as opposed to [displayText]'s where *inside* it. Null when there is
+ * nothing worth naming - the row then carries its kind alone rather than the word "Unknown".
+ */
+@Composable
+internal fun BackupDestination?.providerText(): String? = when (val provider = this?.provider) {
+    null, BackupDestination.Provider.Unknown -> null
+    BackupDestination.Provider.OnDevice -> stringResource(R.string.destination_provider_on_device)
+    is BackupDestination.Provider.ThirdParty -> provider.name
+}
+
 @Composable
 internal fun BackupDestination?.displayText(): String {
     val destination = this ?: return stringResource(R.string.destination_provider_unknown)
