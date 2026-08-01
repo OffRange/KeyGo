@@ -5,6 +5,7 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.CreditCard
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Timestamp
+import de.davis.keygo.core.item.domain.model.toYearMonthOrNull
 import de.davis.keygo.core.item.domain.repository.CreditCardRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
@@ -24,9 +25,6 @@ import de.davis.keygo.rust.card.CardFormatter
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import org.koin.core.annotation.Single
-import java.time.YearMonth
-import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeParseException
 
 @Single
 class CreateNewOrUpdateCreditCardUseCase(
@@ -151,14 +149,4 @@ class CreateNewOrUpdateCreditCardUseCase(
         )
     }
 
-    private fun String.toYearMonthOrNull(): YearMonth? = try {
-        YearMonth.parse(this, EXPIRATION_FORMATTER)
-    } catch (_: DateTimeParseException) {
-        null
-    }
-
-    companion object {
-        // "yy" parses into the 2000-2099 range, which is correct for card expirations.
-        private val EXPIRATION_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MM/yy")
-    }
 }

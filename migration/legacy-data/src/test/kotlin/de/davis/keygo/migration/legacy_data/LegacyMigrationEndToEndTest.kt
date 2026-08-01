@@ -26,14 +26,15 @@ import de.davis.keygo.migration.legacy_data.data.FakeLegacyDatabaseProvider
 import de.davis.keygo.migration.legacy_data.data.FakeLegacyKeyRepository
 import de.davis.keygo.migration.legacy_data.data.FakeRegistrableDomainResolver
 import de.davis.keygo.migration.legacy_data.data.crypto.LegacyAesGcmCipher
+import de.davis.keygo.migration.legacy_data.data.encryptLikeV1
 import de.davis.keygo.migration.legacy_data.data.json.LegacyDetailParser
 import de.davis.keygo.migration.legacy_data.data.local.datasource.LegacyDatabase
 import de.davis.keygo.migration.legacy_data.data.local.entity.LegacySecureElementEntity
 import de.davis.keygo.migration.legacy_data.data.local.entity.LegacySecureElementTagCrossRef
 import de.davis.keygo.migration.legacy_data.data.local.entity.LegacyTagEntity
 import de.davis.keygo.migration.legacy_data.data.local.entity.LegacyTimestamps
-import de.davis.keygo.migration.legacy_data.data.mapper.LegacyItemConverter
 import de.davis.keygo.migration.legacy_data.data.repository.LegacyItemRepositoryImpl
+import de.davis.keygo.migration.legacy_data.domain.mapper.LegacyItemConverter
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyFailureReason
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyMigrationOutcome
 import de.davis.keygo.migration.legacy_data.domain.usecase.MigrateLegacyDataUseCase
@@ -45,7 +46,6 @@ import java.io.File
 import java.nio.file.Files
 import java.security.SecureRandom
 import java.time.YearMonth
-import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import kotlin.test.AfterTest
@@ -114,7 +114,7 @@ class LegacyMigrationEndToEndTest {
     private val databaseProvider = FakeLegacyDatabaseProvider(file = dbFile, database = database)
 
     private val legacyKeyRepository = FakeLegacyKeyRepository(legacyKey)
-    private val legacyCipher = LegacyAesGcmCipher(legacyKeyRepository)
+    private val legacyCipher = LegacyAesGcmCipher()
 
     /** Id the migration mints for the seeded card, learned through [cardIdCapturingRepository]. */
     private var migratedCardId: ItemId? = null
@@ -159,12 +159,7 @@ class LegacyMigrationEndToEndTest {
         tempDir.deleteRecursively()
     }
 
-    /** Byte-for-byte v1's `Cryptography.encryptAES`: 12 byte IV prefix, AES-256-GCM, 128 bit tag. */
-    private fun encryptLikeV1(plaintext: ByteArray): ByteArray {
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, legacyKey)
-        return cipher.iv + cipher.doFinal(plaintext)
-    }
+    private fun encryptLikeV1(plaintext: ByteArray): ByteArray = encryptLikeV1(plaintext, legacyKey)
 
     /** GSON wrote `byte[]` as a JSON array of signed ints. */
     private fun ByteArray.asJsonArray(): String = joinToString(",", "[", "]")

@@ -1,4 +1,4 @@
-package de.davis.keygo.migration.legacy_data.data.mapper
+package de.davis.keygo.migration.legacy_data.domain.mapper
 
 import de.davis.keygo.core.item.FakeItemRepository
 import de.davis.keygo.core.item.domain.alias.newItemId
@@ -12,9 +12,10 @@ import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.util.assertSuccess
+import de.davis.keygo.migration.legacy_data.data.FAKE_LEGACY_KEY
 import de.davis.keygo.migration.legacy_data.data.FakeLegacyCipher
 import de.davis.keygo.migration.legacy_data.data.FakeRegistrableDomainResolver
-import de.davis.keygo.migration.legacy_data.data.crypto.LegacyCipher
+import de.davis.keygo.migration.legacy_data.domain.crypto.LegacyCipher
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyDetail
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyItem
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyStrength
@@ -32,11 +33,6 @@ class LegacyItemConverterTest {
 
     private val vaultId = newVaultId()
     private val provider = FakeCryptographicScopeProvider(FakeItemRepository())
-
-    private fun converter(cipher: LegacyCipher = FakeLegacyCipher()) = LegacyItemConverter(
-        cipher = cipher,
-        registrableDomainResolver = FakeRegistrableDomainResolver(),
-    )
 
     private fun legacyItem(
         detail: LegacyDetail,
@@ -67,12 +63,12 @@ class LegacyItemConverterTest {
             itemAad = ItemAad(itemId = newItemId(), vaultId = vaultId),
         ),
     ) {
-        // The itemScope receiver satisfies the converter's CryptographicScope context parameter.
-        converter(cipher).convert(
+        LegacyItemConverter(cipher, FakeRegistrableDomainResolver()).convert(
             item = item,
             itemId = newItemId(),
             vaultId = vaultId,
             keyInformation = KeyInformation(byteArrayOf(1), byteArrayOf(2)),
+            legacyKey = FAKE_LEGACY_KEY,
         )
     }.assertSuccess()
 

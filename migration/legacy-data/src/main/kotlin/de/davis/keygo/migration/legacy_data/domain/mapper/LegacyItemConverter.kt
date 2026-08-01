@@ -1,4 +1,4 @@
-package de.davis.keygo.migration.legacy_data.data.mapper
+package de.davis.keygo.migration.legacy_data.domain.mapper
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
@@ -12,17 +12,16 @@ import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.Timestamp
+import de.davis.keygo.core.item.domain.model.toYearMonthOrNull
 import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.encrypt
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
-import de.davis.keygo.migration.legacy_data.data.crypto.LegacyCipher
+import de.davis.keygo.migration.legacy_data.domain.crypto.LegacyCipher
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyDetail
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyItem
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyStrength
 import org.koin.core.annotation.Single
-import java.time.YearMonth
-import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeParseException
+import javax.crypto.SecretKey
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -45,8 +44,11 @@ internal class LegacyItemConverter(
         itemId: ItemId,
         vaultId: VaultId,
         keyInformation: KeyInformation,
+        legacyKey: SecretKey,
     ): Item? = when (val detail = item.detail) {
-        is LegacyDetail.Password -> convertPassword(item, detail, itemId, vaultId, keyInformation)
+        is LegacyDetail.Password ->
+            convertPassword(item, detail, itemId, vaultId, keyInformation, legacyKey)
+
         is LegacyDetail.CreditCard -> convertCard(item, detail, itemId, vaultId, keyInformation)
     }
 
@@ -57,9 +59,10 @@ internal class LegacyItemConverter(
         itemId: ItemId,
         vaultId: VaultId,
         keyInformation: KeyInformation,
+        legacyKey: SecretKey,
     ): Login? {
         val credential = detail.password?.let { encrypted ->
-            val plaintext = cipher.decrypt(encrypted)?.decodeToString() ?: return null
+            val plaintext = cipher.decrypt(encrypted, legacyKey)?.decodeToString() ?: return null
             PasswordCredential(
                 secret = PasswordSecret.encrypt(plaintext),
                 score = detail.strength.toPasswordScore(),
@@ -150,15 +153,4 @@ internal class LegacyItemConverter(
         modifiedAt = modifiedAt?.let(Instant::fromEpochMilliseconds),
     )
 
-    private fun String.toYearMonthOrNull(): YearMonth? = try {
-        YearMonth.parse(this, EXPIRATION_FORMATTER)
-    } catch (_: DateTimeParseException) {
-        null
-    }
-
-    private companion object {
-        // "yy" parses into the 2000-2099 range, matching v1's CreditCardUtil.isValidDateFormat
-        // and v2's CreateNewOrUpdateCreditCardUseCase.
-        val EXPIRATION_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MM/yy")
-    }
 }

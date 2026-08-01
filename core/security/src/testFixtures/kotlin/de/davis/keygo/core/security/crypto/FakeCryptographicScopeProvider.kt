@@ -41,6 +41,9 @@ class FakeCryptographicScopeProvider(
     var rewrapResult: Result<KeyInformation, CryptoScopeError> =
         Result.Success(KeyInformation(byteArrayOf(), byteArrayOf()))
 
+    /** When set, [itemScope] fails with this error instead of running its block. */
+    var itemScopeFailure: CryptoScopeError? = null
+
     override suspend fun <R> itemScope(
         itemId: ItemId,
         block: suspend CryptographicScope.() -> R
@@ -66,28 +69,32 @@ class FakeCryptographicScopeProvider(
         wrappedVaultKeyInformation: WrappedVaultKeyInformation,
         wrappedItemKeyInformation: WrappedItemKeyInformation,
         block: suspend CryptographicScope.() -> R,
-    ): Result<R, CryptoScopeError> = block(
-        object : CryptographicScope {
-            override suspend fun ByteArray.encrypt(
-                label: String,
-                context: CoroutineContext,
-            ): CryptographicData {
-                callHistory += CallHistory.EncryptCall(label, this.copyOf())
-                return CryptographicData(data = transform(this), iv = IV)
-            }
+    ): Result<R, CryptoScopeError> {
+        itemScopeFailure?.let { return Result.Failure(it) }
 
-            override suspend fun CryptographicData.decrypt(
-                label: String,
-                context: CoroutineContext,
-            ): ByteArray {
-                callHistory += CallHistory.DecryptCall(label, this.data.copyOf())
-                return transform(data)
-            }
+        return block(
+            object : CryptographicScope {
+                override suspend fun ByteArray.encrypt(
+                    label: String,
+                    context: CoroutineContext,
+                ): CryptographicData {
+                    callHistory += CallHistory.EncryptCall(label, this.copyOf())
+                    return CryptographicData(data = transform(this), iv = IV)
+                }
 
-            override suspend fun wrapCurrentItemKey(context: CoroutineContext): KeyInformation =
-                KeyInformation(byteArrayOf(), byteArrayOf())
-        }
-    ).let(Result<R, CryptoScopeError>::Success)
+                override suspend fun CryptographicData.decrypt(
+                    label: String,
+                    context: CoroutineContext,
+                ): ByteArray {
+                    callHistory += CallHistory.DecryptCall(label, this.data.copyOf())
+                    return transform(data)
+                }
+
+                override suspend fun wrapCurrentItemKey(context: CoroutineContext): KeyInformation =
+                    KeyInformation(byteArrayOf(), byteArrayOf())
+            },
+        ).let(Result<R, CryptoScopeError>::Success)
+    }
 
     override suspend fun rewrapItemKey(
         sourceVault: WrappedVaultKeyInformation,

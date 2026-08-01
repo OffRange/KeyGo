@@ -8,9 +8,8 @@ import de.davis.keygo.migration.legacy_data.data.local.migration.LegacyMigration
 /**
  * Opens the inherited file. Never creates one.
  *
- * The rows that would abort the 2-to-3 recreate are dealt with inside
- * [LegacyMigration2To3] rather than by a pass over the closed file, so the only thing left for this
- * class to guard is that Room is never pointed at a path that is not there.
+ * The rows that would abort the 2-to-3 recreate are dealt with inside [LegacyMigration2To3] rather
+ * than by a pass over the closed file, so the only thing left for this class to guard is the path.
  *
  * @param driver left null in production so Room keeps the framework helper it has always used here.
  * A JVM test has no framework helper to use, so it passes a bundled driver; without one, Room
@@ -32,10 +31,9 @@ internal class AndroidLegacyDatabaseProvider(
         database?.let { return it }
 
         val path = context.getDatabasePath(LEGACY_DATABASE_NAME)
-        // This module only ever reads a database it inherited, and Room creates any file it is
-        // asked to open. Handing it a path that is not there would leave an empty
-        // `secure_element_database` behind on an install that never ran v1, and every later run
-        // would find that file and treat it as inherited data.
+        // Room creates any file it is asked to open. Handing it a path that is not there would
+        // leave an empty `secure_element_database` behind on an install that never ran v1, and
+        // every later run would find that file and treat it as inherited data.
         if (!path.exists()) return null
 
         return Room.databaseBuilder<LegacyDatabase>(context, LEGACY_DATABASE_NAME)

@@ -16,7 +16,7 @@ import de.davis.keygo.migration.legacy_data.domain.repository.LegacyReadResult
 internal class FakeLegacyItemRepository : LegacyItemRepository {
 
     var readResult: Result<LegacyReadResult, LegacyReadFailure> =
-        Result.Success(LegacyReadResult(emptyList(), emptyList()))
+        Result.Success(LegacyReadResult(emptyList(), emptyList(), FAKE_LEGACY_KEY))
 
     var pruneResult: Result<Unit, LegacyReadFailure> = Result.Success(Unit)
 

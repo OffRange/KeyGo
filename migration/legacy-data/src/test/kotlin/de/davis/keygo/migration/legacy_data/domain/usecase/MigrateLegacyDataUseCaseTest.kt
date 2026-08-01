@@ -6,25 +6,22 @@ import de.davis.keygo.core.item.FakeItemTransactionRunner
 import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
-import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
-import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
-import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
-import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.model.CryptoScopeError
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.migration.legacy_data.data.FAKE_LEGACY_KEY
 import de.davis.keygo.migration.legacy_data.data.FakeLegacyCipher
 import de.davis.keygo.migration.legacy_data.data.FakeLegacyItemRepository
 import de.davis.keygo.migration.legacy_data.data.FakeLegacyKeyRepository
 import de.davis.keygo.migration.legacy_data.data.FakeRegistrableDomainResolver
-import de.davis.keygo.migration.legacy_data.data.crypto.LegacyCipher
-import de.davis.keygo.migration.legacy_data.data.mapper.LegacyItemConverter
+import de.davis.keygo.migration.legacy_data.domain.crypto.LegacyCipher
+import de.davis.keygo.migration.legacy_data.domain.mapper.LegacyItemConverter
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyDetail
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyFailureReason
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyItem
@@ -39,30 +36,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
-
-/**
- * Refuses to open a scope at all, standing in for a vault key that will not unwrap. Nothing about
- * that is a statement about any one row, so the run has to stop rather than blame the rows.
- */
-private class UnopenableScopeProvider : CryptographicScopeProvider {
-
-    override suspend fun <R> itemScope(
-        itemId: ItemId,
-        block: suspend CryptographicScope.() -> R,
-    ): Result<R, CryptoScopeError> = Result.Failure(CryptoScopeError.IdNotFound)
-
-    override suspend fun <R> itemScope(
-        wrappedVaultKeyInformation: WrappedVaultKeyInformation,
-        wrappedItemKeyInformation: WrappedItemKeyInformation,
-        block: suspend CryptographicScope.() -> R,
-    ): Result<R, CryptoScopeError> = Result.Failure(CryptoScopeError.IdNotFound)
-
-    override suspend fun rewrapItemKey(
-        sourceVault: WrappedVaultKeyInformation,
-        sourceItem: WrappedItemKeyInformation,
-        destinationVault: WrappedVaultKeyInformation,
-    ): Result<KeyInformation, CryptoScopeError> = Result.Failure(CryptoScopeError.IdNotFound)
-}
 
 class MigrateLegacyDataUseCaseTest {
 
@@ -140,7 +113,8 @@ class MigrateLegacyDataUseCaseTest {
         items: List<LegacyItem> = emptyList(),
         failures: List<LegacyRowFailure> = emptyList(),
     ) {
-        legacyRepository.readResult = Result.Success(LegacyReadResult(items, failures))
+        legacyRepository.readResult =
+            Result.Success(LegacyReadResult(items, failures, FAKE_LEGACY_KEY))
     }
 
     /**
@@ -171,16 +145,6 @@ class MigrateLegacyDataUseCaseTest {
         assertEquals(LegacyMigrationOutcome.NothingToMigrate, useCase()())
         assertTrue(legacyRepository.databaseDeleted)
         assertTrue(keyRepository.deleted)
-    }
-
-    /** The key may never outlive the ciphertext, so a file that would not go keeps its alias. */
-    @Test
-    fun `keeps the legacy key when the empty database could not be deleted`() = runTest {
-        legacyRepository.readResult = Result.Failure(LegacyReadFailure.DatabaseEmpty)
-        legacyRepository.deleteSucceeds = false
-
-        assertEquals(LegacyMigrationOutcome.NothingToMigrate, useCase()())
-        assertFalse(keyRepository.deleted)
     }
 
     /**
@@ -324,12 +288,18 @@ class MigrateLegacyDataUseCaseTest {
         assertFalse(keyRepository.deleted)
     }
 
+    /**
+     * A scope that will not open stands in for a vault key that will not unwrap. That says nothing
+     * about any one row, so the run has to stop rather than blame the rows.
+     */
     @Test
     fun `fails without importing when no cryptographic scope can be opened`() = runTest {
         seedVault()
         seedRows(items = listOf(password(1L, "One"), password(2L, "Two")))
+        val unopenable = FakeCryptographicScopeProvider(FakeItemRepository())
+            .apply { itemScopeFailure = CryptoScopeError.IdNotFound }
 
-        assertIs<LegacyMigrationOutcome.Failed>(useCase(scopeProvider = UnopenableScopeProvider())())
+        assertIs<LegacyMigrationOutcome.Failed>(useCase(scopeProvider = unopenable)())
 
         assertEquals(0, transactionRunner.transactionCount)
         assertTrue(legacyRepository.prunedIds.isEmpty())

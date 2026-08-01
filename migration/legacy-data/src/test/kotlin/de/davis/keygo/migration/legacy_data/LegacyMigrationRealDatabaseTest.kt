@@ -24,8 +24,8 @@ import de.davis.keygo.migration.legacy_data.data.FakeRegistrableDomainResolver
 import de.davis.keygo.migration.legacy_data.data.crypto.LegacyAesGcmCipher
 import de.davis.keygo.migration.legacy_data.data.json.LegacyDetailParser
 import de.davis.keygo.migration.legacy_data.data.local.datasource.LegacyDatabase
-import de.davis.keygo.migration.legacy_data.data.mapper.LegacyItemConverter
 import de.davis.keygo.migration.legacy_data.data.repository.LegacyItemRepositoryImpl
+import de.davis.keygo.migration.legacy_data.domain.mapper.LegacyItemConverter
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyMigrationOutcome
 import de.davis.keygo.migration.legacy_data.domain.usecase.MigrateLegacyDataUseCase
 import de.davisalessandro.keygo.rust.ItemAad
@@ -91,7 +91,7 @@ class LegacyMigrationRealDatabaseTest {
     private val databaseProvider = FakeLegacyDatabaseProvider(file = dbFile, database = database)
 
     private val legacyKeyRepository = FakeLegacyKeyRepository(STATIC_KEY)
-    private val legacyCipher = LegacyAesGcmCipher(legacyKeyRepository)
+    private val legacyCipher = LegacyAesGcmCipher()
 
     private val legacyRepository = LegacyItemRepositoryImpl(
         databaseProvider = databaseProvider,

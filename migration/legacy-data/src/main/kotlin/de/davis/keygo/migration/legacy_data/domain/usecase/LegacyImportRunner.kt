@@ -16,15 +16,14 @@ import kotlin.coroutines.cancellation.CancellationException
  * made while a run is in flight is dropped rather than queued, and a call made after one has
  * finished starts a new run, which is what makes the import retry on every unlock.
  *
+ * That retry stops for good once a run reports [LegacyMigrationOutcome.nothingLeftToImport], which
+ * is the answer for the overwhelming majority of installs: no v1 file was ever there. Without the
+ * latch every unlock for the rest of the process would open the file, count it and sweep the
+ * filesystem to conclude the same nothing, and unlocks are not rare, since the autofill service and
+ * both passkey activities each start a session of their own.
+ *
  * [import] returns its outcome rather than throwing for anything expected, and every ending that is
- * not a clean success is turned into one call to [report]. [LegacyMigrationOutcome.Failed] reports
- * its cause directly. A [LegacyMigrationOutcome.Migrated] whose report carries row failures also
- * reports, because a run that silently drops some of the user's entries needs a trace even though
- * skipping a bad row is the designed behaviour. So does one whose file could not be cleared even
- * though every row it looked at imported cleanly: that run will reimport the whole vault on the
- * next unlock, and that is exactly the kind of ending "no row failures" must not be allowed to
- * paper over. [LegacyMigrationOutcome.NothingToMigrate] and a [LegacyMigrationOutcome.Migrated]
- * with no row failures and no file left behind are the only endings that report nothing.
+ * not a clean success is turned into one call to [report].
  *
  * Nothing thrown may reach [scope], where an uncaught throwable would take the process down. That
  * covers [import] itself and also [report]: a throwing reporting implementation must not be able to
@@ -33,9 +32,7 @@ import kotlin.coroutines.cancellation.CancellationException
  * is not one uncaught, and a module reaching Room, a native SQLite driver and the Keystore can raise
  * a [LinkageError] or a [NoClassDefFoundError] on a device missing something it expected.
  *
- * Cancellation is rethrown rather than reported. A run cut short has learned nothing about the
- * user's file and must not get to answer for it, and swallowing it would undo the rethrow the
- * migration keeps on purpose.
+ * Cancellation is rethrown rather than reported. See LegacyItemRepositoryImpl.withDao.
  */
 internal class LegacyImportRunner(
     private val scope: CoroutineScope,
@@ -45,19 +42,26 @@ internal class LegacyImportRunner(
 
     private val inFlight = AtomicBoolean(false)
 
+    private val finished = AtomicBoolean(false)
+
     fun start() {
+        if (finished.get()) return
         if (!inFlight.compareAndSet(false, true)) return
 
+        // The flag is released on completion rather than in a finally, so a run whose scope died
+        // before its body ever ran still gives the next unlock its turn.
         scope.launch {
             try {
-                reportOutcome(import())
+                val outcome = import()
+                // Latched before the in-flight flag is released, so no start can slip between the
+                // two and win a run the verdict has already ruled out.
+                if (outcome.nothingLeftToImport) finished.set(true)
+                reportOutcome(outcome)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
                 reportSafely("v1 import threw", e)
             }
-            // Released on completion rather than in a finally, so a run whose scope died before its
-            // body ever ran still gives the next unlock its turn.
         }.invokeOnCompletion { inFlight.set(false) }
     }
 
@@ -94,10 +98,7 @@ internal class LegacyImportRunner(
         return "v1 import finished: ${parts.joinToString("; ")}"
     }
 
-    /**
-     * Calls [report] without letting it reach [scope]. [report] is a reporting seam and not part of
-     * the import, so a throw out of it must be contained exactly like a throw out of [import] is.
-     */
+    /** Calls [report] without letting a throw out of it reach [scope]. */
     private fun reportSafely(message: String, cause: Throwable?) {
         try {
             report(message, cause)

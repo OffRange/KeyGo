@@ -17,7 +17,7 @@ import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.isSuccess
 import de.davis.keygo.core.util.onFailure
-import de.davis.keygo.migration.legacy_data.data.mapper.LegacyItemConverter
+import de.davis.keygo.migration.legacy_data.domain.mapper.LegacyItemConverter
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyFailureReason
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyItem
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyMigrationException
@@ -30,6 +30,7 @@ import de.davis.keygo.migration.legacy_data.domain.repository.LegacyKeyRepositor
 import de.davisalessandro.keygo.rust.ItemAad
 import kotlinx.coroutines.flow.first
 import org.koin.core.annotation.Single
+import javax.crypto.SecretKey
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -60,28 +61,10 @@ class MigrateLegacyDataUseCase internal constructor(
     suspend operator fun invoke(): LegacyMigrationOutcome = try {
         migrate()
     } catch (e: CancellationException) {
-        // Rethrown rather than reported, for the same reason the repository rethrows it. A run cut
-        // short because the unlock scope went away has learned nothing about the user's file, and
-        // it must not get to answer for it.
+        // See LegacyItemRepositoryImpl.withDao.
         throw e
     } catch (e: Exception) {
         LegacyMigrationOutcome.Failed(e)
-    }
-
-    /**
-     * Removes a file that was counted and found to hold no v1 rows, and v1's Keystore alias with it.
-     *
-     * The alias has to go on this path too. An already-imported v1 file lands here rather than in
-     * the import below on the run after the one that emptied it, and if only the file went, the key
-     * that used to protect it would be left in the Keystore with no later run able to reach it.
-     * Deleting it is safe for exactly the reason the file is: there is no ciphertext left for it to
-     * open. Gated on the file actually going, so a key never outlives rows that are still on disk.
-     *
-     * A clean install reaches this too, by way of a provider with no file to hand out. There is
-     * nothing to delete, [LegacyItemRepository.deleteDatabase] says so, and the alias stays.
-     */
-    private fun discardEmptyDatabase() {
-        if (legacyItemRepository.deleteDatabase()) legacyKeyRepository.deleteLegacyKey()
     }
 
     private suspend fun migrate(): LegacyMigrationOutcome {
@@ -97,7 +80,7 @@ class MigrateLegacyDataUseCase internal constructor(
                 // The one branch that destroys the file, and only because it is the one that proves
                 // there is nothing to destroy: the rows were counted and there are none.
                 LegacyReadFailure.DatabaseEmpty -> {
-                    discardEmptyDatabase()
+                    deleteDatabaseAndKey()
                     LegacyMigrationOutcome.NothingToMigrate
                 }
 
@@ -125,7 +108,8 @@ class MigrateLegacyDataUseCase internal constructor(
         for (legacyItem in read.items) {
             val itemId = newItemId()
             val item = when (
-                val scoped = convert(legacyItem, itemId, vaultId, vaultKeyInformation)
+                val scoped =
+                    convert(legacyItem, itemId, vaultId, vaultKeyInformation, read.legacyKey)
             ) {
                 is Result.Success -> scoped.success
 
@@ -148,29 +132,27 @@ class MigrateLegacyDataUseCase internal constructor(
         }
 
         // One transaction for the batch, so a write that fails part way through leaves no items
-        // behind for a retry to duplicate. The throw is what rolls it back.
-        val writtenIds = mutableListOf<Long>()
+        // behind for a retry to duplicate. The throw is what rolls it back, and it also means
+        // everything in `converted` is written by the time the prune below runs.
         if (converted.isNotEmpty())
             transactionRunner.inTransaction {
-                for ((legacyId, item) in converted) {
+                for ((legacyId, item) in converted)
                     upsertVaultItem(item).onFailure {
                         throw LegacyMigrationException("Could not write legacy row $legacyId", it)
                     }
-                    writtenIds += legacyId
-                }
             }
 
         // Only the rows now provably in v2. A prune that fails leaves the file as it was, which the
         // next run re-imports; that is a duplicate at worst, and the deletion below is the only
         // thing that could turn it into a loss.
-        val pruned = legacyItemRepository.prune(writtenIds).isSuccess()
+        val pruned = legacyItemRepository.prune(converted.map { it.first }).isSuccess()
 
         val fileDeleted =
             deleteWhenFullyImported(hasFailures = failures.isNotEmpty(), pruned = pruned)
 
         return LegacyMigrationOutcome.Migrated(
             LegacyMigrationReport(
-                migratedItems = writtenIds.size,
+                migratedItems = converted.size,
                 failures = failures,
                 fileRetained = !fileDeleted,
             ),
@@ -178,22 +160,28 @@ class MigrateLegacyDataUseCase internal constructor(
     }
 
     /**
-     * Removes the inherited file and v1's Keystore alias, and only once everything that was in the
-     * file is in v2. Returns whether the file actually went, so the caller can tell a run that
-     * cleaned up fully apart from one that quietly could not.
-     *
-     * Three things have to hold, and any one of them missing leaves the file alone. No row failed
-     * to read or convert; the prune succeeded, so the rows are gone from the file rather than
-     * merely copied out of it; and the file counts zero rows afterwards, which is the only direct
-     * evidence that nothing was left behind. A count that cannot be taken is not a zero.
-     *
-     * The alias goes last and only if the file actually went. Removing the key while encrypted rows
-     * are still on disk would make them unreadable for good.
+     * Deletes the file and v1's alias, and only once everything in the file is in v2. A count that
+     * cannot be taken is not a zero. Returns whether the file actually went.
      */
     private suspend fun deleteWhenFullyImported(hasFailures: Boolean, pruned: Boolean): Boolean {
         if (hasFailures || !pruned) return false
         if (legacyItemRepository.remainingCount().getOrNull() != 0) return false
 
+        return deleteDatabaseAndKey()
+    }
+
+    /**
+     * Deletes the inherited file and v1's Keystore alias, in that order.
+     *
+     * The alias has to go with the file on every path that removes it, including an already-imported
+     * file that now counts zero rows: otherwise the key outlives the last run able to reach it.
+     * Deleting it is safe for the same reason the file is, there is no ciphertext left for it to
+     * open. Gated on the file actually going, so a key never outlives rows still on disk.
+     *
+     * A clean install reaches this too, by way of a provider with no file to hand out. There is
+     * nothing to delete, [LegacyItemRepository.deleteDatabase] says so, and the alias stays.
+     */
+    private fun deleteDatabaseAndKey(): Boolean {
         if (!legacyItemRepository.deleteDatabase()) return false
         legacyKeyRepository.deleteLegacyKey()
         return true
@@ -204,6 +192,7 @@ class MigrateLegacyDataUseCase internal constructor(
         itemId: ItemId,
         vaultId: VaultId,
         vaultKeyInformation: KeyInformation,
+        legacyKey: SecretKey,
     ): Result<Item?, CryptoScopeError> = cryptographicScopeProvider.itemScope(
         wrappedVaultKeyInformation = WrappedVaultKeyInformation(
             wrappedVaultKey = vaultKeyInformation,
@@ -215,12 +204,12 @@ class MigrateLegacyDataUseCase internal constructor(
             itemAad = ItemAad(itemId = itemId, vaultId = vaultId),
         ),
     ) {
-        // The itemScope receiver satisfies the converter's CryptographicScope context parameter.
         converter.convert(
             item = legacyItem,
             itemId = itemId,
             vaultId = vaultId,
             keyInformation = wrapCurrentItemKey(),
+            legacyKey = legacyKey,
         )
     }
 

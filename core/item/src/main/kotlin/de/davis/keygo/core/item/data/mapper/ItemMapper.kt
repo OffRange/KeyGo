@@ -18,7 +18,7 @@ internal fun Item.toData() = ItemEntity(
     pinned = pinned,
 
     keyInformation = keyInformation.toEntity(),
-    timestamp = timestamp.toEntity()
+    timestamp = timestamp.toEntity(),
 )
 
 internal fun LightweightItem.toDomain() = LiteItem.Concrete(

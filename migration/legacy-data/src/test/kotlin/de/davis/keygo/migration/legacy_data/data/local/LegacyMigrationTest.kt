@@ -12,7 +12,6 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -33,10 +32,7 @@ class LegacyMigrationTest {
     private val tempDir: File = Files.createTempDirectory("legacy-migration").toFile()
     private val dbFile: File = File(tempDir, "secure_element_database")
 
-    private fun openMigrated(): LegacyDatabase =
-        assertNotNull(
-            AndroidLegacyDatabaseProvider(legacyContext(dbFile), BundledSQLiteDriver()).get(),
-        )
+    private fun openMigrated(): LegacyDatabase = openMigratedLegacyDatabase(dbFile)
 
     @AfterTest
     fun tearDown() {

@@ -1,7 +1,8 @@
 package de.davis.keygo.migration.legacy_data.data
 
 import de.davis.keygo.migration.legacy_data.data.FakeLegacyCipher.Companion.FAIL
-import de.davis.keygo.migration.legacy_data.data.crypto.LegacyCipher
+import de.davis.keygo.migration.legacy_data.domain.crypto.LegacyCipher
+import javax.crypto.SecretKey
 
 /**
  * Reversible stand-in for the Keystore cipher: a blob decrypts to itself, so a test seeds the
@@ -14,7 +15,7 @@ import de.davis.keygo.migration.legacy_data.data.crypto.LegacyCipher
  */
 internal class FakeLegacyCipher(private val failFor: ByteArray? = null) : LegacyCipher {
 
-    override fun decrypt(blob: ByteArray): ByteArray? = when {
+    override fun decrypt(blob: ByteArray, key: SecretKey): ByteArray? = when {
         failFor != null && blob.contentEquals(failFor) -> null
         blob.decodeToString().startsWith(FAIL) -> null
         else -> blob
@@ -24,6 +25,6 @@ internal class FakeLegacyCipher(private val failFor: ByteArray? = null) : Legacy
         const val FAIL = "!!UNDECRYPTABLE!!"
 
         /** Fails every blob, which is how a whole run under a gone v1 key is modelled. */
-        val Failing = LegacyCipher { null }
+        val Failing = LegacyCipher { _, _ -> null }
     }
 }

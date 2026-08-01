@@ -2,7 +2,6 @@ package de.davis.keygo.migration.legacy_data.data.local
 
 import android.app.Instrumentation
 import android.content.Context
-import android.content.ContextWrapper
 import android.content.res.AssetManager
 import androidx.room3.testing.MigrationTestHelper
 import androidx.sqlite.SQLiteConnection
@@ -34,14 +33,8 @@ private fun schemaInstrumentation(): Instrumentation {
         LEGACY_SCHEMA_DIR.parent.resolve(firstArg<String>()).toFile().inputStream()
     }
 
-    val context = object : ContextWrapper(null) {
+    val context = object : LegacyStubContext() {
         override fun getAssets(): AssetManager = assets
-
-        // Room asks for ActivityManager to decide whether it is on a low RAM device, and reads an
-        // absent service the same as a device that is not one.
-        override fun getSystemService(name: String): Any? = null
-
-        override fun getApplicationContext(): Context = this
     }
 
     return object : Instrumentation() {

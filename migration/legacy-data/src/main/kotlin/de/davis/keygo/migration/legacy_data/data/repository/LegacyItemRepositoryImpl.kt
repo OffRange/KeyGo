@@ -3,12 +3,12 @@ package de.davis.keygo.migration.legacy_data.data.repository
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.resultBinding
-import de.davis.keygo.migration.legacy_data.data.crypto.LegacyCipher
 import de.davis.keygo.migration.legacy_data.data.json.LegacyDetailParser
 import de.davis.keygo.migration.legacy_data.data.local.dao.LegacyElementDao
 import de.davis.keygo.migration.legacy_data.data.local.datasource.LegacyDatabaseProvider
 import de.davis.keygo.migration.legacy_data.data.local.pojo.LegacyElementWithTags
 import de.davis.keygo.migration.legacy_data.data.mapper.toLegacyItem
+import de.davis.keygo.migration.legacy_data.domain.crypto.LegacyCipher
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyFailureReason
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyItem
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyReadFailure
@@ -42,11 +42,12 @@ internal class LegacyItemRepositoryImpl(
         // as DatabaseUnreadable here and never reaches the comparison.
         (remainingCount().bind() > 0).asResult(LegacyReadFailure.DatabaseEmpty).bind()
 
-        // Probed once for the whole run rather than inferred from a run of nulls; see
+        // Resolved once for the whole run rather than inferred from a run of nulls; see
         // [LegacyReadFailure.KeyUnavailable]. This does not gate the 2-to-3 recreate, which the
         // count above already triggered as the first query against the file. What it still buys is
-        // not putting the row loop through a key that is already known gone.
-        keyRepository.secretKey().asResult(LegacyReadFailure.KeyUnavailable).bind()
+        // not putting the row loop through a key that is already known gone, and one Keystore round
+        // trip for the run instead of one per blob.
+        val key = keyRepository.secretKey().asResult(LegacyReadFailure.KeyUnavailable).bind()
 
         val rows = withDao { it.getAllWithTags() }.bind()
 
@@ -54,7 +55,7 @@ internal class LegacyItemRepositoryImpl(
         val failures = mutableListOf<LegacyRowFailure>()
 
         for (row in rows) {
-            val detail = cipher.decrypt(row.element.data)?.let(parser::parse)
+            val detail = cipher.decrypt(row.element.data, key)?.let(parser::parse)
             if (detail == null) {
                 failures += row.failure(LegacyFailureReason.Unreadable)
                 continue
@@ -63,7 +64,7 @@ internal class LegacyItemRepositoryImpl(
             items += row.toLegacyItem(detail)
         }
 
-        LegacyReadResult(items = items, failures = failures)
+        LegacyReadResult(items = items, failures = failures, legacyKey = key)
     }
 
     override suspend fun prune(legacyIds: List<Long>): Result<Unit, LegacyReadFailure> {
@@ -95,11 +96,10 @@ internal class LegacyItemRepositoryImpl(
         return try {
             Result.Success(block(dao))
         } catch (e: CancellationException) {
-            // Deliberately not `runCatching`, and deliberately unlike the other repositories in
-            // this codebase. There a swallowed cancellation becomes a harmless failure; here it
-            // becomes a statement about the user's file. A run cancelled because the unlock scope
-            // went away tells us nothing about what is in that file, and it must not be able to
-            // answer for it. Leave this rethrow where it is.
+            // Not swallowed into a failure the way the other repositories do it. There a swallowed
+            // cancellation is harmless; here it would become a statement about the user's file. A
+            // run cancelled because the unlock scope went away tells us nothing about what is in
+            // that file, and it must not be able to answer for it.
             throw e
         } catch (_: Exception) {
             Result.Failure(LegacyReadFailure.DatabaseUnreadable)

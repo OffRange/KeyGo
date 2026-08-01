@@ -11,7 +11,7 @@ import kotlinx.serialization.json.JsonElement
  * older `{"type": ordinal}` object without a custom serializer.
  */
 @Serializable
-internal data class LegacyDetailJson(
+internal class LegacyDetailJson(
     val type: Int? = null,
     val username: String? = null,
     val origin: String? = null,
@@ -21,12 +21,7 @@ internal data class LegacyDetailJson(
     val expirationDate: String? = null,
     val cardNumber: String? = null,
     val cvv: String? = null,
-) {
-
-    override fun equals(other: Any?): Boolean = this === other
-
-    override fun hashCode(): Int = System.identityHashCode(this)
-}
+)
 
 @Serializable
 internal data class LegacyNameJson(

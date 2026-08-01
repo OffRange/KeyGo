@@ -4,10 +4,18 @@ import de.davis.keygo.core.util.Result
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyItem
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyReadFailure
 import de.davis.keygo.migration.legacy_data.domain.model.LegacyRowFailure
+import javax.crypto.SecretKey
 
 internal data class LegacyReadResult(
     val items: List<LegacyItem>,
     val failures: List<LegacyRowFailure>,
+
+    /**
+     * v1's key, resolved once for the whole run. Carried here because the rows are handed over with
+     * their nested password blobs still sealed, and whatever opens those has to use the same key
+     * the rows themselves were read under.
+     */
+    val legacyKey: SecretKey,
 )
 
 /** Reads the inherited v1 database. */

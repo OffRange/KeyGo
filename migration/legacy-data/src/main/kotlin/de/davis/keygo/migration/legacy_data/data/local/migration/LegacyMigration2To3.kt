@@ -40,8 +40,7 @@ import androidx.sqlite.execSQL
 internal object LegacyMigration2To3 : Migration(2, 3) {
 
     override suspend fun migrate(connection: SQLiteConnection) {
-        // Both before the copy, so no row can abort it on a NOT NULL column. Kept apart on purpose:
-        // a missing title is a recoverable row with no name, a missing blob is not a row at all.
+        // Both before the copy, so no row can abort it on a NOT NULL column.
         connection.execSQL("UPDATE `SecureElement` SET `title` = '' WHERE `title` IS NULL")
         connection.execSQL("DELETE FROM `SecureElement` WHERE `data` IS NULL")
 

@@ -22,7 +22,6 @@ import de.davis.keygo.feature.auth.presentation.model.UIPasswordError
 import de.davis.keygo.migration.create_access.domain.usecase.ClearMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.ValidateMainPasswordUseCase
-import de.davis.keygo.migration.legacy_data.domain.usecase.StartLegacyDataImportUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -53,7 +52,6 @@ internal class AuthViewModel(
     hasV1MainPassword: HasMainPasswordUseCase,
     private val validateMainPassword: ValidateMainPasswordUseCase,
     private val clearMainPasswordUseCase: ClearMainPasswordUseCase,
-    private val startLegacyDataImport: StartLegacyDataImportUseCase,
     // -------------------
 
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
@@ -280,10 +278,7 @@ internal class AuthViewModel(
 
                 LoadingScope(
                     state = it,
-                    onSuccess = {
-                        startLegacyDataImport()
-                        navigationEventChannel.trySend(Unit)
-                    },
+                    onSuccess = { navigationEventChannel.trySend(Unit) },
                 ).apply {
                     block()
                 }.updatedState.copyDefaultState(loading = false)
@@ -303,17 +298,8 @@ internal class AuthViewModel(
         }
     }
 
-    /**
-     * Biometric unlock completes in the composable rather than here, so it has to hand control back
-     * for the v1 import to get a chance to run. Without this the biometric path would be the one
-     * way into the app that never retries a partial import, and it is the way most returning users
-     * take every day.
-     *
-     * The import is started and left to run on its own scope, so nothing stands between the unlock
-     * and the navigation that follows it.
-     */
+    /** Biometric unlock completes in the composable, which hands control back here to navigate. */
     fun onBiometricUnlockSucceeded() {
-        startLegacyDataImport()
         viewModelScope.launch { navigationEventChannel.send(Unit) }
     }
 }
