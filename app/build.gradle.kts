@@ -118,6 +118,7 @@ dependencies {
     implementation(projects.feature.autofill)
     implementation(projects.feature.settings)
     implementation(projects.feature.backup)
+    implementation(projects.feature.onboarding)
     implementation(projects.migration.createAccess)
     implementation(projects.migration.legacyData)
 

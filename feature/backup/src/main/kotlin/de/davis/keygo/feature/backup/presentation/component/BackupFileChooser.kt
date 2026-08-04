@@ -33,7 +33,7 @@ import de.davis.keygo.feature.backup.R
 import de.davis.keygo.feature.backup.domain.model.BackupDestination
 
 @Composable
-internal fun BackupFileChooser(
+fun BackupFileChooser(
     destination: BackupDestination?,
     onChoose: () -> Unit,
     chooserIcon: ImageVector,

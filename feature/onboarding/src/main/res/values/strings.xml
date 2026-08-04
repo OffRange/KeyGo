@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="get_started">Get Started</string>
+    <string name="continue_text">Continue</string>
+    <string name="skip_for_now">Skip for now</string>
+    <string name="enable_biometrics">Enable Biometrics</string>
+    <string name="open_settings">Open settings</string>
+    <string name="finish_setup">Finish setup</string>
+
+
+    <string name="welcome_title">Own your credentials, own your privacy.</string>
+    <string name="welcome_subtitle">KeyGo encrypts everything locally. No servers, no cloud, no tracking. Just you and your data.</string>
+
+    <string name="main_password_title">Set your main password</string>
+    <string name="main_password_subtitle">This password will encrypt your vaults. KeyGo never stores this password. Make it secure.</string>
+    <string name="main_password_info">If you forget your password, no one can recover your vaults. It will be cryptographically impossible.</string>
+    <string name="main_password_label">Main password</string>
+    <string name="confirm_main_password_label">Confirm main password</string>
+
+    <string name="import_title">Bring your passwords</string>
+    <string name="import_subtitle">Imports are encrypted locally and always on-device. Select a file to get started.</string>
+
+    <string name="biometrics_title">Unlock with a touch</string>
+    <string name="biometrics_subtitle">Use your fingerprint to open KeyGo. Your master password stays as backup.</string>
+
+    <string name="autofill_title">Set KeyGo as your autofill provider</string>
+    <string name="autofill_subtitle">With this feature KeyGo will offer you stored passwords whenever you are in a login screen. You can always change this setting later in your device settings.</string>
+    <string name="autofill_open_settings">Open system settings</string>
+    <string name="autofill_open_settings_support">Open your device settings</string>
+    <string name="autofill_choose_keygo">Choose KeyGo</string>
+    <string name="autofill_choose_keygo_support">Select KeyGo as your autofill provider &amp; confirm</string>
+    <string name="autofill_chrome">Apply to Chrome</string>
+    <string name="autofill_chrome_support">Open Chrome settings &amp; enable 3rd party autofill providers</string>
+</resources>
