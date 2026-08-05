@@ -28,9 +28,6 @@
     <string name="change_password_action">Change password</string>
     <string name="biometric_confirm_helper">You\'ll confirm with your fingerprint</string>
     <string name="reauth_dialog_title">Enter your current password</string>
-    <string name="password_blank">Password must not be blank</string>
-    <string name="incorrect_password">Incorrect password</string>
-    <string name="passwords_do_not_match">Passwords do not match</string>
     <string name="password_changed">Password changed</string>
     <string name="change_password_failed">Could not change password</string>
 </resources>

@@ -2,6 +2,7 @@ package de.davis.keygo.feature.auth.presentation.model
 
 import androidx.compose.foundation.text.input.TextFieldState
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.ui.model.UiFieldError
 
 sealed interface AuthState {
 
@@ -9,13 +10,13 @@ sealed interface AuthState {
 
     sealed interface Interactable : AuthState {
         val passwordTextFieldState: TextFieldState
-        val passwordError: UIPasswordError
+        val passwordError: UiFieldError?
         val loading: Boolean
 
         fun copyDefaultState(
             loading: Boolean = this.loading,
             passwordTextFieldState: TextFieldState = this.passwordTextFieldState,
-            passwordError: UIPasswordError = this.passwordError,
+            passwordError: UiFieldError? = this.passwordError,
         ): Interactable = when (this) {
             is Login -> copy(
                 loading = loading,
@@ -39,7 +40,7 @@ sealed interface AuthState {
 
     data class Login(
         override val passwordTextFieldState: TextFieldState,
-        override val passwordError: UIPasswordError = UIPasswordError.None,
+        override val passwordError: UiFieldError? = null,
         override val loading: Boolean = false,
         val biometricAuthenticationAvailable: Boolean = false,
     ) : Interactable
@@ -67,7 +68,7 @@ sealed interface AuthState {
 
     data class Migrating(
         override val passwordTextFieldState: TextFieldState,
-        override val passwordError: UIPasswordError = UIPasswordError.None,
+        override val passwordError: UiFieldError? = null,
         override val loading: Boolean = false,
         override val biometricsAvailable: Boolean = false,
         override val useBiometrics: Boolean = true,
@@ -76,12 +77,12 @@ sealed interface AuthState {
 
     data class CreateAccess(
         override val passwordTextFieldState: TextFieldState,
-        override val passwordError: UIPasswordError = UIPasswordError.None,
+        override val passwordError: UiFieldError? = null,
         override val loading: Boolean = false,
         override val biometricsAvailable: Boolean = false,
         override val useBiometrics: Boolean = true,
         val confirmPasswordTextFieldState: TextFieldState = TextFieldState(),
-        val confirmPasswordError: UIPasswordError = UIPasswordError.None,
+        val confirmPasswordError: UiFieldError? = null,
         val passwordScore: PasswordScore = PasswordScore.None,
     ) : BiometricAuthState
 }

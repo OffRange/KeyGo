@@ -11,6 +11,7 @@ import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockWithPasswordUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
+import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.onFailure
@@ -18,7 +19,6 @@ import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.auth.presentation.model.AuthState
 import de.davis.keygo.feature.auth.presentation.model.AuthUIEvent
 import de.davis.keygo.feature.auth.presentation.model.BiometricRequest
-import de.davis.keygo.feature.auth.presentation.model.UIPasswordError
 import de.davis.keygo.migration.create_access.domain.usecase.ClearMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
 import de.davis.keygo.migration.create_access.domain.usecase.ValidateMainPasswordUseCase
@@ -125,7 +125,7 @@ internal class AuthViewModel(
 
                 _uiState.update {
                     if (it !is AuthState.CreateAccess) return@update it
-                    it.copy(passwordError = UIPasswordError.None)
+                    it.copy(passwordError = null)
                 }
             }
             .flowOn(Dispatchers.Default)
@@ -143,7 +143,7 @@ internal class AuthViewModel(
 
                 _uiState.update {
                     if (it !is AuthState.CreateAccess) return@update it
-                    it.copy(confirmPasswordError = UIPasswordError.None)
+                    it.copy(confirmPasswordError = null)
                 }
             }
             .flowOn(Dispatchers.Default)
@@ -182,7 +182,7 @@ internal class AuthViewModel(
                             unlockWithPassword(
                                 password = password
                             ).handleAuthenticationResult {
-                                copyDefaultState(passwordError = UIPasswordError.Incorrect)
+                                copyDefaultState(passwordError = UiFieldError.Incorrect)
                             }
                         }
                     }
@@ -193,7 +193,7 @@ internal class AuthViewModel(
                                 .onFailure {
                                     _uiState.update {
                                         if (it !is AuthState.Interactable) return@update it
-                                        it.copyDefaultState(passwordError = UIPasswordError.Incorrect)
+                                        it.copyDefaultState(passwordError = UiFieldError.Incorrect)
                                     }
                                 }.onSuccess {
                                     clearMainPasswordUseCase()
@@ -204,20 +204,20 @@ internal class AuthViewModel(
 
                     is AuthState.CreateAccess -> {
                         val errorFreeState = state.copy(
-                            passwordError = UIPasswordError.None,
-                            confirmPasswordError = UIPasswordError.None
+                            passwordError = null,
+                            confirmPasswordError = null
                         )
 
                         if (password.isBlank()) {
                             _uiState.update {
-                                errorFreeState.copy(passwordError = UIPasswordError.Empty)
+                                errorFreeState.copy(passwordError = UiFieldError.Empty)
                             }
                             return
                         }
                         val confirmedPassword = confirmPasswordTextFieldState.text.toString()
                         if (password != confirmedPassword) {
                             _uiState.update {
-                                errorFreeState.copy(confirmPasswordError = UIPasswordError.Incorrect)
+                                errorFreeState.copy(confirmPasswordError = UiFieldError.Incorrect)
                             }
                             return
                         }

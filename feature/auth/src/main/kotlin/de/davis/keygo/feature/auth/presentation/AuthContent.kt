@@ -51,11 +51,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.core.ui.components.VisibilityButton
+import de.davis.keygo.core.ui.model.error
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.auth.R
 import de.davis.keygo.feature.auth.presentation.model.AuthState
 import de.davis.keygo.feature.auth.presentation.model.AuthUIEvent
-import de.davis.keygo.feature.auth.presentation.model.UIPasswordError
 import de.davis.keygo.core.item.R as CoreItemR
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -135,16 +135,9 @@ private fun InteractableAuthContent(
                             label = {
                                 Text(text = stringResource(CoreItemR.string.password))
                             },
-                            isError = passwordError !is UIPasswordError.None,
-                            supportingText = when (passwordError) {
-                                is UIPasswordError.None -> null
-                                is UIPasswordError.Incorrect -> {
-                                    { Text(stringResource(R.string.incorrect_password)) }
-                                }
-
-                                else -> {
-                                    { Text(stringResource(R.string.blank_password)) }
-                                }
+                            isError = passwordError != null,
+                            supportingText = passwordError?.let {
+                                { Text(it.error) }
                             },
                             textObfuscationMode = when {
                                 passwordHidden -> TextObfuscationMode.RevealLastTyped
@@ -171,16 +164,9 @@ private fun InteractableAuthContent(
                                 label = {
                                     Text(text = stringResource(R.string.confirm_password))
                                 },
-                                isError = confirmPasswordError !is UIPasswordError.None,
-                                supportingText = when (confirmPasswordError) {
-                                    is UIPasswordError.None -> null
-                                    is UIPasswordError.Incorrect -> {
-                                        { Text(stringResource(R.string.password_does_not_match)) }
-                                    }
-
-                                    else -> {
-                                        { Text(stringResource(R.string.blank_password)) }
-                                    }
+                                isError = confirmPasswordError != null,
+                                supportingText = confirmPasswordError?.let {
+                                    { Text(it.error) }
                                 },
                                 textObfuscationMode = when {
                                     confirmPasswordHidden -> TextObfuscationMode.RevealLastTyped

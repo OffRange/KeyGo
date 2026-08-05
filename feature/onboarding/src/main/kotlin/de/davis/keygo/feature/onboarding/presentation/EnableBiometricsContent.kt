@@ -24,7 +24,8 @@ import de.davis.keygo.feature.onboarding.presentation.component.OnboardingScaffo
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun EnableBiometricsContent(
-    onContinue: () -> Unit
+    onSkip: () -> Unit,
+    onContinue: () -> Unit,
 ) {
     OnboardingScaffold(
         iconContainer = {
@@ -43,7 +44,7 @@ internal fun EnableBiometricsContent(
         onButtonClicked = onContinue,
         optionalAction = {
             TextButton(
-                onClick = {},
+                onClick = onSkip,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(text = stringResource(R.string.skip_for_now))
@@ -61,6 +62,7 @@ private fun EnableBiometricsContentPreview() {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             EnableBiometricsContent(
+                onSkip = {},
                 onContinue = {}
             )
         }

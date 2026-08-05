@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="confirm_password">Confirm Password</string>
-    <string name="blank_password">You must set a password</string>
-    <string name="incorrect_password">Password is incorrect!</string>
-    <string name="password_does_not_match">Password does not match</string>
     <string name="authenticate">Authenticate</string>
     <string name="unlock_item">Unlock %s</string>
     <string name="create_access">Create your access</string>
