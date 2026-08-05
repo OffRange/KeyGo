@@ -36,8 +36,6 @@ internal fun WelcomeContent(onContinue: () -> Unit) {
         },
         title = stringResource(R.string.welcome_title),
         description = stringResource(R.string.welcome_subtitle),
-        buttonText = stringResource(R.string.get_started),
-        onButtonClicked = onContinue,
         contentHorizontalAlignment = Alignment.CenterHorizontally
     ) {
         // No content for Welcome

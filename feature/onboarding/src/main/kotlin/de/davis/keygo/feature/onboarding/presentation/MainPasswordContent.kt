@@ -34,14 +34,16 @@ import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.core.ui.components.VisibilityButton
+import de.davis.keygo.core.ui.model.error
 import de.davis.keygo.feature.onboarding.R
 import de.davis.keygo.feature.onboarding.presentation.component.OnboardingScaffold
 import de.davis.keygo.feature.onboarding.presentation.component.SmallIconContainer
+import de.davis.keygo.feature.onboarding.presentation.model.OnboardingUiState
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun MainPasswordContent(
-    onContinue: () -> Unit
+    state: OnboardingUiState.SetMainPassword,
 ) {
     OnboardingScaffold(
         iconContainer = {
@@ -56,8 +58,6 @@ internal fun MainPasswordContent(
         },
         title = stringResource(R.string.main_password_title),
         description = stringResource(R.string.main_password_subtitle),
-        buttonText = stringResource(R.string.continue_text),
-        onButtonClicked = onContinue,
         info = {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -79,7 +79,7 @@ internal fun MainPasswordContent(
         var forceCompact by rememberSaveable { mutableStateOf(false) }
         var passwordHidden by remember { mutableStateOf(true) }
         OutlinedSecureTextField(
-            state = passwordState,
+            state = state.passwordTextFieldState,
             modifier = Modifier
                 .fillMaxWidth()
                 .onFocusChanged {
@@ -93,17 +93,21 @@ internal fun MainPasswordContent(
                     isHidden = passwordHidden,
                     onClick = { passwordHidden = !passwordHidden }
                 )
-            }
+            },
+            isError = state.passwordError != null,
+            supportingText = state.passwordError?.let {
+                { Text(text = it.error) }
+            },
         )
 
         StrengthIndicator(
-            passwordScore = PasswordScore.Moderate,
+            passwordScore = state.passwordScore,
             forceCompact = forceCompact,
         )
 
         var confirmPasswordHidden by remember { mutableStateOf(true) }
         OutlinedSecureTextField(
-            state = passwordState,
+            state = state.confirmPasswordTextFieldState,
             modifier = Modifier.fillMaxWidth(),
             label = { Text(text = stringResource(R.string.confirm_main_password_label)) },
             textObfuscationMode = if (confirmPasswordHidden) TextObfuscationMode.RevealLastTyped
@@ -113,7 +117,11 @@ internal fun MainPasswordContent(
                     isHidden = confirmPasswordHidden,
                     onClick = { confirmPasswordHidden = !confirmPasswordHidden }
                 )
-            }
+            },
+            isError = state.confirmPasswordError != null,
+            supportingText = state.confirmPasswordError?.let {
+                { Text(text = it.error) }
+            },
         )
     }
 }
@@ -127,7 +135,11 @@ private fun MainPasswordContentPreview() {
             SharedTransitionLayout {
                 AnimatedVisibility(visible = true) {
                     MainPasswordContent(
-                        onContinue = {}
+                        state = OnboardingUiState.SetMainPassword(
+                            passwordTextFieldState = remember { TextFieldState() },
+                            confirmPasswordTextFieldState = remember { TextFieldState() },
+                            passwordScore = PasswordScore.Moderate
+                        ),
                     )
                 }
             }

@@ -1,7 +1,6 @@
 package de.davis.keygo.feature.onboarding.presentation
 
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -9,8 +8,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -23,10 +20,7 @@ import de.davis.keygo.feature.onboarding.presentation.component.OnboardingScaffo
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun EnableBiometricsContent(
-    onSkip: () -> Unit,
-    onContinue: () -> Unit,
-) {
+internal fun EnableBiometricsContent() {
     OnboardingScaffold(
         iconContainer = {
             LargeIconContainer(
@@ -40,16 +34,6 @@ internal fun EnableBiometricsContent(
         },
         title = stringResource(R.string.biometrics_title),
         description = stringResource(R.string.biometrics_subtitle),
-        buttonText = stringResource(R.string.enable_biometrics),
-        onButtonClicked = onContinue,
-        optionalAction = {
-            TextButton(
-                onClick = onSkip,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(text = stringResource(R.string.skip_for_now))
-            }
-        },
         contentHorizontalAlignment = Alignment.CenterHorizontally
     ) {
         // No content for Enable Biometrics
@@ -61,10 +45,7 @@ internal fun EnableBiometricsContent(
 private fun EnableBiometricsContentPreview() {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
-            EnableBiometricsContent(
-                onSkip = {},
-                onContinue = {}
-            )
+            EnableBiometricsContent()
         }
     }
 }

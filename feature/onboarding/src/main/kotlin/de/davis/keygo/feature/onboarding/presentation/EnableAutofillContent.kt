@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -18,7 +17,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -35,10 +33,7 @@ import de.davis.keygo.feature.onboarding.presentation.component.SmallIconContain
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun EnableAutofillContent(
-    onOpenSettings: () -> Unit,
-    onDone: () -> Unit,
-) {
+internal fun EnableAutofillContent() {
     OnboardingScaffold(
         iconContainer = {
             SmallIconContainer(
@@ -52,16 +47,6 @@ internal fun EnableAutofillContent(
         },
         title = stringResource(R.string.autofill_title),
         description = stringResource(R.string.autofill_subtitle),
-        buttonText = stringResource(R.string.open_settings),
-        onButtonClicked = onOpenSettings,
-        optionalAction = {
-            TextButton(
-                onClick = onDone,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(text = stringResource(R.string.finish_setup))
-            }
-        },
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
@@ -146,10 +131,7 @@ internal fun NumberBadge(
 private fun EnableAutofillContentPreview() {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
-            EnableAutofillContent(
-                onOpenSettings = {},
-                onDone = {}
-            )
+            EnableAutofillContent()
         }
     }
 }

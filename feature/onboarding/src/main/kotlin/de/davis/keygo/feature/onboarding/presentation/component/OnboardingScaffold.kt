@@ -7,16 +7,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -85,19 +80,12 @@ internal fun OnboardingScaffold(
     iconContainer: @Composable () -> Unit,
     title: String,
     description: String,
-    buttonText: String,
-    onButtonClicked: () -> Unit,
-    buttonOutlined: Boolean = false,
     contentHorizontalAlignment: Alignment.Horizontal = Alignment.Start,
     info: (@Composable () -> Unit)? = null,
-    optionalAction: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
-    val contentHeight = ButtonDefaults.LargeContainerHeight
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+        modifier = Modifier.fillMaxSize()
     ) {
         Column(
             modifier = Modifier
@@ -125,39 +113,6 @@ internal fun OnboardingScaffold(
             content()
         }
 
-        Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            info?.invoke()
-            optionalAction?.invoke()
-
-            if (buttonOutlined)
-                OutlinedButton(
-                    onClick = onButtonClicked,
-                    shapes = ButtonDefaults.shapesFor(contentHeight),
-                    modifier = Modifier
-                        .sizeIn(minHeight = contentHeight)
-                        .fillMaxWidth(),
-                    contentPadding = ButtonDefaults.contentPaddingFor(contentHeight)
-                ) {
-                    Text(
-                        text = buttonText,
-                        style = ButtonDefaults.textStyleFor(contentHeight),
-                    )
-                }
-            else Button(
-                onClick = onButtonClicked,
-                shapes = ButtonDefaults.shapesFor(contentHeight),
-                modifier = Modifier
-                    .sizeIn(minHeight = contentHeight)
-                    .fillMaxWidth(),
-                contentPadding = ButtonDefaults.contentPaddingFor(contentHeight)
-            ) {
-                Text(
-                    text = buttonText,
-                    style = ButtonDefaults.textStyleFor(contentHeight),
-                )
-            }
-        }
+        info?.invoke()
     }
 }

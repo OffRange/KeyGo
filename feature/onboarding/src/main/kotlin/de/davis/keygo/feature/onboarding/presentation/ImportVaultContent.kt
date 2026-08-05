@@ -22,9 +22,7 @@ import de.davis.keygo.feature.backup.R as BackupR
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun ImportVaultContent(
-    onContinue: () -> Unit
-) {
+internal fun ImportVaultContent() {
     OnboardingScaffold(
         iconContainer = {
             SmallIconContainer(
@@ -38,9 +36,6 @@ internal fun ImportVaultContent(
         },
         title = stringResource(R.string.import_title),
         description = stringResource(R.string.import_subtitle),
-        buttonText = stringResource(R.string.skip_for_now),
-        buttonOutlined = true,
-        onButtonClicked = onContinue,
     ) {
         BackupFileChooser(
             destination = null,
@@ -60,9 +55,7 @@ internal fun ImportVaultContent(
 private fun ImportVaultContentPreview() {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
-            ImportVaultContent(
-                onContinue = {}
-            )
+            ImportVaultContent()
         }
     }
 }
