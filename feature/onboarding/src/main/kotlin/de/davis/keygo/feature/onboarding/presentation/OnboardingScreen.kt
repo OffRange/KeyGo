@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.onboarding.presentation
 
+import android.util.Log
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,31 +9,53 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ContainedLoadingIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import de.davis.keygo.core.security.domain.model.CryptographicMode
+import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
+import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.core.util.onSuccess
+import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.onboarding.R
 import de.davis.keygo.feature.onboarding.presentation.model.OnboardingUiState
 import org.koin.androidx.compose.koinViewModel
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun OnboardingScreen(onSuccess: () -> Unit) {
     val viewModel = koinViewModel<OnboardingViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
+
+    val loading by viewModel.loading.collectAsStateWithLifecycle()
+
+    val biometricCryptoController = rememberBiometricCryptoController()
+    ObserveAsEvents(viewModel.biometricFlow) {
+        biometricCryptoController.requestCipher(
+            keyId = KeyId.BiometricVaultKek,
+            mode = CryptographicMode.Wrap
+        ).onSuccess {
+            viewModel.performCreateAccess(it)
+        }.onFailure {
+            Log.e("OnboardingScreen", "Failed to create cipher for biometric access: $it")
+            // TODO: show error
+        }
+    }
 
     val contentHeight = ButtonDefaults.LargeContainerHeight
     Scaffold(
@@ -46,7 +69,7 @@ fun OnboardingScreen(onSuccess: () -> Unit) {
             ) {
                 state.optionalActionText?.let {
                     TextButton(
-                        onClick = viewModel::onNextStep,
+                        onClick = viewModel::onSkip,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(text = it)
@@ -101,6 +124,17 @@ fun OnboardingScreen(onSuccess: () -> Unit) {
             }
         }
     }
+
+    if (loading)
+        BasicAlertDialog(
+            onDismissRequest = {}
+        ) {
+            Box(
+                contentAlignment = Alignment.Center
+            ) {
+                ContainedLoadingIndicator()
+            }
+        }
 }
 
 private val OnboardingUiState.buttonText: String
@@ -128,17 +162,3 @@ private val OnboardingUiState.optionalActionText: String?
     }?.let { stringResource(it) }
 
 private fun OnboardingUiState.isOutlinedButonCandidate() = this is OnboardingUiState.ImportData
-
-@Preview
-@Composable
-private fun OnboardingScreenPreview() {
-    MaterialTheme {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            OnboardingScreen(
-                onSuccess = {}
-            )
-        }
-    }
-}

@@ -5,10 +5,12 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
+import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.ui.model.UiFieldError
+import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.autofill.domain.repository.AutofillServiceRepository
 import de.davis.keygo.feature.autofill.domain.repository.ChromeAutofillRepository
 import de.davis.keygo.feature.onboarding.presentation.model.OnboardingStep
@@ -17,8 +19,10 @@ import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseC
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -29,10 +33,12 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
+import javax.crypto.Cipher
 import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
@@ -43,7 +49,8 @@ internal class OnboardingViewModel(
     private val autofillServiceRepository: AutofillServiceRepository,
     private val chromeAutofillRepository: ChromeAutofillRepository,
 
-    private val passwordStrengthEstimator: PasswordStrengthEstimator
+    private val passwordStrengthEstimator: PasswordStrengthEstimator,
+    private val createAccess: CreateAccessUseCase,
 ) : ViewModel() {
 
     private val stepsToSkip = MutableStateFlow<Set<OnboardingStep>>(emptySet())
@@ -86,6 +93,13 @@ internal class OnboardingViewModel(
     private val _enableAutofillState = MutableStateFlow(
         OnboardingUiState.EnableAutofill
     )
+
+
+    private val biometricChannel = Channel<Unit>()
+    val biometricFlow = biometricChannel.receiveAsFlow()
+
+    private val _loading = MutableStateFlow(false)
+    val loading = _loading.asStateFlow()
 
     private val _step = MutableStateFlow(OnboardingStep.Welcome)
 
@@ -148,31 +162,71 @@ internal class OnboardingViewModel(
     }
 
     fun onNextStep() {
-        val currentStep = _step.value
-        if (currentStep == OnboardingStep.SetMainPassword) {
-            val password = passwordTextFieldState.text.toString()
-            val confirmPassword = confirmPasswordTextFieldState.text.toString()
+        when (_step.value) {
+            OnboardingStep.SetMainPassword -> {
+                val password = passwordTextFieldState.text.toString()
+                val confirmPassword = confirmPasswordTextFieldState.text.toString()
 
-            if (password.isBlank()) {
-                _mainPasswordState.update {
-                    it.copy(passwordError = UiFieldError.Empty)
+                if (password.isBlank()) {
+                    _mainPasswordState.update {
+                        it.copy(passwordError = UiFieldError.Empty)
+                    }
+                    return
                 }
-                return
+
+                if (password != confirmPassword) {
+                    _mainPasswordState.update {
+                        it.copy(confirmPasswordError = UiFieldError.Mismatch)
+                    }
+                    return
+                }
+
+                if (OnboardingStep.EnableBiometrics in stepsToSkip.value) performCreateAccess()
             }
 
-            if (password != confirmPassword) {
-                _mainPasswordState.update {
-                    it.copy(confirmPasswordError = UiFieldError.Mismatch)
-                }
-                return
+            OnboardingStep.EnableBiometrics -> {
+                biometricChannel.trySend(Unit)
+                return // wait for biometric result before proceeding to next step
             }
+
+            else -> {}
         }
 
-        val nextStep = currentStep.nextStep(stepsToSkip.value) ?: return finishUp()
+        internalSkip()
+    }
+
+    fun performCreateAccess(cipher: Cipher? = null) {
+        viewModelScope.launch {
+            loading {
+                createAccess(
+                    password = passwordTextFieldState.text.toString(),
+                    biometricCipher = cipher
+                ).onSuccess {
+                    internalSkip()
+                }
+            }
+        }
+    }
+
+    fun onSkip() {
+        if (_step.value == OnboardingStep.EnableBiometrics) return performCreateAccess()
+
+        internalSkip()
+    }
+
+    private fun internalSkip() {
+        val nextStep = _step.value.nextStep(stepsToSkip.value) ?: return finishUp()
         _step.update { nextStep }
     }
 
     private fun finishUp() {
 
+    }
+
+    private suspend fun <R> loading(block: suspend () -> R): R {
+        _loading.update { true }
+        return block().also {
+            _loading.update { false }
+        }
     }
 }
