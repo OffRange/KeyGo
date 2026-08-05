@@ -7,13 +7,8 @@ internal enum class OnboardingStep {
     ImportExistingData,
     EnableAutofillService;
 
-    fun nextStep(): OnboardingStep? {
-        return when (this) {
-            Welcome -> SetMainPassword
-            SetMainPassword -> EnableBiometrics
-            EnableBiometrics -> ImportExistingData
-            ImportExistingData -> EnableAutofillService
-            EnableAutofillService -> null
-        }
+    fun nextStep(skip: Set<OnboardingStep>): OnboardingStep? {
+        val pool = OnboardingStep.entries.filterNot { it in skip }
+        return pool.getOrNull(pool.indexOf(this) + 1)
     }
 }

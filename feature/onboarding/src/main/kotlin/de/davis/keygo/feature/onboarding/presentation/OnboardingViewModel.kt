@@ -4,11 +4,16 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.ui.model.UiFieldError
+import de.davis.keygo.feature.autofill.domain.repository.AutofillServiceRepository
+import de.davis.keygo.feature.autofill.domain.repository.ChromeAutofillRepository
 import de.davis.keygo.feature.onboarding.presentation.model.OnboardingStep
 import de.davis.keygo.feature.onboarding.presentation.model.OnboardingUiState
+import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -26,13 +31,38 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
 import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
 internal class OnboardingViewModel(
+    private val biometricAvailabilityRepository: BiometricAvailabilityRepository,
+    private val hasV1Password: HasMainPasswordUseCase,
+    private val accountRepository: AccountRepository,
+    private val autofillServiceRepository: AutofillServiceRepository,
+    private val chromeAutofillRepository: ChromeAutofillRepository,
+
     private val passwordStrengthEstimator: PasswordStrengthEstimator
 ) : ViewModel() {
+
+    private val stepsToSkip = MutableStateFlow<Set<OnboardingStep>>(emptySet())
+
+    init {
+        calculateStepsToSkip()
+    }
+
+    private fun calculateStepsToSkip() {
+        viewModelScope.launch {
+            val skipSteps = buildSet {
+                if (!biometricAvailabilityRepository.availability()) add(OnboardingStep.EnableBiometrics)
+                if (accountRepository.getOrNull() != null || hasV1Password()) add(OnboardingStep.ImportExistingData)
+                if (autofillServiceRepository.isEnabled() && chromeAutofillRepository.isAutofillEnabled())
+                    add(OnboardingStep.EnableAutofillService)
+            }
+            stepsToSkip.update { skipSteps }
+        }
+    }
 
     private val passwordTextFieldState = TextFieldState()
     private val confirmPasswordTextFieldState = TextFieldState()
@@ -138,7 +168,7 @@ internal class OnboardingViewModel(
             }
         }
 
-        val nextStep = currentStep.nextStep() ?: return finishUp()
+        val nextStep = currentStep.nextStep(stepsToSkip.value) ?: return finishUp()
         _step.update { nextStep }
     }
 

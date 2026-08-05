@@ -14,6 +14,7 @@ import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaf
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -42,10 +43,13 @@ import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.auth.presentation.authGraph
 import de.davis.keygo.feature.backup.presentation.BackupHubRoute
 import de.davis.keygo.feature.backup.presentation.backupGraph
+import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
+import de.davis.keygo.feature.onboarding.presentation.onboardingGraph
 import de.davis.keygo.feature.settings.presentation.ChangePasswordRoute
 import de.davis.keygo.feature.settings.presentation.settingsGraph
 import de.davis.keygo.item.dialog.SelectItemContent
 import kotlinx.coroutines.launch
+import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
 class MainActivity : FragmentActivity() {
@@ -94,6 +98,13 @@ private fun App() {
 
     val scope = rememberCoroutineScope()
 
+    val viewModel = koinViewModel<AppViewModel>()
+    val hasAccess by produceState<Boolean?>(null) {
+        value = viewModel.hasValidAccount()
+    }
+
+    if (hasAccess == null) return // TODO: Add this to splash screen
+
     KeyGoNavigationWrapper(
         currentDestination = currentDestination,
         navigateToTopLevelDestination = {
@@ -125,7 +136,7 @@ private fun App() {
     ) {
         NavHost(
             navController = navController,
-            startDestination = AuthRoute(),
+            startDestination = if (hasAccess == true) AuthRoute() else OnboardingRoute(),
         ) {
             authGraph(
                 onSuccess = { totpUri ->
@@ -135,6 +146,18 @@ private fun App() {
 
                     navController.navigate(dest) {
                         popUpTo<AuthRoute> { inclusive = true }
+                    }
+                }
+            )
+
+            onboardingGraph(
+                onSuccess = { totpUri ->
+                    val dest = totpUri?.let {
+                        RouteDestination.Home.Root(it)
+                    } ?: RouteDestination.TopLevelAppGraph
+
+                    navController.navigate(dest) {
+                        popUpTo<OnboardingRoute> { inclusive = true }
                     }
                 }
             )

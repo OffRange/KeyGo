@@ -30,7 +30,7 @@ import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun OnboardingScreen() {
+fun OnboardingScreen(onSuccess: () -> Unit) {
     val viewModel = koinViewModel<OnboardingViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -136,7 +136,9 @@ private fun OnboardingScreenPreview() {
         Surface(
             modifier = Modifier.fillMaxSize(),
         ) {
-            OnboardingScreen()
+            OnboardingScreen(
+                onSuccess = {}
+            )
         }
     }
 }
