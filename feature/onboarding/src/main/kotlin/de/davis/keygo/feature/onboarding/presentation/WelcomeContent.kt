@@ -18,11 +18,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import de.davis.keygo.feature.onboarding.R
 import de.davis.keygo.feature.onboarding.presentation.component.LargeIconContainer
 import de.davis.keygo.feature.onboarding.presentation.component.OnboardingScaffold
+import de.davis.keygo.feature.onboarding.presentation.model.OnboardingUiState
 import de.davis.keygo.core.ui.R as CoreUiR
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun WelcomeContent(onContinue: () -> Unit) {
+internal fun WelcomeContent(state: OnboardingUiState.Welcome, onContinue: () -> Unit) {
     OnboardingScaffold(
         iconContainer = {
             LargeIconContainer(
@@ -34,8 +35,8 @@ internal fun WelcomeContent(onContinue: () -> Unit) {
                 )
             }
         },
-        title = stringResource(R.string.welcome_title),
-        description = stringResource(R.string.welcome_subtitle),
+        title = stringResource(if (state.migrating) R.string.welcome_migrating_title else R.string.welcome_title),
+        description = stringResource(if (state.migrating) R.string.welcome_migrating_subtitle else R.string.welcome_subtitle),
         contentHorizontalAlignment = Alignment.CenterHorizontally
     ) {
         // No content for Welcome
@@ -50,6 +51,7 @@ private fun WelcomeContentPreview() {
             SharedTransitionLayout {
                 AnimatedVisibility(visible = true) {
                     WelcomeContent(
+                        state = OnboardingUiState.Welcome(),
                         onContinue = {}
                     )
                 }

@@ -6,7 +6,7 @@ import de.davis.keygo.core.ui.model.UiFieldError
 
 internal sealed interface OnboardingUiState {
 
-    data object Welcome : OnboardingUiState
+    data class Welcome(val migrating: Boolean = false) : OnboardingUiState
 
     data class SetMainPassword(
         val passwordTextFieldState: TextFieldState,

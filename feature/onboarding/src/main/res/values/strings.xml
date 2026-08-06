@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="get_started">Get Started</string>
+    <string name="migrate">Migrate</string>
     <string name="continue_text">Continue</string>
     <string name="skip_for_now">Skip for now</string>
     <string name="enable_biometrics">Enable Biometrics</string>
@@ -10,6 +11,8 @@
 
     <string name="welcome_title">Own your credentials, own your privacy.</string>
     <string name="welcome_subtitle">KeyGo encrypts everything locally. No servers, no cloud, no tracking. Just you and your data.</string>
+    <string name="welcome_migrating_title">Welcome back.</string>
+    <string name="welcome_migrating_subtitle">You already have a KeyGo vault on this device. Let\'s finish setting up your account.</string>
 
     <string name="main_password_title">Set your main password</string>
     <string name="main_password_subtitle">This password will encrypt your vaults. KeyGo never stores this password. Make it secure.</string>

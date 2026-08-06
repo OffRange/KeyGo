@@ -27,7 +27,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.mapLatest
@@ -54,6 +53,7 @@ internal class OnboardingViewModel(
 ) : ViewModel() {
 
     private val stepsToSkip = MutableStateFlow<Set<OnboardingStep>>(emptySet())
+    private val isMigrating = MutableStateFlow(false)
 
     init {
         calculateStepsToSkip()
@@ -61,13 +61,17 @@ internal class OnboardingViewModel(
 
     private fun calculateStepsToSkip() {
         viewModelScope.launch {
+            val hasAccount = accountRepository.getOrNull() != null
+            val hasLegacyPassword = hasV1Password()
+
             val skipSteps = buildSet {
                 if (!biometricAvailabilityRepository.availability()) add(OnboardingStep.EnableBiometrics)
-                if (accountRepository.getOrNull() != null || hasV1Password()) add(OnboardingStep.ImportExistingData)
+                if (hasAccount || hasLegacyPassword) add(OnboardingStep.ImportExistingData)
                 if (autofillServiceRepository.isEnabled() && chromeAutofillRepository.isAutofillEnabled())
                     add(OnboardingStep.EnableAutofillService)
             }
             stepsToSkip.update { skipSteps }
+            isMigrating.update { hasLegacyPassword && !hasAccount }
         }
     }
 
@@ -106,7 +110,12 @@ internal class OnboardingViewModel(
     @OptIn(ExperimentalCoroutinesApi::class)
     val state = _step.flatMapLatest {
         when (it) {
-            OnboardingStep.Welcome -> flowOf(OnboardingUiState.Welcome)
+            OnboardingStep.Welcome -> isMigrating.mapLatest { migrating ->
+                OnboardingUiState.Welcome(
+                    migrating
+                )
+            }
+
             OnboardingStep.SetMainPassword -> _mainPasswordState
             OnboardingStep.EnableBiometrics -> _enableBiometricsState
             OnboardingStep.ImportExistingData -> _importDataState
@@ -118,7 +127,7 @@ internal class OnboardingViewModel(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = OnboardingUiState.Welcome
+        initialValue = OnboardingUiState.Welcome()
     )
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)

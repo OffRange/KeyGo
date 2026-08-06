@@ -111,7 +111,8 @@ fun OnboardingScreen(onSuccess: () -> Unit) {
         ) {
             AnimatedContent(state, contentKey = { it::class }) { state ->
                 when (state) {
-                    OnboardingUiState.Welcome -> WelcomeContent(
+                    is OnboardingUiState.Welcome -> WelcomeContent(
+                        state = state,
                         onContinue = viewModel::onNextStep
                     )
 
@@ -141,7 +142,7 @@ private val OnboardingUiState.buttonText: String
     @Composable
     get() = stringResource(
         when (this) {
-            OnboardingUiState.Welcome -> R.string.get_started
+            is OnboardingUiState.Welcome -> if (migrating) R.string.migrate else R.string.get_started
             is OnboardingUiState.SetMainPassword -> R.string.continue_text
             OnboardingUiState.EnableBiometrics -> R.string.enable_biometrics
             OnboardingUiState.ImportData -> R.string.skip_for_now
@@ -153,7 +154,7 @@ private val OnboardingUiState.buttonText: String
 private val OnboardingUiState.optionalActionText: String?
     @Composable
     get() = when (this) {
-        OnboardingUiState.Welcome,
+        is OnboardingUiState.Welcome,
         OnboardingUiState.ImportData,
         is OnboardingUiState.SetMainPassword -> null
 
