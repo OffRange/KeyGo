@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
-import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.util.onSuccess
@@ -29,10 +28,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -95,14 +91,6 @@ internal class OnboardingViewModel(
     private val passwordTextFieldState = TextFieldState()
     private val confirmPasswordTextFieldState = TextFieldState()
 
-    private val _mainPasswordState = MutableStateFlow(
-        OnboardingUiState.SetMainPassword(
-            passwordTextFieldState = passwordTextFieldState,
-            confirmPasswordTextFieldState = confirmPasswordTextFieldState,
-            passwordScore = PasswordScore.None
-        )
-    )
-
     private val _enableBiometricsState = MutableStateFlow(
         OnboardingUiState.EnableBiometrics
     )
@@ -135,15 +123,43 @@ internal class OnboardingViewModel(
     private val _loading = MutableStateFlow(false)
     val loading = _loading.asStateFlow()
 
+    private val _passwordError = MutableStateFlow<UiFieldError?>(null)
+    private val _confirmPasswordError = MutableStateFlow<UiFieldError?>(null)
+
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
+    private val passwordScoreFlow = snapshotFlow { passwordTextFieldState.text }
+        .debounce(150.milliseconds)
+        .mapLatest { passwordStrengthEstimator(it.toString()) }
+        .distinctUntilChanged()
+        .flowOn(Dispatchers.Default)
+
+    private val _mainPasswordState = combine(
+        snapshotFlow { passwordTextFieldState.text },
+        snapshotFlow { confirmPasswordTextFieldState.text },
+        passwordScoreFlow,
+        _passwordError,
+        _confirmPasswordError
+    ) { pwd, confirm, score, manualPwdError, manualConfirmError ->
+        // Automatically clear manual errors if the user has fixed them by typing
+        val resolvedPwdError = if (pwd.isNotBlank()) null else manualPwdError
+        val resolvedConfirmError = if (pwd == confirm) null else manualConfirmError
+
+        OnboardingUiState.SetMainPassword(
+            passwordTextFieldState = passwordTextFieldState,
+            confirmPasswordTextFieldState = confirmPasswordTextFieldState,
+            passwordScore = score,
+            passwordError = resolvedPwdError,
+            confirmPasswordError = resolvedConfirmError
+        )
+    }
+
     private val _step = MutableStateFlow(OnboardingStep.Welcome)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val state = _step.flatMapLatest {
         when (it) {
             OnboardingStep.Welcome -> isMigrating.mapLatest { migrating ->
-                OnboardingUiState.Welcome(
-                    migrating
-                )
+                OnboardingUiState.Welcome(migrating)
             }
 
             OnboardingStep.SetMainPassword -> _mainPasswordState
@@ -151,54 +167,11 @@ internal class OnboardingViewModel(
             OnboardingStep.ImportExistingData -> _importDataState
             OnboardingStep.EnableAutofillService -> _enableAutofillState
         }
-    }.onStart {
-        observePasswordStrength()
-        observePasswordError()
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = OnboardingUiState.Welcome()
     )
-
-    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
-    private fun observePasswordStrength() {
-        snapshotFlow { passwordTextFieldState.text }
-            .debounce(150.milliseconds)
-            .mapLatest { passwordStrengthEstimator(it.toString()) }
-            .distinctUntilChanged()
-            .onEach { score ->
-                _mainPasswordState.update {
-                    it.copy(passwordScore = score)
-                }
-            }
-            .flowOn(Dispatchers.Default)
-            .launchIn(viewModelScope)
-    }
-
-    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
-    private fun observePasswordError() {
-        combine(
-            snapshotFlow { passwordTextFieldState.text },
-            snapshotFlow { confirmPasswordTextFieldState.text }
-        ) { pwd, confirmation ->
-            pwd.trim() to (pwd == confirmation)
-        }.debounce(150.milliseconds)
-            .distinctUntilChanged()
-            .onEach { (password, isEqual) ->
-                if (password.isNotBlank()) {
-                    _mainPasswordState.update {
-                        it.copy(passwordError = null)
-                    }
-                }
-
-                if (isEqual) {
-                    _mainPasswordState.update {
-                        it.copy(confirmPasswordError = null)
-                    }
-                }
-            }
-            .launchIn(viewModelScope)
-    }
 
     fun onNextStep() {
         when (_step.value) {
@@ -207,16 +180,12 @@ internal class OnboardingViewModel(
                 val confirmPassword = confirmPasswordTextFieldState.text.toString()
 
                 if (password.isBlank()) {
-                    _mainPasswordState.update {
-                        it.copy(passwordError = UiFieldError.Empty)
-                    }
+                    _passwordError.update { UiFieldError.Empty }
                     return
                 }
 
                 if (password != confirmPassword) {
-                    _mainPasswordState.update {
-                        it.copy(confirmPasswordError = UiFieldError.Mismatch)
-                    }
+                    _confirmPasswordError.update { UiFieldError.Mismatch }
                     return
                 }
 
