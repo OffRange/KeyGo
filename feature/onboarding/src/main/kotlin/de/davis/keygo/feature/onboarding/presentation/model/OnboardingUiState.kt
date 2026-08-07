@@ -18,5 +18,24 @@ internal sealed interface OnboardingUiState {
 
     data object EnableBiometrics : OnboardingUiState
     data object ImportData : OnboardingUiState
-    data object EnableAutofill : OnboardingUiState
+
+    data class EnableAutofill(
+        val systemAutofillEnabled: Boolean = false,
+        val chromeAvailable: Boolean = false,
+        val chromeAutofillEnabled: Boolean = false,
+    ) : OnboardingUiState {
+
+        /**
+         * Single source of truth for the primary button: the ViewModel reads it to decide what to
+         * do, the screen reads it to decide what to say. Driven by state rather than a counter, so
+         * a device that already has Chrome on but KeyGo unselected still starts at the picker and
+         * then goes straight to done.
+         */
+        val nextAction: AutofillSetupAction
+            get() = when {
+                !systemAutofillEnabled -> AutofillSetupAction.OpenSystemSettings
+                chromeAvailable && !chromeAutofillEnabled -> AutofillSetupAction.OpenChromeSettings
+                else -> AutofillSetupAction.Finish
+            }
+    }
 }

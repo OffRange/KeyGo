@@ -5,7 +5,6 @@
     <string name="continue_text">Continue</string>
     <string name="skip_for_now">Skip for now</string>
     <string name="enable_biometrics">Enable Biometrics</string>
-    <string name="open_settings">Open settings</string>
     <string name="finish_setup">Finish setup</string>
 
 
@@ -34,4 +33,5 @@
     <string name="autofill_choose_keygo_support">Select KeyGo as your autofill provider &amp; confirm</string>
     <string name="autofill_chrome">Apply to Chrome</string>
     <string name="autofill_chrome_support">Open Chrome settings &amp; enable 3rd party autofill providers</string>
+    <string name="autofill_enable_in_chrome">Enable in Chrome</string>
 </resources>

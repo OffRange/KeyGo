@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
@@ -22,7 +23,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -30,10 +30,16 @@ import androidx.compose.ui.unit.dp
 import de.davis.keygo.feature.onboarding.R
 import de.davis.keygo.feature.onboarding.presentation.component.OnboardingScaffold
 import de.davis.keygo.feature.onboarding.presentation.component.SmallIconContainer
+import de.davis.keygo.feature.onboarding.presentation.model.AutofillSetupStatus
+import de.davis.keygo.feature.onboarding.presentation.model.AutofillSetupStep
+import de.davis.keygo.feature.onboarding.presentation.model.OnboardingUiState
+import de.davis.keygo.feature.onboarding.presentation.model.setupSteps
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun EnableAutofillContent() {
+internal fun EnableAutofillContent(state: OnboardingUiState.EnableAutofill) {
+    val steps = state.setupSteps()
+
     OnboardingScaffold(
         iconContainer = {
             SmallIconContainer(
@@ -51,65 +57,42 @@ internal fun EnableAutofillContent() {
         Column(
             verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
         ) {
-            SegmentedListItem(
-                shapes = ListItemDefaults.segmentedShapes(0, 3),
-                leadingContent = {
-                    NumberBadge(
-                        number = 1,
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                },
-                supportingContent = {
-                    Text(text = stringResource(R.string.autofill_open_settings_support))
+            steps.forEachIndexed { index, (step, status) ->
+                SegmentedListItem(
+                    shapes = ListItemDefaults.segmentedShapes(index, steps.size),
+                    leadingContent = {
+                        StepBadge(
+                            number = index + 1,
+                            status = status,
+                        )
+                    },
+                    supportingContent = {
+                        Text(text = stringResource(step.supportingRes))
+                    }
+                ) {
+                    Text(text = stringResource(step.titleRes))
                 }
-            ) {
-                Text(text = stringResource(R.string.autofill_open_settings))
-            }
-
-            SegmentedListItem(
-                shapes = ListItemDefaults.segmentedShapes(1, 3),
-                leadingContent = {
-                    NumberBadge(
-                        number = 2,
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                },
-                supportingContent = {
-                    Text(text = stringResource(R.string.autofill_choose_keygo_support))
-                }
-            ) {
-                Text(text = stringResource(R.string.autofill_choose_keygo))
-            }
-
-            SegmentedListItem(
-                shapes = ListItemDefaults.segmentedShapes(2, 3),
-                leadingContent = {
-                    NumberBadge(
-                        number = 3,
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                },
-                supportingContent = {
-                    Text(text = stringResource(R.string.autofill_chrome_support))
-                }
-            ) {
-                Text(text = stringResource(R.string.autofill_chrome))
             }
         }
     }
 }
 
 @Composable
-internal fun NumberBadge(
+internal fun StepBadge(
     number: Int,
-    containerColor: Color,
-    contentColor: Color,
+    status: AutofillSetupStatus,
     modifier: Modifier = Modifier,
     size: Dp = 40.dp,
 ) {
+    val containerColor = when (status) {
+        AutofillSetupStatus.Current -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.primaryContainer
+    }
+    val contentColor = when (status) {
+        AutofillSetupStatus.Current -> MaterialTheme.colorScheme.onPrimary
+        else -> MaterialTheme.colorScheme.onPrimaryContainer
+    }
+
     Box(
         modifier = modifier
             .size(size)
@@ -117,7 +100,13 @@ internal fun NumberBadge(
             .background(containerColor),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
+        if (status == AutofillSetupStatus.Done)
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = null,
+                tint = contentColor,
+            )
+        else Text(
             text = number.toString(),
             color = contentColor,
             style = MaterialTheme.typography.headlineSmallEmphasized,
@@ -125,13 +114,43 @@ internal fun NumberBadge(
     }
 }
 
+private val AutofillSetupStep.titleRes
+    get() = when (this) {
+        AutofillSetupStep.OpenSystemSettings -> R.string.autofill_open_settings
+        AutofillSetupStep.ChooseKeyGo -> R.string.autofill_choose_keygo
+        AutofillSetupStep.EnableInChrome -> R.string.autofill_chrome
+    }
+
+private val AutofillSetupStep.supportingRes
+    get() = when (this) {
+        AutofillSetupStep.OpenSystemSettings -> R.string.autofill_open_settings_support
+        AutofillSetupStep.ChooseKeyGo -> R.string.autofill_choose_keygo_support
+        AutofillSetupStep.EnableInChrome -> R.string.autofill_chrome_support
+    }
 
 @Preview
 @Composable
 private fun EnableAutofillContentPreview() {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
-            EnableAutofillContent()
+            EnableAutofillContent(
+                state = OnboardingUiState.EnableAutofill(chromeAvailable = true)
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun EnableAutofillContentChromePendingPreview() {
+    MaterialTheme {
+        Surface(modifier = Modifier.fillMaxSize()) {
+            EnableAutofillContent(
+                state = OnboardingUiState.EnableAutofill(
+                    systemAutofillEnabled = true,
+                    chromeAvailable = true,
+                )
+            )
         }
     }
 }

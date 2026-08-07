@@ -13,6 +13,7 @@ import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.autofill.domain.repository.AutofillServiceRepository
 import de.davis.keygo.feature.autofill.domain.repository.ChromeAutofillRepository
+import de.davis.keygo.feature.onboarding.presentation.model.AutofillSetupAction
 import de.davis.keygo.feature.onboarding.presentation.model.OnboardingStep
 import de.davis.keygo.feature.onboarding.presentation.model.OnboardingUiState
 import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
@@ -55,23 +56,39 @@ internal class OnboardingViewModel(
     private val stepsToSkip = MutableStateFlow<Set<OnboardingStep>>(emptySet())
     private val isMigrating = MutableStateFlow(false)
 
-    init {
-        calculateStepsToSkip()
-    }
-
     private fun calculateStepsToSkip() {
         viewModelScope.launch {
             val hasAccount = accountRepository.getOrNull() != null
             val hasLegacyPassword = hasV1Password()
+            val autofill = readAutofillState()
+            _enableAutofillState.update { autofill }
 
             val skipSteps = buildSet {
                 if (!biometricAvailabilityRepository.availability()) add(OnboardingStep.EnableBiometrics)
                 if (hasAccount || hasLegacyPassword) add(OnboardingStep.ImportExistingData)
-                if (autofillServiceRepository.isEnabled() && chromeAutofillRepository.isAutofillEnabled())
+                // Not "both enabled": on a device with no Chrome the Chrome read is false forever,
+                // which would keep offering a step that has nothing left to do.
+                if (autofill.nextAction == AutofillSetupAction.Finish)
                     add(OnboardingStep.EnableAutofillService)
             }
             stepsToSkip.update { skipSteps }
             isMigrating.update { hasLegacyPassword && !hasAccount }
+        }
+    }
+
+    private suspend fun readAutofillState(): OnboardingUiState.EnableAutofill {
+        val chromeAvailable = chromeAutofillRepository.isAvailable()
+        return OnboardingUiState.EnableAutofill(
+            systemAutofillEnabled = autofillServiceRepository.isEnabled(),
+            chromeAvailable = chromeAvailable,
+            chromeAutofillEnabled = chromeAvailable && chromeAutofillRepository.isAutofillEnabled(),
+        )
+    }
+
+    fun refreshAutofillState() {
+        viewModelScope.launch {
+            val autofill = readAutofillState()
+            _enableAutofillState.update { autofill }
         }
     }
 
@@ -95,12 +112,25 @@ internal class OnboardingViewModel(
     )
 
     private val _enableAutofillState = MutableStateFlow(
-        OnboardingUiState.EnableAutofill
+        OnboardingUiState.EnableAutofill()
     )
 
+    // Declared after every property calculateStepsToSkip() touches. init runs in declaration
+    // order, and viewModelScope is Main.immediate, so on the main thread this launch body starts
+    // executing synchronously; if it ran before _enableAutofillState above it would read a
+    // not-yet-initialized property.
+    init {
+        calculateStepsToSkip()
+    }
 
     private val biometricChannel = Channel<Unit>()
     val biometricFlow = biometricChannel.receiveAsFlow()
+
+    private val autofillPickerChannel = Channel<Unit>(Channel.BUFFERED)
+    val autofillPickerFlow = autofillPickerChannel.receiveAsFlow()
+
+    private val finishedChannel = Channel<Unit>(Channel.BUFFERED)
+    val finishedFlow = finishedChannel.receiveAsFlow()
 
     private val _loading = MutableStateFlow(false)
     val loading = _loading.asStateFlow()
@@ -198,6 +228,21 @@ internal class OnboardingViewModel(
                 return // wait for biometric result before proceeding to next step
             }
 
+            OnboardingStep.EnableAutofillService -> when (_enableAutofillState.value.nextAction) {
+                AutofillSetupAction.OpenSystemSettings -> {
+                    autofillPickerChannel.trySend(Unit)
+                    return // wait for the user to come back from the system picker
+                }
+
+                AutofillSetupAction.OpenChromeSettings -> {
+                    chromeAutofillRepository.openChromeAutofillSettings()
+                    return // wait for the user to come back from Chrome
+                }
+
+                // Nothing left to set up, fall through to the step advance below.
+                AutofillSetupAction.Finish -> {}
+            }
+
             else -> {}
         }
 
@@ -229,7 +274,7 @@ internal class OnboardingViewModel(
     }
 
     private fun finishUp() {
-
+        finishedChannel.trySend(Unit)
     }
 
     private suspend fun <R> loading(block: suspend () -> R): R {

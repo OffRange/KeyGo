@@ -5,6 +5,10 @@ plugins {
 
 android {
     namespace = "de.davis.keygo.feature.onboarding"
+
+    defaultConfig {
+        missingDimensionStrategy("store", "playStore")
+    }
 }
 
 dependencies {

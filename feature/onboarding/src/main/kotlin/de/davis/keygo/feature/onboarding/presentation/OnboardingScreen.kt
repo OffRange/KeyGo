@@ -1,6 +1,11 @@
 package de.davis.keygo.feature.onboarding.presentation
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.provider.Settings
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,8 +28,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
@@ -33,8 +41,11 @@ import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.onboarding.R
+import de.davis.keygo.feature.onboarding.presentation.model.AutofillSetupAction
 import de.davis.keygo.feature.onboarding.presentation.model.OnboardingUiState
 import org.koin.androidx.compose.koinViewModel
+
+private const val TAG = "OnboardingScreen"
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +66,38 @@ fun OnboardingScreen(onSuccess: () -> Unit) {
             Log.e("OnboardingScreen", "Failed to create cipher for biometric access: $it")
             // TODO: show error
         }
+    }
+
+    ObserveAsEvents(viewModel.finishedFlow) {
+        onSuccess()
+    }
+
+    val context = LocalContext.current
+    val autofillPickerLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {}
+
+    ObserveAsEvents(viewModel.autofillPickerFlow) {
+        try {
+            autofillPickerLauncher.launch(
+                Intent(Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE).apply {
+                    data = "package:${context.packageName}".toUri()
+                }
+            )
+        } catch (e: ActivityNotFoundException) {
+            // Some AOSP builds, Android TV, and a few OEM ROMs have nothing that resolves this
+            // intent. The user still has the "Finish setup" button to move past the step, so
+            // failing quietly here is acceptable as long as it stays diagnosable.
+            Log.w(TAG, "No activity found to handle the system autofill picker", e)
+        }
+    }
+
+    // The picker reports nothing back and Chrome's hand off is not a result flow at all, so the
+    // resume read is what actually learns the new state. Keying on the step also refreshes on
+    // arrival, and keeps Chrome's cross process query off every other step's resume.
+    val onAutofillStep = state is OnboardingUiState.EnableAutofill
+    LifecycleResumeEffect(onAutofillStep) {
+        if (onAutofillStep) viewModel.refreshAutofillState()
+        onPauseOrDispose {}
     }
 
     val contentHeight = ButtonDefaults.LargeContainerHeight
@@ -120,7 +163,7 @@ fun OnboardingScreen(onSuccess: () -> Unit) {
 
                     OnboardingUiState.EnableBiometrics -> EnableBiometricsContent()
                     OnboardingUiState.ImportData -> ImportVaultContent()
-                    OnboardingUiState.EnableAutofill -> EnableAutofillContent()
+                    is OnboardingUiState.EnableAutofill -> EnableAutofillContent(state = state)
                 }
             }
         }
@@ -146,7 +189,11 @@ private val OnboardingUiState.buttonText: String
             is OnboardingUiState.SetMainPassword -> R.string.continue_text
             OnboardingUiState.EnableBiometrics -> R.string.enable_biometrics
             OnboardingUiState.ImportData -> R.string.skip_for_now
-            OnboardingUiState.EnableAutofill -> R.string.open_settings
+            is OnboardingUiState.EnableAutofill -> when (nextAction) {
+                AutofillSetupAction.OpenSystemSettings -> R.string.autofill_open_settings
+                AutofillSetupAction.OpenChromeSettings -> R.string.autofill_enable_in_chrome
+                AutofillSetupAction.Finish -> R.string.finish_setup
+            }
         }
     )
 
@@ -159,7 +206,8 @@ private val OnboardingUiState.optionalActionText: String?
         is OnboardingUiState.SetMainPassword -> null
 
         OnboardingUiState.EnableBiometrics -> R.string.skip_for_now
-        OnboardingUiState.EnableAutofill -> R.string.finish_setup
+        is OnboardingUiState.EnableAutofill ->
+            R.string.finish_setup.takeIf { nextAction != AutofillSetupAction.Finish }
     }?.let { stringResource(it) }
 
 private fun OnboardingUiState.isOutlinedButonCandidate() = this is OnboardingUiState.ImportData
