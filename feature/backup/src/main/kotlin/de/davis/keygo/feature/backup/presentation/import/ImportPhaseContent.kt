@@ -203,6 +203,7 @@ internal fun ImportErrorContent(
     val message = when (error) {
         ImportError.FileUnreadable -> stringResource(R.string.import_error_file_unreadable)
         ImportError.EmptyFile -> stringResource(R.string.import_error_empty)
+        ImportError.UnsupportedFormat -> stringResource(R.string.import_error_unsupported)
         ImportError.NothingImported -> stringResource(R.string.import_error_nothing)
         ImportError.SessionLocked -> stringResource(R.string.import_error_session_locked)
         is ImportError.ParseFailed -> stringResource(R.string.import_error_parse)

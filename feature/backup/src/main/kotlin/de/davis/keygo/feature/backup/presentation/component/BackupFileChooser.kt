@@ -45,7 +45,7 @@ fun BackupFileChooser(
     modifier: Modifier = Modifier,
 ) {
     when (destination) {
-        null -> ChooserCard(
+        null -> BackupFileChooserCard(
             icon = chooserIcon,
             title = chooserTitle,
             subtitle = chooserSubtitle,
@@ -64,8 +64,12 @@ fun BackupFileChooser(
     }
 }
 
+/**
+ * The empty state of [BackupFileChooser], exposed on its own for hosts that never show a selected
+ * file because picking one immediately hands off somewhere else.
+ */
 @Composable
-private fun ChooserCard(
+fun BackupFileChooserCard(
     icon: ImageVector,
     title: String,
     subtitle: String,

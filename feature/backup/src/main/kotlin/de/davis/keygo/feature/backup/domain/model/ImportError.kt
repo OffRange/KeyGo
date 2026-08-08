@@ -6,6 +6,7 @@ sealed interface ImportError {
     data object SessionLocked : ImportError
     data object FileUnreadable : ImportError
     data object EmptyFile : ImportError
+    data object UnsupportedFormat : ImportError
     data object WrongCredential : ImportError
     data object PassphraseRequired : ImportError
     data class ParseFailed(val cause: BackupException) : ImportError

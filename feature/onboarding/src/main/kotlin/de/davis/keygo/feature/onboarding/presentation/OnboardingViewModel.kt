@@ -12,6 +12,7 @@ import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.autofill.domain.repository.AutofillServiceRepository
 import de.davis.keygo.feature.autofill.domain.repository.ChromeAutofillRepository
+import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
 import de.davis.keygo.feature.onboarding.presentation.model.AutofillSetupAction
 import de.davis.keygo.feature.onboarding.presentation.model.OnboardingStep
 import de.davis.keygo.feature.onboarding.presentation.model.OnboardingUiState
@@ -96,7 +97,7 @@ internal class OnboardingViewModel(
     )
 
     private val _importDataState = MutableStateFlow(
-        OnboardingUiState.ImportData
+        OnboardingUiState.ImportData()
     )
 
     private val _enableAutofillState = MutableStateFlow(
@@ -236,6 +237,21 @@ internal class OnboardingViewModel(
 
         internalSkip()
     }
+
+    fun onImportFileChosen(uri: BackupDestinationUri) =
+        _importDataState.update { it.copy(fileUri = uri) }
+
+    fun onImportCancelled() = _importDataState.update { it.copy(fileUri = null) }
+
+    /**
+     * The wizard reports its own outcome, so onboarding only has to move on.
+     *
+     * Deliberately does not clear `fileUri` first. `state` derives from `_step.flatMapLatest`, so
+     * advancing `_step` here is what swaps `state` straight to the next step's flow. Clearing
+     * `fileUri` before that swap would emit `ImportData(null)` while `_step` still pointed at
+     * `ImportExistingData`, flashing the chooser card between the summary and the next step.
+     */
+    fun onImportFinished() = internalSkip()
 
     private fun internalSkip() {
         val nextStep = _step.value.nextStep(stepsToSkip.value) ?: return finishUp()

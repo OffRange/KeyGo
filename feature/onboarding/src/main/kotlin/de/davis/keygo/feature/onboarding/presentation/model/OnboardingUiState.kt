@@ -3,6 +3,7 @@ package de.davis.keygo.feature.onboarding.presentation.model
 import androidx.compose.foundation.text.input.TextFieldState
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.ui.model.UiFieldError
+import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
 
 internal sealed interface OnboardingUiState {
 
@@ -17,7 +18,12 @@ internal sealed interface OnboardingUiState {
     ) : OnboardingUiState
 
     data object EnableBiometrics : OnboardingUiState
-    data object ImportData : OnboardingUiState
+
+    /**
+     * @param fileUri the file the user picked to import. While it is set the import wizard owns the
+     * screen, and clearing it returns to the chooser.
+     */
+    data class ImportData(val fileUri: BackupDestinationUri? = null) : OnboardingUiState
 
     data class EnableAutofill(
         val systemAutofillEnabled: Boolean = false,

@@ -14,7 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import de.davis.keygo.feature.backup.presentation.component.BackupFileChooser
+import de.davis.keygo.feature.backup.presentation.component.BackupFileChooserCard
 import de.davis.keygo.feature.onboarding.R
 import de.davis.keygo.feature.onboarding.presentation.component.OnboardingScaffold
 import de.davis.keygo.feature.onboarding.presentation.component.SmallIconContainer
@@ -22,7 +22,7 @@ import de.davis.keygo.feature.backup.R as BackupR
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun ImportVaultContent() {
+internal fun ImportVaultContent(onChooseFile: () -> Unit) {
     OnboardingScaffold(
         iconContainer = {
             SmallIconContainer(
@@ -37,15 +37,12 @@ internal fun ImportVaultContent() {
         title = stringResource(R.string.import_title),
         description = stringResource(R.string.import_subtitle),
     ) {
-        BackupFileChooser(
-            destination = null,
-            onChoose = {},
-            chooserIcon = Icons.Default.FileOpen,
-            chooserTitle = stringResource(BackupR.string.destination_choose_title),
-            chooserSubtitle = stringResource(BackupR.string.destination_choose_subtitle),
-            chooserAction = stringResource(BackupR.string.destination_choose_action),
-            changeLabel = stringResource(BackupR.string.destination_filename_label),
-            fileNameLabel = "TODO", // TODO
+        BackupFileChooserCard(
+            icon = Icons.Default.FileOpen,
+            title = stringResource(BackupR.string.import_choose_title),
+            subtitle = stringResource(BackupR.string.import_choose_subtitle),
+            action = stringResource(BackupR.string.import_choose_action),
+            onChoose = onChooseFile,
         )
     }
 }
@@ -55,7 +52,7 @@ internal fun ImportVaultContent() {
 private fun ImportVaultContentPreview() {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
-            ImportVaultContent()
+            ImportVaultContent(onChooseFile = {})
         }
     }
 }

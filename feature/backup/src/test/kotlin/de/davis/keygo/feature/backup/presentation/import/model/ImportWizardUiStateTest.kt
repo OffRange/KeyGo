@@ -3,6 +3,9 @@ package de.davis.keygo.feature.backup.presentation.import.model
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.feature.backup.domain.model.BackupDestination
+import de.davis.keygo.feature.backup.domain.model.ImportError
+import de.davis.keygo.feature.backup.domain.model.ImportProgress
+import de.davis.keygo.feature.backup.domain.model.ImportSummary
 import de.davis.keygo.feature.backup.domain.model.ImportTarget
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -105,5 +108,35 @@ class ImportWizardUiStateTest {
         val state = ImportWizardUiState(backupDestination = destination("my.passwords.backup.csv"))
 
         assertEquals("my.passwords.backup", state.suggestedVaultName)
+    }
+
+    @Test
+    fun `back is live while the user is still answering questions`() {
+        assertTrue(ImportWizardUiState(progress = null).backEnabled)
+    }
+
+    @Test
+    fun `back is live after a failure`() {
+        val progress = ImportProgress.Failed(ImportError.NothingImported)
+
+        assertTrue(ImportWizardUiState(progress = progress).backEnabled)
+    }
+
+    @Test
+    fun `back is inert while the import runs`() {
+        assertFalse(ImportWizardUiState(progress = ImportProgress.Reading).backEnabled)
+        assertFalse(ImportWizardUiState(progress = ImportProgress.Parsing).backEnabled)
+        assertFalse(
+            ImportWizardUiState(
+                progress = ImportProgress.Running(processed = 1, total = 10),
+            ).backEnabled,
+        )
+    }
+
+    @Test
+    fun `back is inert on the summary`() {
+        val summary = ImportSummary(imported = 1, skipped = 0, failed = 0, vaultsCreated = 1)
+
+        assertFalse(ImportWizardUiState(progress = ImportProgress.Succeeded(summary)).backEnabled)
     }
 }

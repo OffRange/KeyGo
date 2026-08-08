@@ -40,6 +40,8 @@ import de.davis.keygo.core.security.presentation.rememberBiometricCryptoControll
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
+import de.davis.keygo.feature.backup.presentation.import.ImportWizardScreen
+import de.davis.keygo.feature.backup.presentation.import.rememberImportFilePicker
 import de.davis.keygo.feature.onboarding.R
 import de.davis.keygo.feature.onboarding.presentation.model.AutofillSetupAction
 import de.davis.keygo.feature.onboarding.presentation.model.OnboardingUiState
@@ -100,6 +102,35 @@ fun OnboardingScreen(onSuccess: () -> Unit) {
         onPauseOrDispose {}
     }
 
+    val chooseImportFile = rememberImportFilePicker(viewModel::onImportFileChosen)
+
+    // The wizard brings its own Scaffold, top bar, step indicator and continue button, so it
+    // replaces the step chrome rather than rendering inside it. It also owns back for every one of
+    // its phases while it holds a preselected file, so onboarding adds no handler of its own.
+    val importFile = (state as? OnboardingUiState.ImportData)?.fileUri
+    if (importFile != null) ImportWizardScreen(
+        preselectedFile = importFile,
+        navigateUp = viewModel::onImportCancelled,
+        onFinished = viewModel::onImportFinished,
+    )
+    else OnboardingSteps(
+        state = state,
+        loading = loading,
+        onNextStep = viewModel::onNextStep,
+        onSkip = viewModel::onSkip,
+        onChooseImportFile = chooseImportFile::launch,
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun OnboardingSteps(
+    state: OnboardingUiState,
+    loading: Boolean,
+    onNextStep: () -> Unit,
+    onSkip: () -> Unit,
+    onChooseImportFile: () -> Unit,
+) {
     val contentHeight = ButtonDefaults.LargeContainerHeight
     Scaffold(
         modifier = Modifier
@@ -112,7 +143,7 @@ fun OnboardingScreen(onSuccess: () -> Unit) {
             ) {
                 state.optionalActionText?.let {
                     TextButton(
-                        onClick = viewModel::onSkip,
+                        onClick = onSkip,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(text = it)
@@ -121,7 +152,7 @@ fun OnboardingScreen(onSuccess: () -> Unit) {
 
                 if (state.isOutlinedButonCandidate())
                     OutlinedButton(
-                        onClick = viewModel::onNextStep,
+                        onClick = onNextStep,
                         shapes = ButtonDefaults.shapesFor(contentHeight),
                         modifier = Modifier
                             .sizeIn(minHeight = contentHeight)
@@ -134,7 +165,7 @@ fun OnboardingScreen(onSuccess: () -> Unit) {
                         )
                     }
                 else Button(
-                    onClick = viewModel::onNextStep,
+                    onClick = onNextStep,
                     shapes = ButtonDefaults.shapesFor(contentHeight),
                     modifier = Modifier
                         .sizeIn(minHeight = contentHeight)
@@ -156,13 +187,16 @@ fun OnboardingScreen(onSuccess: () -> Unit) {
                 when (state) {
                     is OnboardingUiState.Welcome -> WelcomeContent(
                         state = state,
-                        onContinue = viewModel::onNextStep
+                        onContinue = onNextStep
                     )
 
                     is OnboardingUiState.SetMainPassword -> MainPasswordContent(state = state)
 
                     OnboardingUiState.EnableBiometrics -> EnableBiometricsContent()
-                    OnboardingUiState.ImportData -> ImportVaultContent()
+                    is OnboardingUiState.ImportData -> ImportVaultContent(
+                        onChooseFile = onChooseImportFile,
+                    )
+
                     is OnboardingUiState.EnableAutofill -> EnableAutofillContent(state = state)
                 }
             }
@@ -188,7 +222,7 @@ private val OnboardingUiState.buttonText: String
             is OnboardingUiState.Welcome -> if (migrating) R.string.migrate else R.string.get_started
             is OnboardingUiState.SetMainPassword -> R.string.continue_text
             OnboardingUiState.EnableBiometrics -> R.string.enable_biometrics
-            OnboardingUiState.ImportData -> R.string.skip_for_now
+            is OnboardingUiState.ImportData -> R.string.skip_for_now
             is OnboardingUiState.EnableAutofill -> when (nextAction) {
                 AutofillSetupAction.OpenSystemSettings -> R.string.autofill_open_settings
                 AutofillSetupAction.OpenChromeSettings -> R.string.autofill_enable_in_chrome
@@ -202,7 +236,7 @@ private val OnboardingUiState.optionalActionText: String?
     @Composable
     get() = when (this) {
         is OnboardingUiState.Welcome,
-        OnboardingUiState.ImportData,
+        is OnboardingUiState.ImportData,
         is OnboardingUiState.SetMainPassword -> null
 
         OnboardingUiState.EnableBiometrics -> R.string.skip_for_now
