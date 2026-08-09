@@ -1,7 +1,6 @@
 package de.davis.keygo.feature.auth.presentation
 
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -9,38 +8,21 @@ import androidx.navigation.toRoute
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockWithPasswordUseCase
-import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.util.Result
-import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.auth.presentation.model.AuthState
 import de.davis.keygo.feature.auth.presentation.model.AuthUIEvent
 import de.davis.keygo.feature.auth.presentation.model.BiometricRequest
-import de.davis.keygo.migration.create_access.domain.usecase.ClearMainPasswordUseCase
-import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
-import de.davis.keygo.migration.create_access.domain.usecase.ValidateMainPasswordUseCase
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
-import javax.crypto.Cipher
-import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
 internal class AuthViewModel(
@@ -48,13 +30,6 @@ internal class AuthViewModel(
     biometricAvailabilityRepository: BiometricAvailabilityRepository,
     accountRepository: AccountRepository,
 
-    // ---- Migration ----
-    hasV1MainPassword: HasMainPasswordUseCase,
-    private val validateMainPassword: ValidateMainPasswordUseCase,
-    private val clearMainPasswordUseCase: ClearMainPasswordUseCase,
-    // -------------------
-
-    private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val unlockWithPassword: UnlockWithPasswordUseCase,
     private val createAllAccesses: CreateAccessUseCase,
 ) : ViewModel() {
@@ -64,7 +39,6 @@ internal class AuthViewModel(
     private val authRoute = savedStateHandle.toRoute<AuthRoute>()
 
     private val passwordTextFieldState = TextFieldState()
-    private val confirmPasswordTextFieldState = TextFieldState()
 
     private val _uiState = MutableStateFlow<AuthState>(AuthState.Loading)
     val uiState = _uiState.asStateFlow()
@@ -73,8 +47,6 @@ internal class AuthViewModel(
         viewModelScope.launch {
             val activeAccount = accountRepository.getOrNull()
             val hasAccess = activeAccount != null
-            val hasAccessButShouldMigrate = if (!hasAccess) hasV1MainPassword()
-            else false
 
             val isBiometricHardwareAvailable = biometricAvailabilityRepository.availability()
             val isBiometricCryptoSetupAvailable =
@@ -83,87 +55,13 @@ internal class AuthViewModel(
             val biometricsUsable = isBiometricHardwareAvailable && isBiometricCryptoSetupAvailable
             if (biometricsUsable && authRoute.showBiometricPromptIfPossible) requestBiometricLogin()
 
-
             _uiState.update {
-                when {
-                    hasAccessButShouldMigrate -> {
-                        AuthState.Migrating(
-                            passwordTextFieldState = passwordTextFieldState,
-                            biometricsAvailable = isBiometricHardwareAvailable,
-                        )
-                    }
-
-                    hasAccess -> AuthState.Login(
-                        passwordTextFieldState = passwordTextFieldState,
-                        biometricAuthenticationAvailable = biometricsUsable
-                    )
-
-                    else -> {
-                        observePasswordStrength()
-                        observePasswordError()
-                        observeConfirmPasswordError()
-
-                        AuthState.CreateAccess(
-                            passwordTextFieldState = passwordTextFieldState,
-                            confirmPasswordTextFieldState = confirmPasswordTextFieldState,
-                            biometricsAvailable = isBiometricHardwareAvailable
-                        )
-                    }
-                }
+                AuthState.Login(
+                    passwordTextFieldState = passwordTextFieldState,
+                    biometricAuthenticationAvailable = biometricsUsable
+                )
             }
         }
-    }
-
-    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
-    private fun observePasswordError() {
-        snapshotFlow { passwordTextFieldState.text }
-            .debounce(150.milliseconds)
-            .mapLatest { it.isBlank() }
-            .distinctUntilChanged()
-            .onEach { isBlank ->
-                if (isBlank) return@onEach
-
-                _uiState.update {
-                    if (it !is AuthState.CreateAccess) return@update it
-                    it.copy(passwordError = null)
-                }
-            }
-            .flowOn(Dispatchers.Default)
-            .launchIn(viewModelScope)
-    }
-
-    private fun observeConfirmPasswordError() {
-        snapshotFlow { passwordTextFieldState.text }
-            .combine(snapshotFlow { confirmPasswordTextFieldState.text }) { password, confirm ->
-                password == confirm
-            }
-            .distinctUntilChanged()
-            .onEach { equal ->
-                if (!equal) return@onEach
-
-                _uiState.update {
-                    if (it !is AuthState.CreateAccess) return@update it
-                    it.copy(confirmPasswordError = null)
-                }
-            }
-            .flowOn(Dispatchers.Default)
-            .launchIn(viewModelScope)
-    }
-
-    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
-    private fun observePasswordStrength() {
-        snapshotFlow { passwordTextFieldState.text }
-            .debounce(150.milliseconds)
-            .mapLatest { passwordStrengthEstimator(it.toString()) }
-            .distinctUntilChanged()
-            .onEach { score ->
-                _uiState.update {
-                    if (it !is AuthState.CreateAccess) return@update it
-                    it.copy(passwordScore = score)
-                }
-            }
-            .flowOn(Dispatchers.Default)
-            .launchIn(viewModelScope)
     }
 
     private val navigationEventChannel = Channel<Unit>()
@@ -174,88 +72,17 @@ internal class AuthViewModel(
             is AuthUIEvent.RequestBiometricAuthentication -> if (uiState.value is AuthState.Login) requestBiometricLogin()
 
             AuthUIEvent.Submit -> {
-                val state = _uiState.value as? AuthState.Interactable ?: return
+                val state = _uiState.value as? AuthState.Login ?: return
                 val password = state.passwordTextFieldState.text.toString()
-                when (state) {
-                    is AuthState.Login -> {
-                        loading(setLoading = password.isNotBlank()) {
-                            unlockWithPassword(
-                                password = password
-                            ).handleAuthenticationResult {
-                                copyDefaultState(passwordError = UiFieldError.Incorrect)
-                            }
-                        }
+                loading(setLoading = password.isNotBlank()) {
+                    unlockWithPassword(
+                        password = password
+                    ).handleAuthenticationResult {
+                        state.copy(passwordError = UiFieldError.Incorrect)
                     }
-
-                    is AuthState.Migrating -> {
-                        loading {
-                            validateMainPassword(password).asResult(Unit)
-                                .onFailure {
-                                    _uiState.update {
-                                        if (it !is AuthState.Interactable) return@update it
-                                        it.copyDefaultState(passwordError = UiFieldError.Incorrect)
-                                    }
-                                }.onSuccess {
-                                    clearMainPasswordUseCase()
-                                    createPasswordOrBiometricAccess(state, password)
-                                }
-                        }
-                    }
-
-                    is AuthState.CreateAccess -> {
-                        val errorFreeState = state.copy(
-                            passwordError = null,
-                            confirmPasswordError = null
-                        )
-
-                        if (password.isBlank()) {
-                            _uiState.update {
-                                errorFreeState.copy(passwordError = UiFieldError.Empty)
-                            }
-                            return
-                        }
-                        val confirmedPassword = confirmPasswordTextFieldState.text.toString()
-                        if (password != confirmedPassword) {
-                            _uiState.update {
-                                errorFreeState.copy(confirmPasswordError = UiFieldError.Incorrect)
-                            }
-                            return
-                        }
-
-                        createPasswordOrBiometricAccess(errorFreeState, password)
-                    }
-                }
-            }
-
-            AuthUIEvent.CloseMigrationDialog -> {
-                _uiState.update {
-                    if (it !is AuthState.Migrating) return@update it
-                    it.copy(showMigrationDialog = false)
-                }
-            }
-
-            is AuthUIEvent.ToggleUseBiometrics -> {
-                _uiState.update {
-                    if (it !is AuthState.BiometricAuthState) return@update it
-                    it.copyBiometricState(useBiometrics = event.checked)
                 }
             }
         }
-    }
-
-    private fun createPasswordOrBiometricAccess(
-        authState: AuthState.BiometricAuthState,
-        password: String
-    ) {
-        if (!authState.biometricsAvailable || !authState.useBiometrics) {
-            loading {
-                createAllAccesses(password = password).handleAuthenticationResult()
-            }
-
-            return
-        }
-
-        biometricChannel.trySend(BiometricRequest.CreateAccess(password))
     }
 
     private fun requestBiometricLogin() {
@@ -264,37 +91,24 @@ internal class AuthViewModel(
 
     private fun loading(
         setLoading: Boolean = true,
-        block: suspend LoadingScope<AuthState.Interactable>.() -> Unit
+        block: suspend LoadingScope<AuthState.Login>.() -> Unit
     ) {
-        if (setLoading)
-            _uiState.update {
-                if (it !is AuthState.Interactable) return@update it
-                it.copyDefaultState(loading = true)
-            }
+        if (setLoading) _uiState.update {
+            if (it !is AuthState.Login) return@update it
+            it.copy(passwordError = null)
+        }
 
         viewModelScope.launch {
             _uiState.update {
-                if (it !is AuthState.Interactable) return@update it
+                if (it !is AuthState.Login) return@update it
 
                 LoadingScope(
                     state = it,
                     onSuccess = { navigationEventChannel.trySend(Unit) },
                 ).apply {
                     block()
-                }.updatedState.copyDefaultState(loading = false)
+                }.updatedState.copy(loading = false)
             }
-        }
-    }
-
-    fun createAccessWithUnwrappingCipher(
-        createAccessRequest: BiometricRequest.CreateAccess,
-        cipher: Cipher
-    ) {
-        loading {
-            createAllAccesses(
-                password = createAccessRequest.password,
-                biometricCipher = cipher
-            ).handleAuthenticationResult()
         }
     }
 }

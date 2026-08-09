@@ -13,11 +13,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.TextObfuscationMode
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Fingerprint
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BasicAlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,7 +26,6 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,7 +45,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.core.ui.components.VisibilityButton
 import de.davis.keygo.core.ui.model.error
 import de.davis.keygo.core.ui.theme.KeyGoTheme
@@ -73,14 +68,14 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
             }
         }
 
-        is AuthState.Interactable -> InteractableAuthContent(state = state, onEvent = onEvent)
+        is AuthState.Login -> InteractableAuthContent(state = state, onEvent = onEvent)
     }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun InteractableAuthContent(
-    state: AuthState.Interactable,
+    state: AuthState.Login,
     onEvent: (AuthUIEvent) -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
@@ -99,7 +94,7 @@ private fun InteractableAuthContent(
                 ) {
                     Text(
                         text = buildAnnotatedString {
-                            append(state.firstTitlePart)
+                            append(stringResource(R.string.authenticate_to_access))
                             append(" ")
 
                             withStyle(
@@ -150,54 +145,6 @@ private fun InteractableAuthContent(
                                 )
                             },
                         )
-
-                        if (this is AuthState.CreateAccess) {
-                            StrengthIndicator(
-                                passwordScore = passwordScore,
-                                forceCompact = forceCompact,
-                            )
-
-                            var confirmPasswordHidden by rememberSaveable { mutableStateOf(true) }
-                            OutlinedSecureTextField(
-                                state = confirmPasswordTextFieldState,
-                                modifier = Modifier.fillMaxWidth(),
-                                label = {
-                                    Text(text = stringResource(R.string.confirm_password))
-                                },
-                                isError = confirmPasswordError != null,
-                                supportingText = confirmPasswordError?.let {
-                                    { Text(it.error) }
-                                },
-                                textObfuscationMode = when {
-                                    confirmPasswordHidden -> TextObfuscationMode.RevealLastTyped
-                                    else -> TextObfuscationMode.Visible
-                                },
-                                trailingIcon = {
-                                    VisibilityButton(
-                                        isHidden = confirmPasswordHidden,
-                                        onClick = {
-                                            confirmPasswordHidden = !confirmPasswordHidden
-                                        },
-                                    )
-                                },
-                            )
-                        }
-
-                        if (state is AuthState.BiometricAuthState && state.biometricsAvailable)
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text(text = stringResource(R.string.use_biometrics))
-
-                                Switch(
-                                    checked = state.useBiometrics,
-                                    onCheckedChange = {
-                                        onEvent(AuthUIEvent.ToggleUseBiometrics(it))
-                                    }
-                                )
-                            }
                     }
 
                     Row(
@@ -209,10 +156,10 @@ private fun InteractableAuthContent(
                             modifier = Modifier.weight(1f),
                             enabled = !state.loading
                         ) {
-                            Text(text = state.buttonText)
+                            Text(text = stringResource(R.string.authenticate))
                         }
 
-                        if (state is AuthState.Login && state.biometricAuthenticationAvailable) {
+                        if (state.biometricAuthenticationAvailable) {
                             FilledTonalIconButton(
                                 onClick = {
                                     onEvent(AuthUIEvent.RequestBiometricAuthentication)
@@ -244,57 +191,12 @@ private fun InteractableAuthContent(
                     }
                 }
             }
-
-            if (state is AuthState.Migrating && state.showMigrationDialog)
-                MigrationDialog(onClick = { onEvent(AuthUIEvent.CloseMigrationDialog) })
         }
     }
-}
-
-@Composable
-fun MigrationDialog(onClick: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = {},
-        icon = {
-            Icon(
-                imageVector = Icons.Default.AutoFixHigh,
-                contentDescription = null
-            )
-        },
-        title = {
-            Text(text = stringResource(R.string.migrating))
-        },
-        text = {
-            Text(text = stringResource(R.string.migrate_to_access_description))
-        },
-        confirmButton = {
-            Button(
-                onClick = onClick
-            ) {
-                Text(text = stringResource(R.string.migrate))
-            }
-        }
-    )
 }
 
 internal val DialogMinWidth = 280.dp
 internal val DialogMaxWidth = 560.dp
-
-private val AuthState.Interactable.firstTitlePart: String
-    @Composable
-    get() = when (this) {
-        is AuthState.Login -> stringResource(R.string.authenticate_to_access)
-        is AuthState.Migrating -> stringResource(R.string.migrate_to_access)
-        is AuthState.CreateAccess -> stringResource(R.string.create_access_access)
-    }
-
-private val AuthState.Interactable.buttonText: String
-    @Composable
-    get() = when (this) {
-        is AuthState.Login -> stringResource(R.string.authenticate)
-        is AuthState.Migrating -> stringResource(R.string.migrate)
-        is AuthState.CreateAccess -> stringResource(R.string.create_access)
-    }
 
 @Composable
 @Preview
@@ -304,9 +206,9 @@ private val AuthState.Interactable.buttonText: String
 private fun AuthContentPreview() {
     KeyGoTheme {
         AuthContent(
-            state = AuthState.CreateAccess(
+            state = AuthState.Login(
                 passwordTextFieldState = TextFieldState(),
-                biometricsAvailable = true
+                biometricAuthenticationAvailable = true
             ),
             onEvent = {}
         )

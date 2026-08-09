@@ -6,11 +6,6 @@ internal sealed interface BiometricRequest {
 
     val cryptoMode: CryptographicMode
 
-    data class CreateAccess(val password: String) : BiometricRequest {
-        override val cryptoMode: CryptographicMode
-            get() = CryptographicMode.Wrap
-    }
-
     data object Login : BiometricRequest {
         override val cryptoMode: CryptographicMode
             get() = CryptographicMode.Unwrap
