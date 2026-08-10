@@ -283,7 +283,7 @@ private fun PasswordSection(
     ) {
         SectionHeader(
             icon = Icons.Default.Password,
-            title = stringResource(CoreItemR.string.password),
+            title = stringResource(CoreItemR.string.login),
         )
 
         KeyGoCard(

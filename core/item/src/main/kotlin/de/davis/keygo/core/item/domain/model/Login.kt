@@ -6,7 +6,7 @@ import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.processor.annotation.VaultEntity
 
-@VaultEntity(resString = "password", defaultIconType = "Password")
+@VaultEntity(resString = "login", defaultIconType = "Password")
 data class Login(
     override val id: ItemId = newItemId(),
     val username: String?,
