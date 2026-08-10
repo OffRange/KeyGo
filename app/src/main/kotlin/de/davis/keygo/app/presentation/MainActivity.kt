@@ -3,7 +3,9 @@ package de.davis.keygo.app.presentation
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -16,7 +18,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.Wallpapers
 import androidx.fragment.app.FragmentActivity
@@ -30,6 +34,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
 import com.mikepenz.aboutlibraries.ui.compose.android.produceLibraries
 import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
+import de.davis.keygo.R
 import de.davis.keygo.app.presentation.component.KeyGoNavigationWrapper
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.ui.theme.KeyGoTheme
@@ -172,7 +177,15 @@ private fun App() {
                 )
 
                 composable<RouteDestination.Connectivity> {
-                    Text("CONNECTIVITY")
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.coming_soon),
+                            style = MaterialTheme.typography.displaySmall
+                        )
+                    }
                 }
             }
 
