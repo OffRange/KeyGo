@@ -11,6 +11,7 @@ dependencies {
     implementation(projects.core.identity)
     implementation(projects.core.item)
     implementation(projects.core.ui)
+    implementation(projects.migration.createAccess)
 
     implementation(libs.androidx.navigation.compose)
 }
