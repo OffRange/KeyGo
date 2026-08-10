@@ -204,10 +204,7 @@ private fun OnboardingSteps(
                 modifier = Modifier.widthIn(max = OnboardingMaxWidth),
             ) { state ->
                 when (state) {
-                    is OnboardingUiState.Welcome -> WelcomeContent(
-                        state = state,
-                        onContinue = onNextStep
-                    )
+                    is OnboardingUiState.Welcome -> WelcomeContent(state = state)
 
                     is OnboardingUiState.SetMainPassword -> MainPasswordContent(state = state)
 

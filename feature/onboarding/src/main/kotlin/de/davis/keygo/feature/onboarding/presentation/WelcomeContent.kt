@@ -23,7 +23,7 @@ import de.davis.keygo.core.ui.R as CoreUiR
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun WelcomeContent(state: OnboardingUiState.Welcome, onContinue: () -> Unit) {
+internal fun WelcomeContent(state: OnboardingUiState.Welcome) {
     OnboardingScaffold(
         iconContainer = {
             LargeIconContainer(
@@ -51,8 +51,7 @@ private fun WelcomeContentPreview() {
             SharedTransitionLayout {
                 AnimatedVisibility(visible = true) {
                     WelcomeContent(
-                        state = OnboardingUiState.Welcome(),
-                        onContinue = {}
+                        state = OnboardingUiState.Welcome()
                     )
                 }
             }
