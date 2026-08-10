@@ -186,6 +186,7 @@ google-services.json
 docs/superpowers/
 .superpowers/
 .claude/
+.worktrees/
 
 graphify-out/
 .gitattributes
