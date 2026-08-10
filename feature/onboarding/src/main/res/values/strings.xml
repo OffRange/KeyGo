@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="get_started">Get Started</string>
-    <string name="migrate">Migrate</string>
     <string name="continue_text">Continue</string>
     <string name="skip_for_now">Skip for now</string>
     <string name="enable_biometrics">Enable Biometrics</string>

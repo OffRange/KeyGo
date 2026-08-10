@@ -7,7 +7,7 @@ import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
 
 internal sealed interface OnboardingUiState {
 
-    data class Welcome(val migrating: Boolean = false) : OnboardingUiState
+    data object Welcome : OnboardingUiState
 
     data class SetMainPassword(
         val passwordTextFieldState: TextFieldState,

@@ -238,7 +238,7 @@ private val OnboardingUiState.buttonText: String
     @Composable
     get() = stringResource(
         when (this) {
-            is OnboardingUiState.Welcome -> if (migrating) R.string.migrate else R.string.get_started
+            is OnboardingUiState.Welcome -> R.string.get_started
             is OnboardingUiState.SetMainPassword -> R.string.continue_text
             OnboardingUiState.EnableBiometrics -> R.string.enable_biometrics
             is OnboardingUiState.ImportData -> R.string.skip_for_now
@@ -271,7 +271,7 @@ private fun OnboardingUiState.isOutlinedButonCandidate() = this is OnboardingUiS
 private fun OnboardingStepsPreview() {
     MaterialTheme {
         OnboardingSteps(
-            state = OnboardingUiState.Welcome(),
+            state = OnboardingUiState.Welcome,
             loading = false,
             onNextStep = {},
             onSkip = {},

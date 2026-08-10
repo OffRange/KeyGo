@@ -9,6 +9,7 @@ internal enum class OnboardingStep {
 
     fun nextStep(skip: Set<OnboardingStep>): OnboardingStep? {
         val pool = OnboardingStep.entries.filterNot { it in skip }
-        return pool.getOrNull(pool.indexOf(this) + 1)
+        val currentIndex = pool.indexOf(this)
+        return if (currentIndex != -1) pool.getOrNull(currentIndex + 1) else null
     }
 }

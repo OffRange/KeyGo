@@ -4,7 +4,6 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
@@ -16,7 +15,6 @@ import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
 import de.davis.keygo.feature.onboarding.presentation.model.AutofillSetupAction
 import de.davis.keygo.feature.onboarding.presentation.model.OnboardingStep
 import de.davis.keygo.feature.onboarding.presentation.model.OnboardingUiState
-import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -28,6 +26,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -41,8 +40,6 @@ import kotlin.time.Duration.Companion.milliseconds
 @KoinViewModel
 internal class OnboardingViewModel(
     private val biometricAvailabilityRepository: BiometricAvailabilityRepository,
-    private val hasV1Password: HasMainPasswordUseCase,
-    private val accountRepository: AccountRepository,
     private val autofillServiceRepository: AutofillServiceRepository,
     private val chromeAutofillRepository: ChromeAutofillRepository,
 
@@ -51,25 +48,20 @@ internal class OnboardingViewModel(
 ) : ViewModel() {
 
     private val stepsToSkip = MutableStateFlow<Set<OnboardingStep>>(emptySet())
-    private val isMigrating = MutableStateFlow(false)
 
     private fun calculateStepsToSkip() {
         viewModelScope.launch {
-            val hasAccount = accountRepository.getOrNull() != null
-            val hasLegacyPassword = hasV1Password()
             val autofill = readAutofillState()
             _enableAutofillState.update { autofill }
 
             val skipSteps = buildSet {
                 if (!biometricAvailabilityRepository.availability()) add(OnboardingStep.EnableBiometrics)
-                if (hasAccount || hasLegacyPassword) add(OnboardingStep.ImportExistingData)
                 // Not "both enabled": on a device with no Chrome the Chrome read is false forever,
                 // which would keep offering a step that has nothing left to do.
                 if (autofill.nextAction == AutofillSetupAction.Finish)
                     add(OnboardingStep.EnableAutofillService)
             }
             stepsToSkip.update { skipSteps }
-            isMigrating.update { hasLegacyPassword && !hasAccount }
         }
     }
 
@@ -112,7 +104,7 @@ internal class OnboardingViewModel(
         calculateStepsToSkip()
     }
 
-    private val biometricChannel = Channel<Unit>()
+    private val biometricChannel = Channel<Unit>(Channel.BUFFERED)
     val biometricFlow = biometricChannel.receiveAsFlow()
 
     private val autofillPickerChannel = Channel<Unit>(Channel.BUFFERED)
@@ -159,9 +151,7 @@ internal class OnboardingViewModel(
     @OptIn(ExperimentalCoroutinesApi::class)
     val state = _step.flatMapLatest {
         when (it) {
-            OnboardingStep.Welcome -> isMigrating.mapLatest { migrating ->
-                OnboardingUiState.Welcome(migrating)
-            }
+            OnboardingStep.Welcome -> flowOf(OnboardingUiState.Welcome)
 
             OnboardingStep.SetMainPassword -> _mainPasswordState
             OnboardingStep.EnableBiometrics -> _enableBiometricsState
@@ -171,7 +161,7 @@ internal class OnboardingViewModel(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = OnboardingUiState.Welcome()
+        initialValue = OnboardingUiState.Welcome
     )
 
     fun onNextStep() {
@@ -190,7 +180,7 @@ internal class OnboardingViewModel(
                     return
                 }
 
-                if (OnboardingStep.EnableBiometrics in stepsToSkip.value) performCreateAccess()
+                if (OnboardingStep.EnableBiometrics in stepsToSkip.value) return performCreateAccess()
             }
 
             OnboardingStep.EnableBiometrics -> {
@@ -264,7 +254,9 @@ internal class OnboardingViewModel(
 
     private suspend fun <R> loading(block: suspend () -> R): R {
         _loading.update { true }
-        return block().also {
+        try {
+            return block()
+        } finally {
             _loading.update { false }
         }
     }
