@@ -35,8 +35,8 @@ internal fun WelcomeContent(state: OnboardingUiState.Welcome, onContinue: () -> 
                 )
             }
         },
-        title = stringResource(if (state.migrating) R.string.welcome_migrating_title else R.string.welcome_title),
-        description = stringResource(if (state.migrating) R.string.welcome_migrating_subtitle else R.string.welcome_subtitle),
+        title = stringResource(if (state.pendingTotpImport) R.string.welcome_totp_import_title else R.string.welcome_title),
+        description = stringResource(if (state.pendingTotpImport) R.string.welcome_totp_import_subtitle else R.string.welcome_subtitle),
         contentHorizontalAlignment = Alignment.CenterHorizontally
     ) {
         // No content for Welcome

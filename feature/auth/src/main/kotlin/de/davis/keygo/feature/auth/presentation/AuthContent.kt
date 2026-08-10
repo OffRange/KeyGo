@@ -58,7 +58,11 @@ import de.davis.keygo.core.item.R as CoreItemR
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
+fun AuthContent(
+    state: AuthState,
+    onEvent: (AuthUIEvent) -> Unit,
+    hasPendingTotpImport: Boolean = false,
+) {
     when (state) {
         is AuthState.Loading -> {
             Surface(modifier = Modifier.fillMaxSize()) {
@@ -71,7 +75,11 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
             }
         }
 
-        is AuthState.Interactable -> InteractableAuthContent(state = state, onEvent = onEvent)
+        is AuthState.Interactable -> InteractableAuthContent(
+            state = state,
+            onEvent = onEvent,
+            hasPendingTotpImport = hasPendingTotpImport,
+        )
     }
 }
 
@@ -80,6 +88,7 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
 private fun InteractableAuthContent(
     state: AuthState.Interactable,
     onEvent: (AuthUIEvent) -> Unit,
+    hasPendingTotpImport: Boolean,
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(
@@ -119,6 +128,14 @@ private fun InteractableAuthContent(
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center,
                     )
+
+                    if (hasPendingTotpImport)
+                        Text(
+                            text = stringResource(R.string.pending_totp_import_subtitle),
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
 
                     with(state) {
                         var passwordHidden by rememberSaveable { mutableStateOf(true) }

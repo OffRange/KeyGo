@@ -74,9 +74,7 @@ class MainActivity : FragmentActivity() {
                 CompositionLocalProvider(
                     LocalSnackbarManager provides snackbarManager,
                 ) {
-                    App(
-                        startDestinations = if (hasAccess == true) AuthRoute() else OnboardingRoute()
-                    )
+                    App(hasAccess = hasAccess == true)
                 }
             }
         }
@@ -85,7 +83,7 @@ class MainActivity : FragmentActivity() {
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
-private fun App(startDestinations: Any) {
+private fun App(hasAccess: Boolean) {
     val listNavigator = rememberListDetailPaneScaffoldNavigator<DetailType>()
     val navController = rememberNavController()
 
@@ -139,8 +137,17 @@ private fun App(startDestinations: Any) {
     ) {
         NavHost(
             navController = navController,
-            startDestination = startDestinations,
+            startDestination = if (hasAccess) AuthRoute() else OnboardingRoute(),
         ) {
+            totpImportRedirectGraph(
+                hasAccess = hasAccess,
+                navigateAndReplace = { dest ->
+                    navController.navigate(dest) {
+                        popUpTo<TotpImportRedirect> { inclusive = true }
+                    }
+                }
+            )
+
             authGraph(
                 onSuccess = { totpUri ->
                     val dest = totpUri?.let {

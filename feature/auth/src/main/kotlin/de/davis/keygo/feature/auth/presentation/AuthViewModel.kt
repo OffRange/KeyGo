@@ -49,6 +49,8 @@ internal class AuthViewModel(
 
     private val authRoute = savedStateHandle.toRoute<AuthRoute>()
 
+    val hasPendingTotpImport: Boolean = authRoute.uri != null
+
     private val passwordTextFieldState = TextFieldState()
 
     private val _uiState = MutableStateFlow<AuthState>(AuthState.Loading)

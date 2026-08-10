@@ -2,8 +2,10 @@ package de.davis.keygo.feature.onboarding.presentation
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.snapshotFlow
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.toRoute
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
@@ -39,6 +41,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
 internal class OnboardingViewModel(
+    savedStateHandle: SavedStateHandle,
     private val biometricAvailabilityRepository: BiometricAvailabilityRepository,
     private val autofillServiceRepository: AutofillServiceRepository,
     private val chromeAutofillRepository: ChromeAutofillRepository,
@@ -46,6 +49,8 @@ internal class OnboardingViewModel(
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val createAccess: CreateAccessUseCase,
 ) : ViewModel() {
+
+    private val hasPendingTotpImport = savedStateHandle.toRoute<OnboardingRoute>().uri != null
 
     private val stepsToSkip = MutableStateFlow<Set<OnboardingStep>>(emptySet())
 
@@ -151,7 +156,7 @@ internal class OnboardingViewModel(
     @OptIn(ExperimentalCoroutinesApi::class)
     val state = _step.flatMapLatest {
         when (it) {
-            OnboardingStep.Welcome -> flowOf(OnboardingUiState.Welcome)
+            OnboardingStep.Welcome -> flowOf(OnboardingUiState.Welcome(pendingTotpImport = hasPendingTotpImport))
 
             OnboardingStep.SetMainPassword -> _mainPasswordState
             OnboardingStep.EnableBiometrics -> _enableBiometricsState
@@ -161,7 +166,7 @@ internal class OnboardingViewModel(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = OnboardingUiState.Welcome
+        initialValue = OnboardingUiState.Welcome()
     )
 
     fun onNextStep() {

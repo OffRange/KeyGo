@@ -136,6 +136,10 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
 
     testImplementation(libs.kotlin.test)
+    testImplementation(libs.androidx.navigation.testing)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.junit)
+
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

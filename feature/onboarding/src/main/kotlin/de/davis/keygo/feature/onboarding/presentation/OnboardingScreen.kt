@@ -271,7 +271,7 @@ private fun OnboardingUiState.isOutlinedButonCandidate() = this is OnboardingUiS
 private fun OnboardingStepsPreview() {
     MaterialTheme {
         OnboardingSteps(
-            state = OnboardingUiState.Welcome,
+            state = OnboardingUiState.Welcome(),
             loading = false,
             onNextStep = {},
             onSkip = {},
