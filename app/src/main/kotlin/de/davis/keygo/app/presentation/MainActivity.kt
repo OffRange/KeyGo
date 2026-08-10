@@ -61,12 +61,12 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
 
         splashScreen.setKeepOnScreenCondition {
-            viewModel.hasAccess.value == null
+            viewModel.isReturningUser.value == null
         }
 
         enableEdgeToEdge()
         setContent {
-            val hasAccess by viewModel.hasAccess.collectAsState()
+            val hasAccess by viewModel.isReturningUser.collectAsState()
             hasAccess ?: return@setContent
 
             KeyGoTheme {
