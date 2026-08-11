@@ -95,7 +95,7 @@ fun OnboardingScreen(onSuccess: () -> Unit) {
             viewModel.performCreateAccess(it)
         }.onFailure {
             Log.e("OnboardingScreen", "Failed to create cipher for biometric access: $it")
-            // TODO: show error
+            viewModel.performCreateAccess() //TODO: maybe show error msg to user
         }
     }
 
@@ -239,7 +239,7 @@ private fun OnboardingSteps(
                         }
                     }
 
-                    if (state.isOutlinedButonCandidate())
+                    if (state.isOutlinedButtonCandidate())
                         OutlinedButton(
                             onClick = onNextStep,
                             shapes = ButtonDefaults.shapesFor(contentHeight),
@@ -338,7 +338,7 @@ private val OnboardingUiState.optionalActionText: String?
             R.string.finish_setup.takeIf { nextAction != AutofillSetupAction.Finish }
     }?.let { stringResource(it) }
 
-private fun OnboardingUiState.isOutlinedButonCandidate() = this is OnboardingUiState.ImportData
+private fun OnboardingUiState.isOutlinedButtonCandidate() = this is OnboardingUiState.ImportData
 
 @Preview
 @PreviewScreenSizes
