@@ -16,6 +16,7 @@ import de.davis.keygo.feature.autofill.domain.repository.ChromeAutofillRepositor
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
 import de.davis.keygo.feature.onboarding.presentation.model.AutofillSetupAction
 import de.davis.keygo.feature.onboarding.presentation.model.OnboardingStep
+import de.davis.keygo.feature.onboarding.presentation.model.OnboardingStepProgress
 import de.davis.keygo.feature.onboarding.presentation.model.OnboardingUiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -168,6 +169,36 @@ internal class OnboardingViewModel(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = OnboardingUiState.Welcome()
     )
+
+    val stepProgress = combine(_step, stepsToSkip) { step, skip ->
+        val activeSteps = OnboardingStep.activeSteps(skip)
+        OnboardingStepProgress(
+            currentIndex = activeSteps.indexOf(step),
+            totalSteps = activeSteps.size,
+            canGoBack = step.canGoBack,
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = OnboardingStepProgress(
+            currentIndex = 0,
+            totalSteps = OnboardingStep.entries.size,
+            canGoBack = false,
+        ),
+    )
+
+    fun onPreviousStep() {
+        val previous = _step.value.previousStep(stepsToSkip.value) ?: return
+
+        // fileUri survives onImportFinished by design (see its own comment), so stepping back
+        // from autofill into a completed import would otherwise reopen the wizard on the old
+        // file instead of the chooser. Only autofill's back reaches this step, so this never
+        // fires while the chooser itself is still on screen.
+        if (previous == OnboardingStep.ImportExistingData)
+            _importDataState.update { it.copy(fileUri = null) }
+
+        _step.update { previous }
+    }
 
     fun onNextStep() {
         when (_step.value) {
