@@ -50,6 +50,8 @@ import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
 import de.davis.keygo.core.ui.components.VisibilityButton
+import de.davis.keygo.core.ui.model.UiFieldError
+import de.davis.keygo.core.ui.model.error
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
@@ -73,6 +75,7 @@ internal fun ChangePasswordScreen(onUp: () -> Unit) {
             ChangePasswordEvent.GenericError -> snackbarManager.sendMessage(
                 SnackbarMessage(message = ResourceString(R.string.change_password_failed)),
             )
+
             ChangePasswordEvent.LaunchBiometricPrompt -> {
                 val ciphertext = state.biometricCiphertext ?: return@ObserveAsEvents
                 scope.launch {
@@ -156,8 +159,10 @@ internal fun ChangePasswordContent(
                             forceCompact = !it.isFocused
                         },
                     label = { Text(stringResource(R.string.new_password)) },
-                    isError = state.newPasswordError !is FieldError.None,
-                    supportingText = supportingTextFor(state.newPasswordError),
+                    isError = state.newPasswordError != null,
+                    supportingText = state.newPasswordError?.let {
+                        { Text(text = it.error) }
+                    },
                     textObfuscationMode = obfuscation(newHidden),
                     trailingIcon = {
                         VisibilityButton(
@@ -178,8 +183,10 @@ internal fun ChangePasswordContent(
                 state = state.confirmPassword,
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.confirm_password)) },
-                isError = state.confirmPasswordError !is FieldError.None,
-                supportingText = supportingTextFor(state.confirmPasswordError),
+                isError = state.confirmPasswordError != null,
+                supportingText = state.confirmPasswordError?.let {
+                    { Text(text = it.error) }
+                },
                 textObfuscationMode = obfuscation(confirmHidden),
                 trailingIcon = {
                     VisibilityButton(
@@ -244,25 +251,9 @@ private fun obfuscation(hidden: Boolean): TextObfuscationMode =
     if (hidden) TextObfuscationMode.RevealLastTyped else TextObfuscationMode.Visible
 
 @Composable
-private fun supportingTextFor(error: FieldError): (@Composable () -> Unit)? = when (error) {
-    FieldError.None -> null
-    FieldError.Empty -> {
-        { Text(stringResource(R.string.password_blank)) }
-    }
-
-    FieldError.Incorrect -> {
-        { Text(stringResource(R.string.incorrect_password)) }
-    }
-
-    FieldError.Mismatch -> {
-        { Text(stringResource(R.string.passwords_do_not_match)) }
-    }
-}
-
-@Composable
 private fun CurrentPasswordField(
     state: TextFieldState,
-    error: FieldError,
+    error: UiFieldError?,
     modifier: Modifier = Modifier,
 ) {
     var hidden by rememberSaveable { mutableStateOf(true) }
@@ -270,8 +261,10 @@ private fun CurrentPasswordField(
         state = state,
         modifier = modifier.fillMaxWidth(),
         label = { Text(stringResource(R.string.current_password)) },
-        isError = error !is FieldError.None,
-        supportingText = supportingTextFor(error),
+        isError = error != null,
+        supportingText = error?.let {
+            { Text(text = it.error) }
+        },
         textObfuscationMode = obfuscation(hidden),
         trailingIcon = {
             VisibilityButton(isHidden = hidden, onClick = { hidden = !hidden })
@@ -288,9 +281,9 @@ private class ChangePasswordStateProvider : PreviewParameterProvider<ChangePassw
         ChangePasswordState(),
         ChangePasswordState(biometricCiphertext = previewBiometricCiphertext),
         ChangePasswordState(
-            currentPasswordError = FieldError.Incorrect,
-            newPasswordError = FieldError.Empty,
-            confirmPasswordError = FieldError.Mismatch,
+            currentPasswordError = UiFieldError.Incorrect,
+            newPasswordError = UiFieldError.Empty,
+            confirmPasswordError = UiFieldError.Mismatch,
         ),
         ChangePasswordState(loading = true),
         ChangePasswordState(

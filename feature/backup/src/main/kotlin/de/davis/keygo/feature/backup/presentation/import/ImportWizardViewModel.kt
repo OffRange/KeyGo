@@ -1,10 +1,12 @@
 package de.davis.keygo.feature.backup.presentation.import
 
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.getIdOrNull
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.feature.backup.domain.BackupDestinationResolver
@@ -22,6 +24,7 @@ import de.davis.keygo.feature.backup.presentation.import.model.ImportWizardEvent
 import de.davis.keygo.feature.backup.presentation.import.model.ImportWizardStep
 import de.davis.keygo.feature.backup.presentation.import.model.ImportWizardUiEvent
 import de.davis.keygo.feature.backup.presentation.import.model.ImportWizardUiState
+import de.davis.keygo.feature.backup.presentation.import.model.previousStep
 import de.davis.keygo.feature.backup.presentation.import.model.toMappingRows
 import de.davis.keygo.feature.vault.domain.usecase.ObserveVaultsAndSelectionUseCase
 import de.davisalessandro.keygo.rust.ColumnMapping
@@ -60,7 +63,9 @@ internal class ImportWizardViewModel(
 
     private var importJob: Job? = null
     private var analysisJob: Job? = null
+    private var seedJob: Job? = null
     private var vaultStepSeeded = false
+    private var seededUri: BackupDestinationUri? = null
 
     init {
         snapshotFlow { passphraseState.text.toString() }
@@ -121,6 +126,37 @@ internal class ImportWizardViewModel(
         }
     }
 
+    /**
+     * Enters the wizard on a file the host picked, so that choosing a file stays one action in one
+     * place. The file step is skipped and the lane resumes at the first question the wizard still
+     * has, which is the column mapping for a CSV and nothing at all for a JSON that imports cleanly.
+     *
+     * Idempotent per file. The screen seeds from a [androidx.compose.runtime.LaunchedEffect], which
+     * restarts on a configuration change, and re-running the import there would throw away the
+     * mapping the user was in the middle of.
+     */
+    fun seedFile(uri: BackupDestinationUri) {
+        if (seededUri == uri) return
+        seededUri = uri
+
+        cancelInFlightWork()
+        _state.update {
+            it.cleared().copy(
+                uri = uri,
+                fileChosenByHost = true,
+                // Held until the lane below decides where the user lands, so the wizard never
+                // flashes the file step its host already owns.
+                progress = ImportProgress.Reading,
+            )
+        }
+
+        seedJob = viewModelScope.launch {
+            val destination = backupDestinationResolver.resolve(uri)
+            _state.update { it.copy(backupDestination = destination) }
+            onContinue()
+        }
+    }
+
     private fun onContinue() = when (_state.value.step) {
         ImportWizardStep.SelectFile -> onSelectFileContinue()
         ImportWizardStep.MapColumns -> validateMapping()
@@ -131,7 +167,12 @@ internal class ImportWizardViewModel(
     private fun onSelectFileContinue() = when (_state.value.format) {
         FileFormat.CSV -> runAnalysis()
         FileFormat.JSON -> startImport(passphrase = null)
-        null -> Unit
+
+        // Reachable because the picker has to offer the wildcard type: providers routinely report
+        // the wrong MIME type for a .csv, so the filter cannot be tight enough to keep a .txt out.
+        null -> _state.update {
+            it.copy(progress = ImportProgress.Failed(ImportError.UnsupportedFormat))
+        }
     }
 
     private fun runAnalysis() {
@@ -151,6 +192,7 @@ internal class ImportWizardViewModel(
             columns = analysis.toMappingRows(),
             step = ImportWizardStep.MapColumns,
             duplicateTypes = emptySet(),
+            progress = null,
         )
     }
 
@@ -249,26 +291,83 @@ internal class ImportWizardViewModel(
         else -> _state.update { it.copy(progress = ImportProgress.Failed(error)) }
     }
 
-    private fun back() = _state.update {
-        when {
-            it.progress is ImportProgress.Failed -> it.copy(
-                progress = null,
-                step = ImportWizardStep.SelectFile,
+    private fun back() {
+        val current = _state.value
+
+        // A failure restarts from the file. When the host picked it there is no file step to
+        // restart from, so the wizard hands control back instead.
+        if (current.progress is ImportProgress.Failed) {
+            if (current.fileChosenByHost) return exit()
+
+            return _state.update {
+                it.copy(
+                    progress = null,
+                    step = ImportWizardStep.SelectFile,
+                    passphraseError = false,
+                )
+            }
+        }
+
+        val previous = current.step.previousStep(current.fileChosenByHost)
+        if (previous == null) {
+            if (current.fileChosenByHost) exit()
+            return
+        }
+
+        // duplicateTypes can only be set on MapColumns (validateMapping refuses to advance while
+        // duplicates remain) and passphraseError only on ProvidePassphrase, so clearing both
+        // unconditionally is the same as clearing them per step. Only the columns are conditional.
+        _state.update {
+            it.copy(
+                step = previous,
+                columns = if (current.step == ImportWizardStep.MapColumns) emptyList()
+                else it.columns,
+                duplicateTypes = emptySet(),
                 passphraseError = false,
             )
-
-            it.step == ImportWizardStep.SelectVault -> it.copy(step = ImportWizardStep.MapColumns)
-
-            it.step == ImportWizardStep.MapColumns -> it.copy(
-                step = ImportWizardStep.SelectFile,
-                columns = emptyList(),
-                duplicateTypes = emptySet(),
-            )
-
-            it.step == ImportWizardStep.ProvidePassphrase ->
-                it.copy(step = ImportWizardStep.SelectFile, passphraseError = false)
-
-            else -> it
         }
     }
+
+    /**
+     * Hands control back to whoever opened the wizard, stops any work still in flight, and resets
+     * the UI state to what a fresh wizard looks like.
+     *
+     * The reset matters because this ViewModel is scoped to the host's back stack entry, so it
+     * outlives the visit: without it, the previous file's screen (its error, or its column mapping)
+     * would render again for the gap between handing control back and the host seeding a new file.
+     */
+    private fun exit() {
+        cancelInFlightWork()
+        seededUri = null
+        _state.update { it.cleared() }
+        _event.trySend(ImportWizardEvent.Exit)
+    }
+
+    private fun cancelInFlightWork() {
+        importJob?.cancel()
+        analysisJob?.cancel()
+        seedJob?.cancel()
+        vaultStepSeeded = false
+        passphraseState.clearText()
+        newVaultNameState.clearText()
+    }
+
+    /**
+     * What a fresh wizard looks like. `vaults` and `contextVaultId` are owned by the observe flow
+     * rather than by a visit, so they survive; the text field states are held by this ViewModel and
+     * are cleared by [cancelInFlightWork].
+     */
+    private fun ImportWizardUiState.cleared() = copy(
+        step = ImportWizardStep.SelectFile,
+        fileChosenByHost = false,
+        uri = null,
+        backupDestination = null,
+        progress = null,
+        columns = emptyList(),
+        duplicateTypes = emptySet(),
+        passphraseError = false,
+        creatingNewVault = false,
+        selectedVaultId = null,
+        newVaultIcon = Vault.Icon.Default,
+    )
 }

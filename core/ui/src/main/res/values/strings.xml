@@ -14,5 +14,9 @@
     <string name="hide_password_content_description">Hide password</string>
 
 
+    <string name="blank_password">You must set a password</string>
+    <string name="incorrect_password">Password is incorrect</string>
+    <string name="password_does_not_match">Password does not match</string>
+
     <string name="add">Add</string>
 </resources>

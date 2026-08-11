@@ -100,6 +100,7 @@
     <string name="import_try_again">Back</string>
     <string name="import_error_file_unreadable">Couldn\'t read the selected file.</string>
     <string name="import_error_empty">The selected file is empty.</string>
+    <string name="import_error_unsupported">KeyGo imports .json and .csv files. Pick a file with one of those extensions.</string>
     <string name="import_error_nothing">There was nothing to import in this backup.</string>
     <string name="import_error_parse">This file isn\'t a valid KeyGo backup.</string>
     <string name="import_error_session_locked">Your vault is locked. Unlock it and try again.</string>

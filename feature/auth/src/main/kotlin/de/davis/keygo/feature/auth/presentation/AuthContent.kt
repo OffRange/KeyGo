@@ -38,7 +38,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -49,18 +48,21 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.core.ui.components.VisibilityButton
+import de.davis.keygo.core.ui.model.error
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.auth.R
 import de.davis.keygo.feature.auth.presentation.model.AuthState
 import de.davis.keygo.feature.auth.presentation.model.AuthUIEvent
-import de.davis.keygo.feature.auth.presentation.model.UIPasswordError
 import de.davis.keygo.core.item.R as CoreItemR
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
+fun AuthContent(
+    state: AuthState,
+    onEvent: (AuthUIEvent) -> Unit,
+    hasPendingTotpImport: Boolean = false,
+) {
     when (state) {
         is AuthState.Loading -> {
             Surface(modifier = Modifier.fillMaxSize()) {
@@ -73,7 +75,11 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
             }
         }
 
-        is AuthState.Interactable -> InteractableAuthContent(state = state, onEvent = onEvent)
+        is AuthState.Interactable -> InteractableAuthContent(
+            state = state,
+            onEvent = onEvent,
+            hasPendingTotpImport = hasPendingTotpImport,
+        )
     }
 }
 
@@ -82,6 +88,7 @@ fun AuthContent(state: AuthState, onEvent: (AuthUIEvent) -> Unit) {
 private fun InteractableAuthContent(
     state: AuthState.Interactable,
     onEvent: (AuthUIEvent) -> Unit,
+    hasPendingTotpImport: Boolean,
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(
@@ -122,29 +129,25 @@ private fun InteractableAuthContent(
                         textAlign = TextAlign.Center,
                     )
 
+                    if (hasPendingTotpImport)
+                        Text(
+                            text = stringResource(R.string.pending_totp_import_subtitle),
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+
                     with(state) {
                         var passwordHidden by rememberSaveable { mutableStateOf(true) }
-                        var forceCompact by rememberSaveable { mutableStateOf(false) }
                         OutlinedSecureTextField(
                             state = passwordTextFieldState,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .onFocusChanged {
-                                    forceCompact = !it.hasFocus
-                                },
+                            modifier = Modifier.fillMaxWidth(),
                             label = {
                                 Text(text = stringResource(CoreItemR.string.password))
                             },
-                            isError = passwordError !is UIPasswordError.None,
-                            supportingText = when (passwordError) {
-                                is UIPasswordError.None -> null
-                                is UIPasswordError.Incorrect -> {
-                                    { Text(stringResource(R.string.incorrect_password)) }
-                                }
-
-                                else -> {
-                                    { Text(stringResource(R.string.blank_password)) }
-                                }
+                            isError = passwordError != null,
+                            supportingText = passwordError?.let {
+                                { Text(it.error) }
                             },
                             textObfuscationMode = when {
                                 passwordHidden -> TextObfuscationMode.RevealLastTyped
@@ -158,46 +161,7 @@ private fun InteractableAuthContent(
                             },
                         )
 
-                        if (this is AuthState.CreateAccess) {
-                            StrengthIndicator(
-                                passwordScore = passwordScore,
-                                forceCompact = forceCompact,
-                            )
-
-                            var confirmPasswordHidden by rememberSaveable { mutableStateOf(true) }
-                            OutlinedSecureTextField(
-                                state = confirmPasswordTextFieldState,
-                                modifier = Modifier.fillMaxWidth(),
-                                label = {
-                                    Text(text = stringResource(R.string.confirm_password))
-                                },
-                                isError = confirmPasswordError !is UIPasswordError.None,
-                                supportingText = when (confirmPasswordError) {
-                                    is UIPasswordError.None -> null
-                                    is UIPasswordError.Incorrect -> {
-                                        { Text(stringResource(R.string.password_does_not_match)) }
-                                    }
-
-                                    else -> {
-                                        { Text(stringResource(R.string.blank_password)) }
-                                    }
-                                },
-                                textObfuscationMode = when {
-                                    confirmPasswordHidden -> TextObfuscationMode.RevealLastTyped
-                                    else -> TextObfuscationMode.Visible
-                                },
-                                trailingIcon = {
-                                    VisibilityButton(
-                                        isHidden = confirmPasswordHidden,
-                                        onClick = {
-                                            confirmPasswordHidden = !confirmPasswordHidden
-                                        },
-                                    )
-                                },
-                            )
-                        }
-
-                        if (state is AuthState.BiometricAuthState && state.biometricsAvailable)
+                        if (state is AuthState.Migrating && state.biometricsAvailable)
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -299,7 +263,6 @@ private val AuthState.Interactable.firstTitlePart: String
     get() = when (this) {
         is AuthState.Login -> stringResource(R.string.authenticate_to_access)
         is AuthState.Migrating -> stringResource(R.string.migrate_to_access)
-        is AuthState.CreateAccess -> stringResource(R.string.create_access_access)
     }
 
 private val AuthState.Interactable.buttonText: String
@@ -307,7 +270,6 @@ private val AuthState.Interactable.buttonText: String
     get() = when (this) {
         is AuthState.Login -> stringResource(R.string.authenticate)
         is AuthState.Migrating -> stringResource(R.string.migrate)
-        is AuthState.CreateAccess -> stringResource(R.string.create_access)
     }
 
 @Composable
@@ -318,7 +280,7 @@ private val AuthState.Interactable.buttonText: String
 private fun AuthContentPreview() {
     KeyGoTheme {
         AuthContent(
-            state = AuthState.CreateAccess(
+            state = AuthState.Migrating(
                 passwordTextFieldState = TextFieldState(),
                 biometricsAvailable = true
             ),

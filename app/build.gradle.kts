@@ -118,9 +118,11 @@ dependencies {
     implementation(projects.feature.autofill)
     implementation(projects.feature.settings)
     implementation(projects.feature.backup)
+    implementation(projects.feature.onboarding)
     implementation(projects.migration.createAccess)
     implementation(projects.migration.legacyData)
 
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(platform(libs.androidx.compose.bom))
@@ -134,6 +136,10 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
 
     testImplementation(libs.kotlin.test)
+    testImplementation(libs.androidx.navigation.testing)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.junit)
+
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

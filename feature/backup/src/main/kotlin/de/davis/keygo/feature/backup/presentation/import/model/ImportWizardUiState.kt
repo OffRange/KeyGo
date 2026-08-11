@@ -19,6 +19,8 @@ internal data class ImportWizardUiState(
     val backupDestination: BackupDestination? = null,
     val uri: BackupDestinationUri? = null,
     val step: ImportWizardStep = ImportWizardStep.SelectFile,
+    /** True when the file was picked before the wizard opened, for example by onboarding. */
+    val fileChosenByHost: Boolean = false,
     val passphraseValid: Boolean = false,
     val passphraseError: Boolean = false,
     val progress: ImportProgress? = null,
@@ -32,36 +34,31 @@ internal data class ImportWizardUiState(
     /** The vault the user is currently working in; seeds the destination choice. */
     val contextVaultId: VaultId? = null,
 ) {
-    val format: FileFormat? = backupDestination?.fileName?.let { name ->
-        when {
-            name.endsWith(".${FileFormat.JSON.extension}", ignoreCase = true) -> FileFormat.JSON
-            name.endsWith(".${FileFormat.CSV.extension}", ignoreCase = true) -> FileFormat.CSV
-            else -> null
+    val format: FileFormat?
+        get() = FileFormat.fromFileName(backupDestination?.fileName)
+
+    val steps: List<ImportWizardStep>
+        get() = importStepsFor(step, includeFileStep = !fileChosenByHost)
+
+    val suggestedVaultName: String
+        get() = backupDestination?.fileName?.substringBeforeLast('.').orEmpty()
+
+    val canContinue: Boolean
+        get() = when (step) {
+            ImportWizardStep.SelectFile -> backupDestination != null
+            ImportWizardStep.MapColumns -> columns.any { it.selectedType != null }
+            ImportWizardStep.SelectVault ->
+                if (creatingNewVault) newVaultNameValid else selectedVaultId != null
+
+            ImportWizardStep.ProvidePassphrase -> passphraseValid
         }
-    }
 
-    val steps: List<ImportWizardStep> = importStepsFor(step)
+    val showContinueButton: Boolean
+        get() = progress == null
 
-    /** `passwords.csv` -> `passwords`. Distinct per import, unlike the parser's `CSV Import`. */
-    val suggestedVaultName: String =
-        backupDestination?.fileName?.substringBeforeLast('.').orEmpty()
+    val backEnabled: Boolean
+        get() = progress == null || progress is ImportProgress.Failed
 
-    val canContinue: Boolean = when (step) {
-        ImportWizardStep.SelectFile -> backupDestination != null
-        ImportWizardStep.MapColumns -> columns.any { it.selectedType != null }
-        ImportWizardStep.SelectVault ->
-            if (creatingNewVault) newVaultNameValid else selectedVaultId != null
-
-        ImportWizardStep.ProvidePassphrase -> passphraseValid
-    }
-
-    val showContinueButton: Boolean = progress == null
-
-    /**
-     * A function rather than a computed property: the new-vault name lives in a [TextFieldState],
-     * and a `val` would capture whatever it held when this state object was built rather than what
-     * the user has typed since.
-     */
     fun resolveTarget(newVaultName: String): ImportTarget? =
         if (creatingNewVault) newVaultName.trim().takeIf(String::isNotBlank)
             ?.let { ImportTarget.New(it, newVaultIcon) }

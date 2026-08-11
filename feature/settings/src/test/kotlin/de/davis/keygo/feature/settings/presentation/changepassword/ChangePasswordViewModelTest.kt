@@ -9,6 +9,7 @@ import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
+import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.rust.FakeKeyDeriver
 import de.davis.keygo.rust.FakeKeyWrapper
@@ -93,7 +94,7 @@ class ChangePasswordViewModelTest {
         vm.submitWithPassword()
         advanceUntilIdle()
 
-        assertEquals(FieldError.Empty, vm.state.value.newPasswordError)
+        assertEquals(UiFieldError.Empty, vm.state.value.newPasswordError)
     }
 
     @Test
@@ -106,7 +107,7 @@ class ChangePasswordViewModelTest {
         vm.submitWithPassword()
         advanceUntilIdle()
 
-        assertEquals(FieldError.Mismatch, vm.state.value.confirmPasswordError)
+        assertEquals(UiFieldError.Mismatch, vm.state.value.confirmPasswordError)
     }
 
     @Test
@@ -120,8 +121,8 @@ class ChangePasswordViewModelTest {
 
         // Await rather than advanceUntilIdle: key derivation hops to Dispatchers.Default,
         // which the test scheduler cannot see.
-        vm.state.first { it.currentPasswordError != FieldError.None }
-        assertEquals(FieldError.Incorrect, vm.state.value.currentPasswordError)
+        vm.state.first { it.currentPasswordError != null }
+        assertEquals(UiFieldError.Incorrect, vm.state.value.currentPasswordError)
     }
 
     @Test
@@ -162,12 +163,13 @@ class ChangePasswordViewModelTest {
             vm.onSubmit()
             advanceUntilIdle()
 
-            assertEquals(FieldError.Empty, vm.state.value.newPasswordError)
+            assertEquals(UiFieldError.Empty, vm.state.value.newPasswordError)
         }
 
     @Test
     fun `onSubmit without biometric and valid passwords emits Success`() = runTest(dispatcher) {
-        val vm = viewModel() // setUp seeds an account with no biometric ARK; availability defaults false
+        val vm =
+            viewModel() // setUp seeds an account with no biometric ARK; availability defaults false
         vm.state.value.currentPassword.edit { append("old") }
         vm.state.value.newPassword.edit { append("brand-new") }
         vm.state.value.confirmPassword.edit { append("brand-new") }
@@ -190,28 +192,29 @@ class ChangePasswordViewModelTest {
             vm.onSubmit()
             advanceUntilIdle()
 
-            assertEquals(FieldError.Mismatch, vm.state.value.confirmPasswordError)
+            assertEquals(UiFieldError.Mismatch, vm.state.value.confirmPasswordError)
         }
 
     @Test
-    fun `dismissReauthDialog hides dialog and clears current password error`() = runTest(dispatcher) {
-        enableBiometric()
-        val vm = viewModel()
-        advanceUntilIdle()
-        vm.onBiometricResult(Result.Failure(BiometricAuthError.Declined)) // opens the dialog
-        vm.state.value.newPassword.edit { append("brand-new") }
-        vm.state.value.confirmPassword.edit { append("brand-new") }
-        vm.state.value.currentPassword.edit { append("wrong") }
-        vm.submitWithPassword()
-        // Await rather than advanceUntilIdle: key derivation hops to Dispatchers.Default,
-        // which the test scheduler cannot see. The Incorrect error below is load-bearing.
-        vm.state.first { it.currentPasswordError == FieldError.Incorrect }
+    fun `dismissReauthDialog hides dialog and clears current password error`() =
+        runTest(dispatcher) {
+            enableBiometric()
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.onBiometricResult(Result.Failure(BiometricAuthError.Declined)) // opens the dialog
+            vm.state.value.newPassword.edit { append("brand-new") }
+            vm.state.value.confirmPassword.edit { append("brand-new") }
+            vm.state.value.currentPassword.edit { append("wrong") }
+            vm.submitWithPassword()
+            // Await rather than advanceUntilIdle: key derivation hops to Dispatchers.Default,
+            // which the test scheduler cannot see. The Incorrect error below is load-bearing.
+            vm.state.first { it.currentPasswordError == UiFieldError.Incorrect }
 
-        vm.dismissReauthDialog()
+            vm.dismissReauthDialog()
 
-        assertEquals(false, vm.state.value.showReauthDialog)
-        assertEquals(FieldError.None, vm.state.value.currentPasswordError)
-    }
+            assertEquals(false, vm.state.value.showReauthDialog)
+            assertEquals(null, vm.state.value.currentPasswordError)
+        }
 
     @Test
     fun `dialog confirm with wrong current password keeps dialog open with Incorrect error`() =
@@ -228,8 +231,8 @@ class ChangePasswordViewModelTest {
 
             // Await rather than advanceUntilIdle: key derivation hops to Dispatchers.Default,
             // which the test scheduler cannot see.
-            vm.state.first { it.currentPasswordError != FieldError.None }
-            assertEquals(FieldError.Incorrect, vm.state.value.currentPasswordError)
+            vm.state.first { it.currentPasswordError != null }
+            assertEquals(UiFieldError.Incorrect, vm.state.value.currentPasswordError)
             assertEquals(true, vm.state.value.showReauthDialog)
         }
 

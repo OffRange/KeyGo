@@ -53,5 +53,9 @@ fun AuthScreen(onSuccess: () -> Unit) {
         }
 
     }
-    AuthContent(state = state, onEvent = viewModel::onEvent)
+    AuthContent(
+        state = state,
+        onEvent = viewModel::onEvent,
+        hasPendingTotpImport = viewModel.hasPendingTotpImport,
+    )
 }

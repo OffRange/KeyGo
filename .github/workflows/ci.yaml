@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ "v2" ]
 
+concurrency:
+  # Groups runs by workflow name and the branch/PR number.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

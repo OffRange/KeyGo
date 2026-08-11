@@ -8,7 +8,6 @@ import de.davis.keygo.feature.autofill.domain.repository.AutofillServiceReposito
 import de.davis.keygo.feature.autofill.domain.repository.ChromeAutofillRepository
 import de.davis.keygo.feature.backup.domain.usecase.ObserveLastBackupUseCase
 import de.davis.keygo.feature.settings.domain.repository.AppVersionRepository
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -70,9 +69,7 @@ internal class SettingsViewModel(
         // Re-read on resume: the autofill selection changes in the system picker/settings, which
         // run in a separate activity, so this is where we learn KeyGo was enabled or disabled.
         autofillEnabled.update { autofillServiceRepository.isEnabled() }
-        // Chrome's read is a cross-process ContentProvider query (binder IPC, can cold-start
-        // Chrome's process) — unlike the two reads above, keep it off the main thread.
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             chromeAutofillEnabled.update { chromeAutofillRepository.isAutofillEnabled() }
         }
     }

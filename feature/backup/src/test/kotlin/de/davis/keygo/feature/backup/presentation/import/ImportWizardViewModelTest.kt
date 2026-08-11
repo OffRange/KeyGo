@@ -36,12 +36,14 @@ import de.davisalessandro.keygo.rust.CsvImportResult
 import de.davisalessandro.keygo.rust.FieldConfidence
 import de.davisalessandro.keygo.rust.ImportReport
 import de.davisalessandro.keygo.rust.JsonEncryption
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
@@ -113,6 +115,12 @@ class ImportWizardViewModelTest {
         provider = BackupDestination.Provider.OnDevice,
         displayPath = "Internal storage/Backups",
         fileName = "keygo.csv",
+    )
+
+    private fun textDestination() = BackupDestination(
+        provider = BackupDestination.Provider.OnDevice,
+        displayPath = "Internal storage/Backups",
+        fileName = "notes.txt",
     )
 
     private fun csvAnalysis() = CsvAnalysis(
@@ -244,6 +252,21 @@ class ImportWizardViewModelTest {
         assertEquals(CsvColumnType.Title, state.columns[0].selectedType)
         assertEquals(CsvColumnType.Password, state.columns[1].selectedType)
         assertTrue(csv.importCalls.isEmpty()) // not imported yet
+    }
+
+    @Test
+    fun `Continue on an unsupported file reports the format error`() = runTest {
+        // The picker offers the wildcard MIME type, so a provider can hand back a .txt.
+        val viewModel = viewModel(FakeBackupDestinationResolver(result = textDestination()))
+        viewModel.onFilePicked(BackupDestinationUri("content://doc/notes.txt"))
+        advanceUntilIdle()
+
+        viewModel.onEvent(ImportWizardUiEvent.Continue)
+
+        assertEquals(
+            ImportProgress.Failed(ImportError.UnsupportedFormat),
+            viewModel.state.value.progress,
+        )
     }
 
     @Test
@@ -564,5 +587,171 @@ class ImportWizardViewModelTest {
         viewModel.onEvent(ImportWizardUiEvent.Back)
 
         assertEquals(ImportWizardStep.SelectFile, viewModel.state.value.step)
+    }
+
+    @Test
+    fun `seeding a CSV skips the file step and lands on the mapping`() = runTest {
+        fileStore.contents = "name,secret\nEmail,s3cr3t\n"
+        csv.analyzeResult = csvAnalysis()
+        val viewModel = viewModel(FakeBackupDestinationResolver(result = csvDestination()))
+
+        viewModel.seedFile(BackupDestinationUri("content://doc/keygo.csv"))
+        val state = viewModel.state.first { it.step == ImportWizardStep.MapColumns }
+
+        assertTrue(state.fileChosenByHost)
+        assertNull(state.progress)
+        assertEquals(listOf(ImportWizardStep.MapColumns), state.steps)
+    }
+
+    @Test
+    fun `seeding an ARK sealed JSON imports without asking anything`() = runTest {
+        json.inspectResult = JsonEncryption.ARK
+        fileStore.contents = """{"vaults":[]}"""
+        json.importResult = Backup(listOf(backupVault("Imported", listOf(login("Email")))))
+        val viewModel = viewModel(FakeBackupDestinationResolver(result = jsonDestination()))
+
+        viewModel.seedFile(BackupDestinationUri("content://doc/keygo.json"))
+        val state = viewModel.state.first { it.progress is ImportProgress.Succeeded }
+
+        assertEquals(1, assertIs<ImportProgress.Succeeded>(state.progress).summary.imported)
+    }
+
+    @Test
+    fun `seeding the same file again does not restart the import`() = runTest {
+        fileStore.contents = "name,secret\nEmail,s3cr3t\n"
+        csv.analyzeResult = csvAnalysis()
+        val uri = BackupDestinationUri("content://doc/keygo.csv")
+        val viewModel = viewModel(FakeBackupDestinationResolver(result = csvDestination()))
+        viewModel.seedFile(uri)
+        viewModel.state.first { it.step == ImportWizardStep.MapColumns }
+        viewModel.onEvent(ImportWizardUiEvent.ChangeColumnType(1, CsvColumnType.Username))
+
+        viewModel.seedFile(uri)
+        advanceUntilIdle()
+
+        // A configuration change re-runs the seeding effect. The mapping in progress has to survive.
+        assertEquals(ImportWizardStep.MapColumns, viewModel.state.value.step)
+        assertEquals(CsvColumnType.Username, viewModel.state.value.columns[1].selectedType)
+    }
+
+    @Test
+    fun `back from the first seeded step hands control to the host`() = runTest {
+        fileStore.contents = "name,secret\nEmail,s3cr3t\n"
+        csv.analyzeResult = csvAnalysis()
+        val viewModel = viewModel(FakeBackupDestinationResolver(result = csvDestination()))
+        viewModel.seedFile(BackupDestinationUri("content://doc/keygo.csv"))
+        viewModel.state.first { it.step == ImportWizardStep.MapColumns }
+
+        viewModel.onEvent(ImportWizardUiEvent.Back)
+
+        assertEquals(ImportWizardEvent.Exit, viewModel.event.first())
+    }
+
+    @Test
+    fun `the same file can be seeded again after handing control back`() = runTest {
+        fileStore.contents = "name,secret\nEmail,s3cr3t\n"
+        csv.analyzeResult = csvAnalysis()
+        val uri = BackupDestinationUri("content://doc/keygo.csv")
+        val viewModel = viewModel(FakeBackupDestinationResolver(result = csvDestination()))
+        viewModel.seedFile(uri)
+        viewModel.state.first { it.step == ImportWizardStep.MapColumns }
+        // Edit the mapping so a no-op second seed and a real one are distinguishable: a real one
+        // re-analyzes the file and throws this edit away, a no-op leaves it exactly as it is.
+        viewModel.onEvent(ImportWizardUiEvent.ChangeColumnType(1, CsvColumnType.Username))
+        viewModel.onEvent(ImportWizardUiEvent.Back)
+        viewModel.event.first()
+
+        viewModel.seedFile(uri)
+        val state = viewModel.state.first { it.step == ImportWizardStep.MapColumns }
+
+        // Back hands control back, and exit() resets the step to SelectFile, so arriving at
+        // MapColumns again already means a second seed ran. The analyzer count and the mapping
+        // reverting to its freshly suggested value instead of the edit above pin down that it
+        // re-read the file rather than restoring a step.
+        assertEquals(2, csv.analyzeCalls.size)
+        assertEquals(CsvColumnType.Password, state.columns[1].selectedType)
+    }
+
+    @Test
+    fun `seeding a file KeyGo cannot read reports the format`() = runTest {
+        val viewModel = viewModel(FakeBackupDestinationResolver(result = textDestination()))
+
+        viewModel.seedFile(BackupDestinationUri("content://doc/notes.txt"))
+        val state = viewModel.state.first { it.progress is ImportProgress.Failed }
+
+        assertEquals(ImportProgress.Failed(ImportError.UnsupportedFormat), state.progress)
+    }
+
+    @Test
+    fun `exiting after an unsupported file error resets the wizard to a fresh state`() = runTest {
+        val viewModel = viewModel(FakeBackupDestinationResolver(result = textDestination()))
+        viewModel.seedFile(BackupDestinationUri("content://doc/notes.txt"))
+        viewModel.state.first { it.progress is ImportProgress.Failed }
+
+        viewModel.onEvent(ImportWizardUiEvent.Back)
+        viewModel.event.first()
+
+        // This ViewModel is scoped to the host's back stack entry, so it outlives the visit. The
+        // gap between handing control back and the host seeding a new file is exactly what a second
+        // entry into the wizard would render if exit() left the dismissed error behind.
+        val state = viewModel.state.value
+        assertNull(state.progress)
+        assertEquals(ImportWizardStep.SelectFile, state.step)
+        assertFalse(state.fileChosenByHost)
+        assertNull(state.backupDestination)
+        assertNull(state.uri)
+    }
+
+    @Test
+    fun `seeding a different file after backing out of a mapping does not carry over the old file's state`() =
+        runTest {
+            fileStore.contents = "name,secret\nEmail,s3cr3t\n"
+            csv.analyzeResult = csvAnalysis()
+            val resolver = FakeBackupDestinationResolver(result = csvDestination())
+            val viewModel = viewModel(resolver)
+            viewModel.seedFile(BackupDestinationUri("content://doc/keygo.csv"))
+            viewModel.state.first { it.step == ImportWizardStep.MapColumns }
+
+            viewModel.onEvent(ImportWizardUiEvent.Back)
+            viewModel.event.first()
+
+            // Same gap as above, but from a mapping rather than an error: the previous file's
+            // column names are the tell if exit() left them behind.
+            val handedBackState = viewModel.state.value
+            assertEquals(ImportWizardStep.SelectFile, handedBackState.step)
+            assertEquals(emptyList(), handedBackState.columns)
+            assertFalse(handedBackState.fileChosenByHost)
+
+            resolver.result = jsonDestination()
+            json.inspectResult = JsonEncryption.ARK
+            fileStore.contents = """{"vaults":[]}"""
+            json.importResult = Backup(listOf(backupVault("Imported", listOf(login("Email")))))
+            viewModel.seedFile(BackupDestinationUri("content://doc/keygo.json"))
+            val finalState = viewModel.state.first { it.progress is ImportProgress.Succeeded }
+
+            assertEquals(1, assertIs<ImportProgress.Succeeded>(finalState.progress).summary.imported)
+            assertEquals(emptyList(), finalState.columns)
+        }
+
+    @Test
+    fun `seedFile resolves the destination without a concurrent state write re-running it`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val resolver = FakeBackupDestinationResolver(result = textDestination(), gate = gate)
+        val viewModel = viewModel(resolver)
+
+        viewModel.seedFile(BackupDestinationUri("content://doc/notes.txt"))
+        // seedFile's coroutine has called resolve() and is now parked on the gate, mid-CAS-lambda.
+        runCurrent()
+
+        // A state write that lands while that lambda is still suspended: this is the same window
+        // the passphraseState.clearText() collector writes into in the real flow. If resolve() were
+        // still called from inside _state.update, the CAS retry this forces would call it again.
+        env.vaultRepo.seed(testVault(name = "Personal"))
+        runCurrent()
+
+        gate.complete(Unit)
+        viewModel.state.first { it.backupDestination != null }
+
+        assertEquals(listOf(BackupDestinationUri("content://doc/notes.txt")), resolver.calls)
     }
 }

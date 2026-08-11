@@ -37,6 +37,7 @@ internal fun ImportWizardContent(
     state: ImportWizardUiState,
     onEvent: (ImportWizardUiEvent) -> Unit,
     navigateUp: () -> Unit,
+    onFinished: () -> Unit = navigateUp,
 ) {
     AnimatedContent(
         targetState = state.progress,
@@ -46,7 +47,7 @@ internal fun ImportWizardContent(
         when (progress) {
             is ImportProgress.Succeeded -> ImportResultContent(
                 summary = progress.summary,
-                onDone = navigateUp,
+                onDone = onFinished,
             )
 
             is ImportProgress.Failed -> ImportErrorContent(
@@ -176,6 +177,7 @@ private class ImportWizardUiStateProvider : PreviewParameterProvider<ImportWizar
     } + sequenceOf(
         ImportWizardUiState(progress = ImportProgress.Reading),
         ImportWizardUiState(progress = ImportProgress.Failed(ImportError.NothingImported)),
+        ImportWizardUiState(progress = ImportProgress.Failed(ImportError.UnsupportedFormat)),
         ImportWizardUiState(progress = ImportProgress.Parsing),
         ImportWizardUiState(progress = ImportProgress.Running(1, 10)),
         ImportWizardUiState(

@@ -11,6 +11,7 @@ import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
+import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
@@ -98,7 +99,7 @@ internal class ChangePasswordViewModel(
         val current = state.currentPassword.text.toString()
         if (!validateNewPasswords()) return
         if (current.isBlank()) {
-            _state.update { it.copy(currentPasswordError = FieldError.Empty) }
+            _state.update { it.copy(currentPasswordError = UiFieldError.Empty) }
             return
         }
         change(Reauthentication.Password(current))
@@ -106,7 +107,7 @@ internal class ChangePasswordViewModel(
 
     /** Dismiss the fallback dialog and clear any stale current-password error. */
     fun dismissReauthDialog() {
-        _state.update { it.copy(showReauthDialog = false, currentPasswordError = FieldError.None) }
+        _state.update { it.copy(showReauthDialog = false, currentPasswordError = null) }
     }
 
     /** Verify with biometric: [recoveredArk] was unwrapped by the screen via requestUnwrap. */
@@ -151,17 +152,17 @@ internal class ChangePasswordViewModel(
         val confirm = _state.value.confirmPassword.text.toString()
         _state.update {
             it.copy(
-                currentPasswordError = FieldError.None,
-                newPasswordError = FieldError.None,
-                confirmPasswordError = FieldError.None,
+                currentPasswordError = null,
+                newPasswordError = null,
+                confirmPasswordError = null,
             )
         }
         if (new.isBlank()) {
-            _state.update { it.copy(newPasswordError = FieldError.Empty) }
+            _state.update { it.copy(newPasswordError = UiFieldError.Empty) }
             return false
         }
         if (new != confirm) {
-            _state.update { it.copy(confirmPasswordError = FieldError.Mismatch) }
+            _state.update { it.copy(confirmPasswordError = UiFieldError.Mismatch) }
             return false
         }
         return true
@@ -180,7 +181,7 @@ internal class ChangePasswordViewModel(
     private fun handleFailure(error: ChangePasswordError) {
         when (error) {
             ChangePasswordError.IncorrectPassword ->
-                _state.update { it.copy(currentPasswordError = FieldError.Incorrect) }
+                _state.update { it.copy(currentPasswordError = UiFieldError.Incorrect) }
 
             else -> _event.trySend(ChangePasswordEvent.GenericError)
         }
