@@ -128,7 +128,7 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                                 Text(text = metadata.name)
                             }
                             Text(text = "\u2022")
-                            Text(text = stringResource(CoreItemR.string.password))
+                            Text(text = stringResource(CoreItemR.string.login))
                         }
                     }
                 },

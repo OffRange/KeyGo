@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="password">Password</string>
+    <string name="login">Login</string>
     <string name="credit_card">Credit Card</string>
 
     <string name="password_strength_ridiculous">Ridiculous</string>

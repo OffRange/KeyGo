@@ -3,7 +3,9 @@ package de.davis.keygo.app.presentation
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -17,6 +19,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
@@ -30,6 +33,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
 import com.mikepenz.aboutlibraries.ui.compose.android.produceLibraries
 import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
+import de.davis.keygo.R
 import de.davis.keygo.app.presentation.component.KeyGoNavigationWrapper
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.ui.theme.KeyGoTheme
@@ -205,7 +209,15 @@ private fun App(hasAccess: Boolean) {
                 )
 
                 composable<RouteDestination.Connectivity> {
-                    Text("CONNECTIVITY")
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.coming_soon),
+                            style = MaterialTheme.typography.displaySmall
+                        )
+                    }
                 }
             }
 
