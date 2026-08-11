@@ -44,7 +44,7 @@ internal class AuthViewModel(
     private val unlockWithPassword: UnlockWithPasswordUseCase,
     private val createAllAccesses: CreateAccessUseCase,
 ) : ViewModel() {
-    private val biometricChannel = Channel<BiometricRequest>()
+    private val biometricChannel = Channel<BiometricRequest>(Channel.BUFFERED)
     val biometricFlow = biometricChannel.receiveAsFlow()
 
     private val authRoute = savedStateHandle.toRoute<AuthRoute>()
