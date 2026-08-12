@@ -28,7 +28,7 @@ make -C rust/rust-code bindgen         # Generate uniffi bindings
 
 ## Tech Stack
 
-Kotlin 2.3.20 · AGP 9.1.0 · JVM 17 · Compile SDK 36 · Min SDK 26 · `-Xcontext-parameters`
+Kotlin 2.3.20 · AGP 9.2.1 · JVM 17 · Compile SDK 37 · Min SDK 26 · `-Xcontext-parameters`
 
 ## Project Structure
 
@@ -37,15 +37,23 @@ Android password manager using Clean Architecture per module:
 
 | Module                     | Purpose                                                                  |
 |----------------------------|--------------------------------------------------------------------------|
-| `:app`                     | Navigation, auth/session flow, autofill service                          |
+| `:app`                     | Navigation, app-level DI, dashboard                                      |
 | `:core:security`           | Crypto, biometrics, Android Keystore                                     |
 | `:core:identity`           | Key wrapping, auth data, proto schemas (`core/identity/src/main/proto/`) |
 | `:core:item`               | Room database, login/item entities                                       |
 | `:core:ui`                 | Shared composables and UI utilities                                      |
 | `:core:util`               | Shared utilities, `Result` type                                          |
-| `:feature:*`               | `list_screen`, `item:{core,create,view}`, `credentials`, `totp`, `vault` |
-| `:automation`              | Automation support + annotation processor                                |
-| `:migration-create-access` | v1 → v2 data migration (high risk)                                       |
+| `:feature:auth`            | Auth/session flow (login gate, biometric prompt routing)                 |
+| `:feature:autofill`        | Android autofill service (framework + Chrome/inline datasets)            |
+| `:feature:backup`          | Export/import + scheduled backup (see Backup Escrow)                     |
+| `:feature:credit-card`     | NFC credit card scanning (APDU/ISO-DEP)                                  |
+| `:feature:onboarding`      | First-run onboarding flow                                                |
+| `:feature:settings`        | Settings, change password                                                |
+| `:feature:*` (remaining)   | `list_screen`, `item:{core,create,view}`, `credentials`, `totp`, `vault` |
+| `:automation`              | `@VaultItem` annotation + automation support                             |
+| `:automation-processor`    | KSP processor generating code from `@VaultItem`                          |
+| `:migration:create-access` | Post-migration main-password/account setup (high risk)                   |
+| `:migration:legacy-data`   | Reads/decrypts the legacy v1 database for import (high risk)             |
 | `:rust`                    | Rust crypto/passkey ops via UniFFI-generated Kotlin bindings             |
 
 ## Key Patterns
@@ -119,8 +127,9 @@ carries its own rules:
 
 ## Sensitive Areas
 
-- **Migration** — preserve backward compat, smallest safe change
-- **Autofill** (`app/.../autofill/`) — constrained by Android framework, keep conservative
+- **Migration** (`migration:create-access`, `migration:legacy-data`) — preserve backward compat,
+  smallest safe change
+- **Autofill** (`feature/autofill/`) — constrained by Android framework, keep conservative
 - **UniFFI** — preserve memory and type safety across the FFI boundary.
 - **Room schema** — check migration implications before changing entities
 
@@ -144,11 +153,11 @@ carries its own rules:
 - Run broader tests for cross-module or security changes
 - **Rust fakes** — `:rust` uses UniFFI (not raw JNI) to generate Kotlin bindings. UniFFI emits
   `KeyDeriverInterface`/`KeyWrapperInterface`/`AccountManagerInterface`/`ItemManagerInterface`/
-  `VaultManagerInterface` for test seams; fakes live in `:rust` testFixtures (
-  `de.davis.keygo.rust`).
-  Never instantiate `KeyDeriver()`/`KeyWrapper()`/`AccountManager()`/`ItemManager()`/
-  `VaultManager()`
-  in JVM unit tests — their default constructors require the native Rust library at runtime.
+  `VaultManagerInterface`/`CardFormatterInterface`/`CsvBackupManagerInterface`/
+  `JsonBackupManagerInterface`/`RustPasskeyInterface`/`TotpServiceInterface` for test seams; fakes
+  live in `:rust` testFixtures (`de.davis.keygo.rust`).
+  Never instantiate the real UniFFI classes (`KeyDeriver()`, `KeyWrapper()`, etc.) in JVM unit
+  tests — their default constructors require the native Rust library at runtime.
 - **testFixtures + Compose plugin** — Any module with `kotlin.compose` that enables testFixtures
   must add `testFixturesImplementation(libs.androidx.compose.runtime)` to avoid "Compose Runtime
   not on classpath" compile errors. See `:core:item` for the canonical pattern.
