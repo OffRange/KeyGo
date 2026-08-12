@@ -5,6 +5,10 @@ plugins {
 
 android {
     namespace = "de.davis.keygo.migration.create_access"
+
+    testFixtures {
+        enable = true
+    }
 }
 
 dependencies {

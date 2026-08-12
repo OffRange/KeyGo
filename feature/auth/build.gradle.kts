@@ -14,4 +14,11 @@ dependencies {
     implementation(projects.migration.createAccess)
 
     implementation(libs.androidx.navigation.compose)
+
+    testImplementation(projects.rust)
+    testImplementation(testFixtures(projects.core.identity))
+    testImplementation(testFixtures(projects.core.item))
+    testImplementation(testFixtures(projects.core.security))
+    testImplementation(testFixtures(projects.rust))
+    testImplementation(testFixtures(projects.migration.createAccess))
 }
