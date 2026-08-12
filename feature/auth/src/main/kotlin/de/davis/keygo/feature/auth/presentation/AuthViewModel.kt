@@ -118,7 +118,6 @@ internal class AuthViewModel(
                                         it.copyDefaultState(passwordError = UiFieldError.Incorrect)
                                     }
                                 }.onSuccess {
-                                    clearMainPasswordUseCase()
                                     createPasswordOrBiometricAccess(state, password)
                                 }
                         }
@@ -147,10 +146,7 @@ internal class AuthViewModel(
         password: String
     ) {
         if (!authState.biometricsAvailable || !authState.useBiometrics) {
-            loading {
-                createAllAccesses(password = password).handleAuthenticationResult()
-            }
-
+            executeCreateAccessAndClearV1(password = password)
             return
         }
 
@@ -185,15 +181,17 @@ internal class AuthViewModel(
         }
     }
 
-    fun createAccessWithUnwrappingCipher(
-        createAccessRequest: BiometricRequest.CreateAccess,
-        cipher: Cipher
+    fun executeCreateAccessAndClearV1(
+        password: String,
+        cipher: Cipher? = null
     ) {
         loading {
             createAllAccesses(
-                password = createAccessRequest.password,
+                password = password,
                 biometricCipher = cipher
-            ).handleAuthenticationResult()
+            ).onSuccess {
+                clearMainPasswordUseCase()
+            }.handleAuthenticationResult()
         }
     }
 }
