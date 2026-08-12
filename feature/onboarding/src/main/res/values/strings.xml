@@ -22,7 +22,7 @@
     <string name="import_subtitle">Imports are encrypted locally and always on-device. Select a file to get started.</string>
 
     <string name="biometrics_title">Unlock with a touch</string>
-    <string name="biometrics_subtitle">Use your fingerprint to open KeyGo. Your master password stays as backup.</string>
+    <string name="biometrics_subtitle">Use your fingerprint to open KeyGo. Your main password stays as backup.</string>
 
     <string name="autofill_title">Set KeyGo as your autofill provider</string>
     <string name="autofill_subtitle">With this feature KeyGo will offer you stored passwords whenever you are in a login screen. You can always change this setting later in your device settings.</string>

@@ -14,7 +14,7 @@
 
     <string name="migrating">Migrating</string>
     <string name="migrate">Migrate</string>
-    <string name="migrate_to_access_description">To ensure the integrity of your data, please migrate your access credentials. You will be prompted to enter your master password.</string>
+    <string name="migrate_to_access_description">To ensure the integrity of your data, please migrate your access credentials. You will be prompted to enter your main password.</string>
 
     <string name="request_biometric_authentication_content_description">Request biometric authentication</string>
     <string name="pending_totp_import_subtitle">Unlock your vault to add this authenticator code.</string>
