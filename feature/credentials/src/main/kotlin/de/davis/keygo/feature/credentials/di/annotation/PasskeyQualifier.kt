@@ -1,12 +1,12 @@
 package de.davis.keygo.feature.credentials.di.annotation
 
 import org.koin.core.annotation.Named
+import org.koin.core.qualifier.Qualifier
+import org.koin.core.qualifier.qualifier
 
 
 @Named
-internal annotation class PasskeyQualifier {
+@Retention(AnnotationRetention.BINARY)
+internal annotation class PasskeyQualifier
 
-    companion object {
-        const val NAMED_QUALIFIER = "PasskeyQualifier"
-    }
-}
+internal val PasskeyProviderQualifier: Qualifier = qualifier<PasskeyQualifier>()
