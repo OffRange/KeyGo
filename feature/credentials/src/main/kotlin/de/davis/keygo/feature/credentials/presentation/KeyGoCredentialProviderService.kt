@@ -22,7 +22,7 @@ import androidx.credentials.provider.BeginGetCredentialResponse
 import androidx.credentials.provider.BeginGetPublicKeyCredentialOption
 import androidx.credentials.provider.CredentialProviderService
 import androidx.credentials.provider.ProviderClearCredentialStateRequest
-import de.davis.keygo.feature.credentials.di.annotation.PasskeyQualifier
+import de.davis.keygo.feature.credentials.di.annotation.PasskeyProviderQualifier
 import de.davis.keygo.feature.credentials.presentation.create.CredentialCreator
 import de.davis.keygo.feature.credentials.presentation.provide.CredentialProvider
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -30,14 +30,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
-import org.koin.core.qualifier.named
 
 @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
 internal class KeyGoCredentialProviderService : CredentialProviderService() {
 
     private val credentialCreator by inject<CredentialCreator>()
     private val passkeyProvider by inject<CredentialProvider<BeginGetPublicKeyCredentialOption>>(
-        named(PasskeyQualifier.NAMED_QUALIFIER)
+        PasskeyProviderQualifier
     )
 
     override fun onBeginCreateCredentialRequest(
