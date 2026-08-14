@@ -1,0 +1,62 @@
+package de.davis.keygo.legacy_migration.domain.usecase
+
+import de.davis.keygo.legacy_migration.domain.model.LegacyMigrationOutcome
+import de.davis.keygo.legacy_migration.domain.model.MigrationResult
+import org.koin.core.annotation.Single
+import kotlin.coroutines.cancellation.CancellationException
+
+/**
+ * Runs whatever is left of the v1 migration, in order, once a session is live.
+ *
+ * The v1 main password record is the marker for the whole migration, not just for the access half.
+ * It is read first, so an install that never ran v1 never opens the legacy path at all, and it is
+ * cleared last, and only once the import has said something definite about the v1 file. Between
+ * those two the user's credential is the only way back to a migration that did not finish, so
+ * dropping it early would strand them with rows still on disk and nothing to act on.
+ *
+ * Called after every path that establishes a session on the auth screen, which is the only door a
+ * migrating install has: both unlock paths need an account that does not exist yet while the
+ * migration is pending, so the autofill service and the passkey activities cannot reach this.
+ */
+@Single
+class RunPendingMigrationUseCase internal constructor(
+    private val hasMainPassword: HasMainPasswordUseCase,
+    private val importLegacyData: LegacyDataImporter,
+    private val clearMainPassword: ClearMainPasswordUseCase,
+) {
+
+    suspend operator fun invoke(): MigrationResult {
+        if (!hasMainPassword()) return MigrationResult.NotPending
+
+        val outcome = try {
+            importLegacyData()
+        } catch (e: CancellationException) {
+            // A run cancelled because the scope went away tells us nothing about the user's file,
+            // and it must not be able to answer for it. See LegacyItemRepositoryImpl.withDao.
+            throw e
+        } catch (e: Throwable) {
+            // Throwable and not Exception: MigrateLegacyDataUseCase catches Exception around its
+            // whole run, which leaves everything that is not one uncaught, and a module reaching
+            // Room, a native SQLite driver and the Keystore can raise a LinkageError or a
+            // NoClassDefFoundError on a device missing something it expected. This now runs inside
+            // viewModelScope, where that would end the process rather than the migration.
+            return MigrationResult.Incomplete(e)
+        }
+
+        return when (outcome) {
+            is LegacyMigrationOutcome.Failed -> MigrationResult.Incomplete(outcome.cause)
+
+            // Exhaustive rather than an else, so an outcome added later cannot default into the
+            // branch that drops the user's v1 credential.
+            LegacyMigrationOutcome.NothingToMigrate -> {
+                clearMainPassword()
+                MigrationResult.Completed(skippedItems = 0)
+            }
+
+            is LegacyMigrationOutcome.Migrated -> {
+                clearMainPassword()
+                MigrationResult.Completed(skippedItems = outcome.report.failures.size)
+            }
+        }
+    }
+}

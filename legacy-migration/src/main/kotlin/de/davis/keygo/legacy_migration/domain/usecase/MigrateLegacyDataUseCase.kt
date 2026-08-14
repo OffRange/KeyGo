@@ -46,8 +46,8 @@ import kotlin.coroutines.cancellation.CancellationException
  * file where it is, because a retry on the next unlock costs the user nothing and a wrong deletion
  * costs them everything.
  */
-@Single
-class MigrateLegacyDataUseCase internal constructor(
+@Single(binds = [LegacyDataImporter::class])
+internal class MigrateLegacyDataUseCase internal constructor(
     private val legacyItemRepository: LegacyItemRepository,
     private val legacyKeyRepository: LegacyKeyRepository,
     private val converter: LegacyItemConverter,
@@ -56,9 +56,9 @@ class MigrateLegacyDataUseCase internal constructor(
     private val vaultContextRepository: VaultContextRepository,
     private val upsertVaultItem: UpsertVaultItemUseCase,
     private val transactionRunner: TransactionRunner,
-) {
+) : LegacyDataImporter {
 
-    suspend operator fun invoke(): LegacyMigrationOutcome = try {
+    override suspend operator fun invoke(): LegacyMigrationOutcome = try {
         migrate()
     } catch (e: CancellationException) {
         // See LegacyItemRepositoryImpl.withDao.
