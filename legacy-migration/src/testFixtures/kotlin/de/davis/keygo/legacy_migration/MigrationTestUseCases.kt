@@ -1,9 +1,9 @@
-package de.davis.keygo.migration.create_access
+package de.davis.keygo.legacy_migration
 
-import de.davis.keygo.migration.create_access.data.repository.HashValidatorImpl
-import de.davis.keygo.migration.create_access.domain.usecase.ClearMainPasswordUseCase
-import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
-import de.davis.keygo.migration.create_access.domain.usecase.ValidateMainPasswordUseCase
+import de.davis.keygo.legacy_migration.data.repository.HashValidatorImpl
+import de.davis.keygo.legacy_migration.domain.usecase.ClearMainPasswordUseCase
+import de.davis.keygo.legacy_migration.domain.usecase.HasMainPasswordUseCase
+import de.davis.keygo.legacy_migration.domain.usecase.ValidateMainPasswordUseCase
 
 fun clearMainPasswordUseCase(repository: FakeMainPasswordRepository): ClearMainPasswordUseCase =
     ClearMainPasswordUseCase(repository.asMainPasswordRepository())

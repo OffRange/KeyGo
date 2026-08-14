@@ -1,4 +1,4 @@
-package de.davis.keygo.migration.create_access.domain.model
+package de.davis.keygo.legacy_migration.domain.model
 
 import java.time.Instant
 

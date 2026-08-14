@@ -17,9 +17,9 @@ import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.auth.presentation.model.AuthState
 import de.davis.keygo.feature.auth.presentation.model.AuthUIEvent
 import de.davis.keygo.feature.auth.presentation.model.BiometricRequest
-import de.davis.keygo.migration.create_access.domain.usecase.ClearMainPasswordUseCase
-import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
-import de.davis.keygo.migration.create_access.domain.usecase.ValidateMainPasswordUseCase
+import de.davis.keygo.legacy_migration.domain.usecase.ClearMainPasswordUseCase
+import de.davis.keygo.legacy_migration.domain.usecase.HasMainPasswordUseCase
+import de.davis.keygo.legacy_migration.domain.usecase.ValidateMainPasswordUseCase
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

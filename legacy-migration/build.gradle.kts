@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.keygo.android.library)
+    alias(libs.plugins.keygo.android.protobuf)
     alias(libs.plugins.androidx.room3)
     alias(libs.plugins.google.ksp)
     alias(libs.plugins.kotlin.serialization)
@@ -14,6 +15,9 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.datastore)
+    implementation(libs.at.favre.bcrypt)
+
     implementation(libs.androidx.room3.runtime)
     ksp(libs.androidx.room3.compiler)
 

@@ -9,10 +9,10 @@ import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
 import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.feature.auth.presentation.model.AuthState
-import de.davis.keygo.migration.create_access.FakeMainPasswordRepository
-import de.davis.keygo.migration.create_access.clearMainPasswordUseCase
-import de.davis.keygo.migration.create_access.hasMainPasswordUseCase
-import de.davis.keygo.migration.create_access.validateMainPasswordUseCase
+import de.davis.keygo.legacy_migration.FakeMainPasswordRepository
+import de.davis.keygo.legacy_migration.clearMainPasswordUseCase
+import de.davis.keygo.legacy_migration.hasMainPasswordUseCase
+import de.davis.keygo.legacy_migration.validateMainPasswordUseCase
 import de.davis.keygo.rust.FakeAccountManager
 import de.davis.keygo.rust.FakeKeyDeriver
 import de.davis.keygo.rust.FakeKeyWrapper

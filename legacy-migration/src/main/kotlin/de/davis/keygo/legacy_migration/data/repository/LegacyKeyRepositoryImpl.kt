@@ -5,6 +5,11 @@ import org.koin.core.annotation.Single
 import java.security.KeyStore
 import javax.crypto.SecretKey
 
+/**
+ * v1's Keystore alias. The identity of a shipped v1 install's item key. It must never change.
+ */
+internal const val LEGACY_KEY_ALIAS = "password_manager_skey"
+
 @Single
 internal class LegacyKeyRepositoryImpl : LegacyKeyRepository {
 
@@ -27,7 +32,5 @@ internal class LegacyKeyRepositoryImpl : LegacyKeyRepository {
 
     private companion object {
         const val ANDROID_KEY_STORE = "AndroidKeyStore"
-
-        const val LEGACY_KEY_ALIAS = "password_manager_skey"
     }
 }

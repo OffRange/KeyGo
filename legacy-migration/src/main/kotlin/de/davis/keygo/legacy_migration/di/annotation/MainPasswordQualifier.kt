@@ -1,4 +1,4 @@
-package de.davis.keygo.migration.create_access.di.annotation
+package de.davis.keygo.legacy_migration.di.annotation
 
 import org.koin.core.annotation.Named
 

@@ -1,7 +1,7 @@
-package de.davis.keygo.migration.create_access
+package de.davis.keygo.legacy_migration
 
-import de.davis.keygo.migration.create_access.domain.model.MainPassword
-import de.davis.keygo.migration.create_access.domain.repository.MainPasswordRepository
+import de.davis.keygo.legacy_migration.domain.model.MainPassword
+import de.davis.keygo.legacy_migration.domain.repository.MainPasswordRepository
 import java.time.Instant
 
 /**

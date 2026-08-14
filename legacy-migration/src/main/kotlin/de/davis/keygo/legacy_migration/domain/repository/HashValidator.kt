@@ -1,4 +1,4 @@
-package de.davis.keygo.migration.create_access.domain.repository
+package de.davis.keygo.legacy_migration.domain.repository
 
 internal interface HashValidator {
 

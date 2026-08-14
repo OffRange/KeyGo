@@ -1,13 +1,13 @@
-package de.davis.keygo.migration.create_access.data.repository
+package de.davis.keygo.legacy_migration.data.repository
 
 import androidx.datastore.core.DataStore
 import com.google.protobuf.timestamp
-import de.davis.keygo.migration.create_access.data.local.model.ProtoMainPassword
-import de.davis.keygo.migration.create_access.data.local.model.copy
-import de.davis.keygo.migration.create_access.data.mapper.toDomain
-import de.davis.keygo.migration.create_access.di.annotation.MainPasswordQualifier
-import de.davis.keygo.migration.create_access.domain.model.MainPassword
-import de.davis.keygo.migration.create_access.domain.repository.MainPasswordRepository
+import de.davis.keygo.legacy_migration.data.local.model.ProtoMainPassword
+import de.davis.keygo.legacy_migration.data.local.model.copy
+import de.davis.keygo.legacy_migration.data.mapper.toDomain
+import de.davis.keygo.legacy_migration.di.annotation.MainPasswordQualifier
+import de.davis.keygo.legacy_migration.domain.model.MainPassword
+import de.davis.keygo.legacy_migration.domain.repository.MainPasswordRepository
 import kotlinx.coroutines.flow.first
 import org.koin.core.annotation.Single
 

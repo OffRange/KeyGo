@@ -1,7 +1,7 @@
-package de.davis.keygo.migration.create_access.domain.usecase
+package de.davis.keygo.legacy_migration.domain.usecase
 
-import de.davis.keygo.migration.create_access.domain.repository.HashValidator
-import de.davis.keygo.migration.create_access.domain.repository.MainPasswordRepository
+import de.davis.keygo.legacy_migration.domain.repository.HashValidator
+import de.davis.keygo.legacy_migration.domain.repository.MainPasswordRepository
 import org.koin.core.annotation.Single
 
 @Single

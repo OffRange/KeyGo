@@ -119,7 +119,6 @@ dependencies {
     implementation(projects.feature.settings)
     implementation(projects.feature.backup)
     implementation(projects.feature.onboarding)
-    implementation(projects.migration.createAccess)
     implementation(projects.legacyMigration)
 
     implementation(libs.androidx.core.splashscreen)
