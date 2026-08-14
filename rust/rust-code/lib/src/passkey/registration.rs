@@ -29,14 +29,22 @@ pub enum RegistrationError {
     KeyEncodeError(PasskeyCodecError),
 }
 
-pub async fn get_exclusion_list(json_request: &str) -> Result<Vec<Vec<u8>>, RegistrationError> {
+pub struct PasskeyInformation {
+    pub exclude_credentials: Vec<Vec<u8>>,
+    pub rp: String,
+}
+
+pub fn get_passkey_information(json_request: &str) -> Result<PasskeyInformation, RegistrationError> {
     let creation_options: PublicKeyCredentialCreationOptions =
         serde_json::from_str(json_request).map_err(|_| InvalidJsonFormat)?;
 
-    let list = creation_options.exclude_credentials.unwrap_or_default();
-    let ids = list.iter().map(|desc| desc.id.clone().into()).collect();
+    let exclude_credentials: Vec<Vec<u8>> = creation_options.exclude_credentials.unwrap_or_default()
+        .into_iter().map(|desc| desc.id.into()).collect();
+    let rp = creation_options.rp.id.unwrap_or_default();
 
-    Ok(ids)
+    Ok(
+        PasskeyInformation { exclude_credentials, rp }
+    )
 }
 
 pub async fn register_passkey(

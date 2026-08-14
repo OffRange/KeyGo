@@ -55,9 +55,6 @@ import org.koin.androidx.viewmodel.ext.android.viewModel
 
 
 @Serializable
-private data object AuthenticatedHome
-
-@Serializable
 private data object ListDest
 
 @Serializable
@@ -74,7 +71,8 @@ internal class CreatePasskeyActivity : FragmentActivity() {
         val callingRequest = request?.callingRequest as? CreatePublicKeyCredentialRequest
             ?: return cancel("Invalid CreatePublicKeyCredentialRequest")
 
-        viewModel.setRequest(callingRequest)
+        val success = viewModel.setRequest(callingRequest)
+        if (!success) return cancel("Failed to set request")
 
         setResult(RESULT_CANCELED)
 
@@ -91,10 +89,6 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                 ObserveAsEvents(flow = viewModel.event) {
                     when (it) {
                         CreatePasskeyEvent.Abort -> cancel()
-                        CreatePasskeyEvent.ShowList -> authenticatedNavController.navigate(ListDest) {
-                            popUpTo<AuthenticatedHome> { inclusive = true }
-                        }
-
                         is CreatePasskeyEvent.Finish -> finishWithSuccess(it.responseJson)
 
                         is CreatePasskeyEvent.OpenConfirmationDialog -> {
@@ -185,15 +179,11 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                         Scaffold { innerPadding ->
                             NavHost(
                                 navController = authenticatedNavController,
-                                startDestination = AuthenticatedHome,
+                                startDestination = ListDest,
                                 modifier = Modifier
                                     .padding(innerPadding)
                                     .consumeWindowInsets(innerPadding),
                             ) {
-                                composable<AuthenticatedHome> {
-                                    // empty placeholder while operation runs
-                                }
-
                                 composable<ListDest> {
                                     PasskeyItemListScreen(
                                         onItemClick = viewModel::onItemClicked,

@@ -1,7 +1,5 @@
 use lib::passkey::provider::{ProviderError, provide_passkey};
-use lib::passkey::registration::{
-    KeyGoRegistrationResponse, RegistrationError, get_exclusion_list, register_passkey,
-};
+use lib::passkey::registration::{KeyGoRegistrationResponse, PasskeyInformation as CorePasskeyInformation, RegistrationError, get_passkey_information, register_passkey};
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
@@ -69,6 +67,21 @@ impl From<KeyGoRegistrationResponse> for RegistrationResponse {
     }
 }
 
+#[derive(uniffi::Record)]
+pub struct PasskeyInformation {
+    pub exclude_credentials: Vec<Vec<u8>>,
+    pub rp: String,
+}
+
+impl From<CorePasskeyInformation> for PasskeyInformation {
+    fn from(value: CorePasskeyInformation) -> Self {
+        Self {
+            exclude_credentials: value.exclude_credentials,
+            rp: value.rp,
+        }
+    }
+}
+
 #[derive(uniffi::Object)]
 pub struct RustPasskey;
 
@@ -89,11 +102,8 @@ impl RustPasskey {
             .map_err(Into::into)
     }
 
-    pub async fn excluded_credentials(
-        &self,
-        json_request: String,
-    ) -> Result<Vec<Vec<u8>>, PasskeyError> {
-        get_exclusion_list(&json_request).await.map_err(Into::into)
+    pub fn passkey_information(&self, json_request: String) -> Result<PasskeyInformation, PasskeyError> {
+        get_passkey_information(&json_request).map(Into::into).map_err(Into::into)
     }
 
     pub async fn authenticate(
