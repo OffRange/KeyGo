@@ -9,18 +9,22 @@ import de.davis.keygo.feature.item.create.presentation.model.ItemUiState
 
 internal typealias LoginUiState = ItemUiState<LoginBaseState>
 
+internal data class LoginPasskeyInfo(
+    val rpId: String,
+    val pending: Boolean,
+)
+
 @Stable
 internal data class LoginBaseState(
     val passwordTextFieldState: TextFieldState = TextFieldState(),
     val totpTextFieldState: TextFieldState = TextFieldState(),
     val usernameTextFieldState: TextFieldState = TextFieldState(),
     val domains: Set<DomainInfo> = emptySet(),
+    val passkeyRPs: Set<LoginPasskeyInfo> = emptySet(),
     val strengthScore: PasswordScore = PasswordScore.None,
     val generatePasswordBottomSheetVisible: Boolean = false,
     val dialogState: DialogState = DialogState.None,
     val nameError: InputFieldError? = null,
-    val existingPasskeyCount: Int = 0,
-    val pendingPasskeyCount: Int = 0,
     val scanning: Boolean = false,
     val updating: Boolean = false,
 ) {
@@ -28,8 +32,7 @@ internal data class LoginBaseState(
         get() = passwordTextFieldState.text.isNotBlank()
                 || totpTextFieldState.text.isNotBlank()
                 || usernameTextFieldState.text.isNotBlank()
-                || existingPasskeyCount > 0
-                || pendingPasskeyCount > 0
+                || passkeyRPs.isNotEmpty()
 
     fun canSave(name: CharSequence): Boolean = name.isNotBlank() && hasAnyContent
 }

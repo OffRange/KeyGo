@@ -63,8 +63,7 @@ class CreateNewOrUpdateLoginUseCase(
 
     override suspend fun fetchExisting(id: ItemId): Login? = loginRepository.getLoginById(id)
 
-    override fun isEmpty(item: Login, upsert: UpsertLogin): Boolean =
-        !item.hasAnyContent && !upsert.hasPendingPasskey
+    override fun isEmpty(item: Login, upsert: UpsertLogin): Boolean = !item.hasAnyContent
 
     override fun relocate(item: Login, vaultId: VaultId, keyInformation: KeyInformation): Login =
         item.copy(vaultId = vaultId, keyInformation = keyInformation)

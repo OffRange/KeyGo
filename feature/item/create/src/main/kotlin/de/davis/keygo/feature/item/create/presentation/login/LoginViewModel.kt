@@ -113,8 +113,9 @@ internal class LoginViewModel(
             .launchIn(viewModelScope)
     }
 
-    fun setPendingPasskeyCount(count: Int) {
-        _base.update { it.copy(pendingPasskeyCount = count) }
+    fun setPendingPasskeyCount(rp: String?) {
+        if (rp == null) return
+        _base.update { it.copy(passkeyRPs = it.passkeyRPs + setOf(LoginPasskeyInfo(rp, true))) }
     }
 
     fun init(information: DetailPaneInformation) {
@@ -192,7 +193,12 @@ internal class LoginViewModel(
                     totpTextFieldState = TextFieldState(decrypted.second ?: ""),
                     usernameTextFieldState = TextFieldState(login.username ?: ""),
                     domains = login.domainInfos,
-                    existingPasskeyCount = login.passkeyRPs.size,
+                    passkeyRPs = login.passkeyRPs.mapTo(mutableSetOf()) { rp ->
+                        LoginPasskeyInfo(
+                            rpId = rp,
+                            pending = false,
+                        )
+                    },
                     dialogState = DialogState.None,
                     updating = true,
                 )
@@ -259,7 +265,6 @@ internal class LoginViewModel(
                 password = base.passwordTextFieldState.text.toString(),
                 totpUriOrSecret = base.totpTextFieldState.text.toString(),
                 note = notesTextFieldState.text.toString(),
-                hasPendingPasskey = base.pendingPasskeyCount > 0,
             )
 
             createNewOrUpdateLogin(
