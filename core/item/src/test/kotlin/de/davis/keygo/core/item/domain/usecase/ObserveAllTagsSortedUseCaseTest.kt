@@ -29,6 +29,7 @@ class ObserveAllTagsSortedUseCaseTest {
         domainInfos = emptySet(),
         passwordCredential = null,
         totp = null,
+        passkeyRPs = emptySet(),
         vaultId = newVaultId(),
         name = name,
         keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),

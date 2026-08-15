@@ -123,6 +123,7 @@ class LoginMapperTest {
         domainInfos = emptySet(),
         passwordCredential = passwordCredential,
         totp = null,
+        passkeyRPs = emptySet(),
         vaultId = newVaultId(),
         name = "Test",
         keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),

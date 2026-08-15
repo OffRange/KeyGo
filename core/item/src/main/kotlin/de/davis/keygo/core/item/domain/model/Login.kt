@@ -13,7 +13,7 @@ data class Login(
     val domainInfos: Set<DomainInfo>,
     val passwordCredential: PasswordCredential?,
     val totp: Totp?,
-    val passkeyRPs: Set<String> = emptySet(),
+    val passkeyRPs: Set<String>,
     override val vaultId: VaultId,
     override val name: String,
     override val keyInformation: KeyInformation,

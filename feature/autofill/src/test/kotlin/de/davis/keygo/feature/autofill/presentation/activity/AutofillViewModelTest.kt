@@ -143,6 +143,7 @@ internal class AutofillViewModelTest {
         domainInfos = domainInfos,
         passwordCredential = null,
         totp = null,
+        passkeyRPs = emptySet(),
         vaultId = newVaultId(),
         name = name,
         keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),

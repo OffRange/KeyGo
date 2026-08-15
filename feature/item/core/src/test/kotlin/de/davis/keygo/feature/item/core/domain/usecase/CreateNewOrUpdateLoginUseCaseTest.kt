@@ -808,6 +808,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         ),
         totp: Totp? = null,
         timestamp: Timestamp = Timestamp(),
+        passkeyRPs: Set<String> = emptySet(),
     ) = Login(
         id = newItemId(),
         name = name,
@@ -815,6 +816,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         domainInfos = emptySet(),
         passwordCredential = passwordCredential,
         totp = totp,
+        passkeyRPs = passkeyRPs,
         note = null,
         pinned = false,
         vaultId = defaultVault.id,

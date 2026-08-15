@@ -63,7 +63,10 @@ class CreateNewOrUpdateLoginUseCase(
 
     override suspend fun fetchExisting(id: ItemId): Login? = loginRepository.getLoginById(id)
 
-    override fun isEmpty(item: Login, upsert: UpsertLogin): Boolean = !item.hasAnyContent
+    // buildCreate/buildUpdate already resolve the login's effective passkeys, so this only has to
+    // account for the one that is not on the item yet.
+    override fun isEmpty(item: Login, upsert: UpsertLogin): Boolean =
+        !upsert.pendingPasskey && !item.hasAnyContent
 
     override fun relocate(item: Login, vaultId: VaultId, keyInformation: KeyInformation): Login =
         item.copy(vaultId = vaultId, keyInformation = keyInformation)
@@ -98,6 +101,8 @@ class CreateNewOrUpdateLoginUseCase(
             tags = upsert.tags.getValue().orEmpty(),
             passwordCredential = newPasswordCredential,
             totp = totp?.await(),
+            // A pending passkey is written by its own flow once this id exists.
+            passkeyRPs = emptySet(),
             note = upsert.note.getValue(),
             pinned = false,
             keyInformation = keyInformation,
@@ -130,6 +135,9 @@ class CreateNewOrUpdateLoginUseCase(
             tags = upsert.tags.on(existing.tags).orEmpty(),
             passwordCredential = newPasswordCredential,
             totp = upsert.totpUriOrSecret.on(existing.totp, totp),
+            // Resolved against what the table holds now, not against what the caller last saw, so
+            // a passkey attached from elsewhere since then survives this save.
+            passkeyRPs = existing.passkeyRPs - upsert.removedPasskeyRPs,
             note = upsert.note.on(existing.note),
         )
     }

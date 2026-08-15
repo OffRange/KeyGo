@@ -214,6 +214,7 @@ class LoginRepositoryImplTest {
             score = PasswordScore.Strong,
         ),
         tags: Set<Tag> = emptySet(),
+        passkeyRPs: Set<String> = emptySet(),
         totpProvider: ((ItemId) -> Totp)? = null,
     ): Login {
         val id = newItemId()
@@ -223,6 +224,7 @@ class LoginRepositoryImplTest {
             domainInfos = emptySet(),
             passwordCredential = passwordCredential,
             totp = totpProvider?.invoke(id),
+            passkeyRPs = passkeyRPs,
             name = "Test",
             note = null,
             pinned = false,
