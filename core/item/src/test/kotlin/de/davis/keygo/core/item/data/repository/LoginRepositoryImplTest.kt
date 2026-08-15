@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import de.davis.keygo.core.item.data.local.dao.DomainInfoDao
 import de.davis.keygo.core.item.data.local.dao.ItemDao
 import de.davis.keygo.core.item.data.local.dao.LoginDao
+import de.davis.keygo.core.item.data.local.dao.PasskeyDao
 import de.davis.keygo.core.item.data.local.dao.PasswordDao
 import de.davis.keygo.core.item.data.local.dao.TagDao
 import de.davis.keygo.core.item.data.local.dao.TotpDao
@@ -46,6 +47,7 @@ class LoginRepositoryImplTest {
     private val domainInfoDao = mockk<DomainInfoDao>(relaxed = true)
     private val totpDao = mockk<TotpDao>(relaxed = true)
     private val tagDao = mockk<TagDao>(relaxed = true)
+    private val passkeyDao = mockk<PasskeyDao>(relaxed = true)
 
     private val repository = LoginRepositoryImpl(
         database = database,
@@ -55,6 +57,7 @@ class LoginRepositoryImplTest {
         domainInfoDao = domainInfoDao,
         totpDao = totpDao,
         tagDao = tagDao,
+        passkeyDao = passkeyDao,
     )
 
     @BeforeTest
@@ -201,6 +204,41 @@ class LoginRepositoryImplTest {
     fun `createOrUpdateLogin returns Failure when tag sync throws`() = runTest {
         val error = RuntimeException("db error")
         coEvery { tagDao.syncTags(any(), any()) } throws error
+
+        val result = repository.createOrUpdateLogin(testLogin(totpProvider = null))
+
+        assertTrue(result.isFailure())
+        assertEquals(error, result.error)
+    }
+
+    @Test
+    fun `createOrUpdateLogin drops passkeys whose RP is absent from the login`() = runTest {
+        val login = testLogin(totpProvider = null, passkeyRPs = setOf("example.org"))
+
+        val result = repository.createOrUpdateLogin(login)
+
+        assertTrue(result.isSuccess())
+        coVerify(exactly = 1) { passkeyDao.deleteRPsNotIn(login.id, setOf("example.org")) }
+    }
+
+    @Test
+    fun `createOrUpdateLogin with no passkey RPs drops every passkey the login holds`() = runTest {
+        // An empty set is how "the last passkey was removed" is expressed. There is no way to
+        // distinguish it from "unknown", which is why Login.passkeyRPs has no default.
+        val login = testLogin(totpProvider = null)
+
+        val result = repository.createOrUpdateLogin(login)
+
+        assertTrue(result.isSuccess())
+        coVerify(exactly = 1) { passkeyDao.deleteRPsNotIn(login.id, emptySet()) }
+    }
+
+    @Test
+    fun `createOrUpdateLogin returns Failure when the passkey delete throws`() = runTest {
+        // The delete shares the login's transaction, so a failure rolls the whole write back and
+        // surfaces as a Failure rather than escaping uncaught after the login row has landed.
+        val error = RuntimeException("db error")
+        coEvery { passkeyDao.deleteRPsNotIn(any(), any()) } throws error
 
         val result = repository.createOrUpdateLogin(testLogin(totpProvider = null))
 

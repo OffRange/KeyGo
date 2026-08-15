@@ -21,6 +21,7 @@ internal data class LoginBaseState(
     val usernameTextFieldState: TextFieldState = TextFieldState(),
     val domains: Set<DomainInfo> = emptySet(),
     val passkeyRPs: Set<LoginPasskeyInfo> = emptySet(),
+    val deletedPasskeyRPs: Set<String> = emptySet(),
     val strengthScore: PasswordScore = PasswordScore.None,
     val generatePasswordBottomSheetVisible: Boolean = false,
     val dialogState: DialogState = DialogState.None,

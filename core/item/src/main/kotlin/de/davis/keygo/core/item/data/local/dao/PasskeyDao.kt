@@ -3,24 +3,43 @@ package de.davis.keygo.core.item.data.local.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction
 import de.davis.keygo.core.item.data.local.entity.credential.PasskeyEntity
 import de.davis.keygo.core.item.data.local.pojo.PasskeyMetadataPojo
 import de.davis.keygo.core.item.domain.alias.ItemId
 
 @Dao
-internal interface PasskeyDao {
+internal abstract class PasskeyDao {
 
     @Insert
-    suspend fun insertPasskey(passkey: PasskeyEntity)
+    abstract suspend fun insertPasskey(passkey: PasskeyEntity)
 
     @Query("SELECT * FROM passkey WHERE credential_id = :credentialId")
-    suspend fun getPasskey(credentialId: ByteArray): PasskeyEntity?
+    abstract suspend fun getPasskey(credentialId: ByteArray): PasskeyEntity?
 
     @Query("SELECT * FROM passkey WHERE login_id = :loginId")
-    suspend fun getPasskeysForLogin(loginId: ItemId): List<PasskeyEntity>
+    abstract suspend fun getPasskeysForLogin(loginId: ItemId): List<PasskeyEntity>
+
+    @Query("DELETE FROM passkey WHERE login_id = :loginId")
+    protected abstract suspend fun deleteAllPasskeysForLogin(loginId: ItemId)
+
+    @Query("DELETE FROM passkey WHERE login_id = :loginId AND rp NOT IN (:rpIds)")
+    protected abstract suspend fun deletePasskeysForLoginNotIn(loginId: ItemId, rpIds: Set<String>)
+
+    /**
+     * Drops every passkey [loginId] holds for a relying party outside [rpIds].
+     *
+     * Deletes only. A passkey row carries a credential id and key material, so it can not be
+     * reconstructed from a relying party name and this can never put one back.
+     */
+    @Transaction
+    open suspend fun deleteRPsNotIn(loginId: ItemId, rpIds: Set<String>) {
+        if (rpIds.isEmpty()) deleteAllPasskeysForLogin(loginId)
+        else deletePasskeysForLoginNotIn(loginId, rpIds)
+    }
 
     @Query("SELECT EXISTS (SELECT 1 FROM passkey WHERE credential_id IN (:credentialIds))")
-    suspend fun doesCredentialIdsExist(credentialIds: Set<ByteArray>): Boolean
+    abstract suspend fun doesCredentialIdsExist(credentialIds: Set<ByteArray>): Boolean
 
     @Query(
         """
@@ -31,5 +50,5 @@ internal interface PasskeyDao {
         WHERE pk.rp = :rpId
         """
     )
-    suspend fun getPasskeysForRP(rpId: String): List<PasskeyMetadataPojo>
+    abstract suspend fun getPasskeysForRP(rpId: String): List<PasskeyMetadataPojo>
 }

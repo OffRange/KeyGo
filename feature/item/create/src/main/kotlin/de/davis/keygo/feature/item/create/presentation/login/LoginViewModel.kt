@@ -36,6 +36,7 @@ import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.presentation.ItemViewModel
 import de.davis.keygo.feature.item.create.presentation.login.model.DialogState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginBaseState
+import de.davis.keygo.feature.item.create.presentation.login.model.LoginPasskeyInfo
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiEvent
 import de.davis.keygo.feature.item.create.presentation.login.model.OverrideTotpField
 import de.davis.keygo.feature.item.create.presentation.model.ItemUiState
@@ -199,6 +200,7 @@ internal class LoginViewModel(
                             pending = false,
                         )
                     },
+                    deletedPasskeyRPs = emptySet(),
                     dialogState = DialogState.None,
                     updating = true,
                 )
@@ -243,6 +245,8 @@ internal class LoginViewModel(
         val base = ready.base
         val assignedTags = ready.shared.itemAssignedTags
         val selectedVaultId = ready.shared.vaultsState.selectedVaultId
+        // Independent: a save can both register a passkey and drop another one.
+        val pendingPasskey = base.passkeyRPs.any { it.pending }
         viewModelScope.launch {
             val upsert = itemId?.let { itemId ->
                 UpsertLogin.update(
@@ -255,6 +259,8 @@ internal class LoginViewModel(
                     password = fieldUpdate(base.passwordTextFieldState.text.toString()),
                     totpUriOrSecret = fieldUpdate(base.totpTextFieldState.text.toString()),
                     note = fieldUpdate(notesTextFieldState.text.toString()),
+                    removedPasskeyRPs = base.deletedPasskeyRPs,
+                    pendingPasskey = pendingPasskey,
                 )
             } ?: UpsertLogin.create(
                 vaultId = selectedVaultId,
@@ -265,6 +271,7 @@ internal class LoginViewModel(
                 password = base.passwordTextFieldState.text.toString(),
                 totpUriOrSecret = base.totpTextFieldState.text.toString(),
                 note = notesTextFieldState.text.toString(),
+                pendingPasskey = pendingPasskey,
             )
 
             createNewOrUpdateLogin(
@@ -403,12 +410,29 @@ internal class LoginViewModel(
             }
 
             is LoginUiEvent.OnDeletePasskeyRequest -> {
+                _base.update {
+                    it.copy(dialogState = DialogState.DeletePasskey(rpId = event.rpId))
+                }
             }
 
             is LoginUiEvent.OnPasskeyDeletionDismiss -> {
+                _base.update { it.copy(dialogState = DialogState.None) }
             }
 
             is LoginUiEvent.OnConfirmPasskeyDeletion -> {
+                val dialogState = _base.value.dialogState as? DialogState.DeletePasskey ?: return
+
+                _base.update {
+                    it.copy(
+                        passkeyRPs = it.passkeyRPs
+                            .filterNot { passkey ->
+                                passkey.rpId == dialogState.rpId && !passkey.pending
+                            }
+                            .toSet(),
+                        deletedPasskeyRPs = it.deletedPasskeyRPs + dialogState.rpId,
+                        dialogState = DialogState.None,
+                    )
+                }
             }
 
             is LoginUiEvent.OnAddDomains -> {
