@@ -9,12 +9,8 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.KeyboardActionHandler
@@ -24,17 +20,7 @@ import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.text.input.then
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.DropdownMenuGroup
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.DropdownMenuPopup
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
-import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldLabelScope
@@ -51,18 +37,15 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import de.davis.keygo.feature.item.core.R
 import kotlinx.coroutines.flow.collectLatest
 
 @Stable
@@ -271,68 +254,6 @@ fun <T> ChipFormGroup(
                 inputTransformation = combinedTransformation,
                 interactionSource = interactionSource,
             )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun MenuChip(
-    chipText: String,
-    onDeleteClick: () -> Unit,
-    onModifyClick: () -> Unit
-) {
-    var expanded by rememberSaveable { mutableStateOf(false) }
-
-    Box(
-        modifier = Modifier.wrapContentSize(Alignment.TopStart)
-    ) {
-        InputChip(
-            selected = false,
-            onClick = { expanded = !expanded },
-            label = { Text(text = chipText) }
-        )
-
-        DropdownMenuPopup(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.widthIn(min = 175.dp)
-        ) {
-            DropdownMenuGroup(
-                shapes = MenuDefaults.groupShape(0, 1),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            ) {
-                DropdownMenuItem(
-                    onClick = {
-                        expanded = false
-                        onModifyClick()
-                    },
-                    text = { Text(text = stringResource(R.string.edit)) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            modifier = Modifier.size(MenuDefaults.LeadingIconSize),
-                            contentDescription = null
-                        )
-                    },
-                    shape = MenuDefaults.itemShape(0, 2).shape,
-                )
-                DropdownMenuItem(
-                    onClick = {
-                        expanded = false
-                        onDeleteClick()
-                    },
-                    text = { Text(text = stringResource(R.string.delete)) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            modifier = Modifier.size(MenuDefaults.LeadingIconSize),
-                            contentDescription = null
-                        )
-                    },
-                    shape = MenuDefaults.itemShape(1, 2).shape,
-                )
-            }
         }
     }
 }
