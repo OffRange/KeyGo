@@ -11,6 +11,10 @@ internal sealed interface LoginUiEvent {
     data object OnCloseBottomSheet : LoginUiEvent
     data object OnScanCodeRequest : LoginUiEvent
 
+    data class OnDeletePasskeyRequest(val rpId: String) : LoginUiEvent
+    data object OnConfirmPasskeyDeletion : LoginUiEvent
+    data object OnPasskeyDeletionDismiss : LoginUiEvent
+
     data class OnDeleteDomain(val value: String) : LoginUiEvent
     data class OnAddDomains(val domains: Set<String>) : LoginUiEvent
 

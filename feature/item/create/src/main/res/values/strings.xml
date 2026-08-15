@@ -5,6 +5,7 @@
     <string name="password_information">Password Information</string>
     <string name="cc_information">Credit Card Information</string>
     <string name="domain_information">Domain Information</string>
+    <string name="passkey_information">Passkey Information</string>
     <string name="tag_information">Tag information</string>
 
     <string name="override_totp_fields">Override TOTP fields?</string>
@@ -29,6 +30,10 @@
 
     <string name="warning">Warning</string>
     <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+
+    <string name="delete_passkey">Delete Passkey</string>
+    <string name="delete_passkey_warning">The passkey for &lt;b>%s&lt;/b> is removed when you save. You will no longer be able to sign in there with it, and it can not be restored.</string>
 
     <string name="generate_password">Generate Password</string>
 

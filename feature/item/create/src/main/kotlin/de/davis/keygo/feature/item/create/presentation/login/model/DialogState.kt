@@ -7,4 +7,6 @@ sealed interface DialogState {
     data object TotpParseError : DialogState
     data class SelectItemForModification(val items: List<LiteLogin>) : DialogState
     data class OverrideTotp(val fields: Set<OverrideTotpField>) : DialogState
+
+    data class DeletePasskey(val rpId: String) : DialogState
 }

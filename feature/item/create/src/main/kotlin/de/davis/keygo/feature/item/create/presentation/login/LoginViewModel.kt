@@ -402,6 +402,15 @@ internal class LoginViewModel(
                 }
             }
 
+            is LoginUiEvent.OnDeletePasskeyRequest -> {
+            }
+
+            is LoginUiEvent.OnPasskeyDeletionDismiss -> {
+            }
+
+            is LoginUiEvent.OnConfirmPasskeyDeletion -> {
+            }
+
             is LoginUiEvent.OnAddDomains -> {
                 event.domains.forEach { domain ->
                     val registrableDomain = registrableDomainResolver.resolve(domain)
