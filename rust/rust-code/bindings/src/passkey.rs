@@ -1,5 +1,8 @@
 use lib::passkey::provider::{ProviderError, provide_passkey};
-use lib::passkey::registration::{KeyGoRegistrationResponse, PasskeyInformation as CorePasskeyInformation, RegistrationError, get_passkey_information, register_passkey};
+use lib::passkey::registration::{
+    KeyGoRegistrationResponse, PasskeyInformation as CorePasskeyInformation, RegistrationError,
+    get_passkey_information, register_passkey,
+};
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
@@ -102,8 +105,13 @@ impl RustPasskey {
             .map_err(Into::into)
     }
 
-    pub fn passkey_information(&self, json_request: String) -> Result<PasskeyInformation, PasskeyError> {
-        get_passkey_information(&json_request).map(Into::into).map_err(Into::into)
+    pub fn passkey_information(
+        &self,
+        json_request: String,
+    ) -> Result<PasskeyInformation, PasskeyError> {
+        get_passkey_information(&json_request)
+            .map(Into::into)
+            .map_err(Into::into)
     }
 
     pub async fn authenticate(

@@ -34,17 +34,24 @@ pub struct PasskeyInformation {
     pub rp: String,
 }
 
-pub fn get_passkey_information(json_request: &str) -> Result<PasskeyInformation, RegistrationError> {
+pub fn get_passkey_information(
+    json_request: &str,
+) -> Result<PasskeyInformation, RegistrationError> {
     let creation_options: PublicKeyCredentialCreationOptions =
         serde_json::from_str(json_request).map_err(|_| InvalidJsonFormat)?;
 
-    let exclude_credentials: Vec<Vec<u8>> = creation_options.exclude_credentials.unwrap_or_default()
-        .into_iter().map(|desc| desc.id.into()).collect();
+    let exclude_credentials: Vec<Vec<u8>> = creation_options
+        .exclude_credentials
+        .unwrap_or_default()
+        .into_iter()
+        .map(|desc| desc.id.into())
+        .collect();
     let rp = creation_options.rp.id.unwrap_or_default();
 
-    Ok(
-        PasskeyInformation { exclude_credentials, rp }
-    )
+    Ok(PasskeyInformation {
+        exclude_credentials,
+        rp,
+    })
 }
 
 pub async fn register_passkey(
