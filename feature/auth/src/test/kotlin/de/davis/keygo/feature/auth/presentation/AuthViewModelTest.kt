@@ -207,17 +207,26 @@ class AuthViewModelTest {
     fun `retrying a failed import runs it again`() = runTest(dispatcher) {
         mainPasswordRepository.hash = "original-v1-hash"
         var runs = 0
+        var stateDuringImport: AuthState? = null
+        // Sampled from inside the import because uiState is conflated: ImportingLegacyData is
+        // replaced before any collector is resumed, so this is the only place it can be observed.
+        var underTest: AuthViewModel? = null
         val vm = viewModel(
             runPendingMigration = runPendingMigrationUseCase(
                 repository = mainPasswordRepository,
                 outcome = LegacyMigrationOutcome.Failed(IllegalStateException("unreadable")),
-                onImport = { runs++ },
+                onImport = {
+                    runs++
+                    stateDuringImport = underTest?.uiState?.value
+                },
             ),
         )
+        underTest = vm
 
         vm.executeCreateAccess(password = "correct-password")
         vm.uiState.first { it is AuthState.MigrationFailed }
         assertEquals(1, runs)
+        assertEquals(AuthState.ImportingLegacyData, stateDuringImport)
 
         // The retry passes through ImportingLegacyData and back to MigrationFailed without ever
         // suspending, because the import is a fake. uiState is conflated, so a collector waiting on

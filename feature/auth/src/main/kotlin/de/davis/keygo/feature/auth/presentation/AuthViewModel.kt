@@ -22,6 +22,7 @@ import de.davis.keygo.legacy_migration.domain.model.MigrationResult
 import de.davis.keygo.legacy_migration.domain.usecase.HasMainPasswordUseCase
 import de.davis.keygo.legacy_migration.domain.usecase.RunPendingMigrationUseCase
 import de.davis.keygo.legacy_migration.domain.usecase.ValidateMainPasswordUseCase
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -93,6 +94,8 @@ internal class AuthViewModel(
     private val navigationEventChannel = Channel<Unit>(Channel.BUFFERED)
     val navigationEvent = navigationEventChannel.receiveAsFlow()
 
+    private var migrationJob: Job? = null
+
     fun onEvent(event: AuthUIEvent) {
         when (event) {
             is AuthUIEvent.RequestBiometricAuthentication -> if (uiState.value is AuthState.Login) requestBiometricLogin()
@@ -115,9 +118,12 @@ internal class AuthViewModel(
                         loading {
                             validateMainPassword(password).asResult(Unit)
                                 .onFailure {
-                                    _uiState.update {
-                                        if (it !is AuthState.Interactable) return@update it
-                                        it.copyDefaultState(passwordError = UiFieldError.Incorrect)
+                                    // Through the scope rather than straight to _uiState: loading
+                                    // writes the scope's state back when the block returns, so a
+                                    // direct write here would be overwritten and the user would see
+                                    // the spinner stop with no error against the field.
+                                    updateState {
+                                        copyDefaultState(passwordError = UiFieldError.Incorrect)
                                     }
                                 }.onSuccess {
                                     createPasswordOrBiometricAccess(state, password)
@@ -197,7 +203,12 @@ internal class AuthViewModel(
      * v1 migration pending, never flips the screen into an import it is not going to run.
      */
     fun onSessionEstablished() {
-        viewModelScope.launch {
+        // Retry is a button on a screen the user reaches after a failure, so it can be tapped twice
+        // before the first run has published anything. Two concurrent imports would both read the
+        // same v1 rows and both write them, so the second tap joins the run in flight instead.
+        if (migrationJob?.isActive == true) return
+
+        migrationJob = viewModelScope.launch {
             if (!hasV1MainPassword()) {
                 navigationEventChannel.trySend(Unit)
                 return@launch
@@ -241,6 +252,14 @@ private class LoadingScope<State>(
 ) {
     var updatedState: State = state
         private set
+
+    /**
+     * Records a state change without claiming a session was established, for the paths that have
+     * something to say about the screen but have not authenticated anything.
+     */
+    fun updateState(transform: State.() -> State) {
+        updatedState = updatedState.transform()
+    }
 
     fun <S, E> Result<S, E>.handleAuthenticationResult(onFailure: State.(E) -> State = { this }) {
         onSuccess { onSuccess() }
