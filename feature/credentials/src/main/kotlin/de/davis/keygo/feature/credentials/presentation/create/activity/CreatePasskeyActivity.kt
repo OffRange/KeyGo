@@ -24,9 +24,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.fromHtml
 import androidx.credentials.CreatePublicKeyCredentialRequest
 import androidx.credentials.CreatePublicKeyCredentialResponse
 import androidx.credentials.exceptions.CreateCredentialUnknownException
+import androidx.credentials.exceptions.domerrors.InvalidStateError
+import androidx.credentials.exceptions.publickeycredential.CreatePublicKeyCredentialDomException
 import androidx.credentials.provider.PendingIntentHandler
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -131,6 +135,32 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                                 Text(stringResource(R.string.no))
                             }
                         }
+                    )
+                }
+
+                val excluded by viewModel.excluded.collectAsStateWithLifecycle()
+                if (excluded) {
+                    val rp = viewModel.passkeyInformation.rp
+                    AlertDialog(
+                        onDismissRequest = ::finishExcluded,
+                        title = {
+                            Text(stringResource(R.string.passkey_already_exists))
+                        },
+                        confirmButton = {
+                            Button(onClick = ::finishExcluded) {
+                                Text(stringResource(R.string.ok))
+                            }
+                        },
+                        text = {
+                            Text(
+                                text = AnnotatedString.fromHtml(
+                                    if (rp.isNotBlank())
+                                        stringResource(R.string.passkey_already_exists_message, rp)
+                                    else stringResource(R.string.passkey_already_exists_message_generic)
+                                )
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
 
@@ -250,6 +280,25 @@ internal class CreatePasskeyActivity : FragmentActivity() {
         )
 
         setResult(RESULT_OK, result)
+        finish()
+    }
+
+    /**
+     * Reports the relying party's own exclusion list back to it.
+     *
+     * [InvalidStateError] is what WebAuthn defines for "this authenticator already holds a
+     * credential for that user", so the site can say so instead of showing a generic failure.
+     * The framework forwards a provider exception only on RESULT_OK; RESULT_CANCELED is reported
+     * as a plain user cancellation and would hide it.
+     */
+    private fun finishExcluded() {
+        val response = Intent()
+        PendingIntentHandler.setCreateCredentialException(
+            response,
+            CreatePublicKeyCredentialDomException(InvalidStateError()),
+        )
+
+        setResult(RESULT_OK, response)
         finish()
     }
 

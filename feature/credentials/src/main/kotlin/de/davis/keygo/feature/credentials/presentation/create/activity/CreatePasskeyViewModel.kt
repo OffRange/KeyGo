@@ -13,10 +13,8 @@ import de.davis.keygo.core.item.domain.repository.PasskeyRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.encrypt
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
-import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
-import de.davis.keygo.core.util.mapFailure
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.feature.credentials.presentation.auth.SessionAuthState
 import de.davis.keygo.feature.credentials.presentation.auth.UnlockOutcome
@@ -24,9 +22,7 @@ import de.davis.keygo.feature.credentials.presentation.auth.mapUnlockError
 import de.davis.keygo.rust.passkey.PasskeyManager
 import de.davis.keygo.rust.passkey.getPasskeyInformation
 import de.davis.keygo.rust.passkey.registerWithResult
-import de.davisalessandro.keygo.rust.PasskeyException
 import de.davisalessandro.keygo.rust.PasskeyInformation
-import de.davisalessandro.keygo.rust.RegistrationResponse
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,25 +46,16 @@ internal class CreatePasskeyViewModel(
     private val _authState = MutableStateFlow<SessionAuthState>(SessionAuthState.TryBiometric)
     val authState = _authState.asStateFlow()
 
+    private val _excluded = MutableStateFlow(false)
+    val excluded = _excluded.asStateFlow()
+
     private val biometricChannel = Channel<Unit>(Channel.BUFFERED)
     val biometricFlow = biometricChannel.receiveAsFlow()
 
     private lateinit var pendingRequest: CreatePublicKeyCredentialRequest
     lateinit var passkeyInformation: PasskeyInformation
 
-    init {
-        viewModelScope.launch {
-            val account = accountRepository.getOrNull()
-            val biometricUsable = biometricAvailabilityRepository.availability()
-                    && account?.biometricWrappedArk != null
-
-            if (biometricUsable) {
-                _authState.value = SessionAuthState.TryBiometric
-                biometricChannel.send(Unit)
-            } else
-                _authState.value = SessionAuthState.NeedsPassword
-        }
-    }
+    private var started = false
 
     fun setRequest(request: CreatePublicKeyCredentialRequest): Boolean {
         pendingRequest = request
@@ -76,7 +63,38 @@ internal class CreatePasskeyViewModel(
             .getOrNull()
             ?: return false
 
+        start()
         return true
+    }
+
+    /**
+     * Answers the relying party's exclusion list before any unlock prompt, then routes to the auth
+     * path.
+     *
+     * Credential ids are not secrets and the passkey table is not gated behind the session, so an
+     * excluded request can be resolved without making the user authenticate for a registration
+     * that can never succeed.
+     *
+     * Runs once. [setRequest] is called again on every configuration change.
+     */
+    private fun start() {
+        if (started) return
+        started = true
+
+        viewModelScope.launch {
+            val excludeCredentials = passkeyInformation.excludeCredentials.toSet()
+            if (passkeyRepository.doCredentialIdsExist(excludeCredentials))
+                return@launch _excluded.update { true }
+
+            val account = accountRepository.getOrNull()
+            val biometricUsable = biometricAvailabilityRepository.availability()
+                    && account?.biometricWrappedArk != null
+
+            if (biometricUsable) {
+                _authState.update { SessionAuthState.TryBiometric }
+                biometricChannel.send(Unit)
+            } else _authState.update { SessionAuthState.NeedsPassword }
+        }
     }
 
     fun onUnlocked() {
@@ -91,17 +109,9 @@ internal class CreatePasskeyViewModel(
         }
     }
 
-    private suspend fun registerPasskey(request: CreatePublicKeyCredentialRequest): Result<RegistrationResponse, PasskeyCreationError> {
-        val shouldAbort = passkeyRepository.doCredentialIdsExist(passkeyInformation.excludeCredentials.toSet())
-        if (shouldAbort) return Result.Failure(PasskeyCreationError.Excluded)
-
-        return passkeyManager.registerWithResult(request.requestJson)
-            .mapFailure(PasskeyCreationError::RegistrationFailed)
-    }
-
     fun associatePasskeyAndFinish(itemId: ItemId) {
         viewModelScope.launch {
-            val response = registerPasskey(pendingRequest)
+            val response = passkeyManager.registerWithResult(pendingRequest.requestJson)
                 .onFailure {
                     Log.d(TAG, "Failed to register passkey: $it")
                 }.getOrNull()
@@ -148,9 +158,4 @@ internal class CreatePasskeyViewModel(
     companion object {
         private const val TAG = "CreatePasskeyViewModel"
     }
-}
-
-internal sealed interface PasskeyCreationError {
-    data class RegistrationFailed(val exception: PasskeyException) : PasskeyCreationError
-    data object Excluded : PasskeyCreationError
 }
