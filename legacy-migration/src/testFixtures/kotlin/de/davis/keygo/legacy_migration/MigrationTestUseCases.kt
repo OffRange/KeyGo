@@ -8,7 +8,7 @@ import de.davis.keygo.legacy_migration.domain.usecase.LegacyDataImporter
 import de.davis.keygo.legacy_migration.domain.usecase.RunPendingMigrationUseCase
 import de.davis.keygo.legacy_migration.domain.usecase.ValidateMainPasswordUseCase
 
-fun clearMainPasswordUseCase(repository: FakeMainPasswordRepository): ClearMainPasswordUseCase =
+internal fun clearMainPasswordUseCase(repository: FakeMainPasswordRepository): ClearMainPasswordUseCase =
     ClearMainPasswordUseCase(repository.asMainPasswordRepository())
 
 fun hasMainPasswordUseCase(repository: FakeMainPasswordRepository): HasMainPasswordUseCase =
