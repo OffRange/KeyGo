@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.auth.presentation
 
+import android.util.Log
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -17,8 +18,9 @@ import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.auth.presentation.model.AuthState
 import de.davis.keygo.feature.auth.presentation.model.AuthUIEvent
 import de.davis.keygo.feature.auth.presentation.model.BiometricRequest
-import de.davis.keygo.legacy_migration.domain.usecase.ClearMainPasswordUseCase
+import de.davis.keygo.legacy_migration.domain.model.MigrationResult
 import de.davis.keygo.legacy_migration.domain.usecase.HasMainPasswordUseCase
+import de.davis.keygo.legacy_migration.domain.usecase.RunPendingMigrationUseCase
 import de.davis.keygo.legacy_migration.domain.usecase.ValidateMainPasswordUseCase
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,9 +38,9 @@ internal class AuthViewModel(
     accountRepository: AccountRepository,
 
     // ---- Migration ----
-    hasV1MainPassword: HasMainPasswordUseCase,
+    private val hasV1MainPassword: HasMainPasswordUseCase,
     private val validateMainPassword: ValidateMainPasswordUseCase,
-    private val clearMainPasswordUseCase: ClearMainPasswordUseCase,
+    private val runPendingMigration: RunPendingMigrationUseCase,
     // -------------------
 
     private val unlockWithPassword: UnlockWithPasswordUseCase,
@@ -88,7 +90,7 @@ internal class AuthViewModel(
         }
     }
 
-    private val navigationEventChannel = Channel<Unit>()
+    private val navigationEventChannel = Channel<Unit>(Channel.BUFFERED)
     val navigationEvent = navigationEventChannel.receiveAsFlow()
 
     fun onEvent(event: AuthUIEvent) {
@@ -138,6 +140,10 @@ internal class AuthViewModel(
                     it.copy(useBiometrics = event.checked)
                 }
             }
+
+            AuthUIEvent.RetryMigration -> onSessionEstablished()
+
+            AuthUIEvent.ContinueAfterMigration -> navigationEventChannel.trySend(Unit)
         }
     }
 
@@ -146,7 +152,7 @@ internal class AuthViewModel(
         password: String
     ) {
         if (!authState.biometricsAvailable || !authState.useBiometrics) {
-            executeCreateAccessAndClearV1(password = password)
+            executeCreateAccess(password = password)
             return
         }
 
@@ -159,7 +165,7 @@ internal class AuthViewModel(
 
     private fun loading(
         setLoading: Boolean = true,
-        block: suspend LoadingScope<AuthState.Interactable>.() -> Unit
+        block: suspend LoadingScope<AuthState.Interactable>.() -> Unit,
     ) {
         if (setLoading)
             _uiState.update {
@@ -168,33 +174,66 @@ internal class AuthViewModel(
             }
 
         viewModelScope.launch {
-            _uiState.update {
-                if (it !is AuthState.Interactable) return@update it
+            val current = _uiState.value as? AuthState.Interactable ?: return@launch
 
-                LoadingScope(
-                    state = it,
-                    onSuccess = { navigationEventChannel.trySend(Unit) },
-                ).apply {
-                    block()
-                }.updatedState.copyDefaultState(loading = false)
+            var sessionEstablished = false
+            val scope = LoadingScope(
+                state = current,
+                onSuccess = { sessionEstablished = true },
+            )
+            scope.block()
+
+            _uiState.update { scope.updatedState.copyDefaultState(loading = false) }
+
+            if (sessionEstablished) onSessionEstablished()
+        }
+    }
+
+    /**
+     * Run after every path that establishes a session, which is the only moment the import can
+     * happen: every secret it writes is re-encrypted under a key that hangs off the ARK.
+     *
+     * The marker is read here as well as inside the use case so the common case, an install with no
+     * v1 migration pending, never flips the screen into an import it is not going to run.
+     */
+    fun onSessionEstablished() {
+        viewModelScope.launch {
+            if (!hasV1MainPassword()) {
+                navigationEventChannel.trySend(Unit)
+                return@launch
+            }
+
+            _uiState.update { AuthState.ImportingLegacyData }
+
+            when (val result = runPendingMigration()) {
+                MigrationResult.NotPending -> navigationEventChannel.trySend(Unit)
+
+                is MigrationResult.Completed ->
+                    if (result.skippedItems == 0) navigationEventChannel.trySend(Unit)
+                    else _uiState.update { AuthState.MigrationSummary(result.skippedItems) }
+
+                is MigrationResult.Incomplete -> {
+                    Log.e(TAG, "v1 import did not finish", result.cause)
+                    _uiState.update { AuthState.MigrationFailed }
+                }
             }
         }
     }
 
-    fun executeCreateAccessAndClearV1(
+    fun executeCreateAccess(
         password: String,
-        cipher: Cipher? = null
+        cipher: Cipher? = null,
     ) {
         loading {
             createAllAccesses(
                 password = password,
-                biometricCipher = cipher
-            ).onSuccess {
-                clearMainPasswordUseCase()
-            }.handleAuthenticationResult()
+                biometricCipher = cipher,
+            ).handleAuthenticationResult()
         }
     }
 }
+
+private const val TAG = "AuthViewModel"
 
 private class LoadingScope<State>(
     state: State,

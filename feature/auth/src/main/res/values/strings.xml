@@ -18,4 +18,13 @@
 
     <string name="request_biometric_authentication_content_description">Request biometric authentication</string>
     <string name="pending_totp_import_subtitle">Unlock your vault to add this authenticator code.</string>
+
+    <string name="importing_legacy_data">Importing your data</string>
+    <string name="importing_legacy_data_description">Moving your items into your new vault. This happens once.</string>
+    <string name="migration_summary_title">Import finished</string>
+    <string name="migration_summary_description">%1$d of your items could not be read and were left behind. Everything else is in your vault.</string>
+    <string name="migration_failed_title">Import incomplete</string>
+    <string name="migration_failed_description">Your items could not be imported. Nothing was lost, and KeyGo will try again the next time you open it.</string>
+    <string name="retry">Retry</string>
+    <string name="continue_anyway">Continue</string>
 </resources>

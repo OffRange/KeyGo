@@ -36,7 +36,7 @@ fun AuthScreen(onSuccess: () -> Unit) {
                     keyId = KeyId.BiometricVaultKek,
                     mode = request.cryptoMode
                 ).onSuccess {
-                    viewModel.executeCreateAccessAndClearV1(request.password, it)
+                    viewModel.executeCreateAccess(request.password, it)
                 }.onFailure {
                     Log.e("AuthScreen", "Failed to create cipher for biometric access: $it")
                     // TODO: show error
@@ -47,7 +47,7 @@ fun AuthScreen(onSuccess: () -> Unit) {
                 biometricUnlockAdapter.useAdapter {
                     biometricCryptoController.requestUnlockVault()
                 }.onSuccess {
-                    currentOnSuccess()
+                    viewModel.onSessionEstablished()
                 }
             }
         }

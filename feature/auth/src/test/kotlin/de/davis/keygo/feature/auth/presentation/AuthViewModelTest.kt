@@ -9,9 +9,15 @@ import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
 import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.feature.auth.presentation.model.AuthState
+import de.davis.keygo.feature.auth.presentation.model.AuthUIEvent
 import de.davis.keygo.legacy_migration.FakeMainPasswordRepository
-import de.davis.keygo.legacy_migration.clearMainPasswordUseCase
+import de.davis.keygo.legacy_migration.domain.model.LegacyFailureReason
+import de.davis.keygo.legacy_migration.domain.model.LegacyMigrationOutcome
+import de.davis.keygo.legacy_migration.domain.model.LegacyMigrationReport
+import de.davis.keygo.legacy_migration.domain.model.LegacyRowFailure
+import de.davis.keygo.legacy_migration.domain.usecase.RunPendingMigrationUseCase
 import de.davis.keygo.legacy_migration.hasMainPasswordUseCase
+import de.davis.keygo.legacy_migration.runPendingMigrationUseCase
 import de.davis.keygo.legacy_migration.validateMainPasswordUseCase
 import de.davis.keygo.rust.FakeAccountManager
 import de.davis.keygo.rust.FakeKeyDeriver
@@ -31,15 +37,17 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 /**
  * Regression tests for the v1-password retry lockout fixed in `97b15f3c`.
  *
- * [AuthViewModel.executeCreateAccessAndClearV1] used to clear the v1 migration password as soon
- * as the password was validated, before the account was actually created. If account creation
- * then failed for any reason - most notably a failed/declined biometric prompt - the v1 password
- * was already gone, so `HasMainPasswordUseCase` reported no pending migration and the user had no
- * way to retry. The fix defers `clearMainPasswordUseCase()` until account creation succeeds.
+ * [AuthViewModel.executeCreateAccess] used to clear the v1 migration password as soon as the
+ * password was validated, before the account was actually created. If account creation then
+ * failed for any reason - most notably a failed/declined biometric prompt - the v1 password was
+ * already gone, so `HasMainPasswordUseCase` reported no pending migration and the user had no way
+ * to retry. Clearing the marker now belongs to [RunPendingMigrationUseCase], which runs only after
+ * a session exists and only once the import has said something definite about the v1 file.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AuthViewModelTest {
@@ -78,7 +86,6 @@ class AuthViewModelTest {
     // they can't be built here directly the way a plain fake dependency would be.
     private val hasV1MainPassword = hasMainPasswordUseCase(mainPasswordRepository)
     private val validateMainPassword = validateMainPasswordUseCase(mainPasswordRepository)
-    private val clearMainPassword = clearMainPasswordUseCase(mainPasswordRepository)
 
     @BeforeTest
     fun setUp() {
@@ -93,14 +100,17 @@ class AuthViewModelTest {
      * [mainPasswordRepository]'s state, so seed a hash before calling this for the ViewModel to
      * resolve into `AuthState.Migrating`.
      */
-    private fun TestScope.viewModel(): AuthViewModel {
+    private fun TestScope.viewModel(
+        runPendingMigration: RunPendingMigrationUseCase =
+            runPendingMigrationUseCase(mainPasswordRepository),
+    ): AuthViewModel {
         val vm = AuthViewModel(
             savedStateHandle = SavedStateHandle(),
             biometricAvailabilityRepository = biometricAvailability,
             accountRepository = accountRepository,
             hasV1MainPassword = hasV1MainPassword,
             validateMainPassword = validateMainPassword,
-            clearMainPasswordUseCase = clearMainPassword,
+            runPendingMigration = runPendingMigration,
             unlockWithPassword = unlockWithPassword,
             createAllAccesses = createAllAccesses,
         )
@@ -127,7 +137,7 @@ class AuthViewModelTest {
             // failure mode described in the bug report.
             val failingCipher = Cipher.getInstance("AES/GCM/NoPadding")
 
-            vm.executeCreateAccessAndClearV1(password = "correct-password", cipher = failingCipher)
+            vm.executeCreateAccess(password = "correct-password", cipher = failingCipher)
             vm.awaitIdle()
 
             assertEquals("original-v1-hash", mainPasswordRepository.hash)
@@ -142,8 +152,8 @@ class AuthViewModelTest {
             init(Cipher.WRAP_MODE, biometricKek)
         }
 
-        vm.executeCreateAccessAndClearV1(password = "correct-password", cipher = cipher)
-        vm.awaitIdle()
+        vm.executeCreateAccess(password = "correct-password", cipher = cipher)
+        vm.navigationEvent.first()
 
         assertEquals("", mainPasswordRepository.hash)
     }
@@ -155,7 +165,7 @@ class AuthViewModelTest {
             accountRepository.setFails = true
             val vm = viewModel()
 
-            vm.executeCreateAccessAndClearV1(password = "correct-password")
+            vm.executeCreateAccess(password = "correct-password")
             vm.awaitIdle()
 
             assertEquals("original-v1-hash", mainPasswordRepository.hash)
@@ -166,9 +176,83 @@ class AuthViewModelTest {
         mainPasswordRepository.hash = "original-v1-hash"
         val vm = viewModel()
 
-        vm.executeCreateAccessAndClearV1(password = "correct-password")
-        vm.awaitIdle()
+        vm.executeCreateAccess(password = "correct-password")
+        vm.navigationEvent.first()
 
+        assertEquals("", mainPasswordRepository.hash)
+    }
+
+    /**
+     * The descendant of the 97b15f3c regression test. There the v1 password was dropped before the
+     * account existed. Here it must not be dropped before the user's rows are across.
+     */
+    @Test
+    fun `a failed import leaves the v1 password in place and offers a retry`() =
+        runTest(dispatcher) {
+            mainPasswordRepository.hash = "original-v1-hash"
+            val vm = viewModel(
+                runPendingMigration = runPendingMigrationUseCase(
+                    repository = mainPasswordRepository,
+                    outcome = LegacyMigrationOutcome.Failed(IllegalStateException("unreadable")),
+                ),
+            )
+
+            vm.executeCreateAccess(password = "correct-password")
+            vm.uiState.first { it is AuthState.MigrationFailed }
+
+            assertEquals("original-v1-hash", mainPasswordRepository.hash)
+        }
+
+    @Test
+    fun `retrying a failed import runs it again`() = runTest(dispatcher) {
+        mainPasswordRepository.hash = "original-v1-hash"
+        var runs = 0
+        val vm = viewModel(
+            runPendingMigration = runPendingMigrationUseCase(
+                repository = mainPasswordRepository,
+                outcome = LegacyMigrationOutcome.Failed(IllegalStateException("unreadable")),
+                onImport = { runs++ },
+            ),
+        )
+
+        vm.executeCreateAccess(password = "correct-password")
+        vm.uiState.first { it is AuthState.MigrationFailed }
+        assertEquals(1, runs)
+
+        // The retry passes through ImportingLegacyData and back to MigrationFailed without ever
+        // suspending, because the import is a fake. uiState is conflated, so a collector waiting on
+        // the intermediate state is only ever resumed after the final one has replaced it and would
+        // wait forever. Drain the scheduler instead and assert on what the retry left behind.
+        vm.onEvent(AuthUIEvent.RetryMigration)
+        runCurrent()
+
+        assertEquals(2, runs)
+        assertIs<AuthState.MigrationFailed>(vm.uiState.value)
+        assertEquals("original-v1-hash", mainPasswordRepository.hash)
+    }
+
+    @Test
+    fun `an import that skipped rows reports them before navigating`() = runTest(dispatcher) {
+        mainPasswordRepository.hash = "original-v1-hash"
+        val vm = viewModel(
+            runPendingMigration = runPendingMigrationUseCase(
+                repository = mainPasswordRepository,
+                outcome = LegacyMigrationOutcome.Migrated(
+                    LegacyMigrationReport(
+                        migratedItems = 14,
+                        failures = listOf(
+                            LegacyRowFailure(1, "an account", LegacyFailureReason.Unreadable),
+                            LegacyRowFailure(2, "another", LegacyFailureReason.Unreadable),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        vm.executeCreateAccess(password = "correct-password")
+        val state = vm.uiState.first { it is AuthState.MigrationSummary }
+
+        assertEquals(2, (state as AuthState.MigrationSummary).skippedItems)
         assertEquals("", mainPasswordRepository.hash)
     }
 }

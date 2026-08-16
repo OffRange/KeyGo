@@ -5,6 +5,10 @@ plugins {
 
 android {
     namespace = "de.davis.keygo.feature.auth"
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
