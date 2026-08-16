@@ -96,6 +96,8 @@ internal class AuthViewModel(
 
     private var migrationJob: Job? = null
 
+    private var authJob: Job? = null
+
     fun onEvent(event: AuthUIEvent) {
         when (event) {
             is AuthUIEvent.RequestBiometricAuthentication -> if (uiState.value is AuthState.Login) requestBiometricLogin()
@@ -153,16 +155,27 @@ internal class AuthViewModel(
         }
     }
 
-    private fun createPasswordOrBiometricAccess(
+    /**
+     * Runs inside the caller's [loading] rather than starting a second one, so the screen stays
+     * loading until the account actually exists. A nested [loading] returned as soon as it had
+     * launched, which wrote `loading = false` back while key derivation was still running and
+     * re-enabled Submit for the whole of it.
+     */
+    private suspend fun LoadingScope<AuthState.Interactable>.createPasswordOrBiometricAccess(
         authState: AuthState.Migrating,
-        password: String
+        password: String,
     ) {
-        if (!authState.biometricsAvailable || !authState.useBiometrics) {
-            executeCreateAccess(password = password)
+        if (authState.biometricsAvailable && authState.useBiometrics) {
+            // Handed to the prompt, so this run is done. AuthScreen starts a fresh one with the
+            // cipher once the user has answered it.
+            biometricChannel.trySend(BiometricRequest.CreateAccess(password))
             return
         }
 
-        biometricChannel.trySend(BiometricRequest.CreateAccess(password))
+        createAllAccesses(
+            password = password,
+            biometricCipher = null,
+        ).handleAuthenticationResult()
     }
 
     private fun requestBiometricLogin() {
@@ -173,13 +186,20 @@ internal class AuthViewModel(
         setLoading: Boolean = true,
         block: suspend LoadingScope<AuthState.Interactable>.() -> Unit,
     ) {
+        // One auth run at a time. Submit and the biometric callback both arrive here, and `onEvent`
+        // gates on the state being interactable rather than on the loading flag, so nothing else
+        // stops a second run. Two runs of account creation mint two accounts, two ARKs and two
+        // vaults and the second overwrites the registry, which leaves the first vault wrapped under
+        // an ARK that is no longer persisted anywhere.
+        if (authJob?.isActive == true) return
+
         if (setLoading)
             _uiState.update {
                 if (it !is AuthState.Interactable) return@update it
                 it.copyDefaultState(loading = true)
             }
 
-        viewModelScope.launch {
+        authJob = viewModelScope.launch {
             val current = _uiState.value as? AuthState.Interactable ?: return@launch
 
             var sessionEstablished = false

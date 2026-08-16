@@ -185,6 +185,31 @@ class AuthViewModelTest {
     }
 
     /**
+     * Key derivation takes long enough for a second tap to land inside it. `onEvent` gates on the
+     * state being interactable rather than on the loading flag, so before the guard the only thing
+     * stopping a second run was the button's own enabled state, and the migrate path stopped the
+     * spinner while derivation was still going. Two runs mint two accounts, two ARKs and two
+     * vaults, and the second overwrites the registry, leaving the first vault wrapped under an ARK
+     * nothing persists.
+     */
+    @Test
+    fun `a second account creation started while one is in flight is dropped`() =
+        runTest(dispatcher) {
+            mainPasswordRepository.hash = "original-v1-hash"
+            val vm = viewModel()
+
+            vm.executeCreateAccess(password = "correct-password")
+            // Leaves the first run suspended inside key derivation, which hops to a dispatcher the
+            // scheduler cannot see, so it cannot complete until something pumps the test one.
+            runCurrent()
+            vm.executeCreateAccess(password = "correct-password")
+
+            vm.navigationEvent.first()
+
+            assertEquals(1, accountRepository.setCount)
+        }
+
+    /**
      * The Migrating submit path reports a rejected password through the loading scope rather than
      * writing to `uiState` itself. `loading` writes the scope's state back once the block returns,
      * so a direct write lands first and is then overwritten, stopping the spinner and leaving the

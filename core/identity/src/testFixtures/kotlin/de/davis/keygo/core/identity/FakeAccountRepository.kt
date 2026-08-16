@@ -14,6 +14,14 @@ class FakeAccountRepository : AccountRepository {
 
     var setFails: Boolean = false
 
+    /**
+     * How many accounts were actually persisted. A caller that mints a second account overwrites
+     * the first here exactly as the real registry does, so the stored value alone cannot tell the
+     * two apart.
+     */
+    var setCount: Int = 0
+        private set
+
     fun seed(account: Account) {
         this.account.update { account }
     }
@@ -24,6 +32,7 @@ class FakeAccountRepository : AccountRepository {
 
     override suspend fun set(account: Account): Result<Unit, Unit> {
         if (setFails) return Result.Failure(Unit)
+        setCount++
         this.account.update { account }
         return Result.Success(Unit)
     }
