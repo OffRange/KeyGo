@@ -1,6 +1,8 @@
 package de.davis.keygo.feature.auth.presentation
 
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.lifecycle.SavedStateHandle
+import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockWithPasswordUseCase
@@ -180,6 +182,36 @@ class AuthViewModelTest {
         vm.navigationEvent.first()
 
         assertEquals("", mainPasswordRepository.hash)
+    }
+
+    /**
+     * The Migrating submit path reports a rejected password through the loading scope rather than
+     * writing to `uiState` itself. `loading` writes the scope's state back once the block returns,
+     * so a direct write lands first and is then overwritten, stopping the spinner and leaving the
+     * field with nothing on it.
+     *
+     * The only test that drives the real `Submit` event, so it is also the only one that needs a
+     * hash `ValidateMainPasswordUseCase` can actually decode. The other tests seed a placeholder
+     * and reach the ViewModel past validation.
+     */
+    @Test
+    fun `a rejected v1 main password leaves an error on the field`() = runTest(dispatcher) {
+        // Hex of a real bcrypt 2a hash of "password". The use case hex-decodes the stored hash
+        // before handing it to bcrypt, so a non-hex placeholder throws instead of returning false.
+        mainPasswordRepository.hash = "243261243130244e39716f38754c4f69636b6778325a4d525a6f4d7965" +
+                "496a5a416763666c377039326c644778616436384c4a5a644c31376c685779"
+        val vm = viewModel()
+
+        val migrating = assertIs<AuthState.Migrating>(vm.uiState.value)
+        migrating.passwordTextFieldState.setTextAndPlaceCursorAtEnd("the-wrong-password")
+
+        vm.onEvent(AuthUIEvent.Submit)
+        // Bcrypt runs on Dispatchers.Default, which the scheduler cannot see, so wait on the
+        // loading flag for the same reason awaitIdle does.
+        vm.awaitIdle()
+
+        val after = assertIs<AuthState.Migrating>(vm.uiState.value)
+        assertEquals(UiFieldError.Incorrect, after.passwordError)
     }
 
     /**
