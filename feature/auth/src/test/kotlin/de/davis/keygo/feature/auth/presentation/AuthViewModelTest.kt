@@ -185,6 +185,39 @@ class AuthViewModelTest {
     }
 
     /**
+     * The migrate path used to start a second [AuthViewModel.loading] for account creation, so the
+     * first one wrote `loading = false` back as soon as it had launched, while key derivation was
+     * still running. The screen dropped its spinner and re-enabled Submit for the whole of it.
+     *
+     * Account creation now runs inside the caller's block. This is load bearing rather than
+     * cosmetic: the guard below only makes a second run a silent no-op, and with the guard in place
+     * but the nesting still there, the inner call would be the run that got dropped and no account
+     * would be created at all.
+     */
+    @Test
+    fun `the migrate submit stays loading until the account exists`() = runTest(dispatcher) {
+        // Hex of a real bcrypt 2a hash of "password". The use case hex-decodes before verifying.
+        mainPasswordRepository.hash = "2432612431302471776e45776767315a6c5176435a58336450614a7a2e" +
+                "31494351504a334e6d4a64566b4251686577564655745363646665366d4847"
+        val vm = viewModel()
+        vm.onEvent(AuthUIEvent.ToggleUseBiometrics(checked = false))
+
+        val migrating = assertIs<AuthState.Migrating>(vm.uiState.value)
+        migrating.passwordTextFieldState.setTextAndPlaceCursorAtEnd("password")
+
+        vm.onEvent(AuthUIEvent.Submit)
+        runCurrent()
+
+        // Key derivation is still running on a dispatcher the scheduler cannot see. The screen must
+        // not have handed control back yet.
+        assertEquals(true, assertIs<AuthState.Migrating>(vm.uiState.value).loading)
+
+        vm.navigationEvent.first()
+
+        assertEquals(1, accountRepository.setCount)
+    }
+
+    /**
      * Key derivation takes long enough for a second tap to land inside it. `onEvent` gates on the
      * state being interactable rather than on the loading flag, so before the guard the only thing
      * stopping a second run was the button's own enabled state, and the migrate path stopped the

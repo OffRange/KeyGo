@@ -166,8 +166,16 @@ internal class AuthViewModel(
         password: String,
     ) {
         if (authState.biometricsAvailable && authState.useBiometrics) {
-            // Handed to the prompt, so this run is done. AuthScreen starts a fresh one with the
-            // cipher once the user has answered it.
+            // Handed to the prompt. AuthScreen starts a fresh run with the cipher once the user has
+            // answered, and by then this one has finished, so the guard in loading does not eat it.
+            //
+            // That ordering is worth stating, because it is not obvious and it is not local. The
+            // collector observing this channel runs on Dispatchers.Main.immediate, so it resumes
+            // inline inside trySend and AuthScreen's handler begins running while this job is still
+            // active. What saves it is that requestCipher suspends until the user answers, and its
+            // one synchronous return is a failure that never reaches executeCreateAccess. A fast
+            // path added there that returned a cipher without suspending would be dropped by the
+            // guard, and the user would sit on the migrate screen with no account.
             biometricChannel.trySend(BiometricRequest.CreateAccess(password))
             return
         }
