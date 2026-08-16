@@ -205,7 +205,7 @@ internal class AuthViewModel(
     fun onSessionEstablished() {
         // Retry is a button on a screen the user reaches after a failure, so it can be tapped twice
         // before the first run has published anything. Two concurrent imports would both read the
-        // same v1 rows and both write them, so the second tap joins the run in flight instead.
+        // same v1 rows and both write them, so a tap that lands while one is running is dropped.
         if (migrationJob?.isActive == true) return
 
         migrationJob = viewModelScope.launch {
