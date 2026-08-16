@@ -95,7 +95,6 @@ internal class AuthViewModel(
     val navigationEvent = navigationEventChannel.receiveAsFlow()
 
     private var migrationJob: Job? = null
-
     private var authJob: Job? = null
 
     fun onEvent(event: AuthUIEvent) {

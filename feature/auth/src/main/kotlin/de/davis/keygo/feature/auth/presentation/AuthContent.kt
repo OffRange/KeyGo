@@ -31,6 +31,7 @@ import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -140,7 +141,7 @@ fun AuthContent(
                         }
                     },
                     dismissButton = {
-                        FilledTonalButton(onClick = { onEvent(AuthUIEvent.ContinueAfterMigration) }) {
+                        TextButton(onClick = { onEvent(AuthUIEvent.ContinueAfterMigration) }) {
                             Text(text = stringResource(R.string.continue_anyway))
                         }
                     },

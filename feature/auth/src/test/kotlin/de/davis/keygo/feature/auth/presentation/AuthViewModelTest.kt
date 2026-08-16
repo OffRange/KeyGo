@@ -2,7 +2,6 @@ package de.davis.keygo.feature.auth.presentation
 
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.lifecycle.SavedStateHandle
-import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockWithPasswordUseCase
@@ -10,6 +9,7 @@ import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
 import de.davis.keygo.core.security.crypto.FakeSession
+import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.feature.auth.presentation.model.AuthState
 import de.davis.keygo.feature.auth.presentation.model.AuthUIEvent
 import de.davis.keygo.legacy_migration.FakeMainPasswordRepository
@@ -184,16 +184,6 @@ class AuthViewModelTest {
         assertEquals("", mainPasswordRepository.hash)
     }
 
-    /**
-     * The migrate path used to start a second [AuthViewModel.loading] for account creation, so the
-     * first one wrote `loading = false` back as soon as it had launched, while key derivation was
-     * still running. The screen dropped its spinner and re-enabled Submit for the whole of it.
-     *
-     * Account creation now runs inside the caller's block. This is load bearing rather than
-     * cosmetic: the guard below only makes a second run a silent no-op, and with the guard in place
-     * but the nesting still there, the inner call would be the run that got dropped and no account
-     * would be created at all.
-     */
     @Test
     fun `the migrate submit stays loading until the account exists`() = runTest(dispatcher) {
         // Hex of a real bcrypt 2a hash of "password". The use case hex-decodes before verifying.
@@ -242,16 +232,6 @@ class AuthViewModelTest {
             assertEquals(1, accountRepository.setCount)
         }
 
-    /**
-     * The Migrating submit path reports a rejected password through the loading scope rather than
-     * writing to `uiState` itself. `loading` writes the scope's state back once the block returns,
-     * so a direct write lands first and is then overwritten, stopping the spinner and leaving the
-     * field with nothing on it.
-     *
-     * The only test that drives the real `Submit` event, so it is also the only one that needs a
-     * hash `ValidateMainPasswordUseCase` can actually decode. The other tests seed a placeholder
-     * and reach the ViewModel past validation.
-     */
     @Test
     fun `a rejected v1 main password leaves an error on the field`() = runTest(dispatcher) {
         // Hex of a real bcrypt 2a hash of "password". The use case hex-decodes the stored hash
@@ -272,10 +252,6 @@ class AuthViewModelTest {
         assertEquals(UiFieldError.Incorrect, after.passwordError)
     }
 
-    /**
-     * The descendant of the 97b15f3c regression test. There the v1 password was dropped before the
-     * account existed. Here it must not be dropped before the user's rows are across.
-     */
     @Test
     fun `a failed import leaves the v1 password in place and offers a retry`() =
         runTest(dispatcher) {
