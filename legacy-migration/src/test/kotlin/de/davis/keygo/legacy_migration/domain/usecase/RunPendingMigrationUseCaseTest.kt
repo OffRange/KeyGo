@@ -15,6 +15,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -22,6 +25,9 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
+// Robolectric for android.util.Log alone
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class RunPendingMigrationUseCaseTest {
 
     private val mainPasswordRepository = FakeMainPasswordRepository(hash = "a-v1-bcrypt-hash")
@@ -39,7 +45,10 @@ class RunPendingMigrationUseCaseTest {
         scope = backgroundScope,
     )
 
-    private fun migrated(failures: List<LegacyRowFailure> = emptyList(), fileRetained: Boolean = false) =
+    private fun migrated(
+        failures: List<LegacyRowFailure> = emptyList(),
+        fileRetained: Boolean = false
+    ) =
         LegacyMigrationOutcome.Migrated(
             LegacyMigrationReport(
                 migratedItems = 3,

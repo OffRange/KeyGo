@@ -1,7 +1,8 @@
 package de.davis.keygo.legacy_migration.domain.usecase
 
-import de.davis.keygo.legacy_migration.domain.model.LegacyMigrationOutcome
+import android.util.Log
 import de.davis.keygo.legacy_migration.di.annotation.MigrationScopeQualifier
+import de.davis.keygo.legacy_migration.domain.model.LegacyMigrationOutcome
 import de.davis.keygo.legacy_migration.domain.model.MigrationResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -59,11 +60,11 @@ class RunPendingMigrationUseCase internal constructor(
             // Room, a native SQLite driver and the Keystore can raise a LinkageError or a
             // NoClassDefFoundError on a device missing something it expected. Uncaught, that would
             // surface as a crash at whoever joined the run rather than as a migration that failed.
-            return MigrationResult.Incomplete(e)
+            return incomplete(e)
         }
 
         return when (outcome) {
-            is LegacyMigrationOutcome.Failed -> MigrationResult.Incomplete(outcome.cause)
+            is LegacyMigrationOutcome.Failed -> incomplete(outcome.cause)
 
             // Exhaustive rather than an else, so an outcome added later cannot default into the
             // branch that drops the user's v1 credential.
@@ -85,5 +86,14 @@ class RunPendingMigrationUseCase internal constructor(
                 MigrationResult.Completed(skippedItems = outcome.report.failures.size)
             }
         }
+    }
+
+    private fun incomplete(cause: Throwable): MigrationResult.Incomplete {
+        Log.e(TAG, "v1 import did not finish", cause)
+        return MigrationResult.Incomplete(cause)
+    }
+
+    private companion object {
+        const val TAG = "RunPendingMigration"
     }
 }

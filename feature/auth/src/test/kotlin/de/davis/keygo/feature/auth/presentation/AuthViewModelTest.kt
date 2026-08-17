@@ -35,6 +35,9 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import kotlin.test.AfterTest
@@ -53,6 +56,8 @@ import kotlin.test.assertIs
  * to retry. Clearing the marker now belongs to [RunPendingMigrationUseCase], which runs only after
  * a session exists and only once the import has said something definite about the v1 file.
  */
+@RunWith(RobolectricTestRunner::class) // Robolectric for android.util.Log alone.
+@Config(sdk = [34])
 @OptIn(ExperimentalCoroutinesApi::class)
 class AuthViewModelTest {
 

@@ -28,6 +28,7 @@ dependencies {
     implementation(projects.core.util)
 
     testImplementation(libs.io.mockk)
+    testImplementation(libs.robolectric)
     testImplementation(libs.androidx.room3.testing)
     testImplementation(libs.androidx.sqlite.bundled)
     testImplementation(testFixtures(projects.core.item))

@@ -1,6 +1,5 @@
 package de.davis.keygo.feature.auth.presentation
 
-import android.util.Log
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -253,10 +252,8 @@ internal class AuthViewModel(
                     if (result.skippedItems == 0) navigationEventChannel.trySend(Unit)
                     else _uiState.update { AuthState.MigrationSummary(result.skippedItems) }
 
-                is MigrationResult.Incomplete -> {
-                    Log.e(TAG, "v1 import did not finish", result.cause)
+                is MigrationResult.Incomplete ->
                     _uiState.update { AuthState.MigrationFailed }
-                }
             }
         }
     }
@@ -273,8 +270,6 @@ internal class AuthViewModel(
         }
     }
 }
-
-private const val TAG = "AuthViewModel"
 
 private class LoadingScope<State>(
     state: State,
