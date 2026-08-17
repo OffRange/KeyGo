@@ -8,6 +8,12 @@ import de.davis.keygo.legacy_migration.domain.model.LegacyMigrationReport
 import de.davis.keygo.legacy_migration.domain.model.LegacyRowFailure
 import de.davis.keygo.legacy_migration.domain.model.MigrationResult
 import de.davis.keygo.legacy_migration.hasMainPasswordUseCase
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
@@ -22,13 +28,15 @@ class RunPendingMigrationUseCaseTest {
 
     private var importsRun = 0
 
-    private fun useCase(importer: LegacyDataImporter) = RunPendingMigrationUseCase(
+    private fun TestScope.useCase(importer: LegacyDataImporter) = RunPendingMigrationUseCase(
         hasMainPassword = hasMainPasswordUseCase(mainPasswordRepository),
         importLegacyData = LegacyDataImporter {
             importsRun++
             importer()
         },
         clearMainPassword = clearMainPasswordUseCase(mainPasswordRepository),
+        // One the scheduler can see, so a run still starts outside the caller's coroutine.
+        scope = backgroundScope,
     )
 
     private fun migrated(failures: List<LegacyRowFailure> = emptyList(), fileRetained: Boolean = false) =
@@ -140,8 +148,8 @@ class RunPendingMigrationUseCaseTest {
     /**
      * MigrateLegacyDataUseCase catches Exception, which leaves everything that is not one uncaught.
      * A module reaching Room, a native SQLite driver and the Keystore can raise a LinkageError on a
-     * device missing something it expected, and this now runs in viewModelScope where that would
-     * take the process down rather than being logged.
+     * device missing something it expected, and uncaught it would surface as a crash at whoever
+     * joined the run rather than as a migration that failed.
      */
     @Test
     fun `contains a throwable that is not an exception`() = runTest {
@@ -159,5 +167,71 @@ class RunPendingMigrationUseCaseTest {
         }
 
         assertEquals("a-v1-bcrypt-hash", mainPasswordRepository.hash)
+    }
+
+    /**
+     * The reason the run does not live in the caller's scope. MigrateLegacyDataUseCase commits the
+     * batch write before it prunes the rows it just wrote, and cancellation is rethrown all the way
+     * up on purpose, so a run cut short between the two leaves the marker set over rows already in
+     * v2. The next unlock imports them again under fresh ids: two copies of every v1 item, from a
+     * back press.
+     */
+    @Test
+    fun `cancelling a joiner leaves the run to finish`() = runTest {
+        val started = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        var reachedTheEnd = false
+
+        val subject = useCase {
+            started.complete(Unit)
+            release.await()
+            reachedTheEnd = true
+            LegacyMigrationOutcome.NothingToMigrate
+        }
+
+        val joiner = launch { subject() }
+        started.await()
+        joiner.cancelAndJoin()
+
+        release.complete(Unit)
+        runCurrent()
+
+        assertTrue(reachedTheEnd)
+        // The verdict still landed: the marker is gone and nothing is left for a retry to duplicate.
+        assertEquals("", mainPasswordRepository.hash)
+    }
+
+    /**
+     * Two concurrent imports would read the same v1 rows and write them both. This is also how a
+     * ViewModel destroyed mid-import and rebuilt still reports the summary for a run it did not
+     * start: it joins the one already going rather than opening a second.
+     */
+    @Test
+    fun `callers arriving together share one run and one verdict`() = runTest {
+        val release = CompletableDeferred<Unit>()
+        val subject = useCase {
+            release.await()
+            migrated(failures = listOf(rowFailure(1)), fileRetained = true)
+        }
+
+        val first = async { subject() }
+        val second = async { subject() }
+        runCurrent()
+        release.complete(Unit)
+
+        assertEquals(MigrationResult.Completed(skippedItems = 1), first.await())
+        assertEquals(MigrationResult.Completed(skippedItems = 1), second.await())
+        assertEquals(1, importsRun)
+    }
+
+    /** A run that has ended is not a run in flight, or Retry would hand back the failure again. */
+    @Test
+    fun `a caller after a finished run starts a new one`() = runTest {
+        val subject = useCase { LegacyMigrationOutcome.Failed(IllegalStateException("unreadable")) }
+
+        subject()
+        subject()
+
+        assertEquals(2, importsRun)
     }
 }

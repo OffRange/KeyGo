@@ -7,6 +7,7 @@ import de.davis.keygo.legacy_migration.domain.usecase.HasMainPasswordUseCase
 import de.davis.keygo.legacy_migration.domain.usecase.LegacyDataImporter
 import de.davis.keygo.legacy_migration.domain.usecase.RunPendingMigrationUseCase
 import de.davis.keygo.legacy_migration.domain.usecase.ValidateMainPasswordUseCase
+import kotlinx.coroutines.CoroutineScope
 
 internal fun clearMainPasswordUseCase(repository: FakeMainPasswordRepository): ClearMainPasswordUseCase =
     ClearMainPasswordUseCase(repository.asMainPasswordRepository())
@@ -24,6 +25,7 @@ fun validateMainPasswordUseCase(repository: FakeMainPasswordRepository): Validat
  * need to see that a retry actually retried.
  */
 fun runPendingMigrationUseCase(
+    scope: CoroutineScope,
     repository: FakeMainPasswordRepository,
     outcome: LegacyMigrationOutcome = LegacyMigrationOutcome.NothingToMigrate,
     onImport: () -> Unit = {},
@@ -34,4 +36,5 @@ fun runPendingMigrationUseCase(
         outcome
     },
     clearMainPassword = clearMainPasswordUseCase(repository),
+    scope = scope,
 )

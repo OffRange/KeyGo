@@ -1,7 +1,13 @@
 package de.davis.keygo.legacy_migration.domain.usecase
 
 import de.davis.keygo.legacy_migration.domain.model.LegacyMigrationOutcome
+import de.davis.keygo.legacy_migration.di.annotation.MigrationScopeQualifier
 import de.davis.keygo.legacy_migration.domain.model.MigrationResult
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.koin.core.annotation.Single
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -23,9 +29,22 @@ class RunPendingMigrationUseCase internal constructor(
     private val hasMainPassword: HasMainPasswordUseCase,
     private val importLegacyData: LegacyDataImporter,
     private val clearMainPassword: ClearMainPasswordUseCase,
+
+    @param:MigrationScopeQualifier
+    private val scope: CoroutineScope,
 ) {
 
-    suspend operator fun invoke(): MigrationResult {
+    private val lock = Mutex()
+    private var inFlight: Deferred<MigrationResult>? = null
+
+    suspend operator fun invoke(): MigrationResult = currentRun().await()
+
+    private suspend fun currentRun(): Deferred<MigrationResult> = lock.withLock {
+        inFlight?.takeIf { it.isActive }
+            ?: scope.async { runPending() }.also { inFlight = it }
+    }
+
+    private suspend fun runPending(): MigrationResult {
         if (!hasMainPassword()) return MigrationResult.NotPending
 
         val outcome = try {
@@ -38,8 +57,8 @@ class RunPendingMigrationUseCase internal constructor(
             // Throwable and not Exception: MigrateLegacyDataUseCase catches Exception around its
             // whole run, which leaves everything that is not one uncaught, and a module reaching
             // Room, a native SQLite driver and the Keystore can raise a LinkageError or a
-            // NoClassDefFoundError on a device missing something it expected. This now runs inside
-            // viewModelScope, where that would end the process rather than the migration.
+            // NoClassDefFoundError on a device missing something it expected. Uncaught, that would
+            // surface as a crash at whoever joined the run rather than as a migration that failed.
             return MigrationResult.Incomplete(e)
         }
 

@@ -104,7 +104,7 @@ class AuthViewModelTest {
      */
     private fun TestScope.viewModel(
         runPendingMigration: RunPendingMigrationUseCase =
-            runPendingMigrationUseCase(mainPasswordRepository),
+            runPendingMigrationUseCase(backgroundScope, mainPasswordRepository),
     ): AuthViewModel {
         val vm = AuthViewModel(
             savedStateHandle = SavedStateHandle(),
@@ -258,6 +258,7 @@ class AuthViewModelTest {
             mainPasswordRepository.hash = "original-v1-hash"
             val vm = viewModel(
                 runPendingMigration = runPendingMigrationUseCase(
+                    scope = backgroundScope,
                     repository = mainPasswordRepository,
                     outcome = LegacyMigrationOutcome.Failed(IllegalStateException("unreadable")),
                 ),
@@ -279,6 +280,7 @@ class AuthViewModelTest {
         var underTest: AuthViewModel? = null
         val vm = viewModel(
             runPendingMigration = runPendingMigrationUseCase(
+                scope = backgroundScope,
                 repository = mainPasswordRepository,
                 outcome = LegacyMigrationOutcome.Failed(IllegalStateException("unreadable")),
                 onImport = {
@@ -311,6 +313,7 @@ class AuthViewModelTest {
         mainPasswordRepository.hash = "original-v1-hash"
         val vm = viewModel(
             runPendingMigration = runPendingMigrationUseCase(
+                scope = backgroundScope,
                 repository = mainPasswordRepository,
                 outcome = LegacyMigrationOutcome.Migrated(
                     LegacyMigrationReport(
