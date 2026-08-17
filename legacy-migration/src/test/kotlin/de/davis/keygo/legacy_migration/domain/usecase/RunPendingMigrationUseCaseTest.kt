@@ -62,6 +62,11 @@ class RunPendingMigrationUseCaseTest {
         assertEquals("", mainPasswordRepository.hash)
     }
 
+    /**
+     * The marker follows the file, not the row count. A report that names failures and still says
+     * the file is gone has nothing left to come back to, so counting the skipped rows for the
+     * screen and dropping the credential are not in conflict.
+     */
     @Test
     fun `reports the rows that were skipped and still clears the marker`() = runTest {
         val result = useCase { migrated(failures = listOf(rowFailure(1), rowFailure(2))) }()
@@ -71,17 +76,36 @@ class RunPendingMigrationUseCaseTest {
     }
 
     /**
-     * A file left behind by a failed prune or a failed delete, rather than by a failed row. The
-     * rows are already in v2, so a retry would duplicate them; the marker goes and the stale file
-     * is accepted. This is the one place the design retries less than the code it replaced, and it
-     * is pinned here so the trade is deliberate rather than discovered.
+     * A file left behind by a failed prune or a failed delete, rather than by a failed row. Nothing
+     * on screen distinguishes it - the run reached a verdict and the user is let through - but the
+     * marker has to survive it: it is the only thing that brings a later run back to a
+     * secure_element_database that is still on disk and still decryptable by an alias only that run
+     * can delete. Clearing it here made that file permanent.
+     *
+     * The trade is a prune that keeps failing over rows already in v2, which reimports them on the
+     * next unlock. A duplicate is visible and undoable; a retained v1 database is neither.
      */
     @Test
-    fun `clears the marker even when the legacy file could not be deleted`() = runTest {
+    fun `keeps the marker when the legacy file could not be deleted`() = runTest {
         val result = useCase { migrated(fileRetained = true) }()
 
         assertEquals(MigrationResult.Completed(skippedItems = 0), result)
-        assertEquals("", mainPasswordRepository.hash)
+        assertEquals("a-v1-bcrypt-hash", mainPasswordRepository.hash)
+    }
+
+    /**
+     * The realistic shape of a skipped row: `MigrateLegacyDataUseCase` never deletes a file it
+     * could not empty, so failures and a retained file arrive together. The rows it could not read
+     * are still there, and the marker is what lets a later run try them again.
+     */
+    @Test
+    fun `keeps the marker when rows were skipped and the file stayed behind`() = runTest {
+        val result = useCase {
+            migrated(failures = listOf(rowFailure(1), rowFailure(2)), fileRetained = true)
+        }()
+
+        assertEquals(MigrationResult.Completed(skippedItems = 2), result)
+        assertEquals("a-v1-bcrypt-hash", mainPasswordRepository.hash)
     }
 
     /**
