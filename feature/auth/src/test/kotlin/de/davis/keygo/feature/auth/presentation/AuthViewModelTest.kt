@@ -3,6 +3,7 @@ package de.davis.keygo.feature.auth.presentation
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.lifecycle.SavedStateHandle
 import de.davis.keygo.core.identity.FakeAccountRepository
+import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockWithPasswordUseCase
 import de.davis.keygo.core.item.FakeVaultContextRepository
@@ -24,6 +25,7 @@ import de.davis.keygo.legacy_migration.validateMainPasswordUseCase
 import de.davis.keygo.rust.FakeAccountManager
 import de.davis.keygo.rust.FakeKeyDeriver
 import de.davis.keygo.rust.FakeKeyWrapper
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -306,6 +308,56 @@ class AuthViewModelTest {
         assertEquals(2, runs)
         assertIs<AuthState.MigrationFailed>(vm.uiState.value)
         assertEquals("original-v1-hash", mainPasswordRepository.hash)
+    }
+
+    /**
+     * The write that ends a loading run puts back a snapshot taken before `block()` suspended, so
+     * it has to be guarded the same way the one that starts the run is.
+     *
+     * `onSessionEstablished` is reachable from outside `loading`: AuthScreen calls it straight from
+     * the BiometricRequest.Login success handler and nothing gates it on `authJob`. So the user
+     * submits the password form, the biometric prompt they already triggered comes back, the import
+     * starts, and an unguarded write here would drop the live login form back on top of it - a form
+     * they can submit again while the import runs behind it.
+     */
+    @Test
+    fun `a state set while the auth run was suspended is not written over`() = runTest(dispatcher) {
+        // An account plus a marker still on disk: what the user is left with the moment they tap
+        // Continue on MigrationFailed. Every unlock after that is a login form over a migration
+        // that is still pending.
+        val first = viewModel()
+        first.executeCreateAccess(password = "correct-password")
+        first.navigationEvent.first()
+        mainPasswordRepository.hash = "original-v1-hash"
+
+        val vm = viewModel(
+            runPendingMigration = runPendingMigrationUseCase(
+                scope = backgroundScope,
+                repository = mainPasswordRepository,
+                outcome = LegacyMigrationOutcome.Failed(IllegalStateException("unreadable")),
+            ),
+        )
+        val login = assertIs<AuthState.Login>(vm.uiState.value)
+        login.passwordTextFieldState.setTextAndPlaceCursorAtEnd("correct-password")
+
+        // Holds the unlock at its account read, which is the last point before it hops to a
+        // dispatcher the scheduler cannot see.
+        val read = CompletableDeferred<Account?>()
+        accountRepository.pendingRead = read
+        vm.onEvent(AuthUIEvent.Submit)
+        runCurrent()
+        assertEquals(true, assertIs<AuthState.Login>(vm.uiState.value).loading)
+
+        vm.onSessionEstablished()
+        runCurrent()
+        assertIs<AuthState.MigrationFailed>(vm.uiState.value)
+
+        // Answering with no account fails the unlock where it stands, so the only thing left to
+        // happen is loading writing its snapshot back.
+        read.complete(null)
+        runCurrent()
+
+        assertIs<AuthState.MigrationFailed>(vm.uiState.value)
     }
 
     @Test

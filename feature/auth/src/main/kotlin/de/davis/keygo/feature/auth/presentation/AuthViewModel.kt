@@ -216,7 +216,10 @@ internal class AuthViewModel(
             )
             scope.block()
 
-            _uiState.update { scope.updatedState.copyDefaultState(loading = false) }
+            _uiState.update {
+                if (it !is AuthState.Interactable) return@update it
+                scope.updatedState.copyDefaultState(loading = false)
+            }
 
             if (sessionEstablished) onSessionEstablished()
         }
