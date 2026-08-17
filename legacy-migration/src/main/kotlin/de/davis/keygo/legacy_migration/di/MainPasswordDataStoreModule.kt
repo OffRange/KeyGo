@@ -14,7 +14,7 @@ import org.koin.core.annotation.Single
 internal const val MAIN_PASSWORD_DATA_STORE_NAME = "main-password.db"
 
 @Module
-internal class MainPasswordDataStoreModule {
+internal object MainPasswordDataStoreModule {
 
     private val Context.protoMainPasswordDataStore by dataStore(
         fileName = MAIN_PASSWORD_DATA_STORE_NAME,
