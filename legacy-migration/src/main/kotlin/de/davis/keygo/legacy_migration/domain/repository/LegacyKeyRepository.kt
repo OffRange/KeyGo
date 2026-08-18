@@ -6,11 +6,11 @@ import javax.crypto.SecretKey
 internal interface LegacyKeyRepository {
 
     /** Returns null when the alias is gone, which no blob in the file can survive. */
-    fun secretKey(): SecretKey?
+    suspend fun secretKey(): SecretKey?
 
     /**
      * Removes v1's alias. Only ever called once the file it protected has provably gone, because a
      * key removed while encrypted rows are still on disk makes them unreadable for good.
      */
-    fun deleteLegacyKey()
+    suspend fun deleteLegacyKey()
 }

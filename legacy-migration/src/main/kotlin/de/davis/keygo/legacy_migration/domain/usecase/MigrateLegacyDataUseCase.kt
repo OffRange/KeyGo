@@ -181,7 +181,7 @@ internal class MigrateLegacyDataUseCase internal constructor(
      * A clean install reaches this too, by way of a provider with no file to hand out. There is
      * nothing to delete, [LegacyItemRepository.deleteDatabase] says so, and the alias stays.
      */
-    private fun deleteDatabaseAndKey(): Boolean {
+    private suspend fun deleteDatabaseAndKey(): Boolean {
         if (!legacyItemRepository.deleteDatabase()) return false
         legacyKeyRepository.deleteLegacyKey()
         return true

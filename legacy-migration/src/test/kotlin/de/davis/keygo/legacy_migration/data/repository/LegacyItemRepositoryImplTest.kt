@@ -35,6 +35,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -345,5 +346,40 @@ class LegacyItemRepositoryImplTest {
 
         assertTrue(repository.deleteDatabase(), "the file was there and had to go")
         assertTrue(databaseProvider.closed, "the file cannot be deleted from under an open handle")
+    }
+
+    /**
+     * Main-safety, pinned rather than argued.
+     *
+     * The scope the import runs in names no dispatcher on purpose, so each blocking call has to
+     * move off the caller's thread itself. Nothing else would catch a `withContext` dropped from
+     * one of them: the work still happens, the results are still right, and every other test in
+     * this file still passes - it just happens on whatever thread called in, which for the auth
+     * screen is the main one.
+     *
+     * Covers this repository only. `LegacyKeyRepositoryImpl` switches for the same reason, but a
+     * JVM test cannot reach the Keystore, and asserting it through the fake would only pin the
+     * fake's own threading.
+     */
+    @Test
+    fun `the legacy file is opened and deleted off the calling thread`() = runTest {
+        insert(title = "Example", json = """{"type":1,"username":"ada"}""")
+        val caller = Thread.currentThread()
+
+        repository.readAll().assertSuccess()
+
+        assertNotEquals(
+            caller,
+            databaseProvider.lastAccessThread,
+            "the legacy database was opened on the caller's thread",
+        )
+
+        repository.deleteDatabase()
+
+        assertNotEquals(
+            caller,
+            databaseProvider.lastAccessThread,
+            "the legacy file was deleted on the caller's thread",
+        )
     }
 }

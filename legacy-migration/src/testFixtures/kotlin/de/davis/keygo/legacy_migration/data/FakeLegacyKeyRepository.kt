@@ -20,12 +20,12 @@ internal class FakeLegacyKeyRepository(
     var deleted: Boolean = false
         private set
 
-    override fun secretKey(): SecretKey? {
+    override suspend fun secretKey(): SecretKey? {
         probes++
         return key
     }
 
-    override fun deleteLegacyKey() {
+    override suspend fun deleteLegacyKey() {
         deleted = true
     }
 }

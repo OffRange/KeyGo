@@ -41,7 +41,7 @@ internal class FakeLegacyItemRepository : LegacyItemRepository {
     override suspend fun remainingCount(): Result<Int, LegacyReadFailure> =
         countResult ?: Result.Success(rowsInFile())
 
-    override fun deleteDatabase(): Boolean {
+    override suspend fun deleteDatabase(): Boolean {
         databaseDeleted = deleteSucceeds
         return deleteSucceeds
     }

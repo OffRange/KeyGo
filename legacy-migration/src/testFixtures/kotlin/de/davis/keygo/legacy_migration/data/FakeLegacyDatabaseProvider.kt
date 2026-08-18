@@ -16,9 +16,20 @@ internal class FakeLegacyDatabaseProvider(
     var closed: Boolean = false
         private set
 
+    /**
+     * The thread the last [get] or [delete] ran on. Production's provider opens and unlinks the
+     * file on whichever thread calls it, so this is what a test asserts against to pin that the
+     * repository moved off the caller's.
+     */
+    var lastAccessThread: Thread? = null
+        private set
+
     private var fileDeleted: Boolean = false
 
-    override fun get(): LegacyDatabase? = database.takeUnless { fileDeleted }
+    override fun get(): LegacyDatabase? {
+        lastAccessThread = Thread.currentThread()
+        return database.takeUnless { fileDeleted }
+    }
 
     override fun close() {
         closed = true
@@ -31,6 +42,7 @@ internal class FakeLegacyDatabaseProvider(
      * alias is gated on this answer.
      */
     override fun delete(): Boolean {
+        lastAccessThread = Thread.currentThread()
         close()
         fileDeleted = true
         return SUFFIXES.count { File(file.absolutePath + it).delete() } > 0

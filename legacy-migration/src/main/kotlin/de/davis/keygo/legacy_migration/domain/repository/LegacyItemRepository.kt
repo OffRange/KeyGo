@@ -40,6 +40,5 @@ internal interface LegacyItemRepository {
 
     suspend fun remainingCount(): Result<Int, LegacyReadFailure>
 
-    /** Closes the database and deletes the file. */
-    fun deleteDatabase(): Boolean
+    suspend fun deleteDatabase(): Boolean
 }

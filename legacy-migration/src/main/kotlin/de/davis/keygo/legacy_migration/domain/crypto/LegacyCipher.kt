@@ -11,5 +11,5 @@ internal fun interface LegacyCipher {
      * v1 alias, and a run resolves it once. Looking it up per blob costs a binder round trip to the
      * Keystore for every row, twice over, to arrive back at the same key.
      */
-    fun decrypt(blob: ByteArray, key: SecretKey): ByteArray?
+    suspend fun decrypt(blob: ByteArray, key: SecretKey): ByteArray?
 }

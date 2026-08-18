@@ -1,6 +1,7 @@
 package de.davis.keygo.legacy_migration.data.crypto
 
 import de.davis.keygo.legacy_migration.data.encryptLikeV1
+import kotlinx.coroutines.test.runTest
 import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -21,7 +22,7 @@ class LegacyAesGcmCipherTest {
     private val key: SecretKey = newKey()
 
     @Test
-    fun `decrypts a blob written by v1`() {
+    fun `decrypts a blob written by v1`() = runTest {
         val plaintext = "{\"type\":1,\"username\":\"ada\"}".encodeToByteArray()
 
         val decrypted = cipher.decrypt(encryptLikeV1(plaintext, key), key)
@@ -30,7 +31,7 @@ class LegacyAesGcmCipherTest {
     }
 
     @Test
-    fun `decrypts an empty plaintext`() {
+    fun `decrypts an empty plaintext`() = runTest {
         assertContentEquals(
             byteArrayOf(),
             cipher.decrypt(encryptLikeV1(byteArrayOf(), key), key),
@@ -38,19 +39,19 @@ class LegacyAesGcmCipherTest {
     }
 
     @Test
-    fun `returns null for a blob encrypted under a different key`() {
+    fun `returns null for a blob encrypted under a different key`() = runTest {
         val otherKey = newKey()
 
         assertNull(cipher.decrypt(encryptLikeV1(byteArrayOf(1, 2, 3), otherKey), key))
     }
 
     @Test
-    fun `returns null for a blob shorter than the iv`() {
+    fun `returns null for a blob shorter than the iv`() = runTest {
         assertNull(cipher.decrypt(byteArrayOf(1, 2, 3), key))
     }
 
     @Test
-    fun `returns null for a tampered blob`() {
+    fun `returns null for a tampered blob`() = runTest {
         val blob = encryptLikeV1("secret".encodeToByteArray(), key)
         blob[blob.size - 1] = (blob[blob.size - 1] + 1).toByte()
 
@@ -58,7 +59,7 @@ class LegacyAesGcmCipherTest {
     }
 
     @Test
-    fun `uses a twelve byte iv prefix`() {
+    fun `uses a twelve byte iv prefix`() = runTest {
         val blob = encryptLikeV1("x".encodeToByteArray(), key)
         val manual = Cipher.getInstance("AES/GCM/NoPadding").apply {
             init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, blob, 0, 12))

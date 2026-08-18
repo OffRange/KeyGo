@@ -15,7 +15,7 @@ import javax.crypto.SecretKey
  */
 internal class FakeLegacyCipher(private val failFor: ByteArray? = null) : LegacyCipher {
 
-    override fun decrypt(blob: ByteArray, key: SecretKey): ByteArray? = when {
+    override suspend fun decrypt(blob: ByteArray, key: SecretKey): ByteArray? = when {
         failFor != null && blob.contentEquals(failFor) -> null
         blob.decodeToString().startsWith(FAIL) -> null
         else -> blob

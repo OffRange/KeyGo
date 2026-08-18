@@ -16,6 +16,8 @@ import de.davis.keygo.legacy_migration.domain.model.LegacyRowFailure
 import de.davis.keygo.legacy_migration.domain.repository.LegacyItemRepository
 import de.davis.keygo.legacy_migration.domain.repository.LegacyKeyRepository
 import de.davis.keygo.legacy_migration.domain.repository.LegacyReadResult
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.koin.core.annotation.Single
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -76,7 +78,9 @@ internal class LegacyItemRepositoryImpl(
 
     override suspend fun remainingCount(): Result<Int, LegacyReadFailure> = withDao { it.count() }
 
-    override fun deleteDatabase(): Boolean = databaseProvider.delete()
+    override suspend fun deleteDatabase(): Boolean = withContext(Dispatchers.IO) {
+        databaseProvider.delete()
+    }
 
     /**
      * Runs [block] against the legacy DAO, turning the ways the file can refuse to be read into a
@@ -89,11 +93,11 @@ internal class LegacyItemRepositoryImpl(
      */
     private suspend fun <T> withDao(
         block: suspend (LegacyElementDao) -> T,
-    ): Result<T, LegacyReadFailure> {
+    ): Result<T, LegacyReadFailure> = withContext(Dispatchers.IO) {
         val dao = databaseProvider.get()?.legacyElementDao()
-            ?: return Result.Failure(LegacyReadFailure.DatabaseEmpty)
+            ?: return@withContext Result.Failure(LegacyReadFailure.DatabaseEmpty)
 
-        return try {
+        try {
             Result.Success(block(dao))
         } catch (e: CancellationException) {
             // Not swallowed into a failure the way the other repositories do it. There a swallowed

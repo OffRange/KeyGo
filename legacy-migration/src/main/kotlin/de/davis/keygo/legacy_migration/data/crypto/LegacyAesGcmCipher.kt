@@ -1,6 +1,8 @@
 package de.davis.keygo.legacy_migration.data.crypto
 
 import de.davis.keygo.legacy_migration.domain.crypto.LegacyCipher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.koin.core.annotation.Single
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
@@ -13,16 +15,18 @@ import javax.crypto.spec.GCMParameterSpec
 @Single
 internal class LegacyAesGcmCipher : LegacyCipher {
 
-    override fun decrypt(blob: ByteArray, key: SecretKey): ByteArray? {
+    override suspend fun decrypt(blob: ByteArray, key: SecretKey): ByteArray? {
         if (blob.size <= IV_SIZE) return null
 
-        return runCatching {
-            Cipher.getInstance(TRANSFORMATION)
-                .apply {
-                    init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(TAG_BITS, blob, 0, IV_SIZE))
-                }
-                .doFinal(blob, IV_SIZE, blob.size - IV_SIZE)
-        }.getOrNull()
+        return withContext(Dispatchers.Default) {
+            runCatching {
+                Cipher.getInstance(TRANSFORMATION)
+                    .apply {
+                        init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(TAG_BITS, blob, 0, IV_SIZE))
+                    }
+                    .doFinal(blob, IV_SIZE, blob.size - IV_SIZE)
+            }.getOrNull()
+        }
     }
 
     private companion object {
