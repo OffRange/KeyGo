@@ -32,7 +32,7 @@ internal data class LoginProjection(
         entityColumn = "login_id",
         entity = PasskeyEntity::class
     )
-    val rpEntity: List<RP>,
+    val passkeys: List<PasskeyRefPojo>,
 
     @Relation(
         parentColumn = "id",

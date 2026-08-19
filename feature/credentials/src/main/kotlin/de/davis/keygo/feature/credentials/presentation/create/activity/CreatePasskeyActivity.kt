@@ -27,6 +27,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.credentials.CreatePublicKeyCredentialRequest
 import androidx.credentials.CreatePublicKeyCredentialResponse
 import androidx.credentials.exceptions.CreateCredentialUnknownException
+import androidx.credentials.exceptions.domerrors.InvalidStateError
+import androidx.credentials.exceptions.publickeycredential.CreatePublicKeyCredentialDomException
 import androidx.credentials.provider.PendingIntentHandler
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,6 +41,7 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.BiometricString
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
+import de.davis.keygo.core.ui.text.htmlStringResource
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
@@ -53,9 +56,6 @@ import de.davis.keygo.feature.list_screen.presentation.NoItemStrategy
 import kotlinx.serialization.Serializable
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
-
-@Serializable
-private data object AuthenticatedHome
 
 @Serializable
 private data object ListDest
@@ -74,7 +74,8 @@ internal class CreatePasskeyActivity : FragmentActivity() {
         val callingRequest = request?.callingRequest as? CreatePublicKeyCredentialRequest
             ?: return cancel("Invalid CreatePublicKeyCredentialRequest")
 
-        viewModel.setRequest(callingRequest)
+        val success = viewModel.setRequest(callingRequest.requestJson)
+        if (!success) return cancel("Failed to set request")
 
         setResult(RESULT_CANCELED)
 
@@ -91,10 +92,6 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                 ObserveAsEvents(flow = viewModel.event) {
                     when (it) {
                         CreatePasskeyEvent.Abort -> cancel()
-                        CreatePasskeyEvent.ShowList -> authenticatedNavController.navigate(ListDest) {
-                            popUpTo<AuthenticatedHome> { inclusive = true }
-                        }
-
                         is CreatePasskeyEvent.Finish -> finishWithSuccess(it.responseJson)
 
                         is CreatePasskeyEvent.OpenConfirmationDialog -> {
@@ -137,6 +134,30 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                                 Text(stringResource(R.string.no))
                             }
                         }
+                    )
+                }
+
+                val excluded by viewModel.excluded.collectAsStateWithLifecycle()
+                val rp by viewModel.rp.collectAsStateWithLifecycle()
+                if (excluded) {
+                    AlertDialog(
+                        onDismissRequest = ::finishExcluded,
+                        title = {
+                            Text(stringResource(R.string.passkey_already_exists))
+                        },
+                        confirmButton = {
+                            Button(onClick = ::finishExcluded) {
+                                Text(stringResource(R.string.ok))
+                            }
+                        },
+                        text = {
+                            Text(
+                                text = if (rp.isNotBlank())
+                                    htmlStringResource(R.string.passkey_already_exists_message, rp)
+                                else htmlStringResource(R.string.passkey_already_exists_message_generic)
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
 
@@ -185,15 +206,11 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                         Scaffold { innerPadding ->
                             NavHost(
                                 navController = authenticatedNavController,
-                                startDestination = AuthenticatedHome,
+                                startDestination = ListDest,
                                 modifier = Modifier
                                     .padding(innerPadding)
                                     .consumeWindowInsets(innerPadding),
                             ) {
-                                composable<AuthenticatedHome> {
-                                    // empty placeholder while operation runs
-                                }
-
                                 composable<ListDest> {
                                     PasskeyItemListScreen(
                                         onItemClick = viewModel::onItemClicked,
@@ -205,7 +222,7 @@ internal class CreatePasskeyActivity : FragmentActivity() {
 
                                 composable<CreateItem> {
                                     LoginScreen(
-                                        pendingPasskeyCount = 1,
+                                        pendingPasskeyRP = rp,
                                         loginCreated = {
                                             viewModel.associatePasskeyAndFinish(it)
                                         },
@@ -260,6 +277,25 @@ internal class CreatePasskeyActivity : FragmentActivity() {
         )
 
         setResult(RESULT_OK, result)
+        finish()
+    }
+
+    /**
+     * Reports the relying party's own exclusion list back to it.
+     *
+     * [InvalidStateError] is what WebAuthn defines for "this authenticator already holds a
+     * credential for that user", so the site can say so instead of showing a generic failure.
+     * The framework forwards a provider exception only on RESULT_OK; RESULT_CANCELED is reported
+     * as a plain user cancellation and would hide it.
+     */
+    private fun finishExcluded() {
+        val response = Intent()
+        PendingIntentHandler.setCreateCredentialException(
+            response,
+            CreatePublicKeyCredentialDomException(InvalidStateError()),
+        )
+
+        setResult(RESULT_OK, response)
         finish()
     }
 

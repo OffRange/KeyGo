@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import de.davis.keygo.core.item.data.local.dao.DomainInfoDao
 import de.davis.keygo.core.item.data.local.dao.ItemDao
 import de.davis.keygo.core.item.data.local.dao.LoginDao
+import de.davis.keygo.core.item.data.local.dao.PasskeyDao
 import de.davis.keygo.core.item.data.local.dao.PasswordDao
 import de.davis.keygo.core.item.data.local.dao.TagDao
 import de.davis.keygo.core.item.data.local.dao.TotpDao
@@ -17,12 +18,14 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasskeyRef
 import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.model.Totp
+import de.davis.keygo.core.item.passkeyRef
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
 import io.mockk.coEvery
@@ -30,12 +33,12 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
-import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlinx.coroutines.test.runTest
 
 class LoginRepositoryImplTest {
 
@@ -46,6 +49,7 @@ class LoginRepositoryImplTest {
     private val domainInfoDao = mockk<DomainInfoDao>(relaxed = true)
     private val totpDao = mockk<TotpDao>(relaxed = true)
     private val tagDao = mockk<TagDao>(relaxed = true)
+    private val passkeyDao = mockk<PasskeyDao>(relaxed = true)
 
     private val repository = LoginRepositoryImpl(
         database = database,
@@ -55,6 +59,7 @@ class LoginRepositoryImplTest {
         domainInfoDao = domainInfoDao,
         totpDao = totpDao,
         tagDao = tagDao,
+        passkeyDao = passkeyDao,
     )
 
     @BeforeTest
@@ -208,12 +213,51 @@ class LoginRepositoryImplTest {
         assertEquals(error, result.error)
     }
 
+    @Test
+    fun `createOrUpdateLogin drops passkeys whose credential is absent from the login`() = runTest {
+        val kept = passkeyRef("example.org")
+        val login = testLogin(totpProvider = null, passkeys = setOf(kept))
+
+        val result = repository.createOrUpdateLogin(login)
+
+        assertTrue(result.isSuccess())
+        coVerify(exactly = 1) {
+            passkeyDao.deleteCredentialsNotIn(login.id, listOf(kept.credentialId))
+        }
+    }
+
+    @Test
+    fun `createOrUpdateLogin with no passkeys drops every passkey the login holds`() = runTest {
+        // An empty set is how "the last passkey was removed" is expressed. There is no way to
+        // distinguish it from "unknown", which is why Login.passkeys has no default.
+        val login = testLogin(totpProvider = null)
+
+        val result = repository.createOrUpdateLogin(login)
+
+        assertTrue(result.isSuccess())
+        coVerify(exactly = 1) { passkeyDao.deleteCredentialsNotIn(login.id, emptyList()) }
+    }
+
+    @Test
+    fun `createOrUpdateLogin returns Failure when the passkey delete throws`() = runTest {
+        // The delete shares the login's transaction, so a failure rolls the whole write back and
+        // surfaces as a Failure rather than escaping uncaught after the login row has landed.
+        val error = RuntimeException("db error")
+        coEvery { passkeyDao.deleteCredentialsNotIn(any(), any()) } throws error
+
+        val result = repository.createOrUpdateLogin(testLogin(totpProvider = null))
+
+        assertTrue(result.isFailure())
+        assertEquals(error, result.error)
+    }
+
     private fun testLogin(
         passwordCredential: PasswordCredential? = PasswordCredential(
             secret = PasswordSecret(EncryptedPayload.EMPTY),
             score = PasswordScore.Strong,
         ),
         tags: Set<Tag> = emptySet(),
+        passkeys: Set<PasskeyRef> = emptySet(),
         totpProvider: ((ItemId) -> Totp)? = null,
     ): Login {
         val id = newItemId()
@@ -223,6 +267,7 @@ class LoginRepositoryImplTest {
             domainInfos = emptySet(),
             passwordCredential = passwordCredential,
             totp = totpProvider?.invoke(id),
+            passkeys = passkeys,
             name = "Test",
             note = null,
             pinned = false,

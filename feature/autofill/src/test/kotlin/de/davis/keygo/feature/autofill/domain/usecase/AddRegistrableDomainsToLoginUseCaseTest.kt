@@ -39,6 +39,7 @@ class AddRegistrableDomainsToLoginUseCaseTest {
         domainInfos = domainInfos,
         passwordCredential = null,
         totp = null,
+        passkeys = emptySet(),
         note = null,
         pinned = false,
         vaultId = vaultId,

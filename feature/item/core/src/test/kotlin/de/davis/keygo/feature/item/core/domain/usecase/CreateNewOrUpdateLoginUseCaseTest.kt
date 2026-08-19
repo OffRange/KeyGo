@@ -11,6 +11,7 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasskeyRef
 import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
@@ -18,6 +19,7 @@ import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
+import de.davis.keygo.core.item.passkeyRef
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.util.Result
@@ -32,8 +34,6 @@ import de.davis.keygo.rust.FakeTotpService
 import de.davis.keygo.rust.totp.TotpService
 import de.davisalessandro.keygo.rust.Algorithm
 import de.davisalessandro.keygo.rust.TotpInfo
-import kotlinx.coroutines.test.runTest
-import kotlin.time.Clock
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -44,6 +44,8 @@ import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Clock
+import kotlinx.coroutines.test.runTest
 
 class CreateNewOrUpdateLoginUseCaseTest {
 
@@ -102,6 +104,184 @@ class CreateNewOrUpdateLoginUseCaseTest {
 
         assertTrue(result.isFailure())
         assertEquals(setOf(ItemUpsertError.Empty), result.error)
+    }
+
+    @Test
+    fun `create with a pending passkey and nothing else returns Success`() = runTest {
+        val result = useCase(
+            UpsertLogin.create(
+                vaultId = defaultVault.id,
+                name = "My site",
+                password = null,
+                username = null,
+                totpUriOrSecret = null,
+                pendingPasskey = true,
+            )
+        )
+
+        assertTrue(result.isSuccess())
+    }
+
+    @Test
+    fun `update clearing the only credential while a passkey is pending returns Success`() =
+        runTest {
+            val existing = testLogin(username = null, totp = null)
+            loginRepository.seed(existing)
+
+            val result = useCase(
+                UpsertLogin.update(
+                    itemId = existing.id,
+                    password = clear(),
+                    pendingPasskey = true,
+                )
+            )
+
+            assertTrue(result.isSuccess())
+        }
+
+    // The use case does not touch the passkey table: it resolves the login's effective credentials,
+    // and LoginRepository drops the rows that fall outside that set as part of the same write.
+    // These assert the resolved set; LoginRepositoryImplTest covers the deletion itself.
+
+    @Test
+    fun `update deleting a passkey drops it from the saved login`() = runTest {
+        val removed = passkeyRef("example.com")
+        val kept = passkeyRef("example.org")
+        val existing = testLogin(passkeys = setOf(removed, kept))
+        loginRepository.seed(existing)
+
+        val result = useCase(
+            UpsertLogin.update(
+                itemId = existing.id,
+                removedPasskeys = setOf(removed),
+            )
+        )
+
+        assertTrue(result.isSuccess())
+        assertEquals(setOf(kept), loginRepository.getLoginById(existing.id)?.passkeys)
+    }
+
+    @Test
+    fun `update deleting one of two passkeys for the same RP keeps the other`() = runTest {
+        // Two accounts on one site are two credentials sharing an rp. Removals key on the
+        // credential id, so dropping one leaves the other in place; keying on the rp would take
+        // both while the dialog only ever spoke about one.
+        val removed = passkeyRef("example.com", discriminator = "first")
+        val kept = passkeyRef("example.com", discriminator = "second")
+        val existing = testLogin(passkeys = setOf(removed, kept))
+        loginRepository.seed(existing)
+
+        val result = useCase(
+            UpsertLogin.update(
+                itemId = existing.id,
+                removedPasskeys = setOf(removed),
+            )
+        )
+
+        assertTrue(result.isSuccess())
+        assertEquals(setOf(kept), loginRepository.getLoginById(existing.id)?.passkeys)
+    }
+
+    @Test
+    fun `update deleting the only passkey of an otherwise empty login returns Empty`() = runTest {
+        val existing = testLogin(
+            username = null,
+            passwordCredential = null,
+            passkeys = setOf(passkeyRef("example.com")),
+        )
+        loginRepository.seed(existing)
+
+        val result = useCase(
+            UpsertLogin.update(
+                itemId = existing.id,
+                removedPasskeys = setOf(passkeyRef("example.com")),
+            )
+        )
+
+        assertTrue(result.isFailure())
+        assertContains(result.error, ItemUpsertError.Empty)
+    }
+
+    @Test
+    fun `a passkey attached after the form loaded survives an unrelated removal`() = runTest {
+        // The editing screen reads a login's passkeys once, and passkeys can be attached to an
+        // existing login from the passkey activity while that screen is open. Removals travel as a
+        // delta for exactly this reason: the effective set is resolved against a fresh read here,
+        // so a passkey the form never saw is not in the delta and stays. The table below holds
+        // both; the form that produced this delta only ever saw "example.com".
+        val attachedLater = passkeyRef("attached-later.example")
+        val existing = testLogin(passkeys = setOf(passkeyRef("example.com"), attachedLater))
+        loginRepository.seed(existing)
+
+        val result = useCase(
+            UpsertLogin.update(
+                itemId = existing.id,
+                removedPasskeys = setOf(passkeyRef("example.com")),
+            )
+        )
+
+        assertTrue(result.isSuccess())
+        assertEquals(setOf(attachedLater), loginRepository.getLoginById(existing.id)?.passkeys)
+    }
+
+    @Test
+    fun `update rejected as Empty never reaches the repository`() = runTest {
+        val existing = testLogin(
+            username = null,
+            passwordCredential = null,
+            passkeys = setOf(passkeyRef("example.com")),
+        )
+        loginRepository.seed(existing)
+
+        useCase(
+            UpsertLogin.update(
+                itemId = existing.id,
+                removedPasskeys = setOf(passkeyRef("example.com")),
+            )
+        )
+
+        // Validation runs before the write, so the stored login still holds the passkey and the
+        // repository never gets the chance to delete its row.
+        assertEquals(
+            setOf(passkeyRef("example.com")),
+            loginRepository.getLoginById(existing.id)?.passkeys,
+        )
+    }
+
+    @Test
+    fun `update deleting the only passkey while a password remains returns Success`() = runTest {
+        val existing = testLogin(passkeys = setOf(passkeyRef("example.com")))
+        loginRepository.seed(existing)
+
+        val result = useCase(
+            UpsertLogin.update(
+                itemId = existing.id,
+                removedPasskeys = setOf(passkeyRef("example.com")),
+            )
+        )
+
+        assertTrue(result.isSuccess())
+        assertTrue(loginRepository.getLoginById(existing.id)?.passkeys.orEmpty().isEmpty())
+    }
+
+    @Test
+    fun `a save can register one passkey and remove another at the same time`() = runTest {
+        // Not reachable from the UI today: the passkey activity only opens the editor on a new
+        // login, which holds no passkeys to remove. A guard against the two ever being treated as
+        // alternatives again if that flow gains an "edit existing" entry point.
+        val existing = testLogin(passkeys = setOf(passkeyRef("old.example")))
+        loginRepository.seed(existing)
+
+        val result = useCase(
+            UpsertLogin.update(
+                itemId = existing.id,
+                removedPasskeys = setOf(passkeyRef("old.example")),
+                pendingPasskey = true,
+            )
+        )
+
+        assertTrue(result.isSuccess())
+        assertTrue(loginRepository.getLoginById(existing.id)?.passkeys.orEmpty().isEmpty())
     }
 
     @Test
@@ -808,6 +988,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         ),
         totp: Totp? = null,
         timestamp: Timestamp = Timestamp(),
+        passkeys: Set<PasskeyRef> = emptySet(),
     ) = Login(
         id = newItemId(),
         name = name,
@@ -815,6 +996,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         domainInfos = emptySet(),
         passwordCredential = passwordCredential,
         totp = totp,
+        passkeys = passkeys,
         note = null,
         pinned = false,
         vaultId = defaultVault.id,

@@ -36,6 +36,7 @@ import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.presentation.ItemViewModel
 import de.davis.keygo.feature.item.create.presentation.login.model.DialogState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginBaseState
+import de.davis.keygo.feature.item.create.presentation.login.model.LoginPasskeyInfo
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiEvent
 import de.davis.keygo.feature.item.create.presentation.login.model.OverrideTotpField
 import de.davis.keygo.feature.item.create.presentation.model.ItemUiState
@@ -113,8 +114,19 @@ internal class LoginViewModel(
             .launchIn(viewModelScope)
     }
 
-    fun setPendingPasskeyCount(count: Int) {
-        _base.update { it.copy(pendingPasskeyCount = count) }
+    /**
+     * Shows a passkey for [rp] as pending until the item is saved.
+     *
+     * A blank id is dropped along with a null one. `rp.id` is optional per WebAuthn, so a request
+     * that leaves it out reaches us as an empty string, which would otherwise show up as a blank
+     * chip, make a name-only login look saveable, and leave the confirmation dialog asking about
+     * nothing.
+     */
+    fun setPendingPasskeyCount(rp: String?) {
+        if (rp.isNullOrBlank()) return
+        _base.update {
+            it.copy(passkeys = it.passkeys + LoginPasskeyInfo(rpId = rp, ref = null))
+        }
     }
 
     fun init(information: DetailPaneInformation) {
@@ -192,7 +204,13 @@ internal class LoginViewModel(
                     totpTextFieldState = TextFieldState(decrypted.second ?: ""),
                     usernameTextFieldState = TextFieldState(login.username ?: ""),
                     domains = login.domainInfos,
-                    existingPasskeyCount = login.passkeyRPs.size,
+                    passkeys = login.passkeys.mapTo(mutableSetOf()) { passkey ->
+                        LoginPasskeyInfo(
+                            rpId = passkey.rp,
+                            ref = passkey,
+                        )
+                    },
+                    deletedPasskeys = emptySet(),
                     dialogState = DialogState.None,
                     updating = true,
                 )
@@ -237,6 +255,8 @@ internal class LoginViewModel(
         val base = ready.base
         val assignedTags = ready.shared.itemAssignedTags
         val selectedVaultId = ready.shared.vaultsState.selectedVaultId
+        // Independent: a save can both register a passkey and drop another one.
+        val pendingPasskey = base.passkeys.any { it.pending }
         viewModelScope.launch {
             val upsert = itemId?.let { itemId ->
                 UpsertLogin.update(
@@ -249,6 +269,8 @@ internal class LoginViewModel(
                     password = fieldUpdate(base.passwordTextFieldState.text.toString()),
                     totpUriOrSecret = fieldUpdate(base.totpTextFieldState.text.toString()),
                     note = fieldUpdate(notesTextFieldState.text.toString()),
+                    removedPasskeys = base.deletedPasskeys,
+                    pendingPasskey = pendingPasskey,
                 )
             } ?: UpsertLogin.create(
                 vaultId = selectedVaultId,
@@ -259,7 +281,7 @@ internal class LoginViewModel(
                 password = base.passwordTextFieldState.text.toString(),
                 totpUriOrSecret = base.totpTextFieldState.text.toString(),
                 note = notesTextFieldState.text.toString(),
-                hasPendingPasskey = base.pendingPasskeyCount > 0,
+                pendingPasskey = pendingPasskey,
             )
 
             createNewOrUpdateLogin(
@@ -393,6 +415,30 @@ internal class LoginViewModel(
                     it.copy(
                         dialogState = DialogState.None,
                         scanning = false,
+                    )
+                }
+            }
+
+            is LoginUiEvent.OnDeletePasskeyRequest -> {
+                _base.update {
+                    it.copy(dialogState = DialogState.DeletePasskey(passkey = event.passkey))
+                }
+            }
+
+            is LoginUiEvent.OnPasskeyDeletionDismiss -> {
+                _base.update { it.copy(dialogState = DialogState.None) }
+            }
+
+            is LoginUiEvent.OnConfirmPasskeyDeletion -> {
+                val dialogState = _base.value.dialogState as? DialogState.DeletePasskey ?: return
+
+                _base.update {
+                    it.copy(
+                        passkeys = it.passkeys
+                            .filterNot { passkey -> passkey.ref == dialogState.passkey }
+                            .toSet(),
+                        deletedPasskeys = it.deletedPasskeys + dialogState.passkey,
+                        dialogState = DialogState.None,
                     )
                 }
             }

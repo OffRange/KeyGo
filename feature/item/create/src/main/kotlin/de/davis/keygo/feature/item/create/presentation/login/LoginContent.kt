@@ -3,6 +3,7 @@ package de.davis.keygo.feature.item.create.presentation.login
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -37,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.model.PasskeyRef
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.Vault
@@ -47,9 +50,11 @@ import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.item.core.presentation.component.ChipFormGroup
 import de.davis.keygo.feature.item.core.presentation.component.CreateOrModifyItemTopAppBar
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
+import de.davis.keygo.feature.item.core.presentation.component.MenuChip
 import de.davis.keygo.feature.item.core.presentation.component.gatherPendingItems
 import de.davis.keygo.feature.item.core.presentation.transformation.rememberSchemeStrippingTransformation
 import de.davis.keygo.feature.item.create.R
+import de.davis.keygo.feature.item.create.presentation.component.DeletePasskeyDialog
 import de.davis.keygo.feature.item.create.presentation.component.FormGroup
 import de.davis.keygo.feature.item.create.presentation.component.ItemContentWrapper
 import de.davis.keygo.feature.item.create.presentation.component.KeyGoItemForm
@@ -59,6 +64,7 @@ import de.davis.keygo.feature.item.create.presentation.component.TAG_DELIMITERS
 import de.davis.keygo.feature.item.create.presentation.component.TotpParseErrorDialog
 import de.davis.keygo.feature.item.create.presentation.login.model.DialogState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginBaseState
+import de.davis.keygo.feature.item.create.presentation.login.model.LoginPasskeyInfo
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiEvent
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiState
 import de.davis.keygo.feature.item.create.presentation.model.ItemUiEvent
@@ -154,6 +160,33 @@ private fun LoginReadyContent(
             onTagSubmitted = { onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnAddTags(it))) },
             onDeleteTag = { onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnRemoveTag(it))) },
         ) {
+            if (state.passkeys.isNotEmpty()) item(key = "passkey_information") {
+                FormGroup(
+                    title = stringResource(R.string.passkey_information),
+                    modifier = Modifier,
+                ) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        state.passkeys.forEach { passkeyInfo ->
+                            key(passkeyInfo) {
+                                MenuChip(
+                                    chipText = passkeyInfo.rpId,
+                                    onDeleteClick = {
+                                        passkeyInfo.ref?.let {
+                                            onEvent(LoginUiEvent.OnDeletePasskeyRequest(it))
+                                        }
+                                    },
+                                    enabled = !passkeyInfo.pending
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             item(key = "password_information") {
                 var forceCompact by rememberSaveable { mutableStateOf(false) }
 
@@ -294,6 +327,19 @@ private fun LoginReadyContent(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+
+            is DialogState.DeletePasskey -> {
+                DeletePasskeyDialog(
+                    state = state.dialogState,
+                    onConfirmDeletion = {
+                        onEvent(LoginUiEvent.OnConfirmPasskeyDeletion)
+                    },
+                    onDismissRequest = {
+                        onEvent(LoginUiEvent.OnPasskeyDeletionDismiss)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 
@@ -332,6 +378,17 @@ private fun LoginContentPreview() {
                             value = "example.com",
                             eTLD1 = "example.com",
                         ),
+                    ),
+                    passkeys = setOf(
+                        LoginPasskeyInfo(
+                            rpId = "example.com",
+                            ref = PasskeyRef(byteArrayOf(1), "example.com"),
+                        ),
+                        LoginPasskeyInfo(
+                            rpId = "example.com",
+                            ref = PasskeyRef(byteArrayOf(2), "example.com"),
+                        ),
+                        LoginPasskeyInfo(rpId = "example.org", ref = null),
                     ),
                 ),
                 shared = SharedItemState(

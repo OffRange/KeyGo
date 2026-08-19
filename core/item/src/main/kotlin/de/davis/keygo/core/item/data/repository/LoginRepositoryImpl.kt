@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import de.davis.keygo.core.item.data.local.dao.DomainInfoDao
 import de.davis.keygo.core.item.data.local.dao.ItemDao
 import de.davis.keygo.core.item.data.local.dao.LoginDao
+import de.davis.keygo.core.item.data.local.dao.PasskeyDao
 import de.davis.keygo.core.item.data.local.dao.PasswordDao
 import de.davis.keygo.core.item.data.local.dao.TagDao
 import de.davis.keygo.core.item.data.local.dao.TotpDao
@@ -38,6 +39,7 @@ internal class LoginRepositoryImpl(
     private val domainInfoDao: DomainInfoDao,
     private val totpDao: TotpDao,
     private val tagDao: TagDao,
+    private val passkeyDao: PasskeyDao,
 ) : LoginRepository {
 
     override suspend fun createOrUpdateLogin(login: Login): Result<ItemId, Throwable> =
@@ -55,6 +57,10 @@ internal class LoginRepositoryImpl(
 
                 domainInfoDao.syncForLogin(login.id, login.toDomainInfoEntities())
                 tagDao.syncTags(login.id, login.tags.toTagEntities())
+
+                // Delete only: passkeys are created through PasskeyRepository, never from here.
+                // See Login.passkeys for why this set has to come from a fresh read.
+                passkeyDao.deleteCredentialsNotIn(login.id, login.passkeys.map { it.credentialId })
 
                 login.id
             }

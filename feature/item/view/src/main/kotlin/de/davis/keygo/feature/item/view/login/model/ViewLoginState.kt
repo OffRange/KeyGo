@@ -10,7 +10,8 @@ import de.davis.keygo.core.item.domain.model.VaultMetadata
 data class ViewLoginState(
     val name: String = "",
     val vaultMetadata: VaultMetadata? = null,
-    val passkeyRPs: Set<String> = emptySet(),
+    /** One entry per credential, so two passkeys for the same site both show. */
+    val passkeyRPs: List<String> = emptyList(),
     val password: ObfuscatedString? = null,
     val passwordStrengthScore: PasswordScore? = null,
     val totpState: TotpState = TotpState.NoTotp,

@@ -367,6 +367,7 @@ class MoveItemsToVaultUseCaseTest {
                 totp = totpPlaintext?.let {
                     Totp(loginId = id, secret = Totp.Secret.encrypt(it))
                 },
+                passkeys = emptySet(),
                 note = note,
                 pinned = pinned,
                 vaultId = vault.id,

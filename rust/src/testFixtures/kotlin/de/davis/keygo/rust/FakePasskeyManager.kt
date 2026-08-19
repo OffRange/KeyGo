@@ -1,5 +1,6 @@
 package de.davis.keygo.rust
 
+import de.davisalessandro.keygo.rust.PasskeyInformation
 import de.davisalessandro.keygo.rust.RegistrationResponse
 import de.davisalessandro.keygo.rust.RustPasskeyInterface
 
@@ -13,7 +14,7 @@ class FakePasskeyManager : RustPasskeyInterface {
 
     val authenticateCalls = mutableListOf<AuthenticateCall>()
     val registerCalls = mutableListOf<String>()
-    val excludedCredentialsCalls = mutableListOf<String>()
+    val passkeyInformationCalls = mutableListOf<String>()
 
     /** Result returned by [authenticate]. Throws if null. */
     var authenticateResult: String? = null
@@ -21,8 +22,11 @@ class FakePasskeyManager : RustPasskeyInterface {
     /** Result returned by [register]. Throws if null. */
     var registerResult: RegistrationResponse? = null
 
-    /** Result returned by [excludedCredentials]. */
-    var excludedCredentialsResult: List<ByteArray> = emptyList()
+    /** Result returned by [passkeyInformation]. */
+    var passkeyInformationResult: PasskeyInformation = PasskeyInformation(
+        excludeCredentials = emptyList(),
+        rp = "example.com",
+    )
 
     override suspend fun authenticate(
         jsonRequest: String,
@@ -33,9 +37,9 @@ class FakePasskeyManager : RustPasskeyInterface {
         return authenticateResult ?: error("authenticateResult not set on FakePasskeyManager")
     }
 
-    override suspend fun excludedCredentials(jsonRequest: String): List<ByteArray> {
-        excludedCredentialsCalls += jsonRequest
-        return excludedCredentialsResult
+    override fun passkeyInformation(jsonRequest: String): PasskeyInformation {
+        passkeyInformationCalls += jsonRequest
+        return passkeyInformationResult
     }
 
     override suspend fun register(jsonRequest: String): RegistrationResponse {

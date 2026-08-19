@@ -1,28 +1,30 @@
 package de.davis.keygo.core.item.data.mapper
 
 import de.davis.keygo.core.item.data.local.entity.ItemEntity
+import de.davis.keygo.core.item.data.local.entity.KeyInformation as EntityKeyInformation
 import de.davis.keygo.core.item.data.local.entity.LoginEntity
 import de.davis.keygo.core.item.data.local.entity.TagEntity
+import de.davis.keygo.core.item.data.local.entity.Timestamp as EntityTimestamp
 import de.davis.keygo.core.item.data.local.entity.credential.PasswordEntity
 import de.davis.keygo.core.item.data.local.pojo.ItemProjection
 import de.davis.keygo.core.item.data.local.pojo.LoginProjection
+import de.davis.keygo.core.item.data.local.pojo.PasskeyRefPojo
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasskeyRef
 import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
-import de.davis.keygo.core.item.data.local.entity.Timestamp as EntityTimestamp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import de.davis.keygo.core.item.data.local.entity.KeyInformation as EntityKeyInformation
 
 class LoginMapperTest {
 
@@ -31,6 +33,30 @@ class LoginMapperTest {
         val projection = baseProjection(passwordEntity = null)
         val login = projection.toDomain()
         assertNull(login.passwordCredential)
+    }
+
+    @Test
+    fun `toDomain keeps both credentials a login holds for one relying party`() {
+        // Two accounts on the same site are two rows sharing an rp. Mapping them onto the rp alone
+        // collapsed them into a single entry, so the editor showed one chip for two passkeys and
+        // deleting it took both.
+        val projection = baseProjection(
+            passwordEntity = null,
+            passkeys = listOf(
+                PasskeyRefPojo(credentialId = byteArrayOf(1), rp = "example.com"),
+                PasskeyRefPojo(credentialId = byteArrayOf(2), rp = "example.com"),
+            ),
+        )
+
+        val login = projection.toDomain()
+
+        assertEquals(
+            setOf(
+                PasskeyRef(credentialId = byteArrayOf(1), rp = "example.com"),
+                PasskeyRef(credentialId = byteArrayOf(2), rp = "example.com"),
+            ),
+            login.passkeys,
+        )
     }
 
     @Test
@@ -91,6 +117,7 @@ class LoginMapperTest {
         id: ItemId = newItemId(),
         passwordEntity: PasswordEntity?,
         tags: Set<TagEntity> = emptySet(),
+        passkeys: List<PasskeyRefPojo> = emptyList(),
     ): LoginProjection = LoginProjection(
         loginEntity = LoginEntity(id = id, username = "alice"),
         item = ItemProjection(
@@ -110,7 +137,7 @@ class LoginMapperTest {
             tags = tags,
         ),
         passwordEntity = passwordEntity,
-        rpEntity = emptyList(),
+        passkeys = passkeys,
         domains = emptyList(),
         totp = null,
     )
@@ -123,6 +150,7 @@ class LoginMapperTest {
         domainInfos = emptySet(),
         passwordCredential = passwordCredential,
         totp = null,
+        passkeys = emptySet(),
         vaultId = newVaultId(),
         name = "Test",
         keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),
