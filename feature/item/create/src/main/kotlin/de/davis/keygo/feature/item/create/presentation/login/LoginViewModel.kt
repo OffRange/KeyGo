@@ -114,8 +114,16 @@ internal class LoginViewModel(
             .launchIn(viewModelScope)
     }
 
+    /**
+     * Shows a passkey for [rp] as pending until the item is saved.
+     *
+     * A blank id is dropped along with a null one. `rp.id` is optional per WebAuthn, so a request
+     * that leaves it out reaches us as an empty string, which would otherwise show up as a blank
+     * chip, make a name-only login look saveable, and leave the confirmation dialog asking about
+     * nothing.
+     */
     fun setPendingPasskeyCount(rp: String?) {
-        if (rp == null) return
+        if (rp.isNullOrBlank()) return
         _base.update { it.copy(passkeyRPs = it.passkeyRPs + setOf(LoginPasskeyInfo(rp, true))) }
     }
 
