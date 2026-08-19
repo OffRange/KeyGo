@@ -11,14 +11,15 @@ dependencies {
     implementation(projects.core.identity)
     implementation(projects.core.item)
     implementation(projects.core.ui)
-    implementation(projects.migration.createAccess)
+    implementation(projects.legacyMigration)
 
     implementation(libs.androidx.navigation.compose)
 
     testImplementation(projects.rust)
+    testImplementation(libs.robolectric)
     testImplementation(testFixtures(projects.core.identity))
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.security))
     testImplementation(testFixtures(projects.rust))
-    testImplementation(testFixtures(projects.migration.createAccess))
+    testImplementation(testFixtures(projects.legacyMigration))
 }

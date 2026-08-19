@@ -8,4 +8,7 @@ sealed interface AuthUIEvent {
     data object CloseMigrationDialog : AuthUIEvent
 
     data class ToggleUseBiometrics(val checked: Boolean) : AuthUIEvent
+
+    data object RetryMigration : AuthUIEvent
+    data object ContinueAfterMigration : AuthUIEvent
 }

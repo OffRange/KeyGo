@@ -31,6 +31,7 @@ import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -72,6 +73,79 @@ fun AuthContent(
                 ) {
                     ContainedLoadingIndicator()
                 }
+            }
+        }
+
+        is AuthState.ImportingLegacyData -> {
+            Surface(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                ) {
+                    ContainedLoadingIndicator()
+
+                    Text(
+                        text = stringResource(R.string.importing_legacy_data),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+
+                    Text(
+                        text = stringResource(R.string.importing_legacy_data_description),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        }
+
+        is AuthState.MigrationSummary -> {
+            Surface(modifier = Modifier.fillMaxSize()) {
+                AlertDialog(
+                    onDismissRequest = {},
+                    icon = {
+                        Icon(imageVector = Icons.Default.AutoFixHigh, contentDescription = null)
+                    },
+                    title = { Text(text = stringResource(R.string.migration_summary_title)) },
+                    text = {
+                        Text(
+                            text = stringResource(
+                                R.string.migration_summary_description,
+                                state.skippedItems,
+                            ),
+                        )
+                    },
+                    confirmButton = {
+                        Button(onClick = { onEvent(AuthUIEvent.ContinueAfterMigration) }) {
+                            Text(text = stringResource(R.string.continue_anyway))
+                        }
+                    },
+                )
+            }
+        }
+
+        is AuthState.MigrationFailed -> {
+            Surface(modifier = Modifier.fillMaxSize()) {
+                AlertDialog(
+                    onDismissRequest = {},
+                    icon = {
+                        Icon(imageVector = Icons.Default.AutoFixHigh, contentDescription = null)
+                    },
+                    title = { Text(text = stringResource(R.string.migration_failed_title)) },
+                    text = { Text(text = stringResource(R.string.migration_failed_description)) },
+                    confirmButton = {
+                        Button(onClick = { onEvent(AuthUIEvent.RetryMigration) }) {
+                            Text(text = stringResource(R.string.retry))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { onEvent(AuthUIEvent.ContinueAfterMigration) }) {
+                            Text(text = stringResource(R.string.continue_anyway))
+                        }
+                    },
+                )
             }
         }
 

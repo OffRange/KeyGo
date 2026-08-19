@@ -1,21 +1,31 @@
 package de.davis.keygo.feature.auth.presentation
 
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.lifecycle.SavedStateHandle
 import de.davis.keygo.core.identity.FakeAccountRepository
+import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockWithPasswordUseCase
 import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
 import de.davis.keygo.core.security.crypto.FakeSession
+import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.feature.auth.presentation.model.AuthState
-import de.davis.keygo.migration.create_access.FakeMainPasswordRepository
-import de.davis.keygo.migration.create_access.clearMainPasswordUseCase
-import de.davis.keygo.migration.create_access.hasMainPasswordUseCase
-import de.davis.keygo.migration.create_access.validateMainPasswordUseCase
+import de.davis.keygo.feature.auth.presentation.model.AuthUIEvent
+import de.davis.keygo.legacy_migration.FakeMainPasswordRepository
+import de.davis.keygo.legacy_migration.domain.model.LegacyFailureReason
+import de.davis.keygo.legacy_migration.domain.model.LegacyMigrationOutcome
+import de.davis.keygo.legacy_migration.domain.model.LegacyMigrationReport
+import de.davis.keygo.legacy_migration.domain.model.LegacyRowFailure
+import de.davis.keygo.legacy_migration.domain.usecase.RunPendingMigrationUseCase
+import de.davis.keygo.legacy_migration.hasMainPasswordUseCase
+import de.davis.keygo.legacy_migration.runPendingMigrationUseCase
+import de.davis.keygo.legacy_migration.validateMainPasswordUseCase
 import de.davis.keygo.rust.FakeAccountManager
 import de.davis.keygo.rust.FakeKeyDeriver
 import de.davis.keygo.rust.FakeKeyWrapper
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -25,22 +35,29 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 /**
  * Regression tests for the v1-password retry lockout fixed in `97b15f3c`.
  *
- * [AuthViewModel.executeCreateAccessAndClearV1] used to clear the v1 migration password as soon
- * as the password was validated, before the account was actually created. If account creation
- * then failed for any reason - most notably a failed/declined biometric prompt - the v1 password
- * was already gone, so `HasMainPasswordUseCase` reported no pending migration and the user had no
- * way to retry. The fix defers `clearMainPasswordUseCase()` until account creation succeeds.
+ * [AuthViewModel.executeCreateAccess] used to clear the v1 migration password as soon as the
+ * password was validated, before the account was actually created. If account creation then
+ * failed for any reason - most notably a failed/declined biometric prompt - the v1 password was
+ * already gone, so `HasMainPasswordUseCase` reported no pending migration and the user had no way
+ * to retry. Clearing the marker now belongs to [RunPendingMigrationUseCase], which runs only after
+ * a session exists and only once the import has said something definite about the v1 file.
  */
+@RunWith(RobolectricTestRunner::class) // Robolectric for android.util.Log alone.
+@Config(sdk = [34])
 @OptIn(ExperimentalCoroutinesApi::class)
 class AuthViewModelTest {
 
@@ -78,7 +95,6 @@ class AuthViewModelTest {
     // they can't be built here directly the way a plain fake dependency would be.
     private val hasV1MainPassword = hasMainPasswordUseCase(mainPasswordRepository)
     private val validateMainPassword = validateMainPasswordUseCase(mainPasswordRepository)
-    private val clearMainPassword = clearMainPasswordUseCase(mainPasswordRepository)
 
     @BeforeTest
     fun setUp() {
@@ -93,14 +109,17 @@ class AuthViewModelTest {
      * [mainPasswordRepository]'s state, so seed a hash before calling this for the ViewModel to
      * resolve into `AuthState.Migrating`.
      */
-    private fun TestScope.viewModel(): AuthViewModel {
+    private fun TestScope.viewModel(
+        runPendingMigration: RunPendingMigrationUseCase =
+            runPendingMigrationUseCase(backgroundScope, mainPasswordRepository),
+    ): AuthViewModel {
         val vm = AuthViewModel(
             savedStateHandle = SavedStateHandle(),
             biometricAvailabilityRepository = biometricAvailability,
             accountRepository = accountRepository,
             hasV1MainPassword = hasV1MainPassword,
             validateMainPassword = validateMainPassword,
-            clearMainPasswordUseCase = clearMainPassword,
+            runPendingMigration = runPendingMigration,
             unlockWithPassword = unlockWithPassword,
             createAllAccesses = createAllAccesses,
         )
@@ -127,7 +146,7 @@ class AuthViewModelTest {
             // failure mode described in the bug report.
             val failingCipher = Cipher.getInstance("AES/GCM/NoPadding")
 
-            vm.executeCreateAccessAndClearV1(password = "correct-password", cipher = failingCipher)
+            vm.executeCreateAccess(password = "correct-password", cipher = failingCipher)
             vm.awaitIdle()
 
             assertEquals("original-v1-hash", mainPasswordRepository.hash)
@@ -142,8 +161,8 @@ class AuthViewModelTest {
             init(Cipher.WRAP_MODE, biometricKek)
         }
 
-        vm.executeCreateAccessAndClearV1(password = "correct-password", cipher = cipher)
-        vm.awaitIdle()
+        vm.executeCreateAccess(password = "correct-password", cipher = cipher)
+        vm.navigationEvent.first()
 
         assertEquals("", mainPasswordRepository.hash)
     }
@@ -155,7 +174,7 @@ class AuthViewModelTest {
             accountRepository.setFails = true
             val vm = viewModel()
 
-            vm.executeCreateAccessAndClearV1(password = "correct-password")
+            vm.executeCreateAccess(password = "correct-password")
             vm.awaitIdle()
 
             assertEquals("original-v1-hash", mainPasswordRepository.hash)
@@ -166,9 +185,209 @@ class AuthViewModelTest {
         mainPasswordRepository.hash = "original-v1-hash"
         val vm = viewModel()
 
-        vm.executeCreateAccessAndClearV1(password = "correct-password")
+        vm.executeCreateAccess(password = "correct-password")
+        vm.navigationEvent.first()
+
+        assertEquals("", mainPasswordRepository.hash)
+    }
+
+    @Test
+    fun `the migrate submit stays loading until the account exists`() = runTest(dispatcher) {
+        // Hex of a real bcrypt 2a hash of "password". The use case hex-decodes before verifying.
+        mainPasswordRepository.hash = "2432612431302471776e45776767315a6c5176435a58336450614a7a2e" +
+                "31494351504a334e6d4a64566b4251686577564655745363646665366d4847"
+        val vm = viewModel()
+        vm.onEvent(AuthUIEvent.ToggleUseBiometrics(checked = false))
+
+        val migrating = assertIs<AuthState.Migrating>(vm.uiState.value)
+        migrating.passwordTextFieldState.setTextAndPlaceCursorAtEnd("password")
+
+        vm.onEvent(AuthUIEvent.Submit)
+        runCurrent()
+
+        // Key derivation is still running on a dispatcher the scheduler cannot see. The screen must
+        // not have handed control back yet.
+        assertEquals(true, assertIs<AuthState.Migrating>(vm.uiState.value).loading)
+
+        vm.navigationEvent.first()
+
+        assertEquals(1, accountRepository.setCount)
+    }
+
+    /**
+     * Key derivation takes long enough for a second tap to land inside it. `onEvent` gates on the
+     * state being interactable rather than on the loading flag, so before the guard the only thing
+     * stopping a second run was the button's own enabled state, and the migrate path stopped the
+     * spinner while derivation was still going. Two runs mint two accounts, two ARKs and two
+     * vaults, and the second overwrites the registry, leaving the first vault wrapped under an ARK
+     * nothing persists.
+     */
+    @Test
+    fun `a second account creation started while one is in flight is dropped`() =
+        runTest(dispatcher) {
+            mainPasswordRepository.hash = "original-v1-hash"
+            val vm = viewModel()
+
+            vm.executeCreateAccess(password = "correct-password")
+            // Leaves the first run suspended inside key derivation, which hops to a dispatcher the
+            // scheduler cannot see, so it cannot complete until something pumps the test one.
+            runCurrent()
+            vm.executeCreateAccess(password = "correct-password")
+
+            vm.navigationEvent.first()
+
+            assertEquals(1, accountRepository.setCount)
+        }
+
+    @Test
+    fun `a rejected v1 main password leaves an error on the field`() = runTest(dispatcher) {
+        // Hex of a real bcrypt 2a hash of "password". The use case hex-decodes the stored hash
+        // before handing it to bcrypt, so a non-hex placeholder throws instead of returning false.
+        mainPasswordRepository.hash = "243261243130244e39716f38754c4f69636b6778325a4d525a6f4d7965" +
+                "496a5a416763666c377039326c644778616436384c4a5a644c31376c685779"
+        val vm = viewModel()
+
+        val migrating = assertIs<AuthState.Migrating>(vm.uiState.value)
+        migrating.passwordTextFieldState.setTextAndPlaceCursorAtEnd("the-wrong-password")
+
+        vm.onEvent(AuthUIEvent.Submit)
+        // Bcrypt runs on Dispatchers.Default, which the scheduler cannot see, so wait on the
+        // loading flag for the same reason awaitIdle does.
         vm.awaitIdle()
 
+        val after = assertIs<AuthState.Migrating>(vm.uiState.value)
+        assertEquals(UiFieldError.Incorrect, after.passwordError)
+    }
+
+    @Test
+    fun `a failed import leaves the v1 password in place and offers a retry`() =
+        runTest(dispatcher) {
+            mainPasswordRepository.hash = "original-v1-hash"
+            val vm = viewModel(
+                runPendingMigration = runPendingMigrationUseCase(
+                    scope = backgroundScope,
+                    repository = mainPasswordRepository,
+                    outcome = LegacyMigrationOutcome.Failed(IllegalStateException("unreadable")),
+                ),
+            )
+
+            vm.executeCreateAccess(password = "correct-password")
+            vm.uiState.first { it is AuthState.MigrationFailed }
+
+            assertEquals("original-v1-hash", mainPasswordRepository.hash)
+        }
+
+    @Test
+    fun `retrying a failed import runs it again`() = runTest(dispatcher) {
+        mainPasswordRepository.hash = "original-v1-hash"
+        var runs = 0
+        var stateDuringImport: AuthState? = null
+        // Sampled from inside the import because uiState is conflated: ImportingLegacyData is
+        // replaced before any collector is resumed, so this is the only place it can be observed.
+        var underTest: AuthViewModel? = null
+        val vm = viewModel(
+            runPendingMigration = runPendingMigrationUseCase(
+                scope = backgroundScope,
+                repository = mainPasswordRepository,
+                outcome = LegacyMigrationOutcome.Failed(IllegalStateException("unreadable")),
+                onImport = {
+                    runs++
+                    stateDuringImport = underTest?.uiState?.value
+                },
+            ),
+        )
+        underTest = vm
+
+        vm.executeCreateAccess(password = "correct-password")
+        vm.uiState.first { it is AuthState.MigrationFailed }
+        assertEquals(1, runs)
+        assertEquals(AuthState.ImportingLegacyData, stateDuringImport)
+
+        // The retry passes through ImportingLegacyData and back to MigrationFailed without ever
+        // suspending, because the import is a fake. uiState is conflated, so a collector waiting on
+        // the intermediate state is only ever resumed after the final one has replaced it and would
+        // wait forever. Drain the scheduler instead and assert on what the retry left behind.
+        vm.onEvent(AuthUIEvent.RetryMigration)
+        runCurrent()
+
+        assertEquals(2, runs)
+        assertIs<AuthState.MigrationFailed>(vm.uiState.value)
+        assertEquals("original-v1-hash", mainPasswordRepository.hash)
+    }
+
+    /**
+     * The write that ends a loading run puts back a snapshot taken before `block()` suspended, so
+     * it has to be guarded the same way the one that starts the run is.
+     *
+     * `onSessionEstablished` is reachable from outside `loading`: AuthScreen calls it straight from
+     * the BiometricRequest.Login success handler and nothing gates it on `authJob`. So the user
+     * submits the password form, the biometric prompt they already triggered comes back, the import
+     * starts, and an unguarded write here would drop the live login form back on top of it - a form
+     * they can submit again while the import runs behind it.
+     */
+    @Test
+    fun `a state set while the auth run was suspended is not written over`() = runTest(dispatcher) {
+        // An account plus a marker still on disk: what the user is left with the moment they tap
+        // Continue on MigrationFailed. Every unlock after that is a login form over a migration
+        // that is still pending.
+        val first = viewModel()
+        first.executeCreateAccess(password = "correct-password")
+        first.navigationEvent.first()
+        mainPasswordRepository.hash = "original-v1-hash"
+
+        val vm = viewModel(
+            runPendingMigration = runPendingMigrationUseCase(
+                scope = backgroundScope,
+                repository = mainPasswordRepository,
+                outcome = LegacyMigrationOutcome.Failed(IllegalStateException("unreadable")),
+            ),
+        )
+        val login = assertIs<AuthState.Login>(vm.uiState.value)
+        login.passwordTextFieldState.setTextAndPlaceCursorAtEnd("correct-password")
+
+        // Holds the unlock at its account read, which is the last point before it hops to a
+        // dispatcher the scheduler cannot see.
+        val read = CompletableDeferred<Account?>()
+        accountRepository.pendingRead = read
+        vm.onEvent(AuthUIEvent.Submit)
+        runCurrent()
+        assertEquals(true, assertIs<AuthState.Login>(vm.uiState.value).loading)
+
+        vm.onSessionEstablished()
+        runCurrent()
+        assertIs<AuthState.MigrationFailed>(vm.uiState.value)
+
+        // Answering with no account fails the unlock where it stands, so the only thing left to
+        // happen is loading writing its snapshot back.
+        read.complete(null)
+        runCurrent()
+
+        assertIs<AuthState.MigrationFailed>(vm.uiState.value)
+    }
+
+    @Test
+    fun `an import that skipped rows reports them before navigating`() = runTest(dispatcher) {
+        mainPasswordRepository.hash = "original-v1-hash"
+        val vm = viewModel(
+            runPendingMigration = runPendingMigrationUseCase(
+                scope = backgroundScope,
+                repository = mainPasswordRepository,
+                outcome = LegacyMigrationOutcome.Migrated(
+                    LegacyMigrationReport(
+                        migratedItems = 14,
+                        failures = listOf(
+                            LegacyRowFailure(1, "an account", LegacyFailureReason.Unreadable),
+                            LegacyRowFailure(2, "another", LegacyFailureReason.Unreadable),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        vm.executeCreateAccess(password = "correct-password")
+        val state = vm.uiState.first { it is AuthState.MigrationSummary }
+
+        assertEquals(2, (state as AuthState.MigrationSummary).skippedItems)
         assertEquals("", mainPasswordRepository.hash)
     }
 }
