@@ -30,6 +30,20 @@ android {
             keyAlias = "debug"
             keyPassword = "android"
         }
+
+        // Release credentials come from the environment, never from -P properties:
+        // project properties end up in the Gradle process argv, which stays readable
+        // by every process on the build machine for the whole build. Without the env
+        // vars no release config is created and release stays unsigned, so local and
+        // F-Droid builds behave exactly as before.
+        System.getenv("KEYSTORE_FILE")?.takeIf { it.isNotBlank() }?.let { keystore ->
+            create("release") {
+                storeFile = file(keystore)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
     }
 
     defaultConfig {
@@ -42,12 +56,20 @@ android {
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.findByName("release")
+
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            // Packages symbols for the :rust cdylibs into the AAB so Play can
+            // symbolicate native crashes. Stripped before delivery to devices.
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE"
+            }
         }
 
         debug {
