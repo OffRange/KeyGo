@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use lib::totp::{
-    SecretStrength as CoreSecretStrength, TotpInfo as CoreTotpInfo, get_totp as core_get_totp,
+    TotpInfo as CoreTotpInfo, get_totp as core_get_totp,
     get_totp_info_from_uri as core_get_totp_info_from_uri, get_totp_url as core_get_totp_url,
 };
 use thiserror::Error;
@@ -33,23 +33,6 @@ impl From<lib::totp::Algorithm> for Algorithm {
     }
 }
 
-/// Whether a TOTP secret reaches the 128 bits RFC 4226 asks for. Shorter
-/// secrets are accepted anyway, because services like GitHub issue them.
-#[derive(Debug, Clone, Copy, uniffi::Enum)]
-pub enum SecretStrength {
-    Trustworthy,
-    Untrusted,
-}
-
-impl From<CoreSecretStrength> for SecretStrength {
-    fn from(value: CoreSecretStrength) -> Self {
-        match value {
-            CoreSecretStrength::Trustworthy => Self::Trustworthy,
-            CoreSecretStrength::Untrusted => Self::Untrusted,
-        }
-    }
-}
-
 #[derive(Debug, uniffi::Record)]
 pub struct TotpInfo {
     pub secret: String,
@@ -58,7 +41,6 @@ pub struct TotpInfo {
     pub algorithm: Algorithm,
     pub digits: i32,
     pub period: i32,
-    pub strength: SecretStrength,
 }
 
 impl From<CoreTotpInfo> for TotpInfo {
@@ -70,7 +52,6 @@ impl From<CoreTotpInfo> for TotpInfo {
             algorithm: value.algorithm.into(),
             digits: value.digits as i32,
             period: value.period as i32,
-            strength: value.strength.into(),
         }
     }
 }

@@ -4,9 +4,6 @@ use thiserror::Error;
 pub use totp_rs::Algorithm;
 use totp_rs::{Secret, SecretParseError, TOTP, TotpUrlError};
 
-/// Secret size RFC 4226 asks for, in bytes (128 bits).
-const MIN_SECRET_BYTES: usize = 16;
-
 /// Digit counts RFC 6238 permits.
 const ALLOWED_DIGITS: RangeInclusive<usize> = 6..=8;
 
@@ -18,24 +15,6 @@ pub enum TotpError {
     Time(SystemTimeError),
     #[error("secret parse error: {0}")]
     Secret(SecretParseError),
-}
-
-/// Whether a secret reaches [`MIN_SECRET_BYTES`]. Shorter ones stay usable,
-/// because services like GitHub issue them, so callers can warn instead.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SecretStrength {
-    Trustworthy,
-    Untrusted,
-}
-
-impl SecretStrength {
-    fn of(secret: &[u8]) -> Self {
-        if secret.len() >= MIN_SECRET_BYTES {
-            Self::Trustworthy
-        } else {
-            Self::Untrusted
-        }
-    }
 }
 
 /// The checks `TOTP::new` runs, minus its 128 bit secret floor. The unchecked
@@ -96,7 +75,6 @@ pub struct TotpInfo {
     pub algorithm: Algorithm,
     pub digits: usize,
     pub period: u64,
-    pub strength: SecretStrength,
 }
 
 pub fn get_totp_info_from_uri(uri: String) -> Result<TotpInfo, TotpError> {
@@ -110,7 +88,6 @@ pub fn get_totp_info_from_uri(uri: String) -> Result<TotpInfo, TotpError> {
         algorithm: totp.algorithm,
         digits: totp.digits,
         period: totp.step,
-        strength: SecretStrength::of(&totp.secret),
     })
 }
 
@@ -136,8 +113,8 @@ mod tests {
 
     /// 80 bits, the kind of secret services like GitHub hand out.
     const SHORT_SECRET: &str = "JBSWY3DPEHPK3PXP";
-    /// 128 bits, the minimum RFC 4226 asks for.
-    const LONG_SECRET: &str = "JBSWY3DPEHPK3PXPJBSWY3DPEH";
+    /// 160 bits, the length RFC 4226 recommends.
+    const LONG_SECRET: &str = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
 
     fn uri(secret: &str) -> String {
         format!("otpauth://totp/GitHub:alice?secret={secret}&issuer=GitHub")
@@ -161,13 +138,12 @@ mod tests {
     }
 
     #[test]
-    fn reports_strength_of_parsed_secret() {
+    fn parses_uri_regardless_of_secret_length() {
         let short = get_totp_info_from_uri(uri(SHORT_SECRET)).unwrap();
         let long = get_totp_info_from_uri(uri(LONG_SECRET)).unwrap();
 
-        assert_eq!(SecretStrength::Untrusted, short.strength);
-        assert_eq!(SecretStrength::Trustworthy, long.strength);
         assert_eq!(SHORT_SECRET, short.secret);
+        assert_eq!(LONG_SECRET, long.secret);
     }
 
     #[test]
