@@ -52,8 +52,7 @@ Android password manager using Clean Architecture per module:
 | `:feature:*` (remaining)   | `list_screen`, `item:{core,create,view}`, `credentials`, `totp`, `vault` |
 | `:automation`              | `@VaultItem` annotation + automation support                             |
 | `:automation-processor`    | KSP processor generating code from `@VaultItem`                          |
-| `:migration:create-access` | Post-migration main-password/account setup (high risk)                   |
-| `:migration:legacy-data`   | Reads/decrypts the legacy v1 database for import (high risk)             |
+| `:legacy-migration`        | The whole v1 to v2 migration: main password, item import (high risk)     |
 | `:rust`                    | Rust crypto/passkey ops via UniFFI-generated Kotlin bindings             |
 
 ## Key Patterns
@@ -127,8 +126,12 @@ carries its own rules:
 
 ## Sensitive Areas
 
-- **Migration** (`migration:create-access`, `migration:legacy-data`) — preserve backward compat,
-  smallest safe change
+- **Migration** (`legacy-migration`) — preserve backward compat, smallest safe change. The v1 main
+  password record is the marker for the whole migration and is cleared only by
+  `RunPendingMigrationUseCase`, only after the item import has returned a verdict. Four names are
+  the on-disk identity of shipped v1 data and must never change: `main-password.db`,
+  `secure_element_database`, `password_manager_skey`, and the `ProtoMainPassword` field numbers.
+  `OnDiskIdentityTest` pins all four.
 - **Autofill** (`feature/autofill/`) — constrained by Android framework, keep conservative
 - **UniFFI** — preserve memory and type safety across the FFI boundary.
 - **Room schema** — check migration implications before changing entities

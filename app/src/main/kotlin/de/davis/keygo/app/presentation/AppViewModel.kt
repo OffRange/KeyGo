@@ -3,7 +3,7 @@ package de.davis.keygo.app.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
-import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
+import de.davis.keygo.legacy_migration.domain.usecase.HasMainPasswordUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update

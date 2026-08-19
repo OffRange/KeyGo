@@ -17,9 +17,11 @@ import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.auth.presentation.model.AuthState
 import de.davis.keygo.feature.auth.presentation.model.AuthUIEvent
 import de.davis.keygo.feature.auth.presentation.model.BiometricRequest
-import de.davis.keygo.migration.create_access.domain.usecase.ClearMainPasswordUseCase
-import de.davis.keygo.migration.create_access.domain.usecase.HasMainPasswordUseCase
-import de.davis.keygo.migration.create_access.domain.usecase.ValidateMainPasswordUseCase
+import de.davis.keygo.legacy_migration.domain.model.MigrationResult
+import de.davis.keygo.legacy_migration.domain.usecase.HasMainPasswordUseCase
+import de.davis.keygo.legacy_migration.domain.usecase.RunPendingMigrationUseCase
+import de.davis.keygo.legacy_migration.domain.usecase.ValidateMainPasswordUseCase
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,9 +38,9 @@ internal class AuthViewModel(
     accountRepository: AccountRepository,
 
     // ---- Migration ----
-    hasV1MainPassword: HasMainPasswordUseCase,
+    private val hasV1MainPassword: HasMainPasswordUseCase,
     private val validateMainPassword: ValidateMainPasswordUseCase,
-    private val clearMainPasswordUseCase: ClearMainPasswordUseCase,
+    private val runPendingMigration: RunPendingMigrationUseCase,
     // -------------------
 
     private val unlockWithPassword: UnlockWithPasswordUseCase,
@@ -88,8 +90,11 @@ internal class AuthViewModel(
         }
     }
 
-    private val navigationEventChannel = Channel<Unit>()
+    private val navigationEventChannel = Channel<Unit>(Channel.BUFFERED)
     val navigationEvent = navigationEventChannel.receiveAsFlow()
+
+    private var migrationJob: Job? = null
+    private var authJob: Job? = null
 
     fun onEvent(event: AuthUIEvent) {
         when (event) {
@@ -113,9 +118,12 @@ internal class AuthViewModel(
                         loading {
                             validateMainPassword(password).asResult(Unit)
                                 .onFailure {
-                                    _uiState.update {
-                                        if (it !is AuthState.Interactable) return@update it
-                                        it.copyDefaultState(passwordError = UiFieldError.Incorrect)
+                                    // Through the scope rather than straight to _uiState: loading
+                                    // writes the scope's state back when the block returns, so a
+                                    // direct write here would be overwritten and the user would see
+                                    // the spinner stop with no error against the field.
+                                    updateState {
+                                        copyDefaultState(passwordError = UiFieldError.Incorrect)
                                     }
                                 }.onSuccess {
                                     createPasswordOrBiometricAccess(state, password)
@@ -138,19 +146,42 @@ internal class AuthViewModel(
                     it.copy(useBiometrics = event.checked)
                 }
             }
+
+            AuthUIEvent.RetryMigration -> onSessionEstablished()
+
+            AuthUIEvent.ContinueAfterMigration -> navigationEventChannel.trySend(Unit)
         }
     }
 
-    private fun createPasswordOrBiometricAccess(
+    /**
+     * Runs inside the caller's [loading] rather than starting a second one, so the screen stays
+     * loading until the account actually exists. A nested [loading] returned as soon as it had
+     * launched, which wrote `loading = false` back while key derivation was still running and
+     * re-enabled Submit for the whole of it.
+     */
+    private suspend fun LoadingScope<AuthState.Interactable>.createPasswordOrBiometricAccess(
         authState: AuthState.Migrating,
-        password: String
+        password: String,
     ) {
-        if (!authState.biometricsAvailable || !authState.useBiometrics) {
-            executeCreateAccessAndClearV1(password = password)
+        if (authState.biometricsAvailable && authState.useBiometrics) {
+            // Handed to the prompt. AuthScreen starts a fresh run with the cipher once the user has
+            // answered, and by then this one has finished, so the guard in loading does not eat it.
+            //
+            // That ordering is worth stating, because it is not obvious and it is not local. The
+            // collector observing this channel runs on Dispatchers.Main.immediate, so it resumes
+            // inline inside trySend and AuthScreen's handler begins running while this job is still
+            // active. What saves it is that requestCipher suspends until the user answers, and its
+            // one synchronous return is a failure that never reaches executeCreateAccess. A fast
+            // path added there that returned a cipher without suspending would be dropped by the
+            // guard, and the user would sit on the migrate screen with no account.
+            biometricChannel.trySend(BiometricRequest.CreateAccess(password))
             return
         }
 
-        biometricChannel.trySend(BiometricRequest.CreateAccess(password))
+        createAllAccesses(
+            password = password,
+            biometricCipher = null,
+        ).handleAuthenticationResult()
     }
 
     private fun requestBiometricLogin() {
@@ -159,39 +190,83 @@ internal class AuthViewModel(
 
     private fun loading(
         setLoading: Boolean = true,
-        block: suspend LoadingScope<AuthState.Interactable>.() -> Unit
+        block: suspend LoadingScope<AuthState.Interactable>.() -> Unit,
     ) {
+        // One auth run at a time. Submit and the biometric callback both arrive here, and `onEvent`
+        // gates on the state being interactable rather than on the loading flag, so nothing else
+        // stops a second run. Two runs of account creation mint two accounts, two ARKs and two
+        // vaults and the second overwrites the registry, which leaves the first vault wrapped under
+        // an ARK that is no longer persisted anywhere.
+        if (authJob?.isActive == true) return
+
         if (setLoading)
             _uiState.update {
                 if (it !is AuthState.Interactable) return@update it
                 it.copyDefaultState(loading = true)
             }
 
-        viewModelScope.launch {
+        authJob = viewModelScope.launch {
+            val current = _uiState.value as? AuthState.Interactable ?: return@launch
+
+            var sessionEstablished = false
+            val scope = LoadingScope(
+                state = current,
+                onSuccess = { sessionEstablished = true },
+            )
+            scope.block()
+
             _uiState.update {
                 if (it !is AuthState.Interactable) return@update it
+                scope.updatedState.copyDefaultState(loading = false)
+            }
 
-                LoadingScope(
-                    state = it,
-                    onSuccess = { navigationEventChannel.trySend(Unit) },
-                ).apply {
-                    block()
-                }.updatedState.copyDefaultState(loading = false)
+            if (sessionEstablished) onSessionEstablished()
+        }
+    }
+
+    /**
+     * Run after every path that establishes a session, which is the only moment the import can
+     * happen: every secret it writes is re-encrypted under a key that hangs off the ARK.
+     *
+     * The marker is read here as well as inside the use case so the common case, an install with no
+     * v1 migration pending, never flips the screen into an import it is not going to run.
+     */
+    fun onSessionEstablished() {
+        // Retry is a button on a screen the user reaches after a failure, so it can be tapped twice
+        // before the first run has published anything. Two concurrent imports would both read the
+        // same v1 rows and both write them, so a tap that lands while one is running is dropped.
+        if (migrationJob?.isActive == true) return
+
+        migrationJob = viewModelScope.launch {
+            if (!hasV1MainPassword()) {
+                navigationEventChannel.trySend(Unit)
+                return@launch
+            }
+
+            _uiState.update { AuthState.ImportingLegacyData }
+
+            when (val result = runPendingMigration()) {
+                MigrationResult.NotPending -> navigationEventChannel.trySend(Unit)
+
+                is MigrationResult.Completed ->
+                    if (result.skippedItems == 0) navigationEventChannel.trySend(Unit)
+                    else _uiState.update { AuthState.MigrationSummary(result.skippedItems) }
+
+                is MigrationResult.Incomplete ->
+                    _uiState.update { AuthState.MigrationFailed }
             }
         }
     }
 
-    fun executeCreateAccessAndClearV1(
+    fun executeCreateAccess(
         password: String,
-        cipher: Cipher? = null
+        cipher: Cipher? = null,
     ) {
         loading {
             createAllAccesses(
                 password = password,
-                biometricCipher = cipher
-            ).onSuccess {
-                clearMainPasswordUseCase()
-            }.handleAuthenticationResult()
+                biometricCipher = cipher,
+            ).handleAuthenticationResult()
         }
     }
 }
@@ -202,6 +277,14 @@ private class LoadingScope<State>(
 ) {
     var updatedState: State = state
         private set
+
+    /**
+     * Records a state change without claiming a session was established, for the paths that have
+     * something to say about the screen but have not authenticated anything.
+     */
+    fun updateState(transform: State.() -> State) {
+        updatedState = updatedState.transform()
+    }
 
     fun <S, E> Result<S, E>.handleAuthenticationResult(onFailure: State.(E) -> State = { this }) {
         onSuccess { onSuccess() }

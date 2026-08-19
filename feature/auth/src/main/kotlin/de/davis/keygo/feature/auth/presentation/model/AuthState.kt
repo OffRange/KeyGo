@@ -46,4 +46,19 @@ sealed interface AuthState {
         val useBiometrics: Boolean = true,
         val showMigrationDialog: Boolean = true
     ) : Interactable
+
+    /** The v1 import is running. Nothing on screen is interactable while it does. */
+    data object ImportingLegacyData : AuthState
+
+    /**
+     * The import finished but left rows behind. Shown once, because the rows are gone as far as the
+     * user is concerned and nothing else would ever tell them.
+     */
+    data class MigrationSummary(val skippedItems: Int) : AuthState
+
+    /**
+     * The import could not reach a verdict. The v1 password is still on disk, so both buttons are
+     * safe: Retry runs it again, Continue enters the app and leaves it for the next launch.
+     */
+    data object MigrationFailed : AuthState
 }
