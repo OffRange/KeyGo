@@ -1,7 +1,6 @@
 package de.davis.keygo.feature.credentials.presentation.create.activity
 
 import android.util.Log
-import androidx.credentials.CreatePublicKeyCredentialRequest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.identity.domain.model.UnlockError
@@ -13,16 +12,17 @@ import de.davis.keygo.core.item.domain.repository.PasskeyRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.encrypt
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
+import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
-import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.feature.credentials.presentation.auth.SessionAuthState
 import de.davis.keygo.feature.credentials.presentation.auth.UnlockOutcome
 import de.davis.keygo.feature.credentials.presentation.auth.mapUnlockError
 import de.davis.keygo.rust.passkey.PasskeyManager
 import de.davis.keygo.rust.passkey.getPasskeyInformation
 import de.davis.keygo.rust.passkey.registerWithResult
-import de.davisalessandro.keygo.rust.PasskeyInformation
+import de.davisalessandro.keygo.rust.RegistrationResponse
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -52,55 +52,98 @@ internal class CreatePasskeyViewModel(
     private val biometricChannel = Channel<Unit>(Channel.BUFFERED)
     val biometricFlow = biometricChannel.receiveAsFlow()
 
-    private lateinit var pendingRequest: CreatePublicKeyCredentialRequest
-    lateinit var passkeyInformation: PasskeyInformation
+    /**
+     * The request's own `rp.id`, which the relying party may leave empty, until registration
+     * replaces it with the id the authenticator resolved.
+     */
+    private val _rp = MutableStateFlow("")
+    val rp = _rp.asStateFlow()
+
+    /** Completed by [onUnlocked]. */
+    private val unlocked = CompletableDeferred<Unit>()
+
+    /** Completed by [associatePasskeyAndFinish]. */
+    private val chosenItem = CompletableDeferred<ItemId>()
 
     private var started = false
-    private var associating = false
 
-    fun setRequest(request: CreatePublicKeyCredentialRequest): Boolean {
-        pendingRequest = request
-        passkeyInformation = passkeyManager.getPasskeyInformation(request.requestJson)
-            .getOrNull()
+    /**
+     * Parses [requestJson] and starts the flow. False means the request is unusable.
+     *
+     * The activity calls this again on every configuration change; only the first call does
+     * anything.
+     */
+    fun setRequest(requestJson: String): Boolean {
+        if (started) return true
+
+        val information = passkeyManager.getPasskeyInformation(requestJson).getOrNull()
             ?: return false
 
-        start()
+        started = true
+        _rp.update { information.rp }
+        start(requestJson, information.excludeCredentials.toSet())
+
         return true
     }
 
     /**
-     * Answers the relying party's exclusion list before any unlock prompt, then routes to the auth
-     * path.
-     *
-     * Credential ids are not secrets and the passkey table is not gated behind the session, so an
-     * excluded request can be resolved without making the user authenticate for a registration
-     * that can never succeed.
-     *
-     * Runs once. [setRequest] is called again on every configuration change.
+     * The whole flow as one coroutine, so the order of the steps is the order of the lines and the
+     * two waits on the user are plain suspension points.
      */
-    private fun start() {
-        if (started) return
-        started = true
-
+    private fun start(requestJson: String, excludeCredentials: Set<ByteArray>) {
         viewModelScope.launch {
-            val excludeCredentials = passkeyInformation.excludeCredentials.toSet()
+            // The passkey table is not gated behind the session and credential ids are not secrets,
+            // so an excluded request is answered without making the user authenticate for a
+            // registration that can never succeed.
             if (passkeyRepository.doCredentialIdsExist(excludeCredentials))
                 return@launch _excluded.update { true }
 
-            val account = accountRepository.getOrNull()
-            val biometricUsable = biometricAvailabilityRepository.availability()
-                    && account?.biometricWrappedArk != null
+            requestUnlock()
+            unlocked.await()
 
-            if (biometricUsable) {
-                _authState.update { SessionAuthState.TryBiometric }
-                biometricChannel.send(Unit)
-            } else _authState.update { SessionAuthState.NeedsPassword }
+            // Before the item screen, so a failure aborts while there is nothing to leave behind.
+            val response = passkeyManager.registerWithResult(requestJson)
+                .orAbort("Failed to register passkey") ?: return@launch
+
+            _rp.update { response.rp }
+            _authState.update { SessionAuthState.Authenticated }
+
+            storeAndFinish(response, chosenItem.await())
         }
     }
 
+    private suspend fun requestUnlock() {
+        val biometricUsable = biometricAvailabilityRepository.availability()
+                && accountRepository.getOrNull()?.biometricWrappedArk != null
+
+        if (biometricUsable) {
+            _authState.update { SessionAuthState.TryBiometric }
+            biometricChannel.send(Unit)
+        } else _authState.update { SessionAuthState.NeedsPassword }
+    }
+
+    private suspend fun storeAndFinish(response: RegistrationResponse, itemId: ItemId) {
+        val privateKey = cryptographicScopeProvider.itemScope(itemId = itemId) {
+            Passkey.PrivateKey.encrypt(response.privateKey)
+        }.orAbort("Failed to encrypt passkey private key") ?: return
+
+        passkeyRepository.createPasskey(
+            Passkey(
+                credentialId = response.credentialId,
+                privateKey = privateKey,
+                rp = response.rp,
+                loginId = itemId,
+                user = PasskeyUser(
+                    name = response.userName,
+                    displayName = response.userDisplayName,
+                ),
+            )
+        )
+        _event.send(CreatePasskeyEvent.Finish(response.response))
+    }
+
     fun onUnlocked() {
-        if (_authState.value == SessionAuthState.Authenticated) return
-        _authState.update { SessionAuthState.Authenticated }
+        unlocked.complete(Unit)
     }
 
     fun onUnlockFailed(error: UnlockError) {
@@ -111,48 +154,11 @@ internal class CreatePasskeyViewModel(
     }
 
     /**
-     * Registers the pending request and links the resulting passkey to [itemId].
-     *
-     * Runs at most once per activity. Every caller is a one-shot UI action, but nothing stops a
-     * second tap from landing before the first one has recomposed the dialog away. A repeat run
-     * would mint a second key pair and credential id, store both, and answer the relying party with
-     * only whichever response wins the race, leaving the other private key in the vault as a
-     * credential the site has never heard of.
-     *
-     * The flag is only ever touched from the main thread, where the UI callbacks run.
+     * Names the login the passkey belongs to. Only the first call counts: a second tap landing
+     * before the dialog recomposes away would otherwise store the credential twice.
      */
     fun associatePasskeyAndFinish(itemId: ItemId) {
-        if (associating) return
-        associating = true
-
-        viewModelScope.launch {
-            val response = passkeyManager.registerWithResult(pendingRequest.requestJson)
-                .onFailure {
-                    Log.d(TAG, "Failed to register passkey: $it")
-                }.getOrNull()
-                ?: return@launch abort("Failed to register passkey")
-
-            val encryptedPrivateKey = cryptographicScopeProvider.itemScope(itemId = itemId) {
-                Passkey.PrivateKey.encrypt(response.privateKey)
-            }.fold(
-                onSuccess = { it },
-                onFailure = { return@launch abort("Failed to encrypt passkey private key: $it") }
-            )
-
-            val passkey = Passkey(
-                credentialId = response.credentialId,
-                privateKey = encryptedPrivateKey,
-                rp = response.rp,
-                loginId = itemId,
-                user = PasskeyUser(
-                    name = response.userName,
-                    displayName = response.userDisplayName,
-                ),
-            )
-
-            passkeyRepository.createPasskey(passkey)
-            _event.send(CreatePasskeyEvent.Finish(response.response))
-        }
+        chosenItem.complete(itemId)
     }
 
     fun onItemClicked(itemId: ItemId) {
@@ -160,13 +166,21 @@ internal class CreatePasskeyViewModel(
             CreatePasskeyEvent.OpenConfirmationDialog(
                 itemId = itemId,
                 itemName = "N/A",
-                rp = passkeyInformation.rp
+                rp = _rp.value,
             )
         )
     }
 
-    private suspend fun abort(msg: String? = null) {
-        msg?.let { Log.w(TAG, "Aborting: $it") }
+    private suspend fun <S : Any, E> Result<S, E>.orAbort(reason: String): S? = fold(
+        onSuccess = { it },
+        onFailure = {
+            abort("$reason: $it")
+            null
+        },
+    )
+
+    private suspend fun abort(msg: String) {
+        Log.w(TAG, "Aborting: $msg")
         _event.send(CreatePasskeyEvent.Abort)
     }
 

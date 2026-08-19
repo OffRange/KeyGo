@@ -74,7 +74,7 @@ internal class CreatePasskeyActivity : FragmentActivity() {
         val callingRequest = request?.callingRequest as? CreatePublicKeyCredentialRequest
             ?: return cancel("Invalid CreatePublicKeyCredentialRequest")
 
-        val success = viewModel.setRequest(callingRequest)
+        val success = viewModel.setRequest(callingRequest.requestJson)
         if (!success) return cancel("Failed to set request")
 
         setResult(RESULT_CANCELED)
@@ -138,8 +138,8 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                 }
 
                 val excluded by viewModel.excluded.collectAsStateWithLifecycle()
+                val rp by viewModel.rp.collectAsStateWithLifecycle()
                 if (excluded) {
-                    val rp = viewModel.passkeyInformation.rp
                     AlertDialog(
                         onDismissRequest = ::finishExcluded,
                         title = {
@@ -222,7 +222,7 @@ internal class CreatePasskeyActivity : FragmentActivity() {
 
                                 composable<CreateItem> {
                                     LoginScreen(
-                                        pendingPasskeyRP = viewModel.passkeyInformation.rp,
+                                        pendingPasskeyRP = rp,
                                         loginCreated = {
                                             viewModel.associatePasskeyAndFinish(it)
                                         },
