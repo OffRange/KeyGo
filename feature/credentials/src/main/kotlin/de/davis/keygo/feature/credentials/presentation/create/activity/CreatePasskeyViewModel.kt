@@ -56,6 +56,7 @@ internal class CreatePasskeyViewModel(
     lateinit var passkeyInformation: PasskeyInformation
 
     private var started = false
+    private var associating = false
 
     fun setRequest(request: CreatePublicKeyCredentialRequest): Boolean {
         pendingRequest = request
@@ -109,7 +110,21 @@ internal class CreatePasskeyViewModel(
         }
     }
 
+    /**
+     * Registers the pending request and links the resulting passkey to [itemId].
+     *
+     * Runs at most once per activity. Every caller is a one-shot UI action, but nothing stops a
+     * second tap from landing before the first one has recomposed the dialog away. A repeat run
+     * would mint a second key pair and credential id, store both, and answer the relying party with
+     * only whichever response wins the race, leaving the other private key in the vault as a
+     * credential the site has never heard of.
+     *
+     * The flag is only ever touched from the main thread, where the UI callbacks run.
+     */
     fun associatePasskeyAndFinish(itemId: ItemId) {
+        if (associating) return
+        associating = true
+
         viewModelScope.launch {
             val response = passkeyManager.registerWithResult(pendingRequest.requestJson)
                 .onFailure {
