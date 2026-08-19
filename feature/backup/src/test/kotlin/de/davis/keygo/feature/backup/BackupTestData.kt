@@ -10,6 +10,7 @@ import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.Passkey
+import de.davis.keygo.core.item.domain.model.PasskeyRef
 import de.davis.keygo.core.item.domain.model.PasskeyUser
 import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
@@ -61,7 +62,7 @@ fun testLogin(
     websites: Set<String> = emptySet(),
     tags: Set<String> = emptySet(),
     note: String? = null,
-    passkeyRPs: Set<String> = emptySet(),
+    passkeys: Set<PasskeyRef> = emptySet(),
 ) = Login(
     id = id,
     vaultId = vaultId,
@@ -72,7 +73,7 @@ fun testLogin(
         PasswordCredential(secret = PasswordSecret(secretPayload(it)), score = PasswordScore.Strong)
     },
     totp = totpSecret?.let { Totp(loginId = id, secret = Totp.Secret(secretPayload(it))) },
-    passkeyRPs = passkeyRPs,
+    passkeys = passkeys,
     keyInformation = emptyKey,
     tags = tags.mapNotNull { Tag.of(it) }.toSet(),
     note = note,

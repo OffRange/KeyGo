@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import de.davis.keygo.core.item.domain.model.PasskeyRef
 import de.davis.keygo.core.ui.text.htmlStringResource
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.item.create.R
@@ -48,7 +49,7 @@ fun DeletePasskeyDialog(
         },
         text = {
             Text(
-                text = htmlStringResource(R.string.delete_passkey_warning, state.rpId)
+                text = htmlStringResource(R.string.delete_passkey_warning, state.passkey.rp)
             )
         },
     )
@@ -59,7 +60,9 @@ fun DeletePasskeyDialog(
 private fun DeletePasskeyDialogPreview() {
     KeyGoTheme {
         DeletePasskeyDialog(
-            state = DialogState.DeletePasskey(rpId = "example.com"),
+            state = DialogState.DeletePasskey(
+                passkey = PasskeyRef(credentialId = byteArrayOf(1), rp = "example.com"),
+            ),
             onConfirmDeletion = {},
             onDismissRequest = {},
         )

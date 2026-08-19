@@ -102,7 +102,7 @@ class CreateNewOrUpdateLoginUseCase(
             passwordCredential = newPasswordCredential,
             totp = totp?.await(),
             // A pending passkey is written by its own flow once this id exists.
-            passkeyRPs = emptySet(),
+            passkeys = emptySet(),
             note = upsert.note.getValue(),
             pinned = false,
             keyInformation = keyInformation,
@@ -137,7 +137,7 @@ class CreateNewOrUpdateLoginUseCase(
             totp = upsert.totpUriOrSecret.on(existing.totp, totp),
             // Resolved against what the table holds now, not against what the caller last saw, so
             // a passkey attached from elsewhere since then survives this save.
-            passkeyRPs = existing.passkeyRPs - upsert.removedPasskeyRPs,
+            passkeys = existing.passkeys - upsert.removedPasskeys,
             note = upsert.note.on(existing.note),
         )
     }

@@ -7,6 +7,7 @@ import de.davis.keygo.core.item.FakePasskeyRepository
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.Vault
+import de.davis.keygo.core.item.passkeyRef
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProviderFactory
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
@@ -20,9 +21,6 @@ import de.davis.keygo.feature.backup.testCard
 import de.davis.keygo.feature.backup.testLogin
 import de.davis.keygo.feature.backup.testPasskey
 import de.davis.keygo.feature.backup.testVault
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.runTest
 import java.time.YearMonth
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.Test
@@ -30,6 +28,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 
 class BackupCollectorTest {
 
@@ -258,7 +259,7 @@ class BackupCollectorTest {
                 vaultId = vault.id,
                 id = loginId,
                 name = "Email",
-                passkeyRPs = setOf("example.com", "example.org"),
+                passkeys = setOf(passkeyRef("example.com"), passkeyRef("example.org")),
             )
         )
         passkeyRepo.seed(
@@ -287,11 +288,11 @@ class BackupCollectorTest {
     }
 
     @Test
-    fun `passkeys are exported even when the login's passkeyRPs set is empty`() = runTest {
+    fun `passkeys are exported even when the login's passkeys set is empty`() = runTest {
         val vault = testVault(name = "Personal")
         vaultRepo.seed(vault)
         val loginId = newItemId()
-        // passkeyRPs deliberately left empty (default) - the table is the source of truth.
+        // passkeys deliberately left empty (default) - the table is the source of truth.
         loginRepo.seed(testLogin(vaultId = vault.id, id = loginId, name = "Email"))
         passkeyRepo.seed(testPasskey(loginId = loginId, rp = "example.com", privateKey = "pk-one"))
 

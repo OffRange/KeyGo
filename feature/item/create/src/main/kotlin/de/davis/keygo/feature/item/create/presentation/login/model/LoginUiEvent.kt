@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.item.create.presentation.login.model
 
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.model.PasskeyRef
 import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.create.presentation.model.ItemUiEvent
 
@@ -11,7 +12,7 @@ internal sealed interface LoginUiEvent {
     data object OnCloseBottomSheet : LoginUiEvent
     data object OnScanCodeRequest : LoginUiEvent
 
-    data class OnDeletePasskeyRequest(val rpId: String) : LoginUiEvent
+    data class OnDeletePasskeyRequest(val passkey: PasskeyRef) : LoginUiEvent
     data object OnConfirmPasskeyDeletion : LoginUiEvent
     data object OnPasskeyDeletionDismiss : LoginUiEvent
 

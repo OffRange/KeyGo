@@ -30,7 +30,7 @@ class DomainMapperTest {
             score = PasswordScore.Strong,
         ),
         totp = null,
-        passkeyRPs = emptySet(),
+        passkeys = emptySet(),
         vaultId = newVaultId(),
         name = "Test",
         keyInformation = KeyInformation(wrappedKey = byteArrayOf(), keyNonce = byteArrayOf()),

@@ -3,6 +3,7 @@ package de.davis.keygo.feature.item.core.domain.model
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.model.PasskeyRef
 import de.davis.keygo.core.item.domain.model.Tag
 
 @ConsistentCopyVisibility
@@ -15,7 +16,7 @@ data class UpsertLogin private constructor(
     val domains: FieldUpdate<Set<DomainInfo>>,
     override val tags: FieldUpdate<Set<Tag>>,
     override val note: FieldUpdate<String>,
-    val removedPasskeyRPs: Set<String>,
+    val removedPasskeys: Set<PasskeyRef>,
     val pendingPasskey: Boolean,
 ) : UpsertItem {
     companion object {
@@ -39,7 +40,7 @@ data class UpsertLogin private constructor(
             domains = if (domains.isNotEmpty()) FieldUpdate.Set(domains) else FieldUpdate.Clear,
             tags = if (tags.isNotEmpty()) FieldUpdate.Set(tags) else FieldUpdate.Clear,
             // A brand-new login holds no passkeys, so there is nothing to remove.
-            removedPasskeyRPs = emptySet(),
+            removedPasskeys = emptySet(),
             pendingPasskey = pendingPasskey,
         )
 
@@ -53,7 +54,7 @@ data class UpsertLogin private constructor(
             domains: FieldUpdate<Set<DomainInfo>> = keep(),
             tags: FieldUpdate<Set<Tag>> = keep(),
             note: FieldUpdate<String> = keep(),
-            removedPasskeyRPs: Set<String> = emptySet(),
+            removedPasskeys: Set<PasskeyRef> = emptySet(),
             pendingPasskey: Boolean = false,
         ) = UpsertLogin(
             upsertType = UpsertType.Update(itemId, vaultId),
@@ -64,7 +65,7 @@ data class UpsertLogin private constructor(
             tags = tags,
             username = username,
             domains = domains,
-            removedPasskeyRPs = removedPasskeyRPs,
+            removedPasskeys = removedPasskeys,
             pendingPasskey = pendingPasskey,
         )
     }

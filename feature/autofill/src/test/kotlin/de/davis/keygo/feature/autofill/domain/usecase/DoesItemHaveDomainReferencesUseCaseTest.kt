@@ -40,7 +40,7 @@ class DoesItemHaveDomainReferencesUseCaseTest {
         domainInfos = domainInfos,
         passwordCredential = null,
         totp = null,
-        passkeyRPs = emptySet(),
+        passkeys = emptySet(),
         note = null,
         pinned = false,
         vaultId = vaultId,

@@ -23,19 +23,26 @@ internal abstract class PasskeyDao {
     @Query("DELETE FROM passkey WHERE login_id = :loginId")
     protected abstract suspend fun deleteAllPasskeysForLogin(loginId: ItemId)
 
-    @Query("DELETE FROM passkey WHERE login_id = :loginId AND rp NOT IN (:rpIds)")
-    protected abstract suspend fun deletePasskeysForLoginNotIn(loginId: ItemId, rpIds: Set<String>)
+    @Query("DELETE FROM passkey WHERE login_id = :loginId AND credential_id NOT IN (:credentialIds)")
+    protected abstract suspend fun deletePasskeysForLoginNotIn(
+        loginId: ItemId,
+        credentialIds: Collection<ByteArray>,
+    )
 
     /**
-     * Drops every passkey [loginId] holds for a relying party outside [rpIds].
+     * Drops every passkey [loginId] holds whose credential id is outside [credentialIds].
      *
-     * Deletes only. A passkey row carries a credential id and key material, so it can not be
-     * reconstructed from a relying party name and this can never put one back.
+     * Keyed on the credential id rather than the relying party: one login can hold two credentials
+     * for the same site, and deleting by relying party would take both when the user only asked for
+     * one.
+     *
+     * Deletes only. A passkey row carries key material, so it can not be reconstructed from a
+     * credential id and this can never put one back.
      */
     @Transaction
-    open suspend fun deleteRPsNotIn(loginId: ItemId, rpIds: Set<String>) {
-        if (rpIds.isEmpty()) deleteAllPasskeysForLogin(loginId)
-        else deletePasskeysForLoginNotIn(loginId, rpIds)
+    open suspend fun deleteCredentialsNotIn(loginId: ItemId, credentialIds: Collection<ByteArray>) {
+        if (credentialIds.isEmpty()) deleteAllPasskeysForLogin(loginId)
+        else deletePasskeysForLoginNotIn(loginId, credentialIds)
     }
 
     @Query("SELECT EXISTS (SELECT 1 FROM passkey WHERE credential_id IN (:credentialIds))")

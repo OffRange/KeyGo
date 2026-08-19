@@ -104,7 +104,7 @@ internal class ViewLoginViewModel(
                 ViewLoginState(
                     name = login.name,
                     vaultMetadata = vaultMetadata,
-                    passkeyRPs = login.passkeyRPs,
+                    passkeyRPs = login.passkeys.map { it.rp },
                     password = obfuscated,
                     passwordStrengthScore = login.passwordCredential?.score,
                     username = login.username.orEmpty(),

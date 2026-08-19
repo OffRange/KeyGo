@@ -59,8 +59,8 @@ internal class LoginRepositoryImpl(
                 tagDao.syncTags(login.id, login.tags.toTagEntities())
 
                 // Delete only: passkeys are created through PasskeyRepository, never from here.
-                // See Login.passkeyRPs for why this set has to come from a fresh read.
-                passkeyDao.deleteRPsNotIn(login.id, login.passkeyRPs)
+                // See Login.passkeys for why this set has to come from a fresh read.
+                passkeyDao.deleteCredentialsNotIn(login.id, login.passkeys.map { it.credentialId })
 
                 login.id
             }

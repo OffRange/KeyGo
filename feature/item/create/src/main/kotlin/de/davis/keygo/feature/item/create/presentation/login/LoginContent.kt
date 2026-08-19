@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.model.PasskeyRef
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.Vault
@@ -159,7 +160,7 @@ private fun LoginReadyContent(
             onTagSubmitted = { onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnAddTags(it))) },
             onDeleteTag = { onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnRemoveTag(it))) },
         ) {
-            if (state.passkeyRPs.isNotEmpty()) item(key = "passkey_information") {
+            if (state.passkeys.isNotEmpty()) item(key = "passkey_information") {
                 FormGroup(
                     title = stringResource(R.string.passkey_information),
                     modifier = Modifier,
@@ -169,12 +170,14 @@ private fun LoginReadyContent(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        state.passkeyRPs.forEach { passkeyInfo ->
+                        state.passkeys.forEach { passkeyInfo ->
                             key(passkeyInfo) {
                                 MenuChip(
                                     chipText = passkeyInfo.rpId,
                                     onDeleteClick = {
-                                        onEvent(LoginUiEvent.OnDeletePasskeyRequest(passkeyInfo.rpId))
+                                        passkeyInfo.ref?.let {
+                                            onEvent(LoginUiEvent.OnDeletePasskeyRequest(it))
+                                        }
                                     },
                                     enabled = !passkeyInfo.pending
                                 )
@@ -376,9 +379,16 @@ private fun LoginContentPreview() {
                             eTLD1 = "example.com",
                         ),
                     ),
-                    passkeyRPs = setOf(
-                        LoginPasskeyInfo(rpId = "example.com", pending = false),
-                        LoginPasskeyInfo(rpId = "example.org", pending = true),
+                    passkeys = setOf(
+                        LoginPasskeyInfo(
+                            rpId = "example.com",
+                            ref = PasskeyRef(byteArrayOf(1), "example.com"),
+                        ),
+                        LoginPasskeyInfo(
+                            rpId = "example.com",
+                            ref = PasskeyRef(byteArrayOf(2), "example.com"),
+                        ),
+                        LoginPasskeyInfo(rpId = "example.org", ref = null),
                     ),
                 ),
                 shared = SharedItemState(

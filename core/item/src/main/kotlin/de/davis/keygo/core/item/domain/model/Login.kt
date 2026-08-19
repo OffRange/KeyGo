@@ -13,7 +13,14 @@ data class Login(
     val domainInfos: Set<DomainInfo>,
     val passwordCredential: PasswordCredential?,
     val totp: Totp?,
-    val passkeyRPs: Set<String>,
+    /**
+     * Passkeys this login currently holds, one entry per credential.
+     *
+     * Has no default and is never inferred: an empty set means "this login holds no passkeys" and
+     * saving it deletes every passkey row the login has. A caller that does not know has to read
+     * them rather than leave them out.
+     */
+    val passkeys: Set<PasskeyRef>,
     override val vaultId: VaultId,
     override val name: String,
     override val keyInformation: KeyInformation,
@@ -30,5 +37,5 @@ data class Login(
         get() = !username.isNullOrBlank()
                 || passwordCredential != null
                 || totp != null
-                || passkeyRPs.isNotEmpty()
+                || passkeys.isNotEmpty()
 }

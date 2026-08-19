@@ -18,12 +18,14 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasskeyRef
 import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.model.Totp
+import de.davis.keygo.core.item.passkeyRef
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
 import io.mockk.coEvery
@@ -31,12 +33,12 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
-import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlinx.coroutines.test.runTest
 
 class LoginRepositoryImplTest {
 
@@ -212,25 +214,28 @@ class LoginRepositoryImplTest {
     }
 
     @Test
-    fun `createOrUpdateLogin drops passkeys whose RP is absent from the login`() = runTest {
-        val login = testLogin(totpProvider = null, passkeyRPs = setOf("example.org"))
+    fun `createOrUpdateLogin drops passkeys whose credential is absent from the login`() = runTest {
+        val kept = passkeyRef("example.org")
+        val login = testLogin(totpProvider = null, passkeys = setOf(kept))
 
         val result = repository.createOrUpdateLogin(login)
 
         assertTrue(result.isSuccess())
-        coVerify(exactly = 1) { passkeyDao.deleteRPsNotIn(login.id, setOf("example.org")) }
+        coVerify(exactly = 1) {
+            passkeyDao.deleteCredentialsNotIn(login.id, listOf(kept.credentialId))
+        }
     }
 
     @Test
-    fun `createOrUpdateLogin with no passkey RPs drops every passkey the login holds`() = runTest {
+    fun `createOrUpdateLogin with no passkeys drops every passkey the login holds`() = runTest {
         // An empty set is how "the last passkey was removed" is expressed. There is no way to
-        // distinguish it from "unknown", which is why Login.passkeyRPs has no default.
+        // distinguish it from "unknown", which is why Login.passkeys has no default.
         val login = testLogin(totpProvider = null)
 
         val result = repository.createOrUpdateLogin(login)
 
         assertTrue(result.isSuccess())
-        coVerify(exactly = 1) { passkeyDao.deleteRPsNotIn(login.id, emptySet()) }
+        coVerify(exactly = 1) { passkeyDao.deleteCredentialsNotIn(login.id, emptyList()) }
     }
 
     @Test
@@ -238,7 +243,7 @@ class LoginRepositoryImplTest {
         // The delete shares the login's transaction, so a failure rolls the whole write back and
         // surfaces as a Failure rather than escaping uncaught after the login row has landed.
         val error = RuntimeException("db error")
-        coEvery { passkeyDao.deleteRPsNotIn(any(), any()) } throws error
+        coEvery { passkeyDao.deleteCredentialsNotIn(any(), any()) } throws error
 
         val result = repository.createOrUpdateLogin(testLogin(totpProvider = null))
 
@@ -252,7 +257,7 @@ class LoginRepositoryImplTest {
             score = PasswordScore.Strong,
         ),
         tags: Set<Tag> = emptySet(),
-        passkeyRPs: Set<String> = emptySet(),
+        passkeys: Set<PasskeyRef> = emptySet(),
         totpProvider: ((ItemId) -> Totp)? = null,
     ): Login {
         val id = newItemId()
@@ -262,7 +267,7 @@ class LoginRepositoryImplTest {
             domainInfos = emptySet(),
             passwordCredential = passwordCredential,
             totp = totpProvider?.invoke(id),
-            passkeyRPs = passkeyRPs,
+            passkeys = passkeys,
             name = "Test",
             note = null,
             pinned = false,

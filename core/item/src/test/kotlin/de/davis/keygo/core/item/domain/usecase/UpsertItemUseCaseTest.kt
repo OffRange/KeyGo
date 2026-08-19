@@ -36,7 +36,7 @@ class UpsertItemUseCaseTest {
             score = PasswordScore.Strong,
         ),
         totp = null,
-        passkeyRPs = emptySet(),
+        passkeys = emptySet(),
         name = name,
         note = null,
         pinned = false,

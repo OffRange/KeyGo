@@ -37,7 +37,7 @@ class ItemMapperTest {
             score = PasswordScore.Strong,
         ),
         totp = null,
-        passkeyRPs = emptySet(),
+        passkeys = emptySet(),
         note = note,
         pinned = pinned,
         vaultId = newVaultId(),

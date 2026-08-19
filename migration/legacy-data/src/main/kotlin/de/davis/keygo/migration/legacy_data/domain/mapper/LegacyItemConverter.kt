@@ -88,7 +88,7 @@ internal class LegacyItemConverter(
             passwordCredential = credential,
             totp = null,
             // The legacy database had no passkeys, and these are freshly minted ids.
-            passkeyRPs = emptySet(),
+            passkeys = emptySet(),
             vaultId = vaultId,
             name = item.title,
             keyInformation = keyInformation,

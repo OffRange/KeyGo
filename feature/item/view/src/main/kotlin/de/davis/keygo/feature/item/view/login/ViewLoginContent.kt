@@ -548,7 +548,7 @@ private fun ViewLoginContentPreview() {
             ViewLoginContent(
                 state = ViewLoginState(
                     name = "Login 1",
-                    passkeyRPs = setOf("example.com", "example.org"),
+                    passkeyRPs = listOf("example.com", "example.org"),
                     password = ObfuscatedString("Password"),
                     passwordStrengthScore = PasswordScore.Ridiculous,
                     totpState = TotpState.HasTotp(
