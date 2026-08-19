@@ -24,8 +24,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.fromHtml
 import androidx.credentials.CreatePublicKeyCredentialRequest
 import androidx.credentials.CreatePublicKeyCredentialResponse
 import androidx.credentials.exceptions.CreateCredentialUnknownException
@@ -43,6 +41,7 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.BiometricString
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
+import de.davis.keygo.core.ui.text.htmlStringResource
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
@@ -153,11 +152,9 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                         },
                         text = {
                             Text(
-                                text = AnnotatedString.fromHtml(
-                                    if (rp.isNotBlank())
-                                        stringResource(R.string.passkey_already_exists_message, rp)
-                                    else stringResource(R.string.passkey_already_exists_message_generic)
-                                )
+                                text = if (rp.isNotBlank())
+                                    htmlStringResource(R.string.passkey_already_exists_message, rp)
+                                else htmlStringResource(R.string.passkey_already_exists_message_generic)
                             )
                         },
                         modifier = Modifier.fillMaxWidth(),

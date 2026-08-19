@@ -10,9 +10,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.tooling.preview.Preview
+import de.davis.keygo.core.ui.text.htmlStringResource
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.presentation.login.model.DialogState
@@ -49,9 +48,7 @@ fun DeletePasskeyDialog(
         },
         text = {
             Text(
-                text = AnnotatedString.fromHtml(
-                    stringResource(R.string.delete_passkey_warning, state.rpId)
-                )
+                text = htmlStringResource(R.string.delete_passkey_warning, state.rpId)
             )
         },
     )
