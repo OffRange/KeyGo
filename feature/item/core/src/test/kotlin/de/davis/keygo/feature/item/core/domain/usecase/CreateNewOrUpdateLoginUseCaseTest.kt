@@ -33,6 +33,7 @@ import de.davis.keygo.feature.item.core.domain.model.set
 import de.davis.keygo.rust.FakeTotpService
 import de.davis.keygo.rust.totp.TotpService
 import de.davisalessandro.keygo.rust.Algorithm
+import de.davisalessandro.keygo.rust.SecretStrength
 import de.davisalessandro.keygo.rust.TotpInfo
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -773,6 +774,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
             algorithm = Algorithm.SHA256,
             digits = 8,
             period = 60,
+            strength = SecretStrength.TRUSTWORTHY,
         )
         val localUseCase = makeUseCase(
             totpService = FakeTotpService().apply { infoFromUriResult = parsed },
@@ -879,6 +881,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
             algorithm = Algorithm.SHA512,
             digits = 8,
             period = 60,
+            strength = SecretStrength.TRUSTWORTHY,
         )
         val result = makeUseCase(
             totpService = FakeTotpService().apply { infoFromUriResult = parsed },

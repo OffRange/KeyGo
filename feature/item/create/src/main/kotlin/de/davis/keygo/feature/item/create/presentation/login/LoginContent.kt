@@ -61,7 +61,6 @@ import de.davis.keygo.feature.item.create.presentation.component.KeyGoItemForm
 import de.davis.keygo.feature.item.create.presentation.component.OverrideTotpDialog
 import de.davis.keygo.feature.item.create.presentation.component.SelectItemForTotpModificationDialog
 import de.davis.keygo.feature.item.create.presentation.component.TAG_DELIMITERS
-import de.davis.keygo.feature.item.create.presentation.component.TotpParseErrorDialog
 import de.davis.keygo.feature.item.create.presentation.login.model.DialogState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginBaseState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginPasskeyInfo
@@ -73,6 +72,7 @@ import de.davis.keygo.feature.item.create.presentation.model.SharedItemState
 import de.davis.keygo.feature.item.create.presentation.model.VaultsState
 import de.davis.keygo.feature.item.create.presentation.password.GeneratePasswordModalBottomSheet
 import de.davis.keygo.feature.totp.presentation.component.QRScanner
+import de.davis.keygo.feature.totp.presentation.component.TotpParseErrorDialog
 import de.davis.keygo.core.item.R as CoreItemR
 import de.davis.keygo.feature.item.core.R as ItemCoreR
 

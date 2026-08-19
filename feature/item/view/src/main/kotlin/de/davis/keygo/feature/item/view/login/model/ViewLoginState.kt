@@ -21,5 +21,6 @@ data class ViewLoginState(
     val note: String = "",
     val modificationDialog: ModificationDialog? = null,
     val scanning: Boolean = false,
+    val totpParseError: Boolean = false,
     val pinned: Boolean = false,
 )

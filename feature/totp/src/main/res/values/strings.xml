@@ -9,4 +9,8 @@
     <string name="permission_title">Camera permission</string>
     <string name="permission_denied_permanently">Camera permission was denied. To scan QR codes, please enable it in your app settings.</string>
     <string name="open_settings">Open Settings</string>
+    <string name="ok">OK</string>
+
+    <string name="totp_parse_error">TOTP Parse Error</string>
+    <string name="totp_parse_error_description">The TOTP code could not be parsed.</string>
 </resources>
