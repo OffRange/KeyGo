@@ -16,7 +16,6 @@ import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
@@ -25,7 +24,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -53,7 +51,6 @@ internal class ChangePasswordViewModel(
         .mapLatest { text ->
             passwordStrengthEstimator(text.toString())
         }
-        .flowOn(Dispatchers.Default)
         // combine withholds its first emission until every input has emitted, so without a value
         // up front the form would sit on initialValue until the debounce elapses.
         .onStart { emit(PasswordScore.None) }

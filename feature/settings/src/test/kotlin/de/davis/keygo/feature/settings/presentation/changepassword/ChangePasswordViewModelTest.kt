@@ -217,6 +217,7 @@ class ChangePasswordViewModelTest {
             vm.state.first { it.currentPasswordError == UiFieldError.Incorrect }
 
             vm.dismissReauthDialog()
+            advanceUntilIdle()
 
             assertEquals(false, vm.state.value.showReauthDialog)
             assertEquals(null, vm.state.value.currentPasswordError)
@@ -283,6 +284,7 @@ class ChangePasswordViewModelTest {
         val failure: Result<Key, BiometricAuthError> = Result.Failure(BiometricAuthError.NoCipher)
 
         vm.onBiometricResult(failure)
+        advanceUntilIdle()
 
         assertEquals(true, vm.state.value.showReauthDialog)
     }
@@ -295,6 +297,7 @@ class ChangePasswordViewModelTest {
         val failure: Result<Key, BiometricAuthError> = Result.Failure(BiometricAuthError.Declined)
 
         vm.onBiometricResult(failure)
+        advanceUntilIdle()
 
         assertEquals(true, vm.state.value.showReauthDialog)
     }
