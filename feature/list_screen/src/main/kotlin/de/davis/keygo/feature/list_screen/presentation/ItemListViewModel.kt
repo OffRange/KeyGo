@@ -13,6 +13,7 @@ import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
+import de.davis.keygo.core.util.combine
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
@@ -39,9 +40,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.getAndUpdate
-import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -50,6 +49,12 @@ import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
 import kotlin.time.Duration.Companion.milliseconds
+
+/**
+ * Paces the search query rather than the keystroke: each fire runs a cross-vault `LIKE` scan with a
+ * tag join, so halving this doubles those scans.
+ */
+private val SEARCH_DEBOUNCE = 300.milliseconds
 
 @KoinViewModel
 internal class ItemListViewModel(
@@ -105,12 +110,24 @@ internal class ItemListViewModel(
         filterUseCase(filter, items, scores, tagIds)
     }.distinctUntilChanged()
 
-    private val searchResults = MutableStateFlow(listOf<LiteItem>())
     private val selectedItemIds = MutableStateFlow(emptySet<ItemId>())
     private val highlightedId = MutableStateFlow<ItemId?>(null)
     private val _isVaultFlowVisible = MutableStateFlow(false)
 
-    val listItemState = combine7(
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
+    private val searchResults = snapshotFlow { searchTextFieldState.text }
+        .debounce(SEARCH_DEBOUNCE)
+        .flatMapLatest {
+            queryToItems(it.toString(), forceSearchAllVaults = true)
+        }
+        .distinctUntilChanged()
+        .flowOn(Dispatchers.Default)
+        // Nobody has searched yet, and combine withholds its first emission until every input has
+        // emitted: without this the list screen's first render would wait on a full cross-vault
+        // search for the empty query.
+        .onStart { emit(emptyList()) }
+
+    val listItemState = combine(
         vaultsAndSelection,
         filteredItems,
         searchResults,
@@ -130,12 +147,10 @@ internal class ItemListViewModel(
             vaultContext = vaultsAndSel.selection,
         )
     }.distinctUntilChanged()
-        .onStart {
-            observeSearchState()
-        }.stateIn(
+        .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = ListItemState()
+            initialValue = ListItemState(),
         )
 
     private val availableFilterOptions = combine(
@@ -206,21 +221,6 @@ internal class ItemListViewModel(
     ): Flow<List<LiteItem>> =
         (if (!forceSearchAllVaults && query.isBlank()) vaultSpecificItems
         else flowOf(itemRepository.searchVaultItem(query, restrictedItemType)))
-
-    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
-    private fun observeSearchState() {
-        snapshotFlow { searchTextFieldState.text }
-            .debounce(300.milliseconds)
-            .flatMapLatest {
-                queryToItems(it.toString(), forceSearchAllVaults = true)
-            }
-            .distinctUntilChanged()
-            .onEach { items ->
-                searchResults.update { items }
-            }
-            .flowOn(Dispatchers.Default)
-            .launchIn(viewModelScope)
-    }
 
     fun onSubmitQuery() {
         submittedSearchQuery.update { searchTextFieldState.text.toString() }
@@ -310,26 +310,4 @@ internal class ItemListViewModel(
             }
         }
     }
-}
-
-private fun <T1, T2, T3, T4, T5, T6, T7, R> combine7(
-    flow1: Flow<T1>,
-    flow2: Flow<T2>,
-    flow3: Flow<T3>,
-    flow4: Flow<T4>,
-    flow5: Flow<T5>,
-    flow6: Flow<T6>,
-    flow7: Flow<T7>,
-    transform: (T1, T2, T3, T4, T5, T6, T7) -> R
-): Flow<R> = combine(flow1, flow2, flow3, flow4, flow5, flow6, flow7) { arrayOfFlows ->
-    @Suppress("UNCHECKED_CAST")
-    transform(
-        arrayOfFlows[0] as T1,
-        arrayOfFlows[1] as T2,
-        arrayOfFlows[2] as T3,
-        arrayOfFlows[3] as T4,
-        arrayOfFlows[4] as T5,
-        arrayOfFlows[5] as T6,
-        arrayOfFlows[6] as T7,
-    )
 }

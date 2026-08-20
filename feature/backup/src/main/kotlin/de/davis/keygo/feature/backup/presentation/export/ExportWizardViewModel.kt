@@ -5,6 +5,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
+import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.util.combine
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.util.onFailure
@@ -33,13 +35,10 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -62,70 +61,65 @@ internal class ExportWizardViewModel(
     private val _formatState = MutableStateFlow(SelectFormatState())
     private val _scheduleState = MutableStateFlow(SelectScheduleState())
     private val _destinationState = MutableStateFlow(SelectDestinationState())
-    private val _providePassphraseState = MutableStateFlow(
+    private val _step = MutableStateFlow(ExportWizardStep.SelectFormat)
+
+    private val _providePassphraseBaseState = MutableStateFlow(
         ProvidePassphraseState(
             passphraseTextFieldState = passphraseTextFieldState,
             confirmPassphraseTextFieldState = confirmPassphraseTextFieldState,
-        )
+        ),
     )
 
-    private val _step = MutableStateFlow(ExportWizardStep.SelectFormat)
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
+    private val _passphraseMetricsFlow = snapshotFlow {
+        val passphrase = passphraseTextFieldState.text
+        val valid =
+            passphrase.isNotEmpty() && passphrase.contentEquals(confirmPassphraseTextFieldState.text)
+        passphrase to valid
+    }
+        .debounce(150.milliseconds)
+        .distinctUntilChanged()
+        .mapLatest { (pwd, valid) ->
+            val score = passwordStrengthEstimator(pwd.toString())
+            score to valid
+        }
+        .flowOn(Dispatchers.Default)
+        // combine withholds its first emission until every input has emitted, so without a value
+        // up front the whole wizard would sit on its initialValue until the debounce elapses.
+        .onStart { emit(PasswordScore.None to false) }
 
     val state = combine(
         _formatState,
         _scheduleState,
         _destinationState,
-        _providePassphraseState,
-        _step
-    ) { formatState, scheduleState, destinationState, providePassphraseState, step ->
+        _providePassphraseBaseState,
+        _passphraseMetricsFlow,
+        _step,
+    ) { formatState, scheduleState, destinationState, basePassphraseState, (score, valid), step ->
         ExportWizardUiState(
             formatState = formatState,
             scheduleState = scheduleState,
             destinationState = destinationState,
-            providePassphraseState = providePassphraseState,
+            providePassphraseState = basePassphraseState.copy(
+                passphraseScore = score,
+                valid = valid,
+            ),
             step = step,
         )
-    }
-        .onStart {
-            observePassphrase()
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = ExportWizardUiState(
-                formatState = _formatState.value,
-                scheduleState = _scheduleState.value,
-                destinationState = _destinationState.value,
-                providePassphraseState = _providePassphraseState.value,
-                step = _step.value,
-            )
-        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = ExportWizardUiState(
+            formatState = _formatState.value,
+            scheduleState = _scheduleState.value,
+            destinationState = _destinationState.value,
+            providePassphraseState = _providePassphraseBaseState.value,
+            step = _step.value,
+        ),
+    )
 
     private val _event = Channel<ExportWizardEvent>(Channel.BUFFERED)
     val event = _event.receiveAsFlow()
-
-    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
-    private fun observePassphrase() {
-        snapshotFlow {
-            val passphrase = passphraseTextFieldState.text
-            val valid =
-                passphrase.isNotEmpty() && passphrase.contentEquals(confirmPassphraseTextFieldState.text)
-            passphrase to valid
-        }
-            .debounce(150.milliseconds)
-            .distinctUntilChanged()
-            .mapLatest { (pwd, valid) -> passwordStrengthEstimator(pwd.toString()) to valid }
-            .onEach { (score, valid) ->
-                _providePassphraseState.update {
-                    it.copy(
-                        passphraseScore = score,
-                        valid = valid
-                    )
-                }
-            }
-            .flowOn(Dispatchers.Default)
-            .launchIn(viewModelScope)
-    }
 
     fun onEvent(event: ExportWizardUiEvent) {
         when (event) {
@@ -173,7 +167,7 @@ internal class ExportWizardViewModel(
                 it.copy(keepAll = event.keepAll)
             }
 
-            is ExportWizardUiEvent.EncryptionMethodSelected -> _providePassphraseState.update {
+            is ExportWizardUiEvent.EncryptionMethodSelected -> _providePassphraseBaseState.update {
                 it.copy(method = event.method)
             }
 
@@ -231,7 +225,7 @@ internal class ExportWizardViewModel(
             interval = if (recurring) schedule.interval else null,
             keepCount = if (recurring && !schedule.keepAll) schedule.keepCount else null,
             passphrase = passphraseTextFieldState.text.toString(),
-            encryption = if (format.encrypted) _providePassphraseState.value.method else null,
+            encryption = if (format.encrypted) _providePassphraseBaseState.value.method else null,
             csvPreset = if (format == FileFormat.CSV) _formatState.value.csvPreset else null,
         )
     }

@@ -16,7 +16,9 @@ import de.davis.keygo.rust.FakeKeyWrapper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -79,12 +81,16 @@ class ChangePasswordViewModelTest {
         )
     }
 
-    private fun viewModel() = ChangePasswordViewModel(
+    /**
+     * `state` is `WhileSubscribed`, so it only tracks `_state` while something collects it. Every
+     * test reads `vm.state.value`, so the subscription belongs here rather than in each test.
+     */
+    private fun TestScope.viewModel() = ChangePasswordViewModel(
         accountRepository = accountRepository,
         biometricAvailabilityRepository = biometricAvailability,
         passwordStrengthEstimator = estimator,
         changePassword = changePassword,
-    )
+    ).also { it.state.launchIn(backgroundScope) }
 
     @Test
     fun `blank new password sets Empty error and does not change password`() = runTest(dispatcher) {
@@ -211,6 +217,7 @@ class ChangePasswordViewModelTest {
             vm.state.first { it.currentPasswordError == UiFieldError.Incorrect }
 
             vm.dismissReauthDialog()
+            advanceUntilIdle()
 
             assertEquals(false, vm.state.value.showReauthDialog)
             assertEquals(null, vm.state.value.currentPasswordError)
@@ -277,6 +284,7 @@ class ChangePasswordViewModelTest {
         val failure: Result<Key, BiometricAuthError> = Result.Failure(BiometricAuthError.NoCipher)
 
         vm.onBiometricResult(failure)
+        advanceUntilIdle()
 
         assertEquals(true, vm.state.value.showReauthDialog)
     }
@@ -289,6 +297,7 @@ class ChangePasswordViewModelTest {
         val failure: Result<Key, BiometricAuthError> = Result.Failure(BiometricAuthError.Declined)
 
         vm.onBiometricResult(failure)
+        advanceUntilIdle()
 
         assertEquals(true, vm.state.value.showReauthDialog)
     }

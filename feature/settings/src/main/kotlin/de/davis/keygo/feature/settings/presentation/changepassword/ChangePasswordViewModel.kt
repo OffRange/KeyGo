@@ -8,6 +8,7 @@ import de.davis.keygo.core.identity.domain.model.Reauthentication
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.identity.domain.usecase.ChangePasswordUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
@@ -15,15 +16,18 @@ import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
@@ -39,7 +43,25 @@ internal class ChangePasswordViewModel(
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChangePasswordState())
-    val state = _state.asStateFlow()
+
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
+    private val passwordStrength = snapshotFlow { _state.value.newPassword.text }
+        .debounce(150.milliseconds)
+        .distinctUntilChanged()
+        .mapLatest { text ->
+            passwordStrengthEstimator(text.toString())
+        }
+        // combine withholds its first emission until every input has emitted, so without a value
+        // up front the form would sit on initialValue until the debounce elapses.
+        .onStart { emit(PasswordScore.None) }
+
+    val state = combine(_state, passwordStrength) { baseState, score ->
+        baseState.copy(passwordScore = score)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = _state.value,
+    )
 
     // Buffered (not rendezvous): Success/GenericError are emitted from a background coroutine that
     // may complete before a collector subscribes; a one-shot navigation/error signal must not drop.
@@ -48,7 +70,6 @@ internal class ChangePasswordViewModel(
 
     init {
         resolveBiometricAvailability()
-        observePasswordStrength()
     }
 
     private fun resolveBiometricAvailability() {
@@ -65,18 +86,6 @@ internal class ChangePasswordViewModel(
                 )
             }
         }
-    }
-
-    @OptIn(FlowPreview::class)
-    private fun observePasswordStrength() {
-        snapshotFlow { _state.value.newPassword.text }
-            .debounce(150.milliseconds)
-            .distinctUntilChanged()
-            .onEach { text ->
-                val score = passwordStrengthEstimator(text.toString())
-                _state.update { it.copy(passwordScore = score) }
-            }
-            .launchIn(viewModelScope)
     }
 
     /**

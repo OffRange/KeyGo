@@ -16,14 +16,10 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -44,44 +40,16 @@ internal class GeneratePasswordViewModel(
     private val finalPasswordChannel = Channel<String>()
     val finalPassword = finalPasswordChannel.receiveAsFlow()
 
-    private val _generationState = MutableStateFlow(GeneratePasswordUiState())
-    val generationState = _generationState
-        .onStart {
-            observeLength()
-            observeCharacterSet()
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = GeneratePasswordUiState()
-        )
+    private val _characterSetFlow = MutableStateFlow(UiCharacterSet.ALL)
+    private val _manualGenerationTrigger = MutableStateFlow(0)
 
-    private fun observeLength() {
+    val generationState = combine(
         snapshotFlow { sliderState.value.toInt() }
             .debounce(150.milliseconds)
-            .distinctUntilChanged()
-            .onEach { newLength ->
-                generateAndUpdatePassword(length = newLength)
-            }
-            .flowOn(Dispatchers.Default)
-            .launchIn(viewModelScope)
-    }
-
-    private fun observeCharacterSet() {
-        generationState
-            .distinctUntilChangedBy { it.characterSet }
-            .map { it.characterSet }
-            .onEach { characterSet ->
-                generateAndUpdatePassword(characterSet = characterSet)
-            }
-            .flowOn(Dispatchers.Default)
-            .launchIn(viewModelScope)
-    }
-
-    private suspend fun generateAndUpdatePassword(
-        length: Int = sliderState.value.toInt(),
-        characterSet: UiCharacterSet = _generationState.value.characterSet,
-    ) {
+            .distinctUntilChanged(),
+        _characterSetFlow,
+        _manualGenerationTrigger,
+    ) { length, characterSet, _ ->
         val newPassword = passwordGenerator.generatePassword(
             length = length,
             useLowercase = characterSet.selected(UiCharacterSet.LOWERCASE),
@@ -90,31 +58,33 @@ internal class GeneratePasswordViewModel(
             useSymbols = characterSet.selected(UiCharacterSet.PUNCTUATIONS),
         )
         val score = passwordStrengthEstimator(newPassword)
-        _generationState.update { ui ->
-            ui.copy(generatedPassword = newPassword.asUiPassword(), passwordStrength = score)
-        }
+
+        GeneratePasswordUiState(
+            generatedPassword = newPassword.asUiPassword(),
+            passwordStrength = score,
+            characterSet = characterSet,
+            showCaution = characterSet != UiCharacterSet.ALL,
+        )
     }
+        .flowOn(Dispatchers.Default)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = GeneratePasswordUiState(),
+        )
 
     @OptIn(ExperimentalMaterial3Api::class)
     fun onEvent(event: GeneratePasswordUiEvent) {
         when (event) {
             is GeneratePasswordUiEvent.OnCharacterSetClick -> {
-                _generationState.update {
-                    val newCharacterSet = it.characterSet.toggle(event.uiCharacterSet)
-                    if (newCharacterSet == UiCharacterSet.NONE) return
-
-                    it.copy(
-                        characterSet = newCharacterSet,
-                        showCaution = newCharacterSet != UiCharacterSet.ALL,
-                    )
+                _characterSetFlow.update { currentSet ->
+                    val newCharacterSet = currentSet.toggle(event.uiCharacterSet)
+                    // Only update if it's valid, otherwise keep the old one
+                    if (newCharacterSet != UiCharacterSet.NONE) newCharacterSet else currentSet
                 }
             }
 
-            is GeneratePasswordUiEvent.OnGeneratePasswordClick -> {
-                viewModelScope.launch {
-                    generateAndUpdatePassword()
-                }
-            }
+            is GeneratePasswordUiEvent.OnGeneratePasswordClick -> _manualGenerationTrigger.update { it + 1 }
 
             is GeneratePasswordUiEvent.OnUseClick -> {
                 viewModelScope.launch {

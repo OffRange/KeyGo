@@ -40,7 +40,9 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -89,7 +91,11 @@ class ImportWizardViewModelTest {
         passkeys = emptyList(),
     )
 
-    private fun viewModel(
+    /**
+     * `state` is `WhileSubscribed`, so it only tracks `_state` while something collects it. Tests
+     * that read `viewModel.state.value` right after an event need that subscription to exist.
+     */
+    private fun TestScope.viewModel(
         resolver: FakeBackupDestinationResolver = FakeBackupDestinationResolver(),
         session: FakeSession = FakeSession(startOnConstruct = true),
         contextRepo: FakeVaultContextRepository = FakeVaultContextRepository(),
@@ -98,7 +104,7 @@ class ImportWizardViewModelTest {
         ImportBackupUseCase(fileStore, json, csv, env.restorer, session),
         AnalyzeCsvUseCase(fileStore, csv),
         ObserveVaultsAndSelectionUseCase(env.vaultRepo, contextRepo, SortUseCase()),
-    )
+    ).also { it.state.launchIn(backgroundScope) }
 
     private fun ImportWizardViewModel.selectJson() {
         onFilePicked(BackupDestinationUri("content://doc/keygo.json"))
@@ -162,6 +168,7 @@ class ImportWizardViewModelTest {
         val viewModel = viewModel()
 
         viewModel.onFilePicked(null)
+        advanceUntilIdle()
 
         assertNull(viewModel.state.value.backupDestination)
         assertNull(viewModel.state.value.uri)
@@ -262,6 +269,7 @@ class ImportWizardViewModelTest {
         advanceUntilIdle()
 
         viewModel.onEvent(ImportWizardUiEvent.Continue)
+        advanceUntilIdle()
 
         assertEquals(
             ImportProgress.Failed(ImportError.UnsupportedFormat),
@@ -280,6 +288,7 @@ class ImportWizardViewModelTest {
         viewModel.state.first { it.step == ImportWizardStep.MapColumns }
 
         viewModel.onEvent(ImportWizardUiEvent.ChangeColumnType(1, CsvColumnType.Username))
+        advanceUntilIdle()
 
         assertEquals(CsvColumnType.Username, viewModel.state.value.columns[1].selectedType)
     }
@@ -570,6 +579,7 @@ class ImportWizardViewModelTest {
         viewModel.state.first { it.step == ImportWizardStep.MapColumns }
 
         viewModel.onEvent(ImportWizardUiEvent.Back)
+        advanceUntilIdle()
 
         assertEquals(ImportWizardStep.SelectFile, viewModel.state.value.step)
     }
@@ -585,6 +595,7 @@ class ImportWizardViewModelTest {
         viewModel.state.first { it.step == ImportWizardStep.ProvidePassphrase }
 
         viewModel.onEvent(ImportWizardUiEvent.Back)
+        advanceUntilIdle()
 
         assertEquals(ImportWizardStep.SelectFile, viewModel.state.value.step)
     }
@@ -660,6 +671,9 @@ class ImportWizardViewModelTest {
         viewModel.onEvent(ImportWizardUiEvent.ChangeColumnType(1, CsvColumnType.Username))
         viewModel.onEvent(ImportWizardUiEvent.Back)
         viewModel.event.first()
+        // Let state catch up to the reset exit() made. It still reports MapColumns until it does,
+        // and the await below would match that stale value instead of the second seed's.
+        advanceUntilIdle()
 
         viewModel.seedFile(uri)
         val state = viewModel.state.first { it.step == ImportWizardStep.MapColumns }
@@ -690,6 +704,7 @@ class ImportWizardViewModelTest {
 
         viewModel.onEvent(ImportWizardUiEvent.Back)
         viewModel.event.first()
+        advanceUntilIdle()
 
         // This ViewModel is scoped to the host's back stack entry, so it outlives the visit. The
         // gap between handing control back and the host seeding a new file is exactly what a second
@@ -714,6 +729,7 @@ class ImportWizardViewModelTest {
 
             viewModel.onEvent(ImportWizardUiEvent.Back)
             viewModel.event.first()
+            advanceUntilIdle()
 
             // Same gap as above, but from a mapping rather than an error: the previous file's
             // column names are the tell if exit() left them behind.
