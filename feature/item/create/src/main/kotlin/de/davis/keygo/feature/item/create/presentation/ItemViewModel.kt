@@ -27,8 +27,6 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -60,7 +58,22 @@ internal abstract class ItemViewModel<S>(
 
     protected val selectedVaultId = MutableStateFlow<VaultId?>(null)
     private val assignedTags = MutableStateFlow<Set<Tag>>(emptySet())
-    private val nameExists = MutableStateFlow(false)
+
+    @OptIn(FlowPreview::class)
+    private val nameExists = snapshotFlow { nameTextFieldState.text }
+        .debounce(150.milliseconds)
+        .combine(selectedVaultId.filterNotNull()) { input, vaultId ->
+            itemRepository.doesNameExist(
+                input.toString(),
+                excludeId = itemId,
+                vaultId = vaultId,
+            )
+        }
+        .distinctUntilChanged()
+        .flowOn(Dispatchers.Default)
+        // A name the user has not typed yet cannot collide. Without a value up front, combine would
+        // hold the screen on ItemUiState.Loading for the debounce plus a doesNameExist round trip.
+        .onStart { emit(false) }
 
     private val vaults = combine(
         vaultRepository.observeAllVaultMetadata(),
@@ -97,8 +110,6 @@ internal abstract class ItemViewModel<S>(
         combine(itemState, shared) { item, shared -> ItemUiState.Ready(item, shared) }
             .onStart {
                 primeActiveVaultId()
-                observeNameTextField()
-                onSubscribed()
             }
             .stateIn(
                 scope = viewModelScope,
@@ -109,26 +120,6 @@ internal abstract class ItemViewModel<S>(
 
     private val itemCreatedEventChannel = Channel<ItemId?>()
     val itemCreatedEvent = itemCreatedEventChannel.receiveAsFlow()
-
-    /** Hook for subclasses to start their own observers when [state] gains its first subscriber. */
-    protected open suspend fun onSubscribed() {}
-
-    @OptIn(FlowPreview::class)
-    private fun observeNameTextField() {
-        snapshotFlow { nameTextFieldState.text }
-            .debounce(150.milliseconds)
-            .combine(selectedVaultId.filterNotNull()) { input, vaultId ->
-                itemRepository.doesNameExist(
-                    input.toString(),
-                    excludeId = itemId,
-                    vaultId = vaultId,
-                )
-            }
-            .distinctUntilChanged()
-            .onEach { exists -> nameExists.value = exists }
-            .flowOn(Dispatchers.Default)
-            .launchIn(viewModelScope)
-    }
 
     protected fun setSelectedVaultId(vaultId: VaultId) {
         selectedVaultId.value = vaultId

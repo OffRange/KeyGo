@@ -31,10 +31,10 @@ import de.davisalessandro.keygo.rust.ColumnMapping
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
@@ -44,19 +44,8 @@ internal class ImportWizardViewModel(
     private val backupDestinationResolver: BackupDestinationResolver,
     private val importBackup: ImportBackupUseCase,
     private val analyzeCsv: AnalyzeCsvUseCase,
-    private val observeVaultsAndSelection: ObserveVaultsAndSelectionUseCase,
+    observeVaultsAndSelection: ObserveVaultsAndSelectionUseCase,
 ) : ViewModel() {
-
-    private val passphraseState = TextFieldState()
-    private val newVaultNameState = TextFieldState()
-
-    private val _state = MutableStateFlow(
-        ImportWizardUiState(
-            passphraseState = passphraseState,
-            newVaultNameState = newVaultNameState,
-        ),
-    )
-    val state = _state.asStateFlow()
 
     private val _event = Channel<ImportWizardEvent>(Channel.BUFFERED)
     val event = _event.receiveAsFlow()
@@ -67,23 +56,36 @@ internal class ImportWizardViewModel(
     private var vaultStepSeeded = false
     private var seededUri: BackupDestinationUri? = null
 
-    init {
-        snapshotFlow { passphraseState.text.toString() }
-            .onEach { text -> _state.update { it.copy(passphraseValid = text.isNotBlank()) } }
-            .launchIn(viewModelScope)
 
-        snapshotFlow { newVaultNameState.text.toString() }
-            .onEach { text -> _state.update { it.copy(newVaultNameValid = text.isNotBlank()) } }
-            .launchIn(viewModelScope)
+    private val passphraseState = TextFieldState()
+    private val newVaultNameState = TextFieldState()
 
+    private val _state = MutableStateFlow(
+        ImportWizardUiState(
+            passphraseState = passphraseState,
+            newVaultNameState = newVaultNameState,
+        ),
+    )
+
+    val state = combine(
+        _state,
+        snapshotFlow { passphraseState.text.toString() },
+        snapshotFlow { newVaultNameState.text.toString() },
         observeVaultsAndSelection()
-            .onEach { (vaults, selection) ->
-                _state.update {
-                    it.copy(vaults = vaults, contextVaultId = selection.getIdOrNull())
-                }
-            }
-            .launchIn(viewModelScope)
-    }
+    ) { baseState, passphrase, vaultName, vaultData ->
+        val (vaults, selection) = vaultData
+
+        baseState.copy(
+            passphraseValid = passphrase.isNotBlank(),
+            newVaultNameValid = vaultName.isNotBlank(),
+            vaults = vaults,
+            contextVaultId = selection.getIdOrNull()
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = _state.value
+    )
 
     fun onEvent(event: ImportWizardUiEvent) {
         when (event) {
@@ -182,7 +184,11 @@ internal class ImportWizardViewModel(
         analysisJob = viewModelScope.launch {
             analyzeCsv(uri).fold(
                 onSuccess = ::onAnalyzed,
-                onFailure = { error -> _state.update { it.copy(progress = ImportProgress.Failed(error)) } },
+                onFailure = { error ->
+                    _state.update {
+                        it.copy(progress = ImportProgress.Failed(error))
+                    }
+                },
             )
         }
     }
@@ -220,7 +226,10 @@ internal class ImportWizardViewModel(
         }
         vaultStepSeeded = true
 
-        val current = _state.value
+        // state, not _state: the vault list and the vault context are folded in by the flow above
+        // and never written back, so _state has neither. This runs from a Continue tap, so the
+        // screen is collecting and the values are present.
+        val current = state.value
         val contextVault = current.contextVaultId
             ?.takeIf { id -> current.vaults.any { it.vaultId == id } }
 
@@ -242,7 +251,8 @@ internal class ImportWizardViewModel(
 
         startImport(
             passphrase = null,
-            csvMapping = current.columns.associate { it.index to it.selectedType }.toColumnMapping(),
+            csvMapping = current.columns.associate { it.index to it.selectedType }
+                .toColumnMapping(),
             target = target,
         )
     }

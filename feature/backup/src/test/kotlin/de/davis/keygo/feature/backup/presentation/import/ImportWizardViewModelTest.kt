@@ -40,7 +40,9 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -89,7 +91,11 @@ class ImportWizardViewModelTest {
         passkeys = emptyList(),
     )
 
-    private fun viewModel(
+    /**
+     * `state` is `WhileSubscribed`, so it only tracks `_state` while something collects it. Tests
+     * that read `viewModel.state.value` right after an event need that subscription to exist.
+     */
+    private fun TestScope.viewModel(
         resolver: FakeBackupDestinationResolver = FakeBackupDestinationResolver(),
         session: FakeSession = FakeSession(startOnConstruct = true),
         contextRepo: FakeVaultContextRepository = FakeVaultContextRepository(),
@@ -98,7 +104,7 @@ class ImportWizardViewModelTest {
         ImportBackupUseCase(fileStore, json, csv, env.restorer, session),
         AnalyzeCsvUseCase(fileStore, csv),
         ObserveVaultsAndSelectionUseCase(env.vaultRepo, contextRepo, SortUseCase()),
-    )
+    ).also { it.state.launchIn(backgroundScope) }
 
     private fun ImportWizardViewModel.selectJson() {
         onFilePicked(BackupDestinationUri("content://doc/keygo.json"))

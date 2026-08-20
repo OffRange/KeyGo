@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.repository.VaultContextRepository
@@ -51,12 +52,12 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
@@ -90,29 +91,25 @@ internal class LoginViewModel(
         )
     )
 
-    override val itemState: Flow<LoginBaseState> = _base
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
+    private val passwordScoreFlow = snapshotFlow { passwordTextFieldState.text }
+        .debounce(150.milliseconds)
+        .mapLatest { passwordStrengthEstimator(it.toString()) }
+        .distinctUntilChanged()
+        .flowOn(Dispatchers.Default)
+        // Scoring is dictionary-backed and debounced. Without a value up front, combine would keep
+        // the whole form on ItemUiState.Loading until the first estimate lands.
+        .onStart { emit(PasswordScore.None) }
 
-    override suspend fun onSubscribed() {
-        observePasswordTextField()
+    override val itemState: Flow<LoginBaseState> = combine(
+        passwordScoreFlow,
+        _base,
+    ) { score, base ->
+        base.copy(strengthScore = score)
     }
 
     private var totpSecretInformation: TotpInfo? = null
     private var totpOriginalUri: String? = null
-
-    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
-    private fun observePasswordTextField() {
-        snapshotFlow { passwordTextFieldState.text }
-            .debounce(150.milliseconds)
-            .mapLatest { passwordStrengthEstimator(it.toString()) }
-            .distinctUntilChanged()
-            .onEach { score ->
-                _base.update {
-                    it.copy(strengthScore = score)
-                }
-            }
-            .flowOn(Dispatchers.Default)
-            .launchIn(viewModelScope)
-    }
 
     /**
      * Shows a passkey for [rp] as pending until the item is saved.
