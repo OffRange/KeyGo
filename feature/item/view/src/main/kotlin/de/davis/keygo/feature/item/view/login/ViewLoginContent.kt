@@ -92,6 +92,7 @@ import de.davis.keygo.feature.item.view.login.model.ViewLoginUiEvent
 import de.davis.keygo.feature.item.view.onHold
 import de.davis.keygo.feature.totp.domain.model.TotpValue
 import de.davis.keygo.feature.totp.presentation.component.QRScanner
+import de.davis.keygo.feature.totp.presentation.component.TotpParseErrorDialog
 import de.davis.keygo.core.item.R as CoreItemR
 import de.davis.keygo.core.ui.R as CoreUiR
 import de.davis.keygo.feature.item.core.R as ItemCoreR
@@ -458,6 +459,13 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                 },
             )
         }
+    }
+
+    if (state.totpParseError) {
+        TotpParseErrorDialog(
+            onDismiss = { onEvent(ViewLoginUiEvent.OnTotpParseErrorDismiss) },
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 
     if (state.scanning) {

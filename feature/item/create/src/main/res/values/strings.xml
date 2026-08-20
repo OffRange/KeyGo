@@ -11,9 +11,6 @@
     <string name="override_totp_fields">Override TOTP fields?</string>
     <string name="overriding_totp_fields_description">The current item has the following TOTP fields that differ from the fields specified in the totp information. Select fields you want to override.</string>
 
-    <string name="totp_parse_error">TOTP Parse Error</string>
-    <string name="totp_parse_error_description">The TOTP code could not be parsed.</string>
-
     <string name="totp_secret">TOTP Secret</string>
 
     <string name="override">Override</string>
@@ -29,7 +26,6 @@
     <string name="existing_entries_found_description">One or more entries match the issuer or account name from the totp code. Would you like to update an existing entry or create a new one?</string>
 
     <string name="warning">Warning</string>
-    <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
 
     <string name="delete_passkey">Delete Passkey</string>

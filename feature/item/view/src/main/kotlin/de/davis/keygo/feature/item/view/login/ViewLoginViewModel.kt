@@ -16,6 +16,7 @@ import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
+import de.davis.keygo.core.util.isSuccess
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.item.core.domain.model.ItemUpsertError
@@ -76,6 +77,7 @@ internal class ViewLoginViewModel(
 
     private val _modificationDialogState = MutableStateFlow<ModificationDialog?>(null)
     private val _scanning = MutableStateFlow(false)
+    private val _totpParseError = MutableStateFlow(false)
     private val _itemId = MutableStateFlow<ItemId?>(null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -135,10 +137,12 @@ internal class ViewLoginViewModel(
         _stateWithoutModification,
         _modificationDialogState,
         _scanning,
-    ) { state, modificationDialog, scanning ->
+        _totpParseError,
+    ) { state, modificationDialog, scanning, totpParseError ->
         state.copy(
             modificationDialog = modificationDialog,
             scanning = scanning,
+            totpParseError = totpParseError,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -230,10 +234,14 @@ internal class ViewLoginViewModel(
 
             is ViewLoginUiEvent.OnCodesScanned -> {
                 _scanning.update { false }
-                val uriOrSecret = event.codes.firstNotNullOfOrNull { qrCode ->
-                    // This just validates whether `qrCode` is a valid totp uri - we return qrCode
-                    totpService.getInfoFromUriWithResult(qrCode).getOrNull()?.let { qrCode }
-                } ?: return
+                val uriOrSecret = event.codes.firstOrNull {
+                    totpService.getInfoFromUriWithResult(it).isSuccess()
+                }
+
+                if (uriOrSecret == null) {
+                    _totpParseError.update { true }
+                    return
+                }
 
                 _itemId.value?.let { id ->
                     viewModelScope.launch {
@@ -245,6 +253,10 @@ internal class ViewLoginViewModel(
                         )
                     }
                 }
+            }
+
+            ViewLoginUiEvent.OnTotpParseErrorDismiss -> {
+                _totpParseError.update { false }
             }
 
             is ViewLoginUiEvent.OnSubmitModification -> {

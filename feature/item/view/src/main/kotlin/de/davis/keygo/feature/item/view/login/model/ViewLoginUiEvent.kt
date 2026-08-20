@@ -16,4 +16,5 @@ sealed interface ViewLoginUiEvent {
 
     data object OnScanCodeRequest : ViewLoginUiEvent
     data class OnCodesScanned(val codes: List<String>) : ViewLoginUiEvent
+    data object OnTotpParseErrorDismiss : ViewLoginUiEvent
 }
