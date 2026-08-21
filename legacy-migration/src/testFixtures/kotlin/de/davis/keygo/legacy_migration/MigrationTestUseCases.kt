@@ -1,10 +1,10 @@
 package de.davis.keygo.legacy_migration
 
+import de.davis.keygo.legacy_migration.data.FakeLegacyPreferencesRepository
 import de.davis.keygo.legacy_migration.data.repository.HashValidatorImpl
 import de.davis.keygo.legacy_migration.domain.model.LegacyMigrationOutcome
 import de.davis.keygo.legacy_migration.domain.usecase.ClearMainPasswordUseCase
 import de.davis.keygo.legacy_migration.domain.usecase.HasMainPasswordUseCase
-import de.davis.keygo.legacy_migration.domain.usecase.LegacyDataImporter
 import de.davis.keygo.legacy_migration.domain.usecase.RunPendingMigrationUseCase
 import de.davis.keygo.legacy_migration.domain.usecase.ValidateMainPasswordUseCase
 import kotlinx.coroutines.CoroutineScope
@@ -31,10 +31,11 @@ fun runPendingMigrationUseCase(
     onImport: () -> Unit = {},
 ): RunPendingMigrationUseCase = RunPendingMigrationUseCase(
     hasMainPassword = hasMainPasswordUseCase(repository),
-    importLegacyData = LegacyDataImporter {
+    importLegacyData = {
         onImport()
         outcome
     },
+    legacyPreferencesRepository = FakeLegacyPreferencesRepository(),
     clearMainPassword = clearMainPasswordUseCase(repository),
     scope = scope,
 )

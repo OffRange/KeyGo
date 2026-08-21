@@ -2,6 +2,7 @@ package de.davis.keygo.legacy_migration.domain.usecase
 
 import de.davis.keygo.legacy_migration.FakeMainPasswordRepository
 import de.davis.keygo.legacy_migration.clearMainPasswordUseCase
+import de.davis.keygo.legacy_migration.data.FakeLegacyPreferencesRepository
 import de.davis.keygo.legacy_migration.domain.model.LegacyFailureReason
 import de.davis.keygo.legacy_migration.domain.model.LegacyMigrationOutcome
 import de.davis.keygo.legacy_migration.domain.model.LegacyMigrationReport
@@ -22,6 +23,7 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -32,6 +34,8 @@ class RunPendingMigrationUseCaseTest {
 
     private val mainPasswordRepository = FakeMainPasswordRepository(hash = "a-v1-bcrypt-hash")
 
+    private val preferencesRepository = FakeLegacyPreferencesRepository()
+
     private var importsRun = 0
 
     private fun TestScope.useCase(importer: LegacyDataImporter) = RunPendingMigrationUseCase(
@@ -40,6 +44,7 @@ class RunPendingMigrationUseCaseTest {
             importsRun++
             importer()
         },
+        legacyPreferencesRepository = preferencesRepository,
         clearMainPassword = clearMainPasswordUseCase(mainPasswordRepository),
         // One the scheduler can see, so a run still starts outside the caller's coroutine.
         scope = backgroundScope,
@@ -77,6 +82,37 @@ class RunPendingMigrationUseCaseTest {
 
         assertEquals(MigrationResult.Completed(skippedItems = 0), result)
         assertEquals("", mainPasswordRepository.hash)
+    }
+
+    @Test
+    fun `takes v1's settings file with the marker`() = runTest {
+        useCase { migrated() }()
+
+        assertTrue(preferencesRepository.deleted)
+    }
+
+    @Test
+    fun `takes v1's settings file when there was nothing to migrate`() = runTest {
+        useCase { LegacyMigrationOutcome.NothingToMigrate }()
+
+        assertTrue(preferencesRepository.deleted)
+    }
+
+    @Test
+    fun `leaves v1's settings file while the marker survives`() = runTest {
+        useCase { migrated(fileRetained = true) }()
+
+        assertFalse(preferencesRepository.deleted)
+        assertEquals("a-v1-bcrypt-hash", mainPasswordRepository.hash)
+    }
+
+    @Test
+    fun `never touches the settings file on an install that never ran v1`() = runTest {
+        mainPasswordRepository.hash = ""
+
+        useCase { migrated() }()
+
+        assertFalse(preferencesRepository.deleted)
     }
 
     /**

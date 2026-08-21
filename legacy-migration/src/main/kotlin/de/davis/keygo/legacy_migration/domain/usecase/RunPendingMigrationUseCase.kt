@@ -4,6 +4,7 @@ import android.util.Log
 import de.davis.keygo.legacy_migration.di.annotation.MigrationScopeQualifier
 import de.davis.keygo.legacy_migration.domain.model.LegacyMigrationOutcome
 import de.davis.keygo.legacy_migration.domain.model.MigrationResult
+import de.davis.keygo.legacy_migration.domain.repository.LegacyPreferencesRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
@@ -29,6 +30,7 @@ import kotlin.coroutines.cancellation.CancellationException
 class RunPendingMigrationUseCase internal constructor(
     private val hasMainPassword: HasMainPasswordUseCase,
     private val importLegacyData: LegacyDataImporter,
+    private val legacyPreferencesRepository: LegacyPreferencesRepository,
     private val clearMainPassword: ClearMainPasswordUseCase,
 
     @param:MigrationScopeQualifier
@@ -69,7 +71,7 @@ class RunPendingMigrationUseCase internal constructor(
             // Exhaustive rather than an else, so an outcome added later cannot default into the
             // branch that drops the user's v1 credential.
             LegacyMigrationOutcome.NothingToMigrate -> {
-                clearMainPassword()
+                finish()
                 MigrationResult.Completed(skippedItems = 0)
             }
 
@@ -82,10 +84,15 @@ class RunPendingMigrationUseCase internal constructor(
                 // The cost is a prune that keeps failing while the rows are already in v2, which
                 // reimports them on every unlock. That is a duplicate the user can see and undo;
                 // the alternative is a v1 database they cannot.
-                if (outcome.nothingLeftToImport) clearMainPassword()
+                if (outcome.nothingLeftToImport) finish()
                 MigrationResult.Completed(skippedItems = outcome.report.failures.size)
             }
         }
+    }
+
+    private suspend fun finish() {
+        legacyPreferencesRepository.deleteLegacyPreferences()
+        clearMainPassword()
     }
 
     private fun incomplete(cause: Throwable): MigrationResult.Incomplete {

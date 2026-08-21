@@ -4,15 +4,16 @@ import com.google.protobuf.timestamp
 import de.davis.keygo.legacy_migration.data.local.datasource.LEGACY_DATABASE_NAME
 import de.davis.keygo.legacy_migration.data.local.model.protoMainPassword
 import de.davis.keygo.legacy_migration.data.repository.LEGACY_KEY_ALIAS
+import de.davis.keygo.legacy_migration.data.repository.legacyPreferencesName
 import de.davis.keygo.legacy_migration.di.MAIN_PASSWORD_DATA_STORE_NAME
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 
 /**
- * The four names below are the identity of a shipped v1 install's data on disk. Renaming the module
+ * The five names below are the identity of a shipped v1 install's data on disk. Renaming the module
  * or the Kotlin package around them is safe. Renaming them is not: it orphans the user's database,
- * their main password record or their item key, with no way back.
+ * their main password record, their item key or their settings, with no way back.
  *
  * These assertions look tautological on purpose. They are here so that changing one of the values
  * cannot be done quietly.
@@ -32,6 +33,14 @@ class OnDiskIdentityTest {
     @Test
     fun `legacy keystore alias keeps v1's value`() {
         assertEquals("password_manager_skey", LEGACY_KEY_ALIAS)
+    }
+
+    @Test
+    fun `legacy preferences keep v1's file name`() {
+        assertEquals(
+            "de.davis.passwordmanager_preferences",
+            legacyPreferencesName("de.davis.passwordmanager"),
+        )
     }
 
     /**
