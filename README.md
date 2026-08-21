@@ -44,7 +44,7 @@ features, like generating backups.
 If you are using Linux or macOS, simply run this in your terminal:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf [https://sh.rustup.rs](https://sh.rustup.rs) | sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 *(For Windows, download the installer from the [official Rust website](https://rustup.rs/).)*
