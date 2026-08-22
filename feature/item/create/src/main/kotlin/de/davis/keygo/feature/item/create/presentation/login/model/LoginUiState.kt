@@ -37,6 +37,7 @@ internal data class LoginBaseState(
     val generatePasswordBottomSheetVisible: Boolean = false,
     val dialogState: DialogState = DialogState.None,
     val nameError: InputFieldError? = null,
+    val totpError: InputFieldError? = null,
     val scanning: Boolean = false,
     val updating: Boolean = false,
 ) {
