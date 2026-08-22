@@ -14,7 +14,6 @@ import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.combine
-import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
 import de.davis.keygo.feature.list_screen.presentation.mapper.toAvailableFilterOptions
@@ -24,11 +23,9 @@ import de.davis.keygo.feature.list_screen.presentation.model.FilterAction
 import de.davis.keygo.feature.list_screen.presentation.model.FilterBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.ListItemState
 import de.davis.keygo.feature.vault.domain.usecase.ObserveVaultsAndSelectionUseCase
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,7 +57,6 @@ private val SEARCH_DEBOUNCE = 300.milliseconds
 internal class ItemListViewModel(
     @InjectedParam private val enableSelection: Boolean,
     @InjectedParam private val restrictedItemType: VaultItemType?,
-    private val snackbarManager: SnackbarManager,
     private val itemRepository: ItemRepository,
     private val filterUseCase: FilterUseCase,
     observeAllTags: ObserveAllTagsSortedUseCase,
@@ -78,15 +74,9 @@ internal class ItemListViewModel(
     private val submittedSearchQuery = MutableStateFlow("")
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val itemSource = submittedSearchQuery.flatMapLatest(::queryToItems)
-
-    private val flaggedForDeletion = MutableStateFlow(setOf<ItemId>())
-    private val nonDeletedItems = combine(
-        itemSource,
-        flaggedForDeletion
-    ) { items, flagged ->
-        items.filterNot { item -> item.id in flagged }
-    }.distinctUntilChanged()
+    private val itemSource = submittedSearchQuery
+        .flatMapLatest(::queryToItems)
+        .distinctUntilChanged()
 
     private val passwordScores = loginRepository.observePasswordScores()
 
@@ -102,7 +92,7 @@ internal class ItemListViewModel(
         }
 
     private val filteredItems = combine(
-        nonDeletedItems,
+        itemSource,
         filterState,
         passwordScores,
         tagFilteredItemIds,
@@ -113,6 +103,7 @@ internal class ItemListViewModel(
     private val selectedItemIds = MutableStateFlow(emptySet<ItemId>())
     private val highlightedId = MutableStateFlow<ItemId?>(null)
     private val _isVaultFlowVisible = MutableStateFlow(false)
+    private val _isDeleteConfirmationVisible = MutableStateFlow(false)
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private val searchResults = snapshotFlow { searchTextFieldState.text }
@@ -135,7 +126,8 @@ internal class ItemListViewModel(
         submittedSearchQuery,
         highlightedId,
         _isVaultFlowVisible,
-    ) { vaultsAndSel, items, searchResults, selectedIds, submittedSearchQuery, highlightedId, isVaultFlowVisible ->
+        _isDeleteConfirmationVisible,
+    ) { vaultsAndSel, items, searchResults, selectedIds, submittedSearchQuery, highlightedId, isVaultFlowVisible, isDeleteConfirmationVisible ->
         ListItemState(
             items = items,
             searchResults = searchResults,
@@ -143,6 +135,7 @@ internal class ItemListViewModel(
             selectedItemIds = selectedIds,
             highlightedId = highlightedId,
             isVaultFlowVisible = isVaultFlowVisible,
+            isDeleteConfirmationVisible = isDeleteConfirmationVisible,
             vaults = vaultsAndSel.vaults,
             vaultContext = vaultsAndSel.selection,
         )
@@ -154,7 +147,7 @@ internal class ItemListViewModel(
         )
 
     private val availableFilterOptions = combine(
-        nonDeletedItems,
+        itemSource,
         passwordScores,
         itemRepository.observeTagsByItem(),
         observeAllTags(),
@@ -215,12 +208,12 @@ internal class ItemListViewModel(
     private fun <T> Set<T>.toggle(element: T): Set<T> =
         if (element in this) this - element else this + element
 
-    private suspend fun queryToItems(
+    private fun queryToItems(
         query: String,
         forceSearchAllVaults: Boolean = false
     ): Flow<List<LiteItem>> =
         (if (!forceSearchAllVaults && query.isBlank()) vaultSpecificItems
-        else flowOf(itemRepository.searchVaultItem(query, restrictedItemType)))
+        else itemRepository.searchVaultItem(query, restrictedItemType))
 
     fun onSubmitQuery() {
         submittedSearchQuery.update { searchTextFieldState.text.toString() }
@@ -239,31 +232,40 @@ internal class ItemListViewModel(
         submittedSearchQuery.update { "" }
     }
 
-    fun onDelete(itemId: ItemId) {
-        updateItemSelectionState(itemId, selected = false)
-        updateItemDeletionState(itemId, deleted = true)
+    fun onSelectAll() {
+        if (!enableSelection) return
 
-        val firstItemId = listItemState.value.items.firstOrNull()?.id
-        if (highlightedId.value == itemId)
+        selectedItemIds.update { listItemState.value.items.mapTo(mutableSetOf()) { it.id } }
+    }
+
+    fun onClearSelection() {
+        selectedItemIds.update { emptySet() }
+    }
+
+    fun onDeleteSelectedRequest() {
+        if (selectedItemIds.value.isNotEmpty()) _isDeleteConfirmationVisible.update { true }
+    }
+
+    fun onDismissDeleteConfirmation() {
+        _isDeleteConfirmationVisible.update { false }
+    }
+
+    fun onConfirmDeleteSelected() {
+        _isDeleteConfirmationVisible.update { false }
+
+        val deleted = selectedItemIds.getAndUpdate { emptySet() }
+        if (deleted.isEmpty()) return
+
+        // Read off the list still on screen: after the delete lands the flow has already dropped
+        // these rows, so the survivor has to be picked before the write.
+        val firstItemId = listItemState.value.items.firstOrNull { it.id !in deleted }?.id
+        if (highlightedId.value in deleted)
             highlightedId.update { firstItemId }
 
-        _event.trySend(Event.ItemDeleted(itemId, firstItemId))
-
-        snackbarManager.sendMessage(
-            ItemDeletedMessage(
-                onClick = {
-                    updateItemDeletionState(itemId, deleted = false)
-                },
-                onDismiss = {
-                    viewModelScope.launch {
-                        itemRepository.deleteItem(itemId)
-
-                        // Inside this coroutine to ensure it only runs after the deletion
-                        updateItemDeletionState(itemId, deleted = false)
-                    }
-                }
-            )
-        )
+        viewModelScope.launch {
+            itemRepository.deleteItems(deleted)
+            _event.trySend(Event.ItemsDeleted(deleted, firstItemId))
+        }
     }
 
 
@@ -292,22 +294,4 @@ internal class ItemListViewModel(
         }
     }
 
-    private fun updateItemDeletionState(id: ItemId, deleted: Boolean) {
-        flaggedForDeletion.update { currentDeletedIds ->
-            if (deleted) currentDeletedIds + id
-            else currentDeletedIds - id
-        }
-    }
-
-    override fun onCleared() {
-        // Delete all flagged items, once the viewmodel is being cleared
-        val pendingDeletions = flaggedForDeletion.getAndUpdate { emptySet() }
-        if (pendingDeletions.isNotEmpty()) {
-            CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-                pendingDeletions.forEach { itemId ->
-                    itemRepository.deleteItem(itemId)
-                }
-            }
-        }
-    }
 }

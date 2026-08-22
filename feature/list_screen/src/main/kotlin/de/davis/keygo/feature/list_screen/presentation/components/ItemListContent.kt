@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.list_screen.presentation.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
@@ -72,7 +73,11 @@ internal fun ItemListContent(
     onFilterAction: (FilterAction) -> Unit,
     onItemClick: (ItemId, forceSkipSelection: Boolean) -> Unit,
     onItemLongClick: (ItemId) -> Unit,
-    onDelete: (ItemId) -> Unit,
+    onClearSelection: () -> Unit,
+    onSelectAll: () -> Unit,
+    onDeleteSelectedRequest: () -> Unit,
+    onDismissDeleteConfirmation: () -> Unit,
+    onConfirmDeleteSelected: () -> Unit,
     onVaultSelectorClick: () -> Unit,
     onDismissVaultFlow: () -> Unit,
     scrollBehavior: SearchBarScrollBehavior,
@@ -103,14 +108,33 @@ internal fun ItemListContent(
     if (uiState.isVaultFlowVisible)
         VaultFlow(onDismiss = onDismissVaultFlow)
 
+    if (uiState.isDeleteConfirmationVisible)
+        DeleteItemsDialog(
+            itemCount = uiState.selectedItemIds.size,
+            onConfirm = onConfirmDeleteSelected,
+            onDismiss = onDismissDeleteConfirmation,
+        )
+
+    // Leaving a selection is what back means first, ahead of leaving the screen.
+    BackHandler(enabled = uiState.isSelectionActive, onBack = onClearSelection)
+
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            AppBarWithSearch(
-                state = searchBarState,
-                inputField = searchInputField,
-                scrollBehavior = scrollBehavior
-            )
+            if (uiState.isSelectionActive)
+                SelectionTopBar(
+                    selectedCount = uiState.selectedItemIds.size,
+                    canDelete = enableDeletion,
+                    onClearSelection = onClearSelection,
+                    onSelectAll = onSelectAll,
+                    onDeleteSelected = onDeleteSelectedRequest,
+                )
+            else
+                AppBarWithSearch(
+                    state = searchBarState,
+                    inputField = searchInputField,
+                    scrollBehavior = scrollBehavior
+                )
 
             val searchResultContent: @Composable ColumnScope.() -> Unit = {
                 val scope = rememberCoroutineScope()
@@ -206,11 +230,9 @@ internal fun ItemListContent(
 
                     KeyGoColumn(
                         items = items,
-                        onDelete = onDelete,
                         onItemClick = { onItemClick(it, false) },
                         onItemLongClick = onItemLongClick,
                         modifier = Modifier.padding(horizontal = 8.dp),
-                        enableSwipeToDelete = enableDeletion,
                         openedItemId = if (autoSelectFirst) uiState.highlightedId else null,
                         selectedItemIds = uiState.selectedItemIds
                     )
@@ -279,7 +301,11 @@ private fun ItemListContentPreview() {
                 onFilterAction = {},
                 onItemClick = { _, _ -> },
                 onItemLongClick = {},
-                onDelete = {},
+                onClearSelection = {},
+                onSelectAll = {},
+                onDeleteSelectedRequest = {},
+                onDismissDeleteConfirmation = {},
+                onConfirmDeleteSelected = {},
                 onVaultSelectorClick = {},
                 onDismissVaultFlow = {},
                 scrollBehavior = scrollBehavior

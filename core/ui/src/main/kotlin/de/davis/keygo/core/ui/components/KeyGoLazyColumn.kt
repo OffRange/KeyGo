@@ -17,7 +17,9 @@ import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
@@ -32,7 +34,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
@@ -59,28 +60,13 @@ data class KeyGoColumnItem<ID : Any>(
 @Composable
 fun <ID : Any> KeyGoColumn(
     items: List<KeyGoColumnItem<ID>>,
-    onDelete: (ID) -> Unit,
     onItemClick: (ID) -> Unit,
     onItemLongClick: (ID) -> Unit,
     modifier: Modifier = Modifier,
-    enableSwipeToDelete: Boolean = true,
     openedItemId: ID? = null,
     selectedItemIds: Set<ID> = emptySet(),
 ) {
-    val (firstInGroupIndices, lastInGroupIndices) = remember(items) {
-        val first = mutableSetOf<Int>()
-        val last = mutableSetOf<Int>()
-
-        for (i in items.indices) {
-            if (i == 0 || items[i].header != items[i - 1].header) first.add(i)
-            if (i == items.lastIndex || items[i].header != items[i + 1].header) last.add(i)
-        }
-
-        first to last
-    }
-
     val listState = rememberLazyListState()
-    val shapeCoordinator = rememberSegmentedShapeCoordinator()
 
     @Composable
     fun containerColorForId(id: ID): Color =
@@ -99,47 +85,31 @@ fun <ID : Any> KeyGoColumn(
             ) { index, item ->
                 val id = item.id
 
-                val isFirst = index in firstInGroupIndices
-                val isLast = index in lastInGroupIndices
+                val isFirst = items.isFirstInGroup(index)
+                val isLast = items.isLastInGroup(index)
 
                 val bottomPadding = if (isLast && index != items.lastIndex) GroupVerticalPadding
                 else 0.dp
 
                 val containerColor by animateColorAsState(containerColorForId(id))
 
-                DeletableVaultItem(
-                    title = item.title,
-                    description = item.itemType.presentation.first,
+                SegmentedListItem(
                     onClick = { onItemClick(id) },
                     onLongClick = { onItemLongClick(id) },
-                    onDeleteRequested = {
-                        onDelete(id)
-                        // We return false here because it allows the swipe state to reset.
-                        // When an item is successfully deleted, a new list containing the
-                        // remaining items will be provided, causing the list to recompose
-                        // with the updated data. The swipe state doesn't need to persist beyond
-                        // the delete action, so resetting it is appropriate.
-                        // If an error occurs during deletion and the item isn't removed, the
-                        // swipe state will reset automatically since no new list is provided
-                        // and no recomposition occurs. This ensures the UI remains consistent.
-                        false
-                    },
-                    shapeCoordinator = shapeCoordinator,
-                    itemIndex = index,
-                    isFirst = isFirst,
-                    isLast = isLast,
+                    shapes = segmentedShapesFor(isFirst = isFirst, isLast = isLast),
+                    colors = ListItemDefaults.segmentedColors(
+                        containerColor = containerColor,
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    ),
                     modifier = Modifier
                         .padding(bottom = bottomPadding)
                         .expressiveAnimateItem(),
-                    selected = id in selectedItemIds,
-                    containerColor = containerColor,
-                    enableSwipeToDelete = enableSwipeToDelete,
                     leadingContent = {
                         val isFirstVisibleItem by remember(index) {
                             derivedStateOf { listState.firstVisibleItemIndex == index }
                         }
 
-                        if (index in firstInGroupIndices && !isFirstVisibleItem) {
+                        if (isFirst && !isFirstVisibleItem) {
                             KeyGoInlineHeader(
                                 header = item.header,
                                 color = contentColorFor(containerColorForId(id))
@@ -147,8 +117,14 @@ fun <ID : Any> KeyGoColumn(
                         } else {
                             Spacer(modifier = Modifier.headerSize())
                         }
-                    }
-                )
+                    },
+                    supportingContent = {
+                        Text(text = item.itemType.presentation.first)
+                    },
+                    selected = id in selectedItemIds,
+                ) {
+                    Text(text = item.title)
+                }
             }
         }
 
@@ -164,13 +140,14 @@ fun <ID : Any> KeyGoColumn(
         }
 
         val density = LocalDensity.current
-        val headerOffset by remember(listState, lastInGroupIndices, density) {
+        val headerOffset by remember(listState, items, density) {
             derivedStateOf {
                 val offset = with(density) {
                     IntOffset(16.dp.roundToPx(), (10.dp + 6.dp).roundToPx())
                 }
 
-                if (listState.firstVisibleItemIndex in lastInGroupIndices)
+                val index = listState.firstVisibleItemIndex
+                if (index in items.indices && items.isLastInGroup(index))
                     offset.copy(y = offset.y - listState.firstVisibleItemScrollOffset)
                 else offset
             }
@@ -192,15 +169,6 @@ fun <ID : Any> KeyGoColumn(
             }
         }
 
-        val headerAlpha by remember(shapeCoordinator, listState) {
-            derivedStateOf {
-                val swiping = shapeCoordinator.swipingIndex ?: return@derivedStateOf 1f
-                if (swiping == listState.firstVisibleItemIndex)
-                    1f - shapeCoordinator.swipingProgress * 2f
-                else 1f
-            }
-        }
-
         val color by animateColorAsState(
             contentColorFor(containerColorForId(idBehindHeader))
         )
@@ -210,9 +178,6 @@ fun <ID : Any> KeyGoColumn(
             color = color,
             modifier = Modifier
                 .offset { headerOffset }
-                .graphicsLayer {
-                    alpha = headerAlpha
-                }
                 .onGloballyPositioned {
                     headerPositionY =
                         it.positionInParent().y + it.size.height / 2f + with(density) {
@@ -221,6 +186,20 @@ fun <ID : Any> KeyGoColumn(
                 }
         )
     }
+}
+
+private fun List<KeyGoColumnItem<*>>.isFirstInGroup(index: Int) =
+    index == 0 || this[index].header != this[index - 1].header
+
+private fun List<KeyGoColumnItem<*>>.isLastInGroup(index: Int) =
+    index == lastIndex || this[index].header != this[index + 1].header
+
+@Composable
+private fun segmentedShapesFor(isFirst: Boolean, isLast: Boolean): ListItemShapes = when {
+    isFirst && isLast -> ListItemDefaults.shapes(MaterialTheme.shapes.large)
+    isFirst -> ListItemDefaults.segmentedShapes(index = 0, count = 3)
+    isLast -> ListItemDefaults.segmentedShapes(index = 2, count = 3)
+    else -> ListItemDefaults.segmentedShapes(index = 1, count = 3)
 }
 
 @Composable
@@ -290,7 +269,6 @@ private fun KeyGoLazyColumnPreview() {
         Surface {
             KeyGoColumn(
                 items = items,
-                onDelete = {},
                 onItemClick = {},
                 onItemLongClick = {},
             )

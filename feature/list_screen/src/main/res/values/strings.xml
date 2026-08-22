@@ -2,12 +2,21 @@
 <resources>
     <string name="search_your_vault">Search your Vault</string>
 
-    <plurals name="items_deleted">
-        <item quantity="one">1 item deleted</item>
-        <item quantity="other">%d items deleted</item>
+    <string name="selected_count">%d selected</string>
+    <string name="clear_selection">Clear selection</string>
+    <string name="select_all">Select all</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+
+    <plurals name="delete_items_title">
+        <item quantity="one">Delete item?</item>
+        <item quantity="other">Delete %d items?</item>
     </plurals>
 
-    <string name="undo">Undo</string>
+    <plurals name="delete_items_message">
+        <item quantity="one">This item will be permanently deleted. This cannot be undone.</item>
+        <item quantity="other">These %d items will be permanently deleted. This cannot be undone.</item>
+    </plurals>
     <string name="filter">Filter</string>
     <string name="sort_order">Sort order</string>
 

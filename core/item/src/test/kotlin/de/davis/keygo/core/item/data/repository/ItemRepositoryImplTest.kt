@@ -5,6 +5,7 @@ import de.davis.keygo.core.item.data.local.dao.ItemDao
 import de.davis.keygo.core.item.data.local.dao.TagDao
 import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
 import de.davis.keygo.core.item.data.local.pojo.ItemTagProjection
+import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.Tag
 import io.mockk.coEvery
@@ -46,26 +47,57 @@ class ItemRepositoryImplTest {
     fun tearDown() = unmockkStatic("androidx.room.RoomDatabaseKt")
 
     @Test
-    fun `deleteItem captures tag ids, deletes item, then prunes those tags`() = runTest {
+    fun `deleteItems captures tag ids, deletes items, then prunes those tags`() = runTest {
         val id = newItemId()
         coEvery { tagDao.tagIdsForItem(id) } returns listOf(7L, 9L)
 
-        repository.deleteItem(id)
+        repository.deleteItems(setOf(id))
 
         coVerifyOrder {
             tagDao.tagIdsForItem(id)
-            itemDao.delete(id)
+            itemDao.delete(setOf(id))
             tagDao.pruneOrphans(listOf(7L, 9L))
         }
     }
 
     @Test
-    fun `deleteItem skips prune when item had no tags`() = runTest {
+    fun `deleteItems skips prune when items had no tags`() = runTest {
         val id = newItemId()
         coEvery { tagDao.tagIdsForItem(id) } returns emptyList()
 
-        repository.deleteItem(id)
+        repository.deleteItems(setOf(id))
 
+        coVerify(exactly = 0) { tagDao.pruneOrphans(any()) }
+    }
+
+    @Test
+    fun `deleteItems removes every id in one dao call`() = runTest {
+        val first = newItemId()
+        val second = newItemId()
+        coEvery { tagDao.tagIdsForItem(any()) } returns emptyList()
+
+        repository.deleteItems(setOf(first, second))
+
+        coVerify(exactly = 1) { itemDao.delete(setOf(first, second)) }
+    }
+
+    @Test
+    fun `deleteItems prunes each tag once when items share a tag`() = runTest {
+        val first = newItemId()
+        val second = newItemId()
+        coEvery { tagDao.tagIdsForItem(first) } returns listOf(7L)
+        coEvery { tagDao.tagIdsForItem(second) } returns listOf(7L, 9L)
+
+        repository.deleteItems(setOf(first, second))
+
+        coVerify { tagDao.pruneOrphans(listOf(7L, 9L)) }
+    }
+
+    @Test
+    fun `deleteItems touches nothing when the set is empty`() = runTest {
+        repository.deleteItems(emptySet())
+
+        coVerify(exactly = 0) { itemDao.delete(any<Collection<ItemId>>()) }
         coVerify(exactly = 0) { tagDao.pruneOrphans(any()) }
     }
 

@@ -85,8 +85,8 @@ fun NavGraphBuilder.dashboardGraph(
                                     )
                                 }
                             },
-                            onItemDelete = { deleted, firstItemId ->
-                                if (openedItemId == deleted) {
+                            onItemsDelete = { deleted, firstItemId ->
+                                if (openedItemId in deleted) {
                                     scope.launch {
                                         if (!isSinglePaneMode && !isModifyScreenActive)
                                             firstItemId?.let {

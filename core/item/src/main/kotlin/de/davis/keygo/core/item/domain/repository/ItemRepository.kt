@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface ItemRepository {
 
-    suspend fun deleteItem(itemId: ItemId)
+    suspend fun deleteItems(itemIds: Set<ItemId>)
 
     suspend fun createOrUpdateVaultItem(item: Item): ItemId
 
@@ -26,10 +26,10 @@ interface ItemRepository {
         vaultId: VaultId? = null
     ): Boolean
 
-    suspend fun searchVaultItem(
+    fun searchVaultItem(
         query: String,
         itemType: VaultItemType? = null
-    ): List<LiteItemSearchResult>
+    ): Flow<List<LiteItemSearchResult>>
 
     suspend fun setPinned(itemId: ItemId, pinned: Boolean)
 
