@@ -1,6 +1,7 @@
 package de.davis.keygo.rust.totp
 
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.isSuccess
 import de.davis.keygo.core.util.resultBinding
 import de.davisalessandro.keygo.rust.Algorithm
 import de.davisalessandro.keygo.rust.TotpException
@@ -51,3 +52,16 @@ fun TotpServiceInterface.getInfoFromUriWithResult(
         onSuccess = { Result.Success(it) },
         onFailure = { Result.Failure(it as TotpException) }
     )
+
+/**
+ * Whether a code can actually be generated from [secret].
+ */
+fun TotpServiceInterface.isValidSecret(secret: String): Boolean = getTotpWithResult(
+    algorithm = Algorithm.SHA1,
+    digits = PROBE_DIGITS,
+    step = PROBE_STEP,
+    secret = secret,
+).isSuccess()
+
+private const val PROBE_DIGITS = 6
+private const val PROBE_STEP = 30

@@ -30,6 +30,7 @@ import de.davis.keygo.feature.item.core.domain.model.fieldUpdate
 import de.davis.keygo.feature.item.core.domain.model.resolveTotpDomain
 import de.davis.keygo.feature.item.core.domain.model.set
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
+import de.davis.keygo.feature.item.core.domain.usecase.ValidateTotpInputUseCase
 import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
@@ -69,6 +70,7 @@ internal class LoginViewModel(
     private val loginRepository: LoginRepository,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val createNewOrUpdateLogin: CreateNewOrUpdateLoginUseCase,
+    private val validateTotpInput: ValidateTotpInputUseCase,
     private val getTdlMatchedLogins: GetTdlMatchedLoginsUseCase,
     private val snackbarManager: SnackbarManager,
     private val totpService: TotpService,
@@ -254,6 +256,17 @@ internal class LoginViewModel(
         val selectedVaultId = ready.shared.vaultsState.selectedVaultId
         // Independent: a save can both register a passkey and drop another one.
         val pendingPasskey = base.passkeys.any { it.pending }
+
+        // A scan is rejected while it is still a scan, so only what was typed or pasted can be
+        // unusable by the time it reaches here.
+        val totpInput = base.totpTextFieldState.text.toString()
+        val totpError =
+            if (totpInput.isNotBlank() && !validateTotpInput(totpInput)) InputFieldError.Invalid
+            else null
+
+        _base.update { it.copy(totpError = totpError) }
+        if (totpError != null) return
+
         viewModelScope.launch {
             val upsert = itemId?.let { itemId ->
                 UpsertLogin.update(
@@ -264,7 +277,7 @@ internal class LoginViewModel(
                     domains = set(base.domains),
                     tags = set(assignedTags),
                     password = fieldUpdate(base.passwordTextFieldState.text.toString()),
-                    totpUriOrSecret = fieldUpdate(base.totpTextFieldState.text.toString()),
+                    totpUriOrSecret = fieldUpdate(totpInput),
                     note = fieldUpdate(notesTextFieldState.text.toString()),
                     removedPasskeys = base.deletedPasskeys,
                     pendingPasskey = pendingPasskey,
@@ -276,7 +289,7 @@ internal class LoginViewModel(
                 domains = base.domains,
                 tags = assignedTags,
                 password = base.passwordTextFieldState.text.toString(),
-                totpUriOrSecret = base.totpTextFieldState.text.toString(),
+                totpUriOrSecret = totpInput,
                 note = notesTextFieldState.text.toString(),
                 pendingPasskey = pendingPasskey,
             )
@@ -562,6 +575,7 @@ internal class LoginViewModel(
         val currentState = _base.value
         secret?.let {
             currentState.totpTextFieldState.setTextAndPlaceCursorAtEnd(it)
+            _base.update { state -> state.copy(totpError = null) }
         }
 
         issuer?.let {

@@ -11,12 +11,18 @@ class FakeTotpService : TotpServiceInterface {
     var urlResult: String = ""
     var infoFromUriResult: TotpInfo? = null
 
+    var invalidSecrets: Set<String> = emptySet()
+
     override fun getTotp(
         algorithm: Algorithm,
         digits: Int,
         step: Int,
         secret: String
-    ): String = totpResult
+    ): String {
+        if (secret in invalidSecrets) throw TotpException.InvalidInput()
+
+        return totpResult
+    }
 
     override fun getUrl(
         algorithm: Algorithm,
