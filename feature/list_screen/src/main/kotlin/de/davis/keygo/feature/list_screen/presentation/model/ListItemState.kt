@@ -14,6 +14,9 @@ internal data class ListItemState(
     val selectedItemIds: Set<ItemId> = emptySet(),
     val highlightedId: ItemId? = null,
     val isVaultFlowVisible: Boolean = false,
+    val isDeleteConfirmationVisible: Boolean = false,
     val vaults: List<VaultMetadata> = emptyList(),
     val vaultContext: VaultContext = VaultContext.NoSpecific,
-)
+) {
+    val isSelectionActive: Boolean get() = selectedItemIds.isNotEmpty()
+}

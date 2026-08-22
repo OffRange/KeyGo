@@ -35,7 +35,7 @@ fun ItemListScreen(
     onCreateItemRequest: (VaultItemType) -> Unit,
     modifier: Modifier = Modifier,
     onItemLongClick: (ItemId) -> Unit = {},
-    onItemDelete: (deleted: ItemId, firstItemId: ItemId?) -> Unit = { _, _ -> },
+    onItemsDelete: (deleted: Set<ItemId>, firstItemId: ItemId?) -> Unit = { _, _ -> },
     restrictedItemType: VaultItemType? = null,
     notFoundStrategy: NoItemStrategy = NoItemStrategy.ShowCreateNewItemCard,
     autoSelectFirst: Boolean = false,
@@ -59,7 +59,7 @@ fun ItemListScreen(
             viewModel.onItemClick(uiState.items.first().id, forceSkipSelection = true)
     }
 
-    val currentOnItemDelete by rememberUpdatedState(onItemDelete)
+    val currentOnItemsDelete by rememberUpdatedState(onItemsDelete)
     ObserveAsEvents(flow = viewModel.event) {
         when (it) {
             is Event.ItemSelected -> {
@@ -70,8 +70,8 @@ fun ItemListScreen(
                 onItemLongClick(it.itemId)
             }
 
-            is Event.ItemDeleted -> {
-                currentOnItemDelete(it.itemId, it.firstItemId)
+            is Event.ItemsDeleted -> {
+                currentOnItemsDelete(it.itemIds, it.firstItemId)
             }
         }
     }
@@ -107,7 +107,11 @@ fun ItemListScreen(
         onFilterAction = viewModel::onFilterAction,
         onItemClick = viewModel::onItemClick,
         onItemLongClick = viewModel::onItemLongClick,
-        onDelete = viewModel::onDelete,
+        onClearSelection = viewModel::onClearSelection,
+        onSelectAll = viewModel::onSelectAll,
+        onDeleteSelectedRequest = viewModel::onDeleteSelectedRequest,
+        onDismissDeleteConfirmation = viewModel::onDismissDeleteConfirmation,
+        onConfirmDeleteSelected = viewModel::onConfirmDeleteSelected,
         scrollBehavior = scrollBehavior,
         onVaultSelectorClick = viewModel::onVaultSelectorClick,
         onDismissVaultFlow = viewModel::onDismissVaultFlow,

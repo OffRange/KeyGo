@@ -3,11 +3,15 @@ package de.davis.keygo.core.ui.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -17,7 +21,9 @@ import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
@@ -26,22 +32,25 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
+import kotlin.math.roundToInt
 
 sealed interface HeaderContent {
     data class Letter(val char: Char) : HeaderContent
@@ -55,42 +64,66 @@ data class KeyGoColumnItem<ID : Any>(
     val itemType: VaultItemType,
 )
 
+/**
+ * The item the sticky header currently belongs to: [index] plus its [top] within the column.
+ */
+private data class StickyAnchor(val index: Int, val top: Int)
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun <ID : Any> KeyGoColumn(
     items: List<KeyGoColumnItem<ID>>,
-    onDelete: (ID) -> Unit,
     onItemClick: (ID) -> Unit,
     onItemLongClick: (ID) -> Unit,
     modifier: Modifier = Modifier,
-    enableSwipeToDelete: Boolean = true,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 8.dp),
     openedItemId: ID? = null,
     selectedItemIds: Set<ID> = emptySet(),
 ) {
-    val (firstInGroupIndices, lastInGroupIndices) = remember(items) {
-        val first = mutableSetOf<Int>()
-        val last = mutableSetOf<Int>()
+    val listState = rememberLazyListState()
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    val headerStart = HeaderStartPadding + contentPadding.calculateStartPadding(layoutDirection)
 
-        for (i in items.indices) {
-            if (i == 0 || items[i].header != items[i - 1].header) first.add(i)
-            if (i == items.lastIndex || items[i].header != items[i + 1].header) last.add(i)
-        }
-
-        first to last
+    // The app bar above this column collapses away while scrolling, so the column can reach into
+    // the status bar. Everything sticky is anchored below the status bar rather than at the very
+    // top of the column, which would draw it behind the status bar.
+    val statusBarTop = WindowInsets.statusBars.getTop(density)
+    var columnTopInWindow by remember { mutableIntStateOf(statusBarTop) }
+    val stickyTop by remember(statusBarTop) {
+        derivedStateOf { (statusBarTop - columnTopInWindow).coerceAtLeast(0) }
     }
 
-    val listState = rememberLazyListState()
-    val shapeCoordinator = rememberSegmentedShapeCoordinator()
+    // The first item reaching below the anchor owns the sticky header. With no status bar to
+    // avoid this is exactly the first visible item.
+    val anchor by remember(listState, stickyTop) {
+        derivedStateOf {
+            val info = listState.layoutInfo.visibleItemsInfo.firstOrNull {
+                it.offset + it.size > stickyTop
+            }
+
+            StickyAnchor(
+                index = info?.index ?: listState.firstVisibleItemIndex,
+                top = info?.offset ?: 0,
+            )
+        }
+    }
+    val anchorIndex by remember(anchor) { derivedStateOf { anchor.index } }
 
     @Composable
     fun containerColorForId(id: ID): Color =
         if (id == openedItemId) OpenedContainerColor else ContainerColor
 
-    Box(modifier = modifier.clipToBounds()) {
+    Box(
+        modifier = modifier
+            .clipToBounds()
+            .onGloballyPositioned { columnTopInWindow = it.positionInWindow().y.roundToInt() }
+    ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             state = listState,
-            verticalArrangement = Arrangement.spacedBy(ItemVerticalPadding)
+            contentPadding = contentPadding,
+            verticalArrangement = Arrangement.spacedBy(ItemVerticalPadding),
         ) {
             itemsIndexed(
                 items,
@@ -99,47 +132,41 @@ fun <ID : Any> KeyGoColumn(
             ) { index, item ->
                 val id = item.id
 
-                val isFirst = index in firstInGroupIndices
-                val isLast = index in lastInGroupIndices
+                val isFirst = items.isFirstInGroup(index)
+                val isLast = items.isLastInGroup(index)
 
                 val bottomPadding = if (isLast && index != items.lastIndex) GroupVerticalPadding
                 else 0.dp
 
                 val containerColor by animateColorAsState(containerColorForId(id))
 
-                DeletableVaultItem(
-                    title = item.title,
-                    description = item.itemType.presentation.first,
+                SegmentedListItem(
                     onClick = { onItemClick(id) },
                     onLongClick = { onItemLongClick(id) },
-                    onDeleteRequested = {
-                        onDelete(id)
-                        // We return false here because it allows the swipe state to reset.
-                        // When an item is successfully deleted, a new list containing the
-                        // remaining items will be provided, causing the list to recompose
-                        // with the updated data. The swipe state doesn't need to persist beyond
-                        // the delete action, so resetting it is appropriate.
-                        // If an error occurs during deletion and the item isn't removed, the
-                        // swipe state will reset automatically since no new list is provided
-                        // and no recomposition occurs. This ensures the UI remains consistent.
-                        false
-                    },
-                    shapeCoordinator = shapeCoordinator,
-                    itemIndex = index,
-                    isFirst = isFirst,
-                    isLast = isLast,
+                    shapes = segmentedShapesFor(isFirst = isFirst, isLast = isLast),
+                    colors = ListItemDefaults.segmentedColors(
+                        containerColor = containerColor,
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    ),
                     modifier = Modifier
                         .padding(bottom = bottomPadding)
                         .expressiveAnimateItem(),
-                    selected = id in selectedItemIds,
-                    containerColor = containerColor,
-                    enableSwipeToDelete = enableSwipeToDelete,
                     leadingContent = {
-                        val isFirstVisibleItem by remember(index) {
-                            derivedStateOf { listState.firstVisibleItemIndex == index }
+                        // The anchor row's letter is the sticky one. Below the anchor a group
+                        // announces itself on its first row as usual; above it, a group that is
+                        // on its way out rides its letter off the screen on its last row.
+                        val showsHeader by remember(index, isFirst, isLast, anchorIndex) {
+                            derivedStateOf {
+                                val anchor = anchorIndex
+                                when {
+                                    index > anchor -> isFirst
+                                    index < anchor -> isLast
+                                    else -> false
+                                }
+                            }
                         }
 
-                        if (index in firstInGroupIndices && !isFirstVisibleItem) {
+                        if (showsHeader) {
                             KeyGoInlineHeader(
                                 header = item.header,
                                 color = contentColorFor(containerColorForId(id))
@@ -147,57 +174,60 @@ fun <ID : Any> KeyGoColumn(
                         } else {
                             Spacer(modifier = Modifier.headerSize())
                         }
-                    }
-                )
+                    },
+                    supportingContent = {
+                        Text(text = item.itemType.presentation.first)
+                    },
+                    selected = id in selectedItemIds,
+                ) {
+                    Text(text = item.title)
+                }
             }
         }
 
         // ----------- HEADER -----------
         if (items.isEmpty()) return
 
-        val stickyHeader by remember(items) {
+        val stickyHeader by remember(anchor, items) {
             derivedStateOf {
-                if (listState.firstVisibleItemIndex < items.size)
-                    items[listState.firstVisibleItemIndex].header
-                else HeaderContent.Letter(' ')
+                items.getOrNull(anchor.index)?.header ?: HeaderContent.Letter(' ')
             }
         }
 
-        val density = LocalDensity.current
-        val headerOffset by remember(listState, lastInGroupIndices, density) {
+        val headerOffset by remember(anchor, stickyTop, items, density, headerStart) {
             derivedStateOf {
                 val offset = with(density) {
-                    IntOffset(16.dp.roundToPx(), (10.dp + 6.dp).roundToPx())
+                    IntOffset(headerStart.roundToPx(), (10.dp + 6.dp).roundToPx())
                 }
 
-                if (listState.firstVisibleItemIndex in lastInGroupIndices)
-                    offset.copy(y = offset.y - listState.firstVisibleItemScrollOffset)
-                else offset
+                val (index, top) = anchor
+                val pinned = stickyTop
+
+                // The last item of a group takes its header with it instead of holding it pinned.
+                val headerTop = if (index in items.indices && items.isLastInGroup(index))
+                    minOf(pinned, top)
+                else pinned
+
+                offset.copy(y = offset.y + headerTop)
             }
         }
 
         var headerPositionY by remember { mutableFloatStateOf(0f) }
 
-        val idBehindHeader by remember(listState, items) {
+        // headerPositionY is in column coordinates, so both sides are shifted back to the
+        // anchor to tell whether the header has drifted over the next item.
+        val idBehindHeader by remember(anchor, stickyTop, items, headerOffset) {
             derivedStateOf {
-                val visibleItemIdx = listState.firstVisibleItemIndex
+                val (index, top) = anchor
+                val pinned = stickyTop
                 val id = if (
-                    listState.firstVisibleItemScrollOffset >= headerPositionY &&
-                    headerOffset.y >= 0 &&
-                    visibleItemIdx + 1 in items.indices
-                ) visibleItemIdx + 1
-                else visibleItemIdx
+                    pinned - top >= headerPositionY - pinned &&
+                    headerOffset.y >= pinned &&
+                    index + 1 in items.indices
+                ) index + 1
+                else index
 
-                items[id].id
-            }
-        }
-
-        val headerAlpha by remember(shapeCoordinator, listState) {
-            derivedStateOf {
-                val swiping = shapeCoordinator.swipingIndex ?: return@derivedStateOf 1f
-                if (swiping == listState.firstVisibleItemIndex)
-                    1f - shapeCoordinator.swipingProgress * 2f
-                else 1f
+                items[id.coerceIn(items.indices)].id
             }
         }
 
@@ -210,9 +240,6 @@ fun <ID : Any> KeyGoColumn(
             color = color,
             modifier = Modifier
                 .offset { headerOffset }
-                .graphicsLayer {
-                    alpha = headerAlpha
-                }
                 .onGloballyPositioned {
                     headerPositionY =
                         it.positionInParent().y + it.size.height / 2f + with(density) {
@@ -221,6 +248,20 @@ fun <ID : Any> KeyGoColumn(
                 }
         )
     }
+}
+
+private fun List<KeyGoColumnItem<*>>.isFirstInGroup(index: Int) =
+    index == 0 || this[index].header != this[index - 1].header
+
+private fun List<KeyGoColumnItem<*>>.isLastInGroup(index: Int) =
+    index == lastIndex || this[index].header != this[index + 1].header
+
+@Composable
+private fun segmentedShapesFor(isFirst: Boolean, isLast: Boolean): ListItemShapes = when {
+    isFirst && isLast -> ListItemDefaults.shapes(MaterialTheme.shapes.large)
+    isFirst -> ListItemDefaults.segmentedShapes(index = 0, count = 3)
+    isLast -> ListItemDefaults.segmentedShapes(index = 2, count = 3)
+    else -> ListItemDefaults.segmentedShapes(index = 1, count = 3)
 }
 
 @Composable
@@ -260,6 +301,8 @@ private fun KeyGoInlineHeader(
 @Stable
 private fun Modifier.headerSize() = this.size(40.dp)
 
+private val HeaderStartPadding = 16.dp
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 val ItemVerticalPadding = ListItemDefaults.SegmentedGap
 
@@ -290,7 +333,6 @@ private fun KeyGoLazyColumnPreview() {
         Surface {
             KeyGoColumn(
                 items = items,
-                onDelete = {},
                 onItemClick = {},
                 onItemLongClick = {},
             )

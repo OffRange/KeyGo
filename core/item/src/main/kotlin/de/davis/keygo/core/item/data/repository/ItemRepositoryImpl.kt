@@ -33,9 +33,13 @@ internal class ItemRepositoryImpl(
     private val tagDao: TagDao,
 ) : ItemRepository {
 
-    override suspend fun deleteItem(itemId: ItemId): Unit = database.withTransaction {
-        val tagIds = tagDao.tagIdsForItem(itemId)
-        itemDao.delete(itemId)
+    override suspend fun deleteItems(itemIds: Set<ItemId>): Unit = database.withTransaction {
+        if (itemIds.isEmpty()) return@withTransaction
+
+        // Collected before the delete: once the rows are gone the cross refs are too, so the
+        // orphan sweep would have nothing left to look at.
+        val tagIds = itemIds.flatMap { tagDao.tagIdsForItem(it) }.distinct()
+        itemDao.delete(itemIds)
         if (tagIds.isNotEmpty()) tagDao.pruneOrphans(tagIds)
     }
 
@@ -55,11 +59,12 @@ internal class ItemRepositoryImpl(
         vaultId: VaultId?,
     ): Boolean = itemDao.existsName(name, excludeId, vaultId)
 
-    override suspend fun searchVaultItem(
+    override fun searchVaultItem(
         query: String,
         itemType: VaultItemType?,
-    ): List<LiteItemSearchResult> = itemDao.searchItem(query, Tag.normalize(query), itemType)
-        .map(LightweightItemSearchResult::toDomain)
+    ): Flow<List<LiteItemSearchResult>> =
+        itemDao.searchItem(query, Tag.normalize(query), itemType)
+            .map { results -> results.map(LightweightItemSearchResult::toDomain) }
 
     override suspend fun setPinned(itemId: ItemId, pinned: Boolean) =
         itemDao.setPinned(itemId, pinned)

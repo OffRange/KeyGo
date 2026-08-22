@@ -13,8 +13,8 @@ import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.Result
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 
 /**
  * In-memory [ItemRepository] for tests.
@@ -68,7 +68,13 @@ class FakeItemRepository(
                 .associate { item -> item.id to item.tags.toSet() }
         }
 
-    override suspend fun deleteItem(itemId: ItemId) = Unit
+    override suspend fun deleteItems(itemIds: Set<ItemId>) {
+        allStores.update { store -> store - itemIds }
+        itemIds.forEach { id ->
+            envelopes.remove(id)
+            itemTypes.remove(id)
+        }
+    }
 
     override suspend fun createOrUpdateVaultItem(item: Item): ItemId = item.id
 
@@ -88,15 +94,36 @@ class FakeItemRepository(
                 (vaultId == null || it.vaultId == vaultId)
     }
 
-    override suspend fun searchVaultItem(
+    override fun searchVaultItem(
         query: String,
         itemType: VaultItemType?,
-    ): List<LiteItemSearchResult> = emptyList()
+    ): Flow<List<LiteItemSearchResult>> = allStores.map { store ->
+        store.values
+            .filter { itemType == null || it.itemType == itemType }
+            .mapNotNull { item ->
+                val matchedName = item.name.contains(query, ignoreCase = true)
+                val matchedNote = item.note?.contains(query, ignoreCase = true) == true
+                val matchedTag = item.tags.any { it.display.contains(query, ignoreCase = true) }
+                if (!matchedName && !matchedNote && !matchedTag) return@mapNotNull null
+
+                LiteItemSearchResult(
+                    id = item.id,
+                    name = item.name,
+                    itemType = item.itemType,
+                    pinned = item.pinned,
+                    matchedName = matchedName,
+                    matchedNote = matchedNote,
+                    matchedTag = matchedTag,
+                )
+            }
+    }
 
     override suspend fun setPinned(itemId: ItemId, pinned: Boolean) = Unit
 
     override fun observeLiteVaultItems(vaultId: VaultId?): Flow<List<LiteItem>> =
-        flowOf(emptyList())
+        allStores.map { store ->
+            store.values.filter { vaultId == null || it.vaultId == vaultId }
+        }
 
     override suspend fun getItemKeyEnvelope(itemId: ItemId): ItemKeyEnvelope? = envelopes[itemId]
 

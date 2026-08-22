@@ -20,8 +20,8 @@ internal interface ItemDao {
     @Upsert
     suspend fun upsert(item: ItemEntity): Long
 
-    @Query("DELETE FROM item WHERE id = :id")
-    suspend fun delete(id: ItemId)
+    @Query("DELETE FROM item WHERE id IN (:ids)")
+    suspend fun delete(ids: Collection<ItemId>)
 
     @Query("SELECT name FROM item WHERE id = :id")
     suspend fun getNameById(id: ItemId): String?
@@ -60,11 +60,11 @@ internal interface ItemDao {
                OR tm.item_id IS NOT NULL)
         """
     )
-    suspend fun searchItem(
+    fun searchItem(
         query: String,
         normalizedQuery: String,
         itemType: VaultItemType? = null,
-    ): List<LightweightItemSearchResult>
+    ): Flow<List<LightweightItemSearchResult>>
 
     @Query("UPDATE item SET pinned = :pinned WHERE id = :id")
     suspend fun setPinned(id: ItemId, pinned: Boolean)

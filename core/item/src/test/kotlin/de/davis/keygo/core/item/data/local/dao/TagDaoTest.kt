@@ -104,7 +104,7 @@ internal class TagDaoTest {
         val item = insertItem()
         tagDao.syncTags(item, setOf(tag("Work")))
 
-        db.itemDao().delete(item)
+        db.itemDao().delete(setOf(item))
 
         assertEquals(emptyList(), tagDao.tagIdsForItem(item))
     }
@@ -128,7 +128,7 @@ internal class TagDaoTest {
         tagDao.syncTags(item, setOf(tag("Temp")))
         val tagIds = tagDao.tagIdsForItem(item)
 
-        db.itemDao().delete(item)
+        db.itemDao().delete(setOf(item))
         tagDao.pruneOrphans(tagIds)
 
         assertNull(tagDao.findIdByNormalized("temp"))

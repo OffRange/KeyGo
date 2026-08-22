@@ -15,6 +15,7 @@ import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
@@ -83,7 +84,7 @@ internal class ItemDaoSearchTest {
     fun `searchItem matches an item by tag value only`() = runTest {
         val id = insertItem(name = "Chase", note = null, tags = setOf("Banking"))
 
-        val results = itemDao.searchItem(query = "Bank", normalizedQuery = "bank")
+        val results = itemDao.searchItem(query = "Bank", normalizedQuery = "bank").first()
 
         assertEquals(1, results.size)
         val r = results.single()
@@ -97,7 +98,7 @@ internal class ItemDaoSearchTest {
     fun `searchItem still matches by name and sets matchedName`() = runTest {
         insertItem(name = "Bank of Earth")
 
-        val r = itemDao.searchItem(query = "Bank", normalizedQuery = "bank").single()
+        val r = itemDao.searchItem(query = "Bank", normalizedQuery = "bank").first().single()
 
         assertTrue(r.matchedName)
         assertFalse(r.matchedTag)
@@ -107,7 +108,7 @@ internal class ItemDaoSearchTest {
     fun `searchItem does not return items with no name note or tag match`() = runTest {
         insertItem(name = "Email", note = "personal", tags = setOf("Mail"))
 
-        assertTrue(itemDao.searchItem(query = "Bank", normalizedQuery = "bank").isEmpty())
+        assertTrue(itemDao.searchItem(query = "Bank", normalizedQuery = "bank").first().isEmpty())
     }
 
     @Test
@@ -120,7 +121,7 @@ internal class ItemDaoSearchTest {
                 query = "Bank",
                 normalizedQuery = "bank",
                 itemType = VaultItemType.Login,
-            ).size,
+            ).first().size,
         )
     }
 }

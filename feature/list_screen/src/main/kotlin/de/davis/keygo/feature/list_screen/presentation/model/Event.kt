@@ -6,5 +6,5 @@ internal sealed interface Event {
 
     data class ItemSelected(val itemId: ItemId) : Event
     data class ItemLongClicked(val itemId: ItemId) : Event
-    data class ItemDeleted(val itemId: ItemId, val firstItemId: ItemId?) : Event
+    data class ItemsDeleted(val itemIds: Set<ItemId>, val firstItemId: ItemId?) : Event
 }
