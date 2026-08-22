@@ -18,12 +18,10 @@
 
     <string name="select_item">Select an Item</string>
     <string name="create_new">Create New</string>
+    <string name="select_item_for_totp">Add code to which item?</string>
 
     <string name="length">Length [%d]</string>
     <string name="character_sets">Character Sets</string>
-
-    <string name="existing_entries_found">Existing Entries found</string>
-    <string name="existing_entries_found_description">One or more entries match the issuer or account name from the totp code. Would you like to update an existing entry or create a new one?</string>
 
     <string name="warning">Warning</string>
     <string name="cancel">Cancel</string>
@@ -48,9 +46,6 @@
     <string name="name_placeholder">Enter Name</string>
     <string name="note_placeholder">Write your Note</string>
 
-    <string name="n_more"><i>%d more</i></string>
-
-    <string name="list_entry">\u2022 %s</string>
     <string name="list_before">\u2022 Before: %s</string>
     <string name="list_after">\u2022 After: %s</string>
 

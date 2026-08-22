@@ -68,6 +68,7 @@ internal fun ItemListContent(
     autoSelectFirst: Boolean,
     notFoundStrategy: NoItemStrategy,
     restrictedItemType: VaultItemType?,
+    suggestedItemIds: Set<ItemId>,
     onCreateItemRequest: (VaultItemType) -> Unit,
     onSubmitQuery: () -> Unit,
     onClearQuery: () -> Unit,
@@ -217,11 +218,14 @@ internal fun ItemListContent(
                 }
 
                 false -> {
-                    val items = remember(uiState.items) {
+                    val items = remember(uiState.items, suggestedItemIds) {
                         uiState.items.map {
                             KeyGoColumnItem(
-                                header = if (it.pinned) HeaderContent.Pin
-                                else HeaderContent.Letter(it.name.first().uppercaseChar()),
+                                header = when {
+                                    it.id in suggestedItemIds -> HeaderContent.Suggested
+                                    it.pinned -> HeaderContent.Pin
+                                    else -> HeaderContent.Letter(it.name.first().uppercaseChar())
+                                },
                                 title = it.name,
                                 id = it.id,
                                 itemType = it.itemType,
@@ -300,6 +304,7 @@ private fun ItemListContentPreview() {
                 autoSelectFirst = false,
                 notFoundStrategy = NoItemStrategy.ShowCreateNewItemCard,
                 restrictedItemType = null,
+                suggestedItemIds = emptySet(),
                 onCreateItemRequest = {},
                 onSubmitQuery = {},
                 onClearQuery = {},

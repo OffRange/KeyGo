@@ -2,6 +2,7 @@ package de.davis.keygo.feature.item.create.presentation.login.model
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Stable
+import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.PasskeyRef
 import de.davis.keygo.core.item.domain.model.PasswordScore
@@ -38,6 +39,8 @@ internal data class LoginBaseState(
     val dialogState: DialogState = DialogState.None,
     val nameError: InputFieldError? = null,
     val scanning: Boolean = false,
+    val selectingItemForTotp: Boolean = false,
+    val totpSuggestedItemIds: Set<ItemId> = emptySet(),
     val updating: Boolean = false,
 ) {
     /**

@@ -226,25 +226,33 @@ internal class LoginViewModel(
         }.onSuccess { secret ->
             totpSecretInformation = secret
             totpOriginalUri = totpUri
+            _base.update { it.copy(selectingItemForTotp = true) }
+
             viewModelScope.launch {
-                val matchedItems = secret.issuer?.let {
-                    getTdlMatchedLogins(it)
-                }
-
-                if (matchedItems.isNullOrEmpty()) {
-                    updateUiWithTotpSecretInfo(secret, totpUri)
-                    return@launch
-                }
-
+                val suggestedIds = suggestedItemIdsFor(secret)
+                // A choice made before the query returned closed the picker for good; the late
+                // result has nothing left to reorder.
                 _base.update {
-                    it.copy(
-                        dialogState = DialogState.SelectItemForModification(
-                            items = matchedItems,
-                        )
-                    )
+                    if (it.selectingItemForTotp) it.copy(totpSuggestedItemIds = suggestedIds)
+                    else it
                 }
             }
         }
+    }
+
+    /**
+     * The logins whose registrable domain matches the code's own.
+     *
+     * [resolveTotpDomain] is what fills the domain field for a new item, so the suggestions agree
+     * with it: a code that carries no issuer still matches on the domain in `user@example.com`.
+     */
+    private suspend fun suggestedItemIdsFor(secretInformation: TotpInfo): Set<ItemId> {
+        val domain = resolveTotpDomain(
+            issuer = secretInformation.issuer,
+            accountName = secretInformation.accountName,
+        ) ?: return emptySet()
+
+        return getTdlMatchedLogins(domain).mapTo(mutableSetOf()) { it.id }
     }
 
     override fun onSubmit() {
@@ -358,10 +366,12 @@ internal class LoginViewModel(
             }
 
             is LoginUiEvent.OnTotpModificationItemSelected -> {
+                closeTotpItemPicker()
                 viewModelScope.launch { initWithId(event.itemId) }
             }
 
             is LoginUiEvent.OnCreateNewItemForTotp -> {
+                closeTotpItemPicker()
                 totpSecretInformation?.let {
                     updateUiWithTotpSecretInfo(it, totpOriginalUri)
                 }
@@ -578,6 +588,12 @@ internal class LoginViewModel(
                     dialogState = DialogState.None,
                 )
             }
+    }
+
+    private fun closeTotpItemPicker() {
+        _base.update {
+            it.copy(selectingItemForTotp = false, totpSuggestedItemIds = emptySet())
+        }
     }
 
     private fun showTotpParseError() {

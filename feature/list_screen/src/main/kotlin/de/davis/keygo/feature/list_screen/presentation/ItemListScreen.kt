@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -38,6 +39,7 @@ fun ItemListScreen(
     onItemsDelete: (deleted: Set<ItemId>, firstItemId: ItemId?) -> Unit = { _, _ -> },
     restrictedItemType: VaultItemType? = null,
     notFoundStrategy: NoItemStrategy = NoItemStrategy.ShowCreateNewItemCard,
+    suggestedItemIds: Set<ItemId> = emptySet(),
     autoSelectFirst: Boolean = false,
     enableDeletion: Boolean = true,
     enableSelection: Boolean = true,
@@ -47,8 +49,15 @@ fun ItemListScreen(
     val viewModel = koinViewModel<ItemListViewModel> {
         parametersOf(enableSelection, restrictedItemType)
     }
-    val uiState by viewModel.listItemState.collectAsStateWithLifecycle()
+    val collectedState by viewModel.listItemState.collectAsStateWithLifecycle()
     val filterSheetState by viewModel.filterBottomSheetState.collectAsStateWithLifecycle()
+
+    // Suggestions rank the default list only. Once the user searches, the results carry their own
+    // relevance and a group pinned above them would fight it.
+    val suggested = if (collectedState.hasSearchQuery) emptySet() else suggestedItemIds
+    val uiState = remember(collectedState, suggested) {
+        collectedState.copy(items = collectedState.items.withSuggestedFirst(suggested))
+    }
 
     LaunchedEffect(autoSelectFirst) {
         if (!autoSelectFirst) viewModel.resetHighlight()
@@ -101,6 +110,7 @@ fun ItemListScreen(
         autoSelectFirst = autoSelectFirst,
         notFoundStrategy = notFoundStrategy,
         restrictedItemType = restrictedItemType,
+        suggestedItemIds = suggested,
         onCreateItemRequest = onCreateItemRequest,
         onSubmitQuery = viewModel::onSubmitQuery,
         onClearQuery = viewModel::onClearQuery,

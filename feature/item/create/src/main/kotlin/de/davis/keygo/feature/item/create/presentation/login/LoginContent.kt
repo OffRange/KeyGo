@@ -59,7 +59,7 @@ import de.davis.keygo.feature.item.create.presentation.component.FormGroup
 import de.davis.keygo.feature.item.create.presentation.component.ItemContentWrapper
 import de.davis.keygo.feature.item.create.presentation.component.KeyGoItemForm
 import de.davis.keygo.feature.item.create.presentation.component.OverrideTotpDialog
-import de.davis.keygo.feature.item.create.presentation.component.SelectItemForTotpModificationDialog
+import de.davis.keygo.feature.item.create.presentation.component.SelectItemForTotpScreen
 import de.davis.keygo.feature.item.create.presentation.component.TAG_DELIMITERS
 import de.davis.keygo.feature.item.create.presentation.login.model.DialogState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginBaseState
@@ -295,20 +295,6 @@ private fun LoginReadyContent(
                 )
             }
 
-            is DialogState.SelectItemForModification -> {
-                SelectItemForTotpModificationDialog(
-                    onDismissRequest = {
-                        // Don't allow dismissal
-                    },
-                    items = state.dialogState.items,
-                    onItemClicked = { item ->
-                        onEvent(LoginUiEvent.OnTotpModificationItemSelected(item.id))
-                    },
-                    onCreateNew = { onEvent(LoginUiEvent.OnCreateNewItemForTotp) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-
             is DialogState.OverrideTotp -> {
                 OverrideTotpDialog(
                     onDismissRequest = {
@@ -356,6 +342,15 @@ private fun LoginReadyContent(
             success = {
                 onEvent(LoginUiEvent.OnCodesScanned(it))
             },
+        )
+    }
+
+    if (state.selectingItemForTotp) {
+        SelectItemForTotpScreen(
+            suggestedItemIds = state.totpSuggestedItemIds,
+            onItemClick = { onEvent(LoginUiEvent.OnTotpModificationItemSelected(it)) },
+            onCreateNew = { onEvent(LoginUiEvent.OnCreateNewItemForTotp) },
+            onClose = { onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnBackClick)) },
         )
     }
 }
