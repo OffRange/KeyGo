@@ -4,10 +4,12 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -28,6 +30,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -36,6 +39,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -43,6 +47,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
+import kotlin.math.roundToInt
 
 sealed interface HeaderContent {
     data class Letter(val char: Char) : HeaderContent
@@ -56,6 +61,11 @@ data class KeyGoColumnItem<ID : Any>(
     val itemType: VaultItemType,
 )
 
+/**
+ * The item the sticky header currently belongs to: [index] plus its [top] within the column.
+ */
+private data class StickyAnchor(val index: Int, val top: Int)
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun <ID : Any> KeyGoColumn(
@@ -67,12 +77,42 @@ fun <ID : Any> KeyGoColumn(
     selectedItemIds: Set<ID> = emptySet(),
 ) {
     val listState = rememberLazyListState()
+    val density = LocalDensity.current
+
+    // The app bar above this column collapses away while scrolling, so the column can reach into
+    // the status bar. Everything sticky is anchored below the status bar rather than at the very
+    // top of the column, which would draw it behind the status bar.
+    val statusBarTop = WindowInsets.statusBars.getTop(density)
+    var columnTopInWindow by remember { mutableIntStateOf(statusBarTop) }
+    val stickyTop by remember(statusBarTop) {
+        derivedStateOf { (statusBarTop - columnTopInWindow).coerceAtLeast(0) }
+    }
+
+    // The first item reaching below the anchor owns the sticky header. With no status bar to
+    // avoid this is exactly the first visible item.
+    val anchor by remember(listState, stickyTop) {
+        derivedStateOf {
+            val info = listState.layoutInfo.visibleItemsInfo.firstOrNull {
+                it.offset + it.size > stickyTop
+            }
+
+            StickyAnchor(
+                index = info?.index ?: listState.firstVisibleItemIndex,
+                top = info?.offset ?: 0,
+            )
+        }
+    }
+    val anchorIndex by remember(anchor) { derivedStateOf { anchor.index } }
 
     @Composable
     fun containerColorForId(id: ID): Color =
         if (id == openedItemId) OpenedContainerColor else ContainerColor
 
-    Box(modifier = modifier.clipToBounds()) {
+    Box(
+        modifier = modifier
+            .clipToBounds()
+            .onGloballyPositioned { columnTopInWindow = it.positionInWindow().y.roundToInt() }
+    ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             state = listState,
@@ -105,11 +145,21 @@ fun <ID : Any> KeyGoColumn(
                         .padding(bottom = bottomPadding)
                         .expressiveAnimateItem(),
                     leadingContent = {
-                        val isFirstVisibleItem by remember(index) {
-                            derivedStateOf { listState.firstVisibleItemIndex == index }
+                        // The anchor row's letter is the sticky one. Below the anchor a group
+                        // announces itself on its first row as usual; above it, a group that is
+                        // on its way out rides its letter off the screen on its last row.
+                        val showsHeader by remember(index, isFirst, isLast, anchorIndex) {
+                            derivedStateOf {
+                                val anchor = anchorIndex
+                                when {
+                                    index > anchor -> isFirst
+                                    index < anchor -> isLast
+                                    else -> false
+                                }
+                            }
                         }
 
-                        if (isFirst && !isFirstVisibleItem) {
+                        if (showsHeader) {
                             KeyGoInlineHeader(
                                 header = item.header,
                                 color = contentColorFor(containerColorForId(id))
@@ -131,41 +181,46 @@ fun <ID : Any> KeyGoColumn(
         // ----------- HEADER -----------
         if (items.isEmpty()) return
 
-        val stickyHeader by remember(items) {
+        val stickyHeader by remember(anchor, items) {
             derivedStateOf {
-                if (listState.firstVisibleItemIndex < items.size)
-                    items[listState.firstVisibleItemIndex].header
-                else HeaderContent.Letter(' ')
+                items.getOrNull(anchor.index)?.header ?: HeaderContent.Letter(' ')
             }
         }
 
-        val density = LocalDensity.current
-        val headerOffset by remember(listState, items, density) {
+        val headerOffset by remember(anchor, stickyTop, items, density) {
             derivedStateOf {
                 val offset = with(density) {
                     IntOffset(16.dp.roundToPx(), (10.dp + 6.dp).roundToPx())
                 }
 
-                val index = listState.firstVisibleItemIndex
-                if (index in items.indices && items.isLastInGroup(index))
-                    offset.copy(y = offset.y - listState.firstVisibleItemScrollOffset)
-                else offset
+                val (index, top) = anchor
+                val pinned = stickyTop
+
+                // The last item of a group takes its header with it instead of holding it pinned.
+                val headerTop = if (index in items.indices && items.isLastInGroup(index))
+                    minOf(pinned, top)
+                else pinned
+
+                offset.copy(y = offset.y + headerTop)
             }
         }
 
         var headerPositionY by remember { mutableFloatStateOf(0f) }
 
-        val idBehindHeader by remember(listState, items) {
+        // headerPositionY is in column coordinates, so both sides are shifted back to the
+        // anchor to tell whether the header has drifted over the next item.
+        val idBehindHeader by remember(anchor, stickyTop, items, headerOffset) {
             derivedStateOf {
-                val visibleItemIdx = listState.firstVisibleItemIndex
+                val (index, top) = anchor
+                val pinned = stickyTop
                 val id = if (
-                    listState.firstVisibleItemScrollOffset >= headerPositionY &&
-                    headerOffset.y >= 0 &&
-                    visibleItemIdx + 1 in items.indices
-                ) visibleItemIdx + 1
-                else visibleItemIdx
+                    pinned - top >= headerPositionY - pinned &&
+                    headerOffset.y >= pinned &&
+                    index + 1 in items.indices
+                ) index + 1
+                else index
 
-                items[id].id
+                items[id.coerceIn(items.indices)].id
             }
         }
 
