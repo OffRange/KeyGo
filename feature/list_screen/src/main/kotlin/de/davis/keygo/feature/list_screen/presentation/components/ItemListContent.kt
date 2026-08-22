@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -232,7 +233,11 @@ internal fun ItemListContent(
                         items = items,
                         onItemClick = { onItemClick(it, false) },
                         onItemLongClick = onItemLongClick,
-                        modifier = Modifier.padding(horizontal = 8.dp),
+                        contentPadding = PaddingValues(
+                            start = 8.dp,
+                            end = 8.dp,
+                            bottom = 96.dp,
+                        ),
                         openedItemId = if (autoSelectFirst) uiState.highlightedId else null,
                         selectedItemIds = uiState.selectedItemIds
                     )

@@ -3,8 +3,10 @@ package de.davis.keygo.core.ui.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -41,6 +43,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
@@ -73,11 +76,14 @@ fun <ID : Any> KeyGoColumn(
     onItemClick: (ID) -> Unit,
     onItemLongClick: (ID) -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 8.dp),
     openedItemId: ID? = null,
     selectedItemIds: Set<ID> = emptySet(),
 ) {
     val listState = rememberLazyListState()
     val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    val headerStart = HeaderStartPadding + contentPadding.calculateStartPadding(layoutDirection)
 
     // The app bar above this column collapses away while scrolling, so the column can reach into
     // the status bar. Everything sticky is anchored below the status bar rather than at the very
@@ -116,7 +122,8 @@ fun <ID : Any> KeyGoColumn(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             state = listState,
-            verticalArrangement = Arrangement.spacedBy(ItemVerticalPadding)
+            contentPadding = contentPadding,
+            verticalArrangement = Arrangement.spacedBy(ItemVerticalPadding),
         ) {
             itemsIndexed(
                 items,
@@ -187,10 +194,10 @@ fun <ID : Any> KeyGoColumn(
             }
         }
 
-        val headerOffset by remember(anchor, stickyTop, items, density) {
+        val headerOffset by remember(anchor, stickyTop, items, density, headerStart) {
             derivedStateOf {
                 val offset = with(density) {
-                    IntOffset(16.dp.roundToPx(), (10.dp + 6.dp).roundToPx())
+                    IntOffset(headerStart.roundToPx(), (10.dp + 6.dp).roundToPx())
                 }
 
                 val (index, top) = anchor
@@ -293,6 +300,8 @@ private fun KeyGoInlineHeader(
 
 @Stable
 private fun Modifier.headerSize() = this.size(40.dp)
+
+private val HeaderStartPadding = 16.dp
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 val ItemVerticalPadding = ListItemDefaults.SegmentedGap
