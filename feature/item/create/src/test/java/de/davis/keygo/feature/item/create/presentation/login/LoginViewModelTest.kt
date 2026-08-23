@@ -24,8 +24,10 @@ import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
+import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.item.create.presentation.TestRegistrableDomainResolver
+import de.davis.keygo.feature.item.create.presentation.login.model.DialogState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginBaseState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiEvent
 import de.davis.keygo.feature.item.create.presentation.model.ItemUiEvent
@@ -256,6 +258,76 @@ class LoginViewModelTest {
         assertFalse(viewModel.readyBase().selectingItemForTotp)
     }
 
+    @Test
+    fun `a new item is prefilled from the picker's code`() = runVmTest {
+        totpService.infoFromUriResult = totpInfo(issuer = "github.com")
+
+        val viewModel = buildViewModel()
+        backgroundScope.launch(mainDispatcher) { viewModel.state.collect { } }
+        viewModel.init(
+            DetailPaneInformation.Init.New(
+                itemType = VaultItemType.Login,
+                pendingTotpUri = DEEP_LINK_URI,
+            ),
+        )
+        advanceUntilIdle()
+
+        val base = viewModel.readyBase()
+        assertEquals(DEEP_LINK_URI, base.totpTextFieldState.text.toString())
+        assertEquals("me@github.com", base.usernameTextFieldState.text.toString())
+        assertEquals(setOf("github.com"), base.domains.mapTo(mutableSetOf()) { it.value })
+    }
+
+    @Test
+    fun `an existing item is loaded and the picker's code folded in`() = runVmTest {
+        val existing = seedLogin(name = "GitHub", domain = "github.com")
+        totpService.infoFromUriResult = totpInfo(issuer = "github.com")
+
+        val viewModel = buildViewModel()
+        backgroundScope.launch(mainDispatcher) { viewModel.state.collect { } }
+        viewModel.init(
+            DetailPaneInformation.Init.Existing(
+                itemType = VaultItemType.Login,
+                id = existing,
+                pendingTotpUri = DEEP_LINK_URI,
+            ),
+        )
+        advanceUntilIdle()
+
+        val state = viewModel.readyState()
+        assertTrue(state.base.updating)
+        assertEquals("GitHub", state.shared.nameTextFieldState.text.toString())
+        assertEquals(DEEP_LINK_URI, state.base.totpTextFieldState.text.toString())
+        assertEquals("me@github.com", state.base.usernameTextFieldState.text.toString())
+    }
+
+    @Test
+    fun `a code that collides with the chosen item raises the override dialog`() = runVmTest {
+        val existing = seedLogin(
+            name = "GitHub",
+            domain = "github.com",
+            username = "old@github.com",
+        )
+        totpService.infoFromUriResult = totpInfo(issuer = "github.com")
+
+        val viewModel = buildViewModel()
+        backgroundScope.launch(mainDispatcher) { viewModel.state.collect { } }
+        viewModel.init(
+            DetailPaneInformation.Init.Existing(
+                itemType = VaultItemType.Login,
+                id = existing,
+                pendingTotpUri = DEEP_LINK_URI,
+            ),
+        )
+        advanceUntilIdle()
+
+        val dialog = viewModel.readyBase().dialogState
+        assertIs<DialogState.OverrideTotp>(dialog)
+        val usernameField = dialog.fields.single { it.fieldType == FieldType.Username }
+        assertEquals("old@github.com", usernameField.before)
+        assertEquals("me@github.com", usernameField.after)
+    }
+
     // Helpers
 
     private fun runVmTest(body: suspend TestScope.() -> Unit) =
@@ -287,13 +359,17 @@ class LoginViewModelTest {
 
     private fun LoginViewModel.readyBase(): LoginBaseState = readyState().base
 
-    private fun seedLogin(name: String, domain: String): ItemId {
+    private fun seedLogin(
+        name: String,
+        domain: String,
+        username: String? = null,
+    ): ItemId {
         val id = newItemId()
         loginRepository.seed(
             Login(
                 id = id,
                 name = name,
-                username = null,
+                username = username,
                 domainInfos = setOf(
                     DomainInfo(
                         loginId = id,

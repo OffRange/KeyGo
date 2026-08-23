@@ -144,9 +144,16 @@ internal class LoginViewModel(
 
     fun init(information: DetailPaneInformation) {
         when (information) {
-            is DetailPaneInformation.Init.Existing -> viewModelScope.launch { initWithId(information.id) }
+            is DetailPaneInformation.Init.Existing -> viewModelScope.launch {
+                information.pendingTotpUri?.let { parsePendingTotp(it) }
+                initWithId(information.id)
+            }
+
             is DetailPaneInformation.Init.TOTP -> initWithTotpUri(information.uri)
-            is DetailPaneInformation.Init.New -> {} // Don't init anything
+
+            is DetailPaneInformation.Init.New -> information.pendingTotpUri?.let { uri ->
+                parsePendingTotp(uri)?.let { updateUiWithTotpSecretInfo(it, uri) }
+            }
 
             is DetailPaneInformation.CreateRaw -> initWithRawItem(information)
         }
@@ -234,6 +241,20 @@ internal class LoginViewModel(
             }
         }
     }
+
+    /**
+     * Reads a code the picker handed over and remembers it, so [initWithId] can fold it into
+     * whichever login was chosen. Returns null when the code cannot be read, having already put the
+     * parse error on screen.
+     */
+    private fun parsePendingTotp(uri: String): TotpInfo? =
+        totpService.getInfoFromUriWithResult(uri).onFailure { failure ->
+            Log.e(TAG, "Error parsing TOTP URI: $failure")
+            showTotpParseError()
+        }.getOrNull()?.also {
+            totpSecretInformation = it
+            totpOriginalUri = uri
+        }
 
     private fun initWithTotpUri(totpUri: String) {
         totpService.getInfoFromUriWithResult(totpUri).onFailure {

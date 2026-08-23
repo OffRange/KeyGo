@@ -8,8 +8,21 @@ sealed interface DetailPaneInformation {
     sealed interface Init : DetailPaneInformation {
         val itemType: VaultItemType
 
-        data class New(override val itemType: VaultItemType) : Init
-        data class Existing(override val itemType: VaultItemType, val id: ItemId) : Init
+        /**
+         * @param pendingTotpUri a scanned code the form should fold in once it is built. Null for
+         * an ordinary create or edit.
+         */
+        data class New(
+            override val itemType: VaultItemType,
+            val pendingTotpUri: String? = null,
+        ) : Init
+
+        data class Existing(
+            override val itemType: VaultItemType,
+            val id: ItemId,
+            val pendingTotpUri: String? = null,
+        ) : Init
+
         data class TOTP(override val itemType: VaultItemType, val uri: String) : Init
     }
 
