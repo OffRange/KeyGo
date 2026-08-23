@@ -40,5 +40,6 @@ fun LoginScreen(
     LoginContent(
         state = state,
         onEvent = viewmodel::onEvent,
+        totpImportPending = detailPaneInformation is DetailPaneInformation.Init.TOTP,
     )
 }

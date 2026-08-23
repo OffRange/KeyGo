@@ -6,6 +6,7 @@ import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.PasswordScore
@@ -110,6 +111,21 @@ internal class LoginViewModel(
 
     private var totpSecretInformation: TotpInfo? = null
     private var totpOriginalUri: String? = null
+
+    /**
+     * Whether this screen was opened by a scanned code rather than by the user.
+     *
+     * Only a deep link owns the whole screen, so only it gets the picker and the back behaviour
+     * that belongs to it. A code scanned from within the form arrives at an item the user already
+     * chose and must keep leaving the screen as it always has.
+     */
+    private var totpItemPickerFlow = false
+
+    /** Kept so returning to the picker shows the same suggestions without querying again. */
+    private var totpSuggestedItemIds: Set<ItemId> = emptySet()
+
+    /** The vault the picker was showing, restored when the form is abandoned back to it. */
+    private var totpPickerVaultId: VaultId? = null
 
     /**
      * Shows a passkey for [rp] as pending until the item is saved.
@@ -226,12 +242,14 @@ internal class LoginViewModel(
         }.onSuccess { secret ->
             totpSecretInformation = secret
             totpOriginalUri = totpUri
-            _base.update { it.copy(selectingItemForTotp = true) }
+            totpItemPickerFlow = true
+            _base.update { it.copy(totpImportActive = true, selectingItemForTotp = true) }
 
             viewModelScope.launch {
                 val suggestedIds = suggestedItemIdsFor(secret)
-                // A choice made before the query returned closed the picker for good; the late
-                // result has nothing left to reorder.
+                totpSuggestedItemIds = suggestedIds
+                // A choice made before the query returned leaves the picker; the late result has
+                // nothing left to reorder until the user comes back to it.
                 _base.update {
                     if (it.selectingItemForTotp) it.copy(totpSuggestedItemIds = suggestedIds)
                     else it
@@ -327,6 +345,15 @@ internal class LoginViewModel(
     override fun onBackClick() {
         if (_base.value.scanning) {
             _base.update { it.copy(scanning = false) }
+            return
+        }
+
+        // Back belongs to the import while one is running: from the form it returns to the picker
+        // the form was opened from. The picker itself is the flow's first step and has nothing
+        // behind it, so leaving it is the screen's own business (it closes the app) and never a
+        // navigation back to a dashboard the user did not open.
+        if (totpItemPickerFlow) {
+            if (!_base.value.selectingItemForTotp) reopenTotpItemPicker()
             return
         }
 
@@ -591,9 +618,34 @@ internal class LoginViewModel(
     }
 
     private fun closeTotpItemPicker() {
+        totpPickerVaultId = selectedVaultId.value
         _base.update {
             it.copy(selectingItemForTotp = false, totpSuggestedItemIds = emptySet())
         }
+    }
+
+    /**
+     * Returns to the picker, throwing away whatever the choice made of the form.
+     *
+     * The form is rebuilt from scratch rather than hidden: the choice may have loaded an existing
+     * item into it, and carrying that item's name, password or vault into the next choice would
+     * write it onto the wrong login. Only the scanned code and its suggestions survive, because
+     * those belong to the import rather than to the item.
+     */
+    private fun reopenTotpItemPicker() {
+        itemId = null
+        nameTextFieldState.setTextAndPlaceCursorAtEnd("")
+        notesTextFieldState.setTextAndPlaceCursorAtEnd("")
+        passwordTextFieldState.setTextAndPlaceCursorAtEnd("")
+        setAssignedTags(emptySet())
+        totpPickerVaultId?.let { setSelectedVaultId(it) }
+
+        _base.value = LoginBaseState(
+            passwordTextFieldState = passwordTextFieldState,
+            totpImportActive = true,
+            selectingItemForTotp = true,
+            totpSuggestedItemIds = totpSuggestedItemIds,
+        )
     }
 
     private fun showTotpParseError() {
