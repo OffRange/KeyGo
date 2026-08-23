@@ -86,6 +86,13 @@ class MainActivity : FragmentActivity() {
     }
 }
 
+/**
+ * Where a pending code sends the user once they are through the door, whether that door was auth
+ * or onboarding. No code means there is nothing to pick an item for.
+ */
+private fun destinationAfterUnlock(totpUri: String?): Any =
+    totpUri?.let { SelectItemForTotpRoute(it) } ?: RouteDestination.TopLevelAppGraph
+
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 private fun App(hasAccess: Boolean) {
@@ -154,7 +161,15 @@ private fun App(hasAccess: Boolean) {
             )
 
             totpImportGraph(
-                navigateToDestination = navController::navigate,
+                // The picker stays composed and collecting through its exit transition, so a
+                // double tap on a row can fire twice before the first navigation leaves it.
+                // AssignTotpRoute is a data class, so launchSingleTop dedupes the repeat instead
+                // of pushing it twice onto the back stack.
+                navigateToDestination = { dest ->
+                    navController.navigate(dest) {
+                        launchSingleTop = true
+                    }
+                },
                 onImportFinished = {
                     navController.navigate(RouteDestination.TopLevelAppGraph) {
                         popUpTo<SelectItemForTotpRoute> { inclusive = true }
@@ -165,11 +180,7 @@ private fun App(hasAccess: Boolean) {
 
             authGraph(
                 onSuccess = { totpUri ->
-                    val dest = totpUri?.let {
-                        SelectItemForTotpRoute(it)
-                    } ?: RouteDestination.TopLevelAppGraph
-
-                    navController.navigate(dest) {
+                    navController.navigate(destinationAfterUnlock(totpUri)) {
                         popUpTo<AuthRoute> { inclusive = true }
                     }
                 }
@@ -177,11 +188,7 @@ private fun App(hasAccess: Boolean) {
 
             onboardingGraph(
                 onSuccess = { totpUri ->
-                    val dest = totpUri?.let {
-                        SelectItemForTotpRoute(it)
-                    } ?: RouteDestination.TopLevelAppGraph
-
-                    navController.navigate(dest) {
+                    navController.navigate(destinationAfterUnlock(totpUri)) {
                         popUpTo<OnboardingRoute> { inclusive = true }
                     }
                 }

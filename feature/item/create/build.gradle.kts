@@ -26,5 +26,4 @@ dependencies {
     testImplementation(testFixtures(projects.rust))
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.junit)
-
 }

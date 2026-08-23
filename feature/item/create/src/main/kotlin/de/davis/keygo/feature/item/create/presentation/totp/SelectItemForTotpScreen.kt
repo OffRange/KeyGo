@@ -34,6 +34,10 @@ import org.koin.core.parameter.parametersOf
  * import, which replaced the whole back stack on its way here, so the NavHost does not consume a
  * back press and the activity finishes on its own.
  *
+ * @param totpUri the scanned deep link, carried whole so the screen and its ViewModel can parse it
+ * independently.
+ * @param onItemSelected the user picked an existing login to attach the code to.
+ * @param onCreateNew the user chose to attach the code to a login that does not exist yet.
  * @param onImportAbandoned the code could not be read, so there is nothing to attach and the flow
  * ends. The user stays in the app they just unlocked rather than being thrown out over a malformed
  * code from somewhere else.

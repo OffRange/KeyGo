@@ -1,6 +1,5 @@
 package de.davis.keygo.feature.item.create.presentation.totp
 
-import de.davis.keygo.core.item.FakeItemRepository
 import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
@@ -45,7 +44,6 @@ class SelectItemForTotpViewModelTest {
 
     private val vaultId = newVaultId()
     private val loginRepository = FakeLoginRepository()
-    private val itemRepository = FakeItemRepository(loginRepository)
     private val totpService = FakeTotpService()
     private val domainResolver = TestRegistrableDomainResolver()
 

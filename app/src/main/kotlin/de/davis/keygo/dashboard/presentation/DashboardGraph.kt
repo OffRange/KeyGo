@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
 fun NavGraphBuilder.dashboardGraph(
     listNavigator: ThreePaneScaffoldNavigator<DetailType>,
 ) {
-    composable<RouteDestination.Home.Root> { _ ->
+    composable<RouteDestination.Home.Root> {
         val isSinglePaneMode by remember(listNavigator.scaffoldDirective) {
             derivedStateOf {
                 listNavigator.scaffoldDirective.maxHorizontalPartitions == 1
