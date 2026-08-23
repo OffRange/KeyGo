@@ -21,11 +21,11 @@ import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.domain.usecase.GetTdlMatchedLoginsUseCase
 import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
-import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
+import de.davis.keygo.feature.item.create.presentation.TestRegistrableDomainResolver
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginBaseState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiEvent
 import de.davis.keygo.feature.item.create.presentation.model.ItemUiEvent
@@ -351,18 +351,6 @@ class LoginViewModelTest {
         observeAllTags = ObserveAllTagsSortedUseCase(itemRepository, SortUseCase()),
         vaultRepository = vaultRepository,
     )
-
-    /** Resolves an eTLD+1 by keeping the last two labels, which is enough for the test domains. */
-    private class TestRegistrableDomainResolver : RegistrableDomainResolver {
-        override fun resolve(domain: String): String? {
-            val labels = domain.substringAfter("://")
-                .substringBefore('/')
-                .split('.')
-                .filter { it.isNotBlank() }
-
-            return if (labels.size >= 2) labels.takeLast(2).joinToString(".") else null
-        }
-    }
 
     private class TestSnackbarManager : SnackbarManager {
         override val oneShotEvents: Flow<SnackbarMessage> = emptyFlow()
