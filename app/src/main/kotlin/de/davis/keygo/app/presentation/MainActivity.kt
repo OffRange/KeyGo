@@ -191,7 +191,7 @@ private fun App(hasAccess: Boolean) {
                 startDestination = RouteDestination.Home.NavGraph
             ) {
                 navigation<RouteDestination.Home.NavGraph>(
-                    startDestination = RouteDestination.Home.Root()
+                    startDestination = RouteDestination.Home.Root
                 ) {
                     dialog<RouteDestination.Home.SelectItem> {
                         SelectItemContent(

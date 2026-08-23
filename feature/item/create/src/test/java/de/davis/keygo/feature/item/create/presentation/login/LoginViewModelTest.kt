@@ -18,7 +18,6 @@ import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
-import de.davis.keygo.core.security.domain.usecase.GetTdlMatchedLoginsUseCase
 import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
@@ -53,14 +52,12 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
- * Covers what a scanned `otpauth://` deep link does before the form is filled in: it hands the
- * user the item picker rather than guessing a target, and offers the logins on the code's own
- * domain as suggestions.
+ * Covers what the login form does with a code the picker handed it: a new item is prefilled from
+ * the code, and a chosen item has it folded in, raising the override dialog when the two collide.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -97,139 +94,6 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `a deep link opens the picker instead of filling the form`() = runVmTest {
-        totpService.infoFromUriResult = totpInfo(issuer = "github.com")
-
-        val viewModel = initWithDeepLink()
-
-        val base = viewModel.readyBase()
-        assertTrue(base.selectingItemForTotp)
-        assertTrue(base.totpImportActive)
-        assertEquals("", base.totpTextFieldState.text.toString())
-        assertEquals("", base.usernameTextFieldState.text.toString())
-        assertEquals(emptySet(), base.domains)
-    }
-
-    @Test
-    fun `the picker opens even when nothing matches the domain`() = runVmTest {
-        totpService.infoFromUriResult = totpInfo(issuer = "github.com")
-
-        val viewModel = initWithDeepLink()
-
-        val base = viewModel.readyBase()
-        assertTrue(base.selectingItemForTotp)
-        assertEquals(emptySet(), base.totpSuggestedItemIds)
-    }
-
-    @Test
-    fun `logins on the code's domain are suggested`() = runVmTest {
-        val onDomain = seedLogin(name = "GitHub", domain = "github.com")
-        seedLogin(name = "Google", domain = "google.com")
-        totpService.infoFromUriResult = totpInfo(issuer = "github.com")
-
-        val viewModel = initWithDeepLink()
-
-        assertEquals(setOf(onDomain), viewModel.readyBase().totpSuggestedItemIds)
-    }
-
-    @Test
-    fun `a code without an issuer suggests on the account name's domain`() = runVmTest {
-        val onDomain = seedLogin(name = "GitHub", domain = "github.com")
-        totpService.infoFromUriResult = totpInfo(issuer = null, accountName = "me@github.com")
-
-        val viewModel = initWithDeepLink()
-
-        assertEquals(setOf(onDomain), viewModel.readyBase().totpSuggestedItemIds)
-    }
-
-    @Test
-    fun `creating a new item closes the picker and fills the form from the code`() = runVmTest {
-        totpService.infoFromUriResult = totpInfo(issuer = "github.com")
-        val viewModel = initWithDeepLink()
-
-        viewModel.onEvent(LoginUiEvent.OnCreateNewItemForTotp)
-        advanceUntilIdle()
-
-        val base = viewModel.readyBase()
-        assertFalse(base.selectingItemForTotp)
-        // The form still belongs to the import, so it keeps claiming back.
-        assertTrue(base.totpImportActive)
-        assertEquals(DEEP_LINK_URI, base.totpTextFieldState.text.toString())
-        assertEquals("me@github.com", base.usernameTextFieldState.text.toString())
-        assertEquals(setOf("github.com"), base.domains.mapTo(mutableSetOf()) { it.value })
-    }
-
-    @Test
-    fun `choosing an existing item closes the picker and loads that item`() = runVmTest {
-        val existing = seedLogin(name = "GitHub", domain = "github.com")
-        totpService.infoFromUriResult = totpInfo(issuer = "github.com")
-        val viewModel = initWithDeepLink()
-
-        viewModel.onEvent(LoginUiEvent.OnTotpModificationItemSelected(existing))
-        advanceUntilIdle()
-
-        val state = viewModel.readyState()
-        assertFalse(state.base.selectingItemForTotp)
-        assertTrue(state.base.updating)
-        assertEquals("GitHub", state.shared.nameTextFieldState.text.toString())
-        assertEquals(DEEP_LINK_URI, state.base.totpTextFieldState.text.toString())
-        assertEquals("me@github.com", state.base.usernameTextFieldState.text.toString())
-    }
-
-    @Test
-    fun `back stays on the picker instead of leaving the import`() = runVmTest {
-        totpService.infoFromUriResult = totpInfo(issuer = "github.com")
-        val viewModel = initWithDeepLink()
-        val navigation = collectNavigation(viewModel)
-
-        viewModel.onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnBackClick))
-        advanceUntilIdle()
-
-        assertTrue(viewModel.readyBase().selectingItemForTotp)
-        assertEquals(emptyList(), navigation)
-    }
-
-    @Test
-    fun `back from a chosen item returns to the picker with a clean form`() = runVmTest {
-        val existing = seedLogin(name = "GitHub", domain = "github.com")
-        totpService.infoFromUriResult = totpInfo(issuer = "github.com")
-        val viewModel = initWithDeepLink()
-        val navigation = collectNavigation(viewModel)
-        viewModel.onEvent(LoginUiEvent.OnTotpModificationItemSelected(existing))
-        advanceUntilIdle()
-
-        viewModel.onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnBackClick))
-        advanceUntilIdle()
-
-        val state = viewModel.readyState()
-        assertTrue(state.base.selectingItemForTotp)
-        assertFalse(state.base.updating)
-        assertEquals(setOf(existing), state.base.totpSuggestedItemIds)
-        assertEquals("", state.shared.nameTextFieldState.text.toString())
-        assertEquals("", state.base.totpTextFieldState.text.toString())
-        assertEquals("", state.base.usernameTextFieldState.text.toString())
-        assertEquals(emptySet(), state.base.domains)
-        assertEquals(emptyList(), navigation)
-    }
-
-    @Test
-    fun `back from a new item returns to the picker`() = runVmTest {
-        totpService.infoFromUriResult = totpInfo(issuer = "github.com")
-        val viewModel = initWithDeepLink()
-        val navigation = collectNavigation(viewModel)
-        viewModel.onEvent(LoginUiEvent.OnCreateNewItemForTotp)
-        advanceUntilIdle()
-
-        viewModel.onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnBackClick))
-        advanceUntilIdle()
-
-        val base = viewModel.readyBase()
-        assertTrue(base.selectingItemForTotp)
-        assertEquals("", base.totpTextFieldState.text.toString())
-        assertEquals(emptyList(), navigation)
-    }
-
-    @Test
     fun `back leaves the screen when the code was scanned into an open form`() = runVmTest {
         totpService.infoFromUriResult = totpInfo(issuer = "github.com")
         val viewModel = buildViewModel()
@@ -243,19 +107,7 @@ class LoginViewModelTest {
         viewModel.onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnBackClick))
         advanceUntilIdle()
 
-        val base = viewModel.readyBase()
-        assertFalse(base.selectingItemForTotp)
-        assertFalse(base.totpImportActive)
         assertEquals(listOf<ItemId?>(null), navigation)
-    }
-
-    @Test
-    fun `an unparsable code shows the error instead of the picker`() = runVmTest {
-        totpService.infoFromUriResult = null
-
-        val viewModel = initWithDeepLink()
-
-        assertFalse(viewModel.readyBase().selectingItemForTotp)
     }
 
     @Test
@@ -332,14 +184,6 @@ class LoginViewModelTest {
 
     private fun runVmTest(body: suspend TestScope.() -> Unit) =
         runTest(mainDispatcher.scheduler) { body() }
-
-    private fun TestScope.initWithDeepLink(uri: String = DEEP_LINK_URI): LoginViewModel {
-        val viewModel = buildViewModel()
-        backgroundScope.launch(mainDispatcher) { viewModel.state.collect { } }
-        viewModel.init(DetailPaneInformation.Init.TOTP(VaultItemType.Login, uri))
-        advanceUntilIdle()
-        return viewModel
-    }
 
     /**
      * Records what the screen asks navigation to do. Leaving raises `null`, a saved item raises its
@@ -418,7 +262,6 @@ class LoginViewModelTest {
             passwordStrengthEstimator = FakePasswordStrengthEstimator(),
             totpService = totpService,
         ),
-        getTdlMatchedLogins = GetTdlMatchedLoginsUseCase(domainResolver, loginRepository),
         snackbarManager = TestSnackbarManager(),
         totpService = totpService,
         registrableDomainResolver = domainResolver,

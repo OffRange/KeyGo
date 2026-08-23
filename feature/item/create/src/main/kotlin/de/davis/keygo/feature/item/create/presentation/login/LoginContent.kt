@@ -1,7 +1,6 @@
 package de.davis.keygo.feature.item.create.presentation.login
 
 import android.content.res.Configuration
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -60,7 +59,6 @@ import de.davis.keygo.feature.item.create.presentation.component.FormGroup
 import de.davis.keygo.feature.item.create.presentation.component.ItemContentWrapper
 import de.davis.keygo.feature.item.create.presentation.component.KeyGoItemForm
 import de.davis.keygo.feature.item.create.presentation.component.OverrideTotpDialog
-import de.davis.keygo.feature.item.create.presentation.component.SelectItemForTotpScreen
 import de.davis.keygo.feature.item.create.presentation.component.TAG_DELIMITERS
 import de.davis.keygo.feature.item.create.presentation.login.model.DialogState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginBaseState
@@ -81,21 +79,7 @@ import de.davis.keygo.feature.item.core.R as ItemCoreR
 internal fun LoginContent(
     state: LoginUiState,
     onEvent: (LoginUiEvent) -> Unit,
-    totpImportPending: Boolean = false,
 ) {
-    // A deep-linked import opens on the picker, so the picker's chrome is what the wait belongs
-    // to. The shared loading scaffold would flash a title and a back arrow from the form, a screen
-    // the user has not asked for yet and may never reach.
-    if (totpImportPending && state is ItemUiState.Loading) {
-        SelectItemForTotpScreen(
-            suggestedItemIds = emptySet(),
-            onItemClick = {},
-            onCreateNew = {},
-            loading = true,
-        )
-        return
-    }
-
     ItemContentWrapper(
         itemType = VaultItemType.Login,
         state = state,
@@ -116,12 +100,6 @@ private fun LoginReadyContent(
     shared: SharedItemState,
     onEvent: (LoginUiEvent) -> Unit,
 ) {
-    // An import opened this form from the picker, so back has to reach the ViewModel and return
-    // there. Without this the pane navigator takes it first and pops the whole screen instead.
-    BackHandler(enabled = state.totpImportActive) {
-        onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnBackClick))
-    }
-
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val domainTextFieldState = rememberTextFieldState()
     val tagsTextFieldState = rememberTextFieldState()
@@ -366,14 +344,6 @@ private fun LoginReadyContent(
             success = {
                 onEvent(LoginUiEvent.OnCodesScanned(it))
             },
-        )
-    }
-
-    if (state.selectingItemForTotp) {
-        SelectItemForTotpScreen(
-            suggestedItemIds = state.totpSuggestedItemIds,
-            onItemClick = { onEvent(LoginUiEvent.OnTotpModificationItemSelected(it)) },
-            onCreateNew = { onEvent(LoginUiEvent.OnCreateNewItemForTotp) },
         )
     }
 }

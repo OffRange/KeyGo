@@ -2,7 +2,6 @@ package de.davis.keygo.feature.item.create.presentation.login.model
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Stable
-import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.PasskeyRef
 import de.davis.keygo.core.item.domain.model.PasswordScore
@@ -39,15 +38,6 @@ internal data class LoginBaseState(
     val dialogState: DialogState = DialogState.None,
     val nameError: InputFieldError? = null,
     val scanning: Boolean = false,
-    /**
-     * Whether a deep-linked code is being imported, from the picker until the item is saved.
-     *
-     * The screen has to claim back for as long as this runs: the form was opened by the picker, so
-     * back belongs to that flow rather than to the pane the screen sits in.
-     */
-    val totpImportActive: Boolean = false,
-    val selectingItemForTotp: Boolean = false,
-    val totpSuggestedItemIds: Set<ItemId> = emptySet(),
     val updating: Boolean = false,
 ) {
     /**

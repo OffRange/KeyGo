@@ -77,7 +77,6 @@ internal class CreditCardViewModel(
                 viewModelScope.launch { initWithId(information.id) }
 
             is DetailPaneInformation.Init.New,
-            is DetailPaneInformation.Init.TOTP,
             is DetailPaneInformation.CreateRaw -> Unit // nothing to prefill
         }
     }

@@ -6,7 +6,6 @@ import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.PasswordScore
@@ -16,7 +15,6 @@ import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.security.domain.crypto.decrypt
-import de.davis.keygo.core.security.domain.usecase.GetTdlMatchedLoginsUseCase
 import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
@@ -70,7 +68,6 @@ internal class LoginViewModel(
     private val loginRepository: LoginRepository,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val createNewOrUpdateLogin: CreateNewOrUpdateLoginUseCase,
-    private val getTdlMatchedLogins: GetTdlMatchedLoginsUseCase,
     private val snackbarManager: SnackbarManager,
     private val totpService: TotpService,
     private val registrableDomainResolver: RegistrableDomainResolver,
@@ -113,21 +110,6 @@ internal class LoginViewModel(
     private var totpOriginalUri: String? = null
 
     /**
-     * Whether this screen was opened by a scanned code rather than by the user.
-     *
-     * Only a deep link owns the whole screen, so only it gets the picker and the back behaviour
-     * that belongs to it. A code scanned from within the form arrives at an item the user already
-     * chose and must keep leaving the screen as it always has.
-     */
-    private var totpItemPickerFlow = false
-
-    /** Kept so returning to the picker shows the same suggestions without querying again. */
-    private var totpSuggestedItemIds: Set<ItemId> = emptySet()
-
-    /** The vault the picker was showing, restored when the form is abandoned back to it. */
-    private var totpPickerVaultId: VaultId? = null
-
-    /**
      * Shows a passkey for [rp] as pending until the item is saved.
      *
      * A blank id is dropped along with a null one. `rp.id` is optional per WebAuthn, so a request
@@ -148,8 +130,6 @@ internal class LoginViewModel(
                 information.pendingTotpUri?.let { parsePendingTotp(it) }
                 initWithId(information.id)
             }
-
-            is DetailPaneInformation.Init.TOTP -> initWithTotpUri(information.uri)
 
             is DetailPaneInformation.Init.New -> information.pendingTotpUri?.let { uri ->
                 parsePendingTotp(uri)?.let { updateUiWithTotpSecretInfo(it, uri) }
@@ -256,44 +236,6 @@ internal class LoginViewModel(
             totpOriginalUri = uri
         }
 
-    private fun initWithTotpUri(totpUri: String) {
-        totpService.getInfoFromUriWithResult(totpUri).onFailure {
-            Log.e(TAG, "Error parsing TOTP URI: $it")
-            showTotpParseError()
-        }.onSuccess { secret ->
-            totpSecretInformation = secret
-            totpOriginalUri = totpUri
-            totpItemPickerFlow = true
-            _base.update { it.copy(totpImportActive = true, selectingItemForTotp = true) }
-
-            viewModelScope.launch {
-                val suggestedIds = suggestedItemIdsFor(secret)
-                totpSuggestedItemIds = suggestedIds
-                // A choice made before the query returned leaves the picker; the late result has
-                // nothing left to reorder until the user comes back to it.
-                _base.update {
-                    if (it.selectingItemForTotp) it.copy(totpSuggestedItemIds = suggestedIds)
-                    else it
-                }
-            }
-        }
-    }
-
-    /**
-     * The logins whose registrable domain matches the code's own.
-     *
-     * [resolveTotpDomain] is what fills the domain field for a new item, so the suggestions agree
-     * with it: a code that carries no issuer still matches on the domain in `user@example.com`.
-     */
-    private suspend fun suggestedItemIdsFor(secretInformation: TotpInfo): Set<ItemId> {
-        val domain = resolveTotpDomain(
-            issuer = secretInformation.issuer,
-            accountName = secretInformation.accountName,
-        ) ?: return emptySet()
-
-        return getTdlMatchedLogins(domain).mapTo(mutableSetOf()) { it.id }
-    }
-
     override fun onSubmit() {
         val ready = state.value as? ItemUiState.Ready ?: return
         val base = ready.base
@@ -369,15 +311,6 @@ internal class LoginViewModel(
             return
         }
 
-        // Back belongs to the import while one is running: from the form it returns to the picker
-        // the form was opened from. The picker itself is the flow's first step and has nothing
-        // behind it, so leaving it is the screen's own business (it closes the app) and never a
-        // navigation back to a dashboard the user did not open.
-        if (totpItemPickerFlow) {
-            if (!_base.value.selectingItemForTotp) reopenTotpItemPicker()
-            return
-        }
-
         navigateUp()
     }
 
@@ -411,18 +344,6 @@ internal class LoginViewModel(
                     totpSecretInformation = secretInfo
                     requestTotpSecretUpdate(secretInfo, scannedUri)
                 } ?: showTotpParseError()
-            }
-
-            is LoginUiEvent.OnTotpModificationItemSelected -> {
-                closeTotpItemPicker()
-                viewModelScope.launch { initWithId(event.itemId) }
-            }
-
-            is LoginUiEvent.OnCreateNewItemForTotp -> {
-                closeTotpItemPicker()
-                totpSecretInformation?.let {
-                    updateUiWithTotpSecretInfo(it, totpOriginalUri)
-                }
             }
 
             is LoginUiEvent.OnOverrideFieldClicked -> {
@@ -636,37 +557,6 @@ internal class LoginViewModel(
                     dialogState = DialogState.None,
                 )
             }
-    }
-
-    private fun closeTotpItemPicker() {
-        totpPickerVaultId = selectedVaultId.value
-        _base.update {
-            it.copy(selectingItemForTotp = false, totpSuggestedItemIds = emptySet())
-        }
-    }
-
-    /**
-     * Returns to the picker, throwing away whatever the choice made of the form.
-     *
-     * The form is rebuilt from scratch rather than hidden: the choice may have loaded an existing
-     * item into it, and carrying that item's name, password or vault into the next choice would
-     * write it onto the wrong login. Only the scanned code and its suggestions survive, because
-     * those belong to the import rather than to the item.
-     */
-    private fun reopenTotpItemPicker() {
-        itemId = null
-        nameTextFieldState.setTextAndPlaceCursorAtEnd("")
-        notesTextFieldState.setTextAndPlaceCursorAtEnd("")
-        passwordTextFieldState.setTextAndPlaceCursorAtEnd("")
-        setAssignedTags(emptySet())
-        totpPickerVaultId?.let { setSelectedVaultId(it) }
-
-        _base.value = LoginBaseState(
-            passwordTextFieldState = passwordTextFieldState,
-            totpImportActive = true,
-            selectingItemForTotp = true,
-            totpSuggestedItemIds = totpSuggestedItemIds,
-        )
     }
 
     private fun showTotpParseError() {

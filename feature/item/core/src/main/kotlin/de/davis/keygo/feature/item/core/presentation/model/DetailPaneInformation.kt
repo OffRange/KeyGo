@@ -9,21 +9,21 @@ sealed interface DetailPaneInformation {
         val itemType: VaultItemType
 
         /**
-         * @param pendingTotpUri a scanned code the form should fold in once it is built. Null for
-         * an ordinary create or edit.
+         * A scanned code the form should fold in once it is built. Null for an ordinary create or
+         * edit.
          */
+        val pendingTotpUri: String?
+
         data class New(
             override val itemType: VaultItemType,
-            val pendingTotpUri: String? = null,
+            override val pendingTotpUri: String? = null,
         ) : Init
 
         data class Existing(
             override val itemType: VaultItemType,
             val id: ItemId,
-            val pendingTotpUri: String? = null,
+            override val pendingTotpUri: String? = null,
         ) : Init
-
-        data class TOTP(override val itemType: VaultItemType, val uri: String) : Init
     }
 
     @Serializable

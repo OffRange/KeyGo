@@ -20,7 +20,7 @@ sealed interface RouteDestination : UiRouteDestination {
         data object NavGraph : Home
 
         @Serializable
-        data class Root(val totpUri: String? = null) : Home
+        data object Root : Home
 
         @Serializable
         data object SelectItem : Home
