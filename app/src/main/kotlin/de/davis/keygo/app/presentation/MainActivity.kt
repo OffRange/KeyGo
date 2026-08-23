@@ -153,10 +153,20 @@ private fun App(hasAccess: Boolean) {
                 }
             )
 
+            totpImportGraph(
+                navigateToDestination = navController::navigate,
+                onImportFinished = {
+                    navController.navigate(RouteDestination.TopLevelAppGraph) {
+                        popUpTo<SelectItemForTotpRoute> { inclusive = true }
+                    }
+                },
+                navigateUp = { navController.navigateUp() },
+            )
+
             authGraph(
                 onSuccess = { totpUri ->
                     val dest = totpUri?.let {
-                        RouteDestination.Home.Root(it)
+                        SelectItemForTotpRoute(it)
                     } ?: RouteDestination.TopLevelAppGraph
 
                     navController.navigate(dest) {
@@ -168,7 +178,7 @@ private fun App(hasAccess: Boolean) {
             onboardingGraph(
                 onSuccess = { totpUri ->
                     val dest = totpUri?.let {
-                        RouteDestination.Home.Root(it)
+                        SelectItemForTotpRoute(it)
                     } ?: RouteDestination.TopLevelAppGraph
 
                     navController.navigate(dest) {

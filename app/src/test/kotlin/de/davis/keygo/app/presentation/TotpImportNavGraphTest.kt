@@ -8,6 +8,7 @@ import androidx.navigation.createGraph
 import androidx.navigation.testing.TestNavHostController
 import androidx.navigation.toRoute
 import androidx.test.core.app.ApplicationProvider
+import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.ui.model.PendingTotpImport
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.auth.presentation.authGraph
@@ -18,6 +19,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -36,6 +38,11 @@ class TotpImportNavGraphTest {
             startDestination = if (hasAccess) AuthRoute() else OnboardingRoute(),
         ) {
             totpImportRedirectGraph(hasAccess = hasAccess, navigateAndReplace = {})
+            totpImportGraph(
+                navigateToDestination = {},
+                onImportFinished = {},
+                navigateUp = {},
+            )
             authGraph(onSuccess = {})
             onboardingGraph(onSuccess = {})
         }
@@ -116,5 +123,58 @@ class TotpImportNavGraphTest {
         val route = assertNotNull(controller.currentBackStackEntry).toRoute<AuthRoute>()
         assertEquals(PendingTotpImport(), route.pendingTotpImport)
         assertNull(route.uri)
+    }
+
+    @Test
+    fun `the picker route carries the whole uri`() {
+        val controller = navController(hasAccess = true)
+
+        controller.navigate(SelectItemForTotpRoute(DEEP_LINK_URI))
+
+        val entry = assertNotNull(controller.currentBackStackEntry)
+        assertTrue(entry.destination.hasRoute<SelectItemForTotpRoute>())
+        assertEquals(DEEP_LINK_URI, entry.toRoute<SelectItemForTotpRoute>().totpUri)
+    }
+
+    @Test
+    fun `choosing an item carries its id to the form`() {
+        val controller = navController(hasAccess = true)
+        val itemId = newItemId()
+
+        controller.navigate(AssignTotpRoute(DEEP_LINK_URI, itemId.toString()))
+
+        val route = assertNotNull(controller.currentBackStackEntry).toRoute<AssignTotpRoute>()
+        assertEquals(DEEP_LINK_URI, route.totpUri)
+        assertEquals(itemId, route.selectedItemId)
+    }
+
+    @Test
+    fun `creating a new item carries no id`() {
+        val controller = navController(hasAccess = true)
+
+        controller.navigate(AssignTotpRoute(DEEP_LINK_URI))
+
+        val route = assertNotNull(controller.currentBackStackEntry).toRoute<AssignTotpRoute>()
+        assertEquals(DEEP_LINK_URI, route.totpUri)
+        assertNull(route.selectedItemId)
+    }
+
+    @Test
+    fun `the picker replaces the auth entry so back leaves the app`() {
+        val controller = navController(hasAccess = true)
+
+        controller.navigate(SelectItemForTotpRoute(DEEP_LINK_URI)) {
+            popUpTo<AuthRoute> { inclusive = true }
+        }
+
+        assertTrue(controller.currentDestination?.hasRoute<SelectItemForTotpRoute>() == true)
+        assertFalse(
+            controller.currentBackStack.value.any { it.destination.hasRoute<AuthRoute>() },
+        )
+    }
+
+    private companion object {
+        const val DEEP_LINK_URI =
+            "otpauth://totp/GitHub:me@github.com?secret=JBSWY3DPEHPK3PXP&issuer=github.com"
     }
 }
