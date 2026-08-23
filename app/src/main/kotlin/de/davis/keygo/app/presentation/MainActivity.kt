@@ -1,6 +1,7 @@
 package de.davis.keygo.app.presentation
 
 import android.os.Bundle
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
@@ -51,6 +52,8 @@ import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
 import de.davis.keygo.feature.onboarding.presentation.onboardingGraph
 import de.davis.keygo.feature.settings.presentation.ChangePasswordRoute
 import de.davis.keygo.feature.settings.presentation.settingsGraph
+import de.davis.keygo.feature.totp.presentation.TotpImportRedirect
+import de.davis.keygo.feature.totp.presentation.totpImportRedirectGraph
 import de.davis.keygo.item.dialog.SelectItemContent
 import kotlinx.coroutines.launch
 import org.koin.androidx.viewmodel.ext.android.viewModel
@@ -98,6 +101,7 @@ private fun destinationAfterUnlock(totpUri: String?): Any =
 private fun App(hasAccess: Boolean) {
     val listNavigator = rememberListDetailPaneScaffoldNavigator<DetailType>()
     val navController = rememberNavController()
+    val activity = LocalActivity.current
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
@@ -152,12 +156,23 @@ private fun App(hasAccess: Boolean) {
             startDestination = if (hasAccess) AuthRoute() else OnboardingRoute(),
         ) {
             totpImportRedirectGraph(
-                hasAccess = hasAccess,
-                navigateAndReplace = { dest ->
-                    navController.navigate(dest) {
+                onValidated = { pending ->
+                    navController.navigate(
+                        if (hasAccess) AuthRoute(
+                            totpInfo = pending.totpInfo,
+                            queries = pending.queries,
+                        )
+                        else OnboardingRoute(
+                            totpInfo = pending.totpInfo,
+                            queries = pending.queries,
+                        ),
+                    ) {
                         popUpTo<TotpImportRedirect> { inclusive = true }
                     }
-                }
+                },
+                // The app was launched only to import this code. With nothing left to import, the
+                // Activity is what closes, and :app is the only module that owns one.
+                onRejected = { activity?.finish() },
             )
 
             totpImportGraph(

@@ -14,6 +14,8 @@ import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.auth.presentation.authGraph
 import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
 import de.davis.keygo.feature.onboarding.presentation.onboardingGraph
+import de.davis.keygo.feature.totp.presentation.TotpImportRedirect
+import de.davis.keygo.feature.totp.presentation.totpImportRedirectGraph
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
@@ -37,7 +39,7 @@ class TotpImportNavGraphTest {
         controller.graph = controller.createGraph(
             startDestination = if (hasAccess) AuthRoute() else OnboardingRoute(),
         ) {
-            totpImportRedirectGraph(hasAccess = hasAccess, navigateAndReplace = {})
+            totpImportRedirectGraph(onValidated = {}, onRejected = {})
             totpImportGraph(
                 navigateToDestination = {},
                 onImportFinished = {},
@@ -170,6 +172,23 @@ class TotpImportNavGraphTest {
         assertTrue(controller.currentDestination?.hasRoute<SelectItemForTotpRoute>() == true)
         assertFalse(
             controller.currentBackStack.value.any { it.destination.hasRoute<AuthRoute>() },
+        )
+    }
+
+    @Test
+    fun `a validated code replaces the redirect entry`() {
+        val controller = navController(hasAccess = true)
+        controller.navigate(
+            TotpImportRedirect(totpInfo = "Example:me@example.com", queries = "secret=ABC"),
+        )
+
+        controller.navigate(AuthRoute(totpInfo = "Example:me@example.com", queries = "secret=ABC")) {
+            popUpTo<TotpImportRedirect> { inclusive = true }
+        }
+
+        assertTrue(controller.currentDestination?.hasRoute<AuthRoute>() == true)
+        assertFalse(
+            controller.currentBackStack.value.any { it.destination.hasRoute<TotpImportRedirect>() },
         )
     }
 
