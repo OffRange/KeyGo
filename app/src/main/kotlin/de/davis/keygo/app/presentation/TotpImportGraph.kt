@@ -37,7 +37,7 @@ data class AssignTotpRoute(
 }
 
 /**
- * @param onImportFinished the import is over, either saved or abandoned. Leads back into the app
+ * @param onImportFinished the import is over and the code has been saved. Leads back into the app
  * with the import routes popped, so back does not return the user to a code they already handled.
  */
 fun NavGraphBuilder.totpImportGraph(
@@ -53,7 +53,6 @@ fun NavGraphBuilder.totpImportGraph(
                 navigateToDestination(AssignTotpRoute(route.totpUri, itemId.toString()))
             },
             onCreateNew = { navigateToDestination(AssignTotpRoute(route.totpUri)) },
-            onImportAbandoned = onImportFinished,
         )
     }
 

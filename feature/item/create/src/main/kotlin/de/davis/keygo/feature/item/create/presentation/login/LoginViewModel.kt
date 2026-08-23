@@ -127,12 +127,6 @@ internal class LoginViewModel(
     fun init(information: DetailPaneInformation) {
         when (information) {
             is DetailPaneInformation.Init.Existing -> viewModelScope.launch {
-                // initWithId always resets dialogState to DialogState.None, which would silently
-                // wipe a parse error shown here. That is safe only because the one caller that
-                // reaches this branch with a pendingTotpUri, the item picker, already parsed the
-                // same uri with the same service and abandons the import on failure before
-                // navigating here. A new caller constructing Init.Existing(pendingTotpUri = ...)
-                // needs its own parse gate upstream, since this branch will not provide one.
                 information.pendingTotpUri?.let { parsePendingTotp(it) }
                 initWithId(information.id)
             }
@@ -230,13 +224,12 @@ internal class LoginViewModel(
 
     /**
      * Reads a code the picker handed over and remembers it, so [initWithId] can fold it into
-     * whichever login was chosen. Returns null when the code cannot be read, having already put the
-     * parse error on screen.
+     * whichever login was chosen. Returns null when the code cannot be read, which the redirect that
+     * starts the import already ruled out, so there is nothing to tell the user about here.
      */
     private fun parsePendingTotp(uri: String): TotpInfo? =
         totpService.getInfoFromUriWithResult(uri).onFailure { failure ->
             Log.e(TAG, "Error parsing TOTP URI: $failure")
-            showTotpParseError()
         }.getOrNull()?.also {
             totpSecretInformation = it
             totpOriginalUri = uri

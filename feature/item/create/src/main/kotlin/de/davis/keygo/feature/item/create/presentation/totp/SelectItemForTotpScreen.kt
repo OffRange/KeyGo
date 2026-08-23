@@ -2,7 +2,6 @@ package de.davis.keygo.feature.item.create.presentation.totp
 
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -22,7 +21,6 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.list_screen.presentation.ItemListScreen
 import de.davis.keygo.feature.list_screen.presentation.NoItemStrategy
-import de.davis.keygo.feature.totp.presentation.component.TotpParseErrorDialog
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -34,20 +32,19 @@ import org.koin.core.parameter.parametersOf
  * import, which replaced the whole back stack on its way here, so the NavHost does not consume a
  * back press and the activity finishes on its own.
  *
+ * It also carries no error surface. A code that cannot be read never reaches this screen, because
+ * the redirect that starts the import ends the flow there.
+ *
  * @param totpUri the scanned deep link, carried whole so the screen and its ViewModel can parse it
  * independently.
  * @param onItemSelected the user picked an existing login to attach the code to.
  * @param onCreateNew the user chose to attach the code to a login that does not exist yet.
- * @param onImportAbandoned the code could not be read, so there is nothing to attach and the flow
- * ends. The user stays in the app they just unlocked rather than being thrown out over a malformed
- * code from somewhere else.
  */
 @Composable
 fun SelectItemForTotpScreen(
     totpUri: String,
     onItemSelected: (ItemId) -> Unit,
     onCreateNew: () -> Unit,
-    onImportAbandoned: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: SelectItemForTotpViewModel = koinViewModel { parametersOf(totpUri) }
@@ -57,10 +54,6 @@ fun SelectItemForTotpScreen(
         state = state,
         onItemSelected = onItemSelected,
         onCreateNew = onCreateNew,
-        onParseErrorDismiss = {
-            viewModel.onParseErrorDismissed()
-            onImportAbandoned()
-        },
         modifier = modifier,
     )
 }
@@ -71,7 +64,6 @@ private fun SelectItemForTotpContent(
     state: SelectItemForTotpUiState,
     onItemSelected: (ItemId) -> Unit,
     onCreateNew: () -> Unit,
-    onParseErrorDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -103,10 +95,4 @@ private fun SelectItemForTotpContent(
                 .padding(innerPadding),
         )
     }
-
-    if (state.parseError)
-        TotpParseErrorDialog(
-            onDismiss = onParseErrorDismiss,
-            modifier = Modifier.fillMaxWidth(),
-        )
 }

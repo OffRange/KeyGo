@@ -23,8 +23,8 @@ import org.koin.core.annotation.KoinViewModel
  * Backs the screen that asks which login a scanned code belongs to.
  *
  * The code arrives as a uri rather than as parsed info because it travels through a navigation
- * argument, and navigation carries primitives. Parsing it here is also what lets the picker be the
- * screen that reports an unreadable code, since it is the first screen the code reaches.
+ * argument, and navigation carries primitives. A code that cannot be read gets no suggestions and
+ * no error, because the redirect that starts the import already refused those.
  */
 @KoinViewModel
 internal class SelectItemForTotpViewModel(
@@ -39,17 +39,12 @@ internal class SelectItemForTotpViewModel(
     init {
         totpService.getInfoFromUriWithResult(totpUri).onFailure { failure ->
             Log.e(TAG, "Error parsing TOTP URI: $failure")
-            _state.update { it.copy(parseError = true) }
         }.onSuccess { info ->
             viewModelScope.launch {
                 val suggested = suggestedItemIdsFor(info)
                 _state.update { it.copy(suggestedItemIds = suggested) }
             }
         }
-    }
-
-    fun onParseErrorDismissed() {
-        _state.update { it.copy(parseError = false) }
     }
 
     /**

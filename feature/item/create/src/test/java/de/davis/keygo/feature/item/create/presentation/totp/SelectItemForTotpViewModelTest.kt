@@ -28,12 +28,11 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 /**
  * Covers what the picker knows before the user has chosen anything: which logins the scanned code
- * points at, and what happens when the code cannot be read at all.
+ * points at. An unreadable code is not covered here, because the redirect that starts the import
+ * rejects those before the picker is ever reached.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -88,33 +87,18 @@ class SelectItemForTotpViewModelTest {
         val viewModel = buildViewModel()
         advanceUntilIdle()
 
-        val state = viewModel.state.value
-        assertEquals(emptySet(), state.suggestedItemIds)
-        assertFalse(state.parseError)
+        assertEquals(emptySet(), viewModel.state.value.suggestedItemIds)
     }
 
     @Test
-    fun `an unreadable code surfaces the parse error`() = runVmTest {
+    fun `an unreadable code suggests nothing instead of raising an error`() = runVmTest {
+        seedLogin(name = "GitHub", domain = "github.com")
         totpService.infoFromUriResult = null
 
         val viewModel = buildViewModel()
         advanceUntilIdle()
 
-        val state = viewModel.state.value
-        assertTrue(state.parseError)
-        assertEquals(emptySet(), state.suggestedItemIds)
-    }
-
-    @Test
-    fun `dismissing the parse error clears it`() = runVmTest {
-        totpService.infoFromUriResult = null
-        val viewModel = buildViewModel()
-        advanceUntilIdle()
-
-        viewModel.onParseErrorDismissed()
-        advanceUntilIdle()
-
-        assertFalse(viewModel.state.value.parseError)
+        assertEquals(emptySet(), viewModel.state.value.suggestedItemIds)
     }
 
     // Helpers
