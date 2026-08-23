@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
+import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
@@ -38,6 +39,7 @@ import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
 import de.davis.keygo.R
 import de.davis.keygo.app.presentation.component.KeyGoNavigationWrapper
 import de.davis.keygo.core.presentation.model.RouteDestination
+import de.davis.keygo.core.ui.model.PendingTotpImport
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.util.presentation.snackbar.LocalSnackbarManager
@@ -95,6 +97,27 @@ class MainActivity : FragmentActivity() {
  */
 private fun destinationAfterUnlock(totpUri: String?): Any =
     totpUri?.let { SelectItemForTotpRoute(it) } ?: RouteDestination.TopLevelAppGraph
+
+/**
+ * Where a validated code goes once the gate has cleared it. Auth and onboarding are the two ways
+ * into the app, and the code rides along to whichever one the user needs. The redirect is popped on
+ * the way out: it exists only to hold the code while it was checked, so there is nothing to come
+ * back to.
+ */
+internal fun NavController.navigateToValidatedImport(hasAccess: Boolean, pending: PendingTotpImport) {
+    navigate(
+        if (hasAccess) AuthRoute(
+            totpInfo = pending.totpInfo,
+            queries = pending.queries,
+        )
+        else OnboardingRoute(
+            totpInfo = pending.totpInfo,
+            queries = pending.queries,
+        ),
+    ) {
+        popUpTo<TotpImportRedirect> { inclusive = true }
+    }
+}
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
@@ -156,20 +179,7 @@ private fun App(hasAccess: Boolean) {
             startDestination = if (hasAccess) AuthRoute() else OnboardingRoute(),
         ) {
             totpImportRedirectGraph(
-                onValidated = { pending ->
-                    navController.navigate(
-                        if (hasAccess) AuthRoute(
-                            totpInfo = pending.totpInfo,
-                            queries = pending.queries,
-                        )
-                        else OnboardingRoute(
-                            totpInfo = pending.totpInfo,
-                            queries = pending.queries,
-                        ),
-                    ) {
-                        popUpTo<TotpImportRedirect> { inclusive = true }
-                    }
-                },
+                onValidated = { pending -> navController.navigateToValidatedImport(hasAccess, pending) },
                 // The app was launched only to import this code. With nothing left to import, the
                 // Activity is what closes, and :app is the only module that owns one.
                 onRejected = { activity?.finish() },

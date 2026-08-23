@@ -176,17 +176,44 @@ class TotpImportNavGraphTest {
     }
 
     @Test
-    fun `a validated code replaces the redirect entry`() {
+    fun `a validated code sends an account with access to AuthRoute`() {
         val controller = navController(hasAccess = true)
         controller.navigate(
             TotpImportRedirect(totpInfo = "Example:me@example.com", queries = "secret=ABC"),
         )
 
-        controller.navigate(AuthRoute(totpInfo = "Example:me@example.com", queries = "secret=ABC")) {
-            popUpTo<TotpImportRedirect> { inclusive = true }
-        }
+        controller.navigateToValidatedImport(
+            hasAccess = true,
+            pending = PendingTotpImport(totpInfo = "Example:me@example.com", queries = "secret=ABC"),
+        )
 
         assertTrue(controller.currentDestination?.hasRoute<AuthRoute>() == true)
+
+        val route = assertNotNull(controller.currentBackStackEntry).toRoute<AuthRoute>()
+        assertEquals("Example:me@example.com", route.totpInfo)
+        assertEquals("secret=ABC", route.queries)
+        assertFalse(
+            controller.currentBackStack.value.any { it.destination.hasRoute<TotpImportRedirect>() },
+        )
+    }
+
+    @Test
+    fun `a validated code sends an account without access to OnboardingRoute`() {
+        val controller = navController(hasAccess = false)
+        controller.navigate(
+            TotpImportRedirect(totpInfo = "Example:me@example.com", queries = "secret=ABC"),
+        )
+
+        controller.navigateToValidatedImport(
+            hasAccess = false,
+            pending = PendingTotpImport(totpInfo = "Example:me@example.com", queries = "secret=ABC"),
+        )
+
+        assertTrue(controller.currentDestination?.hasRoute<OnboardingRoute>() == true)
+
+        val route = assertNotNull(controller.currentBackStackEntry).toRoute<OnboardingRoute>()
+        assertEquals("Example:me@example.com", route.totpInfo)
+        assertEquals("secret=ABC", route.queries)
         assertFalse(
             controller.currentBackStack.value.any { it.destination.hasRoute<TotpImportRedirect>() },
         )
