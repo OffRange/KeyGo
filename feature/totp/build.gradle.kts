@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.keygo.android.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -21,9 +22,12 @@ dependencies {
     implementation(libs.com.google.accompanist.permissions)
 
     implementation(projects.rust)
+    implementation(projects.core.ui)
     implementation(projects.core.security)
     implementation(projects.core.item)
     implementation(projects.core.util)
+
+    implementation(libs.androidx.navigation.compose)
 
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.compose)
@@ -35,4 +39,6 @@ dependencies {
     testImplementation(testFixtures(projects.core.security))
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.rust))
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.junit)
 }
