@@ -1,4 +1,4 @@
-package de.davis.keygo.app.presentation
+package de.davis.keygo.feature.item.create.presentation.totp
 
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
@@ -8,17 +8,8 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.ui.RouteDestination
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.item.create.presentation.login.LoginScreen
-import de.davis.keygo.feature.item.create.presentation.totp.SelectItemForTotpScreen
 import kotlinx.serialization.Serializable
 import java.util.UUID
-
-/**
- * Where a deep-linked code lands once the user is through the door. The uri travels whole, unlike
- * on [de.davis.keygo.feature.auth.presentation.AuthRoute], because only the deep link's own
- * `otpauth://totp/{totpInfo}?{queries}` pattern forces that split.
- */
-@Serializable
-data class SelectItemForTotpRoute(val totpUri: String) : RouteDestination
 
 /**
  * The login form for a chosen item, or for a new one when [itemId] is null.
@@ -37,25 +28,20 @@ data class AssignTotpRoute(
 }
 
 /**
+ * The last step of a deep-linked import: the login form, opened on the item the picker chose, with
+ * the scanned code already pending on it.
+ *
+ * The picker itself lives in the totp feature, which knows nothing about a login form. It hands the
+ * uri back to whoever wired the two graphs together, and that caller navigates to
+ * [AssignTotpRoute].
+ *
  * @param onImportFinished the import is over and the code has been saved. Leads back into the app
  * with the import routes popped, so back does not return the user to a code they already handled.
  */
-fun NavGraphBuilder.totpImportGraph(
-    navigateToDestination: (Any) -> Unit,
+fun NavGraphBuilder.assignTotpGraph(
     onImportFinished: () -> Unit,
     navigateUp: () -> Unit,
 ) {
-    composable<SelectItemForTotpRoute> { entry ->
-        val route = entry.toRoute<SelectItemForTotpRoute>()
-        SelectItemForTotpScreen(
-            totpUri = route.totpUri,
-            onItemSelected = { itemId ->
-                navigateToDestination(AssignTotpRoute(route.totpUri, itemId.toString()))
-            },
-            onCreateNew = { navigateToDestination(AssignTotpRoute(route.totpUri)) },
-        )
-    }
-
     composable<AssignTotpRoute> { entry ->
         val route = entry.toRoute<AssignTotpRoute>()
         LoginScreen(

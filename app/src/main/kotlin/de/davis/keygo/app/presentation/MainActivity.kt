@@ -51,11 +51,15 @@ import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.auth.presentation.authGraph
 import de.davis.keygo.feature.backup.presentation.BackupHubRoute
 import de.davis.keygo.feature.backup.presentation.backupGraph
+import de.davis.keygo.feature.item.create.presentation.totp.AssignTotpRoute
+import de.davis.keygo.feature.item.create.presentation.totp.assignTotpGraph
 import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
 import de.davis.keygo.feature.onboarding.presentation.onboardingGraph
 import de.davis.keygo.feature.settings.presentation.ChangePasswordRoute
 import de.davis.keygo.feature.settings.presentation.settingsGraph
+import de.davis.keygo.feature.totp.presentation.SelectItemForTotpRoute
 import de.davis.keygo.feature.totp.presentation.TotpImportRedirect
+import de.davis.keygo.feature.totp.presentation.selectItemForTotpGraph
 import de.davis.keygo.feature.totp.presentation.totpImportRedirectGraph
 import de.davis.keygo.item.dialog.SelectItemContent
 import kotlinx.coroutines.launch
@@ -119,6 +123,18 @@ internal fun NavController.navigateToValidatedImport(hasAccess: Boolean, pending
         ),
     ) {
         popUpTo<TotpImportRedirect> { inclusive = true }
+    }
+}
+
+/**
+ * Where the picker's answer goes. The picker stays composed and collecting through its exit
+ * transition, so a double tap on a row can fire twice before the first navigation leaves it.
+ * [AssignTotpRoute] is a data class, so launchSingleTop dedupes the repeat instead of pushing it
+ * twice onto the back stack.
+ */
+internal fun NavController.navigateToAssignTotp(route: AssignTotpRoute) {
+    navigate(route) {
+        launchSingleTop = true
     }
 }
 
@@ -190,16 +206,16 @@ private fun App(hasAccess: Boolean) {
                 },
             )
 
-            totpImportGraph(
-                // The picker stays composed and collecting through its exit transition, so a
-                // double tap on a row can fire twice before the first navigation leaves it.
-                // AssignTotpRoute is a data class, so launchSingleTop dedupes the repeat instead
-                // of pushing it twice onto the back stack.
-                navigateToDestination = { dest ->
-                    navController.navigate(dest) {
-                        launchSingleTop = true
-                    }
+            selectItemForTotpGraph(
+                onItemSelected = { totpUri, itemId ->
+                    navController.navigateToAssignTotp(AssignTotpRoute(totpUri, itemId.toString()))
                 },
+                onCreateNew = { totpUri ->
+                    navController.navigateToAssignTotp(AssignTotpRoute(totpUri))
+                },
+            )
+
+            assignTotpGraph(
                 onImportFinished = {
                     navController.navigate(RouteDestination.TopLevelAppGraph) {
                         popUpTo<SelectItemForTotpRoute> { inclusive = true }

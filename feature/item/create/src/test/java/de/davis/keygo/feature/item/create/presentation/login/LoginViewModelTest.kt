@@ -19,13 +19,13 @@ import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
+import de.davis.keygo.core.util.FakeRegistrableDomainResolver
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
 import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
-import de.davis.keygo.feature.item.create.presentation.TestRegistrableDomainResolver
 import de.davis.keygo.feature.item.create.presentation.login.model.DialogState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginBaseState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiEvent
@@ -79,7 +79,7 @@ class LoginViewModelTest {
     private val vaultContextRepository = FakeVaultContextRepository()
     private val cryptoProvider = FakeCryptographicScopeProvider(itemRepository)
     private val totpService = FakeTotpService()
-    private val domainResolver = TestRegistrableDomainResolver()
+    private val domainResolver = FakeRegistrableDomainResolver()
 
     @BeforeTest
     fun setUp() {

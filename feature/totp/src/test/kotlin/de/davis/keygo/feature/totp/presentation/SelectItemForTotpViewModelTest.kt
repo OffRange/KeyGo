@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.item.create.presentation.totp
+package de.davis.keygo.feature.totp.presentation
 
 import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.domain.alias.ItemId
@@ -9,7 +9,7 @@ import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.security.domain.usecase.GetTdlMatchedLoginsUseCase
-import de.davis.keygo.feature.item.create.presentation.TestRegistrableDomainResolver
+import de.davis.keygo.core.util.FakeRegistrableDomainResolver
 import de.davis.keygo.rust.FakeTotpService
 import de.davisalessandro.keygo.rust.Algorithm
 import de.davisalessandro.keygo.rust.TotpInfo
@@ -44,7 +44,7 @@ class SelectItemForTotpViewModelTest {
     private val vaultId = newVaultId()
     private val loginRepository = FakeLoginRepository()
     private val totpService = FakeTotpService()
-    private val domainResolver = TestRegistrableDomainResolver()
+    private val domainResolver = FakeRegistrableDomainResolver()
 
     @BeforeTest
     fun setUp() {

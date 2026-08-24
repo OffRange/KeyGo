@@ -26,6 +26,7 @@ dependencies {
     implementation(projects.core.security)
     implementation(projects.core.item)
     implementation(projects.core.util)
+    implementation(projects.feature.listScreen)
 
     implementation(libs.androidx.navigation.compose)
 
@@ -38,6 +39,7 @@ dependencies {
 
     testImplementation(testFixtures(projects.core.security))
     testImplementation(testFixtures(projects.core.item))
+    testImplementation(testFixtures(projects.core.util))
     testImplementation(testFixtures(projects.rust))
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.junit)

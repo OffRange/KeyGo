@@ -26,7 +26,6 @@ import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.feature.item.core.domain.model.ItemUpsertError
 import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.fieldUpdate
-import de.davis.keygo.feature.item.core.domain.model.resolveTotpDomain
 import de.davis.keygo.feature.item.core.domain.model.set
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
 import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
@@ -40,6 +39,7 @@ import de.davis.keygo.feature.item.create.presentation.login.model.LoginPasskeyI
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiEvent
 import de.davis.keygo.feature.item.create.presentation.login.model.OverrideTotpField
 import de.davis.keygo.feature.item.create.presentation.model.ItemUiState
+import de.davis.keygo.feature.totp.domain.model.resolveTotpDomain
 import de.davis.keygo.rust.totp.TotpService
 import de.davis.keygo.rust.totp.getInfoFromUriWithResult
 import de.davis.keygo.rust.totp.getUrlWithResult

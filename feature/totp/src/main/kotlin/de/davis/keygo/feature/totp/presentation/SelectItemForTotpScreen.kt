@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.item.create.presentation.totp
+package de.davis.keygo.feature.totp.presentation
 
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,9 +18,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
-import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.list_screen.presentation.ItemListScreen
 import de.davis.keygo.feature.list_screen.presentation.NoItemStrategy
+import de.davis.keygo.feature.totp.R
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 

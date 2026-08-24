@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.item.core.domain.model
+package de.davis.keygo.feature.totp.domain.model
 
 fun resolveTotpDomain(issuer: String?, accountName: String): String? {
     if (!issuer.isNullOrEmpty()) return issuer

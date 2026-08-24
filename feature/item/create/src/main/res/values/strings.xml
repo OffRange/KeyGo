@@ -17,8 +17,6 @@
     <string name="keep">Keep</string>
 
     <string name="select_item">Select an Item</string>
-    <string name="create_new">Create New</string>
-    <string name="select_item_for_totp">Add code to which item?</string>
 
     <string name="length">Length [%d]</string>
     <string name="character_sets">Character Sets</string>

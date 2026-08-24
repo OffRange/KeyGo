@@ -1,9 +1,9 @@
-package de.davis.keygo.feature.item.create.presentation
+package de.davis.keygo.core.util
 
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
 
 /** Resolves an eTLD+1 by keeping the last two labels, which is enough for the test domains. */
-internal class TestRegistrableDomainResolver : RegistrableDomainResolver {
+class FakeRegistrableDomainResolver : RegistrableDomainResolver {
     override fun resolve(domain: String): String? {
         val labels = domain.substringAfter("://")
             .substringBefore('/')

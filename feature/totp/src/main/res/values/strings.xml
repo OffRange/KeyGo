@@ -13,4 +13,7 @@
 
     <string name="totp_parse_error">TOTP Parse Error</string>
     <string name="totp_parse_error_description">The TOTP code could not be parsed.</string>
+
+    <string name="select_item_for_totp">Add code to which item?</string>
+    <string name="create_new">Create New</string>
 </resources>

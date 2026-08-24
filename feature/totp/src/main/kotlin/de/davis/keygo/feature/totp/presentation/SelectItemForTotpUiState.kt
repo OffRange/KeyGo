@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.item.create.presentation.totp
+package de.davis.keygo.feature.totp.presentation
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 

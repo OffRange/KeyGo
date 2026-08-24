@@ -12,9 +12,13 @@ import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.ui.model.PendingTotpImport
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.auth.presentation.authGraph
+import de.davis.keygo.feature.item.create.presentation.totp.AssignTotpRoute
+import de.davis.keygo.feature.item.create.presentation.totp.assignTotpGraph
 import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
 import de.davis.keygo.feature.onboarding.presentation.onboardingGraph
+import de.davis.keygo.feature.totp.presentation.SelectItemForTotpRoute
 import de.davis.keygo.feature.totp.presentation.TotpImportRedirect
+import de.davis.keygo.feature.totp.presentation.selectItemForTotpGraph
 import de.davis.keygo.feature.totp.presentation.totpImportRedirectGraph
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -40,11 +44,8 @@ class TotpImportNavGraphTest {
             startDestination = if (hasAccess) AuthRoute() else OnboardingRoute(),
         ) {
             totpImportRedirectGraph(onValidated = {}, onRejected = {})
-            totpImportGraph(
-                navigateToDestination = {},
-                onImportFinished = {},
-                navigateUp = {},
-            )
+            selectItemForTotpGraph(onItemSelected = { _, _ -> }, onCreateNew = {})
+            assignTotpGraph(onImportFinished = {}, navigateUp = {})
             authGraph(onSuccess = {})
             onboardingGraph(onSuccess = {})
         }

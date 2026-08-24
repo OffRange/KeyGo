@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.item.create.presentation.totp
+package de.davis.keygo.feature.totp.presentation
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -7,7 +7,7 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.security.domain.usecase.GetTdlMatchedLoginsUseCase
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
-import de.davis.keygo.feature.item.core.domain.model.resolveTotpDomain
+import de.davis.keygo.feature.totp.domain.model.resolveTotpDomain
 import de.davis.keygo.rust.totp.TotpService
 import de.davis.keygo.rust.totp.getInfoFromUriWithResult
 import de.davisalessandro.keygo.rust.TotpInfo
