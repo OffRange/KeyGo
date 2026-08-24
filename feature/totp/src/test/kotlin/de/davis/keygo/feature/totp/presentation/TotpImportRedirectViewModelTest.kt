@@ -10,10 +10,6 @@ import org.robolectric.annotation.Config
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * Covers the gate a deep-linked code passes before the user is asked to authenticate. A code that
- * cannot be read has to be rejected here, because everything downstream now assumes it was.
- */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class TotpImportRedirectViewModelTest {

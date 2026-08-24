@@ -29,11 +29,6 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * Covers what the picker knows before the user has chosen anything: which logins the scanned code
- * points at. An unreadable code is not covered here, because the redirect that starts the import
- * rejects those before the picker is ever reached.
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])

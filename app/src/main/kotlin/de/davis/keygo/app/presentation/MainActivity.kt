@@ -98,20 +98,13 @@ class MainActivity : FragmentActivity() {
     }
 }
 
-/**
- * Where a pending code sends the user once they are through the door, whether that door was auth
- * or onboarding. No code means there is nothing to pick an item for.
- */
 private fun destinationAfterUnlock(totpUri: String?): Any =
     totpUri?.let { SelectItemForTotpRoute(it) } ?: RouteDestination.TopLevelAppGraph
 
-/**
- * Where a validated code goes once the gate has cleared it. Auth and onboarding are the two ways
- * into the app, and the code rides along to whichever one the user needs. The redirect is popped on
- * the way out: it exists only to hold the code while it was checked, so there is nothing to come
- * back to.
- */
-internal fun NavController.navigateToValidatedImport(hasAccess: Boolean, pending: PendingTotpImport) {
+internal fun NavController.navigateToValidatedImport(
+    hasAccess: Boolean,
+    pending: PendingTotpImport
+) {
     navigate(
         if (hasAccess) AuthRoute(
             totpInfo = pending.totpInfo,
@@ -198,11 +191,19 @@ private fun App(hasAccess: Boolean) {
             startDestination = if (hasAccess) AuthRoute() else OnboardingRoute(),
         ) {
             totpImportRedirectGraph(
-                onValidated = { pending -> navController.navigateToValidatedImport(hasAccess, pending) },
+                onValidated = { pending ->
+                    navController.navigateToValidatedImport(
+                        hasAccess,
+                        pending
+                    )
+                },
                 // The app was launched only to import this code. With nothing left to import, the
                 // Activity is what closes, and :app is the only module that owns one.
                 onRejected = {
-                    activity?.finish() ?: Log.w(TAG, "No activity to finish after rejecting an invalid TOTP deep link")
+                    activity?.finish() ?: Log.w(
+                        TAG,
+                        "No activity to finish after rejecting an invalid TOTP deep link"
+                    )
                 },
             )
 

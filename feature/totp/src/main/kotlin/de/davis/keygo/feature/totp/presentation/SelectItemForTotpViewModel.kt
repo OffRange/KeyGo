@@ -19,13 +19,6 @@ import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
 
-/**
- * Backs the screen that asks which login a scanned code belongs to.
- *
- * The code arrives as a uri rather than as parsed info because it travels through a navigation
- * argument, and navigation carries primitives. A code that cannot be read gets no suggestions and
- * no error, because the redirect that starts the import already refused those.
- */
 @KoinViewModel
 internal class SelectItemForTotpViewModel(
     @InjectedParam private val totpUri: String,
@@ -47,12 +40,6 @@ internal class SelectItemForTotpViewModel(
         }
     }
 
-    /**
-     * The logins whose registrable domain matches the code's own.
-     *
-     * [resolveTotpDomain] is what fills the domain field for a new item, so the suggestions agree
-     * with it: a code that carries no issuer still matches on the domain in `user@example.com`.
-     */
     private suspend fun suggestedItemIdsFor(info: TotpInfo): Set<ItemId> {
         val domain = resolveTotpDomain(
             issuer = info.issuer,

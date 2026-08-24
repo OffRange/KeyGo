@@ -12,18 +12,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
 
-/**
- * Decides whether a deep-linked code is worth asking the user to authenticate for.
- *
- * The import used to reach the item picker before anything read the code, so a malformed one cost
- * the user a full unlock before it told them anything. This is the single gate that check now
- * passes through, which is why neither the picker nor the login form reports a parse failure of its
- * own any more.
- *
- * The pending import arrives whole rather than as its assembled uri because that uri is null for a
- * structurally incomplete link, and Koin resolves an injected parameter by type, which a null value
- * does not have.
- */
 @KoinViewModel
 internal class TotpImportRedirectViewModel(
     @InjectedParam private val pendingImport: PendingTotpImport,
@@ -38,10 +26,6 @@ internal class TotpImportRedirectViewModel(
         _state.value = validate()
     }
 
-    /**
-     * A null uri means the link carried no path or no query string, which leaves as little to
-     * import as a code the parser rejects. Both end the import here.
-     */
     private fun validate(): TotpImportRedirectState {
         val uri = pendingImport.uri ?: run {
             Log.e(TAG, "Deep link carried no complete otpauth uri")
