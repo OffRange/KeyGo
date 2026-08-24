@@ -77,6 +77,7 @@ internal fun ItemListContent(
     onClearSelection: () -> Unit,
     onSelectAll: () -> Unit,
     onDeleteSelectedRequest: () -> Unit,
+    onPinSelectedRequest: () -> Unit,
     onDismissDeleteConfirmation: () -> Unit,
     onConfirmDeleteSelected: () -> Unit,
     onVaultSelectorClick: () -> Unit,
@@ -126,9 +127,11 @@ internal fun ItemListContent(
                 SelectionTopBar(
                     selectedCount = uiState.selectedItemIds.size,
                     canDelete = enableDeletion,
+                    allPinned = false,
                     onClearSelection = onClearSelection,
                     onSelectAll = onSelectAll,
                     onDeleteSelected = onDeleteSelectedRequest,
+                    onPinSelected = onPinSelectedRequest,
                 )
             else
                 AppBarWithSearch(
@@ -309,6 +312,7 @@ private fun ItemListContentPreview() {
                 onClearSelection = {},
                 onSelectAll = {},
                 onDeleteSelectedRequest = {},
+                onPinSelectedRequest = {},
                 onDismissDeleteConfirmation = {},
                 onConfirmDeleteSelected = {},
                 onVaultSelectorClick = {},

@@ -3,7 +3,9 @@ package de.davis.keygo.feature.list_screen.presentation.components
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -21,9 +23,11 @@ import de.davis.keygo.feature.list_screen.R
 internal fun SelectionTopBar(
     selectedCount: Int,
     canDelete: Boolean,
+    allPinned: Boolean,
     onClearSelection: () -> Unit,
     onSelectAll: () -> Unit,
     onDeleteSelected: () -> Unit,
+    onPinSelected: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     TopAppBar(
@@ -44,6 +48,15 @@ internal fun SelectionTopBar(
                 Icon(
                     imageVector = Icons.Default.SelectAll,
                     contentDescription = stringResource(R.string.select_all),
+                )
+            }
+
+            IconButton(onClick = onPinSelected) {
+                Icon(
+                    imageVector = if (allPinned) Icons.Default.PushPin else Icons.Outlined.PushPin,
+                    contentDescription = stringResource(
+                        if (allPinned) R.string.unpin_all else R.string.pin_all,
+                    ),
                 )
             }
 

@@ -110,6 +110,7 @@ fun ItemListScreen(
         onClearSelection = viewModel::onClearSelection,
         onSelectAll = viewModel::onSelectAll,
         onDeleteSelectedRequest = viewModel::onDeleteSelectedRequest,
+        onPinSelectedRequest = viewModel::onPinSelectedRequest,
         onDismissDeleteConfirmation = viewModel::onDismissDeleteConfirmation,
         onConfirmDeleteSelected = viewModel::onConfirmDeleteSelected,
         scrollBehavior = scrollBehavior,

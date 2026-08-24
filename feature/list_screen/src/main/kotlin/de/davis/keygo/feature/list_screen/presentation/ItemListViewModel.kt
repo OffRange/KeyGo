@@ -246,6 +246,10 @@ internal class ItemListViewModel(
         if (selectedItemIds.value.isNotEmpty()) _isDeleteConfirmationVisible.update { true }
     }
 
+    fun onPinSelectedRequest() {
+        // TODO
+    }
+
     fun onDismissDeleteConfirmation() {
         _isDeleteConfirmationVisible.update { false }
     }
