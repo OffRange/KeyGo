@@ -230,6 +230,7 @@ private fun LoginReadyContent(
                         state = state.totpTextFieldState,
                         label = { Text(text = stringResource(R.string.totp_secret)) },
                         placeholder = { Text(text = stringResource(R.string.totp_secret)) },
+                        error = state.totpError,
                         outsideTrailingContent = {
                             IconButton(
                                 onClick = { onEvent(LoginUiEvent.OnScanCodeRequest) },
