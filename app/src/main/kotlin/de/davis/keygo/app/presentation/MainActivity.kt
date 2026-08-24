@@ -29,6 +29,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -58,7 +59,6 @@ import de.davis.keygo.feature.onboarding.presentation.onboardingGraph
 import de.davis.keygo.feature.settings.presentation.ChangePasswordRoute
 import de.davis.keygo.feature.settings.presentation.settingsGraph
 import de.davis.keygo.feature.totp.presentation.SelectItemForTotpRoute
-import de.davis.keygo.feature.totp.presentation.TotpImportRedirect
 import de.davis.keygo.feature.totp.presentation.selectItemForTotpGraph
 import de.davis.keygo.feature.totp.presentation.totpImportRedirectGraph
 import de.davis.keygo.item.dialog.SelectItemContent
@@ -115,7 +115,7 @@ internal fun NavController.navigateToValidatedImport(
             queries = pending.queries,
         ),
     ) {
-        popUpTo<TotpImportRedirect> { inclusive = true }
+        popUpTo(graph.findStartDestination().id) { inclusive = true }
     }
 }
 

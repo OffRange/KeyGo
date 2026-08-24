@@ -176,6 +176,46 @@ class TotpImportNavGraphTest {
         )
     }
 
+    /**
+     * The same claim as above, but reached the way a deep link reaches it. The gate the deep link
+     * opens is a second entry on a destination the launch already put on the stack, so a pop that
+     * only reaches the nearest one leaves the first behind for back to land on.
+     */
+    @Test
+    fun `back leaves the app after a deep link opened the gate`() {
+        val controller = navController(hasAccess = true)
+        controller.navigate(DEEP_LINK_URI.toUri())
+        val redirect = assertNotNull(controller.currentBackStackEntry).toRoute<TotpImportRedirect>()
+
+        controller.navigateToValidatedImport(hasAccess = true, pending = redirect.pendingImport)
+        controller.navigate(SelectItemForTotpRoute(DEEP_LINK_URI)) {
+            popUpTo<AuthRoute> { inclusive = true }
+        }
+
+        assertTrue(controller.currentDestination?.hasRoute<SelectItemForTotpRoute>() == true)
+        assertFalse(
+            controller.currentBackStack.value.any { it.destination.hasRoute<AuthRoute>() },
+        )
+    }
+
+    /** The onboarding half of the same claim, for an account that has no access yet. */
+    @Test
+    fun `back leaves the app after a deep link opened onboarding`() {
+        val controller = navController(hasAccess = false)
+        controller.navigate(DEEP_LINK_URI.toUri())
+        val redirect = assertNotNull(controller.currentBackStackEntry).toRoute<TotpImportRedirect>()
+
+        controller.navigateToValidatedImport(hasAccess = false, pending = redirect.pendingImport)
+        controller.navigate(SelectItemForTotpRoute(DEEP_LINK_URI)) {
+            popUpTo<OnboardingRoute> { inclusive = true }
+        }
+
+        assertTrue(controller.currentDestination?.hasRoute<SelectItemForTotpRoute>() == true)
+        assertFalse(
+            controller.currentBackStack.value.any { it.destination.hasRoute<OnboardingRoute>() },
+        )
+    }
+
     @Test
     fun `a validated code sends an account with access to AuthRoute`() {
         val controller = navController(hasAccess = true)
