@@ -8,10 +8,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import de.davis.keygo.feature.totp.R
 
+/**
+ * @param onDismissRequest what a back press (or outside tap) does. Defaults to doing nothing,
+ * because the scanner's dialog sits inside a screen the user can still use, so a stray back press
+ * should not dismiss it. The deep link gate's dialog is the whole screen, so back has to be a real
+ * exit and passes [onDismiss] here too.
+ */
 @Composable
-fun TotpParseErrorDialog(onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+fun TotpParseErrorDialog(
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    onDismissRequest: () -> Unit = {},
+) {
     AlertDialog(
-        onDismissRequest = {},
+        onDismissRequest = onDismissRequest,
         confirmButton = {
             TextButton(
                 onClick = onDismiss

@@ -69,6 +69,7 @@ fun NavGraphBuilder.totpImportRedirectGraph(
             TotpImportRedirectState.Invalid -> TotpParseErrorDialog(
                 onDismiss = onRejected,
                 modifier = Modifier.fillMaxWidth(),
+                onDismissRequest = onRejected,
             )
         }
     }

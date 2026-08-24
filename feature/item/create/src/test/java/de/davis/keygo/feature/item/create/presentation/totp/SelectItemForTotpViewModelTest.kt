@@ -92,6 +92,7 @@ class SelectItemForTotpViewModelTest {
 
     @Test
     fun `an unreadable code leaves the picker with no suggestions`() = runVmTest {
+        seedLogin(name = "GitHub", domain = "github.com")
         totpService.infoFromUriResult = null
 
         val viewModel = buildViewModel()

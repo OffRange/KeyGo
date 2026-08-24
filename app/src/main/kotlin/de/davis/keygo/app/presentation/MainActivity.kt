@@ -1,6 +1,7 @@
 package de.davis.keygo.app.presentation
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -60,6 +61,8 @@ import de.davis.keygo.item.dialog.SelectItemContent
 import kotlinx.coroutines.launch
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.koin.compose.koinInject
+
+private const val TAG = "MainActivity"
 
 class MainActivity : FragmentActivity() {
 
@@ -182,7 +185,9 @@ private fun App(hasAccess: Boolean) {
                 onValidated = { pending -> navController.navigateToValidatedImport(hasAccess, pending) },
                 // The app was launched only to import this code. With nothing left to import, the
                 // Activity is what closes, and :app is the only module that owns one.
-                onRejected = { activity?.finish() },
+                onRejected = {
+                    activity?.finish() ?: Log.w(TAG, "No activity to finish after rejecting an invalid TOTP deep link")
+                },
             )
 
             totpImportGraph(

@@ -225,7 +225,9 @@ internal class LoginViewModel(
     /**
      * Reads a code the picker handed over and remembers it, so [initWithId] can fold it into
      * whichever login was chosen. Returns null when the code cannot be read, which the redirect that
-     * starts the import already ruled out, so there is nothing to tell the user about here.
+     * starts the import already ruled out, so there is nothing to tell the user about here. This
+     * function assumes its caller already validated the uri, so a new caller passing
+     * `pendingTotpUri` needs its own parse gate upstream.
      */
     private fun parsePendingTotp(uri: String): TotpInfo? =
         totpService.getInfoFromUriWithResult(uri).onFailure { failure ->
