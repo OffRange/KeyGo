@@ -155,6 +155,47 @@ class LoginViewModelTest {
 
     @Test
     fun `a code that collides with the chosen item raises the override dialog`() = runVmTest {
+        val viewModel = viewModelOnOverrideDialog()
+
+        val dialog = viewModel.readyBase().dialogState
+        assertIs<DialogState.OverrideTotp>(dialog)
+        val usernameField = dialog.fields.single { it.fieldType == FieldType.Username }
+        assertEquals("old@github.com", usernameField.before)
+        assertEquals("me@github.com", usernameField.after)
+    }
+
+    @Test
+    fun `confirming the override writes the code's fields into the form`() = runVmTest {
+        val viewModel = viewModelOnOverrideDialog()
+
+        viewModel.onEvent(LoginUiEvent.OnOverrideTotpFieldsConfirmed)
+        advanceUntilIdle()
+
+        val base = viewModel.readyBase()
+        assertEquals("me@github.com", base.usernameTextFieldState.text.toString())
+        assertEquals(DialogState.None, base.dialogState)
+    }
+
+    @Test
+    fun `keeping the current fields leaves the form as the item had it`() = runVmTest {
+        val viewModel = viewModelOnOverrideDialog()
+
+        viewModel.onEvent(LoginUiEvent.OnOverrideTotpFieldsKept)
+        advanceUntilIdle()
+
+        val base = viewModel.readyBase()
+        assertEquals("old@github.com", base.usernameTextFieldState.text.toString())
+        assertEquals(DialogState.None, base.dialogState)
+    }
+
+    // Helpers
+
+    /**
+     * A form on an existing login whose username the scanned code disagrees with, left sitting on
+     * the override dialog that disagreement raises. Every field arrives selected, so a confirm
+     * straight after this takes the code's side of all of them.
+     */
+    private fun TestScope.viewModelOnOverrideDialog(): LoginViewModel {
         val existing = seedLogin(
             name = "GitHub",
             domain = "github.com",
@@ -173,14 +214,8 @@ class LoginViewModelTest {
         )
         advanceUntilIdle()
 
-        val dialog = viewModel.readyBase().dialogState
-        assertIs<DialogState.OverrideTotp>(dialog)
-        val usernameField = dialog.fields.single { it.fieldType == FieldType.Username }
-        assertEquals("old@github.com", usernameField.before)
-        assertEquals("me@github.com", usernameField.after)
+        return viewModel
     }
-
-    // Helpers
 
     private fun runVmTest(body: suspend TestScope.() -> Unit) =
         runTest(mainDispatcher.scheduler) { body() }

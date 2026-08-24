@@ -106,9 +106,6 @@ internal class LoginViewModel(
         base.copy(strengthScore = score)
     }
 
-    private var totpSecretInformation: TotpInfo? = null
-    private var totpOriginalUri: String? = null
-
     /**
      * Shows a passkey for [rp] as pending until the item is saved.
      *
@@ -127,8 +124,7 @@ internal class LoginViewModel(
     fun init(information: DetailPaneInformation) {
         when (information) {
             is DetailPaneInformation.Init.Existing -> viewModelScope.launch {
-                information.pendingTotpUri?.let { parsePendingTotp(it) }
-                initWithId(information.id)
+                initWithId(information.id, information.pendingTotpUri)
             }
 
             is DetailPaneInformation.Init.New -> information.pendingTotpUri?.let { uri ->
@@ -164,7 +160,12 @@ internal class LoginViewModel(
         }
     }
 
-    private suspend fun initWithId(itemId: ItemId) {
+    /**
+     * @param pendingTotpUri a code the picker handed over, folded in once the item it belongs to is
+     * on screen. It is parsed here rather than before the load, so nothing has to be carried across
+     * the two.
+     */
+    private suspend fun initWithId(itemId: ItemId, pendingTotpUri: String?) {
         this.itemId = itemId
 
         itemWithCryptoScope.oneShot(
@@ -216,26 +217,22 @@ internal class LoginViewModel(
                 )
             }
 
-            totpSecretInformation?.let {
-                requestTotpSecretUpdate(it, totpOriginalUri)
+            pendingTotpUri?.let { uri ->
+                parsePendingTotp(uri)?.let { requestTotpSecretUpdate(it, uri) }
             }
         }
     }
 
     /**
-     * Reads a code the picker handed over and remembers it, so [initWithId] can fold it into
-     * whichever login was chosen. Returns null when the code cannot be read, which the redirect that
-     * starts the import already ruled out, so there is nothing to tell the user about here. This
-     * function assumes its caller already validated the uri, so a new caller passing
+     * Reads a code the picker handed over. Returns null when the code cannot be read, which the
+     * redirect that starts the import already ruled out, so there is nothing to tell the user about
+     * here. This function assumes its caller already validated the uri, so a new caller passing
      * `pendingTotpUri` needs its own parse gate upstream.
      */
     private fun parsePendingTotp(uri: String): TotpInfo? =
         totpService.getInfoFromUriWithResult(uri).onFailure { failure ->
             Log.e(TAG, "Error parsing TOTP URI: $failure")
-        }.getOrNull()?.also {
-            totpSecretInformation = it
-            totpOriginalUri = uri
-        }
+        }.getOrNull()
 
     override fun onSubmit() {
         val ready = state.value as? ItemUiState.Ready ?: return
@@ -333,16 +330,12 @@ internal class LoginViewModel(
 
             is LoginUiEvent.OnCodesScanned -> {
                 event.codes.firstNotNullOfOrNull { code ->
-                    totpService.getInfoFromUriWithResult(code).onFailure { failure ->
-                        Log.e(TAG, "Error parsing TOTP URI: $failure")
-                    }.getOrNull()?.let { code to it }
+                    parsePendingTotp(code)?.let { code to it }
                 }?.let { (scannedUri, secretInfo) ->
                     _base.update { state ->
                         state.copy(scanning = false)
                     }
 
-                    totpOriginalUri = scannedUri
-                    totpSecretInformation = secretInfo
                     requestTotpSecretUpdate(secretInfo, scannedUri)
                 } ?: showTotpParseError()
             }
@@ -370,21 +363,16 @@ internal class LoginViewModel(
                 val currentDialogState = _base.value.dialogState
                 if (currentDialogState !is DialogState.OverrideTotp) return
 
-                totpSecretInformation?.let {
-                    val selectedFields =
-                        currentDialogState.fields.filter { field -> field.selected }
-
-                    selectedFields.applyToUi { after }
-                }
+                currentDialogState.fields
+                    .filter { field -> field.selected }
+                    .applyToUi { after }
             }
 
             is LoginUiEvent.OnOverrideTotpFieldsKept -> {
                 val currentDialogState = _base.value.dialogState
                 if (currentDialogState !is DialogState.OverrideTotp) return
 
-                totpSecretInformation?.let {
-                    currentDialogState.fields.applyToUi { before }
-                }
+                currentDialogState.fields.applyToUi { before }
             }
 
             is LoginUiEvent.OnTotpParseErrorDismiss -> {
@@ -467,14 +455,14 @@ internal class LoginViewModel(
 
     private fun requestTotpSecretUpdate(
         secretInformation: TotpInfo,
-        originalUri: String? = null,
+        originalUri: String,
     ) {
         val currentState = _base.value
         val currentTotpSecret = currentState.totpTextFieldState.text.toString()
         val currentIssuers = currentState.domains
         val currentAccountName = currentState.usernameTextFieldState.text.toString()
 
-        val newTotpSecret = originalUri ?: secretInformation.secret
+        val newTotpSecret = originalUri
         val newDomain = resolveTotpDomain(secretInformation.issuer, secretInformation.accountName)
         val newAccountName = secretInformation.accountName
 
@@ -526,9 +514,9 @@ internal class LoginViewModel(
 
     private fun updateUiWithTotpSecretInfo(
         secretInformation: TotpInfo,
-        originalUri: String? = null,
+        originalUri: String,
     ) = updateUiWithSpecificTotpSecretInfo(
-        secret = originalUri ?: secretInformation.secret,
+        secret = originalUri,
         issuer = resolveTotpDomain(secretInformation.issuer, secretInformation.accountName),
         accountName = secretInformation.accountName,
     )
