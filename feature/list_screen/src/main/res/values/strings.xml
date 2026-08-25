@@ -2,6 +2,21 @@
 <resources>
     <string name="search_your_vault">Search your Vault</string>
 
+    <string name="search_match_name">Name</string>
+    <string name="search_match_username">Username</string>
+    <string name="search_match_note">Note</string>
+    <string name="search_match_tag">Tag</string>
+    <string name="search_match_reason">Matched in %1$s</string>
+
+    <plurals name="search_result_count">
+        <item quantity="one">%1$d result</item>
+        <item quantity="other">%1$d results</item>
+    </plurals>
+
+    <string name="search_no_matches">No matches</string>
+    <string name="search_no_matches_for">Nothing in your vault matches \"%1$s\"</string>
+    <string name="search_nothing_to_search">There is nothing in this vault to search yet</string>
+
     <string name="selected_count">%d selected</string>
     <string name="clear_selection">Clear selection</string>
     <string name="select_all">Select all</string>
