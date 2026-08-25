@@ -113,6 +113,7 @@ class ItemMapperTest {
             name = "Search result",
             itemType = VaultItemType.Login,
             matchedName = true,
+            matchedUsername = true,
             matchedNote = false,
             matchedTag = true,
             pinned = false,
@@ -125,6 +126,7 @@ class ItemMapperTest {
         assertEquals(VaultItemType.Login, result.itemType)
         assertTrue(result.matchedName)
         assertFalse(result.matchedNote)
+        assertTrue(result.matchedUsername)
         assertTrue(result.matchedTag)
         assertFalse(result.pinned)
     }
