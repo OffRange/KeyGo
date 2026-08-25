@@ -1,10 +1,11 @@
 package de.davis.keygo.core.item.data.local.datasource
 
 import android.content.Context
-import androidx.room.Database
-import androidx.room.Room
-import androidx.room.RoomDatabase
-import androidx.room.TypeConverters
+import androidx.room3.ColumnTypeConverters
+import androidx.room3.Database
+import androidx.room3.Room
+import androidx.room3.RoomDatabase
+import androidx.sqlite.driver.AndroidSQLiteDriver
 import de.davis.keygo.core.item.data.local.converter.YearMonthConverter
 import de.davis.keygo.core.item.data.local.dao.CreditCardDao
 import de.davis.keygo.core.item.data.local.dao.DomainInfoDao
@@ -43,7 +44,7 @@ import org.koin.core.annotation.Single
     ],
     version = 1,
 )
-@TypeConverters(YearMonthConverter::class)
+@ColumnTypeConverters(YearMonthConverter::class)
 internal abstract class ItemDatabase : RoomDatabase() {
 
     abstract fun vaultDao(): VaultDao
@@ -69,11 +70,12 @@ internal class DatabaseModule {
 
     @Single
     fun provideDatabase(context: Context): ItemDatabase =
-        Room.databaseBuilder(
+        Room.databaseBuilder<ItemDatabase>(
             context,
-            ItemDatabase::class.java,
             "keygo_database",
-        ).build()
+        )
+            .setDriver(AndroidSQLiteDriver())
+            .build()
 
     @Single
     fun provideVaultDao(db: ItemDatabase) = db.vaultDao()

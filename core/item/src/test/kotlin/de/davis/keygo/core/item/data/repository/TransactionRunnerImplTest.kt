@@ -1,44 +1,47 @@
 package de.davis.keygo.core.item.data.repository
 
-import androidx.room.withTransaction
+import androidx.room3.Room
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
-import io.mockk.coEvery
-import io.mockk.coVerify
+import de.davis.keygo.core.item.data.local.entity.VaultEntity
+import de.davis.keygo.core.item.domain.alias.VaultId
+import de.davis.keygo.core.item.domain.alias.newVaultId
+import de.davis.keygo.core.item.domain.model.Vault
 import io.mockk.mockk
-import io.mockk.mockkStatic
-import io.mockk.unmockkStatic
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
+import de.davis.keygo.core.item.data.local.entity.KeyInformation as EntityKeyInformation
 
 /**
- * Verifies that [TransactionRunnerImpl] delegates to [ItemDatabase.withTransaction]
- * transparently: it returns whatever the block returns, propagates whatever the block throws, and
- * invokes the block exactly once inside the transaction.
+ * Verifies that [TransactionRunnerImpl] delegates to Room transparently: it returns whatever the
+ * block returns, propagates whatever the block throws, invokes the block exactly once, and rolls
+ * back what the block wrote when it throws.
  *
- * This does not cover real SQLite commit/rollback. That is Room's own behaviour, and this project
- * has no way to exercise it in a JVM unit test without Robolectric, which is not used here.
+ * This runs against a real in-memory database on the bundled SQLite driver, the same setup the DAO
+ * tests use, so the rollback is SQLite's own rather than a stub standing in for it.
  */
 internal class TransactionRunnerImplTest {
 
-    private val database = mockk<ItemDatabase>()
-    private val runner = TransactionRunnerImpl(database)
+    private lateinit var database: ItemDatabase
+    private lateinit var runner: TransactionRunnerImpl
 
     @BeforeTest
     fun setUp() {
-        mockkStatic("androidx.room.RoomDatabaseKt")
-        coEvery { database.withTransaction(any<suspend () -> Any?>()) } coAnswers {
-            secondArg<suspend () -> Any?>().invoke()
-        }
+        database = Room.inMemoryDatabaseBuilder(mockk(relaxed = true), ItemDatabase::class.java)
+            .setDriver(BundledSQLiteDriver())
+            .setQueryCoroutineContext(Dispatchers.IO)
+            .build()
+        runner = TransactionRunnerImpl(database)
     }
 
     @AfterTest
-    fun tearDown() {
-        unmockkStatic("androidx.room.RoomDatabaseKt")
-    }
+    fun tearDown() = database.close()
 
     @Test
     fun `returns the block result`() = runTest {
@@ -53,16 +56,37 @@ internal class TransactionRunnerImplTest {
             runner.runInTransaction { throw error }
         }
 
-        assertEquals(error, thrown)
+        assertFailedWith(error, thrown)
     }
 
     @Test
-    fun `invokes the block exactly once inside the transaction`() = runTest {
+    fun `invokes the block exactly once`() = runTest {
         var invocations = 0
 
         runner.runInTransaction { invocations++ }
 
         assertEquals(1, invocations)
-        coVerify(exactly = 1) { database.withTransaction(any<suspend () -> Any?>()) }
     }
+
+    @Test
+    fun `rolls back what the block wrote when it throws`() = runTest {
+        val vaultId = newVaultId()
+
+        assertFailsWith<IllegalStateException> {
+            runner.runInTransaction {
+                database.vaultDao().insert(vault(vaultId))
+                error("boom")
+            }
+        }
+
+        assertNull(database.vaultDao().getVaultMetadata(vaultId))
+    }
+
+    private fun vault(id: VaultId) = VaultEntity(
+        id = id,
+        name = "Vault",
+        icon = Vault.Icon.Person,
+        createdAt = 0L,
+        keyInformation = EntityKeyInformation(byteArrayOf(), byteArrayOf()),
+    )
 }

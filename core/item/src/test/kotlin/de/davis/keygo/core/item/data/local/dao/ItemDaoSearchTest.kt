@@ -1,6 +1,6 @@
 package de.davis.keygo.core.item.data.local.dao
 
-import androidx.room.Room
+import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
 import de.davis.keygo.core.item.data.local.entity.ItemEntity

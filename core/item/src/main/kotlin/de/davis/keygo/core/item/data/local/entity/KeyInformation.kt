@@ -1,6 +1,6 @@
 package de.davis.keygo.core.item.data.local.entity
 
-import androidx.room.ColumnInfo
+import androidx.room3.ColumnInfo
 
 internal class KeyInformation(
     @ColumnInfo(name = "wrapped_key")

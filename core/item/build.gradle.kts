@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.keygo.android.compose)
     alias(libs.plugins.keygo.android.protobuf)
-    alias(libs.plugins.androidx.room)
+    alias(libs.plugins.androidx.room3)
     alias(libs.plugins.google.ksp)
 }
 
@@ -19,9 +19,8 @@ android {
 
 dependencies {
     // Room
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.room3.runtime)
+    ksp(libs.androidx.room3.compiler)
 
     implementation(projects.automation)
     ksp(projects.automationProcessor)
@@ -44,7 +43,7 @@ dependencies {
     }
 }
 
-room {
+room3 {
     schemaDirectory("$projectDir/schemas")
 }
 

@@ -1,6 +1,6 @@
 package de.davis.keygo.core.item.data.local.pojo
 
-import androidx.room.Embedded
+import androidx.room3.Embedded
 import de.davis.keygo.core.item.data.local.entity.KeyInformation
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId

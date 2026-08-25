@@ -1,10 +1,10 @@
 package de.davis.keygo.core.item.data.local.dao
 
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
-import androidx.room.Update
+import androidx.room3.Dao
+import androidx.room3.Insert
+import androidx.room3.OnConflictStrategy
+import androidx.room3.Query
+import androidx.room3.Update
 import de.davis.keygo.core.item.data.local.entity.KeyInformation
 import de.davis.keygo.core.item.data.local.entity.VaultEntity
 import de.davis.keygo.core.item.data.local.pojo.VaultMetadata

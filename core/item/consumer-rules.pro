@@ -14,3 +14,5 @@
 
 # DataStore Proto
 -keep class androidx.datastore.** { *; }
+
+-keep class * extends androidx.room3.RoomDatabase { <init>(); }
