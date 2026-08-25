@@ -1,6 +1,6 @@
 package de.davis.keygo.core.item.data.repository
 
-import androidx.room.withTransaction
+import de.davis.keygo.core.item.FakeTransactionRunner
 import de.davis.keygo.core.item.data.local.dao.DomainInfoDao
 import de.davis.keygo.core.item.data.local.dao.ItemDao
 import de.davis.keygo.core.item.data.local.dao.LoginDao
@@ -8,7 +8,6 @@ import de.davis.keygo.core.item.data.local.dao.PasskeyDao
 import de.davis.keygo.core.item.data.local.dao.PasswordDao
 import de.davis.keygo.core.item.data.local.dao.TagDao
 import de.davis.keygo.core.item.data.local.dao.TotpDao
-import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
 import de.davis.keygo.core.item.data.local.entity.TagEntity
 import de.davis.keygo.core.item.data.local.entity.credential.PasswordEntity
 import de.davis.keygo.core.item.data.local.entity.credential.TotpEntity
@@ -31,18 +30,13 @@ import de.davis.keygo.core.util.isSuccess
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
-import io.mockk.mockkStatic
-import io.mockk.unmockkStatic
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import kotlinx.coroutines.test.runTest
 
 class LoginRepositoryImplTest {
 
-    private val database = mockk<ItemDatabase>()
     private val itemDao = mockk<ItemDao>(relaxed = true)
     private val loginDao = mockk<LoginDao>(relaxed = true)
     private val passwordDao = mockk<PasswordDao>(relaxed = true)
@@ -52,7 +46,7 @@ class LoginRepositoryImplTest {
     private val passkeyDao = mockk<PasskeyDao>(relaxed = true)
 
     private val repository = LoginRepositoryImpl(
-        database = database,
+        transactionRunner = FakeTransactionRunner(),
         itemDao = itemDao,
         loginDao = loginDao,
         passwordDao = passwordDao,
@@ -61,19 +55,6 @@ class LoginRepositoryImplTest {
         tagDao = tagDao,
         passkeyDao = passkeyDao,
     )
-
-    @BeforeTest
-    fun setUp() {
-        mockkStatic("androidx.room.RoomDatabaseKt")
-        coEvery { database.withTransaction(any<suspend () -> Any?>()) } coAnswers {
-            secondArg<suspend () -> Any?>().invoke()
-        }
-    }
-
-    @AfterTest
-    fun tearDown() {
-        unmockkStatic("androidx.room.RoomDatabaseKt")
-    }
 
     @Test
     fun `createOrUpdateLogin upserts totp row when login has a totp`() = runTest {
@@ -115,7 +96,7 @@ class LoginRepositoryImplTest {
         val result = repository.createOrUpdateLogin(testLogin(totpProvider = null))
 
         assertTrue(result.isFailure())
-        assertEquals(error, result.error)
+        assertFailedWith(error, result.error)
     }
 
     @Test
@@ -126,7 +107,7 @@ class LoginRepositoryImplTest {
         val result = repository.createOrUpdateLogin(testLogin { id -> testTotp(loginId = id) })
 
         assertTrue(result.isFailure())
-        assertEquals(error, result.error)
+        assertFailedWith(error, result.error)
     }
 
     @Test
@@ -166,7 +147,7 @@ class LoginRepositoryImplTest {
         val result = repository.createOrUpdateLogin(testLogin(passwordCredential = null))
 
         assertTrue(result.isFailure())
-        assertEquals(error, result.error)
+        assertFailedWith(error, result.error)
     }
 
     @Test
@@ -178,7 +159,7 @@ class LoginRepositoryImplTest {
         val result = repository.createOrUpdateLogin(testLogin(passwordCredential = pwd))
 
         assertTrue(result.isFailure())
-        assertEquals(error, result.error)
+        assertFailedWith(error, result.error)
     }
 
     @Test
@@ -210,7 +191,7 @@ class LoginRepositoryImplTest {
         val result = repository.createOrUpdateLogin(testLogin(totpProvider = null))
 
         assertTrue(result.isFailure())
-        assertEquals(error, result.error)
+        assertFailedWith(error, result.error)
     }
 
     @Test
@@ -248,7 +229,7 @@ class LoginRepositoryImplTest {
         val result = repository.createOrUpdateLogin(testLogin(totpProvider = null))
 
         assertTrue(result.isFailure())
-        assertEquals(error, result.error)
+        assertFailedWith(error, result.error)
     }
 
     private fun testLogin(

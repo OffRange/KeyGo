@@ -1,9 +1,8 @@
 package de.davis.keygo.core.item.data.repository
 
-import androidx.room.withTransaction
+import de.davis.keygo.core.item.FakeTransactionRunner
 import de.davis.keygo.core.item.data.local.dao.ItemDao
 import de.davis.keygo.core.item.data.local.dao.TagDao
-import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
 import de.davis.keygo.core.item.data.local.pojo.ItemTagProjection
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
@@ -13,38 +12,22 @@ import io.mockk.coVerify
 import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.mockkStatic
-import io.mockk.unmockkStatic
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ItemRepositoryImplTest {
 
-    private val database = mockk<ItemDatabase>()
     private val itemDao = mockk<ItemDao>(relaxed = true)
     private val tagDao = mockk<TagDao>(relaxed = true)
 
     private val repository = ItemRepositoryImpl(
-        database = database,
+        transactionRunner = FakeTransactionRunner(),
         itemDao = itemDao,
         tagDao = tagDao,
     )
-
-    @BeforeTest
-    fun setUp() {
-        mockkStatic("androidx.room.RoomDatabaseKt")
-        coEvery { database.withTransaction(any<suspend () -> Any?>()) } coAnswers {
-            secondArg<suspend () -> Any?>().invoke()
-        }
-    }
-
-    @AfterTest
-    fun tearDown() = unmockkStatic("androidx.room.RoomDatabaseKt")
 
     @Test
     fun `deleteItems captures tag ids, deletes items, then prunes those tags`() = runTest {

@@ -1,9 +1,7 @@
 package de.davis.keygo.core.item.data.repository
 
-import androidx.room.withTransaction
 import de.davis.keygo.core.item.data.local.dao.ItemDao
 import de.davis.keygo.core.item.data.local.dao.TagDao
-import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
 import de.davis.keygo.core.item.data.local.entity.TagEntity
 import de.davis.keygo.core.item.data.local.pojo.LightweightItem
 import de.davis.keygo.core.item.data.local.pojo.LightweightItemSearchResult
@@ -20,6 +18,7 @@ import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
 import de.davis.keygo.core.item.domain.repository.ItemRepository
+import de.davis.keygo.core.item.domain.repository.TransactionRunner
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.Result
 import kotlinx.coroutines.flow.Flow
@@ -28,20 +27,21 @@ import org.koin.core.annotation.Single
 
 @Single
 internal class ItemRepositoryImpl(
-    private val database: ItemDatabase,
+    private val transactionRunner: TransactionRunner,
     private val itemDao: ItemDao,
     private val tagDao: TagDao,
 ) : ItemRepository {
 
-    override suspend fun deleteItems(itemIds: Set<ItemId>): Unit = database.withTransaction {
-        if (itemIds.isEmpty()) return@withTransaction
+    override suspend fun deleteItems(itemIds: Set<ItemId>): Unit =
+        transactionRunner.runInTransaction {
+            if (itemIds.isEmpty()) return@runInTransaction
 
-        // Collected before the delete: once the rows are gone the cross refs are too, so the
-        // orphan sweep would have nothing left to look at.
-        val tagIds = itemIds.flatMap { tagDao.tagIdsForItem(it) }.distinct()
-        itemDao.delete(itemIds)
-        if (tagIds.isNotEmpty()) tagDao.pruneOrphans(tagIds)
-    }
+            // Collected before the delete: once the rows are gone the cross refs are too, so the
+            // orphan sweep would have nothing left to look at.
+            val tagIds = itemIds.flatMap { tagDao.tagIdsForItem(it) }.distinct()
+            itemDao.delete(itemIds)
+            if (tagIds.isNotEmpty()) tagDao.pruneOrphans(tagIds)
+        }
 
     override suspend fun createOrUpdateVaultItem(item: Item): ItemId {
         itemDao.upsert(item.toData())

@@ -1,6 +1,6 @@
 package de.davis.keygo.core.item.data.local.pojo
 
-import androidx.room.ColumnInfo
+import androidx.room3.ColumnInfo
 
 internal class PasskeyMetadataPojo(
     @ColumnInfo(name = "vault_name")

@@ -1,9 +1,7 @@
 package de.davis.keygo.core.item.data.repository
 
-import androidx.room.withTransaction
 import de.davis.keygo.core.item.data.local.dao.CreditCardDao
 import de.davis.keygo.core.item.data.local.dao.ItemDao
-import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
 import de.davis.keygo.core.item.data.local.pojo.CreditCardProjection
 import de.davis.keygo.core.item.data.mapper.toCreditCardEntity
 import de.davis.keygo.core.item.data.mapper.toData
@@ -12,6 +10,7 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.CreditCard
 import de.davis.keygo.core.item.domain.repository.CreditCardRepository
+import de.davis.keygo.core.item.domain.repository.TransactionRunner
 import de.davis.keygo.core.util.Result
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -19,14 +18,14 @@ import org.koin.core.annotation.Single
 
 @Single
 internal class CreditCardRepositoryImpl(
-    private val database: ItemDatabase,
+    private val transactionRunner: TransactionRunner,
     private val itemDao: ItemDao,
     private val creditCardDao: CreditCardDao,
 ) : CreditCardRepository {
 
     override suspend fun createOrUpdateCreditCard(card: CreditCard): Result<ItemId, Throwable> =
         runCatching {
-            database.withTransaction {
+            transactionRunner.runInTransaction {
                 itemDao.upsert(card.toData())
                 creditCardDao.upsert(card.toCreditCardEntity())
 

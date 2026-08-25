@@ -1,7 +1,7 @@
 package de.davis.keygo.core.item.data.local.pojo
 
-import androidx.room.ColumnInfo
-import androidx.room.Relation
+import androidx.room3.ColumnInfo
+import androidx.room3.Relation
 import de.davis.keygo.core.item.data.local.entity.DomainInfoEntity
 import de.davis.keygo.core.item.domain.alias.ItemId
 
@@ -14,8 +14,8 @@ internal data class LightweightLogin(
     val hasPassword: Boolean,
 
     @Relation(
-        parentColumn = "id",
-        entityColumn = "login_id",
+        parentColumns = ["id"],
+        entityColumns = ["login_id"],
     )
     val domains: List<DomainInfoEntity>,
 )

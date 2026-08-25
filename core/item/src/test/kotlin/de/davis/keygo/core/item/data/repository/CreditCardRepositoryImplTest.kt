@@ -1,9 +1,8 @@
 package de.davis.keygo.core.item.data.repository
 
-import androidx.room.withTransaction
+import de.davis.keygo.core.item.FakeTransactionRunner
 import de.davis.keygo.core.item.data.local.dao.CreditCardDao
 import de.davis.keygo.core.item.data.local.dao.ItemDao
-import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
 import de.davis.keygo.core.item.data.local.entity.CreditCardEntity
 import de.davis.keygo.core.item.data.local.entity.ItemEntity
 import de.davis.keygo.core.item.data.local.pojo.CreditCardProjection
@@ -22,14 +21,10 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.mockkStatic
-import io.mockk.unmockkStatic
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import java.time.YearMonth
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -39,28 +34,14 @@ import de.davis.keygo.core.item.data.local.entity.Timestamp as EntityTimestamp
 
 class CreditCardRepositoryImplTest {
 
-    private val database = mockk<ItemDatabase>()
     private val itemDao = mockk<ItemDao>(relaxed = true)
     private val creditCardDao = mockk<CreditCardDao>(relaxed = true)
 
     private val repository = CreditCardRepositoryImpl(
-        database = database,
+        transactionRunner = FakeTransactionRunner(),
         itemDao = itemDao,
         creditCardDao = creditCardDao,
     )
-
-    @BeforeTest
-    fun setUp() {
-        mockkStatic("androidx.room.RoomDatabaseKt")
-        coEvery { database.withTransaction(any<suspend () -> Any?>()) } coAnswers {
-            secondArg<suspend () -> Any?>().invoke()
-        }
-    }
-
-    @AfterTest
-    fun tearDown() {
-        unmockkStatic("androidx.room.RoomDatabaseKt")
-    }
 
     @Test
     fun `createOrUpdateCreditCard returns Success with card id`() = runTest {
@@ -91,7 +72,7 @@ class CreditCardRepositoryImplTest {
         val result = repository.createOrUpdateCreditCard(testCreditCard())
 
         assertTrue(result.isFailure())
-        assertEquals(error, result.error)
+        assertFailedWith(error, result.error)
     }
 
     @Test
@@ -102,7 +83,7 @@ class CreditCardRepositoryImplTest {
         val result = repository.createOrUpdateCreditCard(testCreditCard())
 
         assertTrue(result.isFailure())
-        assertEquals(error, result.error)
+        assertFailedWith(error, result.error)
     }
 
     @Test

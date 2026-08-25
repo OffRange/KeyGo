@@ -1,6 +1,6 @@
 package de.davis.keygo.core.item.data.local.pojo
 
-import androidx.room.ColumnInfo
+import androidx.room3.ColumnInfo
 
 /** The columns of a passkey row that identify it, without touching its key material. */
 internal data class PasskeyRefPojo(
