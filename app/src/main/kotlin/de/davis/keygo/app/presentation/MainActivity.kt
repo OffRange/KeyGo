@@ -1,6 +1,8 @@
 package de.davis.keygo.app.presentation
 
 import android.os.Bundle
+import android.util.Log
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
@@ -24,8 +26,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
+import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -37,6 +41,7 @@ import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
 import de.davis.keygo.R
 import de.davis.keygo.app.presentation.component.KeyGoNavigationWrapper
 import de.davis.keygo.core.presentation.model.RouteDestination
+import de.davis.keygo.core.ui.model.PendingTotpImport
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.util.presentation.snackbar.LocalSnackbarManager
@@ -47,14 +52,21 @@ import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.auth.presentation.authGraph
 import de.davis.keygo.feature.backup.presentation.BackupHubRoute
 import de.davis.keygo.feature.backup.presentation.backupGraph
+import de.davis.keygo.feature.item.create.presentation.totp.AssignTotpRoute
+import de.davis.keygo.feature.item.create.presentation.totp.assignTotpGraph
 import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
 import de.davis.keygo.feature.onboarding.presentation.onboardingGraph
 import de.davis.keygo.feature.settings.presentation.ChangePasswordRoute
 import de.davis.keygo.feature.settings.presentation.settingsGraph
+import de.davis.keygo.feature.totp.presentation.SelectItemForTotpRoute
+import de.davis.keygo.feature.totp.presentation.selectItemForTotpGraph
+import de.davis.keygo.feature.totp.presentation.totpImportRedirectGraph
 import de.davis.keygo.item.dialog.SelectItemContent
 import kotlinx.coroutines.launch
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.koin.compose.koinInject
+
+private const val TAG = "MainActivity"
 
 class MainActivity : FragmentActivity() {
 
@@ -86,11 +98,45 @@ class MainActivity : FragmentActivity() {
     }
 }
 
+private fun destinationAfterUnlock(totpUri: String?): Any =
+    totpUri?.let { SelectItemForTotpRoute(it) } ?: RouteDestination.TopLevelAppGraph
+
+internal fun NavController.navigateToValidatedImport(
+    hasAccess: Boolean,
+    pending: PendingTotpImport
+) {
+    navigate(
+        if (hasAccess) AuthRoute(
+            totpInfo = pending.totpInfo,
+            queries = pending.queries,
+        )
+        else OnboardingRoute(
+            totpInfo = pending.totpInfo,
+            queries = pending.queries,
+        ),
+    ) {
+        popUpTo(graph.findStartDestination().id) { inclusive = true }
+    }
+}
+
+/**
+ * Where the picker's answer goes. The picker stays composed and collecting through its exit
+ * transition, so a double tap on a row can fire twice before the first navigation leaves it.
+ * [AssignTotpRoute] is a data class, so launchSingleTop dedupes the repeat instead of pushing it
+ * twice onto the back stack.
+ */
+internal fun NavController.navigateToAssignTotp(route: AssignTotpRoute) {
+    navigate(route) {
+        launchSingleTop = true
+    }
+}
+
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 private fun App(hasAccess: Boolean) {
     val listNavigator = rememberListDetailPaneScaffoldNavigator<DetailType>()
     val navController = rememberNavController()
+    val activity = LocalActivity.current
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
@@ -145,21 +191,43 @@ private fun App(hasAccess: Boolean) {
             startDestination = if (hasAccess) AuthRoute() else OnboardingRoute(),
         ) {
             totpImportRedirectGraph(
-                hasAccess = hasAccess,
-                navigateAndReplace = { dest ->
-                    navController.navigate(dest) {
-                        popUpTo<TotpImportRedirect> { inclusive = true }
+                onValidated = { pending ->
+                    navController.navigateToValidatedImport(
+                        hasAccess,
+                        pending
+                    )
+                },
+                // The app was launched only to import this code. With nothing left to import, the
+                // Activity is what closes, and :app is the only module that owns one.
+                onRejected = {
+                    activity?.finish() ?: Log.w(
+                        TAG,
+                        "No activity to finish after rejecting an invalid TOTP deep link"
+                    )
+                },
+            )
+
+            selectItemForTotpGraph(
+                onItemSelected = { totpUri, itemId ->
+                    navController.navigateToAssignTotp(AssignTotpRoute(totpUri, itemId.toString()))
+                },
+                onCreateNew = { totpUri ->
+                    navController.navigateToAssignTotp(AssignTotpRoute(totpUri))
+                },
+            )
+
+            assignTotpGraph(
+                onImportFinished = {
+                    navController.navigate(RouteDestination.TopLevelAppGraph) {
+                        popUpTo<SelectItemForTotpRoute> { inclusive = true }
                     }
-                }
+                },
+                navigateUp = { navController.navigateUp() },
             )
 
             authGraph(
                 onSuccess = { totpUri ->
-                    val dest = totpUri?.let {
-                        RouteDestination.Home.Root(it)
-                    } ?: RouteDestination.TopLevelAppGraph
-
-                    navController.navigate(dest) {
+                    navController.navigate(destinationAfterUnlock(totpUri)) {
                         popUpTo<AuthRoute> { inclusive = true }
                     }
                 }
@@ -167,11 +235,7 @@ private fun App(hasAccess: Boolean) {
 
             onboardingGraph(
                 onSuccess = { totpUri ->
-                    val dest = totpUri?.let {
-                        RouteDestination.Home.Root(it)
-                    } ?: RouteDestination.TopLevelAppGraph
-
-                    navController.navigate(dest) {
+                    navController.navigate(destinationAfterUnlock(totpUri)) {
                         popUpTo<OnboardingRoute> { inclusive = true }
                     }
                 }
@@ -181,7 +245,7 @@ private fun App(hasAccess: Boolean) {
                 startDestination = RouteDestination.Home.NavGraph
             ) {
                 navigation<RouteDestination.Home.NavGraph>(
-                    startDestination = RouteDestination.Home.Root()
+                    startDestination = RouteDestination.Home.Root
                 ) {
                     dialog<RouteDestination.Home.SelectItem> {
                         SelectItemContent(

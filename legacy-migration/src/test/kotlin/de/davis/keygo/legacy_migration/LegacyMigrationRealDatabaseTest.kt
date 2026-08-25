@@ -17,10 +17,10 @@ import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
+import de.davis.keygo.core.util.FakeRegistrableDomainResolver
 import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.legacy_migration.data.FakeLegacyDatabaseProvider
 import de.davis.keygo.legacy_migration.data.FakeLegacyKeyRepository
-import de.davis.keygo.legacy_migration.data.FakeRegistrableDomainResolver
 import de.davis.keygo.legacy_migration.data.crypto.LegacyAesGcmCipher
 import de.davis.keygo.legacy_migration.data.json.LegacyDetailParser
 import de.davis.keygo.legacy_migration.data.local.datasource.LegacyDatabase

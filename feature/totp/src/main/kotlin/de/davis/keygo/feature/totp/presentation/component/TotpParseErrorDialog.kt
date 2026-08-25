@@ -9,9 +9,13 @@ import androidx.compose.ui.res.stringResource
 import de.davis.keygo.feature.totp.R
 
 @Composable
-fun TotpParseErrorDialog(onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+fun TotpParseErrorDialog(
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    onDismissRequest: () -> Unit = {},
+) {
     AlertDialog(
-        onDismissRequest = {},
+        onDismissRequest = onDismissRequest,
         confirmButton = {
             TextButton(
                 onClick = onDismiss

@@ -22,9 +22,11 @@ import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.item.core.domain.model.ItemUpsertError
 import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.fieldUpdate
+import de.davis.keygo.feature.item.core.domain.model.getValue
 import de.davis.keygo.feature.item.core.domain.model.onSet
 import de.davis.keygo.feature.item.core.domain.model.set
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
+import de.davis.keygo.feature.item.core.domain.usecase.ValidateTotpInputUseCase
 import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
 import de.davis.keygo.feature.item.core.presentation.model.NavigationEvent
@@ -64,6 +66,7 @@ internal class ViewLoginViewModel(
     private val itemRepository: ItemRepository,
     private val vaultRepository: VaultRepository,
     private val updateLogin: CreateNewOrUpdateLoginUseCase,
+    private val validateTotpInput: ValidateTotpInputUseCase,
     private val isValidUrl: IsValidUrlUseCase,
     private val sort: SortUseCase,
     private val websiteHandler: WebsiteHandler,
@@ -277,10 +280,18 @@ internal class ViewLoginViewModel(
                                     password = newText,
                                 )
 
-                                FieldType.Totp -> UpsertLogin.update(
-                                    itemId = id,
-                                    totpUriOrSecret = newText,
-                                )
+                                FieldType.Totp -> {
+                                    val uriOrSecret = newText.getValue()
+                                    if (uriOrSecret != null && !validateTotpInput(uriOrSecret)) {
+                                        _modificationDialogState.update { dialog.copy(error = InputFieldError.Invalid) }
+                                        return@launch
+                                    }
+
+                                    UpsertLogin.update(
+                                        itemId = id,
+                                        totpUriOrSecret = newText,
+                                    )
+                                }
 
                                 FieldType.Username -> UpsertLogin.update(
                                     itemId = id,

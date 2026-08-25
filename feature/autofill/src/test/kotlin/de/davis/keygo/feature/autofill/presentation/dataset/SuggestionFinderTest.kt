@@ -1,6 +1,5 @@
 package de.davis.keygo.feature.autofill.presentation.dataset
 
-import de.davis.keygo.core.feature.autofill.FakeRegistrableDomainResolver
 import de.davis.keygo.core.feature.autofill.autofillId
 import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.domain.alias.newItemId
@@ -15,6 +14,7 @@ import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.security.domain.usecase.GetTdlMatchedLoginsUseCase
+import de.davis.keygo.core.util.FakeRegistrableDomainResolver
 import de.davis.keygo.feature.autofill.presentation.model.FieldType
 import de.davis.keygo.feature.autofill.presentation.model.Form
 import de.davis.keygo.feature.autofill.presentation.model.FormField

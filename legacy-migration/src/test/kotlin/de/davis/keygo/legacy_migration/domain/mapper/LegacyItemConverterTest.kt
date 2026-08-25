@@ -11,10 +11,10 @@ import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
+import de.davis.keygo.core.util.FakeRegistrableDomainResolver
 import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.legacy_migration.data.FAKE_LEGACY_KEY
 import de.davis.keygo.legacy_migration.data.FakeLegacyCipher
-import de.davis.keygo.legacy_migration.data.FakeRegistrableDomainResolver
 import de.davis.keygo.legacy_migration.domain.crypto.LegacyCipher
 import de.davis.keygo.legacy_migration.domain.model.LegacyDetail
 import de.davis.keygo.legacy_migration.domain.model.LegacyItem

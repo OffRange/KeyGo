@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -55,6 +56,7 @@ import kotlin.math.roundToInt
 sealed interface HeaderContent {
     data class Letter(val char: Char) : HeaderContent
     data object Pin : HeaderContent
+    data object Suggested : HeaderContent
 }
 
 data class KeyGoColumnItem<ID : Any>(
@@ -290,6 +292,13 @@ private fun KeyGoInlineHeader(
 
             is HeaderContent.Pin -> Icon(
                 imageVector = Icons.Default.PushPin,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(20.dp),
+            )
+
+            is HeaderContent.Suggested -> Icon(
+                imageVector = Icons.Default.AutoAwesome,
                 contentDescription = null,
                 tint = color,
                 modifier = Modifier.size(20.dp),

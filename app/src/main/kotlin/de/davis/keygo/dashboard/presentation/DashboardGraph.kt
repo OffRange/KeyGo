@@ -19,7 +19,6 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
-import androidx.navigation.toRoute
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
 import de.davis.keygo.feature.item.core.presentation.model.NavigationEvent
@@ -55,16 +54,6 @@ fun NavGraphBuilder.dashboardGraph(
         val isModifyScreenActive by remember(listNavigator) {
             derivedStateOf {
                 listNavigator.currentDestination?.contentKey is DetailType.Modify
-            }
-        }
-
-        val route = it.toRoute<RouteDestination.Home.Root>()
-        LaunchedEffect(route) {
-            route.totpUri?.let { totpUri ->
-                listNavigator.navigateTo(
-                    ListDetailPaneScaffoldRole.Detail,
-                    DetailType.Modify.Totp(totpUri)
-                )
             }
         }
 

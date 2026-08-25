@@ -1,6 +1,5 @@
 package de.davis.keygo.feature.item.create.presentation.login.model
 
-import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.PasskeyRef
 import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.create.presentation.model.ItemUiEvent
@@ -22,8 +21,6 @@ internal sealed interface LoginUiEvent {
     data object OnTotpParseErrorDismiss : LoginUiEvent
 
     data class OnCodesScanned(val codes: List<String>) : LoginUiEvent
-    data class OnTotpModificationItemSelected(val itemId: ItemId) : LoginUiEvent
-    data object OnCreateNewItemForTotp : LoginUiEvent
 
     data class OnOverrideFieldClicked(val fieldType: FieldType) : LoginUiEvent
     data object OnOverrideTotpFieldsConfirmed : LoginUiEvent

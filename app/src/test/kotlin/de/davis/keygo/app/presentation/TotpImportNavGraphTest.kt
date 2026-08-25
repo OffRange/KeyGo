@@ -8,16 +8,24 @@ import androidx.navigation.createGraph
 import androidx.navigation.testing.TestNavHostController
 import androidx.navigation.toRoute
 import androidx.test.core.app.ApplicationProvider
+import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.ui.model.PendingTotpImport
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.auth.presentation.authGraph
+import de.davis.keygo.feature.item.create.presentation.totp.AssignTotpRoute
+import de.davis.keygo.feature.item.create.presentation.totp.assignTotpGraph
 import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
 import de.davis.keygo.feature.onboarding.presentation.onboardingGraph
+import de.davis.keygo.feature.totp.presentation.SelectItemForTotpRoute
+import de.davis.keygo.feature.totp.presentation.TotpImportRedirect
+import de.davis.keygo.feature.totp.presentation.selectItemForTotpGraph
+import de.davis.keygo.feature.totp.presentation.totpImportRedirectGraph
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -35,7 +43,9 @@ class TotpImportNavGraphTest {
         controller.graph = controller.createGraph(
             startDestination = if (hasAccess) AuthRoute() else OnboardingRoute(),
         ) {
-            totpImportRedirectGraph(hasAccess = hasAccess, navigateAndReplace = {})
+            totpImportRedirectGraph(onValidated = {}, onRejected = {})
+            selectItemForTotpGraph(onItemSelected = { _, _ -> }, onCreateNew = {})
+            assignTotpGraph(onImportFinished = {}, navigateUp = {})
             authGraph(onSuccess = {})
             onboardingGraph(onSuccess = {})
         }
@@ -116,5 +126,142 @@ class TotpImportNavGraphTest {
         val route = assertNotNull(controller.currentBackStackEntry).toRoute<AuthRoute>()
         assertEquals(PendingTotpImport(), route.pendingTotpImport)
         assertNull(route.uri)
+    }
+
+    @Test
+    fun `the picker route carries the whole uri`() {
+        val controller = navController(hasAccess = true)
+
+        controller.navigate(SelectItemForTotpRoute(DEEP_LINK_URI))
+
+        val entry = assertNotNull(controller.currentBackStackEntry)
+        assertTrue(entry.destination.hasRoute<SelectItemForTotpRoute>())
+        assertEquals(DEEP_LINK_URI, entry.toRoute<SelectItemForTotpRoute>().totpUri)
+    }
+
+    @Test
+    fun `choosing an item carries its id to the form`() {
+        val controller = navController(hasAccess = true)
+        val itemId = newItemId()
+
+        controller.navigate(AssignTotpRoute(DEEP_LINK_URI, itemId.toString()))
+
+        val route = assertNotNull(controller.currentBackStackEntry).toRoute<AssignTotpRoute>()
+        assertEquals(DEEP_LINK_URI, route.totpUri)
+        assertEquals(itemId, route.selectedItemId)
+    }
+
+    @Test
+    fun `creating a new item carries no id`() {
+        val controller = navController(hasAccess = true)
+
+        controller.navigate(AssignTotpRoute(DEEP_LINK_URI))
+
+        val route = assertNotNull(controller.currentBackStackEntry).toRoute<AssignTotpRoute>()
+        assertEquals(DEEP_LINK_URI, route.totpUri)
+        assertNull(route.selectedItemId)
+    }
+
+    @Test
+    fun `the picker replaces the auth entry so back leaves the app`() {
+        val controller = navController(hasAccess = true)
+
+        controller.navigate(SelectItemForTotpRoute(DEEP_LINK_URI)) {
+            popUpTo<AuthRoute> { inclusive = true }
+        }
+
+        assertTrue(controller.currentDestination?.hasRoute<SelectItemForTotpRoute>() == true)
+        assertFalse(
+            controller.currentBackStack.value.any { it.destination.hasRoute<AuthRoute>() },
+        )
+    }
+
+    /**
+     * The same claim as above, but reached the way a deep link reaches it. The gate the deep link
+     * opens is a second entry on a destination the launch already put on the stack, so a pop that
+     * only reaches the nearest one leaves the first behind for back to land on.
+     */
+    @Test
+    fun `back leaves the app after a deep link opened the gate`() {
+        val controller = navController(hasAccess = true)
+        controller.navigate(DEEP_LINK_URI.toUri())
+        val redirect = assertNotNull(controller.currentBackStackEntry).toRoute<TotpImportRedirect>()
+
+        controller.navigateToValidatedImport(hasAccess = true, pending = redirect.pendingImport)
+        controller.navigate(SelectItemForTotpRoute(DEEP_LINK_URI)) {
+            popUpTo<AuthRoute> { inclusive = true }
+        }
+
+        assertTrue(controller.currentDestination?.hasRoute<SelectItemForTotpRoute>() == true)
+        assertFalse(
+            controller.currentBackStack.value.any { it.destination.hasRoute<AuthRoute>() },
+        )
+    }
+
+    /** The onboarding half of the same claim, for an account that has no access yet. */
+    @Test
+    fun `back leaves the app after a deep link opened onboarding`() {
+        val controller = navController(hasAccess = false)
+        controller.navigate(DEEP_LINK_URI.toUri())
+        val redirect = assertNotNull(controller.currentBackStackEntry).toRoute<TotpImportRedirect>()
+
+        controller.navigateToValidatedImport(hasAccess = false, pending = redirect.pendingImport)
+        controller.navigate(SelectItemForTotpRoute(DEEP_LINK_URI)) {
+            popUpTo<OnboardingRoute> { inclusive = true }
+        }
+
+        assertTrue(controller.currentDestination?.hasRoute<SelectItemForTotpRoute>() == true)
+        assertFalse(
+            controller.currentBackStack.value.any { it.destination.hasRoute<OnboardingRoute>() },
+        )
+    }
+
+    @Test
+    fun `a validated code sends an account with access to AuthRoute`() {
+        val controller = navController(hasAccess = true)
+        controller.navigate(
+            TotpImportRedirect(totpInfo = "Example:me@example.com", queries = "secret=ABC"),
+        )
+
+        controller.navigateToValidatedImport(
+            hasAccess = true,
+            pending = PendingTotpImport(totpInfo = "Example:me@example.com", queries = "secret=ABC"),
+        )
+
+        assertTrue(controller.currentDestination?.hasRoute<AuthRoute>() == true)
+
+        val route = assertNotNull(controller.currentBackStackEntry).toRoute<AuthRoute>()
+        assertEquals("Example:me@example.com", route.totpInfo)
+        assertEquals("secret=ABC", route.queries)
+        assertFalse(
+            controller.currentBackStack.value.any { it.destination.hasRoute<TotpImportRedirect>() },
+        )
+    }
+
+    @Test
+    fun `a validated code sends an account without access to OnboardingRoute`() {
+        val controller = navController(hasAccess = false)
+        controller.navigate(
+            TotpImportRedirect(totpInfo = "Example:me@example.com", queries = "secret=ABC"),
+        )
+
+        controller.navigateToValidatedImport(
+            hasAccess = false,
+            pending = PendingTotpImport(totpInfo = "Example:me@example.com", queries = "secret=ABC"),
+        )
+
+        assertTrue(controller.currentDestination?.hasRoute<OnboardingRoute>() == true)
+
+        val route = assertNotNull(controller.currentBackStackEntry).toRoute<OnboardingRoute>()
+        assertEquals("Example:me@example.com", route.totpInfo)
+        assertEquals("secret=ABC", route.queries)
+        assertFalse(
+            controller.currentBackStack.value.any { it.destination.hasRoute<TotpImportRedirect>() },
+        )
+    }
+
+    private companion object {
+        const val DEEP_LINK_URI =
+            "otpauth://totp/GitHub:me@github.com?secret=JBSWY3DPEHPK3PXP&issuer=github.com"
     }
 }

@@ -451,6 +451,7 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                                         }
                                     }
                                 } else null,
+                                error = dialog.error,
                                 isSecure = dialog.fieldType.isSensitive,
                                 inputTransformation = transformation,
                             )
