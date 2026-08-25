@@ -15,6 +15,7 @@ import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
+import de.davis.keygo.feature.list_screen.domain.usecase.RankSearchResultsUseCase
 import de.davis.keygo.feature.vault.domain.usecase.ObserveVaultsAndSelectionUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -60,6 +61,7 @@ class ItemListViewModelTest {
         restrictedItemType = null,
         itemRepository = itemRepository,
         filterUseCase = FilterUseCase(sortUseCase),
+        rankSearchResults = RankSearchResultsUseCase(sortUseCase),
         observeAllTags = ObserveAllTagsSortedUseCase(itemRepository, sortUseCase),
         observeVaultsAndSelection = ObserveVaultsAndSelectionUseCase(
             vaultRepository = vaultRepository,

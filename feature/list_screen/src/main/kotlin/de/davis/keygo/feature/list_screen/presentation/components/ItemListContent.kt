@@ -53,6 +53,7 @@ import de.davis.keygo.feature.list_screen.presentation.model.FilterAction
 import de.davis.keygo.feature.list_screen.presentation.model.FilterBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.ItemSectionState
 import de.davis.keygo.feature.list_screen.presentation.model.ListItemState
+import de.davis.keygo.feature.list_screen.presentation.model.SearchState
 import de.davis.keygo.feature.vault.presentation.VaultFlow
 import kotlinx.coroutines.launch
 
@@ -144,17 +145,13 @@ internal fun ItemListContent(
             val searchResultContent: @Composable ColumnScope.() -> Unit = {
                 val scope = rememberCoroutineScope()
                 SearchResult(
-                    searchResult = uiState.searchResults,
-                    idOf = { it.id },
-                    nameOf = { it.name },
-                    matchedInName = { true },
-                    matchedInNote = { false },
-                    onClick = { item ->
+                    searchState = uiState.searchState,
+                    onResultClick = { itemId ->
                         scope.launch { searchBarState.animateToCollapsed() }
 
                         // Clicking a search result should not select the item when currently
                         // other items are selected.
-                        onItemClick(item.id, true)
+                        onItemClick(itemId, true)
                     },
                     modifier = Modifier.padding(8.dp)
                 )
@@ -267,6 +264,7 @@ private fun ItemListContentPreview() {
                     itemType = VaultItemType.Login,
                     pinned = false,
                     matchedName = true,
+                    matchedUsername = false,
                     matchedNote = false,
                     matchedTag = false,
                 )
@@ -275,7 +273,10 @@ private fun ItemListContentPreview() {
             val uiState = remember {
                 ListItemState(
                     items = listOf(sampleItem),
-                    searchResults = listOf(sampleItem),
+                    searchState = SearchState(
+                        results = listOf(sampleItem),
+                        query = "Sam"
+                    ),
                     hasSearchQuery = false,
                     highlightedId = null,
                 )

@@ -4,9 +4,6 @@
 
     <string name="create_new_item">Create new Item</string>
 
-    <string name="match_name">Matched name</string>
-    <string name="match_note">Matched note</string>
-    <string name="match_name_and_note">Matched name and note</string>
     <string name="match_not_found">No matches found</string>
 
     <string name="copy_to_clipboard_content_description">Copy to clipboard</string>

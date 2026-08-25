@@ -4,6 +4,7 @@ import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
 import de.davis.keygo.core.item.data.local.entity.ItemEntity
+import de.davis.keygo.core.item.data.local.entity.LoginEntity
 import de.davis.keygo.core.item.data.local.entity.TagEntity
 import de.davis.keygo.core.item.data.local.entity.Timestamp
 import de.davis.keygo.core.item.data.local.entity.VaultEntity
@@ -58,6 +59,7 @@ internal class ItemDaoSearchTest {
         name: String,
         note: String? = null,
         tags: Set<String> = emptySet(),
+        username: String? = null,
     ): ItemId {
         val id = newItemId()
         itemDao.upsert(
@@ -77,6 +79,7 @@ internal class ItemDaoSearchTest {
                 id,
                 tags.map { TagEntity(value = it, normalized = it.lowercase()) }.toSet(),
             )
+        db.loginDao().upsert(LoginEntity(id = id, username = username))
         return id
     }
 
@@ -105,10 +108,49 @@ internal class ItemDaoSearchTest {
     }
 
     @Test
-    fun `searchItem does not return items with no name note or tag match`() = runTest {
-        insertItem(name = "Email", note = "personal", tags = setOf("Mail"))
+    fun `searchItem does not return items with no name note username or tag match`() = runTest {
+        insertItem(name = "Email", note = "personal", tags = setOf("Mail"), username = "me@x.io")
 
         assertTrue(itemDao.searchItem(query = "Bank", normalizedQuery = "bank").first().isEmpty())
+    }
+
+    @Test
+    fun `searchItem matches an item by username only`() = runTest {
+        val id = insertItem(name = "Chase", username = "treasurer@example.com")
+
+        val r = itemDao.searchItem(query = "treasurer", normalizedQuery = "treasurer")
+            .first()
+            .single()
+
+        assertEquals(id, r.id)
+        assertTrue(r.matchedUsername)
+        assertFalse(r.matchedName)
+        assertFalse(r.matchedNote)
+        assertFalse(r.matchedTag)
+    }
+
+    /**
+     * The login join is one-to-one on a shared primary key, so a username match must not duplicate
+     * the item row it already matched by name.
+     */
+    @Test
+    fun `searchItem returns a single row when name and username both match`() = runTest {
+        insertItem(name = "Bank", username = "bank-admin")
+
+        val r = itemDao.searchItem(query = "bank", normalizedQuery = "bank").first().single()
+
+        assertTrue(r.matchedName)
+        assertTrue(r.matchedUsername)
+    }
+
+    @Test
+    fun `searchItem leaves matchedUsername false for an item without a username`() = runTest {
+        insertItem(name = "Bank of Earth", username = null)
+
+        val r = itemDao.searchItem(query = "Bank", normalizedQuery = "bank").first().single()
+
+        assertTrue(r.matchedName)
+        assertFalse(r.matchedUsername)
     }
 
     @Test
