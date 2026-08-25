@@ -10,5 +10,6 @@ data class LiteItemSearchResult(
     override val pinned: Boolean,
     val matchedName: Boolean,
     val matchedNote: Boolean,
+    val matchedUsername: Boolean,
     val matchedTag: Boolean,
 ) : LiteItem

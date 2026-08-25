@@ -49,14 +49,17 @@ internal interface ItemDao {
         )
         SELECT
             i.id, i.name, i.item_type AS itemType, i.pinned,
-            (i.name LIKE '%' || :query || '%') AS matchedName,
-            (i.note LIKE '%' || :query || '%') AS matchedNote,
-            (tm.item_id IS NOT NULL)           AS matchedTag
+            (i.name LIKE '%' || :query || '%')     AS matchedName,
+            (i.note LIKE '%' || :query || '%')     AS matchedNote,
+            (l.username LIKE '%' || :query || '%') AS matchedUsername,
+            (tm.item_id IS NOT NULL)               AS matchedTag
         FROM item i
         LEFT JOIN tag_matches tm ON tm.item_id = i.id
+        LEFT JOIN login l ON l.id = i.id
         WHERE (:itemType IS NULL OR i.item_type = :itemType)
           AND (i.name LIKE '%' || :query || '%'
                OR i.note LIKE '%' || :query || '%'
+               OR l.username LIKE '%' || :query || '%'
                OR tm.item_id IS NOT NULL)
         """
     )
