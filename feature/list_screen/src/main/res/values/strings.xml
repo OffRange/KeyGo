@@ -5,6 +5,8 @@
     <string name="selected_count">%d selected</string>
     <string name="clear_selection">Clear selection</string>
     <string name="select_all">Select all</string>
+    <string name="pin_all">Pin all</string>
+    <string name="unpin_all">Unpin all</string>
     <string name="delete">Delete</string>
     <string name="cancel">Cancel</string>
 

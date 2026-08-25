@@ -69,7 +69,12 @@ class ItemListViewModelTest {
         loginRepository = loginRepository,
     )
 
-    private fun login(name: String, id: ItemId = newItemId(), vault: VaultId = vaultId) = Login(
+    private fun login(
+        name: String,
+        id: ItemId = newItemId(),
+        vault: VaultId = vaultId,
+        pinned: Boolean = false,
+    ) = Login(
         id = id,
         name = name,
         username = null,
@@ -78,7 +83,7 @@ class ItemListViewModelTest {
         totp = null,
         passkeys = emptySet(),
         note = null,
-        pinned = false,
+        pinned = pinned,
         vaultId = vault,
         keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),
         timestamp = Timestamp(),
@@ -86,6 +91,11 @@ class ItemListViewModelTest {
 
     private suspend fun storedIds(): Set<ItemId> =
         itemRepository.observeLiteVaultItems().first().mapTo(mutableSetOf()) { it.id }
+
+    private suspend fun pinnedIds(): Set<ItemId> =
+        itemRepository.observeLiteVaultItems().first()
+            .filter { it.pinned }
+            .mapTo(mutableSetOf()) { it.id }
 
     /**
      * The bug this flow replaced: each swipe hung its delete off a snackbar that the next swipe
@@ -262,6 +272,125 @@ class ItemListViewModelTest {
 
         assertEquals(setOf(item.id), storedIds())
         assertEquals(emptySet(), vm.listItemState.value.selectedItemIds)
+    }
+
+    @Test
+    fun `pinning a selection pins every item in it`() = runTest(dispatcher) {
+        val first = login("First")
+        val second = login("Second")
+        loginRepository.seed(first, second)
+
+        val vm = viewModel()
+        backgroundScope.launchCollect(vm)
+        advanceUntilIdle()
+
+        vm.onItemLongClick(first.id)
+        vm.onItemClick(second.id)
+        vm.onPinSelectedRequest()
+        advanceUntilIdle()
+
+        assertEquals(setOf(first.id, second.id), pinnedIds())
+        assertTrue(vm.listItemState.value.allSelectedPinned)
+    }
+
+    /** The mixed case: one unpinned item is enough to make the button pin rather than unpin. */
+    @Test
+    fun `a selection holding one unpinned item pins the whole selection`() = runTest(dispatcher) {
+        val alreadyPinned = login("Pinned", pinned = true)
+        val plain = login("Plain")
+        loginRepository.seed(alreadyPinned, plain)
+
+        val vm = viewModel()
+        backgroundScope.launchCollect(vm)
+        advanceUntilIdle()
+
+        vm.onItemLongClick(alreadyPinned.id)
+        vm.onItemClick(plain.id)
+        advanceUntilIdle()
+        assertFalse(vm.listItemState.value.allSelectedPinned)
+
+        vm.onPinSelectedRequest()
+        advanceUntilIdle()
+
+        assertEquals(setOf(alreadyPinned.id, plain.id), pinnedIds())
+    }
+
+    @Test
+    fun `pinning a selection whose items are all pinned unpins them`() = runTest(dispatcher) {
+        val first = login("First", pinned = true)
+        val second = login("Second", pinned = true)
+        loginRepository.seed(first, second)
+
+        val vm = viewModel()
+        backgroundScope.launchCollect(vm)
+        advanceUntilIdle()
+
+        vm.onItemLongClick(first.id)
+        vm.onItemClick(second.id)
+        advanceUntilIdle()
+        assertTrue(vm.listItemState.value.allSelectedPinned)
+
+        vm.onPinSelectedRequest()
+        advanceUntilIdle()
+
+        assertEquals(emptySet(), pinnedIds())
+        assertFalse(vm.listItemState.value.allSelectedPinned)
+    }
+
+    /**
+     * The selection carries a pinned flag per item, so dropping the one unpinned item has to hand
+     * the action back to unpin. A single "are they all pinned" boolean could not recover this.
+     */
+    @Test
+    fun `deselecting the only unpinned item turns the action back into an unpin`() =
+        runTest(dispatcher) {
+            val alreadyPinned = login("Pinned", pinned = true)
+            val plain = login("Plain")
+            loginRepository.seed(alreadyPinned, plain)
+
+            val vm = viewModel()
+            backgroundScope.launchCollect(vm)
+            advanceUntilIdle()
+
+            vm.onItemLongClick(alreadyPinned.id)
+            vm.onItemClick(plain.id)
+            advanceUntilIdle()
+            assertFalse(vm.listItemState.value.allSelectedPinned)
+
+            vm.onItemClick(plain.id)
+            advanceUntilIdle()
+
+            assertEquals(setOf(alreadyPinned.id), vm.listItemState.value.selectedItemIds)
+            assertTrue(vm.listItemState.value.allSelectedPinned)
+        }
+
+    @Test
+    fun `select all carries the pinned state of every item it picks up`() = runTest(dispatcher) {
+        loginRepository.seed(login("A", pinned = true), login("B", pinned = true))
+
+        val vm = viewModel()
+        backgroundScope.launchCollect(vm)
+        advanceUntilIdle()
+
+        vm.onSelectAll()
+        advanceUntilIdle()
+
+        assertTrue(vm.listItemState.value.allSelectedPinned)
+    }
+
+    @Test
+    fun `requesting a pin with nothing selected pins nothing`() = runTest(dispatcher) {
+        loginRepository.seed(login("Untouched"))
+
+        val vm = viewModel()
+        backgroundScope.launchCollect(vm)
+        advanceUntilIdle()
+
+        vm.onPinSelectedRequest()
+        advanceUntilIdle()
+
+        assertEquals(emptySet(), pinnedIds())
+        assertFalse(vm.listItemState.value.allSelectedPinned)
     }
 }
 

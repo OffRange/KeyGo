@@ -11,12 +11,14 @@ internal data class ListItemState(
     val items: List<LiteItem> = emptyList(),
     val searchResults: List<LiteItem> = emptyList(),
     val hasSearchQuery: Boolean = false,
-    val selectedItemIds: Set<ItemId> = emptySet(),
+    val selection: ItemSelection = ItemSelection(),
     val highlightedId: ItemId? = null,
     val isVaultFlowVisible: Boolean = false,
     val isDeleteConfirmationVisible: Boolean = false,
     val vaults: List<VaultMetadata> = emptyList(),
     val vaultContext: VaultContext = VaultContext.NoSpecific,
 ) {
-    val isSelectionActive: Boolean get() = selectedItemIds.isNotEmpty()
+    val selectedItemIds: Set<ItemId> get() = selection.ids
+    val isSelectionActive: Boolean get() = selection.isActive
+    val allSelectedPinned: Boolean get() = selection.allPinned
 }
