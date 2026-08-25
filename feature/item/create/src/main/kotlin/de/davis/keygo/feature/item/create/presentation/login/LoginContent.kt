@@ -59,7 +59,6 @@ import de.davis.keygo.feature.item.create.presentation.component.FormGroup
 import de.davis.keygo.feature.item.create.presentation.component.ItemContentWrapper
 import de.davis.keygo.feature.item.create.presentation.component.KeyGoItemForm
 import de.davis.keygo.feature.item.create.presentation.component.OverrideTotpDialog
-import de.davis.keygo.feature.item.create.presentation.component.SelectItemForTotpModificationDialog
 import de.davis.keygo.feature.item.create.presentation.component.TAG_DELIMITERS
 import de.davis.keygo.feature.item.create.presentation.login.model.DialogState
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginBaseState
@@ -77,7 +76,10 @@ import de.davis.keygo.core.item.R as CoreItemR
 import de.davis.keygo.feature.item.core.R as ItemCoreR
 
 @Composable
-internal fun LoginContent(state: LoginUiState, onEvent: (LoginUiEvent) -> Unit) {
+internal fun LoginContent(
+    state: LoginUiState,
+    onEvent: (LoginUiEvent) -> Unit,
+) {
     ItemContentWrapper(
         itemType = VaultItemType.Login,
         state = state,
@@ -292,20 +294,6 @@ private fun LoginReadyContent(
             DialogState.TotpParseError -> {
                 TotpParseErrorDialog(
                     onDismiss = { onEvent(LoginUiEvent.OnTotpParseErrorDismiss) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-
-            is DialogState.SelectItemForModification -> {
-                SelectItemForTotpModificationDialog(
-                    onDismissRequest = {
-                        // Don't allow dismissal
-                    },
-                    items = state.dialogState.items,
-                    onItemClicked = { item ->
-                        onEvent(LoginUiEvent.OnTotpModificationItemSelected(item.id))
-                    },
-                    onCreateNew = { onEvent(LoginUiEvent.OnCreateNewItemForTotp) },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

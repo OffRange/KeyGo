@@ -206,6 +206,10 @@ fun KeyGoNavigationWrapper(
 
                     FloatingActionButtonMenu(
                         expanded = fabMenuExpanded,
+                        modifier = Modifier.animateFloatingActionButton(
+                            visible = (showChrome && showPrimaryActionButton) || fabMenuExpanded,
+                            alignment = Alignment.BottomEnd,
+                        ),
                         button = {
                             TooltipBox(
                                 positionProvider =
@@ -226,10 +230,6 @@ fun KeyGoNavigationWrapper(
                                         .semantics {
                                             traversalIndex = -1f
                                         }
-                                        .animateFloatingActionButton(
-                                            visible = (showChrome && showPrimaryActionButton) || fabMenuExpanded,
-                                            alignment = Alignment.BottomEnd,
-                                        )
                                         .focusRequester(focusRequester),
                                 ) {
                                     val imageVector by remember {

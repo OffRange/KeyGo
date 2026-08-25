@@ -3,7 +3,6 @@ package de.davis.keygo.feature.autofill.presentation.activity
 import androidx.lifecycle.SavedStateHandle
 import de.davis.keygo.core.feature.autofill.FakeAutofillDatasetProvider
 import de.davis.keygo.core.feature.autofill.FakeDigitalAssetLinkRepository
-import de.davis.keygo.core.feature.autofill.FakeRegistrableDomainResolver
 import de.davis.keygo.core.feature.autofill.FakeSignatureInfoProvider
 import de.davis.keygo.core.feature.autofill.FakeTotpGenerator
 import de.davis.keygo.core.feature.autofill.FakeTotpRepository
@@ -21,6 +20,7 @@ import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
+import de.davis.keygo.core.util.FakeRegistrableDomainResolver
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.feature.autofill.domain.usecase.AddRegistrableDomainsToLoginUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.DoesItemHaveDomainReferencesUseCase

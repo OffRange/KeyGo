@@ -1,6 +1,5 @@
 package de.davis.keygo.feature.autofill.domain.usecase
 
-import de.davis.keygo.core.feature.autofill.FakeRegistrableDomainResolver
 import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
@@ -9,6 +8,7 @@ import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.Timestamp
+import de.davis.keygo.core.util.FakeRegistrableDomainResolver
 import kotlinx.coroutines.test.runTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test

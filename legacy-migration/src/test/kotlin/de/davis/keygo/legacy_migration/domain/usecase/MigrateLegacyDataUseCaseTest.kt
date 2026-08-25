@@ -14,12 +14,12 @@ import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.model.CryptoScopeError
+import de.davis.keygo.core.util.FakeRegistrableDomainResolver
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.legacy_migration.data.FAKE_LEGACY_KEY
 import de.davis.keygo.legacy_migration.data.FakeLegacyCipher
 import de.davis.keygo.legacy_migration.data.FakeLegacyItemRepository
 import de.davis.keygo.legacy_migration.data.FakeLegacyKeyRepository
-import de.davis.keygo.legacy_migration.data.FakeRegistrableDomainResolver
 import de.davis.keygo.legacy_migration.domain.crypto.LegacyCipher
 import de.davis.keygo.legacy_migration.domain.mapper.LegacyItemConverter
 import de.davis.keygo.legacy_migration.domain.model.LegacyDetail

@@ -123,7 +123,7 @@ fun OverrideTotpDialog(
 @Preview
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-private fun SelectItemForTotpModificationDialogPreview() {
+private fun OverrideTotpDialogPreview() {
     KeyGoTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             OverrideTotpDialog(

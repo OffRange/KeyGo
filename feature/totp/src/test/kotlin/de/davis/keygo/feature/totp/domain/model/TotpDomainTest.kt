@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.item.core.domain.model
+package de.davis.keygo.feature.totp.domain.model
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

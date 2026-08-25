@@ -15,7 +15,6 @@ import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.security.domain.crypto.decrypt
-import de.davis.keygo.core.security.domain.usecase.GetTdlMatchedLoginsUseCase
 import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
@@ -27,7 +26,6 @@ import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.feature.item.core.domain.model.ItemUpsertError
 import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.fieldUpdate
-import de.davis.keygo.feature.item.core.domain.model.resolveTotpDomain
 import de.davis.keygo.feature.item.core.domain.model.set
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
 import de.davis.keygo.feature.item.core.domain.usecase.ValidateTotpInputUseCase
@@ -42,6 +40,7 @@ import de.davis.keygo.feature.item.create.presentation.login.model.LoginPasskeyI
 import de.davis.keygo.feature.item.create.presentation.login.model.LoginUiEvent
 import de.davis.keygo.feature.item.create.presentation.login.model.OverrideTotpField
 import de.davis.keygo.feature.item.create.presentation.model.ItemUiState
+import de.davis.keygo.feature.totp.domain.model.resolveTotpDomain
 import de.davis.keygo.rust.totp.TotpService
 import de.davis.keygo.rust.totp.getInfoFromUriWithResult
 import de.davis.keygo.rust.totp.getUrlWithResult
@@ -71,7 +70,6 @@ internal class LoginViewModel(
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val createNewOrUpdateLogin: CreateNewOrUpdateLoginUseCase,
     private val validateTotpInput: ValidateTotpInputUseCase,
-    private val getTdlMatchedLogins: GetTdlMatchedLoginsUseCase,
     private val snackbarManager: SnackbarManager,
     private val totpService: TotpService,
     private val registrableDomainResolver: RegistrableDomainResolver,
@@ -110,9 +108,6 @@ internal class LoginViewModel(
         base.copy(strengthScore = score)
     }
 
-    private var totpSecretInformation: TotpInfo? = null
-    private var totpOriginalUri: String? = null
-
     /**
      * Shows a passkey for [rp] as pending until the item is saved.
      *
@@ -130,9 +125,13 @@ internal class LoginViewModel(
 
     fun init(information: DetailPaneInformation) {
         when (information) {
-            is DetailPaneInformation.Init.Existing -> viewModelScope.launch { initWithId(information.id) }
-            is DetailPaneInformation.Init.TOTP -> initWithTotpUri(information.uri)
-            is DetailPaneInformation.Init.New -> {} // Don't init anything
+            is DetailPaneInformation.Init.Existing -> viewModelScope.launch {
+                initWithId(information.id, information.pendingTotpUri)
+            }
+
+            is DetailPaneInformation.Init.New -> information.pendingTotpUri?.let { uri ->
+                parsePendingTotp(uri)?.let { updateUiWithTotpSecretInfo(it, uri) }
+            }
 
             is DetailPaneInformation.CreateRaw -> initWithRawItem(information)
         }
@@ -163,7 +162,12 @@ internal class LoginViewModel(
         }
     }
 
-    private suspend fun initWithId(itemId: ItemId) {
+    /**
+     * @param pendingTotpUri a code the picker handed over, folded in once the item it belongs to is
+     * on screen. It is parsed here rather than before the load, so nothing has to be carried across
+     * the two.
+     */
+    private suspend fun initWithId(itemId: ItemId, pendingTotpUri: String?) {
         this.itemId = itemId
 
         itemWithCryptoScope.oneShot(
@@ -215,39 +219,22 @@ internal class LoginViewModel(
                 )
             }
 
-            totpSecretInformation?.let {
-                requestTotpSecretUpdate(it, totpOriginalUri)
+            pendingTotpUri?.let { uri ->
+                parsePendingTotp(uri)?.let { requestTotpSecretUpdate(it, uri) }
             }
         }
     }
 
-    private fun initWithTotpUri(totpUri: String) {
-        totpService.getInfoFromUriWithResult(totpUri).onFailure {
-            Log.e(TAG, "Error parsing TOTP URI: $it")
-            showTotpParseError()
-        }.onSuccess { secret ->
-            totpSecretInformation = secret
-            totpOriginalUri = totpUri
-            viewModelScope.launch {
-                val matchedItems = secret.issuer?.let {
-                    getTdlMatchedLogins(it)
-                }
-
-                if (matchedItems.isNullOrEmpty()) {
-                    updateUiWithTotpSecretInfo(secret, totpUri)
-                    return@launch
-                }
-
-                _base.update {
-                    it.copy(
-                        dialogState = DialogState.SelectItemForModification(
-                            items = matchedItems,
-                        )
-                    )
-                }
-            }
-        }
-    }
+    /**
+     * Reads a code the picker handed over. Returns null when the code cannot be read, which the
+     * redirect that starts the import already ruled out, so there is nothing to tell the user about
+     * here. This function assumes its caller already validated the uri, so a new caller passing
+     * `pendingTotpUri` needs its own parse gate upstream.
+     */
+    private fun parsePendingTotp(uri: String): TotpInfo? =
+        totpService.getInfoFromUriWithResult(uri).onFailure { failure ->
+            Log.e(TAG, "Error parsing TOTP URI: $failure")
+        }.getOrNull()
 
     override fun onSubmit() {
         val ready = state.value as? ItemUiState.Ready ?: return
@@ -356,28 +343,14 @@ internal class LoginViewModel(
 
             is LoginUiEvent.OnCodesScanned -> {
                 event.codes.firstNotNullOfOrNull { code ->
-                    totpService.getInfoFromUriWithResult(code).onFailure { failure ->
-                        Log.e(TAG, "Error parsing TOTP URI: $failure")
-                    }.getOrNull()?.let { code to it }
+                    parsePendingTotp(code)?.let { code to it }
                 }?.let { (scannedUri, secretInfo) ->
                     _base.update { state ->
                         state.copy(scanning = false)
                     }
 
-                    totpOriginalUri = scannedUri
-                    totpSecretInformation = secretInfo
                     requestTotpSecretUpdate(secretInfo, scannedUri)
                 } ?: showTotpParseError()
-            }
-
-            is LoginUiEvent.OnTotpModificationItemSelected -> {
-                viewModelScope.launch { initWithId(event.itemId) }
-            }
-
-            is LoginUiEvent.OnCreateNewItemForTotp -> {
-                totpSecretInformation?.let {
-                    updateUiWithTotpSecretInfo(it, totpOriginalUri)
-                }
             }
 
             is LoginUiEvent.OnOverrideFieldClicked -> {
@@ -403,21 +376,16 @@ internal class LoginViewModel(
                 val currentDialogState = _base.value.dialogState
                 if (currentDialogState !is DialogState.OverrideTotp) return
 
-                totpSecretInformation?.let {
-                    val selectedFields =
-                        currentDialogState.fields.filter { field -> field.selected }
-
-                    selectedFields.applyToUi { after }
-                }
+                currentDialogState.fields
+                    .filter { field -> field.selected }
+                    .applyToUi { after }
             }
 
             is LoginUiEvent.OnOverrideTotpFieldsKept -> {
                 val currentDialogState = _base.value.dialogState
                 if (currentDialogState !is DialogState.OverrideTotp) return
 
-                totpSecretInformation?.let {
-                    currentDialogState.fields.applyToUi { before }
-                }
+                currentDialogState.fields.applyToUi { before }
             }
 
             is LoginUiEvent.OnTotpParseErrorDismiss -> {
@@ -500,14 +468,14 @@ internal class LoginViewModel(
 
     private fun requestTotpSecretUpdate(
         secretInformation: TotpInfo,
-        originalUri: String? = null,
+        originalUri: String,
     ) {
         val currentState = _base.value
         val currentTotpSecret = currentState.totpTextFieldState.text.toString()
         val currentIssuers = currentState.domains
         val currentAccountName = currentState.usernameTextFieldState.text.toString()
 
-        val newTotpSecret = originalUri ?: secretInformation.secret
+        val newTotpSecret = originalUri
         val newDomain = resolveTotpDomain(secretInformation.issuer, secretInformation.accountName)
         val newAccountName = secretInformation.accountName
 
@@ -559,9 +527,9 @@ internal class LoginViewModel(
 
     private fun updateUiWithTotpSecretInfo(
         secretInformation: TotpInfo,
-        originalUri: String? = null,
+        originalUri: String,
     ) = updateUiWithSpecificTotpSecretInfo(
-        secret = originalUri ?: secretInformation.secret,
+        secret = originalUri,
         issuer = resolveTotpDomain(secretInformation.issuer, secretInformation.accountName),
         accountName = secretInformation.accountName,
     )
