@@ -117,7 +117,8 @@ private fun SearchResultRow(
 
     SegmentedListItem(
         onClick = onClick,
-        shapes = ListItemDefaults.segmentedShapes(index, count),
+        shapes = if (count == 1) ListItemDefaults.shapes(MaterialTheme.shapes.large)
+        else ListItemDefaults.segmentedShapes(index, count),
         colors = ListItemDefaults.segmentedColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
         ),
