@@ -103,8 +103,10 @@ class FakeItemRepository(
             .mapNotNull { item ->
                 val matchedName = item.name.contains(query, ignoreCase = true)
                 val matchedNote = item.note?.contains(query, ignoreCase = true) == true
+                val matchedUsername = item.username?.contains(query, ignoreCase = true) == true
                 val matchedTag = item.tags.any { it.display.contains(query, ignoreCase = true) }
-                if (!matchedName && !matchedNote && !matchedTag) return@mapNotNull null
+                if (!matchedName && !matchedNote && !matchedUsername && !matchedTag)
+                    return@mapNotNull null
 
                 LiteItemSearchResult(
                     id = item.id,
@@ -113,6 +115,7 @@ class FakeItemRepository(
                     pinned = item.pinned,
                     matchedName = matchedName,
                     matchedNote = matchedNote,
+                    matchedUsername = matchedUsername,
                     matchedTag = matchedTag,
                 )
             }
