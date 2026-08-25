@@ -24,6 +24,7 @@ import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
+import de.davis.keygo.feature.item.core.domain.usecase.ValidateTotpInputUseCase
 import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.item.create.presentation.login.model.DialogState
@@ -304,6 +305,7 @@ class LoginViewModelTest {
         itemRepository = itemRepository,
         observeAllTags = ObserveAllTagsSortedUseCase(itemRepository, SortUseCase()),
         vaultRepository = vaultRepository,
+        validateTotpInput = ValidateTotpInputUseCase(totpService)
     )
 
     private class TestSnackbarManager : SnackbarManager {
