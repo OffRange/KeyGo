@@ -16,6 +16,7 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.combine
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
+import de.davis.keygo.feature.list_screen.domain.usecase.RankSearchResultsUseCase
 import de.davis.keygo.feature.list_screen.presentation.mapper.toAvailableFilterOptions
 import de.davis.keygo.feature.list_screen.presentation.mapper.toBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.Event
@@ -23,6 +24,7 @@ import de.davis.keygo.feature.list_screen.presentation.model.FilterAction
 import de.davis.keygo.feature.list_screen.presentation.model.FilterBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.ItemSelection
 import de.davis.keygo.feature.list_screen.presentation.model.ListItemState
+import de.davis.keygo.feature.list_screen.presentation.model.SearchState
 import de.davis.keygo.feature.vault.domain.usecase.ObserveVaultsAndSelectionUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -60,6 +62,7 @@ internal class ItemListViewModel(
     @InjectedParam private val restrictedItemType: VaultItemType?,
     private val itemRepository: ItemRepository,
     private val filterUseCase: FilterUseCase,
+    private val rankSearchResults: RankSearchResultsUseCase,
     observeAllTags: ObserveAllTagsSortedUseCase,
     observeVaultsAndSelection: ObserveVaultsAndSelectionUseCase,
     loginRepository: LoginRepository,
@@ -107,31 +110,33 @@ internal class ItemListViewModel(
     private val _isDeleteConfirmationVisible = MutableStateFlow(false)
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
-    private val searchResults = snapshotFlow { searchTextFieldState.text }
+    private val searchState = snapshotFlow { searchTextFieldState.text.toString() }
         .debounce(SEARCH_DEBOUNCE)
-        .flatMapLatest {
-            queryToItems(it.toString(), forceSearchAllVaults = true)
+        .distinctUntilChanged()
+        .flatMapLatest { query ->
+            itemRepository.searchVaultItem(query, restrictedItemType)
+                .map { SearchState(query, rankSearchResults(query, it)) }
         }
         .distinctUntilChanged()
         .flowOn(Dispatchers.Default)
         // Nobody has searched yet, and combine withholds its first emission until every input has
         // emitted: without this the list screen's first render would wait on a full cross-vault
         // search for the empty query.
-        .onStart { emit(emptyList()) }
+        .onStart { emit(SearchState()) }
 
     val listItemState = combine(
         vaultsAndSelection,
         filteredItems,
-        searchResults,
+        searchState,
         selection,
         submittedSearchQuery,
         highlightedId,
         _isVaultFlowVisible,
         _isDeleteConfirmationVisible,
-    ) { vaultsAndSel, items, searchResults, selection, submittedSearchQuery, highlightedId, isVaultFlowVisible, isDeleteConfirmationVisible ->
+    ) { vaultsAndSel, items, searchState, selection, submittedSearchQuery, highlightedId, isVaultFlowVisible, isDeleteConfirmationVisible ->
         ListItemState(
             items = items,
-            searchResults = searchResults,
+            searchState = searchState,
             hasSearchQuery = submittedSearchQuery.isNotBlank(),
             selection = selection,
             highlightedId = highlightedId,
@@ -209,12 +214,9 @@ internal class ItemListViewModel(
     private fun <T> Set<T>.toggle(element: T): Set<T> =
         if (element in this) this - element else this + element
 
-    private fun queryToItems(
-        query: String,
-        forceSearchAllVaults: Boolean = false
-    ): Flow<List<LiteItem>> =
-        (if (!forceSearchAllVaults && query.isBlank()) vaultSpecificItems
-        else itemRepository.searchVaultItem(query, restrictedItemType))
+    private fun queryToItems(query: String): Flow<List<LiteItem>> =
+        if (query.isBlank()) vaultSpecificItems
+        else itemRepository.searchVaultItem(query, restrictedItemType)
 
     fun onSubmitQuery() {
         submittedSearchQuery.update { searchTextFieldState.text.toString() }

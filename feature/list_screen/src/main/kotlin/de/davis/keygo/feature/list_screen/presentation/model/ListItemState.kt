@@ -9,7 +9,7 @@ import de.davis.keygo.core.item.domain.model.lite.LiteItem
 @Stable
 internal data class ListItemState(
     val items: List<LiteItem> = emptyList(),
-    val searchResults: List<LiteItem> = emptyList(),
+    val searchState: SearchState = SearchState(),
     val hasSearchQuery: Boolean = false,
     val selection: ItemSelection = ItemSelection(),
     val highlightedId: ItemId? = null,
