@@ -66,8 +66,8 @@ internal interface ItemDao {
         itemType: VaultItemType? = null,
     ): Flow<List<LightweightItemSearchResult>>
 
-    @Query("UPDATE item SET pinned = :pinned WHERE id = :id")
-    suspend fun setPinned(id: ItemId, pinned: Boolean)
+    @Query("UPDATE item SET pinned = :pinned WHERE id IN (:ids)")
+    suspend fun setPinned(ids: Collection<ItemId>, pinned: Boolean)
 
     @Query("SELECT i.id, i.name, i.item_type as itemType, i.pinned FROM item i WHERE (:vaultId IS NULL OR vault_id = :vaultId)")
     fun observeLiteItems(vaultId: VaultId? = null): Flow<List<LightweightItem>>

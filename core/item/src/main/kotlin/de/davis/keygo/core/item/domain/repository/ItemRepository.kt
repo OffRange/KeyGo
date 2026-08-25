@@ -31,7 +31,7 @@ interface ItemRepository {
         itemType: VaultItemType? = null
     ): Flow<List<LiteItemSearchResult>>
 
-    suspend fun setPinned(itemId: ItemId, pinned: Boolean)
+    suspend fun setPinned(itemIds: Set<ItemId>, pinned: Boolean)
 
     fun observeAllTags(): Flow<List<Tag>>
 

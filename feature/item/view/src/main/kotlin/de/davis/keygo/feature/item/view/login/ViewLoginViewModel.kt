@@ -179,7 +179,7 @@ internal class ViewLoginViewModel(
             ViewLoginUiEvent.OnPinClick -> {
                 _itemId.value?.let { id ->
                     viewModelScope.launch {
-                        itemRepository.setPinned(id, !state.value.pinned)
+                        itemRepository.setPinned(setOf(id), !state.value.pinned)
                     }
                 }
             }
