@@ -1,6 +1,5 @@
 package de.davis.keygo.core.item.data.repository
 
-import androidx.room.withTransaction
 import de.davis.keygo.core.item.data.local.dao.DomainInfoDao
 import de.davis.keygo.core.item.data.local.dao.ItemDao
 import de.davis.keygo.core.item.data.local.dao.LoginDao
@@ -8,7 +7,6 @@ import de.davis.keygo.core.item.data.local.dao.PasskeyDao
 import de.davis.keygo.core.item.data.local.dao.PasswordDao
 import de.davis.keygo.core.item.data.local.dao.TagDao
 import de.davis.keygo.core.item.data.local.dao.TotpDao
-import de.davis.keygo.core.item.data.local.datasource.ItemDatabase
 import de.davis.keygo.core.item.data.local.pojo.LightweightLogin
 import de.davis.keygo.core.item.data.local.pojo.LoginProjection
 import de.davis.keygo.core.item.data.mapper.toData
@@ -25,6 +23,7 @@ import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.lite.LiteLogin
 import de.davis.keygo.core.item.domain.repository.LoginRepository
+import de.davis.keygo.core.item.domain.repository.TransactionRunner
 import de.davis.keygo.core.util.Result
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -32,7 +31,7 @@ import org.koin.core.annotation.Single
 
 @Single
 internal class LoginRepositoryImpl(
-    private val database: ItemDatabase,
+    private val transactionRunner: TransactionRunner,
     private val itemDao: ItemDao,
     private val loginDao: LoginDao,
     private val passwordDao: PasswordDao,
@@ -44,7 +43,7 @@ internal class LoginRepositoryImpl(
 
     override suspend fun createOrUpdateLogin(login: Login): Result<ItemId, Throwable> =
         runCatching {
-            database.withTransaction {
+            transactionRunner.runInTransaction {
                 itemDao.upsert((login as Item).toData())
                 loginDao.upsert(login.toLoginEntity())
 
@@ -74,7 +73,7 @@ internal class LoginRepositoryImpl(
         domainInfos: Set<DomainInfo>,
     ): Result<Unit, Throwable> =
         runCatching {
-            database.withTransaction {
+            transactionRunner.runInTransaction {
                 val dataDomains = domainInfos.map { it.toData(itemId) }.toSet()
                 domainInfoDao.upsertAll(dataDomains)
             }
