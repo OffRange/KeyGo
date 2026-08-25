@@ -18,5 +18,7 @@ internal data class ListItemState(
     val vaults: List<VaultMetadata> = emptyList(),
     val vaultContext: VaultContext = VaultContext.NoSpecific,
 ) {
-    val isSelectionActive: Boolean get() = selectedItemIds.isNotEmpty()
+    val selectedItemIds: Set<ItemId> get() = selection.ids
+    val isSelectionActive: Boolean get() = selection.isActive
+    val allSelectedPinned: Boolean get() = selection.allPinned
 }

@@ -127,7 +127,7 @@ internal fun ItemListContent(
                 SelectionTopBar(
                     selectedCount = uiState.selectedItemIds.size,
                     canDelete = enableDeletion,
-                    allPinned = false,
+                    allPinned = uiState.allSelectedPinned,
                     onClearSelection = onClearSelection,
                     onSelectAll = onSelectAll,
                     onDeleteSelected = onDeleteSelectedRequest,
@@ -274,7 +274,6 @@ private fun ItemListContentPreview() {
                     searchResults = listOf(sampleItem),
                     hasSearchQuery = false,
                     highlightedId = null,
-                    selectedItemIds = emptySet(),
                 )
             }
             val searchTextFieldState = rememberTextFieldState()

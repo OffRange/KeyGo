@@ -248,7 +248,13 @@ internal class ItemListViewModel(
     }
 
     fun onPinSelectedRequest() {
-        // TODO
+        val current = selection.value
+        if (!current.isActive) return
+
+        val pinned = !current.allPinned
+        selection.update { it.withAllPinned(pinned) }
+
+        viewModelScope.launch { itemRepository.setPinned(current.ids, pinned) }
     }
 
     fun onDismissDeleteConfirmation() {
