@@ -78,6 +78,7 @@ internal fun ItemListContent(
     onClearSelection: () -> Unit,
     onSelectAll: () -> Unit,
     onDeleteSelectedRequest: () -> Unit,
+    onPinSelectedRequest: () -> Unit,
     onDismissDeleteConfirmation: () -> Unit,
     onConfirmDeleteSelected: () -> Unit,
     onVaultSelectorClick: () -> Unit,
@@ -127,9 +128,11 @@ internal fun ItemListContent(
                 SelectionTopBar(
                     selectedCount = uiState.selectedItemIds.size,
                     canDelete = enableDeletion,
+                    allPinned = uiState.allSelectedPinned,
                     onClearSelection = onClearSelection,
                     onSelectAll = onSelectAll,
                     onDeleteSelected = onDeleteSelectedRequest,
+                    onPinSelected = onPinSelectedRequest,
                 )
             else
                 AppBarWithSearch(
@@ -275,7 +278,6 @@ private fun ItemListContentPreview() {
                     searchResults = listOf(sampleItem),
                     hasSearchQuery = false,
                     highlightedId = null,
-                    selectedItemIds = emptySet(),
                 )
             }
             val searchTextFieldState = rememberTextFieldState()
@@ -314,6 +316,7 @@ private fun ItemListContentPreview() {
                 onClearSelection = {},
                 onSelectAll = {},
                 onDeleteSelectedRequest = {},
+                onPinSelectedRequest = {},
                 onDismissDeleteConfirmation = {},
                 onConfirmDeleteSelected = {},
                 onVaultSelectorClick = {},

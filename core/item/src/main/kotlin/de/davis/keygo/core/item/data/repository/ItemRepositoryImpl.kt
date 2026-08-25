@@ -66,8 +66,8 @@ internal class ItemRepositoryImpl(
         itemDao.searchItem(query, Tag.normalize(query), itemType)
             .map { results -> results.map(LightweightItemSearchResult::toDomain) }
 
-    override suspend fun setPinned(itemId: ItemId, pinned: Boolean) =
-        itemDao.setPinned(itemId, pinned)
+    override suspend fun setPinned(itemIds: Set<ItemId>, pinned: Boolean) =
+        itemDao.setPinned(itemIds, pinned)
 
     override fun observeAllTags(): Flow<List<Tag>> =
         tagDao.observeAllTags().map { it.map(TagEntity::toDomain) }

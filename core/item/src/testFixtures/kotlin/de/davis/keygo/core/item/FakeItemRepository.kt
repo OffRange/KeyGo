@@ -118,7 +118,13 @@ class FakeItemRepository(
             }
     }
 
-    override suspend fun setPinned(itemId: ItemId, pinned: Boolean) = Unit
+    override suspend fun setPinned(itemIds: Set<ItemId>, pinned: Boolean) {
+        allStores.update { store ->
+            store.mapValues { (id, item) ->
+                if (id in itemIds) item.copy(pinned = pinned) else item
+            }
+        }
+    }
 
     override fun observeLiteVaultItems(vaultId: VaultId?): Flow<List<LiteItem>> =
         allStores.map { store ->

@@ -21,6 +21,7 @@ import de.davis.keygo.feature.list_screen.presentation.mapper.toBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.Event
 import de.davis.keygo.feature.list_screen.presentation.model.FilterAction
 import de.davis.keygo.feature.list_screen.presentation.model.FilterBottomSheetState
+import de.davis.keygo.feature.list_screen.presentation.model.ItemSelection
 import de.davis.keygo.feature.list_screen.presentation.model.ListItemState
 import de.davis.keygo.feature.vault.domain.usecase.ObserveVaultsAndSelectionUseCase
 import kotlinx.coroutines.Dispatchers
@@ -100,7 +101,7 @@ internal class ItemListViewModel(
         filterUseCase(filter, items, scores, tagIds)
     }.distinctUntilChanged()
 
-    private val selectedItemIds = MutableStateFlow(emptySet<ItemId>())
+    private val selection = MutableStateFlow(ItemSelection())
     private val highlightedId = MutableStateFlow<ItemId?>(null)
     private val _isVaultFlowVisible = MutableStateFlow(false)
     private val _isDeleteConfirmationVisible = MutableStateFlow(false)
@@ -122,17 +123,17 @@ internal class ItemListViewModel(
         vaultsAndSelection,
         filteredItems,
         searchResults,
-        selectedItemIds,
+        selection,
         submittedSearchQuery,
         highlightedId,
         _isVaultFlowVisible,
         _isDeleteConfirmationVisible,
-    ) { vaultsAndSel, items, searchResults, selectedIds, submittedSearchQuery, highlightedId, isVaultFlowVisible, isDeleteConfirmationVisible ->
+    ) { vaultsAndSel, items, searchResults, selection, submittedSearchQuery, highlightedId, isVaultFlowVisible, isDeleteConfirmationVisible ->
         ListItemState(
             items = items,
             searchResults = searchResults,
             hasSearchQuery = submittedSearchQuery.isNotBlank(),
-            selectedItemIds = selectedIds,
+            selection = selection,
             highlightedId = highlightedId,
             isVaultFlowVisible = isVaultFlowVisible,
             isDeleteConfirmationVisible = isDeleteConfirmationVisible,
@@ -235,15 +236,25 @@ internal class ItemListViewModel(
     fun onSelectAll() {
         if (!enableSelection) return
 
-        selectedItemIds.update { listItemState.value.items.mapTo(mutableSetOf()) { it.id } }
+        selection.update { ItemSelection.of(listItemState.value.items) }
     }
 
     fun onClearSelection() {
-        selectedItemIds.update { emptySet() }
+        selection.update { ItemSelection() }
     }
 
     fun onDeleteSelectedRequest() {
-        if (selectedItemIds.value.isNotEmpty()) _isDeleteConfirmationVisible.update { true }
+        if (selection.value.isActive) _isDeleteConfirmationVisible.update { true }
+    }
+
+    fun onPinSelectedRequest() {
+        val current = selection.value
+        if (!current.isActive) return
+
+        val pinned = !current.allPinned
+        selection.update { it.withAllPinned(pinned) }
+
+        viewModelScope.launch { itemRepository.setPinned(current.ids, pinned) }
     }
 
     fun onDismissDeleteConfirmation() {
@@ -253,7 +264,7 @@ internal class ItemListViewModel(
     fun onConfirmDeleteSelected() {
         _isDeleteConfirmationVisible.update { false }
 
-        val deleted = selectedItemIds.getAndUpdate { emptySet() }
+        val deleted = selection.getAndUpdate { ItemSelection() }.ids
         if (deleted.isEmpty()) return
 
         // Read off the list still on screen: after the delete lands the flow has already dropped
@@ -270,8 +281,8 @@ internal class ItemListViewModel(
 
 
     fun onItemClick(itemId: ItemId, forceSkipSelection: Boolean = false) {
-        if (enableSelection && !forceSkipSelection && selectedItemIds.value.isNotEmpty()) {
-            val isSelected = itemId in selectedItemIds.value
+        if (enableSelection && !forceSkipSelection && selection.value.isActive) {
+            val isSelected = itemId in selection.value.ids
             updateItemSelectionState(itemId, selected = !isSelected)
         } else {
             highlightedId.update { itemId }
@@ -288,9 +299,12 @@ internal class ItemListViewModel(
 
 
     private fun updateItemSelectionState(id: ItemId, selected: Boolean) {
-        selectedItemIds.update { currentSelectedIds ->
-            if (selected) currentSelectedIds + id
-            else currentSelectedIds - id
+        // The pinned flag is read off the row being selected: the selection carries it from here
+        // on, so the top bar knows whether it can offer an unpin without asking the list again.
+        val pinned = listItemState.value.items.any { it.id == id && it.pinned }
+        selection.update { currentSelection ->
+            if (selected) currentSelection.select(id, pinned)
+            else currentSelection.deselect(id)
         }
     }
 
