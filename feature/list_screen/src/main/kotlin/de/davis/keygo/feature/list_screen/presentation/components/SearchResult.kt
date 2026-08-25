@@ -118,6 +118,9 @@ private fun SearchResultRow(
     SegmentedListItem(
         onClick = onClick,
         shapes = ListItemDefaults.segmentedShapes(index, count),
+        colors = ListItemDefaults.segmentedColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        ),
         supportingContent = {
             if (query.isBlank() || matchedFields.isEmpty()) Text(text = typeLabel)
             else MatchedFields(fields = matchedFields)
@@ -177,8 +180,8 @@ private fun ItemTypeBadge(icon: ImageVector, contentDescription: String) {
     Surface(
         modifier = Modifier.size(40.dp),
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
