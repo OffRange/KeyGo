@@ -5,6 +5,7 @@ import androidx.core.util.PatternsCompat
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.identity.domain.model.UnlockError
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.repository.ItemRepository
@@ -15,6 +16,7 @@ import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
+import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.feature.autofill.domain.usecase.AddRegistrableDomainsToLoginUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.DoesItemHaveDomainReferencesUseCase
@@ -148,9 +150,18 @@ internal class AutofillViewModel(
         biometricChannel.send(AutofillBiometricRequest.UnlockItem(itemName))
     }
 
-    fun onBiometricLoginFailed() {
+    fun onBiometricLoginFailed(error: UnlockError) {
         viewModelScope.launch {
-            _uiState.update { it.copy(request = Request.JustAuthenticateWithPwd) }
+            when(error) {
+                is UnlockError.BiometricFailed -> {
+                    when(error.error) {
+                        BiometricAuthError.Canceled -> eventChannel.send(AutofillEvent.Abort)
+                        else -> _uiState.update { it.copy(request = Request.JustAuthenticateWithPwd) }
+                    }
+                }
+
+                else -> _uiState.update { it.copy(request = Request.JustAuthenticateWithPwd) }
+            }
         }
     }
 
