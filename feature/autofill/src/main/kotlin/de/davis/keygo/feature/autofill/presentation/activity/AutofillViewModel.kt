@@ -181,12 +181,17 @@ internal class AutofillViewModel(
                         // Asking a second time would mean the consent screen came back OK without
                         // actually granting anything, so stop rather than spin.
                         is SmsCodeFailure.ConsentRequired ->
-                            if (consentAlreadyRequested) eventChannel.send(AutofillEvent.Abort)
-                            else eventChannel.send(
+                            if (consentAlreadyRequested) {
+                                _uiState.update { it.copy(showSmsPending = false) }
+                                eventChannel.send(AutofillEvent.Abort)
+                            } else eventChannel.send(
                                 AutofillEvent.RequestSmsConsent(failure.intentSender),
                             )
 
-                        else -> eventChannel.send(AutofillEvent.Abort)
+                        else -> {
+                            _uiState.update { it.copy(showSmsPending = false) }
+                            eventChannel.send(AutofillEvent.Abort)
+                        }
                     }
                 }
         }
@@ -194,7 +199,10 @@ internal class AutofillViewModel(
 
     private fun onSmsConsentResult(granted: Boolean) {
         if (granted) startSmsRetrieval(consentAlreadyRequested = true)
-        else viewModelScope.launch { eventChannel.send(AutofillEvent.Abort) }
+        else viewModelScope.launch {
+            _uiState.update { it.copy(showSmsPending = false) }
+            eventChannel.send(AutofillEvent.Abort)
+        }
     }
 
     private fun cancelSmsRetrieval() {
@@ -205,7 +213,8 @@ internal class AutofillViewModel(
     }
 
     private suspend fun sendSmsFillEvent(code: String) {
-        val targetField = (requestData as? FillRequestData.SmsOtp)?.form?.fields?.firstOrNull() ?: run {
+        val fields = (requestData as? FillRequestData.SmsOtp)?.form?.fields
+        val targetField = fields?.firstOrNull { it.focused } ?: fields?.firstOrNull() ?: run {
             eventChannel.send(AutofillEvent.Abort)
             return
         }
