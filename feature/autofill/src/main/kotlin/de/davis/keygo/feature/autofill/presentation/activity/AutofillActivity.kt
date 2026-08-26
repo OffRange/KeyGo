@@ -10,7 +10,10 @@ import android.os.PersistableBundle
 import android.service.autofill.Dataset
 import android.view.autofill.AutofillManager
 import androidx.activity.compose.setContent
+import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalClipboard
@@ -49,7 +52,7 @@ import org.koin.androidx.compose.koinViewModel
  */
 internal class AutofillActivity : FragmentActivity() {
 
-    @OptIn(ExperimentalMaterial3Api::class)
+    @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -154,6 +157,13 @@ internal class AutofillActivity : FragmentActivity() {
                         onGenerated = { viewModel.onEvent(AutofillUiEvent.OnGeneratedPassword(it)) },
                         onDismiss = { viewModel.onEvent(AutofillUiEvent.OnDismissGeneratePassword) }
                     )
+
+                if (uiState.showSmsPending)
+                    BasicAlertDialog(
+                        onDismissRequest = {}
+                    ) {
+                        LoadingIndicator()
+                    }
             }
         }
     }

@@ -18,6 +18,8 @@ import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformati
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.util.getOrNull
+import de.davis.keygo.feature.autofill.domain.model.SmsCodeEvent
+import de.davis.keygo.feature.autofill.domain.repository.SmsCodeRepository
 import de.davis.keygo.feature.autofill.domain.usecase.AddRegistrableDomainsToLoginUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.DoesItemHaveDomainReferencesUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.IsAppLinkedToWebsiteUseCase
@@ -38,6 +40,7 @@ import de.davis.keygo.feature.autofill.presentation.model.RequestData
 import de.davis.keygo.feature.autofill.presentation.model.SaveRequestData
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.totp.domain.repository.TotpGenerator
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -53,6 +56,7 @@ internal class AutofillViewModel(
     private val loginRepository: LoginRepository,
     private val totpRepository: TotpRepository,
     private val itemRepository: ItemRepository,
+    private val smsCodeRepository: SmsCodeRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val autofillDatasetProvider: AutofillDatasetProvider,
     private val doesItemHaveDomainReferences: DoesItemHaveDomainReferencesUseCase,
@@ -73,6 +77,7 @@ internal class AutofillViewModel(
     private val _uiState = MutableStateFlow(AutofillUiState())
     val uiState = _uiState.asStateFlow()
 
+    private var smsOtpJob: Job? = null
 
     fun start() {
         handleRequestData()
@@ -137,7 +142,7 @@ internal class AutofillViewModel(
                     it.copy(showGeneratePassword = true)
                 }
 
-                is FillRequestData.SmsOtp -> TODO()
+                is FillRequestData.SmsOtp -> handleSmsOtpRequest(requestData)
 
                 is FillRequestData.Suggestion -> handleSuggestionRequest(requestData)
             }
@@ -150,6 +155,36 @@ internal class AutofillViewModel(
             ?: throw IllegalArgumentException("Name for vaultId=${suggestionInfo.vaultId} not found")
 
         biometricChannel.send(AutofillBiometricRequest.UnlockItem(itemName))
+    }
+
+    private fun handleSmsOtpRequest(smsOtpInfo: FillRequestData.SmsOtp) {
+        _uiState.update { it.copy(showSmsPending = true) }
+
+        smsOtpJob?.cancel()
+        smsOtpJob = viewModelScope.launch {
+            smsCodeRepository.smsCodes().collect { event ->
+                when (event) {
+                    is SmsCodeEvent.SmsCodeReceived -> {
+                        _uiState.update { it.copy(showSmsPending = false) }
+                        eventChannel.send(
+                            AutofillEvent.Fill(
+                                autofillDatasetProvider.getFillingDataset(
+                                    listOf(
+                                        AutofillValue(
+                                            autofillId = smsOtpInfo.form.fields.first { it.type == FieldType.TOTP }.autofillId,
+                                            value = event.code
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    }
+
+                    SmsCodeEvent.Timeout,
+                    is SmsCodeEvent.Failed -> eventChannel.send(AutofillEvent.Abort)
+                }
+            }
+        }
     }
 
     fun onBiometricLoginFailed(error: UnlockError) {
