@@ -1,58 +1,66 @@
-use std::ops::RangeInclusive;
-use std::time::SystemTimeError;
 use thiserror::Error;
 pub use totp_rs::Algorithm;
-use totp_rs::{Secret, SecretParseError, TOTP, TotpUrlError};
+use totp_rs::{Builder, Secret, SecretParseError, Totp, TotpError as TOTPError};
 
-/// Digit counts RFC 6238 permits.
-const ALLOWED_DIGITS: RangeInclusive<usize> = 6..=8;
+/// A secret long enough to clear `Builder::build`'s 128 bit floor, swapped in
+/// for the real one while validating. Plenty of providers hand out 80 bit
+/// secrets and refusing those would make the app useless for them, so that
+/// floor is the one rule we drop.
+const SECRET_FLOOR_STANDIN: [u8; 16] = [0; 16];
 
 #[derive(Debug, Error)]
 pub enum TotpError {
     #[error("url error: {0}")]
-    Url(TotpUrlError),
-    #[error("time error: {0}")]
-    Time(SystemTimeError),
+    Url(TOTPError),
     #[error("secret parse error: {0}")]
     Secret(SecretParseError),
 }
 
-/// The checks `TOTP::new` runs, minus its 128 bit secret floor. The unchecked
-/// constructors skip all of them, so every caller runs this instead.
-fn validate(totp: &TOTP) -> Result<(), TotpError> {
-    if totp.secret.is_empty() {
-        return Err(TotpError::Url(TotpUrlError::SecretSize(0)));
+/// Every check `Builder::build` runs, with its 128 bit secret floor replaced by
+/// "the secret must not be empty".
+///
+/// The checks are deliberately not restated here. Copying them means the copy
+/// silently rots whenever totp-rs adds one, which is exactly how the
+/// step-of-zero check 6.0 introduced went missing: a `period=0` URI parsed
+/// fine, and generating a code from it divided by zero. Building against a
+/// stand-in secret keeps the rules the library's to define, including any it
+/// adds later.
+fn validate(totp: &Totp) -> Result<(), TotpError> {
+    if totp.secret().is_empty() {
+        return Err(TotpError::Url(TOTPError::SecretTooShort { bits: 0 }));
     }
 
-    if !ALLOWED_DIGITS.contains(&totp.digits) {
-        return Err(TotpError::Url(TotpUrlError::DigitsNumber(totp.digits)));
-    }
-
-    if let Some(issuer) = totp.issuer.as_deref().filter(|it| it.contains(':')) {
-        return Err(TotpError::Url(TotpUrlError::Issuer(issuer.to_string())));
-    }
-
-    if totp.account_name.contains(':') {
-        return Err(TotpError::Url(TotpUrlError::AccountName(
-            totp.account_name.clone(),
-        )));
-    }
-
-    Ok(())
+    Builder::new()
+        .with_algorithm(totp.algorithm())
+        .with_digits(totp.digits())
+        .with_skew(totp.skew())
+        .with_step_duration(totp.step())
+        .with_secret(SECRET_FLOOR_STANDIN)
+        .with_issuer(totp.issuer())
+        .with_account_name(totp.account_name())
+        .build()
+        .map(|_| ())
+        .map_err(TotpError::Url)
 }
 
 fn build_totp(
     algorithm: Algorithm,
-    digits: usize,
+    digits: u8,
     step: u64,
     secret: String,
     issuer: Option<String>,
     account_name: String,
-) -> Result<TOTP, TotpError> {
-    let secret = Secret::Encoded(secret)
-        .to_bytes()
-        .map_err(TotpError::Secret)?;
-    let totp = TOTP::new_unchecked(algorithm, digits, 1, step, secret, issuer, account_name);
+) -> Result<Totp, TotpError> {
+    let secret = Secret::try_from_base32(secret).map_err(TotpError::Secret)?;
+    let totp = Builder::new()
+        .with_algorithm(algorithm)
+        .with_digits(digits)
+        .with_skew(1)
+        .with_step_duration(step)
+        .with_secret(secret)
+        .with_issuer(issuer)
+        .with_account_name(account_name)
+        .build_noncompliant();
     validate(&totp)?;
 
     Ok(totp)
@@ -60,12 +68,12 @@ fn build_totp(
 
 pub fn get_totp(
     algorithm: Algorithm,
-    digits: usize,
+    digits: u8,
     step: u64,
     secret: String,
 ) -> Result<String, TotpError> {
     let totp = build_totp(algorithm, digits, step, secret, None, "".to_string())?;
-    totp.generate_current().map_err(TotpError::Time)
+    Ok(totp.generate_current().to_string())
 }
 
 pub struct TotpInfo {
@@ -73,34 +81,34 @@ pub struct TotpInfo {
     pub issuer: Option<String>,
     pub account_name: String,
     pub algorithm: Algorithm,
-    pub digits: usize,
+    pub digits: u8,
     pub period: u64,
 }
 
 pub fn get_totp_info_from_uri(uri: String) -> Result<TotpInfo, TotpError> {
-    let totp = TOTP::from_url_unchecked(uri).map_err(TotpError::Url)?;
+    let totp = Totp::from_url_unchecked(uri).map_err(TotpError::Url)?;
     validate(&totp)?;
 
     Ok(TotpInfo {
-        secret: Secret::Raw(totp.secret.clone()).to_encoded().to_string(),
-        issuer: totp.issuer.clone(),
-        account_name: totp.account_name.clone(),
-        algorithm: totp.algorithm,
-        digits: totp.digits,
-        period: totp.step,
+        secret: totp.secret().to_base32(),
+        issuer: totp.issuer().map(String::from),
+        account_name: totp.account_name().to_string(),
+        algorithm: totp.algorithm(),
+        digits: totp.digits(),
+        period: totp.step(),
     })
 }
 
 pub fn get_totp_url(
     algorithm: Algorithm,
-    digits: usize,
+    digits: u8,
     step: u64,
     secret: String,
     issuer: Option<String>,
     account_name: String,
 ) -> Result<String, TotpError> {
     let totp = build_totp(algorithm, digits, step, secret, issuer, account_name)?;
-    Ok(totp.get_url())
+    totp.to_url().map_err(TotpError::Url)
 }
 
 pub(crate) fn is_valid_totp_secret(s: &str) -> bool {
@@ -176,5 +184,95 @@ mod tests {
     #[test]
     fn rejects_secret_that_is_not_base32() {
         assert!(get_totp(Algorithm::SHA1, 6, 30, "not base32!".to_string()).is_err());
+    }
+
+    #[test]
+    fn rejects_step_of_zero() {
+        assert!(get_totp(Algorithm::SHA1, 6, 0, SHORT_SECRET.to_string()).is_err());
+    }
+
+    /// A step of zero used to reach `generate`, where dividing the timestamp by
+    /// it panicked. Anyone who can hand the app a URI picks the period, so this
+    /// has to fail as an error rather than take the process down.
+    #[test]
+    fn rejects_uri_with_period_of_zero() {
+        let uri = format!("otpauth://totp/GitHub:alice?secret={SHORT_SECRET}&period=0");
+
+        assert!(get_totp_info_from_uri(uri).is_err());
+    }
+
+    /// totp-rs 6.0 made an empty account name an error rather than emitting
+    /// `otpauth://totp/?secret=...` the way 5.x did. The label is required by
+    /// the otpauth format, so the caller has to supply one.
+    #[test]
+    fn requires_account_name_for_url() {
+        let url = get_totp_url(
+            Algorithm::SHA1,
+            6,
+            30,
+            SHORT_SECRET.to_string(),
+            Some("GitHub".to_string()),
+            "".to_string(),
+        );
+
+        assert!(url.is_err());
+    }
+
+    /// The RFC 6238 appendix B vectors, which pin the generated codes to known
+    /// answers across upgrades of the hashing crates underneath totp-rs.
+    #[test]
+    fn matches_rfc6238_test_vectors() {
+        const TIMES: [u64; 6] = [
+            59,
+            1111111109,
+            1111111111,
+            1234567890,
+            2000000000,
+            20000000000,
+        ];
+
+        let cases = [
+            (
+                Algorithm::SHA1,
+                "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+                [
+                    "94287082", "07081804", "14050471", "89005924", "69279037", "65353130",
+                ],
+            ),
+            (
+                Algorithm::SHA256,
+                "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA",
+                [
+                    "46119246", "68084774", "67062674", "91819424", "90698825", "77737706",
+                ],
+            ),
+            (
+                Algorithm::SHA512,
+                "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA",
+                [
+                    "90693936", "25091201", "99943326", "93441116", "38618901", "47863826",
+                ],
+            ),
+        ];
+
+        for (algorithm, secret, expected) in cases {
+            let totp = build_totp(
+                algorithm,
+                8,
+                30,
+                secret.to_string(),
+                None,
+                "alice".to_string(),
+            )
+            .unwrap();
+
+            for (time, expected) in TIMES.iter().zip(expected) {
+                assert_eq!(
+                    expected,
+                    totp.generate(*time).to_string(),
+                    "{algorithm:?} at t={time}",
+                );
+            }
+        }
     }
 }

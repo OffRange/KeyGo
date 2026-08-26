@@ -23,12 +23,19 @@ impl From<Algorithm> for lib::totp::Algorithm {
     }
 }
 
-impl From<lib::totp::Algorithm> for Algorithm {
-    fn from(value: lib::totp::Algorithm) -> Self {
+impl TryFrom<lib::totp::Algorithm> for Algorithm {
+    type Error = TotpError;
+
+    /// `totp_rs::Algorithm` is `#[non_exhaustive]`, so a variant this binding
+    /// does not expose stays representable no matter what we match on. Reaching
+    /// one means the input named an algorithm we cannot hand to Kotlin, which
+    /// is an error to report, not a reason to unwind across the FFI boundary.
+    fn try_from(value: lib::totp::Algorithm) -> Result<Self, Self::Error> {
         match value {
-            lib::totp::Algorithm::SHA1 => Algorithm::Sha1,
-            lib::totp::Algorithm::SHA256 => Algorithm::Sha256,
-            lib::totp::Algorithm::SHA512 => Algorithm::Sha512,
+            lib::totp::Algorithm::SHA1 => Ok(Algorithm::Sha1),
+            lib::totp::Algorithm::SHA256 => Ok(Algorithm::Sha256),
+            lib::totp::Algorithm::SHA512 => Ok(Algorithm::Sha512),
+            _ => Err(TotpError::InvalidInput),
         }
     }
 }
@@ -43,16 +50,18 @@ pub struct TotpInfo {
     pub period: i32,
 }
 
-impl From<CoreTotpInfo> for TotpInfo {
-    fn from(value: CoreTotpInfo) -> Self {
-        Self {
+impl TryFrom<CoreTotpInfo> for TotpInfo {
+    type Error = TotpError;
+
+    fn try_from(value: CoreTotpInfo) -> Result<Self, Self::Error> {
+        Ok(Self {
             secret: value.secret,
             issuer: value.issuer,
             account_name: value.account_name,
-            algorithm: value.algorithm.into(),
-            digits: value.digits as i32,
-            period: value.period as i32,
-        }
+            algorithm: value.algorithm.try_into()?,
+            digits: i32::from(value.digits),
+            period: i32::try_from(value.period).map_err(|_| TotpError::InvalidInput)?,
+        })
     }
 }
 
@@ -88,7 +97,7 @@ impl TotpService {
         step: i32,
         secret: String,
     ) -> Result<String, TotpError> {
-        let digits = usize::try_from(digits).map_err(|_| TotpError::InvalidInput)?;
+        let digits = u8::try_from(digits).map_err(|_| TotpError::InvalidInput)?;
         let step = u64::try_from(step).map_err(|_| TotpError::InvalidInput)?;
         core_get_totp(algorithm.into(), digits, step, secret).map_err(Into::into)
     }
@@ -102,7 +111,7 @@ impl TotpService {
         issuer: Option<String>,
         account_name: String,
     ) -> Result<String, TotpError> {
-        let digits = usize::try_from(digits).map_err(|_| TotpError::InvalidInput)?;
+        let digits = u8::try_from(digits).map_err(|_| TotpError::InvalidInput)?;
         let step = u64::try_from(step).map_err(|_| TotpError::InvalidInput)?;
 
         core_get_totp_url(algorithm.into(), digits, step, secret, issuer, account_name)
@@ -111,7 +120,7 @@ impl TotpService {
 
     pub fn get_info_from_uri(&self, uri: String) -> Result<TotpInfo, TotpError> {
         core_get_totp_info_from_uri(uri)
-            .map(Into::into)
-            .map_err(Into::into)
+            .map_err(TotpError::from)?
+            .try_into()
     }
 }
