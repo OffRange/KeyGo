@@ -40,9 +40,9 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedToggleButton
+import androidx.compose.material3.OutlinedToggleButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -115,7 +115,7 @@ internal fun IntervalPicker(
                         0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
                         else -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                     },
-                    colors = ToggleButtonDefaults.outlinedToggleButtonColors(
+                    colors = OutlinedToggleButtonDefaults.outlinedToggleButtonColors(
                         checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                         checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
