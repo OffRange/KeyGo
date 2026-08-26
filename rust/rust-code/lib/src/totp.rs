@@ -264,7 +264,7 @@ mod tests {
                 None,
                 "alice".to_string(),
             )
-                .unwrap();
+            .unwrap();
 
             for (time, expected) in TIMES.iter().zip(expected) {
                 assert_eq!(
