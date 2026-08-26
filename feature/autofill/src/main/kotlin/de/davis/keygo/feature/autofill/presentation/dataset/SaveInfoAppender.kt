@@ -27,6 +27,7 @@ internal fun FillResponse.Builder.applySaveInfo(
 
     val requiredIds = updatedForm.fields.map { it.autofillId }.toTypedArray()
 
+    if (requiredIds.isEmpty()) return
     Log.d(
         TAG,
         "Applied Save Info:\n" +
