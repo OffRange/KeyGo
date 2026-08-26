@@ -3,9 +3,11 @@ package de.davis.keygo.feature.autofill.presentation.dataset.menu
 import android.content.Context
 import android.os.Build
 import android.service.autofill.Dataset
+import android.util.Log
 import androidx.annotation.DeprecatedSinceApi
 import de.davis.keygo.core.item.domain.model.lite.LiteVaultItem
 import de.davis.keygo.feature.autofill.R
+import de.davis.keygo.feature.autofill.domain.repository.SmsCodeRepository
 import de.davis.keygo.feature.autofill.presentation.dataset.DatasetBuilder
 import de.davis.keygo.feature.autofill.presentation.dataset.SuggestionFinder
 import de.davis.keygo.feature.autofill.presentation.getSelectionPendingIntent
@@ -14,6 +16,7 @@ import de.davis.keygo.feature.autofill.presentation.model.Form
 import de.davis.keygo.feature.autofill.presentation.model.FormType
 import de.davis.keygo.feature.autofill.presentation.model.appRequestData
 import de.davis.keygo.feature.autofill.presentation.model.generatePasswordRequestData
+import de.davis.keygo.feature.autofill.presentation.model.smsOtpRequestData
 import de.davis.keygo.feature.autofill.presentation.model.suggestionRequestData
 import de.davis.keygo.feature.autofill.presentation.subtitle
 import org.koin.core.annotation.Single
@@ -25,18 +28,32 @@ internal class MenuDatasetBuilder(
     private val suggestionFinder: SuggestionFinder,
     private val menuDatasetBuilder: MenuSuggestionFactory,
     private val datasetBuilder: DatasetBuilder,
+    private val smsCodeRepository: SmsCodeRepository,
     private val context: Context
 ) {
 
     suspend fun buildMenuDatasets(
+        targetPackage: String,
         form: Form
     ): List<Dataset> = when (form.type) {
         is FormType.TOTP -> {
-            val suggestions =
-                suggestionFinder.findVaultSuggestions(form, count = 1)
+            val suggestions = suggestionFinder.findVaultSuggestions(form, count = 1)
 
-            suggestions.mapIndexed { index, suggestion ->
-                buildSuggestionDataset(index, form, suggestion)
+            val canOfferSmsOtp = smsCodeRepository.canOfferSuggestion(targetPackage)
+            Log.d(TAG, "canOfferSmsOtp: $canOfferSmsOtp")
+
+            buildList {
+                addAll(
+                    suggestions.mapIndexed { index, suggestion ->
+                        buildSuggestionDataset(
+                            index = index,
+                            form = form,
+                            suggestion = suggestion
+                        )
+                    }
+                )
+
+                if (canOfferSmsOtp) add(buildSmsOtpDataset(form = form))
             }
         }
 
@@ -79,6 +96,20 @@ internal class MenuDatasetBuilder(
         )
     }
 
+    private fun buildSmsOtpDataset(form: Form): Dataset {
+        val remoteViews = menuDatasetBuilder.buildMenuSuggestion(
+            title = context.getString(R.string.sms_code),
+            subtitle = context.getString(R.string.autofill_service),
+            icon = R.drawable.outline_sms_24
+        )
+
+        return datasetBuilder.buildDataset(
+            remoteViews = remoteViews,
+            intentSender = context.getSelectionPendingIntent(smsOtpRequestData(form)).intentSender,
+            form = form,
+        )
+    }
+
     private fun buildSuggestionDataset(
         index: Int,
         form: Form,
@@ -100,5 +131,9 @@ internal class MenuDatasetBuilder(
             ).intentSender,
             form = form,
         )
+    }
+
+    private companion object {
+        const val TAG = "MenuDatasetBuilder"
     }
 }

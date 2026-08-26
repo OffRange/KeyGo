@@ -31,13 +31,21 @@ internal class AutofillDatasetProviderImpl(
         request: FillRequest,
         form: Form
     ): List<Dataset> {
+        val targetPackage = request.fillContexts
+            .lastOrNull()
+            ?.structure
+            ?.activityComponent
+            ?.packageName
+            ?: ""
+
         if (systemSupportsInlineSuggestions(request))
             return inlineDatasetBuilder.buildInlineDatasets(
+                targetPackage = targetPackage,
                 specs = request.inlineSuggestionsRequest!!.inlinePresentationSpecs,
                 form = form
             )
 
-        return menuDatasetBuilder.buildMenuDatasets(form = form)
+        return menuDatasetBuilder.buildMenuDatasets(targetPackage = targetPackage, form = form)
     }
 
     override fun getFillingDataset(values: List<AutofillValue>) =

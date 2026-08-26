@@ -137,6 +137,8 @@ internal class AutofillViewModel(
                     it.copy(showGeneratePassword = true)
                 }
 
+                is FillRequestData.SmsOtp -> TODO()
+
                 is FillRequestData.Suggestion -> handleSuggestionRequest(requestData)
             }
         }

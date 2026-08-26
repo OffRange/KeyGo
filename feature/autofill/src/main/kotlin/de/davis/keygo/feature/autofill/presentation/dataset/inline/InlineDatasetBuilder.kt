@@ -6,10 +6,12 @@ import android.graphics.drawable.Icon
 import android.os.Build
 import android.service.autofill.Dataset
 import android.service.autofill.InlinePresentation
+import android.util.Log
 import android.widget.inline.InlinePresentationSpec
 import androidx.annotation.RequiresApi
 import de.davis.keygo.core.item.domain.model.lite.LiteVaultItem
 import de.davis.keygo.feature.autofill.R
+import de.davis.keygo.feature.autofill.domain.repository.SmsCodeRepository
 import de.davis.keygo.feature.autofill.presentation.dataset.DatasetBuilder
 import de.davis.keygo.feature.autofill.presentation.dataset.SuggestionFinder
 import de.davis.keygo.feature.autofill.presentation.getOnLongClickPendingIntent
@@ -21,6 +23,7 @@ import de.davis.keygo.feature.autofill.presentation.model.FormType
 import de.davis.keygo.feature.autofill.presentation.model.appRequestData
 import de.davis.keygo.feature.autofill.presentation.model.generatePasswordRequestData
 import de.davis.keygo.feature.autofill.presentation.model.pinnedRequestData
+import de.davis.keygo.feature.autofill.presentation.model.smsOtpRequestData
 import de.davis.keygo.feature.autofill.presentation.model.suggestionRequestData
 import de.davis.keygo.feature.autofill.presentation.subtitle
 import org.koin.core.annotation.Single
@@ -32,35 +35,52 @@ internal class InlineDatasetBuilder(
     private val inlineSuggestionFactory: InlineSuggestionFactory,
     private val datasetBuilder: DatasetBuilder,
     private val suggestionFinder: SuggestionFinder,
+    private val smsCodeRepository: SmsCodeRepository,
     private val context: Context,
 ) {
 
     @RequiresApi(Build.VERSION_CODES.R)
     suspend fun buildInlineDatasets(
+        targetPackage: String,
         specs: List<InlinePresentationSpec>,
         form: Form
     ): List<Dataset> = when (form.type) {
-        is FormType.TOTP -> buildTotpInlineDataset(specs, form)
+        is FormType.TOTP -> buildTotpInlineDataset(targetPackage, specs, form)
         else -> buildDefaultInlineDatasets(specs, form)
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
     private suspend fun buildTotpInlineDataset(
+        targetPackage: String,
         specs: List<InlinePresentationSpec>,
         form: Form
     ) = when (specs.size) {
         0 -> emptyList()
         else -> {
-            val suggestions =
-                suggestionFinder.findVaultSuggestions(form, count = 1)
+            val canOfferSmsOtp = smsCodeRepository.canOfferSuggestion(targetPackage)
+            Log.d(TAG, "canOfferSmsOtp: $canOfferSmsOtp")
 
-            suggestions.mapIndexed { index, suggestion ->
-                buildInlineSuggestionDataset(
-                    spec = specs[index],
-                    index = index,
-                    form = form,
-                    suggestion = suggestion
+            val suggestions = suggestionFinder.findVaultSuggestions(form, count = 1)
+
+            buildList {
+                addAll(
+                    suggestions.mapIndexed { index, suggestion ->
+                        buildInlineSuggestionDataset(
+                            spec = specs[index],
+                            index = index,
+                            form = form,
+                            suggestion = suggestion
+                        )
+                    }
                 )
+
+                if (specs.size > suggestions.size && canOfferSmsOtp)
+                    add(
+                        buildSmsOtpInlineSuggestionDataset(
+                            spec = specs[suggestions.size],
+                            form = form
+                        )
+                    )
             }
         }
     }
@@ -147,6 +167,21 @@ internal class InlineDatasetBuilder(
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
+    private fun buildSmsOtpInlineSuggestionDataset(
+        spec: InlinePresentationSpec,
+        form: Form
+    ): Dataset {
+        val presentation = inlineSuggestionFactory.buildPresentation(
+            spec = spec,
+            pendingIntent = context.getOnLongClickPendingIntent(),
+            icon = Icon.createWithResource(context, R.drawable.outline_sms_24),
+            title = context.getString(R.string.sms_code)
+        )
+
+        return presentation.buildDataset(smsOtpRequestData(form))
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
     private fun buildGeneratePasswordInlineSuggestionDataset(
         spec: InlinePresentationSpec,
         form: Form
@@ -197,4 +232,8 @@ internal class InlineDatasetBuilder(
                 setTintBlendMode(BlendMode.DST)
             }
         else null
+
+    private companion object {
+        const val TAG = "InlineDatasetBuilder"
+    }
 }
