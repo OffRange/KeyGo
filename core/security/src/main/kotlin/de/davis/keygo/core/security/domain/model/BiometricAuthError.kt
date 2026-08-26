@@ -2,6 +2,7 @@ package de.davis.keygo.core.security.domain.model
 
 
 sealed interface BiometricAuthError {
+    /** User canceled the prompt by pressing the negative button. */
     data object Declined : BiometricAuthError
     data object LockedOut : BiometricAuthError
     data object Canceled : BiometricAuthError

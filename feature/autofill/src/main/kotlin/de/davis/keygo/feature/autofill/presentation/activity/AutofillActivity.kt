@@ -99,7 +99,7 @@ internal class AutofillActivity : FragmentActivity() {
                     }.onSuccess {
                         viewModel.onBiometricLoginSucceeded()
                     }.onFailure {
-                        viewModel.onBiometricLoginFailed()
+                        viewModel.onBiometricLoginFailed(it)
                     }
                 }
 
