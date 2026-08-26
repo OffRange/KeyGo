@@ -536,6 +536,7 @@ internal class AutofillViewModelTest {
             vm.start()
 
             assertEquals(AutofillEvent.Abort, eventDeferred.await(), "failed for $failure")
+            assertFalse(vm.uiState.value.showSmsPending, "failed for $failure")
         }
     }
 
@@ -593,6 +594,7 @@ internal class AutofillViewModelTest {
         vm.onEvent(AutofillUiEvent.OnSmsConsentResult(granted = false))
 
         assertEquals(AutofillEvent.Abort, abortDeferred.await())
+        assertFalse(vm.uiState.value.showSmsPending)
     }
 
     @Test

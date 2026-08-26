@@ -84,23 +84,33 @@ internal class GmsSmsCodeRepository(
             false
         }
 
-        if (registered)
-            // Start only after the receiver is live, otherwise a code that is
-            // already sitting in the inbox can be delivered before you listen.
-            try {
-                client.startSmsCodeRetriever().await()
-            } catch (e: ResolvableApiException) {
-                val intentSender = e.resolution?.intentSender
-                if (intentSender == null) trySend(Result.Failure(SmsCodeFailure.Unavailable))
-                else trySend(Result.Failure(SmsCodeFailure.ConsentRequired(intentSender)))
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                trySend(Result.Failure(SmsCodeFailure.Unknown(e)))
+        try {
+            if (registered)
+                // Start only after the receiver is live, otherwise a code that is
+                // already sitting in the inbox can be delivered before you listen.
+                try {
+                    client.startSmsCodeRetriever().await()
+                } catch (e: ResolvableApiException) {
+                    // ResolvableApiException.getResolution() is annotated @NonNull, but its
+                    // implementation just delegates to Status.getResolution(), which the
+                    // library itself annotates @Nullable and backs with a plain field. The
+                    // annotation is not honored by the implementation, so the safe call stays.
+                    @Suppress("UNNECESSARY_SAFE_CALL")
+                    val intentSender = e.resolution?.intentSender
+                    if (intentSender == null) trySend(Result.Failure(SmsCodeFailure.Unavailable))
+                    else trySend(Result.Failure(SmsCodeFailure.ConsentRequired(intentSender)))
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    trySend(Result.Failure(SmsCodeFailure.Unknown(e)))
+                }
+        } finally {
+            // awaitClose must run however the block above exits, including a rethrown
+            // CancellationException, otherwise a receiver that was registered above is
+            // never unregistered and leaks against the application context.
+            awaitClose {
+                if (registered) runCatching { context.unregisterReceiver(receiver) }
             }
-
-        awaitClose {
-            if (registered) runCatching { context.unregisterReceiver(receiver) }
         }
     }
 
