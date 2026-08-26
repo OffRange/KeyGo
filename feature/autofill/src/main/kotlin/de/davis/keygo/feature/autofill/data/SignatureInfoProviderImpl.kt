@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.autofill.data.repository
+package de.davis.keygo.feature.autofill.data
 
 import android.content.Context
 import android.content.pm.PackageManager
