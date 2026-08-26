@@ -9,7 +9,10 @@ import android.os.Bundle
 import android.os.PersistableBundle
 import android.service.autofill.Dataset
 import android.view.autofill.AutofillManager
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -71,6 +74,14 @@ internal class AutofillActivity : FragmentActivity() {
 
                 val clipboard = LocalClipboard.current
 
+                val smsConsentLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.StartIntentSenderForResult(),
+                ) { result ->
+                    viewModel.onEvent(
+                        AutofillUiEvent.OnSmsConsentResult(result.resultCode == RESULT_OK),
+                    )
+                }
+
                 ObserveAsEvents(viewModel.events) { event ->
                     when (event) {
                         AutofillEvent.Abort -> cancel()
@@ -88,6 +99,11 @@ internal class AutofillActivity : FragmentActivity() {
 
                             finishWithResult(event.dataset)
                         }
+
+                        is AutofillEvent.RequestSmsConsent ->
+                            smsConsentLauncher.launch(
+                                IntentSenderRequest.Builder(event.intentSender).build(),
+                            )
                     }
                 }
 

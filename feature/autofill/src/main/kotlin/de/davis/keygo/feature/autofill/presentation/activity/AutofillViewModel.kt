@@ -38,6 +38,7 @@ import de.davis.keygo.feature.autofill.presentation.model.FormType
 import de.davis.keygo.feature.autofill.presentation.model.Request
 import de.davis.keygo.feature.autofill.presentation.model.RequestData
 import de.davis.keygo.feature.autofill.presentation.model.SaveRequestData
+import de.davis.keygo.feature.autofill.presentation.sms.SmsCodeFailure
 import de.davis.keygo.feature.autofill.presentation.sms.SmsCodeRepository
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.totp.domain.repository.TotpGenerator
@@ -170,13 +171,30 @@ internal class AutofillViewModel(
         startSmsRetrieval()
     }
 
-    private fun startSmsRetrieval() {
+    private fun startSmsRetrieval(consentAlreadyRequested: Boolean = false) {
         smsOtpJob?.cancel()
         smsOtpJob = viewModelScope.launch {
             smsCodeRepository.retrieveSmsCode()
                 .onSuccess { code -> sendSmsFillEvent(code) }
-                .onFailure { eventChannel.send(AutofillEvent.Abort) }
+                .onFailure { failure ->
+                    when (failure) {
+                        // Asking a second time would mean the consent screen came back OK without
+                        // actually granting anything, so stop rather than spin.
+                        is SmsCodeFailure.ConsentRequired ->
+                            if (consentAlreadyRequested) eventChannel.send(AutofillEvent.Abort)
+                            else eventChannel.send(
+                                AutofillEvent.RequestSmsConsent(failure.intentSender),
+                            )
+
+                        else -> eventChannel.send(AutofillEvent.Abort)
+                    }
+                }
         }
+    }
+
+    private fun onSmsConsentResult(granted: Boolean) {
+        if (granted) startSmsRetrieval(consentAlreadyRequested = true)
+        else viewModelScope.launch { eventChannel.send(AutofillEvent.Abort) }
     }
 
     private suspend fun sendSmsFillEvent(code: String) {
@@ -285,6 +303,8 @@ internal class AutofillViewModel(
             is AutofillUiEvent.OnGeneratedPassword -> viewModelScope.launch {
                 sendGeneratedPasswordFillEvent(event.password)
             }
+
+            is AutofillUiEvent.OnSmsConsentResult -> onSmsConsentResult(event.granted)
         }
     }
 
