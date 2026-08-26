@@ -7,7 +7,7 @@ import android.util.Log
 import androidx.annotation.DeprecatedSinceApi
 import de.davis.keygo.core.item.domain.model.lite.LiteVaultItem
 import de.davis.keygo.feature.autofill.R
-import de.davis.keygo.feature.autofill.domain.repository.SmsCodeRepository
+import de.davis.keygo.feature.autofill.presentation.sms.SmsCodeRepository
 import de.davis.keygo.feature.autofill.presentation.dataset.DatasetBuilder
 import de.davis.keygo.feature.autofill.presentation.dataset.SuggestionFinder
 import de.davis.keygo.feature.autofill.presentation.getSelectionPendingIntent

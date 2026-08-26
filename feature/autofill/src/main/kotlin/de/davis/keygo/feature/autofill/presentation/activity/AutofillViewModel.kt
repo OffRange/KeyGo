@@ -18,8 +18,8 @@ import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformati
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.util.getOrNull
-import de.davis.keygo.feature.autofill.domain.model.SmsCodeEvent
-import de.davis.keygo.feature.autofill.domain.repository.SmsCodeRepository
+import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.autofill.domain.usecase.AddRegistrableDomainsToLoginUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.DoesItemHaveDomainReferencesUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.IsAppLinkedToWebsiteUseCase
@@ -38,6 +38,7 @@ import de.davis.keygo.feature.autofill.presentation.model.FormType
 import de.davis.keygo.feature.autofill.presentation.model.Request
 import de.davis.keygo.feature.autofill.presentation.model.RequestData
 import de.davis.keygo.feature.autofill.presentation.model.SaveRequestData
+import de.davis.keygo.feature.autofill.presentation.sms.SmsCodeRepository
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.totp.domain.repository.TotpGenerator
 import kotlinx.coroutines.Job
@@ -157,34 +158,46 @@ internal class AutofillViewModel(
         biometricChannel.send(AutofillBiometricRequest.UnlockItem(itemName))
     }
 
-    private fun handleSmsOtpRequest(smsOtpInfo: FillRequestData.SmsOtp) {
-        _uiState.update { it.copy(showSmsPending = true) }
+    private suspend fun handleSmsOtpRequest(smsOtpInfo: FillRequestData.SmsOtp) {
+        // The extractor already narrowed the form to the focused field's group, so a TOTP form holds
+        // TOTP fields and nothing else. An empty one means there is nothing to fill.
+        if (smsOtpInfo.form.fields.isEmpty()) {
+            eventChannel.send(AutofillEvent.Abort)
+            return
+        }
 
+        _uiState.update { it.copy(showSmsPending = true) }
+        startSmsRetrieval()
+    }
+
+    private fun startSmsRetrieval() {
         smsOtpJob?.cancel()
         smsOtpJob = viewModelScope.launch {
-            smsCodeRepository.smsCodes().collect { event ->
-                when (event) {
-                    is SmsCodeEvent.SmsCodeReceived -> {
-                        _uiState.update { it.copy(showSmsPending = false) }
-                        eventChannel.send(
-                            AutofillEvent.Fill(
-                                autofillDatasetProvider.getFillingDataset(
-                                    listOf(
-                                        AutofillValue(
-                                            autofillId = smsOtpInfo.form.fields.first { it.type == FieldType.TOTP }.autofillId,
-                                            value = event.code
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    }
-
-                    SmsCodeEvent.Timeout,
-                    is SmsCodeEvent.Failed -> eventChannel.send(AutofillEvent.Abort)
-                }
-            }
+            smsCodeRepository.retrieveSmsCode()
+                .onSuccess { code -> sendSmsFillEvent(code) }
+                .onFailure { eventChannel.send(AutofillEvent.Abort) }
         }
+    }
+
+    private suspend fun sendSmsFillEvent(code: String) {
+        val targetField = (requestData as? FillRequestData.SmsOtp)?.form?.fields?.firstOrNull() ?: run {
+            eventChannel.send(AutofillEvent.Abort)
+            return
+        }
+
+        _uiState.update { it.copy(showSmsPending = false) }
+        eventChannel.send(
+            AutofillEvent.Fill(
+                autofillDatasetProvider.getFillingDataset(
+                    listOf(
+                        AutofillValue(
+                            autofillId = targetField.autofillId,
+                            value = code,
+                        ),
+                    ),
+                ),
+            ),
+        )
     }
 
     fun onBiometricLoginFailed(error: UnlockError) {
