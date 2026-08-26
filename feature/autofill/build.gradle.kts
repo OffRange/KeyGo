@@ -7,12 +7,19 @@ plugins {
 android {
     namespace = "de.davis.keygo.feature.autofill"
 
-    defaultConfig {
-        missingDimensionStrategy("store", "playStore")
-    }
-
     testFixtures {
         enable = true
+    }
+
+    flavorDimensions += listOf("store")
+    productFlavors {
+        create("playStore") {
+            dimension = "store"
+        }
+
+        create("fdroid") {
+            dimension = "store"
+        }
     }
 }
 
@@ -23,6 +30,8 @@ dependencies {
     implementation(libs.androidx.autofill)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.collections.immutable)
+
+    "playStoreImplementation"(libs.gms.auth.api.phone)
 
     implementation(projects.core.item)
     implementation(projects.core.util)
