@@ -197,6 +197,13 @@ internal class AutofillViewModel(
         else viewModelScope.launch { eventChannel.send(AutofillEvent.Abort) }
     }
 
+    private fun cancelSmsRetrieval() {
+        smsOtpJob?.cancel()
+        smsOtpJob = null
+        _uiState.update { it.copy(showSmsPending = false) }
+        viewModelScope.launch { eventChannel.send(AutofillEvent.Abort) }
+    }
+
     private suspend fun sendSmsFillEvent(code: String) {
         val targetField = (requestData as? FillRequestData.SmsOtp)?.form?.fields?.firstOrNull() ?: run {
             eventChannel.send(AutofillEvent.Abort)
@@ -305,6 +312,7 @@ internal class AutofillViewModel(
             }
 
             is AutofillUiEvent.OnSmsConsentResult -> onSmsConsentResult(event.granted)
+            AutofillUiEvent.OnCancelSmsCode -> cancelSmsRetrieval()
         }
     }
 

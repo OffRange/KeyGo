@@ -15,4 +15,5 @@ internal sealed interface AutofillUiEvent {
     data class OnGeneratedPassword(val password: String) : AutofillUiEvent
 
     data class OnSmsConsentResult(val granted: Boolean) : AutofillUiEvent
+    data object OnCancelSmsCode : AutofillUiEvent
 }

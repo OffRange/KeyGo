@@ -613,4 +613,37 @@ internal class AutofillViewModelTest {
         assertEquals(AutofillEvent.Abort, abortDeferred.await())
         assertEquals(2, smsCodeRepo.callCount)
     }
+
+    @Test
+    fun `cancelling sms retrieval aborts and clears the pending state`() = runTest {
+        smsCodeRepo.gate = CompletableDeferred()
+
+        val vm = buildVm(smsOtpRequest(listOf(credField(FieldType.TOTP, viewId = 1))))
+        vm.start()
+        assertTrue(vm.uiState.value.showSmsPending)
+
+        val abortDeferred = async { vm.events.first() }
+        vm.onEvent(AutofillUiEvent.OnCancelSmsCode)
+
+        assertEquals(AutofillEvent.Abort, abortDeferred.await())
+        assertFalse(vm.uiState.value.showSmsPending)
+    }
+
+    @Test
+    fun `a code arriving after cancellation does not fill`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        smsCodeRepo.gate = gate
+        smsCodeRepo.enqueue(Result.Success("999999"))
+
+        val vm = buildVm(smsOtpRequest(listOf(credField(FieldType.TOTP, viewId = 1))))
+        vm.start()
+
+        val abortDeferred = async { vm.events.first() }
+        vm.onEvent(AutofillUiEvent.OnCancelSmsCode)
+        assertEquals(AutofillEvent.Abort, abortDeferred.await())
+
+        gate.complete(Unit)
+
+        assertTrue(datasetProvider.getFillingDatasetCalls.isEmpty())
+    }
 }
