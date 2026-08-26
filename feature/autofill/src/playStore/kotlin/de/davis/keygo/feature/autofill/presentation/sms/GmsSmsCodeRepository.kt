@@ -16,15 +16,13 @@ import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.common.api.Status
 import de.davis.keygo.core.util.Result
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
 import org.koin.core.annotation.Single
+import kotlin.time.Duration.Companion.milliseconds
 
-@Single(binds = [SmsCodeRepository::class])
+@Single
 internal class GmsSmsCodeRepository(
     private val context: Context,
 ) : SmsCodeRepository {
@@ -34,7 +32,7 @@ internal class GmsSmsCodeRepository(
     }
 
     override suspend fun canOfferSuggestion(targetPackage: String): Boolean = try {
-        withTimeoutOrNull(PLAY_SERVICES_TIMEOUT_MS) {
+        withTimeoutOrNull(PLAY_SERVICES_TIMEOUT) {
             if (client.hasOngoingSmsRequest(targetPackage).await()) return@withTimeoutOrNull false
 
             when (client.checkPermissionState().await()) {
@@ -51,24 +49,20 @@ internal class GmsSmsCodeRepository(
         false
     }
 
-    // The flow below only ever produces one value. It stays a flow because awaitClose is what
-    // unregisters the receiver, and first() cancels the flow on every path: a delivered code, a
-    // failure, or the caller being cancelled.
-    override suspend fun retrieveSmsCode(): Result<String, SmsCodeFailure> = smsCodes().first()
+    override suspend fun retrieveSmsCode(): Result<String, SmsCodeFailure> {
+        val code = CompletableDeferred<Result<String, SmsCodeFailure>>()
 
-    private fun smsCodes(): Flow<Result<String, SmsCodeFailure>> = callbackFlow {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(c: Context, intent: Intent) {
                 if (intent.action != SmsCodeRetriever.SMS_CODE_RETRIEVED_ACTION) return
                 val status = IntentCompat.getParcelableExtra(
                     intent, SmsRetriever.EXTRA_STATUS, Status::class.java,
                 )
-
-                trySend(intent.toSmsCodeResult(status))
+                code.complete(intent.toSmsCodeResult(status))
             }
         }
 
-        val registered = try {
+        try {
             ContextCompat.registerReceiver(
                 context,
                 receiver,
@@ -77,46 +71,43 @@ internal class GmsSmsCodeRepository(
                 null,
                 ContextCompat.RECEIVER_EXPORTED,
             )
-            true
         } catch (e: Exception) {
             Log.e(TAG, "Could not register the sms code receiver", e)
-            trySend(Result.Failure(SmsCodeFailure.Unknown(e)))
-            false
+            return Result.Failure(SmsCodeFailure.Unknown(e))
         }
 
-        try {
-            if (registered)
-                // Start only after the receiver is live, otherwise a code that is
-                // already sitting in the inbox can be delivered before you listen.
-                try {
-                    client.startSmsCodeRetriever().await()
-                } catch (e: ResolvableApiException) {
-                    // ResolvableApiException.getResolution() is annotated @NonNull, but its
-                    // implementation just delegates to Status.getResolution(), which the
-                    // library itself annotates @Nullable and backs with a plain field. The
-                    // annotation is not honored by the implementation, so the safe call stays.
-                    @Suppress("UNNECESSARY_SAFE_CALL")
-                    val intentSender = e.resolution?.intentSender
-                    if (intentSender == null) trySend(Result.Failure(SmsCodeFailure.Unavailable))
-                    else trySend(Result.Failure(SmsCodeFailure.ConsentRequired(intentSender)))
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    trySend(Result.Failure(SmsCodeFailure.Unknown(e)))
-                }
+        return try {
+            // Start only after the receiver is live, otherwise a code that is
+            // already sitting in the inbox can be delivered before you listen.
+            client.startSmsCodeRetriever().await()
+            code.await()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.Failure(e.toSmsCodeFailure())
         } finally {
-            // awaitClose must run however the block above exits, including a rethrown
-            // CancellationException, otherwise a receiver that was registered above is
-            // never unregistered and leaks against the application context.
-            awaitClose {
-                if (registered) runCatching { context.unregisterReceiver(receiver) }
-            }
+            runCatching { context.unregisterReceiver(receiver) }
         }
+    }
+
+    private fun Exception.toSmsCodeFailure(): SmsCodeFailure = when (this) {
+        is ResolvableApiException -> {
+            // ResolvableApiException.getResolution() is annotated @NonNull, but its
+            // implementation just delegates to Status.getResolution(), which the
+            // library itself annotates @Nullable and backs with a plain field. The
+            // annotation is not honored by the implementation, so the safe call stays.
+            @Suppress("UNNECESSARY_SAFE_CALL")
+            val intentSender = resolution?.intentSender
+            if (intentSender == null) SmsCodeFailure.Unavailable
+            else SmsCodeFailure.ConsentRequired(intentSender)
+        }
+
+        else -> SmsCodeFailure.Unknown(this)
     }
 
     private companion object {
         const val TAG = "GmsSmsCodeRepository"
-        const val PLAY_SERVICES_TIMEOUT_MS = 500L
+        val PLAY_SERVICES_TIMEOUT = 500L.milliseconds
     }
 }
 
