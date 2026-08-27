@@ -36,7 +36,7 @@ import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.core.ui.theme.secretTextStyle
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
-import de.davis.keygo.feature.item.core.presentation.login.model.colored
+import de.davis.keygo.feature.item.core.presentation.login.colored
 import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.presentation.password.model.GeneratePasswordUiEvent
 import de.davis.keygo.feature.item.create.presentation.password.model.UiCharacterSet

@@ -82,9 +82,9 @@ import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormSuggestionField
 import de.davis.keygo.feature.item.core.presentation.copyableEntry
 import de.davis.keygo.feature.item.core.presentation.entry
+import de.davis.keygo.feature.item.core.presentation.login.colored
 import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.login.model.UiPassword.Companion.asUiPassword
-import de.davis.keygo.feature.item.core.presentation.login.model.colored
 import de.davis.keygo.feature.item.core.presentation.transformation.TrimTransformation
 import de.davis.keygo.feature.item.core.presentation.transformation.rememberSchemeStrippingTransformation
 import de.davis.keygo.feature.item.view.R
@@ -242,9 +242,10 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                     }
                 ) {
                     val scrollState = rememberScrollState()
+                    val uiPassword = remember(pwd.raw) { pwd.raw.asUiPassword() }
                     Text(
                         text = if (isPasswordHidden) AnnotatedString(pwd.hidden)
-                        else pwd.raw.asUiPassword().colored(),
+                        else uiPassword.colored(),
                         style = secretTextStyle,
                         maxLines = 1,
                         modifier = Modifier.horizontalScroll(scrollState),
