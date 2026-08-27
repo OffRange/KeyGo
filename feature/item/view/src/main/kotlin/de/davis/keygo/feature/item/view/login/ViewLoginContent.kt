@@ -68,6 +68,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.newItemId
@@ -81,6 +82,8 @@ import de.davis.keygo.feature.item.core.presentation.component.CopyToClipboardBu
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormSuggestionField
 import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
+import de.davis.keygo.feature.item.core.presentation.login.model.UiPassword.Companion.asUiPassword
+import de.davis.keygo.feature.item.core.presentation.login.model.colored
 import de.davis.keygo.feature.item.core.presentation.transformation.TrimTransformation
 import de.davis.keygo.feature.item.core.presentation.transformation.rememberSchemeStrippingTransformation
 import de.davis.keygo.feature.item.view.R
@@ -238,7 +241,8 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                 ) {
                     val scrollState = rememberScrollState()
                     Text(
-                        text = if (isPasswordHidden) pwd.hidden else pwd.raw,
+                        text = if (isPasswordHidden) AnnotatedString(pwd.hidden)
+                        else pwd.raw.asUiPassword().colored(),
                         maxLines = 1,
                         modifier = Modifier.horizontalScroll(scrollState),
                     )

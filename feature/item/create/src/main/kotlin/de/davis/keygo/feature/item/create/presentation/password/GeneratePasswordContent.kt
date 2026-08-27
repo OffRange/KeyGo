@@ -29,16 +29,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
-import de.davis.keygo.feature.item.core.presentation.login.model.UiPassword
+import de.davis.keygo.feature.item.core.presentation.login.model.colored
 import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.presentation.password.model.GeneratePasswordUiEvent
 import de.davis.keygo.feature.item.create.presentation.password.model.UiCharacterSet
@@ -118,20 +115,7 @@ fun GeneratePasswordContent(
                 }
             ) {
                 Text(
-                    text = buildAnnotatedString {
-                        state.generatedPassword.parts.forEach {
-                            when (it) {
-                                is UiPassword.Part.Letter -> append(it.text)
-                                is UiPassword.Part.Number -> withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
-                                    append(it.text)
-                                }
-
-                                is UiPassword.Part.Symbol -> withStyle(SpanStyle(color = MaterialTheme.colorScheme.tertiary)) {
-                                    append(it.text)
-                                }
-                            }
-                        }
-                    }
+                    text = state.generatedPassword.colored()
                 )
 
                 StrengthIndicator(
