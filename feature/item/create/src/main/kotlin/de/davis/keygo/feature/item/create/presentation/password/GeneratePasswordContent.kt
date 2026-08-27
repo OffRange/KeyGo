@@ -29,12 +29,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
+import de.davis.keygo.core.ui.theme.secretTextStyle
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.item.core.presentation.login.model.colored
 import de.davis.keygo.feature.item.create.R
@@ -117,7 +117,7 @@ fun GeneratePasswordContent(
             ) {
                 Text(
                     text = state.generatedPassword.colored(),
-                    fontFamily = FontFamily.Monospace,
+                    style = secretTextStyle,
                 )
 
                 StrengthIndicator(

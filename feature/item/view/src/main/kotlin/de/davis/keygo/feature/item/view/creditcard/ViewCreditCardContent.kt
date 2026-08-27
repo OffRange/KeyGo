@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.presentation.toImageVector
 import de.davis.keygo.core.ui.components.VisibilityButton
 import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
+import de.davis.keygo.core.ui.theme.secretTextStyle
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormSuggestionField
 import de.davis.keygo.feature.item.core.presentation.copyableEntry
@@ -197,6 +198,7 @@ fun ViewCreditCardContent(state: ViewCreditCardState, onEvent: (ViewCreditCardUi
                     val scrollState = rememberScrollState()
                     Text(
                         text = if (isCardNumberHidden) cardNum.hidden else cardNum.formatted,
+                        style = secretTextStyle,
                         maxLines = 1,
                         modifier = Modifier.horizontalScroll(scrollState),
                     )
@@ -220,6 +222,7 @@ fun ViewCreditCardContent(state: ViewCreditCardState, onEvent: (ViewCreditCardUi
                     val scrollState = rememberScrollState()
                     Text(
                         text = if (isCvvHidden) cvvVal.hidden else cvvVal.raw,
+                        style = secretTextStyle,
                         maxLines = 1,
                         modifier = Modifier.horizontalScroll(scrollState),
                     )
