@@ -69,6 +69,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.newItemId
@@ -243,6 +244,7 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                     Text(
                         text = if (isPasswordHidden) AnnotatedString(pwd.hidden)
                         else pwd.raw.asUiPassword().colored(),
+                        fontFamily = FontFamily.Monospace,
                         maxLines = 1,
                         modifier = Modifier.horizontalScroll(scrollState),
                     )

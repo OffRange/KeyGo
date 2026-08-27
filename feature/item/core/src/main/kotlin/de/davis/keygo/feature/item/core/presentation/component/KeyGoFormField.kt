@@ -13,6 +13,7 @@ import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.TextObfuscationMode
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.material3.OutlinedTextField
@@ -28,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -41,6 +43,7 @@ import de.davis.keygo.feature.item.core.presentation.transformation.TrimTransfor
 fun KeyGoFormField(
     state: TextFieldState,
     modifier: Modifier = Modifier,
+    textStyle: TextStyle = LocalTextStyle.current,
     isSecure: Boolean = false,
     label: @Composable (TextFieldLabelScope.() -> Unit)? = null,
     prefix: @Composable (() -> Unit)? = null,
@@ -53,7 +56,7 @@ fun KeyGoFormField(
     onKeyboardAction: KeyboardActionHandler? = null,
     inputTransformation: InputTransformation? = TrimTransformation,
     outputTransformation: OutputTransformation? = null,
-    interactionSource: MutableInteractionSource? = null
+    interactionSource: MutableInteractionSource? = null,
 ) {
     val supportingText: @Composable (() -> Unit)? = error?.let {
         {
@@ -79,6 +82,7 @@ fun KeyGoFormField(
                     modifier = Modifier
                         .weight(1f)
                         .trimOnFocusLost(state, inputTransformation is TrimTransformation),
+                    textStyle = textStyle,
                     label = label,
                     placeholder = placeholder,
                     prefix = prefix,
@@ -107,6 +111,7 @@ fun KeyGoFormField(
                 modifier = Modifier
                     .weight(1f)
                     .trimOnFocusLost(state, inputTransformation is TrimTransformation),
+                textStyle = textStyle,
                 label = label,
                 placeholder = placeholder,
                 prefix = prefix,

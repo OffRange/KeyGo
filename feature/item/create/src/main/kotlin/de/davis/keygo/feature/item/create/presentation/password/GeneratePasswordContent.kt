@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.item.presentation.StrengthIndicator
@@ -115,7 +116,8 @@ fun GeneratePasswordContent(
                 }
             ) {
                 Text(
-                    text = state.generatedPassword.colored()
+                    text = state.generatedPassword.colored(),
+                    fontFamily = FontFamily.Monospace,
                 )
 
                 StrengthIndicator(
