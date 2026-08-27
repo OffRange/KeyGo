@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.item.create.presentation.password.model
+package de.davis.keygo.feature.item.core.presentation.login.model
 
 data class UiPassword(val value: String) {
 

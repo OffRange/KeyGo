@@ -6,11 +6,11 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
+import de.davis.keygo.feature.item.core.presentation.login.model.UiPassword.Companion.asUiPassword
 import de.davis.keygo.feature.item.create.domain.PasswordGenerator
 import de.davis.keygo.feature.item.create.presentation.password.model.GeneratePasswordUiEvent
 import de.davis.keygo.feature.item.create.presentation.password.model.GeneratePasswordUiState
 import de.davis.keygo.feature.item.create.presentation.password.model.UiCharacterSet
-import de.davis.keygo.feature.item.create.presentation.password.model.UiPassword.Companion.asUiPassword
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel

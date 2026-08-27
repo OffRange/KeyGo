@@ -38,10 +38,10 @@ import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
+import de.davis.keygo.feature.item.core.presentation.login.model.UiPassword
 import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.presentation.password.model.GeneratePasswordUiEvent
 import de.davis.keygo.feature.item.create.presentation.password.model.UiCharacterSet
-import de.davis.keygo.feature.item.create.presentation.password.model.UiPassword
 import org.koin.androidx.compose.koinViewModel
 import de.davis.keygo.core.item.R as CoreItemR
 
