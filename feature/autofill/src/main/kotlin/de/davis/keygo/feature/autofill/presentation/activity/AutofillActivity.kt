@@ -9,8 +9,10 @@ import android.os.Bundle
 import android.os.PersistableBundle
 import android.service.autofill.Dataset
 import android.view.autofill.AutofillManager
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalClipboard
@@ -28,6 +30,7 @@ import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.autofill.presentation.activity.component.AssociationDialog
+import de.davis.keygo.feature.autofill.presentation.activity.component.SmsCodePendingDialog
 import de.davis.keygo.feature.autofill.presentation.activity.component.SuspicionDialog
 import de.davis.keygo.feature.autofill.presentation.activity.model.AssociationDialogVisibility
 import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillEvent
@@ -49,7 +52,6 @@ import org.koin.androidx.compose.koinViewModel
  */
 internal class AutofillActivity : FragmentActivity() {
 
-    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -68,6 +70,14 @@ internal class AutofillActivity : FragmentActivity() {
 
                 val clipboard = LocalClipboard.current
 
+                val smsConsentLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.StartIntentSenderForResult(),
+                ) { result ->
+                    viewModel.onEvent(
+                        AutofillUiEvent.OnSmsConsentResult(result.resultCode == RESULT_OK),
+                    )
+                }
+
                 ObserveAsEvents(viewModel.events) { event ->
                     when (event) {
                         AutofillEvent.Abort -> cancel()
@@ -85,6 +95,11 @@ internal class AutofillActivity : FragmentActivity() {
 
                             finishWithResult(event.dataset)
                         }
+
+                        is AutofillEvent.RequestSmsConsent ->
+                            smsConsentLauncher.launch(
+                                IntentSenderRequest.Builder(event.intentSender).build(),
+                            )
                     }
                 }
 
@@ -153,6 +168,11 @@ internal class AutofillActivity : FragmentActivity() {
                     GeneratePasswordModalBottomSheet(
                         onGenerated = { viewModel.onEvent(AutofillUiEvent.OnGeneratedPassword(it)) },
                         onDismiss = { viewModel.onEvent(AutofillUiEvent.OnDismissGeneratePassword) }
+                    )
+
+                if (uiState.showSmsPending)
+                    SmsCodePendingDialog(
+                        onCancel = { viewModel.onEvent(AutofillUiEvent.OnCancelSmsCode) }
                     )
             }
         }

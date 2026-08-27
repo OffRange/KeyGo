@@ -1,9 +1,13 @@
 package de.davis.keygo.feature.autofill.presentation.activity
 
+import android.app.PendingIntent
+import android.content.Intent
+import android.content.IntentSender
 import androidx.lifecycle.SavedStateHandle
 import de.davis.keygo.core.feature.autofill.FakeAutofillDatasetProvider
 import de.davis.keygo.core.feature.autofill.FakeDigitalAssetLinkRepository
 import de.davis.keygo.core.feature.autofill.FakeSignatureInfoProvider
+import de.davis.keygo.core.feature.autofill.FakeSmsCodeRepository
 import de.davis.keygo.core.feature.autofill.FakeTotpGenerator
 import de.davis.keygo.core.feature.autofill.FakeTotpRepository
 import de.davis.keygo.core.feature.autofill.autofillId
@@ -37,8 +41,10 @@ import de.davis.keygo.feature.autofill.presentation.model.FormType
 import de.davis.keygo.feature.autofill.presentation.model.Request
 import de.davis.keygo.feature.autofill.presentation.model.RequestData
 import de.davis.keygo.feature.autofill.presentation.model.SaveRequestData
+import de.davis.keygo.feature.autofill.presentation.sms.SmsCodeFailure
 import de.davis.keygo.feature.totp.domain.model.TotpError
 import de.davis.keygo.feature.totp.domain.model.TotpValue
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -51,9 +57,11 @@ import org.junit.After
 import org.junit.Before
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -71,6 +79,7 @@ internal class AutofillViewModelTest {
     private lateinit var signatureProvider: FakeSignatureInfoProvider
     private lateinit var dalRepo: FakeDigitalAssetLinkRepository
     private lateinit var totpGenerator: FakeTotpGenerator
+    private lateinit var smsCodeRepo: FakeSmsCodeRepository
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Before
@@ -96,6 +105,7 @@ internal class AutofillViewModelTest {
         signatureProvider = FakeSignatureInfoProvider()
         dalRepo = FakeDigitalAssetLinkRepository()
         totpGenerator = FakeTotpGenerator()
+        smsCodeRepo = FakeSmsCodeRepository()
     }
 
     private fun buildVm(requestData: RequestData): AutofillViewModel {
@@ -107,6 +117,7 @@ internal class AutofillViewModelTest {
             loginRepository = loginRepo,
             totpRepository = totpRepo,
             itemRepository = fakeItemRepo,
+            smsCodeRepository = smsCodeRepo,
             cryptographicScopeProvider = cryptoProvider,
             autofillDatasetProvider = datasetProvider,
             doesItemHaveDomainReferences = DoesItemHaveDomainReferencesUseCase(loginRepo, resolver),
@@ -132,6 +143,17 @@ internal class AutofillViewModelTest {
             url = "https://example.com",
             autofillValue = autofillValue,
         )
+
+    private fun smsOtpRequest(fields: List<FormField>) = FillRequestData.SmsOtp(
+        form(fields = fields, type = FormType.TOTP),
+    )
+
+    private fun testIntentSender(): IntentSender = PendingIntent.getActivity(
+        RuntimeEnvironment.getApplication(),
+        0,
+        Intent(),
+        PendingIntent.FLAG_IMMUTABLE,
+    ).intentSender
 
     private fun testLogin(
         username: String? = "alice",
@@ -471,5 +493,159 @@ internal class AutofillViewModelTest {
 
         assertIs<AutofillEvent.Fill>(event)
         assertEquals("123456", datasetProvider.getFillingDatasetCalls.last().first().value)
+    }
+
+    @Test
+    fun `sms otp request shows the pending dialog`() = runTest {
+        smsCodeRepo.gate = CompletableDeferred()
+
+        val vm = buildVm(smsOtpRequest(listOf(credField(FieldType.TOTP, viewId = 1))))
+        vm.start()
+
+        assertTrue(vm.uiState.value.showSmsPending)
+    }
+
+    @Test
+    fun `sms code received sends Fill event with the code`() = runTest {
+        smsCodeRepo.enqueue(Result.Success("123456"))
+
+        val vm = buildVm(smsOtpRequest(listOf(credField(FieldType.TOTP, viewId = 1))))
+        val eventDeferred = async { vm.events.first() }
+        vm.start()
+        val event = eventDeferred.await()
+
+        assertIs<AutofillEvent.Fill>(event)
+        assertEquals("123456", datasetProvider.getFillingDatasetCalls.last().first().value)
+        assertFalse(vm.uiState.value.showSmsPending)
+    }
+
+    @Test
+    fun `sms retrieval failures abort`() = runTest {
+        val failures = listOf(
+            SmsCodeFailure.Timeout,
+            SmsCodeFailure.Unavailable,
+            SmsCodeFailure.Unknown(IllegalStateException("boom")),
+        )
+
+        failures.forEach { failure ->
+            smsCodeRepo = FakeSmsCodeRepository()
+            smsCodeRepo.enqueue(Result.Failure(failure))
+
+            val vm = buildVm(smsOtpRequest(listOf(credField(FieldType.TOTP, viewId = 1))))
+            val eventDeferred = async { vm.events.first() }
+            vm.start()
+
+            assertEquals(AutofillEvent.Abort, eventDeferred.await(), "failed for $failure")
+            assertFalse(vm.uiState.value.showSmsPending, "failed for $failure")
+        }
+    }
+
+    @Test
+    fun `sms otp request with no fields aborts`() = runTest {
+        val vm = buildVm(smsOtpRequest(emptyList()))
+        val eventDeferred = async { vm.events.first() }
+        vm.start()
+
+        assertEquals(AutofillEvent.Abort, eventDeferred.await())
+        assertFalse(vm.uiState.value.showSmsPending)
+    }
+
+    @Test
+    fun `consent required emits RequestSmsConsent and keeps the dialog up`() = runTest {
+        smsCodeRepo.enqueue(Result.Failure(SmsCodeFailure.ConsentRequired(testIntentSender())))
+
+        val vm = buildVm(smsOtpRequest(listOf(credField(FieldType.TOTP, viewId = 1))))
+        val eventDeferred = async { vm.events.first() }
+        vm.start()
+
+        assertIs<AutofillEvent.RequestSmsConsent>(eventDeferred.await())
+        assertTrue(vm.uiState.value.showSmsPending)
+    }
+
+    @Test
+    fun `granted consent retries the retrieval and fills`() = runTest {
+        smsCodeRepo.enqueue(
+            Result.Failure(SmsCodeFailure.ConsentRequired(testIntentSender())),
+            Result.Success("654321"),
+        )
+
+        val vm = buildVm(smsOtpRequest(listOf(credField(FieldType.TOTP, viewId = 1))))
+        val consentDeferred = async { vm.events.first() }
+        vm.start()
+        assertIs<AutofillEvent.RequestSmsConsent>(consentDeferred.await())
+
+        val fillDeferred = async { vm.events.first() }
+        vm.onEvent(AutofillUiEvent.OnSmsConsentResult(granted = true))
+
+        assertIs<AutofillEvent.Fill>(fillDeferred.await())
+        assertEquals("654321", datasetProvider.getFillingDatasetCalls.last().first().value)
+    }
+
+    @Test
+    fun `denied consent aborts`() = runTest {
+        smsCodeRepo.enqueue(Result.Failure(SmsCodeFailure.ConsentRequired(testIntentSender())))
+
+        val vm = buildVm(smsOtpRequest(listOf(credField(FieldType.TOTP, viewId = 1))))
+        val consentDeferred = async { vm.events.first() }
+        vm.start()
+        consentDeferred.await()
+
+        val abortDeferred = async { vm.events.first() }
+        vm.onEvent(AutofillUiEvent.OnSmsConsentResult(granted = false))
+
+        assertEquals(AutofillEvent.Abort, abortDeferred.await())
+        assertFalse(vm.uiState.value.showSmsPending)
+    }
+
+    @Test
+    fun `consent required twice aborts instead of looping`() = runTest {
+        smsCodeRepo.enqueue(
+            Result.Failure(SmsCodeFailure.ConsentRequired(testIntentSender())),
+            Result.Failure(SmsCodeFailure.ConsentRequired(testIntentSender())),
+        )
+
+        val vm = buildVm(smsOtpRequest(listOf(credField(FieldType.TOTP, viewId = 1))))
+        val consentDeferred = async { vm.events.first() }
+        vm.start()
+        consentDeferred.await()
+
+        val abortDeferred = async { vm.events.first() }
+        vm.onEvent(AutofillUiEvent.OnSmsConsentResult(granted = true))
+
+        assertEquals(AutofillEvent.Abort, abortDeferred.await())
+        assertEquals(2, smsCodeRepo.callCount)
+    }
+
+    @Test
+    fun `cancelling sms retrieval aborts and clears the pending state`() = runTest {
+        smsCodeRepo.gate = CompletableDeferred()
+
+        val vm = buildVm(smsOtpRequest(listOf(credField(FieldType.TOTP, viewId = 1))))
+        vm.start()
+        assertTrue(vm.uiState.value.showSmsPending)
+
+        val abortDeferred = async { vm.events.first() }
+        vm.onEvent(AutofillUiEvent.OnCancelSmsCode)
+
+        assertEquals(AutofillEvent.Abort, abortDeferred.await())
+        assertFalse(vm.uiState.value.showSmsPending)
+    }
+
+    @Test
+    fun `a code arriving after cancellation does not fill`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        smsCodeRepo.gate = gate
+        smsCodeRepo.enqueue(Result.Success("999999"))
+
+        val vm = buildVm(smsOtpRequest(listOf(credField(FieldType.TOTP, viewId = 1))))
+        vm.start()
+
+        val abortDeferred = async { vm.events.first() }
+        vm.onEvent(AutofillUiEvent.OnCancelSmsCode)
+        assertEquals(AutofillEvent.Abort, abortDeferred.await())
+
+        gate.complete(Unit)
+
+        assertTrue(datasetProvider.getFillingDatasetCalls.isEmpty())
     }
 }

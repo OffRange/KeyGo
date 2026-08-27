@@ -35,6 +35,13 @@ internal sealed interface FillRequestData : RequestData {
         override val requestId: Int = 1010 + index
     }
 
+    data class SmsOtp(
+        override val form: Form,
+    ) : FillRequestData {
+        @IgnoredOnParcel
+        override val requestId: Int = 1004
+    }
+
     data class App(
         override val form: Form,
     ) : FillRequestData {
@@ -74,3 +81,6 @@ internal fun suggestionRequestData(formInformation: Form, vaultId: ItemId, index
         vaultId = vaultId,
         index = index
     )
+
+internal fun smsOtpRequestData(formInformation: Form) =
+    FillRequestData.SmsOtp(form = formInformation)

@@ -19,4 +19,7 @@
     <string name="cancel">Cancel</string>
 
     <string name="open_app">Use KeyGo Autofill</string>
+    <string name="sms_code">SMS Code</string>
+    <string name="waiting_for_sms_code">Waiting for SMS code</string>
+    <string name="waiting_for_sms_code_description">KeyGo will fill in the code as soon as your message arrives.</string>
 </resources>

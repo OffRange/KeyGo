@@ -18,6 +18,8 @@ import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformati
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.util.getOrNull
+import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.autofill.domain.usecase.AddRegistrableDomainsToLoginUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.DoesItemHaveDomainReferencesUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.IsAppLinkedToWebsiteUseCase
@@ -36,8 +38,11 @@ import de.davis.keygo.feature.autofill.presentation.model.FormType
 import de.davis.keygo.feature.autofill.presentation.model.Request
 import de.davis.keygo.feature.autofill.presentation.model.RequestData
 import de.davis.keygo.feature.autofill.presentation.model.SaveRequestData
+import de.davis.keygo.feature.autofill.presentation.sms.SmsCodeFailure
+import de.davis.keygo.feature.autofill.presentation.sms.SmsCodeRepository
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.totp.domain.repository.TotpGenerator
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -53,6 +58,7 @@ internal class AutofillViewModel(
     private val loginRepository: LoginRepository,
     private val totpRepository: TotpRepository,
     private val itemRepository: ItemRepository,
+    private val smsCodeRepository: SmsCodeRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val autofillDatasetProvider: AutofillDatasetProvider,
     private val doesItemHaveDomainReferences: DoesItemHaveDomainReferencesUseCase,
@@ -73,6 +79,7 @@ internal class AutofillViewModel(
     private val _uiState = MutableStateFlow(AutofillUiState())
     val uiState = _uiState.asStateFlow()
 
+    private var smsOtpJob: Job? = null
 
     fun start() {
         handleRequestData()
@@ -137,6 +144,8 @@ internal class AutofillViewModel(
                     it.copy(showGeneratePassword = true)
                 }
 
+                is FillRequestData.SmsOtp -> handleSmsOtpRequest(requestData)
+
                 is FillRequestData.Suggestion -> handleSuggestionRequest(requestData)
             }
         }
@@ -148,6 +157,81 @@ internal class AutofillViewModel(
             ?: throw IllegalArgumentException("Name for vaultId=${suggestionInfo.vaultId} not found")
 
         biometricChannel.send(AutofillBiometricRequest.UnlockItem(itemName))
+    }
+
+    private suspend fun handleSmsOtpRequest(smsOtpInfo: FillRequestData.SmsOtp) {
+        // The extractor already narrowed the form to the focused field's group, so a TOTP form holds
+        // TOTP fields and nothing else. An empty one means there is nothing to fill.
+        if (smsOtpInfo.form.fields.isEmpty()) {
+            eventChannel.send(AutofillEvent.Abort)
+            return
+        }
+
+        _uiState.update { it.copy(showSmsPending = true) }
+        startSmsRetrieval()
+    }
+
+    private fun startSmsRetrieval(consentAlreadyRequested: Boolean = false) {
+        smsOtpJob?.cancel()
+        smsOtpJob = viewModelScope.launch {
+            smsCodeRepository.retrieveSmsCode()
+                .onSuccess { code -> sendSmsFillEvent(code) }
+                .onFailure { failure ->
+                    when (failure) {
+                        // Asking a second time would mean the consent screen came back OK without
+                        // actually granting anything, so stop rather than spin.
+                        is SmsCodeFailure.ConsentRequired ->
+                            if (consentAlreadyRequested) {
+                                _uiState.update { it.copy(showSmsPending = false) }
+                                eventChannel.send(AutofillEvent.Abort)
+                            } else eventChannel.send(
+                                AutofillEvent.RequestSmsConsent(failure.intentSender),
+                            )
+
+                        else -> {
+                            _uiState.update { it.copy(showSmsPending = false) }
+                            eventChannel.send(AutofillEvent.Abort)
+                        }
+                    }
+                }
+        }
+    }
+
+    private fun onSmsConsentResult(granted: Boolean) {
+        if (granted) startSmsRetrieval(consentAlreadyRequested = true)
+        else viewModelScope.launch {
+            _uiState.update { it.copy(showSmsPending = false) }
+            eventChannel.send(AutofillEvent.Abort)
+        }
+    }
+
+    private fun cancelSmsRetrieval() {
+        smsOtpJob?.cancel()
+        smsOtpJob = null
+        _uiState.update { it.copy(showSmsPending = false) }
+        viewModelScope.launch { eventChannel.send(AutofillEvent.Abort) }
+    }
+
+    private suspend fun sendSmsFillEvent(code: String) {
+        val fields = (requestData as? FillRequestData.SmsOtp)?.form?.fields
+        val targetField = fields?.firstOrNull { it.focused } ?: fields?.firstOrNull() ?: run {
+            eventChannel.send(AutofillEvent.Abort)
+            return
+        }
+
+        _uiState.update { it.copy(showSmsPending = false) }
+        eventChannel.send(
+            AutofillEvent.Fill(
+                autofillDatasetProvider.getFillingDataset(
+                    listOf(
+                        AutofillValue(
+                            autofillId = targetField.autofillId,
+                            value = code,
+                        ),
+                    ),
+                ),
+            ),
+        )
     }
 
     fun onBiometricLoginFailed(error: UnlockError) {
@@ -235,6 +319,9 @@ internal class AutofillViewModel(
             is AutofillUiEvent.OnGeneratedPassword -> viewModelScope.launch {
                 sendGeneratedPasswordFillEvent(event.password)
             }
+
+            is AutofillUiEvent.OnSmsConsentResult -> onSmsConsentResult(event.granted)
+            AutofillUiEvent.OnCancelSmsCode -> cancelSmsRetrieval()
         }
     }
 

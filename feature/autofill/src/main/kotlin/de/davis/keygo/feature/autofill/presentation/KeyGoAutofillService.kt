@@ -85,17 +85,30 @@ internal class KeyGoAutofillService : AutofillService() {
             Log.d(TAG, "In Compatibility Mode: $inCompatibilityMode")
             Log.d(TAG, "Extracted form: $form")
 
-            val dataset = datasetProvider.getAutofillDatasets(request, form)
-            val response = FillResponse.Builder().apply {
-                dataset.forEach(::addDataset)
-                applySaveInfo(
+            val datasets = datasetProvider.getAutofillDatasets(request, form)
+            val builder = FillResponse.Builder()
+            datasets.forEach(builder::addDataset)
+
+            // A broken save info must never cost us the datasets: without them we cannot fill
+            // anything at all, while a missing save info only skips a single save prompt.
+            val appliedSaveInfo = runCatching {
+                builder.applySaveInfo(
                     form = form,
                     clientInfo = request.clientState ?: bundleOf(),
                     requestId = request.id,
                     inCompatibilityMode = inCompatibilityMode
                 )
-            }.build()
-            callback.onSuccess(response)
+            }.onFailure {
+                Log.w(TAG, "Could not apply save info", it)
+            }.getOrDefault(false)
+
+            if (datasets.isEmpty() && !appliedSaveInfo) {
+                Log.d(TAG, "Neither datasets nor save info - not filling")
+                callback.onSuccess(null)
+                return@launch
+            }
+
+            callback.onSuccess(builder.build())
         }
 
         cancellationSignal.setOnCancelListener {
