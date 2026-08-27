@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
@@ -59,11 +58,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.presentation.toImageVector
-import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
 import de.davis.keygo.feature.item.core.presentation.component.CopyToClipboardButton
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormSuggestionField
+import de.davis.keygo.feature.item.core.presentation.entry
 import de.davis.keygo.feature.item.core.presentation.transformation.TrimTransformation
 import de.davis.keygo.feature.item.view.R
 import de.davis.keygo.feature.item.view.creditcard.model.CreditCardFieldType
@@ -403,32 +402,6 @@ private fun CreditCardFieldType.addIcon(): ImageVector {
         CreditCardFieldType.Expiration -> Icons.Default.CalendarMonth
         CreditCardFieldType.Tag -> Icons.Default.Sell
         CreditCardFieldType.Note -> Icons.AutoMirrored.Default.NoteAdd
-    }
-}
-
-private fun LazyListScope.entry(
-    title: String,
-    leadingIcon: ImageVector,
-    modifier: Modifier = Modifier,
-    trailingContent: @Composable (() -> Unit)? = null,
-    content: @Composable () -> Unit,
-) {
-    item(key = title) {
-        KeyGoCard(
-            title = {
-                Text(text = title)
-            },
-            leadingItem = {
-                Icon(
-                    imageVector = leadingIcon,
-                    contentDescription = null,
-                )
-            },
-            trailingItem = trailingContent,
-            modifier = modifier.animateItem(),
-        ) {
-            content()
-        }
     }
 }
 

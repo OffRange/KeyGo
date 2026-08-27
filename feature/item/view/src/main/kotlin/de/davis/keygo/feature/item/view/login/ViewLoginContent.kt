@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
@@ -77,11 +76,11 @@ import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.core.item.presentation.toImageVector
-import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
 import de.davis.keygo.feature.item.core.presentation.component.CopyToClipboardButton
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormSuggestionField
+import de.davis.keygo.feature.item.core.presentation.entry
 import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.login.model.UiPassword.Companion.asUiPassword
 import de.davis.keygo.feature.item.core.presentation.login.model.colored
@@ -524,32 +523,6 @@ private fun FieldType.addIcon(): ImageVector {
         FieldType.Domain -> Icons.Default.AddLink
         FieldType.Tag -> Icons.Default.Sell
         FieldType.Note -> Icons.AutoMirrored.Default.NoteAdd
-    }
-}
-
-private fun LazyListScope.entry(
-    title: String,
-    leadingIcon: ImageVector,
-    modifier: Modifier = Modifier,
-    trailingContent: @Composable (() -> Unit)? = null,
-    content: @Composable () -> Unit,
-) {
-    item(key = title) {
-        KeyGoCard(
-            title = {
-                Text(text = title)
-            },
-            leadingItem = {
-                Icon(
-                    imageVector = leadingIcon,
-                    contentDescription = null,
-                )
-            },
-            trailingItem = trailingContent,
-            modifier = modifier.animateItem(),
-        ) {
-            content()
-        }
     }
 }
 
