@@ -5,7 +5,6 @@ import android.content.ClipDescription
 import android.os.Build
 import android.os.PersistableBundle
 import android.widget.Toast
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -63,6 +62,27 @@ fun LazyListScope.copyableEntry(
         val resources = LocalResources.current
 
         KeyGoCard(
+            onClick = {
+                val data = dataToCopy()
+                val clipData = ClipData.newPlainText(data, data).apply {
+                    if (sensitive) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                            description.extras = PersistableBundle().apply {
+                                putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
+                            }
+                    }
+                }
+                scope.launch {
+                    clipboard.setClipEntry(clipData.toClipEntry())
+
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU)
+                        Toast.makeText(
+                            context,
+                            resources.getString(R.string.copied, title),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                }
+            },
             title = {
                 Text(text = title)
             },
@@ -73,29 +93,7 @@ fun LazyListScope.copyableEntry(
                 )
             },
             trailingItem = trailingContent,
-            modifier = modifier
-                .animateItem()
-                .clickable {
-                    val data = dataToCopy()
-                    val clipData = ClipData.newPlainText(data, data).apply {
-                        if (sensitive) {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                                description.extras = PersistableBundle().apply {
-                                    putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
-                                }
-                        }
-                    }
-                    scope.launch {
-                        clipboard.setClipEntry(clipData.toClipEntry())
-
-                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU)
-                            Toast.makeText(
-                                context,
-                                resources.getString(R.string.copied, title),
-                                Toast.LENGTH_SHORT
-                            ).show()
-                    }
-                },
+            modifier = modifier.animateItem(),
         ) {
             content()
         }

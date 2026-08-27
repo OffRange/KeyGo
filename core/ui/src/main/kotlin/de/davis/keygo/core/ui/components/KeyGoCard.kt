@@ -68,39 +68,83 @@ fun KeyGoCard(
             elevation = elevation,
             border = border,
         ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            KeyGoCardContent(
+                title = title,
+                leadingItem = leadingItem,
+                trailingItem = trailingItem,
+                content = content
+            )
+        }
+    }
+}
+
+@Composable
+fun KeyGoCard(
+    onClick: () -> Unit,
+    title: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    properties: KeyGoCardProperties = KeyGoCardProperties.outlined(),
+    leadingItem: @Composable (() -> Unit)? = null,
+    trailingItem: @Composable (() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    with(properties) {
+        Card(
+            onClick = onClick,
+            modifier = modifier,
+            shape = shape,
+            colors = colors,
+            elevation = elevation,
+            border = border,
+        ) {
+            KeyGoCardContent(
+                title = title,
+                leadingItem = leadingItem,
+                trailingItem = trailingItem,
+                content = content
+            )
+        }
+    }
+}
+
+@Composable
+private fun KeyGoCardContent(
+    title: @Composable () -> Unit,
+    leadingItem: @Composable (() -> Unit)?,
+    trailingItem: @Composable (() -> Unit)?,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Row(
+        modifier = Modifier.padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        leadingItem?.let {
+            Box(modifier = Modifier.minimumInteractiveComponentSize()) {
+                leadingItem()
+            }
+        }
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            CompositionLocalProvider(
+                LocalTextStyle provides MaterialTheme.typography.bodySmall
             ) {
-                leadingItem?.let {
-                    Box(modifier = Modifier.minimumInteractiveComponentSize()) {
-                        leadingItem()
-                    }
-                }
+                title()
+            }
 
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    CompositionLocalProvider(
-                        LocalTextStyle provides MaterialTheme.typography.bodySmall
-                    ) {
-                        title()
-                    }
+            CompositionLocalProvider(
+                LocalTextStyle provides MaterialTheme.typography.bodyLarge
+            ) {
+                content()
+            }
+        }
 
-                    CompositionLocalProvider(
-                        LocalTextStyle provides MaterialTheme.typography.bodyLarge
-                    ) {
-                        content()
-                    }
-                }
-
-                trailingItem?.let {
-                    Box(modifier = Modifier.minimumInteractiveComponentSize()) {
-                        trailingItem()
-                    }
-                }
+        trailingItem?.let {
+            Box(modifier = Modifier.minimumInteractiveComponentSize()) {
+                trailingItem()
             }
         }
     }
