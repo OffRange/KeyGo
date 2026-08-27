@@ -27,7 +27,6 @@ import androidx.compose.material3.TextFieldLabelScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -38,11 +37,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -82,6 +83,7 @@ fun <T> ChipFormGroup(
     inputTransformation: InputTransformation? = null,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
 ) {
+    val focusManager = LocalFocusManager.current
     val currentOnSubmit by rememberUpdatedState(onSubmit)
     val currentContainsForInput by rememberUpdatedState(containsForInput)
     val currentOnEdit by rememberUpdatedState(onEdit)
@@ -188,12 +190,8 @@ fun <T> ChipFormGroup(
             inputTransformation?.then(noLeadingDelimiters) ?: noLeadingDelimiters
         }
 
-        // Dynamically switch IME action: Send to submit text as chips, Next to move focus.
-        val hasText by remember { derivedStateOf { state.text.isNotBlank() } }
-        val effectiveKeyboardOptions = remember(keyboardOptions, hasText) {
-            keyboardOptions.copy(
-                imeAction = if (hasText) ImeAction.Send else ImeAction.Next
-            )
+        val effectiveKeyboardOptions = remember(keyboardOptions) {
+            keyboardOptions.copy(imeAction = ImeAction.Send)
         }
 
         val modifier = modifier
@@ -219,9 +217,9 @@ fun <T> ChipFormGroup(
                 true
             }
 
-        // Flush pending text as chips before forwarding the keyboard action.
         val keyboardActionHandler = KeyboardActionHandler { defaultAction ->
-            if (hasText) handleText(state.text.toString(), keepLast = false)
+            if (state.text.isNotBlank()) handleText(state.text.toString(), keepLast = false)
+            else focusManager.moveFocus(FocusDirection.Next)
 
             onKeyboardAction?.onKeyboardAction(defaultAction) ?: defaultAction()
         }
