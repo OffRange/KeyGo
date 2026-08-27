@@ -1,12 +1,8 @@
 package de.davis.keygo.feature.autofill.presentation.activity
 
-import android.content.ClipData
-import android.content.ClipDescription
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
-import android.os.PersistableBundle
 import android.service.autofill.Dataset
 import android.view.autofill.AutofillManager
 import androidx.activity.compose.setContent
@@ -14,7 +10,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalClipboard
-import androidx.compose.ui.platform.toClipEntry
+import androidx.compose.ui.res.stringResource
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
@@ -22,6 +18,7 @@ import de.davis.keygo.core.identity.presentation.rememberBiometricUnlockAdapter
 import de.davis.keygo.core.identity.presentation.useAdapter
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
+import de.davis.keygo.core.ui.clipboard.setText
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
@@ -37,6 +34,7 @@ import de.davis.keygo.feature.autofill.presentation.model.Request
 import de.davis.keygo.feature.autofill.presentation.model.RequestData
 import de.davis.keygo.feature.item.create.presentation.password.GeneratePasswordModalBottomSheet
 import org.koin.androidx.compose.koinViewModel
+import de.davis.keygo.core.item.R as CoreItemR
 
 
 /**
@@ -67,20 +65,18 @@ internal class AutofillActivity : FragmentActivity() {
                 val biometricUnlockAdapter = rememberBiometricUnlockAdapter()
 
                 val clipboard = LocalClipboard.current
+                val passwordLabel = stringResource(CoreItemR.string.password)
 
                 ObserveAsEvents(viewModel.events) { event ->
                     when (event) {
                         AutofillEvent.Abort -> cancel()
                         is AutofillEvent.Fill -> {
                             event.copyToClipboard?.let {
-                                val clipData = ClipData.newPlainText(it, it).apply {
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                                        description.extras = PersistableBundle().apply {
-                                            putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
-                                        }
-                                }
-
-                                clipboard.setClipEntry(clipData.toClipEntry())
+                                clipboard.setText(
+                                    label = passwordLabel,
+                                    text = it,
+                                    sensitive = true,
+                                )
                             }
 
                             finishWithResult(event.dataset)

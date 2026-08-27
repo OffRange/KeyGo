@@ -21,7 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.onClick as onClickAction
 
 @Immutable
 data class KeyGoCardProperties(
@@ -83,15 +85,23 @@ fun KeyGoCard(
     onClick: () -> Unit,
     title: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    onClickLabel: String? = null,
     properties: KeyGoCardProperties = KeyGoCardProperties.outlined(),
     leadingItem: @Composable (() -> Unit)? = null,
     trailingItem: @Composable (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    // Semantics apply innermost first, so Card's own clickable has already written its click
+    // action with a null label by the time this runs. Setting an accessibility action merges field
+    // by field, so a null action here keeps that click, which is what carries the enabled state.
+    val labelled =
+        if (onClickLabel == null) modifier
+        else modifier.semantics { onClickAction(label = onClickLabel, action = null) }
+
     with(properties) {
         Card(
             onClick = onClick,
-            modifier = modifier,
+            modifier = labelled,
             shape = shape,
             colors = colors,
             elevation = elevation,

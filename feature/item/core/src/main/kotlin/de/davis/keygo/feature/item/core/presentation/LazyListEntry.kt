@@ -1,9 +1,6 @@
 package de.davis.keygo.feature.item.core.presentation
 
-import android.content.ClipData
-import android.content.ClipDescription
 import android.os.Build
-import android.os.PersistableBundle
 import android.widget.Toast
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.Icon
@@ -14,8 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.platform.toClipEntry
+import androidx.compose.ui.res.stringResource
+import de.davis.keygo.core.ui.clipboard.setText
 import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.feature.item.core.R
 import kotlinx.coroutines.launch
@@ -28,21 +25,15 @@ fun LazyListScope.entry(
     content: @Composable () -> Unit,
 ) {
     item(key = title) {
-        KeyGoCard(
-            title = {
-                Text(text = title)
-            },
-            leadingItem = {
-                Icon(
-                    imageVector = leadingIcon,
-                    contentDescription = null,
-                )
-            },
-            trailingItem = trailingContent,
+        EntryCard(
+            title = title,
+            leadingIcon = leadingIcon,
             modifier = modifier.animateItem(),
-        ) {
-            content()
-        }
+            trailingContent = trailingContent,
+            onClick = null,
+            onClickLabel = null,
+            content = content,
+        )
     }
 }
 
@@ -59,43 +50,67 @@ fun LazyListScope.copyableEntry(
         val scope = rememberCoroutineScope()
         val clipboard = LocalClipboard.current
         val context = LocalContext.current
-        val resources = LocalResources.current
+        val copiedMessage = stringResource(R.string.copied, title)
 
-        KeyGoCard(
+        EntryCard(
+            title = title,
+            leadingIcon = leadingIcon,
+            modifier = modifier.animateItem(),
+            trailingContent = trailingContent,
             onClick = {
-                val data = dataToCopy()
-                val clipData = ClipData.newPlainText(data, data).apply {
-                    if (sensitive) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                            description.extras = PersistableBundle().apply {
-                                putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
-                            }
-                    }
-                }
                 scope.launch {
-                    clipboard.setClipEntry(clipData.toClipEntry())
+                    clipboard.setText(
+                        label = title,
+                        text = dataToCopy(),
+                        sensitive = sensitive,
+                    )
 
                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU)
-                        Toast.makeText(
-                            context,
-                            resources.getString(R.string.copied, title),
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
                 }
             },
-            title = {
-                Text(text = title)
-            },
-            leadingItem = {
-                Icon(
-                    imageVector = leadingIcon,
-                    contentDescription = null,
-                )
-            },
+            onClickLabel = stringResource(R.string.copy_entry, title),
+            content = content,
+        )
+    }
+}
+
+@Composable
+private fun EntryCard(
+    title: String,
+    leadingIcon: ImageVector,
+    modifier: Modifier,
+    trailingContent: @Composable (() -> Unit)?,
+    onClick: (() -> Unit)?,
+    onClickLabel: String?,
+    content: @Composable () -> Unit,
+) {
+    val cardTitle: @Composable () -> Unit = { Text(text = title) }
+    val cardLeadingItem: @Composable () -> Unit = {
+        Icon(
+            imageVector = leadingIcon,
+            contentDescription = null,
+        )
+    }
+
+    if (onClick == null)
+        KeyGoCard(
+            title = cardTitle,
+            modifier = modifier,
+            leadingItem = cardLeadingItem,
             trailingItem = trailingContent,
-            modifier = modifier.animateItem(),
         ) {
             content()
         }
-    }
+    else
+        KeyGoCard(
+            onClick = onClick,
+            title = cardTitle,
+            modifier = modifier,
+            onClickLabel = onClickLabel,
+            leadingItem = cardLeadingItem,
+            trailingItem = trailingContent,
+        ) {
+            content()
+        }
 }

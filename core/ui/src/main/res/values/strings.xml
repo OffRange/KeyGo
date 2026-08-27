@@ -6,7 +6,6 @@
 
     <string name="match_not_found">No matches found</string>
 
-    <string name="copy_to_clipboard_content_description">Copy to clipboard</string>
     <string name="show_password_content_description">Show password</string>
     <string name="hide_password_content_description">Hide password</string>
 
