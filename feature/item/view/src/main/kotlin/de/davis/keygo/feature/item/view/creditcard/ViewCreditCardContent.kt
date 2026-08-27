@@ -58,10 +58,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.presentation.toImageVector
+import de.davis.keygo.core.ui.components.VisibilityButton
 import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
-import de.davis.keygo.feature.item.core.presentation.component.CopyToClipboardButton
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormSuggestionField
+import de.davis.keygo.feature.item.core.presentation.copyableEntry
 import de.davis.keygo.feature.item.core.presentation.entry
 import de.davis.keygo.feature.item.core.presentation.transformation.TrimTransformation
 import de.davis.keygo.feature.item.view.R
@@ -69,7 +70,6 @@ import de.davis.keygo.feature.item.view.creditcard.model.CreditCardFieldType
 import de.davis.keygo.feature.item.view.creditcard.model.ViewCreditCardState
 import de.davis.keygo.feature.item.view.creditcard.model.ViewCreditCardUiEvent
 import de.davis.keygo.feature.item.view.login.model.ObfuscatedString
-import de.davis.keygo.feature.item.view.onHold
 import de.davis.keygo.core.item.R as CoreItemR
 import de.davis.keygo.core.ui.R as CoreUiR
 import de.davis.keygo.feature.item.core.R as ItemCoreR
@@ -171,9 +171,10 @@ fun ViewCreditCardContent(state: ViewCreditCardState, onEvent: (ViewCreditCardUi
             }
 
             if (state.holder.isNotBlank()) {
-                entry(
+                copyableEntry(
                     title = cardholder,
                     leadingIcon = Icons.Default.Person,
+                    dataToCopy = { state.holder },
                 ) {
                     Text(text = state.holder)
                 }
@@ -181,14 +182,16 @@ fun ViewCreditCardContent(state: ViewCreditCardState, onEvent: (ViewCreditCardUi
 
             val cardNum = state.cardNumber
             if (cardNum != null) {
-                entry(
+                copyableEntry(
                     title = cardNumber,
                     leadingIcon = Icons.Default.CreditCard,
-                    modifier = Modifier.onHold {
-                        isCardNumberHidden = !it
-                    },
+                    dataToCopy = { cardNum.raw },
+                    sensitive = true,
                     trailingContent = {
-                        CopyToClipboardButton(cardNum.raw)
+                        VisibilityButton(
+                            isHidden = isCardNumberHidden,
+                            onClick = { isCardNumberHidden = !isCardNumberHidden }
+                        )
                     },
                 ) {
                     val scrollState = rememberScrollState()
@@ -202,14 +205,16 @@ fun ViewCreditCardContent(state: ViewCreditCardState, onEvent: (ViewCreditCardUi
 
             val cvvVal = state.cvv
             if (cvvVal != null) {
-                entry(
+                copyableEntry(
                     title = cvv,
                     leadingIcon = Icons.Default.Pin,
-                    modifier = Modifier.onHold {
-                        isCvvHidden = !it
-                    },
+                    dataToCopy = { cvvVal.raw },
+                    sensitive = true,
                     trailingContent = {
-                        CopyToClipboardButton(cvvVal.raw)
+                        VisibilityButton(
+                            isHidden = isCvvHidden,
+                            onClick = { isCvvHidden = !isCvvHidden }
+                        )
                     },
                 ) {
                     val scrollState = rememberScrollState()
@@ -222,9 +227,10 @@ fun ViewCreditCardContent(state: ViewCreditCardState, onEvent: (ViewCreditCardUi
             }
 
             if (state.expirationDate.isNotBlank()) {
-                entry(
+                copyableEntry(
                     title = expiration,
                     leadingIcon = Icons.Default.CalendarMonth,
+                    dataToCopy = { state.expirationDate },
                 ) {
                     Text(text = state.expirationDate)
                 }
