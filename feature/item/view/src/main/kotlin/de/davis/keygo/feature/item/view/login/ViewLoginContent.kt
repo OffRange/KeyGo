@@ -5,6 +5,7 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -13,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
@@ -40,11 +40,11 @@ import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -53,6 +53,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -68,6 +69,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.newItemId
@@ -75,12 +77,16 @@ import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.core.item.presentation.toImageVector
-import de.davis.keygo.core.ui.components.KeyGoCard
+import de.davis.keygo.core.ui.components.VisibilityButton
 import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
-import de.davis.keygo.feature.item.core.presentation.component.CopyToClipboardButton
+import de.davis.keygo.core.ui.theme.secretTextStyle
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormSuggestionField
+import de.davis.keygo.feature.item.core.presentation.copyableEntry
+import de.davis.keygo.feature.item.core.presentation.entry
+import de.davis.keygo.feature.item.core.presentation.login.colored
 import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
+import de.davis.keygo.feature.item.core.presentation.login.model.UiPassword.Companion.asUiPassword
 import de.davis.keygo.feature.item.core.presentation.transformation.TrimTransformation
 import de.davis.keygo.feature.item.core.presentation.transformation.rememberSchemeStrippingTransformation
 import de.davis.keygo.feature.item.view.R
@@ -89,10 +95,11 @@ import de.davis.keygo.feature.item.view.login.model.ObfuscatedString
 import de.davis.keygo.feature.item.view.login.model.TotpState
 import de.davis.keygo.feature.item.view.login.model.ViewLoginState
 import de.davis.keygo.feature.item.view.login.model.ViewLoginUiEvent
-import de.davis.keygo.feature.item.view.onHold
 import de.davis.keygo.feature.totp.domain.model.TotpValue
 import de.davis.keygo.feature.totp.presentation.component.QRScanner
 import de.davis.keygo.feature.totp.presentation.component.TotpParseErrorDialog
+import kotlin.math.ceil
+import kotlin.time.Duration.Companion.milliseconds
 import de.davis.keygo.core.item.R as CoreItemR
 import de.davis.keygo.core.ui.R as CoreUiR
 import de.davis.keygo.feature.item.core.R as ItemCoreR
@@ -226,19 +233,24 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
             val pwd = state.password
             val score = state.passwordStrengthScore
             if (pwd != null && score != null) {
-                entry(
+                copyableEntry(
                     title = password,
                     leadingIcon = Icons.Default.Password,
-                    modifier = Modifier.onHold {
-                        isPasswordHidden = !it
-                    },
+                    dataToCopy = { pwd.raw },
+                    sensitive = true,
                     trailingContent = {
-                        CopyToClipboardButton(pwd.raw)
-                    },
+                        VisibilityButton(
+                            isHidden = isPasswordHidden,
+                            onClick = { isPasswordHidden = !isPasswordHidden }
+                        )
+                    }
                 ) {
                     val scrollState = rememberScrollState()
+                    val uiPassword = remember(pwd.raw) { pwd.raw.asUiPassword() }
                     Text(
-                        text = if (isPasswordHidden) pwd.hidden else pwd.raw,
+                        text = if (isPasswordHidden) AnnotatedString(pwd.hidden)
+                        else uiPassword.colored(),
+                        style = secretTextStyle,
                         maxLines = 1,
                         modifier = Modifier.horizontalScroll(scrollState),
                     )
@@ -250,18 +262,32 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
             }
 
             when (totpState) {
-                is TotpState.HasTotp -> entry(
+                is TotpState.HasTotp -> copyableEntry(
                     title = totp,
                     leadingIcon = Icons.Default.AccessTime,
+                    dataToCopy = { state.totpState.value.code },
+                    sensitive = true,
                     trailingContent = {
-                        CopyToClipboardButton(state.totpState.value.code)
-                    },
+                        val indicatorSize = WavyProgressIndicatorDefaults.CircularContainerSize
+                        Box(
+                            modifier = Modifier.size(indicatorSize),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularWavyProgressIndicator(
+                                progress = { progress.value },
+                            )
+
+                            Text(
+                                text = ceil(totpState.value.maxLifetime.milliseconds.inWholeSeconds * progress.value).toInt()
+                                    .toString(),
+                                fontSize = with(LocalDensity.current) { (indicatorSize * 0.35f).toSp() },
+                                maxLines = 1,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
                 ) {
                     Text(text = state.totpState.formattedCode)
-                    LinearProgressIndicator(
-                        progress = { progress.value },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
                 }
 
                 is TotpState.Error -> entry(
@@ -275,9 +301,10 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
             }
 
             if (state.username.isNotBlank()) {
-                entry(
+                copyableEntry(
                     title = username,
                     leadingIcon = Icons.Default.Person,
+                    dataToCopy = { state.username },
                 ) {
                     Text(text = state.username)
                 }
@@ -518,32 +545,6 @@ private fun FieldType.addIcon(): ImageVector {
         FieldType.Domain -> Icons.Default.AddLink
         FieldType.Tag -> Icons.Default.Sell
         FieldType.Note -> Icons.AutoMirrored.Default.NoteAdd
-    }
-}
-
-private fun LazyListScope.entry(
-    title: String,
-    leadingIcon: ImageVector,
-    modifier: Modifier = Modifier,
-    trailingContent: @Composable (() -> Unit)? = null,
-    content: @Composable () -> Unit,
-) {
-    item(key = title) {
-        KeyGoCard(
-            title = {
-                Text(text = title)
-            },
-            leadingItem = {
-                Icon(
-                    imageVector = leadingIcon,
-                    contentDescription = null,
-                )
-            },
-            trailingItem = trailingContent,
-            modifier = modifier.animateItem(),
-        ) {
-            content()
-        }
     }
 }
 

@@ -47,6 +47,7 @@ import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.core.ui.theme.KeyGoTheme
+import de.davis.keygo.core.ui.theme.secretTextStyle
 import de.davis.keygo.feature.item.core.presentation.component.ChipFormGroup
 import de.davis.keygo.feature.item.core.presentation.component.CreateOrModifyItemTopAppBar
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
@@ -205,6 +206,7 @@ private fun LoginReadyContent(
                             modifier = Modifier.onFocusChanged {
                                 forceCompact = !it.hasFocus
                             },
+                            textStyle = secretTextStyle,
                             placeholder = { Text(text = stringResource(CoreItemR.string.password)) },
                             isSecure = true,
                             outsideTrailingContent = {

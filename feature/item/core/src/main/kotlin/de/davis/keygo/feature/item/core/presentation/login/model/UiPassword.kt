@@ -1,16 +1,18 @@
-package de.davis.keygo.feature.item.create.presentation.password.model
+package de.davis.keygo.feature.item.core.presentation.login.model
 
 data class UiPassword(val value: String) {
 
     val parts: List<Part> = value.splitByCharClassRegex()
 
     sealed interface Part {
-        data class Letter(val text: String) : Part
-        data class Number(val text: String) : Part
-        data class Symbol(val text: String) : Part
+        val text: String
+
+        data class Letter(override val text: String) : Part
+        data class Number(override val text: String) : Part
+        data class Symbol(override val text: String) : Part
     }
 
-    private fun String.splitByCharClassRegex(): List<Part> {
+    private fun CharSequence.splitByCharClassRegex(): List<Part> {
         return PATTERN.findAll(this)
             .map {
                 when {
@@ -22,9 +24,10 @@ data class UiPassword(val value: String) {
             .toList()
     }
 
-    internal companion object {
+    companion object {
 
-        val PATTERN = Regex("""\p{L}+|\d+|[^\p{L}\d]+""")
+        private val PATTERN = Regex("""\p{L}+|\d+|[^\p{L}\d]+""")
+
         fun String.asUiPassword() = UiPassword(this)
     }
 }
