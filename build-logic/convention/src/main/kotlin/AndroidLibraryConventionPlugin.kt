@@ -20,7 +20,7 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
 
             defaultConfig {
                 minSdk = catalog.version["minSdk"]
-                
+
                 testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
                 consumerProguardFiles("consumer-rules.pro")
             }
@@ -34,7 +34,6 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
         extensions.configure<KotlinAndroidProjectExtension> {
             compilerOptions {
                 jvmTarget.set(JvmTarget.JVM_17)
-                freeCompilerArgs.add("-Xcontext-parameters")
             }
         }
 

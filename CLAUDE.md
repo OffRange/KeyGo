@@ -28,32 +28,32 @@ make -C rust/rust-code bindgen         # Generate uniffi bindings
 
 ## Tech Stack
 
-Kotlin 2.3.20 · AGP 9.2.1 · JVM 17 · Compile SDK 37 · Min SDK 26 · `-Xcontext-parameters`
+Kotlin 2.3.20 · AGP 9.2.1 · JVM 17 · Compile SDK 37 · Min SDK 26
 
 ## Project Structure
 
 Android password manager using Clean Architecture per module:
 `domain/` → `data/` → `presentation/` → `di/`
 
-| Module                     | Purpose                                                                  |
-|----------------------------|--------------------------------------------------------------------------|
-| `:app`                     | Navigation, app-level DI, dashboard                                      |
-| `:core:security`           | Crypto, biometrics, Android Keystore                                     |
-| `:core:identity`           | Key wrapping, auth data, proto schemas (`core/identity/src/main/proto/`) |
-| `:core:item`               | Room database, login/item entities                                       |
-| `:core:ui`                 | Shared composables and UI utilities                                      |
-| `:core:util`               | Shared utilities, `Result` type                                          |
-| `:feature:auth`            | Auth/session flow (login gate, biometric prompt routing)                 |
-| `:feature:autofill`        | Android autofill service (framework + Chrome/inline datasets)            |
-| `:feature:backup`          | Export/import + scheduled backup (see Backup Escrow)                     |
-| `:feature:credit-card`     | NFC credit card scanning (APDU/ISO-DEP)                                  |
-| `:feature:onboarding`      | First-run onboarding flow                                                |
-| `:feature:settings`        | Settings, change password                                                |
-| `:feature:*` (remaining)   | `list_screen`, `item:{core,create,view}`, `credentials`, `totp`, `vault` |
-| `:automation`              | `@VaultItem` annotation + automation support                             |
-| `:automation-processor`    | KSP processor generating code from `@VaultItem`                          |
-| `:legacy-migration`        | The whole v1 to v2 migration: main password, item import (high risk)     |
-| `:rust`                    | Rust crypto/passkey ops via UniFFI-generated Kotlin bindings             |
+| Module                   | Purpose                                                                  |
+|--------------------------|--------------------------------------------------------------------------|
+| `:app`                   | Navigation, app-level DI, dashboard                                      |
+| `:core:security`         | Crypto, biometrics, Android Keystore                                     |
+| `:core:identity`         | Key wrapping, auth data, proto schemas (`core/identity/src/main/proto/`) |
+| `:core:item`             | Room database, login/item entities                                       |
+| `:core:ui`               | Shared composables and UI utilities                                      |
+| `:core:util`             | Shared utilities, `Result` type                                          |
+| `:feature:auth`          | Auth/session flow (login gate, biometric prompt routing)                 |
+| `:feature:autofill`      | Android autofill service (framework + Chrome/inline datasets)            |
+| `:feature:backup`        | Export/import + scheduled backup (see Backup Escrow)                     |
+| `:feature:credit-card`   | NFC credit card scanning (APDU/ISO-DEP)                                  |
+| `:feature:onboarding`    | First-run onboarding flow                                                |
+| `:feature:settings`      | Settings, change password                                                |
+| `:feature:*` (remaining) | `list_screen`, `item:{core,create,view}`, `credentials`, `totp`, `vault` |
+| `:automation`            | `@VaultItem` annotation + automation support                             |
+| `:automation-processor`  | KSP processor generating code from `@VaultItem`                          |
+| `:legacy-migration`      | The whole v1 to v2 migration: main password, item import (high risk)     |
+| `:rust`                  | Rust crypto/passkey ops via UniFFI-generated Kotlin bindings             |
 
 ## Key Patterns
 
