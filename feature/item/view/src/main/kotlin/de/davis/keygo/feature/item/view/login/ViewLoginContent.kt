@@ -5,6 +5,7 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -39,11 +40,11 @@ import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +53,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -96,6 +98,8 @@ import de.davis.keygo.feature.item.view.login.model.ViewLoginUiEvent
 import de.davis.keygo.feature.totp.domain.model.TotpValue
 import de.davis.keygo.feature.totp.presentation.component.QRScanner
 import de.davis.keygo.feature.totp.presentation.component.TotpParseErrorDialog
+import kotlin.math.ceil
+import kotlin.time.Duration.Companion.milliseconds
 import de.davis.keygo.core.item.R as CoreItemR
 import de.davis.keygo.core.ui.R as CoreUiR
 import de.davis.keygo.feature.item.core.R as ItemCoreR
@@ -263,12 +267,27 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                     leadingIcon = Icons.Default.AccessTime,
                     dataToCopy = { state.totpState.value.code },
                     sensitive = true,
+                    trailingContent = {
+                        val indicatorSize = WavyProgressIndicatorDefaults.CircularContainerSize
+                        Box(
+                            modifier = Modifier.size(indicatorSize),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularWavyProgressIndicator(
+                                progress = { progress.value },
+                            )
+
+                            Text(
+                                text = ceil(totpState.value.maxLifetime.milliseconds.inWholeSeconds * progress.value).toInt()
+                                    .toString(),
+                                fontSize = with(LocalDensity.current) { (indicatorSize * 0.35f).toSp() },
+                                maxLines = 1,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
                 ) {
                     Text(text = state.totpState.formattedCode)
-                    LinearProgressIndicator(
-                        progress = { progress.value },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
                 }
 
                 is TotpState.Error -> entry(
