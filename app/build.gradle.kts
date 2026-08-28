@@ -15,7 +15,7 @@ plugins {
 }
 
 versioning {
-    minVersion = Version(major = 2)
+    minVersion = Version(major = 2, minor = 1)
 }
 
 android versionedBy versioning
