@@ -40,6 +40,7 @@ fun ItemListScreen(
     restrictedItemType: VaultItemType? = null,
     notFoundStrategy: NoItemStrategy = NoItemStrategy.ShowCreateNewItemCard,
     suggestedItemIds: Set<ItemId> = emptySet(),
+    openItemId: ItemId? = null,
     autoSelectFirst: Boolean = false,
     enableDeletion: Boolean = true,
     enableSelection: Boolean = true,
@@ -59,8 +60,10 @@ fun ItemListScreen(
         collectedState.copy(items = collectedState.items.withSuggestedFirst(suggested))
     }
 
-    LaunchedEffect(autoSelectFirst) {
-        if (!autoSelectFirst) viewModel.resetHighlight()
+    // The highlight follows the detail pane rather than keeping a note of its own, so a dropped
+    // detail cannot leave a row marked as open.
+    LaunchedEffect(openItemId, autoSelectFirst) {
+        viewModel.setHighlight(if (autoSelectFirst) openItemId else null)
     }
 
     LaunchedEffect(uiState.items, uiState.highlightedId, autoSelectFirst) {

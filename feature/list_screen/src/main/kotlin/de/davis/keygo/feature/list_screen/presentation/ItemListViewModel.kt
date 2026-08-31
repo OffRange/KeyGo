@@ -226,8 +226,9 @@ internal class ItemListViewModel(
         searchTextFieldState.setTextAndPlaceCursorAtEnd(submittedSearchQuery.value)
     }
 
-    fun resetHighlight() {
-        highlightedId.update { null }
+    /** Points the highlight at the item the detail pane shows, or clears it when it shows none. */
+    fun setHighlight(itemId: ItemId?) {
+        highlightedId.update { itemId }
     }
 
     fun onClearQuery() {

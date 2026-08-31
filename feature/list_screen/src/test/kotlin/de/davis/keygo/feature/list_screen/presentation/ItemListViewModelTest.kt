@@ -32,6 +32,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -393,6 +394,41 @@ class ItemListViewModelTest {
 
         assertEquals(emptySet(), pinnedIds())
         assertFalse(vm.listItemState.value.allSelectedPinned)
+    }
+
+    @Test
+    fun `the highlight marks the item the detail pane was told to show`() = runTest(dispatcher) {
+        val opened = login("Opened")
+        loginRepository.seed(opened, login("Other"))
+
+        val vm = viewModel()
+        backgroundScope.launchCollect(vm)
+        advanceUntilIdle()
+
+        vm.setHighlight(opened.id)
+        advanceUntilIdle()
+
+        assertEquals(opened.id, vm.listItemState.value.highlightedId)
+    }
+
+    /** Pins the bug: a detail dropped from the back stack left a row marked as open behind it. */
+    @Test
+    fun `a detail dropped behind the list takes the highlight with it`() = runTest(dispatcher) {
+        val opened = login("Opened")
+        loginRepository.seed(opened)
+
+        val vm = viewModel()
+        backgroundScope.launchCollect(vm)
+        advanceUntilIdle()
+
+        vm.onItemClick(opened.id)
+        advanceUntilIdle()
+        assertEquals(opened.id, vm.listItemState.value.highlightedId)
+
+        vm.setHighlight(null)
+        advanceUntilIdle()
+
+        assertNull(vm.listItemState.value.highlightedId)
     }
 }
 
