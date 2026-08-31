@@ -60,15 +60,15 @@ fun ItemListScreen(
         collectedState.copy(items = collectedState.items.withSuggestedFirst(suggested))
     }
 
-    // The highlight follows the detail pane rather than keeping a note of its own, so a dropped
-    // detail cannot leave a row marked as open.
-    LaunchedEffect(openItemId, autoSelectFirst) {
+    // The highlight follows what the pane shows, so a dropped detail cannot leave a row marked as
+    // open, and an empty pane is filled from the list. The highlight written here only reaches the
+    // pane twice is what keeps the two from disagreeing within the pass.
+    LaunchedEffect(uiState.items, openItemId, autoSelectFirst) {
         viewModel.setHighlight(if (autoSelectFirst) openItemId else null)
-    }
 
-    LaunchedEffect(uiState.items, uiState.highlightedId, autoSelectFirst) {
-        if (autoSelectFirst && uiState.highlightedId == null && uiState.items.isNotEmpty())
-            viewModel.onItemClick(uiState.items.first().id, forceSkipSelection = true)
+        val target = if (autoSelectFirst && openItemId == null) uiState.items.firstOrNull()?.id
+        else null
+        if (target != null) viewModel.onItemClick(target, forceSkipSelection = true)
     }
 
     val currentOnItemsDelete by rememberUpdatedState(onItemsDelete)
