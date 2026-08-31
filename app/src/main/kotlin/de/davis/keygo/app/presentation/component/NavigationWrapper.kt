@@ -91,15 +91,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
-import androidx.navigation.NavDestination
-import androidx.navigation.NavDestination.Companion.hasRoute
-import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation3.runtime.NavKey
 import androidx.window.core.layout.WindowSizeClass
 import de.davis.keygo.R
 import de.davis.keygo.app.presentation.AppDestinations
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
-import de.davis.keygo.core.ui.RouteDestination
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import de.davis.keygo.core.ui.R as CoreUiR
@@ -108,8 +105,8 @@ import de.davis.keygo.core.ui.R as CoreUiR
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun KeyGoNavigationWrapper(
-    currentDestination: NavDestination?,
-    navigateToTopLevelDestination: (RouteDestination) -> Unit,
+    selectedRoute: NavKey?,
+    navigateToTopLevelDestination: (NavKey) -> Unit,
     onButtonClicked: () -> Unit,
     onItemSelected: (VaultItemType) -> Unit,
     showChrome: Boolean = true,
@@ -151,7 +148,7 @@ fun KeyGoNavigationWrapper(
                 drawerState = drawerState
             ) {
                 DrawerContent(
-                    currentDestination = currentDestination,
+                    selectedRoute = selectedRoute,
                     navigateToTopLvlDestination = navigateToTopLevelDestination,
                     onButtonClicked = onButtonClicked,
                     onCloseDrawer = {
@@ -183,7 +180,7 @@ fun KeyGoNavigationWrapper(
                             } + fadeOut()
                         ) {
                             KeyGoNavigationSuite(
-                                currentDestination = currentDestination,
+                                selectedRoute = selectedRoute,
                                 layoutType = layoutType,
                                 navigateToTopLvlDestination = navigateToTopLevelDestination,
                                 onButtonClicked = onButtonClicked,
@@ -295,9 +292,9 @@ fun KeyGoNavigationWrapper(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KeyGoNavigationSuite(
-    currentDestination: NavDestination?,
+    selectedRoute: NavKey?,
     layoutType: NavigationSuiteType,
-    navigateToTopLvlDestination: (RouteDestination) -> Unit,
+    navigateToTopLvlDestination: (NavKey) -> Unit,
     onButtonClicked: () -> Unit,
     onOpenDrawer: () -> Unit,
     buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
@@ -307,7 +304,7 @@ fun KeyGoNavigationSuite(
     when (layoutType) {
         NavigationSuiteType.NavigationBar -> {
             KeyGoNavigationBar(
-                currentDestination = currentDestination,
+                selectedRoute = selectedRoute,
                 navigateToTopLvlDestination = navigateToTopLvlDestination,
                 scrollBehavior = scrollBehavior
             )
@@ -315,7 +312,7 @@ fun KeyGoNavigationSuite(
 
         NavigationSuiteType.NavigationRail -> {
             KeyGoNavigationRail(
-                currentDestination = currentDestination,
+                selectedRoute = selectedRoute,
                 navigateToTopLvlDestination = navigateToTopLvlDestination,
                 onButtonClicked = onButtonClicked,
                 onOpenDrawer = onOpenDrawer,
@@ -326,7 +323,7 @@ fun KeyGoNavigationSuite(
 
         NavigationSuiteType.NavigationDrawer -> {
             KeyGoNavigationDrawer(
-                currentDestination = currentDestination,
+                selectedRoute = selectedRoute,
                 onButtonClicked = onButtonClicked,
                 navigateToTopLvlDestination = navigateToTopLvlDestination,
                 buttonContainerColor = buttonContainerColor,
@@ -341,8 +338,8 @@ fun KeyGoNavigationSuite(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KeyGoNavigationBar(
-    currentDestination: NavDestination?,
-    navigateToTopLvlDestination: (RouteDestination) -> Unit,
+    selectedRoute: NavKey?,
+    navigateToTopLvlDestination: (NavKey) -> Unit,
     scrollBehavior: BottomAppBarScrollBehavior? = null
 ) {
     NavigationBar(
@@ -360,7 +357,7 @@ fun KeyGoNavigationBar(
     ) {
         AppDestinations.entries.forEach { destination ->
             NavigationBarItem(
-                selected = currentDestination?.hierarchy?.any { it.hasRoute(destination.route.graphDest) } == true,
+                selected = destination.route == selectedRoute,
                 onClick = { navigateToTopLvlDestination(destination.route) },
                 icon = {
                     Icon(
@@ -377,8 +374,8 @@ fun KeyGoNavigationBar(
 
 @Composable
 fun KeyGoNavigationRail(
-    currentDestination: NavDestination?,
-    navigateToTopLvlDestination: (RouteDestination) -> Unit,
+    selectedRoute: NavKey?,
+    navigateToTopLvlDestination: (NavKey) -> Unit,
     onButtonClicked: () -> Unit,
     onOpenDrawer: () -> Unit,
     buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
@@ -417,7 +414,7 @@ fun KeyGoNavigationRail(
         ) {
             AppDestinations.entries.forEach { destination ->
                 NavigationRailItem(
-                    selected = currentDestination?.hierarchy?.any { it.hasRoute(destination.route.graphDest) } == true,
+                    selected = destination.route == selectedRoute,
                     onClick = { navigateToTopLvlDestination(destination.route) },
                     icon = {
                         Icon(
@@ -435,8 +432,8 @@ fun KeyGoNavigationRail(
 
 @Composable
 fun KeyGoNavigationDrawer(
-    currentDestination: NavDestination?,
-    navigateToTopLvlDestination: (RouteDestination) -> Unit,
+    selectedRoute: NavKey?,
+    navigateToTopLvlDestination: (NavKey) -> Unit,
     onButtonClicked: () -> Unit,
     buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
     buttonContentColor: Color = contentColorFor(buttonContainerColor)
@@ -445,7 +442,7 @@ fun KeyGoNavigationDrawer(
         modifier = Modifier.widthIn(min = 200.dp, max = 300.dp)
     ) {
         DrawerContent(
-            currentDestination = currentDestination,
+            selectedRoute = selectedRoute,
             navigateToTopLvlDestination = navigateToTopLvlDestination,
             onButtonClicked = onButtonClicked,
             buttonContainerColor = buttonContainerColor,
@@ -456,8 +453,8 @@ fun KeyGoNavigationDrawer(
 
 @Composable
 fun DrawerContent(
-    currentDestination: NavDestination?,
-    navigateToTopLvlDestination: (RouteDestination) -> Unit,
+    selectedRoute: NavKey?,
+    navigateToTopLvlDestination: (NavKey) -> Unit,
     onButtonClicked: () -> Unit,
     onCloseDrawer: (() -> Unit)? = null,
     buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
@@ -535,16 +532,12 @@ fun DrawerContent(
                     label = {
                         Text(text = stringResource(destination.label))
                     },
-                    selected = currentDestination?.hierarchy?.any { it.hasRoute(destination.route.graphDest) } == true,
+                    selected = destination.route == selectedRoute,
                     onClick = { navigateToTopLvlDestination(destination.route) },
                 )
             }
         }
     }
-}
-
-fun NavDestination?.hasRoute(dest: RouteDestination): Boolean {
-    return this?.hasRoute(dest::class) == true
 }
 
 @Suppress("VisualLintOverlap")
@@ -557,7 +550,7 @@ private fun KeyGoNavigationWrapperPreview() {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             KeyGoNavigationWrapper(
-                currentDestination = null,
+                selectedRoute = null,
                 navigateToTopLevelDestination = {},
                 onButtonClicked = {},
                 onItemSelected = {},

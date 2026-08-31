@@ -1,72 +1,45 @@
 package de.davis.keygo.app.presentation
 
+import android.content.Intent
 import android.os.Bundle
-import android.util.Log
-import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
-import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldRole
-import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
+import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
-import androidx.navigation.NavController
-import androidx.navigation.NavDestination.Companion.hasRoute
-import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.dialog
-import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navigation
-import com.mikepenz.aboutlibraries.ui.compose.android.produceLibraries
-import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
-import de.davis.keygo.R
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.scene.DialogSceneStrategy
+import androidx.navigation3.ui.NavDisplay
+import androidx.navigation3.ui.defaultPopTransitionSpec
 import de.davis.keygo.app.presentation.component.KeyGoNavigationWrapper
+import de.davis.keygo.app.presentation.navigation.AppNavigator
+import de.davis.keygo.app.presentation.navigation.keyGoEntryProvider
+import de.davis.keygo.app.presentation.navigation.rememberAppNavigationState
+import de.davis.keygo.app.presentation.navigation.resolveAppShell
 import de.davis.keygo.core.presentation.model.RouteDestination
-import de.davis.keygo.core.ui.model.PendingTotpImport
+import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.util.presentation.snackbar.LocalSnackbarManager
 import de.davis.keygo.core.util.presentation.snackbar.SnackbarHandler
-import de.davis.keygo.dashboard.presentation.DetailType
-import de.davis.keygo.dashboard.presentation.dashboardGraph
 import de.davis.keygo.feature.auth.presentation.AuthRoute
-import de.davis.keygo.feature.auth.presentation.authGraph
-import de.davis.keygo.feature.backup.presentation.BackupHubRoute
-import de.davis.keygo.feature.backup.presentation.backupGraph
-import de.davis.keygo.feature.item.create.presentation.totp.AssignTotpRoute
-import de.davis.keygo.feature.item.create.presentation.totp.assignTotpGraph
 import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
-import de.davis.keygo.feature.onboarding.presentation.onboardingGraph
-import de.davis.keygo.feature.settings.presentation.ChangePasswordRoute
-import de.davis.keygo.feature.settings.presentation.settingsGraph
-import de.davis.keygo.feature.totp.presentation.SelectItemForTotpRoute
-import de.davis.keygo.feature.totp.presentation.selectItemForTotpGraph
-import de.davis.keygo.feature.totp.presentation.totpImportRedirectGraph
-import de.davis.keygo.item.dialog.SelectItemContent
-import kotlinx.coroutines.launch
+import de.davis.keygo.feature.totp.presentation.TotpImportRedirect
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.koin.compose.koinInject
-
-private const val TAG = "MainActivity"
 
 class MainActivity : FragmentActivity() {
 
@@ -83,226 +56,93 @@ class MainActivity : FragmentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            val hasAccess by viewModel.isReturningUser.collectAsState()
-            hasAccess ?: return@setContent
+            // Null until the account has been looked up, which the splash screen waits out.
+            val hasAccess = viewModel.isReturningUser.collectAsState().value ?: return@setContent
 
             KeyGoTheme {
                 val snackbarManager = koinInject<SnackbarManager>()
                 CompositionLocalProvider(
                     LocalSnackbarManager provides snackbarManager,
                 ) {
-                    App(hasAccess = hasAccess == true)
+                    App(hasAccess = hasAccess, launchRoute = launchRoute(hasAccess))
                 }
             }
         }
     }
+
+    private fun launchRoute(hasAccess: Boolean): NavKey =
+        intent.totpImportRedirect() ?: if (hasAccess) AuthRoute() else OnboardingRoute()
 }
 
-private fun destinationAfterUnlock(totpUri: String?): Any =
-    totpUri?.let { SelectItemForTotpRoute(it) } ?: RouteDestination.TopLevelAppGraph
-
-internal fun NavController.navigateToValidatedImport(
-    hasAccess: Boolean,
-    pending: PendingTotpImport
-) {
-    navigate(
-        if (hasAccess) AuthRoute(
-            totpInfo = pending.totpInfo,
-            queries = pending.queries,
-        )
-        else OnboardingRoute(
-            totpInfo = pending.totpInfo,
-            queries = pending.queries,
-        ),
-    ) {
-        popUpTo(graph.findStartDestination().id) { inclusive = true }
-    }
-}
-
-/**
- * Where the picker's answer goes. The picker stays composed and collecting through its exit
- * transition, so a double tap on a row can fire twice before the first navigation leaves it.
- * [AssignTotpRoute] is a data class, so launchSingleTop dedupes the repeat instead of pushing it
- * twice onto the back stack.
- */
-internal fun NavController.navigateToAssignTotp(route: AssignTotpRoute) {
-    navigate(route) {
-        launchSingleTop = true
-    }
-}
+private fun Intent.totpImportRedirect(): TotpImportRedirect? =
+    data?.let(TotpImportRedirect::from)
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
-private fun App(hasAccess: Boolean) {
-    val listNavigator = rememberListDetailPaneScaffoldNavigator<DetailType>()
-    val navController = rememberNavController()
-    val activity = LocalActivity.current
+private fun App(hasAccess: Boolean, launchRoute: NavKey) {
+    val navigationState = rememberAppNavigationState(
+        launchRoute = launchRoute,
+        startRoute = RouteDestination.Home,
+        topLevelRoutes = TopLevelRoutes,
+    )
+    val navigator = remember(navigationState) { AppNavigator(navigationState) }
 
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentDestination = navBackStackEntry?.destination
-
-    val showPrimaryActionButton = remember(currentDestination, listNavigator.currentDestination) {
-        currentDestination
-            ?.hierarchy
-            ?.any { it.hasRoute<RouteDestination.Home.NavGraph>() == true } == true && !listNavigator.canNavigateBack()
+    val windowAdaptiveInfo = currentWindowAdaptiveInfoV2()
+    val directive = remember(windowAdaptiveInfo) {
+        calculatePaneScaffoldDirective(windowAdaptiveInfo)
     }
+    val listPaneVisible = directive.maxHorizontalPartitions > 1
 
-    val showChrome = remember(currentDestination, listNavigator.currentDestination) {
-        currentDestination
-            ?.hierarchy
-            ?.any { it.hasRoute<RouteDestination.TopLevelAppGraph>() == true } == true && !listNavigator.canNavigateBack()
+    DropAutoSelectedDetailWhenListLeaves(listPaneVisible, navigator)
+
+    val entries = navigationState.toDecoratedEntries(keyGoEntryProvider(navigator, hasAccess))
+    val shell = entries.resolveAppShell(listPaneVisible)
+
+    val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>(directive = directive)
+    val sceneStrategies = remember(listDetailStrategy) {
+        listOf(DialogSceneStrategy(), listDetailStrategy)
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
     SnackbarHandler(snackbarHostState)
 
-    val scope = rememberCoroutineScope()
-    KeyGoNavigationWrapper(
-        currentDestination = currentDestination,
-        navigateToTopLevelDestination = {
-            navController.navigate(it) {
-                popUpTo<RouteDestination.TopLevelAppGraph> {
-                    saveState = true
-                }
-
-                launchSingleTop = true
-                restoreState = true
+    CompositionLocalProvider(LocalIsInSinglePaneMode provides !listPaneVisible) {
+        KeyGoNavigationWrapper(
+            selectedRoute = navigationState.topLevelRoute,
+            navigateToTopLevelDestination = { navigator.navigate(it) },
+            onButtonClicked = { navigator.navigate(RouteDestination.SelectItemType) },
+            onItemSelected = { type -> navigator.showDetail(RouteDestination.CreateItem(type)) },
+            showChrome = shell.showNavigation,
+            showPrimaryActionButton = shell.showCreateButton,
+            snackbarHost = {
+                SnackbarHost(hostState = snackbarHostState)
             }
-        },
-        onButtonClicked = {
-            navController.navigate(RouteDestination.Home.SelectItem)
-        },
-        onItemSelected = { type ->
-            scope.launch {
-                listNavigator.navigateTo(
-                    ThreePaneScaffoldRole.Primary,
-                    DetailType.Modify.CreateNew(type)
-                )
-            }
-        },
-        showChrome = showChrome,
-        showPrimaryActionButton = showPrimaryActionButton,
-        snackbarHost = {
-            SnackbarHost(hostState = snackbarHostState)
-        }
-    ) {
-        NavHost(
-            navController = navController,
-            startDestination = if (hasAccess) AuthRoute() else OnboardingRoute(),
         ) {
-            totpImportRedirectGraph(
-                onValidated = { pending ->
-                    navController.navigateToValidatedImport(
-                        hasAccess,
-                        pending
-                    )
-                },
-                // The app was launched only to import this code. With nothing left to import, the
-                // Activity is what closes, and :app is the only module that owns one.
-                onRejected = {
-                    activity?.finish() ?: Log.w(
-                        TAG,
-                        "No activity to finish after rejecting an invalid TOTP deep link"
-                    )
-                },
-            )
-
-            selectItemForTotpGraph(
-                onItemSelected = { totpUri, itemId ->
-                    navController.navigateToAssignTotp(AssignTotpRoute(totpUri, itemId.toString()))
-                },
-                onCreateNew = { totpUri ->
-                    navController.navigateToAssignTotp(AssignTotpRoute(totpUri))
-                },
-            )
-
-            assignTotpGraph(
-                onImportFinished = {
-                    navController.navigate(RouteDestination.TopLevelAppGraph) {
-                        popUpTo<SelectItemForTotpRoute> { inclusive = true }
-                    }
-                },
-                navigateUp = { navController.navigateUp() },
-            )
-
-            authGraph(
-                onSuccess = { totpUri ->
-                    navController.navigate(destinationAfterUnlock(totpUri)) {
-                        popUpTo<AuthRoute> { inclusive = true }
-                    }
-                }
-            )
-
-            onboardingGraph(
-                onSuccess = { totpUri ->
-                    navController.navigate(destinationAfterUnlock(totpUri)) {
-                        popUpTo<OnboardingRoute> { inclusive = true }
-                    }
-                }
-            )
-
-            navigation<RouteDestination.TopLevelAppGraph>(
-                startDestination = RouteDestination.Home.NavGraph
-            ) {
-                navigation<RouteDestination.Home.NavGraph>(
-                    startDestination = RouteDestination.Home.Root
-                ) {
-                    dialog<RouteDestination.Home.SelectItem> {
-                        SelectItemContent(
-                            onSelect = {
-                                scope.launch {
-                                    navController.navigateUp()
-                                    scope.launch {
-                                        listNavigator.navigateTo(
-                                            ThreePaneScaffoldRole.Primary,
-                                            DetailType.Modify.CreateNew(it)
-                                        )
-                                    }
-                                }
-                            }
-                        )
-                    }
-
-                    dashboardGraph(listNavigator = listNavigator)
-                }
-
-                settingsGraph(
-                    onOpenChangePassword = { navController.navigate(ChangePasswordRoute) },
-                    onShowLibraries = { navController.navigate(RouteDestination.Libraries) },
-                    onOpenBackup = { navController.navigate(BackupHubRoute) },
-                    onUp = { navController.navigateUp() },
-                )
-
-                composable<RouteDestination.Connectivity> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(id = R.string.coming_soon),
-                            style = MaterialTheme.typography.displaySmall
-                        )
-                    }
-                }
-            }
-
-            composable<RouteDestination.Libraries> {
-                Scaffold(
-                    modifier = Modifier.fillMaxSize()
-                ) { innerPadding ->
-                    val libs by produceLibraries()
-                    LibrariesContainer(
-                        libraries = libs,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = innerPadding
-                    )
-                }
-            }
-
-            backupGraph(
-                navigateToDestination = navController::navigate,
-                navigateUp = { navController.navigateUp() },
+            NavDisplay(
+                entries = entries,
+                onBack = { navigator.goBack() },
+                sceneStrategies = sceneStrategies,
+                // A swipe back fades like any other pop instead of scaling the screen away.
+                predictivePopTransitionSpec = { defaultPopTransitionSpec<NavKey>()(this) },
             )
         }
+    }
+}
+
+/**
+ * Auto-selection is fine beside the list and wrong once the window narrows enough to hand the
+ * detail the whole screen. Only a change is acted on, so a detail restored after process death
+ * stays put.
+ */
+@Composable
+private fun DropAutoSelectedDetailWhenListLeaves(
+    listPaneVisible: Boolean,
+    navigator: AppNavigator,
+) {
+    var wasListPaneVisible by remember { mutableStateOf(listPaneVisible) }
+    LaunchedEffect(listPaneVisible) {
+        val listPaneLeft = wasListPaneVisible && !listPaneVisible
+        wasListPaneVisible = listPaneVisible
+        if (listPaneLeft) navigator.dropAutoSelectedDetail()
     }
 }
