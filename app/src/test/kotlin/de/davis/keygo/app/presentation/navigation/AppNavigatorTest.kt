@@ -266,6 +266,27 @@ class AppNavigatorTest {
     }
 
     @Test
+    fun `a dialog over the detail leaves the pane reporting what it shows`() {
+        val navigator = unlocked()
+        val itemId = newItemId()
+        navigator.showDetail(RouteDestination.ViewItem(itemId))
+
+        navigator.navigate(RouteDestination.SelectItemType)
+
+        // The list reads this to decide whether to pick a row itself. Reading nothing here makes
+        // it pick one, and that lands on top of the dialog and closes it.
+        assertEquals(RouteDestination.ViewItem(itemId), navigator.state.openDetail)
+        assertEquals(
+            listOf(
+                RouteDestination.Home,
+                RouteDestination.ViewItem(itemId),
+                RouteDestination.SelectItemType,
+            ),
+            navigator.shown,
+        )
+    }
+
+    @Test
     fun `back at the start route leaves the stack alone for the display to exit through`() {
         val navigator = unlocked()
 

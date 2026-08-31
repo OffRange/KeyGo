@@ -74,9 +74,16 @@ class AppNavigationState(
     val currentStack: NavBackStack<NavKey>
         get() = if (isLaunching) launchStack else backStacks.getValue(topLevelRoute)
 
-    /** What the detail pane is showing, or null while the list has the window to itself. */
+    /**
+     * What the detail pane is showing, or null while the list has the window to itself.
+     *
+     * A dialog is pushed onto the same stack but is drawn over the pane rather than taking it, so
+     * it is looked past. Reporting nothing while one is open makes the list pick a row on its own
+     * and push it above the dialog, which closes the dialog and leaves the pane the only thing the
+     * scene knows about.
+     */
     val openDetail: RouteDestination.Detail?
-        get() = currentStack.lastOrNull() as? RouteDestination.Detail
+        get() = currentStack.filterIsInstance<RouteDestination.Detail>().lastOrNull()
 
     /**
      * Turns the state into the entries the display renders. Every stack keeps its own decorators,
