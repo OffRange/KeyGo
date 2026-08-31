@@ -17,19 +17,21 @@ import androidx.credentials.exceptions.GetCredentialUnknownException
 import androidx.credentials.provider.PendingIntentHandler
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.ui.NavDisplay
 import de.davis.keygo.core.identity.presentation.rememberBiometricUnlockAdapter
 import de.davis.keygo.core.identity.presentation.useAdapter
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.BiometricString
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
+import de.davis.keygo.core.ui.navigation.rememberNavEntryDecorators
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.auth.presentation.AuthRoute
-import de.davis.keygo.feature.auth.presentation.authGraph
+import de.davis.keygo.feature.auth.presentation.authEntries
 import de.davis.keygo.feature.credentials.presentation.auth.SessionAuthState
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
@@ -88,19 +90,21 @@ internal class ProvidePasskeyActivity : FragmentActivity() {
                     }
 
                     SessionAuthState.NeedsPassword -> {
-                        val navController = rememberNavController()
+                        val backStack =
+                            rememberNavBackStack(AuthRoute(showBiometricPromptIfPossible = false))
+
                         Scaffold { innerPadding ->
-                            NavHost(
-                                navController = navController,
-                                startDestination = AuthRoute(showBiometricPromptIfPossible = false),
+                            NavDisplay(
+                                backStack = backStack,
+                                onBack = { backStack.removeLastOrNull() },
+                                entryDecorators = rememberNavEntryDecorators(),
                                 modifier = Modifier
                                     .padding(innerPadding)
                                     .consumeWindowInsets(innerPadding),
-                            ) {
-                                authGraph(
-                                    onSuccess = { viewModel.onUnlocked() }
-                                )
-                            }
+                                entryProvider = entryProvider {
+                                    authEntries(onSuccess = { viewModel.onUnlocked() })
+                                },
+                            )
                         }
                     }
 

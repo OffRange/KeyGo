@@ -15,7 +15,7 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.stringResource
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation3.runtime.rememberNavBackStack
 import de.davis.keygo.core.identity.presentation.rememberBiometricUnlockAdapter
 import de.davis.keygo.core.identity.presentation.useAdapter
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
@@ -118,27 +118,33 @@ internal class AutofillActivity : FragmentActivity() {
                     viewModel.start()
                 }
 
-                val navController = rememberNavController()
                 if (uiState.request !is Request.None) {
+                    val backStack = rememberNavBackStack(
+                        AuthRoute(
+                            showBiometricPromptIfPossible =
+                                uiState.request !is Request.JustAuthenticateWithPwd,
+                        ),
+                    )
+
                     AutofillUi(
-                        navController = navController,
+                        backStack = backStack,
                         onItemSelected = { viewModel.onEvent(AutofillUiEvent.OnItemSelected(it)) },
                         onSaved = ::finishWithResult,
                         abort = ::finishWithResult,
                         onAuthenticationSucceeded = {
-                            when (uiState.request) {
+                            when (val request = uiState.request) {
                                 is Request.JustAuthenticateWithPwd -> viewModel.onEvent(
                                     AutofillUiEvent.OnAuthenticated
                                 )
 
+                                // The gate is replaced rather than pushed over: back from here
+                                // leaves the activity.
                                 else -> {
-                                    navController.navigate(uiState.request.destination) {
-                                        popUpTo<AuthRoute> { inclusive = true }
-                                    }
+                                    backStack.clear()
+                                    backStack.add(request.destination)
                                 }
                             }
                         },
-                        showBiometricPromptIfPossible = uiState.request !is Request.JustAuthenticateWithPwd
                     )
                 }
 

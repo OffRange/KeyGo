@@ -1,10 +1,8 @@
 package de.davis.keygo.feature.auth.presentation
 
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.navigation.toRoute
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockWithPasswordUseCase
@@ -28,12 +26,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
 import javax.crypto.Cipher
 
 @KoinViewModel
 internal class AuthViewModel(
-    savedStateHandle: SavedStateHandle,
+    @InjectedParam private val authRoute: AuthRoute,
     biometricAvailabilityRepository: BiometricAvailabilityRepository,
     accountRepository: AccountRepository,
 
@@ -48,8 +47,6 @@ internal class AuthViewModel(
 ) : ViewModel() {
     private val biometricChannel = Channel<BiometricRequest>(Channel.BUFFERED)
     val biometricFlow = biometricChannel.receiveAsFlow()
-
-    private val authRoute = savedStateHandle.toRoute<AuthRoute>()
 
     val hasPendingTotpImport: Boolean = authRoute.uri != null
 

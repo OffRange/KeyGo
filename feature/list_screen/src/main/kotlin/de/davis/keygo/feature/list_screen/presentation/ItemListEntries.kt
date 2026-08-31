@@ -1,13 +1,13 @@
 package de.davis.keygo.feature.list_screen.presentation
 
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.navigation.NavGraphBuilder
-import androidx.navigation.compose.composable
+import androidx.navigation3.runtime.EntryProviderScope
+import androidx.navigation3.runtime.NavKey
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 
 @OptIn(ExperimentalMaterial3Api::class)
-fun NavGraphBuilder.itemListGraph(
+fun EntryProviderScope<NavKey>.itemListEntries(
     onItemClick: (ItemId) -> Unit,
     onCreateRequest: (VaultItemType) -> Unit,
     onItemLongClick: (ItemId) -> Unit = {},
@@ -17,7 +17,7 @@ fun NavGraphBuilder.itemListGraph(
     enableSelection: Boolean = false,
     dockedSearchResults: Boolean = false,
 ) {
-    composable<ItemListRoute> {
+    entry<ItemListRoute> {
         ItemListScreen(
             onItemClick = onItemClick,
             onItemLongClick = onItemLongClick,
