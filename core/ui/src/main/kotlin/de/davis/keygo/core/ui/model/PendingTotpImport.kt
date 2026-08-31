@@ -9,11 +9,14 @@ data class PendingTotpImport(
 ) {
     val uri: String?
         get() = if (!totpInfo.isNullOrBlank() && !queries.isNullOrBlank())
-            "otpauth://totp/$totpInfo?$queries"
+            "$BASE_PATH/$totpInfo?$queries"
         else null
 
     companion object {
-        const val BASE_PATH = "otpauth://totp"
-        const val URI_PATTERN = "otpauth://totp/{totpInfo}?{queries}"
+        /** Must stay in sync with the `otpauth` intent filter in the app's manifest. */
+        const val SCHEME = "otpauth"
+        const val HOST = "totp"
+
+        const val BASE_PATH = "$SCHEME://$HOST"
     }
 }
