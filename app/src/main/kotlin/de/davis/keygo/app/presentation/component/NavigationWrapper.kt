@@ -1,12 +1,5 @@
 package de.davis.keygo.app.presentation.component
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,14 +54,20 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldLayout
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldState
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldValue
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
+import androidx.compose.material3.adaptive.navigationsuite.rememberNavigationSuiteScaffoldState
 import androidx.compose.material3.animateFloatingActionButton
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -82,6 +81,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -138,6 +139,15 @@ fun KeyGoNavigationWrapper(
 
     val scrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
 
+    val scaffoldState = rememberNavigationSuiteScaffoldState()
+    LaunchedEffect(showChrome) {
+        if (showChrome) scaffoldState.show() else scaffoldState.hide()
+    }
+
+    // Height of the primary action button, so the snackbar can clear it. Measured on the
+    // button itself and not on its menu, which grows to the full item list when expanded.
+    var primaryActionHeight by remember { mutableIntStateOf(0) }
+
     ModalNavigationDrawer(
         drawerContent = {
             ModalDrawerSheet(
@@ -161,38 +171,25 @@ fun KeyGoNavigationWrapper(
         drawerState = drawerState
     ) {
         Surface(color = containerColor, contentColor = contentColor) {
-            KeyGoNavigationSuiteScaffoldLayout(
+            NavigationSuiteScaffoldLayout(
                 navigationSuite = {
-                    Box {
-                        AnimatedVisibility(
-                            visible = showChrome,
-                            enter = when (layoutType) {
-                                NavigationSuiteType.NavigationBar -> expandVertically()
-                                else -> expandHorizontally()
-                            } + fadeIn(),
-                            exit = when (layoutType) {
-                                NavigationSuiteType.NavigationBar -> shrinkVertically()
-                                else -> shrinkHorizontally()
-                            } + fadeOut()
-                        ) {
-                            KeyGoNavigationSuite(
-                                selectedRoute = selectedRoute,
-                                layoutType = layoutType,
-                                navigateToTopLvlDestination = navigateToTopLevelDestination,
-                                onButtonClicked = onButtonClicked,
-                                onOpenDrawer = {
-                                    scope.launch {
-                                        drawerState.open()
-                                    }
-                                },
-                                buttonContainerColor = buttonContainerColor,
-                                buttonContentColor = buttonContentColor,
-                                scrollBehavior = scrollBehavior
-                            )
-                        }
-                    }
+                    KeyGoNavigationSuite(
+                        selectedRoute = selectedRoute,
+                        layoutType = layoutType,
+                        navigateToTopLvlDestination = navigateToTopLevelDestination,
+                        onButtonClicked = onButtonClicked,
+                        onOpenDrawer = {
+                            scope.launch {
+                                drawerState.open()
+                            }
+                        },
+                        buttonContainerColor = buttonContainerColor,
+                        buttonContentColor = buttonContentColor,
+                        scrollBehavior = scrollBehavior
+                    )
                 },
                 navigationSuiteType = layoutType,
+                state = scaffoldState,
                 primaryActionContent = {
                     var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
                     val focusRequester = remember { FocusRequester() }
@@ -220,6 +217,7 @@ fun KeyGoNavigationWrapper(
                                     checked = fabMenuExpanded,
                                     onCheckedChange = { fabMenuExpanded = !fabMenuExpanded },
                                     modifier = Modifier
+                                        .onSizeChanged { primaryActionHeight = it.height }
                                         .semantics {
                                             traversalIndex = -1f
                                         }
@@ -257,27 +255,30 @@ fun KeyGoNavigationWrapper(
                         }
                     }
                 },
-                snackbarHost = snackbarHost,
                 content = {
                     Box(
                         Modifier
-                            .consumeWindowInsets(
-                                when (layoutType) {
-                                    NavigationSuiteType.NavigationBar ->
-                                        NavigationBarDefaults.windowInsets.only(WindowInsetsSides.Bottom)
-
-                                    NavigationSuiteType.NavigationRail ->
-                                        NavigationRailDefaults.windowInsets.only(WindowInsetsSides.Start)
-
-                                    NavigationSuiteType.NavigationDrawer ->
-                                        DrawerDefaults.windowInsets.only(WindowInsetsSides.Start)
-
-                                    else -> WindowInsets(0, 0, 0, 0)
-                                }
-                            )
+                            .fillMaxSize()
+                            .consumeWindowInsets(navigationInsets(layoutType, scaffoldState))
                             .nestedScroll(scrollBehavior.nestedScrollConnection)
                     ) {
                         content()
+
+                        // This slot ends where the navigation component starts, so a bottom
+                        // aligned host clears the component on its own and follows it as it
+                        // collapses. Only the primary action button is left to pad around.
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(
+                                    bottom = if (showChrome && showPrimaryActionButton)
+                                        with(LocalDensity.current) { primaryActionHeight.toDp() } +
+                                                PrimaryActionContentPadding
+                                    else 0.dp
+                                )
+                        ) {
+                            snackbarHost()
+                        }
                     }
                 }
             )
@@ -535,6 +536,29 @@ fun DrawerContent(
         }
     }
 }
+
+@Composable
+private fun navigationInsets(
+    layoutType: NavigationSuiteType,
+    state: NavigationSuiteScaffoldState,
+): WindowInsets =
+    if (state.currentValue == NavigationSuiteScaffoldValue.Hidden && !state.isAnimating)
+        WindowInsets(0, 0, 0, 0)
+    else when (layoutType) {
+        NavigationSuiteType.NavigationBar ->
+            NavigationBarDefaults.windowInsets.only(WindowInsetsSides.Bottom)
+
+        NavigationSuiteType.NavigationRail ->
+            NavigationRailDefaults.windowInsets.only(WindowInsetsSides.Start)
+
+        NavigationSuiteType.NavigationDrawer ->
+            DrawerDefaults.windowInsets.only(WindowInsetsSides.Start)
+
+        else -> WindowInsets(0, 0, 0, 0)
+    }
+
+/** The padding [NavigationSuiteScaffoldLayout] places around the primary action content. */
+private val PrimaryActionContentPadding = 16.dp
 
 @Suppress("VisualLintOverlap")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
