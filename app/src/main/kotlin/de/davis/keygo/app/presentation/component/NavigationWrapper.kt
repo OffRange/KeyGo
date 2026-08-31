@@ -215,10 +215,20 @@ fun KeyGoNavigationWrapper(
                     var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
                     val focusRequester = remember { FocusRequester() }
 
+                    val showPrimaryAction = showChrome && showPrimaryActionButton
+
+                    // The open menu draws no scrim and consumes nothing outside its items, so the
+                    // destination underneath keeps taking taps and can navigate away while the
+                    // menu is still open. The menu belongs to the shell and outlives that
+                    // navigation, so a destination that drops the button takes the menu with it.
+                    LaunchedEffect(showPrimaryAction) {
+                        if (!showPrimaryAction) fabMenuExpanded = false
+                    }
+
                     FloatingActionButtonMenu(
                         expanded = fabMenuExpanded,
                         modifier = Modifier.animateFloatingActionButton(
-                            visible = (showChrome && showPrimaryActionButton) || fabMenuExpanded,
+                            visible = showPrimaryAction || fabMenuExpanded,
                             alignment = Alignment.BottomEnd,
                         ),
                         button = {
