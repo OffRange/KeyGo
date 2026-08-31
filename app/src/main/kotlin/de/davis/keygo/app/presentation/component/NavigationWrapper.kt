@@ -1,5 +1,6 @@
 package de.davis.keygo.app.presentation.component
 
+import android.view.accessibility.AccessibilityManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,8 +22,6 @@ import androidx.compose.material.icons.automirrored.filled.MenuOpen
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Menu
-import androidx.compose.material3.BottomAppBarDefaults
-import androidx.compose.material3.BottomAppBarScrollBehavior
 import androidx.compose.material3.DrawerDefaults
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -64,6 +63,7 @@ import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -77,11 +77,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
@@ -97,7 +100,7 @@ import de.davis.keygo.app.presentation.AppDestinations
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
+import kotlin.math.sign
 import de.davis.keygo.core.ui.R as CoreUiR
 
 
@@ -137,11 +140,30 @@ fun KeyGoNavigationWrapper(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    val scrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
-
     val scaffoldState = rememberNavigationSuiteScaffoldState()
-    LaunchedEffect(showChrome) {
-        if (showChrome) scaffoldState.show() else scaffoldState.hide()
+
+    val touchExplorationEnabled = rememberTouchExplorationEnabled()
+    val hidesOnScroll =
+        layoutType == NavigationSuiteType.NavigationBar && !touchExplorationEnabled
+
+    var hiddenByScroll by remember { mutableStateOf(false) }
+
+    // A newly selected top level destination shows its own content from the top, and a layout
+    // type that does not hide leaves nothing to come back from, so both start the component
+    // visible again.
+    LaunchedEffect(selectedRoute, hidesOnScroll) { hiddenByScroll = false }
+
+    val showNavigation = showChrome && !(hidesOnScroll && hiddenByScroll)
+    LaunchedEffect(showNavigation) {
+        if (showNavigation) scaffoldState.show() else scaffoldState.hide()
+    }
+
+    val density = LocalDensity.current
+    val scrollConnection = remember(density) {
+        NavigationScrollConnection(
+            thresholdPx = with(density) { NavigationScrollThreshold.toPx() },
+            onVisibilityChange = { visible -> hiddenByScroll = !visible },
+        )
     }
 
     // Height of the primary action button, so the snackbar can clear it. Measured on the
@@ -185,7 +207,6 @@ fun KeyGoNavigationWrapper(
                         },
                         buttonContainerColor = buttonContainerColor,
                         buttonContentColor = buttonContentColor,
-                        scrollBehavior = scrollBehavior
                     )
                 },
                 navigationSuiteType = layoutType,
@@ -260,7 +281,10 @@ fun KeyGoNavigationWrapper(
                         Modifier
                             .fillMaxSize()
                             .consumeWindowInsets(navigationInsets(layoutType, scaffoldState))
-                            .nestedScroll(scrollBehavior.nestedScrollConnection)
+                            .then(
+                                if (hidesOnScroll) Modifier.nestedScroll(scrollConnection)
+                                else Modifier
+                            )
                     ) {
                         content()
 
@@ -286,7 +310,6 @@ fun KeyGoNavigationWrapper(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KeyGoNavigationSuite(
     selectedRoute: NavKey?,
@@ -296,14 +319,12 @@ fun KeyGoNavigationSuite(
     onOpenDrawer: () -> Unit,
     buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
     buttonContentColor: Color = contentColorFor(buttonContainerColor),
-    scrollBehavior: BottomAppBarScrollBehavior? = null,
 ) {
     when (layoutType) {
         NavigationSuiteType.NavigationBar -> {
             KeyGoNavigationBar(
                 selectedRoute = selectedRoute,
                 navigateToTopLvlDestination = navigateToTopLvlDestination,
-                scrollBehavior = scrollBehavior
             )
         }
 
@@ -332,26 +353,12 @@ fun KeyGoNavigationSuite(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KeyGoNavigationBar(
     selectedRoute: NavKey?,
     navigateToTopLvlDestination: (NavKey) -> Unit,
-    scrollBehavior: BottomAppBarScrollBehavior? = null
 ) {
-    NavigationBar(
-        modifier = Modifier.layout { measurable, constraints ->
-            val placeable = measurable.measure(constraints)
-
-            // Sets the app bar's height offset to collapse the entire bar's height when
-            // content is scrolled.
-            scrollBehavior?.state?.heightOffsetLimit = -placeable.height.toFloat()
-
-            val height = (placeable.height + (scrollBehavior?.state?.heightOffset ?: 0f))
-                .coerceAtLeast(0f)
-            layout(placeable.width, height.roundToInt()) { placeable.place(0, 0) }
-        } // TODO decide to add appBarDragModifier
-    ) {
+    NavigationBar {
         AppDestinations.entries.forEach { destination ->
             NavigationBarItem(
                 selected = destination.route == selectedRoute,
@@ -557,8 +564,78 @@ private fun navigationInsets(
         else -> WindowInsets(0, 0, 0, 0)
     }
 
+/**
+ * Hides the navigation component once the content has been scrolled [thresholdPx] down, and brings
+ * it back on the same distance scrolled up.
+ *
+ * Only the distance the content actually consumed counts, so overscrolling at either end of a list
+ * does not move the component, and content that cannot scroll at all never hides it.
+ */
+private class NavigationScrollConnection(
+    private val thresholdPx: Float,
+    private val onVisibilityChange: (visible: Boolean) -> Unit,
+) : NestedScrollConnection {
+
+    private var accumulated = 0f
+
+    override fun onPostScroll(
+        consumed: Offset,
+        available: Offset,
+        source: NestedScrollSource,
+    ): Offset {
+        // A scroll that moved the content nowhere, a horizontal one included, leaves the run
+        // it interrupted intact.
+        val delta = consumed.y
+        if (delta != 0f) {
+            // A change of direction starts a new run, so scrolling back reverses the decision
+            // after one threshold instead of first having to undo the whole distance travelled.
+            if (delta.sign != accumulated.sign) accumulated = 0f
+            accumulated = (accumulated + delta).coerceIn(-thresholdPx, thresholdPx)
+
+            if (accumulated <= -thresholdPx) onVisibilityChange(false)
+            else if (accumulated >= thresholdPx) onVisibilityChange(true)
+        }
+
+        // Nothing is consumed here: the scroll belongs to the content, this only watches it.
+        return super.onPostScroll(consumed, available, source)
+    }
+}
+
+/**
+ * Whether an accessibility service that uses touch exploration, such as TalkBack, is running.
+ *
+ * Scroll driven hiding stays off while one is, the way Material does it for its own app bars: the
+ * component a screen reader user navigates with must not move out from under them.
+ */
+@Composable
+private fun rememberTouchExplorationEnabled(): Boolean {
+    val context = LocalContext.current
+    val accessibilityManager =
+        remember(context) { context.getSystemService(AccessibilityManager::class.java) }
+
+    var enabled by remember(accessibilityManager) {
+        mutableStateOf(accessibilityManager?.isTouchExplorationEnabled == true)
+    }
+
+    DisposableEffect(accessibilityManager) {
+        if (accessibilityManager == null) return@DisposableEffect onDispose {}
+
+        // The service may have been switched while this was not listening.
+        enabled = accessibilityManager.isTouchExplorationEnabled
+
+        val listener = AccessibilityManager.TouchExplorationStateChangeListener { enabled = it }
+        accessibilityManager.addTouchExplorationStateChangeListener(listener)
+        onDispose { accessibilityManager.removeTouchExplorationStateChangeListener(listener) }
+    }
+
+    return enabled
+}
+
 /** The padding [NavigationSuiteScaffoldLayout] places around the primary action content. */
 private val PrimaryActionContentPadding = 16.dp
+
+/** How far the content has to be scrolled before the navigation component follows it away. */
+private val NavigationScrollThreshold = 24.dp
 
 @Suppress("VisualLintOverlap")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
