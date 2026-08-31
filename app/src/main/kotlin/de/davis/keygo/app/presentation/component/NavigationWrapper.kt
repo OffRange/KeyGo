@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -26,6 +25,7 @@ import androidx.compose.material3.DrawerDefaults
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.FloatingActionButtonMenu
@@ -503,32 +503,25 @@ fun DrawerContent(
             }
         }
 
-        // TODO decide if this or the default ExtendedFab is better (ExtendedFabTextPadding)
-        FloatingActionButton(
+        ExtendedFloatingActionButton(
             onClick = onButtonClicked,
             modifier = Modifier.padding(top = 8.dp, bottom = 40.dp),
             containerColor = buttonContainerColor,
             contentColor = buttonContentColor,
-        ) {
-            Row(
-                modifier =
-                    Modifier
-                        .sizeIn(minWidth = 80.dp /*ExtendedFabMinimumWidth*/)
-                        .padding(horizontal = 16.dp /*ExtendedFabTextPadding - 4.dp*/),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            text = {
+                Text(
+                    text = stringResource(CoreUiR.string.add),
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                )
+            },
+            icon = {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = stringResource(R.string.add_element_content_description),
                 )
-                Text(
-                    text = stringResource(CoreUiR.string.add),
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center
-                )
             }
-        }
+        )
 
         Column(
             modifier = Modifier
