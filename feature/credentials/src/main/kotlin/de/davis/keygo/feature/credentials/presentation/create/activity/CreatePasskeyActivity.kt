@@ -35,14 +35,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
-import androidx.navigation3.ui.NavDisplay
 import de.davis.keygo.core.identity.presentation.rememberBiometricUnlockAdapter
 import de.davis.keygo.core.identity.presentation.useAdapter
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.BiometricString
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
-import de.davis.keygo.core.ui.navigation.rememberNavEntryDecorators
+import de.davis.keygo.core.ui.navigation.KeyGoNavDisplay
 import de.davis.keygo.core.ui.text.htmlStringResource
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.onFailure
@@ -90,7 +89,6 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                 }
 
                 val authenticatedBackStack = rememberNavBackStack(ListDest)
-                val entryDecorators = rememberNavEntryDecorators()
 
                 ObserveAsEvents(flow = viewModel.event) {
                     when (it) {
@@ -191,55 +189,39 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                     SessionAuthState.NeedsPassword -> {
                         val authBackStack =
                             rememberNavBackStack(AuthRoute(showBiometricPromptIfPossible = false))
-                        Scaffold { innerPadding ->
-                            NavDisplay(
-                                backStack = authBackStack,
-                                onBack = { authBackStack.removeLastOrNull() },
-                                entryDecorators = entryDecorators,
-                                modifier = Modifier
-                                    .padding(innerPadding)
-                                    .consumeWindowInsets(innerPadding),
-                                entryProvider = entryProvider {
-                                    authEntries(onSuccess = { viewModel.onUnlocked() })
-                                },
-                            )
-                        }
+                        KeyGoNavDisplay(
+                            backStack = authBackStack,
+                            entryProvider = entryProvider {
+                                authEntries(onSuccess = { viewModel.onUnlocked() })
+                            },
+                        )
                     }
 
-                    SessionAuthState.Authenticated -> {
-                        Scaffold { innerPadding ->
-                            NavDisplay(
-                                backStack = authenticatedBackStack,
-                                onBack = { authenticatedBackStack.removeLastOrNull() },
-                                entryDecorators = entryDecorators,
-                                modifier = Modifier
-                                    .padding(innerPadding)
-                                    .consumeWindowInsets(innerPadding),
-                                entryProvider = entryProvider {
-                                    entry<ListDest> {
-                                        PasskeyItemListScreen(
-                                            onItemClick = viewModel::onItemClicked,
-                                            onCreateClicked = {
-                                                authenticatedBackStack.add(CreateItem)
-                                            }
-                                        )
+                    SessionAuthState.Authenticated -> KeyGoNavDisplay(
+                        backStack = authenticatedBackStack,
+                        entryProvider = entryProvider {
+                            entry<ListDest> {
+                                PasskeyItemListScreen(
+                                    onItemClick = viewModel::onItemClicked,
+                                    onCreateClicked = {
+                                        authenticatedBackStack.add(CreateItem)
                                     }
+                                )
+                            }
 
-                                    entry<CreateItem> {
-                                        LoginScreen(
-                                            pendingPasskeyRP = rp,
-                                            loginCreated = {
-                                                viewModel.associatePasskeyAndFinish(it)
-                                            },
-                                            navigateBack = {
-                                                cancel("User cancelled passkey creation")
-                                            },
-                                        )
-                                    }
-                                },
-                            )
-                        }
-                    }
+                            entry<CreateItem> {
+                                LoginScreen(
+                                    pendingPasskeyRP = rp,
+                                    loginCreated = {
+                                        viewModel.associatePasskeyAndFinish(it)
+                                    },
+                                    navigateBack = {
+                                        cancel("User cancelled passkey creation")
+                                    },
+                                )
+                            }
+                        },
+                    )
                 }
             }
         }

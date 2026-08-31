@@ -5,11 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
 import androidx.credentials.GetCredentialResponse
 import androidx.credentials.GetPublicKeyCredentialOption
 import androidx.credentials.PublicKeyCredential
@@ -19,13 +15,12 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
-import androidx.navigation3.ui.NavDisplay
 import de.davis.keygo.core.identity.presentation.rememberBiometricUnlockAdapter
 import de.davis.keygo.core.identity.presentation.useAdapter
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.BiometricString
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
-import de.davis.keygo.core.ui.navigation.rememberNavEntryDecorators
+import de.davis.keygo.core.ui.navigation.KeyGoNavDisplay
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
@@ -93,19 +88,12 @@ internal class ProvidePasskeyActivity : FragmentActivity() {
                         val backStack =
                             rememberNavBackStack(AuthRoute(showBiometricPromptIfPossible = false))
 
-                        Scaffold { innerPadding ->
-                            NavDisplay(
-                                backStack = backStack,
-                                onBack = { backStack.removeLastOrNull() },
-                                entryDecorators = rememberNavEntryDecorators(),
-                                modifier = Modifier
-                                    .padding(innerPadding)
-                                    .consumeWindowInsets(innerPadding),
-                                entryProvider = entryProvider {
-                                    authEntries(onSuccess = { viewModel.onUnlocked() })
-                                },
-                            )
-                        }
+                        KeyGoNavDisplay(
+                            backStack = backStack,
+                            entryProvider = entryProvider {
+                                authEntries(onSuccess = { viewModel.onUnlocked() })
+                            },
+                        )
                     }
 
                     SessionAuthState.Authenticated -> {

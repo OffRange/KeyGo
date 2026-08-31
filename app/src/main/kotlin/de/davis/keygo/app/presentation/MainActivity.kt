@@ -22,8 +22,6 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.scene.DialogSceneStrategy
-import androidx.navigation3.ui.NavDisplay
-import androidx.navigation3.ui.defaultPopTransitionSpec
 import de.davis.keygo.app.presentation.component.KeyGoNavigationWrapper
 import de.davis.keygo.app.presentation.navigation.AppNavigator
 import de.davis.keygo.app.presentation.navigation.keyGoEntryProvider
@@ -31,6 +29,7 @@ import de.davis.keygo.app.presentation.navigation.rememberAppNavigationState
 import de.davis.keygo.app.presentation.navigation.resolveAppShell
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
+import de.davis.keygo.core.ui.navigation.KeyGoNavDisplay
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.util.presentation.snackbar.LocalSnackbarManager
@@ -118,12 +117,10 @@ private fun App(hasAccess: Boolean, launchRoute: NavKey) {
                 SnackbarHost(hostState = snackbarHostState)
             }
         ) {
-            NavDisplay(
+            KeyGoNavDisplay(
                 entries = entries,
                 onBack = { navigator.goBack() },
                 sceneStrategies = sceneStrategies,
-                // A swipe back fades like any other pop instead of scaling the screen away.
-                predictivePopTransitionSpec = { defaultPopTransitionSpec<NavKey>()(this) },
             )
         }
     }
