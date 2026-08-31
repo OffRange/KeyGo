@@ -18,5 +18,5 @@ dependencies {
     implementation(projects.feature.backup)
     implementation(projects.feature.autofill)
 
-    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.navigation3.runtime)
 }

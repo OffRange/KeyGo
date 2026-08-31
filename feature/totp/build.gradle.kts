@@ -28,7 +28,7 @@ dependencies {
     implementation(projects.core.util)
     implementation(projects.feature.listScreen)
 
-    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.navigation3.runtime)
 
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.compose)
