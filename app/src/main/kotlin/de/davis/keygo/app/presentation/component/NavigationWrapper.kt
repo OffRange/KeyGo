@@ -650,7 +650,7 @@ private fun KeyGoNavigationWrapperPreview() {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             KeyGoNavigationWrapper(
-                selectedRoute = null,
+                selectedRoute = AppDestinations.entries.first().route,
                 navigateToTopLevelDestination = {},
                 onButtonClicked = {},
                 onItemSelected = {},
