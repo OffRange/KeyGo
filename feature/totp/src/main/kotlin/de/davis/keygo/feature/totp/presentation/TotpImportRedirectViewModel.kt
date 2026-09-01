@@ -2,7 +2,6 @@ package de.davis.keygo.feature.totp.presentation
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
-import de.davis.keygo.core.ui.model.PendingTotpImport
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.rust.totp.TotpService
 import de.davis.keygo.rust.totp.getInfoFromUriWithResult
@@ -14,7 +13,7 @@ import org.koin.core.annotation.KoinViewModel
 
 @KoinViewModel
 internal class TotpImportRedirectViewModel(
-    @InjectedParam private val pendingImport: PendingTotpImport,
+    @InjectedParam private val route: TotpImportRedirect,
     private val totpService: TotpService,
 ) : ViewModel() {
 
@@ -27,13 +26,13 @@ internal class TotpImportRedirectViewModel(
     }
 
     private fun validate(): TotpImportRedirectState {
-        val uri = pendingImport.uri ?: run {
+        val uri = route.uri ?: run {
             Log.e(TAG, "Deep link carried no complete otpauth uri")
             return TotpImportRedirectState.Invalid
         }
 
         return totpService.getInfoFromUriWithResult(uri).fold(
-            onSuccess = { TotpImportRedirectState.Valid },
+            onSuccess = { TotpImportRedirectState.Valid(uri) },
             onFailure = { failure ->
                 Log.e(TAG, "Error parsing TOTP URI: $failure")
                 TotpImportRedirectState.Invalid

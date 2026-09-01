@@ -14,10 +14,11 @@ import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.auth.presentation.model.BiometricRequest
 import org.koin.androidx.compose.koinViewModel
+import org.koin.core.parameter.parametersOf
 
 @Composable
-fun AuthScreen(onSuccess: () -> Unit) {
-    val viewModel = koinViewModel<AuthViewModel>()
+fun AuthScreen(route: AuthRoute, onSuccess: () -> Unit) {
+    val viewModel = koinViewModel<AuthViewModel> { parametersOf(route) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     val currentOnSuccess by rememberUpdatedState(onSuccess)

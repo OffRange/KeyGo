@@ -105,7 +105,6 @@ internal class ItemListViewModel(
     }.distinctUntilChanged()
 
     private val selection = MutableStateFlow(ItemSelection())
-    private val highlightedId = MutableStateFlow<ItemId?>(null)
     private val _isVaultFlowVisible = MutableStateFlow(false)
     private val _isDeleteConfirmationVisible = MutableStateFlow(false)
 
@@ -130,16 +129,14 @@ internal class ItemListViewModel(
         searchState,
         selection,
         submittedSearchQuery,
-        highlightedId,
         _isVaultFlowVisible,
         _isDeleteConfirmationVisible,
-    ) { vaultsAndSel, items, searchState, selection, submittedSearchQuery, highlightedId, isVaultFlowVisible, isDeleteConfirmationVisible ->
+    ) { vaultsAndSel, items, searchState, selection, submittedSearchQuery, isVaultFlowVisible, isDeleteConfirmationVisible ->
         ListItemState(
             items = items,
             searchState = searchState,
             hasSearchQuery = submittedSearchQuery.isNotBlank(),
             selection = selection,
-            highlightedId = highlightedId,
             isVaultFlowVisible = isVaultFlowVisible,
             isDeleteConfirmationVisible = isDeleteConfirmationVisible,
             vaults = vaultsAndSel.vaults,
@@ -226,10 +223,6 @@ internal class ItemListViewModel(
         searchTextFieldState.setTextAndPlaceCursorAtEnd(submittedSearchQuery.value)
     }
 
-    fun resetHighlight() {
-        highlightedId.update { null }
-    }
-
     fun onClearQuery() {
         searchTextFieldState.clearText()
         submittedSearchQuery.update { "" }
@@ -272,8 +265,6 @@ internal class ItemListViewModel(
         // Read off the list still on screen: after the delete lands the flow has already dropped
         // these rows, so the survivor has to be picked before the write.
         val firstItemId = listItemState.value.items.firstOrNull { it.id !in deleted }?.id
-        if (highlightedId.value in deleted)
-            highlightedId.update { firstItemId }
 
         viewModelScope.launch {
             itemRepository.deleteItems(deleted)
@@ -287,7 +278,6 @@ internal class ItemListViewModel(
             val isSelected = itemId in selection.value.ids
             updateItemSelectionState(itemId, selected = !isSelected)
         } else {
-            highlightedId.update { itemId }
             _event.trySend(Event.ItemSelected(itemId))
         }
     }

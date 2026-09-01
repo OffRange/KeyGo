@@ -69,14 +69,15 @@ import de.davis.keygo.feature.onboarding.presentation.model.AutofillSetupAction
 import de.davis.keygo.feature.onboarding.presentation.model.OnboardingStepProgress
 import de.davis.keygo.feature.onboarding.presentation.model.OnboardingUiState
 import org.koin.androidx.compose.koinViewModel
+import org.koin.core.parameter.parametersOf
 
 private const val TAG = "OnboardingScreen"
 private val OnboardingMaxWidth = 480.dp
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun OnboardingScreen(onSuccess: () -> Unit) {
-    val viewModel = koinViewModel<OnboardingViewModel>()
+fun OnboardingScreen(route: OnboardingRoute, onSuccess: () -> Unit) {
+    val viewModel = koinViewModel<OnboardingViewModel> { parametersOf(route) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val stepProgress by viewModel.stepProgress.collectAsStateWithLifecycle()
 

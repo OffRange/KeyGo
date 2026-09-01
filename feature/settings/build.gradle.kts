@@ -22,8 +22,6 @@ dependencies {
     implementation(projects.feature.autofill)
     implementation(projects.feature.backup)
 
-    implementation(libs.androidx.navigation.compose)
-
     testImplementation(testFixtures(projects.core.identity))
     testImplementation(testFixtures(projects.core.security))
     testImplementation(testFixtures(projects.rust))

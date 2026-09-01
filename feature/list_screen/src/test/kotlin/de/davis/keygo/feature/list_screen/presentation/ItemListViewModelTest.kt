@@ -16,10 +16,12 @@ import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.RankSearchResultsUseCase
+import de.davis.keygo.feature.list_screen.presentation.model.Event
 import de.davis.keygo.feature.vault.domain.usecase.ObserveVaultsAndSelectionUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -393,6 +395,28 @@ class ItemListViewModelTest {
 
         assertEquals(emptySet(), pinnedIds())
         assertFalse(vm.listItemState.value.allSelectedPinned)
+    }
+
+    /**
+     * Which row is marked as open is read off the detail pane by the screen, not kept here. All
+     * this owes the caller is the event that moves the pane in the first place.
+     */
+    @Test
+    fun `clicking an item asks for it to be shown`() = runTest(dispatcher) {
+        val opened = login("Opened")
+        loginRepository.seed(opened, login("Other"))
+
+        val vm = viewModel()
+        backgroundScope.launchCollect(vm)
+        advanceUntilIdle()
+
+        val selected = async { vm.event.first() }
+        advanceUntilIdle()
+
+        vm.onItemClick(opened.id)
+        advanceUntilIdle()
+
+        assertEquals(Event.ItemSelected(opened.id), selected.await())
     }
 }
 

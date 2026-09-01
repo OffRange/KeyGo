@@ -10,6 +10,12 @@ android {
 dependencies {
     implementation(libs.androidx.animation.graphics)
 
+    // api: rememberNavEntryDecorators and KeyGoNavDisplay take and hand back nav3 types, so every
+    // consumer sees them.
+    api(libs.androidx.navigation3.runtime)
+    api(libs.androidx.navigation3.ui)
+    api(libs.androidx.lifecycle.viewmodel.navigation3)
+
     implementation(projects.core.item)
 }
 

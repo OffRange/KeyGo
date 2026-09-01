@@ -1,7 +1,6 @@
 package de.davis.keygo.feature.auth.presentation
 
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
-import androidx.lifecycle.SavedStateHandle
 import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
@@ -114,7 +113,7 @@ class AuthViewModelTest {
             runPendingMigrationUseCase(backgroundScope, mainPasswordRepository),
     ): AuthViewModel {
         val vm = AuthViewModel(
-            savedStateHandle = SavedStateHandle(),
+            authRoute = AuthRoute(),
             biometricAvailabilityRepository = biometricAvailability,
             accountRepository = accountRepository,
             hasV1MainPassword = hasV1MainPassword,

@@ -5,47 +5,37 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavGraphBuilder
-import androidx.navigation.compose.composable
-import androidx.navigation.navDeepLink
-import androidx.navigation.toRoute
-import de.davis.keygo.core.ui.RouteDestination
-import de.davis.keygo.core.ui.model.PendingTotpImport
+import androidx.navigation3.runtime.EntryProviderScope
+import androidx.navigation3.runtime.NavKey
 import de.davis.keygo.feature.totp.presentation.component.TotpParseErrorDialog
 import kotlinx.serialization.Serializable
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
+/**
+ * The link travels whole: back stack keys are saved with kotlinx.serialization, and the parser it
+ * is handed to wants the uri rather than its parts.
+ *
+ * Null when [TotpImportDeepLinkMatcher] matched a link that carried no complete uri, which the
+ * redirect screen reports as a parse error instead of swallowing.
+ */
 @Serializable
-data class TotpImportRedirect(
-    val totpInfo: String? = null,
-    val queries: String? = null,
-) : RouteDestination {
-    val pendingImport: PendingTotpImport
-        get() = PendingTotpImport(totpInfo, queries)
-}
+data class TotpImportRedirect(val uri: String? = null) : NavKey
 
-fun NavGraphBuilder.totpImportRedirectGraph(
-    onValidated: (PendingTotpImport) -> Unit,
+fun EntryProviderScope<NavKey>.totpImportRedirectEntries(
+    metadata: Map<String, Any> = emptyMap(),
+    onValidated: (String) -> Unit,
     onRejected: () -> Unit,
 ) {
-    composable<TotpImportRedirect>(
-        deepLinks = listOf(
-            navDeepLink<TotpImportRedirect>(basePath = PendingTotpImport.BASE_PATH) {
-                uriPattern = PendingTotpImport.URI_PATTERN
-            },
-        ),
-    ) { entry ->
-        val route = entry.toRoute<TotpImportRedirect>()
-        val viewModel: TotpImportRedirectViewModel =
-            koinViewModel { parametersOf(route.pendingImport) }
+    entry<TotpImportRedirect>(metadata = metadata) { route ->
+        val viewModel: TotpImportRedirectViewModel = koinViewModel { parametersOf(route) }
         val state by viewModel.state.collectAsStateWithLifecycle()
 
-        when (state) {
+        when (val current = state) {
             TotpImportRedirectState.Validating -> Unit
 
-            TotpImportRedirectState.Valid -> LaunchedEffect(route) {
-                onValidated(route.pendingImport)
+            is TotpImportRedirectState.Valid -> LaunchedEffect(route) {
+                onValidated(current.uri)
             }
 
             TotpImportRedirectState.Invalid -> TotpParseErrorDialog(

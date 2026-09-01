@@ -12,7 +12,6 @@ internal data class ListItemState(
     val searchState: SearchState = SearchState(),
     val hasSearchQuery: Boolean = false,
     val selection: ItemSelection = ItemSelection(),
-    val highlightedId: ItemId? = null,
     val isVaultFlowVisible: Boolean = false,
     val isDeleteConfirmationVisible: Boolean = false,
     val vaults: List<VaultMetadata> = emptyList(),

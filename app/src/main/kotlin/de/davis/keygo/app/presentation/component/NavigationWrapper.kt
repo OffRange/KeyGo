@@ -1,12 +1,6 @@
 package de.davis.keygo.app.presentation.component
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.shrinkVertically
+import android.view.accessibility.AccessibilityManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -28,12 +21,11 @@ import androidx.compose.material.icons.automirrored.filled.MenuOpen
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Menu
-import androidx.compose.material3.BottomAppBarDefaults
-import androidx.compose.material3.BottomAppBarScrollBehavior
 import androidx.compose.material3.DrawerDefaults
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.FloatingActionButtonMenu
@@ -59,17 +51,23 @@ import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
-import androidx.compose.material3.adaptive.currentWindowSize
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldLayout
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldState
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldValue
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
+import androidx.compose.material3.adaptive.navigationsuite.rememberNavigationSuiteScaffoldState
 import androidx.compose.material3.animateFloatingActionButton
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -79,37 +77,38 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.toSize
-import androidx.navigation.NavDestination
-import androidx.navigation.NavDestination.Companion.hasRoute
-import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation3.runtime.NavKey
 import androidx.window.core.layout.WindowSizeClass
 import de.davis.keygo.R
 import de.davis.keygo.app.presentation.AppDestinations
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
-import de.davis.keygo.core.ui.RouteDestination
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
+import kotlin.math.sign
 import de.davis.keygo.core.ui.R as CoreUiR
 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun KeyGoNavigationWrapper(
-    currentDestination: NavDestination?,
-    navigateToTopLevelDestination: (RouteDestination) -> Unit,
+    selectedRoute: NavKey?,
+    navigateToTopLevelDestination: (NavKey) -> Unit,
     onButtonClicked: () -> Unit,
     onItemSelected: (VaultItemType) -> Unit,
     showChrome: Boolean = true,
@@ -121,10 +120,8 @@ fun KeyGoNavigationWrapper(
     snackbarHost: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
-    val adaptiveInfo = currentWindowAdaptiveInfo()
-    val windowSize = with(LocalDensity.current) {
-        currentWindowSize().toSize().toDpSize()
-    }
+    val adaptiveInfo = currentWindowAdaptiveInfoV2()
+    val windowSize = LocalWindowInfo.current.containerDpSize
 
     val layoutType = when {
         adaptiveInfo.windowPosture.isTabletop -> NavigationSuiteType.NavigationBar
@@ -143,7 +140,40 @@ fun KeyGoNavigationWrapper(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    val scrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
+    val scaffoldState = rememberNavigationSuiteScaffoldState()
+
+    val touchExplorationEnabled = rememberTouchExplorationEnabled()
+    val hidesOnScroll =
+        layoutType == NavigationSuiteType.NavigationBar && !touchExplorationEnabled
+
+    var hiddenByScroll by remember { mutableStateOf(false) }
+
+    val density = LocalDensity.current
+    val scrollConnection = remember(density) {
+        NavigationScrollConnection(
+            thresholdPx = with(density) { NavigationScrollThreshold.toPx() },
+            onVisibilityChange = { visible -> hiddenByScroll = !visible },
+        )
+    }
+
+    // A newly selected top level destination shows its own content from the top, and a layout
+    // type that does not hide leaves nothing to come back from, so both start the component
+    // visible again. The run behind the flag is cleared with it: left standing at the threshold
+    // it had reached, the next scroll of a single pixel in the same direction would hide the
+    // component again without the distance ever being travelled.
+    LaunchedEffect(selectedRoute, hidesOnScroll) {
+        hiddenByScroll = false
+        scrollConnection.reset()
+    }
+
+    val showNavigation = showChrome && !(hidesOnScroll && hiddenByScroll)
+    LaunchedEffect(showNavigation) {
+        if (showNavigation) scaffoldState.show() else scaffoldState.hide()
+    }
+
+    // Height of the primary action button, so the snackbar can clear it. Measured on the
+    // button itself and not on its menu, which grows to the full item list when expanded.
+    var primaryActionHeight by remember { mutableIntStateOf(0) }
 
     ModalNavigationDrawer(
         drawerContent = {
@@ -151,7 +181,7 @@ fun KeyGoNavigationWrapper(
                 drawerState = drawerState
             ) {
                 DrawerContent(
-                    currentDestination = currentDestination,
+                    selectedRoute = selectedRoute,
                     navigateToTopLvlDestination = navigateToTopLevelDestination,
                     onButtonClicked = onButtonClicked,
                     onCloseDrawer = {
@@ -168,46 +198,42 @@ fun KeyGoNavigationWrapper(
         drawerState = drawerState
     ) {
         Surface(color = containerColor, contentColor = contentColor) {
-            KeyGoNavigationSuiteScaffoldLayout(
+            NavigationSuiteScaffoldLayout(
                 navigationSuite = {
-                    Box {
-                        AnimatedVisibility(
-                            visible = showChrome,
-                            enter = when (layoutType) {
-                                NavigationSuiteType.NavigationBar -> expandVertically()
-                                else -> expandHorizontally()
-                            } + fadeIn(),
-                            exit = when (layoutType) {
-                                NavigationSuiteType.NavigationBar -> shrinkVertically()
-                                else -> shrinkHorizontally()
-                            } + fadeOut()
-                        ) {
-                            KeyGoNavigationSuite(
-                                currentDestination = currentDestination,
-                                layoutType = layoutType,
-                                navigateToTopLvlDestination = navigateToTopLevelDestination,
-                                onButtonClicked = onButtonClicked,
-                                onOpenDrawer = {
-                                    scope.launch {
-                                        drawerState.open()
-                                    }
-                                },
-                                buttonContainerColor = buttonContainerColor,
-                                buttonContentColor = buttonContentColor,
-                                scrollBehavior = scrollBehavior
-                            )
-                        }
-                    }
+                    KeyGoNavigationSuite(
+                        selectedRoute = selectedRoute,
+                        layoutType = layoutType,
+                        navigateToTopLvlDestination = navigateToTopLevelDestination,
+                        onButtonClicked = onButtonClicked,
+                        onOpenDrawer = {
+                            scope.launch {
+                                drawerState.open()
+                            }
+                        },
+                        buttonContainerColor = buttonContainerColor,
+                        buttonContentColor = buttonContentColor,
+                    )
                 },
                 navigationSuiteType = layoutType,
+                state = scaffoldState,
                 primaryActionContent = {
                     var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
                     val focusRequester = remember { FocusRequester() }
 
+                    val showPrimaryAction = showChrome && showPrimaryActionButton
+
+                    // The open menu draws no scrim and consumes nothing outside its items, so the
+                    // destination underneath keeps taking taps and can navigate away while the
+                    // menu is still open. The menu belongs to the shell and outlives that
+                    // navigation, so a destination that drops the button takes the menu with it.
+                    LaunchedEffect(showPrimaryAction) {
+                        if (!showPrimaryAction) fabMenuExpanded = false
+                    }
+
                     FloatingActionButtonMenu(
                         expanded = fabMenuExpanded,
                         modifier = Modifier.animateFloatingActionButton(
-                            visible = (showChrome && showPrimaryActionButton) || fabMenuExpanded,
+                            visible = showPrimaryAction || fabMenuExpanded,
                             alignment = Alignment.BottomEnd,
                         ),
                         button = {
@@ -227,6 +253,7 @@ fun KeyGoNavigationWrapper(
                                     checked = fabMenuExpanded,
                                     onCheckedChange = { fabMenuExpanded = !fabMenuExpanded },
                                     modifier = Modifier
+                                        .onSizeChanged { primaryActionHeight = it.height }
                                         .semantics {
                                             traversalIndex = -1f
                                         }
@@ -256,35 +283,41 @@ fun KeyGoNavigationWrapper(
                                 icon = {
                                     Icon(
                                         imageVector = icon,
-                                        contentDescription = null
+                                        contentDescription = null,
                                     )
                                 },
-                                text = { Text(text = text) }
+                                text = { Text(text = text) },
                             )
                         }
                     }
                 },
-                snackbarHost = snackbarHost,
                 content = {
                     Box(
                         Modifier
-                            .consumeWindowInsets(
-                                when (layoutType) {
-                                    NavigationSuiteType.NavigationBar ->
-                                        NavigationBarDefaults.windowInsets.only(WindowInsetsSides.Bottom)
-
-                                    NavigationSuiteType.NavigationRail ->
-                                        NavigationRailDefaults.windowInsets.only(WindowInsetsSides.Start)
-
-                                    NavigationSuiteType.NavigationDrawer ->
-                                        DrawerDefaults.windowInsets.only(WindowInsetsSides.Start)
-
-                                    else -> WindowInsets(0, 0, 0, 0)
-                                }
+                            .fillMaxSize()
+                            .consumeWindowInsets(navigationInsets(layoutType, scaffoldState))
+                            .then(
+                                if (hidesOnScroll) Modifier.nestedScroll(scrollConnection)
+                                else Modifier
                             )
-                            .nestedScroll(scrollBehavior.nestedScrollConnection)
                     ) {
                         content()
+
+                        // This slot ends where the navigation component starts, so a bottom
+                        // aligned host clears the component on its own and follows it as it
+                        // collapses. Only the primary action button is left to pad around.
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(
+                                    bottom = if (showChrome && showPrimaryActionButton)
+                                        with(LocalDensity.current) { primaryActionHeight.toDp() } +
+                                                PrimaryActionContentPadding
+                                    else 0.dp
+                                )
+                        ) {
+                            snackbarHost()
+                        }
                     }
                 }
             )
@@ -292,30 +325,27 @@ fun KeyGoNavigationWrapper(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KeyGoNavigationSuite(
-    currentDestination: NavDestination?,
+    selectedRoute: NavKey?,
     layoutType: NavigationSuiteType,
-    navigateToTopLvlDestination: (RouteDestination) -> Unit,
+    navigateToTopLvlDestination: (NavKey) -> Unit,
     onButtonClicked: () -> Unit,
     onOpenDrawer: () -> Unit,
     buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
     buttonContentColor: Color = contentColorFor(buttonContainerColor),
-    scrollBehavior: BottomAppBarScrollBehavior? = null,
 ) {
     when (layoutType) {
         NavigationSuiteType.NavigationBar -> {
             KeyGoNavigationBar(
-                currentDestination = currentDestination,
+                selectedRoute = selectedRoute,
                 navigateToTopLvlDestination = navigateToTopLvlDestination,
-                scrollBehavior = scrollBehavior
             )
         }
 
         NavigationSuiteType.NavigationRail -> {
             KeyGoNavigationRail(
-                currentDestination = currentDestination,
+                selectedRoute = selectedRoute,
                 navigateToTopLvlDestination = navigateToTopLvlDestination,
                 onButtonClicked = onButtonClicked,
                 onOpenDrawer = onOpenDrawer,
@@ -326,7 +356,7 @@ fun KeyGoNavigationSuite(
 
         NavigationSuiteType.NavigationDrawer -> {
             KeyGoNavigationDrawer(
-                currentDestination = currentDestination,
+                selectedRoute = selectedRoute,
                 onButtonClicked = onButtonClicked,
                 navigateToTopLvlDestination = navigateToTopLvlDestination,
                 buttonContainerColor = buttonContainerColor,
@@ -338,29 +368,15 @@ fun KeyGoNavigationSuite(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KeyGoNavigationBar(
-    currentDestination: NavDestination?,
-    navigateToTopLvlDestination: (RouteDestination) -> Unit,
-    scrollBehavior: BottomAppBarScrollBehavior? = null
+    selectedRoute: NavKey?,
+    navigateToTopLvlDestination: (NavKey) -> Unit,
 ) {
-    NavigationBar(
-        modifier = Modifier.layout { measurable, constraints ->
-            val placeable = measurable.measure(constraints)
-
-            // Sets the app bar's height offset to collapse the entire bar's height when
-            // content is scrolled.
-            scrollBehavior?.state?.heightOffsetLimit = -placeable.height.toFloat()
-
-            val height = (placeable.height + (scrollBehavior?.state?.heightOffset ?: 0f))
-                .coerceAtLeast(0f)
-            layout(placeable.width, height.roundToInt()) { placeable.place(0, 0) }
-        } // TODO decide to add appBarDragModifier
-    ) {
+    NavigationBar {
         AppDestinations.entries.forEach { destination ->
             NavigationBarItem(
-                selected = currentDestination?.hierarchy?.any { it.hasRoute(destination.route.graphDest) } == true,
+                selected = destination.route == selectedRoute,
                 onClick = { navigateToTopLvlDestination(destination.route) },
                 icon = {
                     Icon(
@@ -377,8 +393,8 @@ fun KeyGoNavigationBar(
 
 @Composable
 fun KeyGoNavigationRail(
-    currentDestination: NavDestination?,
-    navigateToTopLvlDestination: (RouteDestination) -> Unit,
+    selectedRoute: NavKey?,
+    navigateToTopLvlDestination: (NavKey) -> Unit,
     onButtonClicked: () -> Unit,
     onOpenDrawer: () -> Unit,
     buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
@@ -417,7 +433,7 @@ fun KeyGoNavigationRail(
         ) {
             AppDestinations.entries.forEach { destination ->
                 NavigationRailItem(
-                    selected = currentDestination?.hierarchy?.any { it.hasRoute(destination.route.graphDest) } == true,
+                    selected = destination.route == selectedRoute,
                     onClick = { navigateToTopLvlDestination(destination.route) },
                     icon = {
                         Icon(
@@ -435,8 +451,8 @@ fun KeyGoNavigationRail(
 
 @Composable
 fun KeyGoNavigationDrawer(
-    currentDestination: NavDestination?,
-    navigateToTopLvlDestination: (RouteDestination) -> Unit,
+    selectedRoute: NavKey?,
+    navigateToTopLvlDestination: (NavKey) -> Unit,
     onButtonClicked: () -> Unit,
     buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
     buttonContentColor: Color = contentColorFor(buttonContainerColor)
@@ -445,7 +461,7 @@ fun KeyGoNavigationDrawer(
         modifier = Modifier.widthIn(min = 200.dp, max = 300.dp)
     ) {
         DrawerContent(
-            currentDestination = currentDestination,
+            selectedRoute = selectedRoute,
             navigateToTopLvlDestination = navigateToTopLvlDestination,
             onButtonClicked = onButtonClicked,
             buttonContainerColor = buttonContainerColor,
@@ -456,8 +472,8 @@ fun KeyGoNavigationDrawer(
 
 @Composable
 fun DrawerContent(
-    currentDestination: NavDestination?,
-    navigateToTopLvlDestination: (RouteDestination) -> Unit,
+    selectedRoute: NavKey?,
+    navigateToTopLvlDestination: (NavKey) -> Unit,
     onButtonClicked: () -> Unit,
     onCloseDrawer: (() -> Unit)? = null,
     buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
@@ -492,32 +508,25 @@ fun DrawerContent(
             }
         }
 
-        // TODO decide if this or the default ExtendedFab is better (ExtendedFabTextPadding)
-        FloatingActionButton(
+        ExtendedFloatingActionButton(
             onClick = onButtonClicked,
             modifier = Modifier.padding(top = 8.dp, bottom = 40.dp),
             containerColor = buttonContainerColor,
             contentColor = buttonContentColor,
-        ) {
-            Row(
-                modifier =
-                    Modifier
-                        .sizeIn(minWidth = 80.dp /*ExtendedFabMinimumWidth*/)
-                        .padding(horizontal = 16.dp /*ExtendedFabTextPadding - 4.dp*/),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            text = {
+                Text(
+                    text = stringResource(CoreUiR.string.add),
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                )
+            },
+            icon = {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = stringResource(R.string.add_element_content_description),
                 )
-                Text(
-                    text = stringResource(CoreUiR.string.add),
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center
-                )
             }
-        }
+        )
 
         Column(
             modifier = Modifier
@@ -535,7 +544,7 @@ fun DrawerContent(
                     label = {
                         Text(text = stringResource(destination.label))
                     },
-                    selected = currentDestination?.hierarchy?.any { it.hasRoute(destination.route.graphDest) } == true,
+                    selected = destination.route == selectedRoute,
                     onClick = { navigateToTopLvlDestination(destination.route) },
                 )
             }
@@ -543,9 +552,103 @@ fun DrawerContent(
     }
 }
 
-fun NavDestination?.hasRoute(dest: RouteDestination): Boolean {
-    return this?.hasRoute(dest::class) == true
+@Composable
+private fun navigationInsets(
+    layoutType: NavigationSuiteType,
+    state: NavigationSuiteScaffoldState,
+): WindowInsets =
+    if (state.currentValue == NavigationSuiteScaffoldValue.Hidden && !state.isAnimating)
+        WindowInsets(0, 0, 0, 0)
+    else when (layoutType) {
+        NavigationSuiteType.NavigationBar ->
+            NavigationBarDefaults.windowInsets.only(WindowInsetsSides.Bottom)
+
+        NavigationSuiteType.NavigationRail ->
+            NavigationRailDefaults.windowInsets.only(WindowInsetsSides.Start)
+
+        NavigationSuiteType.NavigationDrawer ->
+            DrawerDefaults.windowInsets.only(WindowInsetsSides.Start)
+
+        else -> WindowInsets(0, 0, 0, 0)
+    }
+
+/**
+ * Hides the navigation component once the content has been scrolled [thresholdPx] down, and brings
+ * it back on the same distance scrolled up.
+ *
+ * Only the distance the content actually consumed counts, so overscrolling at either end of a list
+ * does not move the component, and content that cannot scroll at all never hides it.
+ */
+private class NavigationScrollConnection(
+    private val thresholdPx: Float,
+    private val onVisibilityChange: (visible: Boolean) -> Unit,
+) : NestedScrollConnection {
+
+    private var accumulated = 0f
+
+    /** Starts a new run, so the next scroll has to travel the whole threshold to decide again. */
+    fun reset() {
+        accumulated = 0f
+    }
+
+    override fun onPostScroll(
+        consumed: Offset,
+        available: Offset,
+        source: NestedScrollSource,
+    ): Offset {
+        // A scroll that moved the content nowhere, a horizontal one included, leaves the run
+        // it interrupted intact.
+        val delta = consumed.y
+        if (delta != 0f) {
+            // A change of direction starts a new run, so scrolling back reverses the decision
+            // after one threshold instead of first having to undo the whole distance travelled.
+            if (delta.sign != accumulated.sign) accumulated = 0f
+            accumulated = (accumulated + delta).coerceIn(-thresholdPx, thresholdPx)
+
+            if (accumulated <= -thresholdPx) onVisibilityChange(false)
+            else if (accumulated >= thresholdPx) onVisibilityChange(true)
+        }
+
+        // Nothing is consumed here: the scroll belongs to the content, this only watches it.
+        return super.onPostScroll(consumed, available, source)
+    }
 }
+
+/**
+ * Whether an accessibility service that uses touch exploration, such as TalkBack, is running.
+ *
+ * Scroll driven hiding stays off while one is, the way Material does it for its own app bars: the
+ * component a screen reader user navigates with must not move out from under them.
+ */
+@Composable
+private fun rememberTouchExplorationEnabled(): Boolean {
+    val context = LocalContext.current
+    val accessibilityManager =
+        remember(context) { context.getSystemService(AccessibilityManager::class.java) }
+
+    var enabled by remember(accessibilityManager) {
+        mutableStateOf(accessibilityManager?.isTouchExplorationEnabled == true)
+    }
+
+    DisposableEffect(accessibilityManager) {
+        if (accessibilityManager == null) return@DisposableEffect onDispose {}
+
+        // The service may have been switched while this was not listening.
+        enabled = accessibilityManager.isTouchExplorationEnabled
+
+        val listener = AccessibilityManager.TouchExplorationStateChangeListener { enabled = it }
+        accessibilityManager.addTouchExplorationStateChangeListener(listener)
+        onDispose { accessibilityManager.removeTouchExplorationStateChangeListener(listener) }
+    }
+
+    return enabled
+}
+
+/** The padding [NavigationSuiteScaffoldLayout] places around the primary action content. */
+private val PrimaryActionContentPadding = 16.dp
+
+/** How far the content has to be scrolled before the navigation component follows it away. */
+private val NavigationScrollThreshold = 24.dp
 
 @Suppress("VisualLintOverlap")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -557,7 +660,7 @@ private fun KeyGoNavigationWrapperPreview() {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             KeyGoNavigationWrapper(
-                currentDestination = null,
+                selectedRoute = AppDestinations.entries.first().route,
                 navigateToTopLevelDestination = {},
                 onButtonClicked = {},
                 onItemSelected = {},

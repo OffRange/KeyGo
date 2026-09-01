@@ -66,7 +66,7 @@ internal fun ItemListContent(
     filterBottomSheetState: FilterBottomSheetState,
     dockedSearchResults: Boolean,
     enableDeletion: Boolean,
-    autoSelectFirst: Boolean,
+    openedItemId: ItemId?,
     notFoundStrategy: NoItemStrategy,
     restrictedItemType: VaultItemType?,
     suggestedItemIds: Set<ItemId>,
@@ -242,7 +242,7 @@ internal fun ItemListContent(
                             end = 8.dp,
                             bottom = 96.dp,
                         ),
-                        openedItemId = if (autoSelectFirst) uiState.highlightedId else null,
+                        openedItemId = openedItemId,
                         selectedItemIds = uiState.selectedItemIds
                     )
                 }
@@ -278,7 +278,6 @@ private fun ItemListContentPreview() {
                         query = "Sam"
                     ),
                     hasSearchQuery = false,
-                    highlightedId = null,
                 )
             }
             val searchTextFieldState = rememberTextFieldState()
@@ -304,7 +303,7 @@ private fun ItemListContentPreview() {
                 filterBottomSheetState = filterBottomSheetState,
                 dockedSearchResults = false,
                 enableDeletion = true,
-                autoSelectFirst = false,
+                openedItemId = null,
                 notFoundStrategy = NoItemStrategy.ShowCreateNewItemCard,
                 restrictedItemType = null,
                 suggestedItemIds = emptySet(),

@@ -2,10 +2,8 @@ package de.davis.keygo.feature.onboarding.presentation
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.snapshotFlow
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.navigation.toRoute
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
@@ -36,13 +34,14 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
 import javax.crypto.Cipher
 import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
 internal class OnboardingViewModel(
-    savedStateHandle: SavedStateHandle,
+    @InjectedParam private val onboardingRoute: OnboardingRoute,
     private val biometricAvailabilityRepository: BiometricAvailabilityRepository,
     private val autofillServiceRepository: AutofillServiceRepository,
     private val chromeAutofillRepository: ChromeAutofillRepository,
@@ -51,7 +50,7 @@ internal class OnboardingViewModel(
     private val createAccess: CreateAccessUseCase,
 ) : ViewModel() {
 
-    private val hasPendingTotpImport = savedStateHandle.toRoute<OnboardingRoute>().uri != null
+    private val hasPendingTotpImport = onboardingRoute.uri != null
 
     private val stepsToSkip = MutableStateFlow<Set<OnboardingStep>>(emptySet())
 

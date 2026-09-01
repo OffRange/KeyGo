@@ -12,8 +12,6 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.navigation.compose)
-
     implementation(projects.core.ui)
     implementation(projects.core.item)
     implementation(projects.core.security)

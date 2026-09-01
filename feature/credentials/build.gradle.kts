@@ -12,8 +12,6 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.navigation.compose)
-
     implementation(libs.androidx.credentials)
     implementation(libs.kotlinx.serialization.json)
 

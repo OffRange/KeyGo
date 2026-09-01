@@ -6,18 +6,19 @@ import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation3.runtime.NavKey
 import de.davis.keygo.R
 import de.davis.keygo.core.presentation.model.RouteDestination
-import de.davis.keygo.core.ui.RouteDestination as UiRouteDestination
-import de.davis.keygo.feature.settings.presentation.SettingsGraphRoute
+import de.davis.keygo.feature.settings.presentation.SettingsRoute
 
+/** The navigation bar's destinations. */
 enum class AppDestinations(
-    val route: UiRouteDestination,
+    val route: NavKey,
     @StringRes val label: Int,
     val icon: ImageVector,
     @StringRes val contentDescription: Int
 ) {
-    HOME(RouteDestination.Home.NavGraph, R.string.home, Icons.Default.Home, R.string.home),
+    HOME(RouteDestination.Home, R.string.home, Icons.Default.Home, R.string.home),
     CONNECTIVITY(
         RouteDestination.Connectivity,
         R.string.connectivity,
@@ -25,9 +26,11 @@ enum class AppDestinations(
         R.string.connectivity
     ),
     SETTINGS(
-        SettingsGraphRoute,
+        SettingsRoute,
         R.string.settings,
         Icons.Default.Settings,
         R.string.settings
     ),
 }
+
+val TopLevelRoutes: Set<NavKey> = AppDestinations.entries.mapTo(LinkedHashSet()) { it.route }

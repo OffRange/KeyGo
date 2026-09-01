@@ -5,11 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
 import androidx.credentials.GetCredentialResponse
 import androidx.credentials.GetPublicKeyCredentialOption
 import androidx.credentials.PublicKeyCredential
@@ -17,19 +13,20 @@ import androidx.credentials.exceptions.GetCredentialUnknownException
 import androidx.credentials.provider.PendingIntentHandler
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
 import de.davis.keygo.core.identity.presentation.rememberBiometricUnlockAdapter
 import de.davis.keygo.core.identity.presentation.useAdapter
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.BiometricString
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
+import de.davis.keygo.core.ui.navigation.KeyGoNavDisplay
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.auth.presentation.AuthRoute
-import de.davis.keygo.feature.auth.presentation.authGraph
+import de.davis.keygo.feature.auth.presentation.authEntries
 import de.davis.keygo.feature.credentials.presentation.auth.SessionAuthState
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
@@ -88,20 +85,15 @@ internal class ProvidePasskeyActivity : FragmentActivity() {
                     }
 
                     SessionAuthState.NeedsPassword -> {
-                        val navController = rememberNavController()
-                        Scaffold { innerPadding ->
-                            NavHost(
-                                navController = navController,
-                                startDestination = AuthRoute(showBiometricPromptIfPossible = false),
-                                modifier = Modifier
-                                    .padding(innerPadding)
-                                    .consumeWindowInsets(innerPadding),
-                            ) {
-                                authGraph(
-                                    onSuccess = { viewModel.onUnlocked() }
-                                )
-                            }
-                        }
+                        val backStack =
+                            rememberNavBackStack(AuthRoute(showBiometricPromptIfPossible = false))
+
+                        KeyGoNavDisplay(
+                            backStack = backStack,
+                            entryProvider = entryProvider {
+                                authEntries(onSuccess = { viewModel.onUnlocked() })
+                            },
+                        )
                     }
 
                     SessionAuthState.Authenticated -> {

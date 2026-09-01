@@ -1,9 +1,10 @@
 package de.davis.keygo.feature.autofill.presentation.model
 
+import androidx.navigation3.runtime.NavKey
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.list_screen.presentation.ItemListRoute
 
-internal sealed interface Request<T : Any> {
+internal sealed interface Request<T : NavKey> {
     val destination: T
 
     data object SelectItem : Request<ItemListRoute> {
