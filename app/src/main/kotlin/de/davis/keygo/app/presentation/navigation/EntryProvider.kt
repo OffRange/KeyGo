@@ -88,7 +88,7 @@ fun keyGoEntryProvider(navigator: AppNavigator, hasAccess: Boolean): (NavKey) ->
                 onSelect = { type ->
                     navigator.goBack()
                     navigator.showDetail(RouteDestination.CreateItem(type))
-                }
+                },
             )
         }
 
@@ -109,24 +109,24 @@ fun keyGoEntryProvider(navigator: AppNavigator, hasAccess: Boolean): (NavKey) ->
         entry<RouteDestination.Connectivity>(metadata = NavigationOnly) {
             Box(
                 modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = stringResource(id = R.string.coming_soon),
-                    style = MaterialTheme.typography.displaySmall
+                    style = MaterialTheme.typography.displaySmall,
                 )
             }
         }
 
         entry<RouteDestination.Libraries>(metadata = WindowOwning) {
             Scaffold(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
             ) { innerPadding ->
                 val libs by produceLibraries()
                 LibrariesContainer(
                     libraries = libs,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = innerPadding
+                    contentPadding = innerPadding,
                 )
             }
         }
