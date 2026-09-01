@@ -19,6 +19,24 @@ class SessionImplTest {
     }
 
     @Test
+    fun `isActive is false when no active session`() {
+        assertEquals(false, session.isActive.value)
+    }
+
+    @Test
+    fun `isActive is true after startSession`() {
+        session.startSession(generateArk())
+        assertEquals(true, session.isActive.value)
+    }
+
+    @Test
+    fun `isActive is false after endSession`() {
+        session.startSession(generateArk())
+        session.endSession()
+        assertEquals(false, session.isActive.value)
+    }
+
+    @Test
     fun `startSession makes dek available`() {
         val key = generateArk()
         session.startSession(key)

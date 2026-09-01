@@ -112,7 +112,8 @@ internal class CryptographicScopeProviderImpl(
     }
 
     private fun unwrapVaultKeyWithResult(info: WrappedVaultKeyInformation) =
-        keyWrapper.unwrapVaultKeyWithResult(
+        if (!session.isActive.value) Result.Failure(CryptoScopeError.NoActiveSession)
+        else keyWrapper.unwrapVaultKeyWithResult(
             ark = session.ark,
             wrapped = info.wrappedVaultKey.toWrappedKeyBlob(),
             vaultId = info.vaultId,

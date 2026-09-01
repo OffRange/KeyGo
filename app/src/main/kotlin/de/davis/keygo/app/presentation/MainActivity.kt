@@ -17,6 +17,7 @@ import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -85,13 +86,14 @@ class MainActivity : FragmentActivity() {
         setContent {
             val hasAccess by viewModel.isReturningUser.collectAsState()
             hasAccess ?: return@setContent
+            val isSessionActive by viewModel.isSessionActive.collectAsState()
 
             KeyGoTheme {
                 val snackbarManager = koinInject<SnackbarManager>()
                 CompositionLocalProvider(
                     LocalSnackbarManager provides snackbarManager,
                 ) {
-                    App(hasAccess = hasAccess == true)
+                    App(hasAccess = hasAccess == true, isSessionActive = isSessionActive)
                 }
             }
         }
@@ -133,13 +135,32 @@ internal fun NavController.navigateToAssignTotp(route: AssignTotpRoute) {
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
-private fun App(hasAccess: Boolean) {
+private fun App(hasAccess: Boolean, isSessionActive: Boolean) {
     val listNavigator = rememberListDetailPaneScaffoldNavigator<DetailType>()
     val navController = rememberNavController()
     val activity = LocalActivity.current
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+
+    // A restored back stack can land straight in the authenticated graph after process death,
+    // skipping AuthRoute entirely; the fresh process's Session is never unlocked in that case,
+    // and nothing else routes back to AuthRoute since it's popped inclusive on login success.
+    // Keyed on isSessionActive too so a session that dies later (e.g. an auto-lock) redirects
+    // immediately instead of waiting for the next navigation event.
+    LaunchedEffect(currentDestination, isSessionActive) {
+        val isInAuthenticatedGraph = currentDestination
+            ?.hierarchy
+            ?.any { it.hasRoute<RouteDestination.TopLevelAppGraph>() == true } == true
+
+        if (isInAuthenticatedGraph && !isSessionActive) {
+            navController.navigate(AuthRoute()) {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    inclusive = true
+                }
+            }
+        }
+    }
 
     val showPrimaryActionButton = remember(currentDestination, listNavigator.currentDestination) {
         currentDestination
