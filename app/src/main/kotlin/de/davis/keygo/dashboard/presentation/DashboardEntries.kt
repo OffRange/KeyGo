@@ -56,10 +56,10 @@ fun EntryProviderScope<NavKey>.dashboardEntries(navigator: AppNavigator) {
                     NavigationEvent.NavigateBack -> navigator.goBack()
 
                     is NavigationEvent.NavigateToEdit -> navigator.openOnTopOfDetail(
-                        RouteDestination.EditItem(event.vaultType, event.itemId)
+                        RouteDestination.EditItem(event.vaultType, event.itemId),
                     )
                 }
-            }
+            },
         )
     }
 

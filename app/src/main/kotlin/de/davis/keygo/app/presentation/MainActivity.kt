@@ -17,6 +17,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
@@ -115,7 +116,7 @@ private fun App(hasAccess: Boolean, launchRoute: NavKey) {
             showPrimaryActionButton = shell.showCreateButton,
             snackbarHost = {
                 SnackbarHost(hostState = snackbarHostState)
-            }
+            },
         ) {
             KeyGoNavDisplay(
                 entries = entries,
@@ -130,13 +131,17 @@ private fun App(hasAccess: Boolean, launchRoute: NavKey) {
  * Auto-selection is fine beside the list and wrong once the window narrows enough to hand the
  * detail the whole screen. Only a change is acted on, so a detail restored after process death
  * stays put.
+ *
+ * The previous width is saved rather than merely remembered: rotating or folding the device is
+ * both what this watches for and what recreates the Activity, and a plain `remember` would come
+ * back seeded with the width it was supposed to compare against, seeing no change at all.
  */
 @Composable
 private fun DropAutoSelectedDetailWhenListLeaves(
     listPaneVisible: Boolean,
     navigator: AppNavigator,
 ) {
-    var wasListPaneVisible by remember { mutableStateOf(listPaneVisible) }
+    var wasListPaneVisible by rememberSaveable { mutableStateOf(listPaneVisible) }
     LaunchedEffect(listPaneVisible) {
         val listPaneLeft = wasListPaneVisible && !listPaneVisible
         wasListPaneVisible = listPaneVisible
