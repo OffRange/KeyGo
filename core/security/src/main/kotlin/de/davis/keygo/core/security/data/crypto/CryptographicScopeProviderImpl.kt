@@ -10,7 +10,7 @@ import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformatio
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.model.CryptoScopeError
 import de.davis.keygo.core.util.Result
-import de.davis.keygo.core.util.mapFailure
+import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.mapSuccess
 import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.rust.item.ItemManager
@@ -111,13 +111,14 @@ internal class CryptographicScopeProviderImpl(
         ).mapSuccess { it.toKeyInformation() }.bind(CryptoScopeError::KeyWrapError)
     }
 
-    private fun unwrapVaultKeyWithResult(info: WrappedVaultKeyInformation) =
-        if (!session.isActive.value) Result.Failure(CryptoScopeError.NoActiveSession)
-        else keyWrapper.unwrapVaultKeyWithResult(
-            ark = session.ark,
+    private fun unwrapVaultKeyWithResult(info: WrappedVaultKeyInformation) = resultBinding {
+        val ark = session.ark.asResult(CryptoScopeError.NoActiveSession).bind()
+        keyWrapper.unwrapVaultKeyWithResult(
+            ark = ark,
             wrapped = info.wrappedVaultKey.toWrappedKeyBlob(),
             vaultId = info.vaultId,
-        ).mapFailure { CryptoScopeError.KeyWrapError(it) }
+        ).bind(CryptoScopeError::KeyWrapError)
+    }
 }
 
 private fun KeyInformation.toWrappedKeyBlob() = WrappedKeyBlob(

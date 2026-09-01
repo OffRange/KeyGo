@@ -8,6 +8,7 @@
     <string name="icon">Icon</string>
     <string name="vault_name_blank_error">Vault Name can not be blank</string>
     <string name="vault_creation_wrap_failed">Vault key could not be wrapped</string>
+    <string name="vault_creation_session_locked">Your vault is locked. Unlock it and try again.</string>
     <plurals name="vault_item_entry_count">
         <item quantity="one">1 item</item>
         <item quantity="other">%d items</item>

@@ -33,7 +33,9 @@ internal class BiometricEnrollmentAdapterImpl(
             .bind { BiometricEnrollmentError.BiometricFailed(it) }
 
 
-        val wrapped = wrapArk(session.ark, cipher)
+        val ark = session.ark.asResult(BiometricEnrollmentError.NoActiveSession).bind()
+
+        val wrapped = wrapArk(ark, cipher)
             .asResult(BiometricEnrollmentError.WrappingFailed).bind()
 
         accountRepository.set(account.copy(biometricWrappedArk = wrapped)).bind {

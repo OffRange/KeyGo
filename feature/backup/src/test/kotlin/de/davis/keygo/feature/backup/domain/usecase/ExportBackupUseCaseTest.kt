@@ -37,6 +37,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class ExportBackupUseCaseTest {
@@ -75,7 +76,7 @@ class ExportBackupUseCaseTest {
 
     private suspend fun provision(session: FakeSession) {
         val cipher = keyStore.getOrCreateCipherFor(KeyId.BackupArkKey, CryptographicMode.Encrypt)
-        arkStore.save(CryptographicData(cipher.doFinal(session.ark), cipher.iv))
+        arkStore.save(CryptographicData(cipher.doFinal(assertNotNull(session.ark)), cipher.iv))
     }
 
     private val csvJob = BackupJob(
@@ -163,8 +164,10 @@ class ExportBackupUseCaseTest {
     @Test
     fun `passphrase decryption on a locked device fails with DeviceLocked`() = runTest {
         seedSingleLogin()
-        val cipher = keyStore.getOrCreateCipherFor(KeyId.BackupPassphraseKey, CryptographicMode.Encrypt)
-        val wrappedPassphrase = CryptographicData(cipher.doFinal("pw".encodeToByteArray()), cipher.iv)
+        val cipher =
+            keyStore.getOrCreateCipherFor(KeyId.BackupPassphraseKey, CryptographicMode.Encrypt)
+        val wrappedPassphrase =
+            CryptographicData(cipher.doFinal("pw".encodeToByteArray()), cipher.iv)
         val jsonJob = BackupJob(
             uri = folder,
             wrappedPassphrase = wrappedPassphrase,

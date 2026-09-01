@@ -17,8 +17,8 @@ class FakeSession(
     private var _ark: ByteArray? = null
     private val _isActive = MutableStateFlow(false)
 
-    override val ark: ByteArray
-        get() = _ark ?: throw IllegalStateException("FakeSession not started")
+    override val ark: ByteArray?
+        get() = _ark
 
     override val isActive: StateFlow<Boolean> = _isActive.asStateFlow()
 

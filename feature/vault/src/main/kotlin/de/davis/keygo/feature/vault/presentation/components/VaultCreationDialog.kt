@@ -122,6 +122,7 @@ private fun VaultCreationDialogContent(
 private fun VaultCreationError.message() = when (this) {
     VaultCreationError.BlankName -> stringResource(R.string.vault_name_blank_error)
     VaultCreationError.WrapFailed -> stringResource(R.string.vault_creation_wrap_failed)
+    VaultCreationError.NoActiveSession -> stringResource(R.string.vault_creation_session_locked)
 }
 
 @Preview
