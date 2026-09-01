@@ -1,19 +1,11 @@
 package de.davis.keygo.feature.auth.presentation
 
 import androidx.navigation3.runtime.NavKey
-import de.davis.keygo.core.ui.model.PendingTotpImport
 import kotlinx.serialization.Serializable
 
-/** The import travels as primitives: back stack keys are saved with kotlinx.serialization. */
+/** The import travels whole: back stack keys are saved with kotlinx.serialization. */
 @Serializable
 data class AuthRoute(
-    val totpInfo: String? = null,
-    val queries: String? = null,
+    val uri: String? = null,
     val showBiometricPromptIfPossible: Boolean = true,
-) : NavKey {
-    val pendingTotpImport: PendingTotpImport
-        get() = PendingTotpImport(totpInfo, queries)
-
-    val uri: String?
-        get() = pendingTotpImport.uri
-}
+) : NavKey

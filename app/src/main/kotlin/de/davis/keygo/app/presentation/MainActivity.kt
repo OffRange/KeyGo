@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
 import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.deeplink.DeepLinkRequest
 import androidx.navigation3.scene.DialogSceneStrategy
 import de.davis.keygo.app.presentation.component.KeyGoNavigationWrapper
 import de.davis.keygo.app.presentation.navigation.AppNavigator
@@ -37,6 +38,7 @@ import de.davis.keygo.core.util.presentation.snackbar.LocalSnackbarManager
 import de.davis.keygo.core.util.presentation.snackbar.SnackbarHandler
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
+import de.davis.keygo.feature.totp.presentation.TotpImportDeepLinkMatcher
 import de.davis.keygo.feature.totp.presentation.TotpImportRedirect
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.koin.compose.koinInject
@@ -74,8 +76,11 @@ class MainActivity : FragmentActivity() {
         intent.totpImportRedirect() ?: if (hasAccess) AuthRoute() else OnboardingRoute()
 }
 
-private fun Intent.totpImportRedirect(): TotpImportRedirect? =
-    data?.let(TotpImportRedirect::from)
+private fun Intent.totpImportRedirect(): TotpImportRedirect? {
+    // A DeepLinkRequest with neither a uri nor extras throws, and the launcher intent has no data.
+    val uri = data ?: return null
+    return TotpImportDeepLinkMatcher.match(DeepLinkRequest(uri))?.key
+}
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable

@@ -20,7 +20,6 @@ import com.mikepenz.aboutlibraries.ui.compose.android.produceLibraries
 import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
 import de.davis.keygo.R
 import de.davis.keygo.core.presentation.model.RouteDestination
-import de.davis.keygo.core.ui.model.PendingTotpImport
 import de.davis.keygo.dashboard.presentation.dashboardEntries
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.auth.presentation.authEntries
@@ -46,7 +45,7 @@ fun keyGoEntryProvider(navigator: AppNavigator, hasAccess: Boolean): (NavKey) ->
     return entryProvider {
         totpImportRedirectEntries(
             metadata = WindowOwning,
-            onValidated = { pending -> navigator.openGateFor(hasAccess, pending) },
+            onValidated = { uri -> navigator.openGateFor(hasAccess, uri) },
             // The app was launched only to import this code, so the Activity is what closes.
             onRejected = {
                 if (activity != null) activity.finish()
@@ -134,11 +133,8 @@ fun keyGoEntryProvider(navigator: AppNavigator, hasAccess: Boolean): (NavKey) ->
 }
 
 /** Replaces the launch flow, so back from the gate leaves the app rather than a consumed link. */
-internal fun AppNavigator.openGateFor(hasAccess: Boolean, pending: PendingTotpImport) {
-    replaceLaunchFlow(
-        if (hasAccess) AuthRoute(totpInfo = pending.totpInfo, queries = pending.queries)
-        else OnboardingRoute(totpInfo = pending.totpInfo, queries = pending.queries),
-    )
+internal fun AppNavigator.openGateFor(hasAccess: Boolean, uri: String) {
+    replaceLaunchFlow(if (hasAccess) AuthRoute(uri = uri) else OnboardingRoute(uri = uri))
 }
 
 private fun AppNavigator.finishUnlock(totpUri: String?) {

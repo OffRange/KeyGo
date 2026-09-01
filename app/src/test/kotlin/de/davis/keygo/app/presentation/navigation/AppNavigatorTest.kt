@@ -6,7 +6,6 @@ import androidx.navigation3.runtime.NavKey
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.presentation.model.RouteDestination
-import de.davis.keygo.core.ui.model.PendingTotpImport
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
 import de.davis.keygo.feature.settings.presentation.ChangePasswordRoute
@@ -50,27 +49,19 @@ class AppNavigatorTest {
     @Test
     fun `a validated code sends an account with access to the unlock gate`() {
         val navigator = navigator(launchRoute = OnboardingRoute())
-        val pending = PendingTotpImport("Example:me@example.com", "secret=ABC")
 
-        navigator.openGateFor(hasAccess = true, pending = pending)
+        navigator.openGateFor(hasAccess = true, uri = DEEP_LINK_URI)
 
-        assertEquals(
-            listOf(AuthRoute(totpInfo = "Example:me@example.com", queries = "secret=ABC")),
-            navigator.shown,
-        )
+        assertEquals(listOf(AuthRoute(uri = DEEP_LINK_URI)), navigator.shown)
     }
 
     @Test
     fun `a validated code sends an account without access to first run`() {
         val navigator = navigator()
-        val pending = PendingTotpImport("Example:me@example.com", "secret=ABC")
 
-        navigator.openGateFor(hasAccess = false, pending = pending)
+        navigator.openGateFor(hasAccess = false, uri = DEEP_LINK_URI)
 
-        assertEquals(
-            listOf(OnboardingRoute(totpInfo = "Example:me@example.com", queries = "secret=ABC")),
-            navigator.shown,
-        )
+        assertEquals(listOf(OnboardingRoute(uri = DEEP_LINK_URI)), navigator.shown)
     }
 
     @Test

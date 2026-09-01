@@ -1,6 +1,5 @@
 package de.davis.keygo.feature.totp.presentation
 
-import de.davis.keygo.core.ui.model.PendingTotpImport
 import de.davis.keygo.rust.FakeTotpService
 import de.davisalessandro.keygo.rust.Algorithm
 import de.davisalessandro.keygo.rust.TotpInfo
@@ -17,45 +16,37 @@ class TotpImportRedirectViewModelTest {
     private val totpService = FakeTotpService()
 
     @Test
-    fun `a readable code is valid`() {
+    fun `a readable code is valid, and carries the uri that parsed`() {
         totpService.infoFromUriResult = totpInfo()
 
-        val viewModel = buildViewModel(PendingTotpImport(TOTP_INFO, QUERIES))
+        val viewModel = buildViewModel(TotpImportRedirect(DEEP_LINK_URI))
 
-        assertEquals(TotpImportRedirectState.Valid, viewModel.state.value)
+        assertEquals(TotpImportRedirectState.Valid(DEEP_LINK_URI), viewModel.state.value)
     }
 
     @Test
     fun `an unreadable code is invalid`() {
         totpService.infoFromUriResult = null
 
-        val viewModel = buildViewModel(PendingTotpImport(TOTP_INFO, QUERIES))
+        val viewModel = buildViewModel(TotpImportRedirect(DEEP_LINK_URI))
 
         assertEquals(TotpImportRedirectState.Invalid, viewModel.state.value)
     }
 
+    /** The matcher leaves the uri null for a link missing its label or its query. */
     @Test
-    fun `a link with no query string is invalid`() {
+    fun `a link that carried no complete uri is invalid`() {
         totpService.infoFromUriResult = totpInfo()
 
-        val viewModel = buildViewModel(PendingTotpImport(totpInfo = TOTP_INFO, queries = null))
-
-        assertEquals(TotpImportRedirectState.Invalid, viewModel.state.value)
-    }
-
-    @Test
-    fun `a link with no path is invalid`() {
-        totpService.infoFromUriResult = totpInfo()
-
-        val viewModel = buildViewModel(PendingTotpImport(totpInfo = null, queries = QUERIES))
+        val viewModel = buildViewModel(TotpImportRedirect())
 
         assertEquals(TotpImportRedirectState.Invalid, viewModel.state.value)
     }
 
     // Helpers
 
-    private fun buildViewModel(pendingImport: PendingTotpImport) = TotpImportRedirectViewModel(
-        pendingImport = pendingImport,
+    private fun buildViewModel(route: TotpImportRedirect) = TotpImportRedirectViewModel(
+        route = route,
         totpService = totpService,
     )
 
@@ -69,7 +60,7 @@ class TotpImportRedirectViewModelTest {
     )
 
     companion object {
-        private const val TOTP_INFO = "GitHub:me@github.com"
-        private const val QUERIES = "secret=JBSWY3DPEHPK3PXP&issuer=github.com"
+        private const val DEEP_LINK_URI =
+            "otpauth://totp/GitHub:me@github.com?secret=JBSWY3DPEHPK3PXP&issuer=github.com"
     }
 }
