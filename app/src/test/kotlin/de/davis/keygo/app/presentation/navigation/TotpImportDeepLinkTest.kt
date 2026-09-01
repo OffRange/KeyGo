@@ -39,11 +39,49 @@ class TotpImportDeepLinkTest {
         assertEquals(DEEP_LINK_URI, key.pendingImport.uri)
     }
 
+    /**
+     * The label is carried exactly as it arrived, because the parser this is handed to decodes
+     * each half of it once itself. Decoding here as well would decode it twice.
+     */
     @Test
-    fun `a percent encoded label is decoded once`() {
+    fun `a percent encoded label is passed on still encoded`() {
         val key = assertNotNull(match("otpauth://totp/GitHub%3Ame%40github.com?secret=ABC"))
 
-        assertEquals("GitHub:me@github.com", key.totpInfo)
+        assertEquals("GitHub%3Ame%40github.com", key.totpInfo)
+        assertEquals(
+            "otpauth://totp/GitHub%3Ame%40github.com?secret=ABC",
+            key.pendingImport.uri,
+        )
+    }
+
+    /**
+     * Pins the bug: reading the decoded label put a real "#" back into the uri, which cut the
+     * query off as a fragment and left the import with no secret at all.
+     */
+    @Test
+    fun `an escaped delimiter stays escaped instead of becoming a real one`() {
+        val key = assertNotNull(match("otpauth://totp/Acme%23EU:me@acme.com?secret=ABC"))
+
+        assertEquals("Acme%23EU:me@acme.com", key.totpInfo)
+        assertEquals(
+            "otpauth://totp/Acme%23EU:me@acme.com?secret=ABC",
+            key.pendingImport.uri,
+        )
+    }
+
+    @Test
+    fun `an escaped ampersand in a query value does not split the query`() {
+        val key = assertNotNull(match("otpauth://totp/Example?secret=ABC&issuer=A%26B"))
+
+        assertEquals("secret=ABC&issuer=A%26B", key.queries)
+    }
+
+    /** A bare "+" is a space to the parser, so one that arrived escaped has to stay escaped. */
+    @Test
+    fun `an escaped plus in a query value does not become a space`() {
+        val key = assertNotNull(match("otpauth://totp/Example?secret=ABC&issuer=A%2BB"))
+
+        assertEquals("secret=ABC&issuer=A%2BB", key.queries)
     }
 
     @Test

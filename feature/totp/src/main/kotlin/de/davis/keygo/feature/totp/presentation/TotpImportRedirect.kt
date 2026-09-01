@@ -27,9 +27,15 @@ data class TotpImportRedirect(
             if (!uri.scheme.equals(PendingTotpImport.SCHEME, ignoreCase = true)) return null
             if (!uri.host.equals(PendingTotpImport.HOST, ignoreCase = true)) return null
 
+            // Both halves are carried as they arrived. PendingTotpImport.uri glues them back
+            // into a uri, and the parser on the other end percent-decodes each half of the
+            // label itself, exactly once. Reading the decoded forms here would decode it a
+            // second time, and would already have promoted an escape to a real delimiter on
+            // the way: a label written "Acme%23EU" comes back carrying a literal "#", which
+            // cuts the query off as a fragment and leaves the import with no secret at all.
             return TotpImportRedirect(
-                totpInfo = uri.path?.removePrefix("/")?.takeIf { it.isNotBlank() },
-                queries = uri.query?.takeIf { it.isNotBlank() },
+                totpInfo = uri.encodedPath?.removePrefix("/")?.takeIf { it.isNotBlank() },
+                queries = uri.encodedQuery?.takeIf { it.isNotBlank() },
             )
         }
     }
