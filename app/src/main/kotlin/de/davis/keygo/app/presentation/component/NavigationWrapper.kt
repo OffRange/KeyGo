@@ -148,22 +148,27 @@ fun KeyGoNavigationWrapper(
 
     var hiddenByScroll by remember { mutableStateOf(false) }
 
-    // A newly selected top level destination shows its own content from the top, and a layout
-    // type that does not hide leaves nothing to come back from, so both start the component
-    // visible again.
-    LaunchedEffect(selectedRoute, hidesOnScroll) { hiddenByScroll = false }
-
-    val showNavigation = showChrome && !(hidesOnScroll && hiddenByScroll)
-    LaunchedEffect(showNavigation) {
-        if (showNavigation) scaffoldState.show() else scaffoldState.hide()
-    }
-
     val density = LocalDensity.current
     val scrollConnection = remember(density) {
         NavigationScrollConnection(
             thresholdPx = with(density) { NavigationScrollThreshold.toPx() },
             onVisibilityChange = { visible -> hiddenByScroll = !visible },
         )
+    }
+
+    // A newly selected top level destination shows its own content from the top, and a layout
+    // type that does not hide leaves nothing to come back from, so both start the component
+    // visible again. The run behind the flag is cleared with it: left standing at the threshold
+    // it had reached, the next scroll of a single pixel in the same direction would hide the
+    // component again without the distance ever being travelled.
+    LaunchedEffect(selectedRoute, hidesOnScroll) {
+        hiddenByScroll = false
+        scrollConnection.reset()
+    }
+
+    val showNavigation = showChrome && !(hidesOnScroll && hiddenByScroll)
+    LaunchedEffect(showNavigation) {
+        if (showNavigation) scaffoldState.show() else scaffoldState.hide()
     }
 
     // Height of the primary action button, so the snackbar can clear it. Measured on the
@@ -278,10 +283,10 @@ fun KeyGoNavigationWrapper(
                                 icon = {
                                     Icon(
                                         imageVector = icon,
-                                        contentDescription = null
+                                        contentDescription = null,
                                     )
                                 },
-                                text = { Text(text = text) }
+                                text = { Text(text = text) },
                             )
                         }
                     }
@@ -580,6 +585,11 @@ private class NavigationScrollConnection(
 ) : NestedScrollConnection {
 
     private var accumulated = 0f
+
+    /** Starts a new run, so the next scroll has to travel the whole threshold to decide again. */
+    fun reset() {
+        accumulated = 0f
+    }
 
     override fun onPostScroll(
         consumed: Offset,
