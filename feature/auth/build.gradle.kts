@@ -13,8 +13,6 @@ dependencies {
     implementation(projects.core.ui)
     implementation(projects.legacyMigration)
 
-    implementation(libs.androidx.navigation3.runtime)
-
     testImplementation(projects.rust)
     testImplementation(libs.robolectric)
     testImplementation(testFixtures(projects.core.identity))
