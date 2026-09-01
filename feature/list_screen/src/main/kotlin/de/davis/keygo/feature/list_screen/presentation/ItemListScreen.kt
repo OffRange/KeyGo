@@ -60,15 +60,14 @@ fun ItemListScreen(
         collectedState.copy(items = collectedState.items.withSuggestedFirst(suggested))
     }
 
-    // The highlight follows what the pane shows, so a dropped detail cannot leave a row marked as
-    // open, and an empty pane is filled from the list. The highlight written here only reaches the
-    // pane twice is what keeps the two from disagreeing within the pass.
+    // An empty pane is filled from the list, waiting for the items if they have not loaded yet.
+    // Whether an empty pane is one to fill is the caller's call and not this screen's: an empty
+    // pane the user has just backed out of looks exactly like one nothing has been opened in.
     LaunchedEffect(uiState.items, openItemId, autoSelectFirst) {
-        viewModel.setHighlight(if (autoSelectFirst) openItemId else null)
+        if (!autoSelectFirst || openItemId != null) return@LaunchedEffect
 
-        val target = if (autoSelectFirst && openItemId == null) uiState.items.firstOrNull()?.id
-        else null
-        if (target != null) viewModel.onItemClick(target, forceSkipSelection = true)
+        val first = uiState.items.firstOrNull()?.id ?: return@LaunchedEffect
+        viewModel.onItemClick(first, forceSkipSelection = true)
     }
 
     val currentOnItemsDelete by rememberUpdatedState(onItemsDelete)
@@ -110,7 +109,10 @@ fun ItemListScreen(
         filterBottomSheetState = filterSheetState,
         dockedSearchResults = dockedSearchResults,
         enableDeletion = enableDeletion,
-        autoSelectFirst = autoSelectFirst,
+        // Beside the list the pane is what a marked row stands for, so the mark comes straight
+        // from what the pane was told to show. On its own the detail is a screen of its own and
+        // there is nothing on the list to mark.
+        openedItemId = if (autoSelectFirst) openItemId else null,
         notFoundStrategy = notFoundStrategy,
         restrictedItemType = restrictedItemType,
         suggestedItemIds = suggested,

@@ -16,10 +16,12 @@ import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.RankSearchResultsUseCase
+import de.davis.keygo.feature.list_screen.presentation.model.Event
 import de.davis.keygo.feature.vault.domain.usecase.ObserveVaultsAndSelectionUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -32,7 +34,6 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -396,8 +397,12 @@ class ItemListViewModelTest {
         assertFalse(vm.listItemState.value.allSelectedPinned)
     }
 
+    /**
+     * Which row is marked as open is read off the detail pane by the screen, not kept here. All
+     * this owes the caller is the event that moves the pane in the first place.
+     */
     @Test
-    fun `the highlight marks the item the detail pane was told to show`() = runTest(dispatcher) {
+    fun `clicking an item asks for it to be shown`() = runTest(dispatcher) {
         val opened = login("Opened")
         loginRepository.seed(opened, login("Other"))
 
@@ -405,30 +410,13 @@ class ItemListViewModelTest {
         backgroundScope.launchCollect(vm)
         advanceUntilIdle()
 
-        vm.setHighlight(opened.id)
-        advanceUntilIdle()
-
-        assertEquals(opened.id, vm.listItemState.value.highlightedId)
-    }
-
-    /** Pins the bug: a detail dropped from the back stack left a row marked as open behind it. */
-    @Test
-    fun `a detail dropped behind the list takes the highlight with it`() = runTest(dispatcher) {
-        val opened = login("Opened")
-        loginRepository.seed(opened)
-
-        val vm = viewModel()
-        backgroundScope.launchCollect(vm)
+        val selected = async { vm.event.first() }
         advanceUntilIdle()
 
         vm.onItemClick(opened.id)
         advanceUntilIdle()
-        assertEquals(opened.id, vm.listItemState.value.highlightedId)
 
-        vm.setHighlight(null)
-        advanceUntilIdle()
-
-        assertNull(vm.listItemState.value.highlightedId)
+        assertEquals(Event.ItemSelected(opened.id), selected.await())
     }
 }
 
