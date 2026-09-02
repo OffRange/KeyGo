@@ -14,7 +14,6 @@ import de.davis.keygo.feature.backup.domain.BackupDestinationResolver
 import de.davis.keygo.feature.backup.domain.BackupProvisioningLock
 import de.davis.keygo.feature.backup.domain.BackupScheduler
 import de.davis.keygo.feature.backup.domain.PersistableUriManager
-import de.davis.keygo.feature.backup.domain.arkOrNull
 import de.davis.keygo.feature.backup.domain.model.BackupJob
 import de.davis.keygo.feature.backup.domain.model.EncryptionMethod
 import de.davis.keygo.feature.backup.domain.model.ExportDetails
@@ -109,7 +108,7 @@ class FinishExportWizardUseCase(
     }
 
     private suspend fun provisionBackupArk() = resultBinding {
-        val ark = session.arkOrNull()
+        val ark = session.ark
             .asResult(FinishExportWizardError.CryptoFailed).bind()
 
         val cipher = keyStoreManager.getOrCreateCipherFor(

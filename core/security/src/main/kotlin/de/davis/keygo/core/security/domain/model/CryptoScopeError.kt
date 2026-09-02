@@ -4,5 +4,6 @@ import de.davisalessandro.keygo.rust.KeyWrapException
 
 sealed interface CryptoScopeError {
     data object IdNotFound : CryptoScopeError
+    data object NoActiveSession : CryptoScopeError
     data class KeyWrapError(val exception: KeyWrapException) : CryptoScopeError
 }

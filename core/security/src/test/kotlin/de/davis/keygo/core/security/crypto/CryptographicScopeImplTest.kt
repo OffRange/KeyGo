@@ -43,7 +43,7 @@ class CryptographicScopeImplTest {
         vaultId: UUID = UUID.randomUUID(),
     ): WrappedVaultKeyInformation {
         val blob = keyWrapper.wrapVaultKey(
-            ark = session.ark,
+            ark = assertNotNull(session.ark),
             vaultKey = ByteArray(32) { random.nextBytes(1)[0] },
             vaultId = vaultId,
         )

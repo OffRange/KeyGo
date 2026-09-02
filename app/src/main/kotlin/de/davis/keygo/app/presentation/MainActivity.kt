@@ -59,14 +59,20 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
         setContent {
             // Null until the account has been looked up, which the splash screen waits out.
-            val hasAccess = viewModel.isReturningUser.collectAsState().value ?: return@setContent
+            val hasAccess by viewModel.isReturningUser.collectAsState()
+            hasAccess ?: return@setContent
+            val isSessionActive by viewModel.isSessionActive.collectAsState()
 
             KeyGoTheme {
                 val snackbarManager = koinInject<SnackbarManager>()
                 CompositionLocalProvider(
                     LocalSnackbarManager provides snackbarManager,
                 ) {
-                    App(hasAccess = hasAccess, launchRoute = launchRoute(hasAccess))
+                    App(
+                        hasAccess = hasAccess,
+                        launchRoute = launchRoute(hasAccess),
+                        isSessionActive = isSessionActive,
+                    )
                 }
             }
         }
@@ -84,13 +90,15 @@ private fun Intent.totpImportRedirect(): TotpImportRedirect? {
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
-private fun App(hasAccess: Boolean, launchRoute: NavKey) {
+private fun App(hasAccess: Boolean, launchRoute: NavKey, isSessionActive: Boolean) {
     val navigationState = rememberAppNavigationState(
         launchRoute = launchRoute,
         startRoute = RouteDestination.Home,
         topLevelRoutes = TopLevelRoutes,
     )
     val navigator = remember(navigationState) { AppNavigator(navigationState) }
+
+    RedirectToAuthWhenSessionEnds(isSessionActive, navigator)
 
     val windowAdaptiveInfo = currentWindowAdaptiveInfoV2()
     val directive = remember(windowAdaptiveInfo) {
@@ -129,6 +137,29 @@ private fun App(hasAccess: Boolean, launchRoute: NavKey) {
                 sceneStrategies = sceneStrategies,
             )
         }
+    }
+}
+
+/**
+ * The navigation state outlives the process, so a restored back stack can hand the app proper the
+ * window again without the launch flow ever running. The fresh process has no unlocked session in
+ * that case, and nothing routes back to the unlock on its own once
+ * [AppNavigator.finishLaunchFlow] has emptied the launch stack, so the unlock is put back on top
+ * here.
+ *
+ * Keyed on the launch state as well, so this only acts while the app proper owns the window, and
+ * so a session that dies later (an auto lock, say) redirects at once rather than waiting for the
+ * next navigation. Onboarding and the unlock itself both run with no session by design, and
+ * redirecting there would take a first run user straight back out of setup.
+ */
+@Composable
+private fun RedirectToAuthWhenSessionEnds(
+    isSessionActive: Boolean,
+    navigator: AppNavigator,
+) {
+    val isLaunching = navigator.state.isLaunching
+    LaunchedEffect(isSessionActive, isLaunching) {
+        if (!isSessionActive && !isLaunching) navigator.replaceLaunchFlow(AuthRoute())
     }
 }
 

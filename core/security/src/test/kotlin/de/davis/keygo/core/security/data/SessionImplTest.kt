@@ -2,8 +2,8 @@ package de.davis.keygo.core.security.data
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNull
 
 class SessionImplTest {
 
@@ -12,10 +12,26 @@ class SessionImplTest {
     private fun generateArk(): ByteArray = ByteArray(32) { it.toByte() }
 
     @Test
-    fun `dek throws when no active session`() {
-        assertFailsWith<IllegalStateException> {
-            session.ark
-        }
+    fun `dek is null when no active session`() {
+        assertNull(session.ark)
+    }
+
+    @Test
+    fun `isActive is false when no active session`() {
+        assertEquals(false, session.isActive.value)
+    }
+
+    @Test
+    fun `isActive is true after startSession`() {
+        session.startSession(generateArk())
+        assertEquals(true, session.isActive.value)
+    }
+
+    @Test
+    fun `isActive is false after endSession`() {
+        session.startSession(generateArk())
+        session.endSession()
+        assertEquals(false, session.isActive.value)
     }
 
     @Test
@@ -30,9 +46,7 @@ class SessionImplTest {
         session.startSession(generateArk())
         session.endSession()
 
-        assertFailsWith<IllegalStateException> {
-            session.ark
-        }
+        assertNull(session.ark)
     }
 
     @Test

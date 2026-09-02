@@ -136,6 +136,26 @@ class CreateVaultUseCaseTest {
     }
 
     @Test
+    fun `returns NoActiveSession instead of throwing when the session is locked`() = runTest {
+        session.endSession()
+
+        val result = useCase(name = "Personal", icon = Vault.Icon.Default)
+
+        assertTrue(result.isFailure())
+        assertEquals(VaultCreationError.NoActiveSession, result.error)
+    }
+
+    @Test
+    fun `does not persist a vault when the session is locked`() = runTest {
+        session.endSession()
+
+        useCase(name = "Personal", icon = Vault.Icon.Default)
+
+        assertEquals(emptyList(), vaultRepository.observeVaults().first())
+        assertEquals(VaultContext.NoSpecific, vaultContextRepository.currentContext)
+    }
+
+    @Test
     fun `second create overrides context and last interacted with newer vault`() = runTest {
         val first = assertNotNull(useCase(name = "A", icon = Vault.Icon.Default).getOrNull())
         val second = assertNotNull(useCase(name = "B", icon = Vault.Icon.Default).getOrNull())

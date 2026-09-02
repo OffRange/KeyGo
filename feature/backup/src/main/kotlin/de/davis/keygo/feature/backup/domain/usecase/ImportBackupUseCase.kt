@@ -6,7 +6,6 @@ import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.backup.domain.BackupFileStore
 import de.davis.keygo.feature.backup.domain.BackupRestorer
-import de.davis.keygo.feature.backup.domain.arkOrNull
 import de.davis.keygo.feature.backup.domain.mapper.toImportError
 import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.domain.model.ImportError
@@ -40,7 +39,7 @@ internal class ImportBackupUseCase(
      */
     operator fun invoke(request: ImportRequest): Flow<ImportProgress> = channelFlow {
         val outcome = resultBinding {
-            if (session.arkOrNull() == null)
+            if (session.ark == null)
                 Result.Failure<Nothing, ImportError>(ImportError.SessionLocked).bind()
 
             send(ImportProgress.Reading)
@@ -77,7 +76,7 @@ internal class ImportBackupUseCase(
                             ?: return Result.Failure(ImportError.PassphraseRequired)
 
                         JsonEncryption.ARK -> BackupCredential.Ark(
-                            session.arkOrNull()
+                            session.ark
                                 ?: return Result.Failure(ImportError.SessionLocked),
                         )
                     }

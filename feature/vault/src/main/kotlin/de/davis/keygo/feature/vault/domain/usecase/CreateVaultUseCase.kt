@@ -7,6 +7,7 @@ import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.vault.domain.model.VaultCreationError
 import de.davis.keygo.rust.vault.VaultManager
@@ -35,9 +36,10 @@ class CreateVaultUseCase(
 
         val vaultId = newVaultId()
 
+        val ark = session.ark.asResult(VaultCreationError.NoActiveSession).bind()
         val vaultKey = vaultManager.createNewVaultKey()
         val wrappedVaultKey =
-            keyWrapper.wrapVaultKeyWithResult(session.ark, vaultKey, vaultId)
+            keyWrapper.wrapVaultKeyWithResult(ark, vaultKey, vaultId)
                 .bind { VaultCreationError.WrapFailed }
 
         val vault = Vault(
