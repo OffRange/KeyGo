@@ -147,18 +147,10 @@ private fun App(
 }
 
 /**
- * Locks the app in two cases:
- * - [isLocked] catches the instant a session that was active ends, whether the app proper
- *   currently owns the window or an overlay screen does (an in-progress TOTP-import picker, say)
- *   - [AppNavigator.lock] pushes over either without disturbing what's underneath.
- * - The level check (`!isSessionActive && !isOverlaid`) catches a back stack a configuration
- *   change or process death restored straight into the app proper with a session that never got
- *   re-established: [isLocked] alone can't see this, since it only fires on a transition a freshly
- *   restored [AppViewModel] has no memory of. Gated by `!isOverlaid` so it never fires during
- *   onboarding or the very first login (both show with the overlay already owning the window
- *   and no session yet, which looks the same as this case unless the overlay is checked too), and
- *   so it never fights [AppNavigator.lock]'s own idempotency for a gate or picker Nav3 already
- *   restored correctly.
+ * [isLocked] catches a live session ending. `!isSessionActive && !isOverlaid` catches a back stack
+ * restored into the app proper with no session, which a freshly restored [AppViewModel] has no
+ * transition to report; `!isOverlaid` keeps that off onboarding and the first login, which run
+ * without a session by design.
  */
 @Composable
 private fun LockAppWhenSessionEnds(

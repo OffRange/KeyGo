@@ -53,12 +53,8 @@ class AppNavigator(val state: AppNavigationState) {
     /**
      * Hides what is showing behind an unlock gate and blocks back until [unlock]. Nothing
      * underneath is disturbed or torn down: a screen holding a secret clears it by observing the
-     * session, the way ChangePasswordViewModel does.
-     *
-     * A no-op if already gated. This matters because the caller's trigger is collected by a
-     * `LaunchedEffect` that re-fires on every fresh composition - including one rebuilt by a
-     * configuration change while the app is still locked - with no memory of having already run.
-     * The restored stack is what remembers, so a second call pushes nothing.
+     * session, the way ChangePasswordViewModel does. A no-op if already gated, since the caller's
+     * `LaunchedEffect` re-fires on every fresh composition.
      */
     fun lock() {
         if (isGated) return
@@ -101,9 +97,8 @@ class AppNavigator(val state: AppNavigationState) {
     }
 
     /**
-     * Goes back one destination, but never down to nothing, and never while a lock's gate is up.
-     * The overlay can hold more than one entry while gated (a picker preserved under the
-     * gate, say), so a plain depth check would let back press pop the gate itself away.
+     * Goes back one destination, never down to nothing, and never while the gate is up: the
+     * overlay can be deeper than one entry then, so a depth check alone would pop the gate.
      */
     fun goBack() {
         if (isGated) return
