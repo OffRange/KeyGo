@@ -59,8 +59,7 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
         setContent {
             // Null until the account has been looked up, which the splash screen waits out.
-            val hasAccess by viewModel.isReturningUser.collectAsState()
-            hasAccess ?: return@setContent
+            val hasAccess = viewModel.isReturningUser.collectAsState().value ?: return@setContent
             val isSessionActive by viewModel.isSessionActive.collectAsState()
 
             KeyGoTheme {
