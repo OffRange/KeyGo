@@ -6,8 +6,12 @@ import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.legacy_migration.domain.usecase.HasMainPasswordUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.scan
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
@@ -23,12 +27,20 @@ internal class AppViewModel(
     val isReturningUser = _isReturningUser.asStateFlow()
 
     /**
-     * A restored back stack can hand the app proper the window straight after process death,
-     * skipping the launch flow; the fresh process's [Session] is never unlocked in that case, and
-     * nothing routes back to the unlock on its own once the launch stack has been emptied.
-     * [MainActivity] observes this and redirects whenever it goes false.
+     * True exactly when a session that was active has just ended - never at first launch, before
+     * the session has ever been active. A level read of "not active" would also be true before the
+     * very first login, before [MainActivity.launchRoute]'s onboarding or deep-link auth screen has
+     * had a chance to show, and would clobber it. [MainActivity] observes this to put the re-auth
+     * gate up.
      */
-    val isSessionActive: StateFlow<Boolean> = session.isActive
+    val isLocked: StateFlow<Boolean> = session.isActive
+        .scan(false to false) { (wasActive, _), isActive -> isActive to (wasActive && !isActive) }
+        .map { it.second }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = false,
+        )
 
     init {
         viewModelScope.launch {
