@@ -161,10 +161,6 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.junit)
-    testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(testFixtures(projects.core.security))
-    testImplementation(testFixtures(projects.core.identity))
-    testImplementation(testFixtures(projects.legacyMigration))
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

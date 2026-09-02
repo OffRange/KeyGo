@@ -60,7 +60,6 @@ class MainActivity : FragmentActivity() {
         setContent {
             // Null until the account has been looked up, which the splash screen waits out.
             val hasAccess = viewModel.isReturningUser.collectAsState().value ?: return@setContent
-            val isLocked by viewModel.isLocked.collectAsState()
             val isSessionActive by viewModel.isSessionActive.collectAsState()
 
             KeyGoTheme {
@@ -71,7 +70,6 @@ class MainActivity : FragmentActivity() {
                     App(
                         hasAccess = hasAccess,
                         launchRoute = launchRoute(hasAccess),
-                        isLocked = isLocked,
                         isSessionActive = isSessionActive,
                     )
                 }
@@ -94,7 +92,6 @@ private fun Intent.totpImportRedirect(): TotpImportRedirect? {
 private fun App(
     hasAccess: Boolean,
     launchRoute: NavKey,
-    isLocked: Boolean,
     isSessionActive: Boolean,
 ) {
     val navigationState = rememberAppNavigationState(
@@ -104,7 +101,7 @@ private fun App(
     )
     val navigator = remember(navigationState) { AppNavigator(navigationState) }
 
-    LockAppWhenSessionEnds(isLocked, isSessionActive, navigator)
+    LockAppWhenSessionEnds(isSessionActive, navigator)
 
     val windowAdaptiveInfo = currentWindowAdaptiveInfoV2()
     val directive = remember(windowAdaptiveInfo) {
@@ -147,20 +144,17 @@ private fun App(
 }
 
 /**
- * [isLocked] catches a live session ending. `!isSessionActive && !isOverlaid` catches a back stack
- * restored into the app proper with no session, which a freshly restored [AppViewModel] has no
- * transition to report; `!isOverlaid` keeps that off onboarding and the first login, which run
- * without a session by design.
+ * No ARK means the user has to authenticate again, so the session's own state is the whole rule -
+ * a session that just ended and a restored process that never had one are the same thing here.
+ * [AppNavigator.lock] is what knows when a gate would be wrong, so onboarding and the deep link
+ * redirect need no special case. Keyed on what the overlay is showing as well, so it re-decides
+ * when that changes under a session that is still ended.
  */
 @Composable
-private fun LockAppWhenSessionEnds(
-    isLocked: Boolean,
-    isSessionActive: Boolean,
-    navigator: AppNavigator,
-) {
-    val isOverlaid = navigator.state.isOverlaid
-    LaunchedEffect(isLocked, isSessionActive, isOverlaid) {
-        if (isLocked || (!isSessionActive && !isOverlaid)) navigator.lock()
+private fun LockAppWhenSessionEnds(isSessionActive: Boolean, navigator: AppNavigator) {
+    val topOverlayRoute = navigator.state.overlayStack.lastOrNull()
+    LaunchedEffect(isSessionActive, topOverlayRoute) {
+        if (!isSessionActive) navigator.lock()
     }
 }
 

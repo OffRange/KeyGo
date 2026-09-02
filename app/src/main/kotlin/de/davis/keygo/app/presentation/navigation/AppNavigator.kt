@@ -4,6 +4,8 @@ import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.feature.auth.presentation.AuthRoute
+import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
+import de.davis.keygo.feature.totp.presentation.TotpImportRedirect
 
 /**
  * Handles navigation events by updating [AppNavigationState]. Everything the UI can do to the back
@@ -17,6 +19,17 @@ class AppNavigator(val state: AppNavigationState) {
      * emptiness nor depth tells a gate from an import screen back may legitimately pop.
      */
     private val isGated: Boolean get() = state.overlayStack.lastOrNull() is AuthRoute
+
+    /**
+     * True while the overlay is showing a screen that runs before there is a session, so a locked
+     * session is what it is there for rather than a reason to gate it. The import flow is not one
+     * of these: it only ever runs after an unlock, so a session that ends under it does gate it.
+     */
+    private val runsWithoutSession: Boolean
+        get() = when (state.overlayStack.lastOrNull()) {
+            is AuthRoute, is OnboardingRoute, is TotpImportRedirect -> true
+            else -> false
+        }
 
     fun navigate(route: NavKey) {
         val isTopLevel = !state.isOverlaid && route in state.backStacks
@@ -53,11 +66,11 @@ class AppNavigator(val state: AppNavigationState) {
     /**
      * Hides what is showing behind an unlock gate and blocks back until [unlock]. Nothing
      * underneath is disturbed or torn down: a screen holding a secret clears it by observing the
-     * session, the way ChangePasswordViewModel does. A no-op if already gated, since the caller's
-     * `LaunchedEffect` re-fires on every fresh composition.
+     * session, the way ChangePasswordViewModel does. A no-op while a screen that runs without a
+     * session is already up, which covers both a gate already in place and the caller re-firing.
      */
     fun lock() {
-        if (isGated) return
+        if (runsWithoutSession) return
         pushOntoOverlay(AuthRoute())
     }
 

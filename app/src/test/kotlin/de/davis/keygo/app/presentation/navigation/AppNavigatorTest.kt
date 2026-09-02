@@ -11,6 +11,7 @@ import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
 import de.davis.keygo.feature.settings.presentation.ChangePasswordRoute
 import de.davis.keygo.feature.settings.presentation.SettingsRoute
 import de.davis.keygo.feature.totp.presentation.SelectItemForTotpRoute
+import de.davis.keygo.feature.totp.presentation.TotpImportRedirect
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -331,6 +332,24 @@ class AppNavigatorTest {
 
         assertTrue(navigator.state.isOverlaid)
         assertEquals(listOf(AuthRoute()), navigator.shown)
+    }
+
+    @Test
+    fun `locking is refused while first run is showing`() {
+        val navigator = navigator(launchRoute = OnboardingRoute())
+
+        navigator.lock()
+
+        assertEquals(listOf(OnboardingRoute()), navigator.shown)
+    }
+
+    @Test
+    fun `locking is refused while the deep link redirect is showing`() {
+        val navigator = navigator(launchRoute = TotpImportRedirect(DEEP_LINK_URI))
+
+        navigator.lock()
+
+        assertEquals(listOf(TotpImportRedirect(DEEP_LINK_URI)), navigator.shown)
     }
 
     @Test
