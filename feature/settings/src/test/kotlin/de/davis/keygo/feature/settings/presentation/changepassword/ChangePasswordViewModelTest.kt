@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.settings.presentation.changepassword
 
+import androidx.compose.runtime.snapshots.Snapshot
 import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
@@ -340,5 +341,43 @@ class ChangePasswordViewModelTest {
         advanceUntilIdle()
 
         assertEquals("old-pw", vm.state.value.currentPassword.text.toString())
+    }
+
+    @Test
+    fun `the strength meter still tracks the new password after a clear`() = runTest(dispatcher) {
+        // The meter's snapshotFlow tracks the TextFieldState instance it last read, so clearing by
+        // swapping in fresh instances would leave it watching an abandoned one that is never
+        // mutated again - freezing the score for the rest of the ViewModel's life.
+        val vm = ChangePasswordViewModel(
+            accountRepository = accountRepository,
+            biometricAvailabilityRepository = biometricAvailability,
+            passwordStrengthEstimator = object : PasswordStrengthEstimator {
+                override suspend fun estimate(password: String) =
+                    PasswordScore(password.length.coerceAtMost(5))
+            },
+            changePassword = changePassword,
+            session = session,
+        ).also { it.state.launchIn(backgroundScope) }
+        // No Recomposer drives the frame clock here, so snapshotFlow is told about writes by hand.
+        // The first advance is what lets the session-ended collector do its write in the first
+        // place; the notification has to come after it, and the debounce after that.
+        suspend fun settle() {
+            advanceUntilIdle()
+            Snapshot.sendApplyNotifications()
+            advanceUntilIdle()
+        }
+
+        vm.state.value.newPassword.edit { append("aaaa") }
+        settle()
+        assertEquals(PasswordScore.Strong, vm.state.value.passwordScore)
+
+        session.endSession()
+        settle()
+        assertEquals(PasswordScore.None, vm.state.value.passwordScore)
+
+        vm.state.value.newPassword.edit { append("aa") }
+        settle()
+
+        assertEquals(PasswordScore.Weak, vm.state.value.passwordScore)
     }
 }

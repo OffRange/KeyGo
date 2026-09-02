@@ -23,6 +23,7 @@ class AppNavigatorTest {
             launchStack = NavBackStack(launchRoute),
             topLevelRoute = mutableStateOf(RouteDestination.Home),
             backStacks = TOP_LEVEL_ROUTES.associateWith { NavBackStack<NavKey>(it) },
+            isGated = mutableStateOf(false),
         )
         return AppNavigator(state)
     }
@@ -382,6 +383,53 @@ class AppNavigatorTest {
         navigator.goBack()
 
         assertEquals(listOf(SettingsRoute), navigator.shown)
+    }
+
+    @Test
+    fun `unlocking a cold start gate hands the window to the app proper`() {
+        // AppNavigator.finishUnlock calls unlock() for the cold-start auth and onboarding screens
+        // too, which are on the launch stack without lock() ever having gated anything. Popping
+        // has to happen there as well, or authenticating at cold start would leave the auth screen
+        // up forever.
+        val navigator = navigator()
+
+        navigator.unlock()
+
+        assertFalse(navigator.state.isLaunching)
+        assertEquals(listOf(RouteDestination.Home), navigator.shown)
+    }
+
+    @Test
+    fun `a gate restored from saved state is not pushed a second time`() {
+        val state = AppNavigationState(
+            launchStack = NavBackStack(AuthRoute()),
+            topLevelRoute = mutableStateOf(RouteDestination.Home),
+            backStacks = TOP_LEVEL_ROUTES.associateWith { NavBackStack<NavKey>(it) },
+            isGated = mutableStateOf(true),
+        )
+        val navigator = AppNavigator(state)
+
+        navigator.lock(AuthRoute())
+
+        assertEquals(listOf(AuthRoute()), navigator.shown)
+    }
+
+    @Test
+    fun `back still cannot pop a gate restored from saved state, even over a preserved picker`() {
+        val state = AppNavigationState(
+            launchStack = NavBackStack(SelectItemForTotpRoute(DEEP_LINK_URI), AuthRoute()),
+            topLevelRoute = mutableStateOf(RouteDestination.Home),
+            backStacks = TOP_LEVEL_ROUTES.associateWith { NavBackStack<NavKey>(it) },
+            isGated = mutableStateOf(true),
+        )
+        val navigator = AppNavigator(state)
+
+        navigator.goBack()
+
+        assertEquals(
+            listOf(SelectItemForTotpRoute(DEEP_LINK_URI), AuthRoute()),
+            navigator.shown,
+        )
     }
 
     private fun unlocked(): AppNavigator = navigator().apply { finishLaunchFlow() }

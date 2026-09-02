@@ -61,6 +61,7 @@ class MainActivity : FragmentActivity() {
             // Null until the account has been looked up, which the splash screen waits out.
             val hasAccess = viewModel.isReturningUser.collectAsState().value ?: return@setContent
             val isLocked by viewModel.isLocked.collectAsState()
+            val isSessionActive by viewModel.isSessionActive.collectAsState()
 
             KeyGoTheme {
                 val snackbarManager = koinInject<SnackbarManager>()
@@ -71,6 +72,7 @@ class MainActivity : FragmentActivity() {
                         hasAccess = hasAccess,
                         launchRoute = launchRoute(hasAccess),
                         isLocked = isLocked,
+                        isSessionActive = isSessionActive,
                     )
                 }
             }
@@ -89,7 +91,12 @@ private fun Intent.totpImportRedirect(): TotpImportRedirect? {
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
-private fun App(hasAccess: Boolean, launchRoute: NavKey, isLocked: Boolean) {
+private fun App(
+    hasAccess: Boolean,
+    launchRoute: NavKey,
+    isLocked: Boolean,
+    isSessionActive: Boolean,
+) {
     val navigationState = rememberAppNavigationState(
         launchRoute = launchRoute,
         startRoute = RouteDestination.Home,
@@ -97,7 +104,7 @@ private fun App(hasAccess: Boolean, launchRoute: NavKey, isLocked: Boolean) {
     )
     val navigator = remember(navigationState) { AppNavigator(navigationState) }
 
-    LockAppWhenSessionEnds(isLocked, navigator)
+    LockAppWhenSessionEnds(isLocked, isSessionActive, navigator)
 
     val windowAdaptiveInfo = currentWindowAdaptiveInfoV2()
     val directive = remember(windowAdaptiveInfo) {
@@ -140,14 +147,28 @@ private fun App(hasAccess: Boolean, launchRoute: NavKey, isLocked: Boolean) {
 }
 
 /**
- * [AppViewModel.isLocked] only turns true for a session that was active and then ended, so this
- * cannot fire before the very first login and cannot clobber [MainActivity.launchRoute]'s
- * onboarding or deep-link destination the way a level read of "not active" would.
+ * Locks the app in two cases:
+ * - [isLocked] catches the instant a session that was active ends, whether the app proper
+ *   currently owns the window or a launch-flow screen does (an in-progress TOTP-import picker,
+ *   say) - [AppNavigator.lock] pushes over either without disturbing what's underneath.
+ * - The level check (`!isSessionActive && !isLaunching`) catches a back stack a configuration
+ *   change or process death restored straight into the app proper with a session that never got
+ *   re-established: [isLocked] alone can't see this, since it only fires on a transition a freshly
+ *   restored [AppViewModel] has no memory of. Gated by `!isLaunching` so it never fires during
+ *   onboarding or the very first login (both show with the launch flow already owning the window
+ *   and no session yet, which looks the same as this case unless launch state is checked too), and
+ *   so it never fights [AppNavigator.lock]'s own idempotency for a gate or picker Nav3 already
+ *   restored correctly.
  */
 @Composable
-private fun LockAppWhenSessionEnds(isLocked: Boolean, navigator: AppNavigator) {
-    LaunchedEffect(isLocked) {
-        if (isLocked) navigator.lock(AuthRoute())
+private fun LockAppWhenSessionEnds(
+    isLocked: Boolean,
+    isSessionActive: Boolean,
+    navigator: AppNavigator,
+) {
+    val isLaunching = navigator.state.isLaunching
+    LaunchedEffect(isLocked, isSessionActive, isLaunching) {
+        if (isLocked || (!isSessionActive && !isLaunching)) navigator.lock(AuthRoute())
     }
 }
 

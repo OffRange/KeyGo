@@ -48,15 +48,29 @@ class AppNavigator(val state: AppNavigationState) {
      * ViewModels it held; the selected tab, and anything already on the launch stack (an
      * in-progress TOTP import, say), are left exactly as they were, restored for free once the gate
      * lifts.
+     *
+     * A no-op if already gated. This matters because the caller's trigger is collected by a
+     * `LaunchedEffect` that re-fires on every fresh composition - including one rebuilt by a
+     * configuration change while the app is still locked - with no memory of having already run;
+     * [AppNavigationState.isGated] is durable across that rebuild, so it is what keeps a second
+     * call from pushing a second gate.
      */
     fun lock(gate: NavKey) {
+        if (state.isGated) return
         val activeRoute = state.topLevelRoute
         state.backStacks.forEach { (route, stack) -> if (route != activeRoute) stack.popToBase() }
         pushOntoLaunchFlow(gate)
         state.isGated = true
     }
 
-    /** Lifts the gate [lock] put up, revealing whatever was underneath it. */
+    /**
+     * Lifts the gate [lock] put up, revealing whatever was underneath it.
+     *
+     * Pops unconditionally rather than only while gated. This is also what dismisses the cold-start
+     * auth screen and the onboarding screen, neither of which [lock] ever gated - they are on the
+     * launch stack because they were the launch route. Returning early on `!isGated` would leave
+     * both up for good after a successful first login.
+     */
     fun unlock() {
         state.launchStack.removeLastOrNull()
         state.isGated = false

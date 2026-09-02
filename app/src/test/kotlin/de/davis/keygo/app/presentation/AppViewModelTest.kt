@@ -81,4 +81,29 @@ class AppViewModelTest {
 
         assertFalse(vm.isLocked.value)
     }
+
+    @Test
+    fun `isLocked keeps tracking transitions with no collector ever attached`() =
+        runTest(dispatcher) {
+            val session = FakeSession()
+            // Deliberately not using the shared viewModel() helper here - it holds a permanent
+            // collector via launchIn(backgroundScope), which would pass under either SharingStarted
+            // strategy and wouldn't actually distinguish Eagerly from the WhileSubscribed(5_000)
+            // this replaced. Eagerly's whole point is that isLocked keeps tracking transitions even
+            // with zero collectors ever subscribed; WhileSubscribed would never even start
+            // collecting.
+            val vm = AppViewModel(
+                accountRepository = FakeAccountRepository(),
+                hasV1Password = hasMainPasswordUseCase(FakeMainPasswordRepository()),
+                session = session,
+            )
+            advanceUntilIdle()
+
+            session.startSession(ByteArray(32))
+            advanceUntilIdle()
+            session.endSession()
+            advanceUntilIdle()
+
+            assertTrue(vm.isLocked.value)
+        }
 }

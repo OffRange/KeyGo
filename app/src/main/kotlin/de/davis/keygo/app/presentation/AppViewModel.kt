@@ -42,6 +42,15 @@ internal class AppViewModel(
             initialValue = false,
         )
 
+    /**
+     * The session's raw current state, for [MainActivity] to self-heal a back stack a
+     * configuration change or process death restored straight into the app proper with a session
+     * that never got re-established. [isLocked] alone cannot catch this: it only fires on a
+     * transition, and a freshly restored [AppViewModel] has no memory of the session ever having
+     * been active to transition from.
+     */
+    val isSessionActive: StateFlow<Boolean> = session.isActive
+
     init {
         viewModelScope.launch {
             _isReturningUser.update { accountRepository.getOrNull() != null || hasV1Password() }

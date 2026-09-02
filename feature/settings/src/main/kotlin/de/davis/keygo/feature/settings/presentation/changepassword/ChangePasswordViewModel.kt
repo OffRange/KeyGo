@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.settings.presentation.changepassword
 
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.delete
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -208,14 +209,17 @@ internal class ChangePasswordViewModel(
      * The current password is the RootKek derivation input - the one secret this codebase never
      * retains anywhere, including across a lock. Everything else about the screen is left alone,
      * the same as any other screen the app leaves in place while locked.
+     *
+     * Mutates the existing [TextFieldState] instances rather than replacing them: [passwordStrength]
+     * tracks a snapshot-state read on whichever instance `_state.value.newPassword` pointed to the
+     * last time it ran, and a fresh replacement instance's changes would go unobserved - the old,
+     * abandoned instance is simply never mutated, so nothing ever re-triggers the flow, and
+     * [ChangePasswordState.passwordScore] would freeze at whatever it was the moment before the
+     * clear for the rest of the ViewModel's life.
      */
     private fun clearSensitiveFields() {
-        _state.update {
-            it.copy(
-                currentPassword = TextFieldState(),
-                newPassword = TextFieldState(),
-                confirmPassword = TextFieldState(),
-            )
-        }
+        _state.value.currentPassword.edit { delete(0, length) }
+        _state.value.newPassword.edit { delete(0, length) }
+        _state.value.confirmPassword.edit { delete(0, length) }
     }
 }
