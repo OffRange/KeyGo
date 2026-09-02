@@ -60,7 +60,7 @@ class MainActivity : FragmentActivity() {
         setContent {
             // Null until the account has been looked up, which the splash screen waits out.
             val hasAccess = viewModel.isReturningUser.collectAsState().value ?: return@setContent
-            val isSessionActive by viewModel.isSessionActive.collectAsState()
+            val isLocked by viewModel.isLocked.collectAsState()
 
             KeyGoTheme {
                 val snackbarManager = koinInject<SnackbarManager>()
@@ -70,7 +70,7 @@ class MainActivity : FragmentActivity() {
                     App(
                         hasAccess = hasAccess,
                         launchRoute = launchRoute(hasAccess),
-                        isSessionActive = isSessionActive,
+                        isLocked = isLocked,
                     )
                 }
             }
@@ -89,7 +89,7 @@ private fun Intent.totpImportRedirect(): TotpImportRedirect? {
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
-private fun App(hasAccess: Boolean, launchRoute: NavKey, isSessionActive: Boolean) {
+private fun App(hasAccess: Boolean, launchRoute: NavKey, isLocked: Boolean) {
     val navigationState = rememberAppNavigationState(
         launchRoute = launchRoute,
         startRoute = RouteDestination.Home,
@@ -97,7 +97,7 @@ private fun App(hasAccess: Boolean, launchRoute: NavKey, isSessionActive: Boolea
     )
     val navigator = remember(navigationState) { AppNavigator(navigationState) }
 
-    RedirectToAuthWhenSessionEnds(isSessionActive, navigator)
+    RedirectToAuthWhenSessionEnds(isLocked, navigator)
 
     val windowAdaptiveInfo = currentWindowAdaptiveInfoV2()
     val directive = remember(windowAdaptiveInfo) {
@@ -153,12 +153,12 @@ private fun App(hasAccess: Boolean, launchRoute: NavKey, isSessionActive: Boolea
  */
 @Composable
 private fun RedirectToAuthWhenSessionEnds(
-    isSessionActive: Boolean,
+    isLocked: Boolean,
     navigator: AppNavigator,
 ) {
     val isLaunching = navigator.state.isLaunching
-    LaunchedEffect(isSessionActive, isLaunching) {
-        if (!isSessionActive && !isLaunching) navigator.replaceLaunchFlow(AuthRoute())
+    LaunchedEffect(isLocked, isLaunching) {
+        if (isLocked && !isLaunching) navigator.replaceLaunchFlow(AuthRoute())
     }
 }
 
