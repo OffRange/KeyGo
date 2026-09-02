@@ -286,6 +286,104 @@ class AppNavigatorTest {
         assertEquals(listOf(RouteDestination.Home), navigator.shown)
     }
 
+    // ---- locking ----
+
+    @Test
+    fun `locking truncates every tab but the one shown`() {
+        val navigator = unlocked()
+        navigator.navigate(SettingsRoute)
+        navigator.navigate(ChangePasswordRoute)
+        navigator.navigate(RouteDestination.Home)
+        val itemId = newItemId()
+        navigator.showDetail(RouteDestination.ViewItem(itemId))
+
+        navigator.lock(AuthRoute())
+
+        assertEquals(
+            listOf(RouteDestination.Home, RouteDestination.ViewItem(itemId)),
+            navigator.state.backStacks.getValue(RouteDestination.Home).toList(),
+        )
+        assertEquals(
+            listOf(SettingsRoute),
+            navigator.state.backStacks.getValue(SettingsRoute).toList(),
+        )
+    }
+
+    @Test
+    fun `locking pushes the gate without clearing what was already on the launch stack`() {
+        val navigator = navigator()
+        navigator.replaceLaunchFlow(SelectItemForTotpRoute(DEEP_LINK_URI))
+
+        navigator.lock(AuthRoute())
+
+        assertEquals(
+            listOf(SelectItemForTotpRoute(DEEP_LINK_URI), AuthRoute()),
+            navigator.shown,
+        )
+    }
+
+    @Test
+    fun `locking from a tab pushes the gate onto an otherwise empty launch stack`() {
+        val navigator = unlocked()
+        navigator.navigate(SettingsRoute)
+
+        navigator.lock(AuthRoute())
+
+        assertTrue(navigator.state.isLaunching)
+        assertEquals(listOf(AuthRoute()), navigator.shown)
+    }
+
+    @Test
+    fun `unlocking reveals the active tab exactly as it was`() {
+        val navigator = unlocked()
+        navigator.navigate(SettingsRoute)
+        navigator.navigate(ChangePasswordRoute)
+        navigator.lock(AuthRoute())
+
+        navigator.unlock()
+
+        assertFalse(navigator.state.isLaunching)
+        assertEquals(listOf(SettingsRoute, ChangePasswordRoute), navigator.shown)
+    }
+
+    @Test
+    fun `unlocking reveals a picker that was preserved under the gate`() {
+        val navigator = navigator()
+        navigator.replaceLaunchFlow(SelectItemForTotpRoute(DEEP_LINK_URI))
+        navigator.lock(AuthRoute())
+
+        navigator.unlock()
+
+        assertEquals(listOf(SelectItemForTotpRoute(DEEP_LINK_URI)), navigator.shown)
+    }
+
+    @Test
+    fun `back cannot pop the gate away, even over a picker underneath it`() {
+        val navigator = navigator()
+        navigator.replaceLaunchFlow(SelectItemForTotpRoute(DEEP_LINK_URI))
+        navigator.lock(AuthRoute())
+
+        navigator.goBack()
+
+        assertEquals(
+            listOf(SelectItemForTotpRoute(DEEP_LINK_URI), AuthRoute()),
+            navigator.shown,
+        )
+    }
+
+    @Test
+    fun `back works normally again once unlocked`() {
+        val navigator = unlocked()
+        navigator.navigate(SettingsRoute)
+        navigator.navigate(ChangePasswordRoute)
+        navigator.lock(AuthRoute())
+        navigator.unlock()
+
+        navigator.goBack()
+
+        assertEquals(listOf(SettingsRoute), navigator.shown)
+    }
+
     private fun unlocked(): AppNavigator = navigator().apply { finishLaunchFlow() }
 
     private companion object {

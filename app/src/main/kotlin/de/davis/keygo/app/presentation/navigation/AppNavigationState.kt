@@ -67,6 +67,9 @@ class AppNavigationState(
     /** The selected navigation bar destination. */
     var topLevelRoute: NavKey by topLevelRoute
 
+    /** True while [AppNavigator.lock] has a gate up. Makes [AppNavigator.goBack] a no-op. */
+    var isGated: Boolean = false
+
     /** Whether the launch flow still owns the window. */
     val isLaunching: Boolean get() = launchStack.isNotEmpty()
 

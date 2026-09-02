@@ -37,6 +37,31 @@ class AppNavigator(val state: AppNavigationState) {
         state.launchStack.clear()
     }
 
+    /** Adds [route] to the launch flow without disturbing whatever is already on it. */
+    fun pushOntoLaunchFlow(route: NavKey) {
+        state.launchStack.add(route)
+    }
+
+    /**
+     * Hides every tab behind [gate] and blocks all back navigation until [unlock] is called. Every
+     * tab other than the one currently selected is truncated to its base, tearing down whatever
+     * ViewModels it held; the selected tab, and anything already on the launch stack (an
+     * in-progress TOTP import, say), are left exactly as they were, restored for free once the gate
+     * lifts.
+     */
+    fun lock(gate: NavKey) {
+        val activeRoute = state.topLevelRoute
+        state.backStacks.forEach { (route, stack) -> if (route != activeRoute) stack.popToBase() }
+        pushOntoLaunchFlow(gate)
+        state.isGated = true
+    }
+
+    /** Lifts the gate [lock] put up, revealing whatever was underneath it. */
+    fun unlock() {
+        state.launchStack.removeLastOrNull()
+        state.isGated = false
+    }
+
     /**
      * Shows [detail] in the dashboard's detail pane, replacing any detail already open, so back
      * from a detail always lands on the list.
@@ -67,10 +92,12 @@ class AppNavigator(val state: AppNavigationState) {
     }
 
     /**
-     * Goes back one destination, but never down to nothing. The display stops handling back once a
-     * stack is one deep, so the app is what closes.
+     * Goes back one destination, but never down to nothing, and never while a lock's gate is up.
+     * The launch stack can hold more than one entry while gated (a picker preserved under the
+     * gate, say), so a plain depth check would let back press pop the gate itself away.
      */
     fun goBack() {
+        if (state.isGated) return
         val stack = state.currentStack
         if (stack.size > 1) stack.removeLastOrNull()
     }
