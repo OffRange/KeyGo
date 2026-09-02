@@ -97,7 +97,7 @@ private fun App(hasAccess: Boolean, launchRoute: NavKey, isLocked: Boolean) {
     )
     val navigator = remember(navigationState) { AppNavigator(navigationState) }
 
-    RedirectToAuthWhenSessionEnds(isLocked, navigator)
+    LockAppWhenSessionEnds(isLocked, navigator)
 
     val windowAdaptiveInfo = currentWindowAdaptiveInfoV2()
     val directive = remember(windowAdaptiveInfo) {
@@ -140,25 +140,14 @@ private fun App(hasAccess: Boolean, launchRoute: NavKey, isLocked: Boolean) {
 }
 
 /**
- * The navigation state outlives the process, so a restored back stack can hand the app proper the
- * window again without the launch flow ever running. The fresh process has no unlocked session in
- * that case, and nothing routes back to the unlock on its own once
- * [AppNavigator.finishLaunchFlow] has emptied the launch stack, so the unlock is put back on top
- * here.
- *
- * Keyed on the launch state as well, so this only acts while the app proper owns the window, and
- * so a session that dies later (an auto lock, say) redirects at once rather than waiting for the
- * next navigation. Onboarding and the unlock itself both run with no session by design, and
- * redirecting there would take a first run user straight back out of setup.
+ * [AppViewModel.isLocked] only turns true for a session that was active and then ended, so this
+ * cannot fire before the very first login and cannot clobber [MainActivity.launchRoute]'s
+ * onboarding or deep-link destination the way a level read of "not active" would.
  */
 @Composable
-private fun RedirectToAuthWhenSessionEnds(
-    isLocked: Boolean,
-    navigator: AppNavigator,
-) {
-    val isLaunching = navigator.state.isLaunching
-    LaunchedEffect(isLocked, isLaunching) {
-        if (isLocked && !isLaunching) navigator.replaceLaunchFlow(AuthRoute())
+private fun LockAppWhenSessionEnds(isLocked: Boolean, navigator: AppNavigator) {
+    LaunchedEffect(isLocked) {
+        if (isLocked) navigator.lock(AuthRoute())
     }
 }
 

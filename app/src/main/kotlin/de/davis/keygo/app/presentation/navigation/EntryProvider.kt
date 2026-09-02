@@ -137,7 +137,12 @@ internal fun AppNavigator.openGateFor(hasAccess: Boolean, uri: String) {
     replaceLaunchFlow(if (hasAccess) AuthRoute(uri = uri) else OnboardingRoute(uri = uri))
 }
 
+/**
+ * Pops whatever gate or cold-start screen just finished authenticating. That reveals a picker
+ * preserved underneath a lock's gate on its own; a fresh totpUri from this run instead replaces
+ * that reveal with the picker for it, the same as it always did at cold start.
+ */
 private fun AppNavigator.finishUnlock(totpUri: String?) {
-    if (totpUri == null) finishLaunchFlow()
-    else replaceLaunchFlow(SelectItemForTotpRoute(totpUri))
+    unlock()
+    if (totpUri != null) pushOntoLaunchFlow(SelectItemForTotpRoute(totpUri))
 }
