@@ -289,7 +289,7 @@ class AppNavigatorTest {
     // ---- locking ----
 
     @Test
-    fun `locking truncates every tab but the one shown`() {
+    fun `locking leaves every tab exactly as it was`() {
         val navigator = unlocked()
         navigator.navigate(SettingsRoute)
         navigator.navigate(ChangePasswordRoute)
@@ -304,7 +304,7 @@ class AppNavigatorTest {
             navigator.state.backStacks.getValue(RouteDestination.Home).toList(),
         )
         assertEquals(
-            listOf(SettingsRoute),
+            listOf(SettingsRoute, ChangePasswordRoute),
             navigator.state.backStacks.getValue(SettingsRoute).toList(),
         )
     }

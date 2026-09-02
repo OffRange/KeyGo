@@ -51,10 +51,9 @@ class AppNavigator(val state: AppNavigationState) {
     }
 
     /**
-     * Hides every tab behind an unlock gate and blocks all back navigation until [unlock] is
-     * called. Every tab other than the one currently selected is truncated to its base, tearing
-     * down whatever ViewModels it held; the selected tab, and anything already on the overlay (an
-     * in-progress TOTP import, say), are left exactly as they were, restored once the gate lifts.
+     * Hides what is showing behind an unlock gate and blocks back until [unlock]. Nothing
+     * underneath is disturbed or torn down: a screen holding a secret clears it by observing the
+     * session, the way ChangePasswordViewModel does.
      *
      * A no-op if already gated. This matters because the caller's trigger is collected by a
      * `LaunchedEffect` that re-fires on every fresh composition - including one rebuilt by a
@@ -63,8 +62,6 @@ class AppNavigator(val state: AppNavigationState) {
      */
     fun lock() {
         if (isGated) return
-        val activeRoute = state.topLevelRoute
-        state.backStacks.forEach { (route, stack) -> if (route != activeRoute) stack.popToBase() }
         pushOntoOverlay(AuthRoute())
     }
 
