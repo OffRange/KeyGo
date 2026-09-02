@@ -168,7 +168,7 @@ private fun LockAppWhenSessionEnds(
 ) {
     val isLaunching = navigator.state.isLaunching
     LaunchedEffect(isLocked, isSessionActive, isLaunching) {
-        if (isLocked || (!isSessionActive && !isLaunching)) navigator.lock(AuthRoute())
+        if (isLocked || (!isSessionActive && !isLaunching)) navigator.lock()
     }
 }
 

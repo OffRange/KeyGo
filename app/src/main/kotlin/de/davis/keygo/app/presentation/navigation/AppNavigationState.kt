@@ -5,7 +5,6 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSerializable
 import androidx.compose.runtime.setValue
 import androidx.navigation3.runtime.NavBackStack
@@ -38,8 +37,6 @@ fun rememberAppNavigationState(
     ) {
         mutableStateOf(startRoute)
     }
-    val isGated = rememberSaveable { mutableStateOf(false) }
-
     val launchStack = rememberNavBackStack(launchRoute)
     val backStacks = topLevelRoutes.associateWith { key -> rememberNavBackStack(key) }
 
@@ -48,7 +45,6 @@ fun rememberAppNavigationState(
             launchStack = launchStack,
             topLevelRoute = topLevelRoute,
             backStacks = backStacks,
-            isGated = isGated,
         )
     }
 }
@@ -65,22 +61,10 @@ class AppNavigationState(
     val launchStack: NavBackStack<NavKey>,
     topLevelRoute: MutableState<NavKey>,
     val backStacks: Map<NavKey, NavBackStack<NavKey>>,
-    isGated: MutableState<Boolean> = mutableStateOf(false),
 ) {
 
     /** The selected navigation bar destination. */
     var topLevelRoute: NavKey by topLevelRoute
-
-    /**
-     * True while [AppNavigator.lock] has a gate up. Makes [AppNavigator.goBack] a no-op.
-     *
-     * Backed by [rememberSaveable] in [rememberAppNavigationState], the same as [topLevelRoute] is
-     * backed by [rememberSerializable] - not just [remember]. [launchStack] survives a
-     * configuration change and a process death by construction; if a gate was on it when either
-     * happened, this flag has to come back `true` too, or a restored gate would show with nothing
-     * stopping [AppNavigator.goBack] from popping it away.
-     */
-    var isGated: Boolean by isGated
 
     /** Whether the launch flow still owns the window. */
     val isLaunching: Boolean get() = launchStack.isNotEmpty()

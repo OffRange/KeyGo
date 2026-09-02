@@ -23,7 +23,6 @@ class AppNavigatorTest {
             launchStack = NavBackStack(launchRoute),
             topLevelRoute = mutableStateOf(RouteDestination.Home),
             backStacks = TOP_LEVEL_ROUTES.associateWith { NavBackStack<NavKey>(it) },
-            isGated = mutableStateOf(false),
         )
         return AppNavigator(state)
     }
@@ -298,7 +297,7 @@ class AppNavigatorTest {
         val itemId = newItemId()
         navigator.showDetail(RouteDestination.ViewItem(itemId))
 
-        navigator.lock(AuthRoute())
+        navigator.lock()
 
         assertEquals(
             listOf(RouteDestination.Home, RouteDestination.ViewItem(itemId)),
@@ -315,7 +314,7 @@ class AppNavigatorTest {
         val navigator = navigator()
         navigator.replaceLaunchFlow(SelectItemForTotpRoute(DEEP_LINK_URI))
 
-        navigator.lock(AuthRoute())
+        navigator.lock()
 
         assertEquals(
             listOf(SelectItemForTotpRoute(DEEP_LINK_URI), AuthRoute()),
@@ -328,7 +327,7 @@ class AppNavigatorTest {
         val navigator = unlocked()
         navigator.navigate(SettingsRoute)
 
-        navigator.lock(AuthRoute())
+        navigator.lock()
 
         assertTrue(navigator.state.isLaunching)
         assertEquals(listOf(AuthRoute()), navigator.shown)
@@ -339,7 +338,7 @@ class AppNavigatorTest {
         val navigator = unlocked()
         navigator.navigate(SettingsRoute)
         navigator.navigate(ChangePasswordRoute)
-        navigator.lock(AuthRoute())
+        navigator.lock()
 
         navigator.unlock()
 
@@ -351,7 +350,7 @@ class AppNavigatorTest {
     fun `unlocking reveals a picker that was preserved under the gate`() {
         val navigator = navigator()
         navigator.replaceLaunchFlow(SelectItemForTotpRoute(DEEP_LINK_URI))
-        navigator.lock(AuthRoute())
+        navigator.lock()
 
         navigator.unlock()
 
@@ -362,7 +361,7 @@ class AppNavigatorTest {
     fun `back cannot pop the gate away, even over a picker underneath it`() {
         val navigator = navigator()
         navigator.replaceLaunchFlow(SelectItemForTotpRoute(DEEP_LINK_URI))
-        navigator.lock(AuthRoute())
+        navigator.lock()
 
         navigator.goBack()
 
@@ -377,7 +376,7 @@ class AppNavigatorTest {
         val navigator = unlocked()
         navigator.navigate(SettingsRoute)
         navigator.navigate(ChangePasswordRoute)
-        navigator.lock(AuthRoute())
+        navigator.lock()
         navigator.unlock()
 
         navigator.goBack()
@@ -405,11 +404,10 @@ class AppNavigatorTest {
             launchStack = NavBackStack(AuthRoute()),
             topLevelRoute = mutableStateOf(RouteDestination.Home),
             backStacks = TOP_LEVEL_ROUTES.associateWith { NavBackStack<NavKey>(it) },
-            isGated = mutableStateOf(true),
         )
         val navigator = AppNavigator(state)
 
-        navigator.lock(AuthRoute())
+        navigator.lock()
 
         assertEquals(listOf(AuthRoute()), navigator.shown)
     }
@@ -420,7 +418,6 @@ class AppNavigatorTest {
             launchStack = NavBackStack(SelectItemForTotpRoute(DEEP_LINK_URI), AuthRoute()),
             topLevelRoute = mutableStateOf(RouteDestination.Home),
             backStacks = TOP_LEVEL_ROUTES.associateWith { NavBackStack<NavKey>(it) },
-            isGated = mutableStateOf(true),
         )
         val navigator = AppNavigator(state)
 
@@ -430,6 +427,22 @@ class AppNavigatorTest {
             listOf(SelectItemForTotpRoute(DEEP_LINK_URI), AuthRoute()),
             navigator.shown,
         )
+    }
+
+    @Test
+    fun `an import restored on the launch stack does not block back the way a gate does`() {
+        // Out of reach is not the same as back being forbidden: stepping from the import's
+        // assign screen back to its picker is ordinary navigation.
+        val state = AppNavigationState(
+            launchStack = NavBackStack(SelectItemForTotpRoute(DEEP_LINK_URI), TestAssignRoute),
+            topLevelRoute = mutableStateOf(RouteDestination.Home),
+            backStacks = TOP_LEVEL_ROUTES.associateWith { NavBackStack<NavKey>(it) },
+        )
+        val navigator = AppNavigator(state)
+
+        navigator.goBack()
+
+        assertEquals(listOf(SelectItemForTotpRoute(DEEP_LINK_URI)), navigator.shown)
     }
 
     private fun unlocked(): AppNavigator = navigator().apply { finishLaunchFlow() }
