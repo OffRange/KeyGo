@@ -12,14 +12,14 @@ import de.davis.keygo.feature.auth.presentation.AuthRoute
 class AppNavigator(val state: AppNavigationState) {
 
     /**
-     * True while [lock]'s gate is the launch flow's top entry. Derived, so a restored gate reports
+     * True while [lock]'s gate is the overlay's top entry. Derived, so a restored gate reports
      * itself. The type is what decides it: the `otpauth://` import shares this stack, so neither
      * emptiness nor depth tells a gate from an import screen back may legitimately pop.
      */
-    private val isGated: Boolean get() = state.launchStack.lastOrNull() is AuthRoute
+    private val isGated: Boolean get() = state.overlayStack.lastOrNull() is AuthRoute
 
     fun navigate(route: NavKey) {
-        val isTopLevel = !state.isLaunching && route in state.backStacks
+        val isTopLevel = !state.isOverlaid && route in state.backStacks
         if (isTopLevel) selectTopLevel(route)
         else state.currentStack.add(route)
     }
@@ -34,28 +34,27 @@ class AppNavigator(val state: AppNavigationState) {
         else state.topLevelRoute = route
     }
 
-    /** Replaces the launch flow with [route], so back from it leaves the app. */
-    fun replaceLaunchFlow(route: NavKey) {
-        state.launchStack.clear()
-        state.launchStack.add(route)
+    /** Replaces the overlay with [route], so back from it leaves the app. */
+    fun replaceOverlay(route: NavKey) {
+        state.overlayStack.clear()
+        state.overlayStack.add(route)
     }
 
-    /** Ends the launch flow and hands the window to the app proper. */
-    fun finishLaunchFlow() {
-        state.launchStack.clear()
+    /** Clears the overlay and hands the window to the app proper. */
+    fun clearOverlay() {
+        state.overlayStack.clear()
     }
 
-    /** Adds [route] to the launch flow without disturbing whatever is already on it. */
-    fun pushOntoLaunchFlow(route: NavKey) {
-        state.launchStack.add(route)
+    /** Adds [route] to the overlay without disturbing whatever is already on it. */
+    fun pushOntoOverlay(route: NavKey) {
+        state.overlayStack.add(route)
     }
 
     /**
      * Hides every tab behind an unlock gate and blocks all back navigation until [unlock] is
      * called. Every tab other than the one currently selected is truncated to its base, tearing
-     * down whatever ViewModels it held; the selected tab, and anything already on the launch stack
-     * (an in-progress TOTP import, say), are left exactly as they were, restored once the gate
-     * lifts.
+     * down whatever ViewModels it held; the selected tab, and anything already on the overlay (an
+     * in-progress TOTP import, say), are left exactly as they were, restored once the gate lifts.
      *
      * A no-op if already gated. This matters because the caller's trigger is collected by a
      * `LaunchedEffect` that re-fires on every fresh composition - including one rebuilt by a
@@ -66,7 +65,7 @@ class AppNavigator(val state: AppNavigationState) {
         if (isGated) return
         val activeRoute = state.topLevelRoute
         state.backStacks.forEach { (route, stack) -> if (route != activeRoute) stack.popToBase() }
-        pushOntoLaunchFlow(AuthRoute())
+        pushOntoOverlay(AuthRoute())
     }
 
     /**
@@ -74,11 +73,11 @@ class AppNavigator(val state: AppNavigationState) {
      *
      * Pops unconditionally rather than only while gated. This is also what dismisses the cold-start
      * auth screen and the onboarding screen, neither of which [lock] ever gated - they are on the
-     * launch stack because they were the launch route. Returning early on `!isGated` would leave
+     * overlay because they were the launch route. Returning early on `!isGated` would leave
      * both up for good after a successful first login.
      */
     fun unlock() {
-        state.launchStack.removeLastOrNull()
+        state.overlayStack.removeLastOrNull()
     }
 
     /**
@@ -112,7 +111,7 @@ class AppNavigator(val state: AppNavigationState) {
 
     /**
      * Goes back one destination, but never down to nothing, and never while a lock's gate is up.
-     * The launch stack can hold more than one entry while gated (a picker preserved under the
+     * The overlay can hold more than one entry while gated (a picker preserved under the
      * gate, say), so a plain depth check would let back press pop the gate itself away.
      */
     fun goBack() {

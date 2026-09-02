@@ -63,7 +63,7 @@ fun keyGoEntryProvider(navigator: AppNavigator, hasAccess: Boolean): (NavKey) ->
 
         assignTotpEntries(
             metadata = WindowOwning,
-            onImportFinished = { navigator.finishLaunchFlow() },
+            onImportFinished = { navigator.clearOverlay() },
             navigateUp = { navigator.goBack() },
         )
 
@@ -132,9 +132,9 @@ fun keyGoEntryProvider(navigator: AppNavigator, hasAccess: Boolean): (NavKey) ->
     }
 }
 
-/** Replaces the launch flow, so back from the gate leaves the app rather than a consumed link. */
+/** Replaces the overlay, so back from the gate leaves the app rather than a consumed link. */
 internal fun AppNavigator.openGateFor(hasAccess: Boolean, uri: String) {
-    replaceLaunchFlow(if (hasAccess) AuthRoute(uri = uri) else OnboardingRoute(uri = uri))
+    replaceOverlay(if (hasAccess) AuthRoute(uri = uri) else OnboardingRoute(uri = uri))
 }
 
 /**
@@ -144,5 +144,5 @@ internal fun AppNavigator.openGateFor(hasAccess: Boolean, uri: String) {
  */
 private fun AppNavigator.finishUnlock(totpUri: String?) {
     unlock()
-    if (totpUri != null) pushOntoLaunchFlow(SelectItemForTotpRoute(totpUri))
+    if (totpUri != null) pushOntoOverlay(SelectItemForTotpRoute(totpUri))
 }

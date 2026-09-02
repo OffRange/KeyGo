@@ -20,8 +20,8 @@ import de.davis.keygo.core.ui.navigation.rememberNavEntryDecorators
 /**
  * Creates the app's navigation state. It survives configuration changes and process death.
  *
- * @param launchRoute what the launch flow starts on. Only used the first time the state is
- *   created; after that the saved stack wins.
+ * @param launchRoute what the overlay starts on. Only used the first time the state is created;
+ *   after that the saved stack wins.
  * @param startRoute the top level route the app opens on. Must be one of [topLevelRoutes].
  * @param topLevelRoutes the navigation bar's destinations, one back stack each.
  */
@@ -37,12 +37,12 @@ fun rememberAppNavigationState(
     ) {
         mutableStateOf(startRoute)
     }
-    val launchStack = rememberNavBackStack(launchRoute)
+    val overlayStack = rememberNavBackStack(launchRoute)
     val backStacks = topLevelRoutes.associateWith { key -> rememberNavBackStack(key) }
 
     return remember(startRoute, topLevelRoutes) {
         AppNavigationState(
-            launchStack = launchStack,
+            overlayStack = overlayStack,
             topLevelRoute = topLevelRoute,
             backStacks = backStacks,
         )
@@ -52,13 +52,13 @@ fun rememberAppNavigationState(
 /**
  * The app's navigation state, modified through [AppNavigator]. It holds two things:
  *
- * - The **launch stack**, carrying whatever has to happen before the app proper: unlocking, first
- *   run, or importing an incoming `otpauth://` link. While it holds anything it is all that shows.
+ * - The **overlay stack**: the unlock gate, first run, or an incoming `otpauth://` link. While it
+ *   holds anything it is all that shows.
  * - One **back stack per top level route**, each keeping its own history. Only the selected one is
  *   shown, with nothing underneath it, so back out of its base leaves the app.
  */
 class AppNavigationState(
-    val launchStack: NavBackStack<NavKey>,
+    val overlayStack: NavBackStack<NavKey>,
     topLevelRoute: MutableState<NavKey>,
     val backStacks: Map<NavKey, NavBackStack<NavKey>>,
 ) {
@@ -66,12 +66,12 @@ class AppNavigationState(
     /** The selected navigation bar destination. */
     var topLevelRoute: NavKey by topLevelRoute
 
-    /** Whether the launch flow still owns the window. */
-    val isLaunching: Boolean get() = launchStack.isNotEmpty()
+    /** Whether the overlay owns the window, hiding the app proper underneath. */
+    val isOverlaid: Boolean get() = overlayStack.isNotEmpty()
 
     /** The stack destinations are currently pushed onto and popped from. */
     val currentStack: NavBackStack<NavKey>
-        get() = if (isLaunching) launchStack else backStacks.getValue(topLevelRoute)
+        get() = if (isOverlaid) overlayStack else backStacks.getValue(topLevelRoute)
 
     /**
      * What the detail pane is showing, or null while the list has the window to itself.
@@ -92,12 +92,12 @@ class AppNavigationState(
     fun toDecoratedEntries(
         entryProvider: (NavKey) -> NavEntry<NavKey>,
     ): List<NavEntry<NavKey>> {
-        val launchEntries = rememberDecoratedEntries(launchStack, entryProvider)
+        val overlayEntries = rememberDecoratedEntries(overlayStack, entryProvider)
         val topLevelEntries = backStacks.mapValues { (_, stack) ->
             rememberDecoratedEntries(stack, entryProvider)
         }
 
-        return if (isLaunching) launchEntries
+        return if (isOverlaid) overlayEntries
         else topLevelEntries.getValue(topLevelRoute)
     }
 }
