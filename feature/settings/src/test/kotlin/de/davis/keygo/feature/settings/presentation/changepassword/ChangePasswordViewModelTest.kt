@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.settings.presentation.changepassword
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.runtime.snapshots.Snapshot
 import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.model.Account
@@ -32,6 +33,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChangePasswordViewModelTest {
@@ -318,6 +320,7 @@ class ChangePasswordViewModelTest {
         assertEquals(false, vm.state.value.showReauthDialog)
     }
 
+    @OptIn(ExperimentalFoundationApi::class)
     @Test
     fun `the session ending clears all three password fields`() = runTest(dispatcher) {
         val vm = viewModel()
@@ -332,6 +335,9 @@ class ChangePasswordViewModelTest {
         assertEquals("", vm.state.value.currentPassword.text.toString())
         assertEquals("", vm.state.value.newPassword.text.toString())
         assertEquals("", vm.state.value.confirmPassword.text.toString())
+        assertFalse(vm.state.value.currentPassword.undoState.canUndo)
+        assertFalse(vm.state.value.newPassword.undoState.canUndo)
+        assertFalse(vm.state.value.confirmPassword.undoState.canUndo)
     }
 
     @Test

@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.settings.presentation.changepassword
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.delete
 import androidx.compose.runtime.snapshotFlow
@@ -216,10 +217,19 @@ internal class ChangePasswordViewModel(
      * abandoned instance is simply never mutated, so nothing ever re-triggers the flow, and
      * [ChangePasswordState.passwordScore] would freeze at whatever it was the moment before the
      * clear for the rest of the ViewModel's life.
+     *
+     * `undoState.clearHistory()` matters for the same reason: `edit {}` records the pre-clear text
+     * into the field's own undo stack, and this screen is deliberately kept alive (not torn down)
+     * while the app is locked, so without clearing it a re-authenticated user could Ctrl+Z the
+     * "cleared" password straight back.
      */
+    @OptIn(ExperimentalFoundationApi::class)
     private fun clearSensitiveFields() {
         _state.value.currentPassword.edit { delete(0, length) }
+        _state.value.currentPassword.undoState.clearHistory()
         _state.value.newPassword.edit { delete(0, length) }
+        _state.value.newPassword.undoState.clearHistory()
         _state.value.confirmPassword.edit { delete(0, length) }
+        _state.value.confirmPassword.undoState.clearHistory()
     }
 }
