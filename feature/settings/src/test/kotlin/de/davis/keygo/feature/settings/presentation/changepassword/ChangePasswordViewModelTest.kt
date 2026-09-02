@@ -8,6 +8,7 @@ import de.davis.keygo.core.identity.domain.usecase.ChangePasswordUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
+import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.util.Result
@@ -38,6 +39,7 @@ class ChangePasswordViewModelTest {
 
     private val accountRepository = FakeAccountRepository()
     private val biometricAvailability = FakeBiometricAvailabilityRepository()
+    private val session = FakeSession(startOnConstruct = true)
     private val keyDeriver = FakeKeyDeriver()
     private val keyWrapper = FakeKeyWrapper()
     private val estimator = object : PasswordStrengthEstimator {
@@ -90,6 +92,7 @@ class ChangePasswordViewModelTest {
         biometricAvailabilityRepository = biometricAvailability,
         passwordStrengthEstimator = estimator,
         changePassword = changePassword,
+        session = session,
     ).also { it.state.launchIn(backgroundScope) }
 
     @Test
@@ -312,5 +315,30 @@ class ChangePasswordViewModelTest {
         vm.onBiometricResult(failure)
 
         assertEquals(false, vm.state.value.showReauthDialog)
+    }
+
+    @Test
+    fun `the session ending clears all three password fields`() = runTest(dispatcher) {
+        val vm = viewModel()
+        vm.state.value.currentPassword.edit { append("old-pw") }
+        vm.state.value.newPassword.edit { append("new-pw") }
+        vm.state.value.confirmPassword.edit { append("new-pw") }
+        advanceUntilIdle()
+
+        session.endSession()
+        advanceUntilIdle()
+
+        assertEquals("", vm.state.value.currentPassword.text.toString())
+        assertEquals("", vm.state.value.newPassword.text.toString())
+        assertEquals("", vm.state.value.confirmPassword.text.toString())
+    }
+
+    @Test
+    fun `ordinary use does not clear the fields while the session stays active`() = runTest(dispatcher) {
+        val vm = viewModel()
+        vm.state.value.currentPassword.edit { append("old-pw") }
+        advanceUntilIdle()
+
+        assertEquals("old-pw", vm.state.value.currentPassword.text.toString())
     }
 }

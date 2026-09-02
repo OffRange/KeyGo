@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.settings.presentation.changepassword
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -9,6 +10,7 @@ import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.identity.domain.usecase.ChangePasswordUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
@@ -21,9 +23,11 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -40,6 +44,7 @@ internal class ChangePasswordViewModel(
     private val biometricAvailabilityRepository: BiometricAvailabilityRepository,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val changePassword: ChangePasswordUseCase,
+    private val session: Session,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChangePasswordState())
@@ -70,6 +75,9 @@ internal class ChangePasswordViewModel(
 
     init {
         resolveBiometricAvailability()
+        viewModelScope.launch {
+            session.isActive.filter { !it }.collect { clearSensitiveFields() }
+        }
     }
 
     private fun resolveBiometricAvailability() {
@@ -193,6 +201,21 @@ internal class ChangePasswordViewModel(
                 _state.update { it.copy(currentPasswordError = UiFieldError.Incorrect) }
 
             else -> _event.trySend(ChangePasswordEvent.GenericError)
+        }
+    }
+
+    /**
+     * The current password is the RootKek derivation input - the one secret this codebase never
+     * retains anywhere, including across a lock. Everything else about the screen is left alone,
+     * the same as any other screen the app leaves in place while locked.
+     */
+    private fun clearSensitiveFields() {
+        _state.update {
+            it.copy(
+                currentPassword = TextFieldState(),
+                newPassword = TextFieldState(),
+                confirmPassword = TextFieldState(),
+            )
         }
     }
 }
