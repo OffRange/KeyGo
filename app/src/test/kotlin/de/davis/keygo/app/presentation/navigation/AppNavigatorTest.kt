@@ -386,16 +386,43 @@ class AppNavigatorTest {
 
     @Test
     fun `unlocking a cold start gate hands the window to the app proper`() {
-        // AppNavigator.finishUnlock calls unlock() for the cold-start auth and onboarding screens
-        // too, which are on the overlay without lock() ever having gated anything. Popping
-        // has to happen there as well, or authenticating at cold start would leave the auth screen
-        // up forever.
+        // The cold-start screen is on the overlay as the launch route, not because lock() gated
+        // it - but it is an AuthRoute all the same, so unlock() pops it.
         val navigator = navigator()
 
         navigator.unlock()
 
         assertFalse(navigator.state.isOverlaid)
         assertEquals(listOf(RouteDestination.Home), navigator.shown)
+    }
+
+    @Test
+    fun `finishing first run hands the window to the app proper`() {
+        // First run is not a gate, so unlock() would refuse it. It is cleared instead.
+        val navigator = navigator(launchRoute = OnboardingRoute())
+
+        navigator.finishFirstRun(totpUri = null)
+
+        assertFalse(navigator.state.isOverlaid)
+        assertEquals(listOf(RouteDestination.Home), navigator.shown)
+    }
+
+    @Test
+    fun `a code carried through first run opens its picker`() {
+        val navigator = navigator(launchRoute = OnboardingRoute(uri = DEEP_LINK_URI))
+
+        navigator.finishFirstRun(DEEP_LINK_URI)
+
+        assertEquals(listOf(SelectItemForTotpRoute(DEEP_LINK_URI)), navigator.shown)
+    }
+
+    @Test
+    fun `a code carried through the unlock opens its picker`() {
+        val navigator = navigator(launchRoute = AuthRoute(uri = DEEP_LINK_URI))
+
+        navigator.finishUnlock(DEEP_LINK_URI)
+
+        assertEquals(listOf(SelectItemForTotpRoute(DEEP_LINK_URI)), navigator.shown)
     }
 
     @Test

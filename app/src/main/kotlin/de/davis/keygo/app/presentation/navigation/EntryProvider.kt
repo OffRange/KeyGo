@@ -74,7 +74,7 @@ fun keyGoEntryProvider(navigator: AppNavigator, hasAccess: Boolean): (NavKey) ->
 
         onboardingEntries(
             metadata = WindowOwning,
-            onSuccess = { totpUri -> navigator.finishUnlock(totpUri) },
+            onSuccess = { totpUri -> navigator.finishFirstRun(totpUri) },
         )
 
         dashboardEntries(navigator = navigator)
@@ -137,12 +137,19 @@ internal fun AppNavigator.openGateFor(hasAccess: Boolean, uri: String) {
     replaceOverlay(if (hasAccess) AuthRoute(uri = uri) else OnboardingRoute(uri = uri))
 }
 
-/**
- * Pops whatever gate or cold-start screen just finished authenticating. That reveals a picker
- * preserved underneath a lock's gate on its own; a fresh totpUri from this run instead replaces
- * that reveal with the picker for it, the same as it always did at cold start.
- */
-private fun AppNavigator.finishUnlock(totpUri: String?) {
+/** Lifts the gate that just authenticated, revealing a picker preserved under it. */
+internal fun AppNavigator.finishUnlock(totpUri: String?) {
     unlock()
+    startImport(totpUri)
+}
+
+/** Takes first run down. It is on the overlay as the launch route, not as a gate. */
+internal fun AppNavigator.finishFirstRun(totpUri: String?) {
+    clearOverlay()
+    startImport(totpUri)
+}
+
+/** A code this run carried replaces whatever the dismissal revealed. */
+private fun AppNavigator.startImport(totpUri: String?) {
     if (totpUri != null) pushOntoOverlay(SelectItemForTotpRoute(totpUri))
 }

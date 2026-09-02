@@ -65,15 +65,9 @@ class AppNavigator(val state: AppNavigationState) {
         pushOntoOverlay(AuthRoute())
     }
 
-    /**
-     * Lifts the gate [lock] put up, revealing whatever was underneath it.
-     *
-     * Pops unconditionally rather than only while gated. This is also what dismisses the cold-start
-     * auth screen and the onboarding screen, neither of which [lock] ever gated - they are on the
-     * overlay because they were the launch route. Returning early on `!isGated` would leave
-     * both up for good after a successful first login.
-     */
+    /** Lifts the gate. Only gates reach here; first run is taken down with [clearOverlay]. */
     fun unlock() {
+        if (!isGated) return
         state.overlayStack.removeLastOrNull()
     }
 
