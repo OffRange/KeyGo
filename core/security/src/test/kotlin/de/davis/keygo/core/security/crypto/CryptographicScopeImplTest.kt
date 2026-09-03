@@ -3,7 +3,6 @@ package de.davis.keygo.core.security.crypto
 import de.davis.keygo.core.item.FakeItemRepository
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.security.data.crypto.CryptographicScopeProviderImpl
-import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
@@ -29,7 +28,7 @@ class CryptographicScopeImplTest {
 
     private val random = Random(42)
 
-    private val session: Session = FakeSession(startOnConstruct = true)
+    private val session = FakeSession(startOnConstruct = true)
     private val itemRepository = FakeItemRepository()
     private val itemManager = FakeItemManager()
     private val keyWrapper = FakeKeyWrapper()
@@ -43,7 +42,7 @@ class CryptographicScopeImplTest {
         vaultId: UUID = UUID.randomUUID(),
     ): WrappedVaultKeyInformation {
         val blob = keyWrapper.wrapVaultKey(
-            ark = assertNotNull(session.ark),
+            ark = assertNotNull(session.currentArk),
             vaultKey = ByteArray(32) { random.nextBytes(1)[0] },
             vaultId = vaultId,
         )

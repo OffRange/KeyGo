@@ -1,8 +1,10 @@
 package de.davis.keygo.feature.backup.domain.usecase
 
 import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.withArkOr
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.fold
+import de.davis.keygo.core.util.mapFailure
 import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.backup.domain.BackupFileStore
 import de.davis.keygo.feature.backup.domain.BackupRestorer
@@ -39,7 +41,7 @@ internal class ImportBackupUseCase(
      */
     operator fun invoke(request: ImportRequest): Flow<ImportProgress> = channelFlow {
         val outcome = resultBinding {
-            if (session.ark == null)
+            if (!session.isActive.value)
                 Result.Failure<Nothing, ImportError>(ImportError.SessionLocked).bind()
 
             send(ImportProgress.Reading)
@@ -66,28 +68,26 @@ internal class ImportBackupUseCase(
     private suspend fun parse(request: ImportRequest, text: String): Result<Backup, ImportError> =
         resultBinding {
             when (request.format) {
-                FileFormat.JSON -> {
-                    val credential = when (
-                        jsonBackupManager.inspectWithResult(text).bind { it.toImportError() }
-                    ) {
-                        JsonEncryption.PASSPHRASE -> request.passphrase
+                FileFormat.JSON -> when (
+                    jsonBackupManager.inspectWithResult(text).bind { it.toImportError() }
+                ) {
+                    JsonEncryption.PASSPHRASE -> {
+                        val passphrase = request.passphrase
                             ?.takeIf(String::isNotBlank)
-                            ?.let { BackupCredential.Passphrase(it.encodeToByteArray()) }
                             ?: return Result.Failure(ImportError.PassphraseRequired)
+                        val credential =
+                            BackupCredential.Passphrase(passphrase.encodeToByteArray())
+                        // Zero the derived bytes once Rust is done, mirroring the export path.
+                        try {
+                            importJson(text, credential).bind()
+                        } finally {
+                            credential.bytes.fill(0)
+                        }
+                    }
 
-                        JsonEncryption.ARK -> BackupCredential.Ark(
-                            session.ark
-                                ?: return Result.Failure(ImportError.SessionLocked),
-                        )
-                    }
-                    // Zero the derived passphrase bytes once Rust is done with them, mirroring the
-                    // export path. The live ARK belongs to the session and is left alone.
-                    try {
-                        jsonBackupManager.importWithResult(text, credential)
-                            .bind { it.toImportError() }
-                    } finally {
-                        (credential as? BackupCredential.Passphrase)?.bytes?.fill(0)
-                    }
+                    JsonEncryption.ARK -> session.withArkOr(ImportError.SessionLocked) { ark ->
+                        importJson(text, BackupCredential.Ark(ark))
+                    }.bind()
                 }
 
                 FileFormat.CSV -> {
@@ -100,4 +100,10 @@ internal class ImportBackupUseCase(
                 }
             }
         }
+
+    private suspend fun importJson(
+        text: String,
+        credential: BackupCredential,
+    ): Result<Backup, ImportError> = jsonBackupManager.importWithResult(text, credential)
+        .mapFailure { it.toImportError() }
 }

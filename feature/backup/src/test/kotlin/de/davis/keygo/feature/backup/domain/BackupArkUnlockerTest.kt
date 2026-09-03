@@ -66,7 +66,7 @@ class BackupArkUnlockerTest {
         val result = unlocker(FakeSession(startOnConstruct = false)).withScope {
             val used = factory.lastSession
             assertIs<BackupSession>(used)
-            assertContentEquals(ark, used.ark)
+            used.withArk { assertContentEquals(ark, it) }
         }
 
         assertIs<Result.Success<*, *>>(result)
@@ -84,7 +84,7 @@ class BackupArkUnlockerTest {
     @Test
     fun `withArk hands over the live session ark`() = runTest {
         val session = FakeSession(startOnConstruct = true)
-        val expected = assertNotNull(session.ark).copyOf()
+        val expected = assertNotNull(session.currentArk)
 
         val result = unlocker(session).withArk { assertContentEquals(expected, it) }
 
@@ -132,14 +132,14 @@ class BackupArkUnlockerTest {
         val result = unlocker(FakeSession(startOnConstruct = false)).withScope {
             val used = factory.lastSession
             assertIs<BackupSession>(used)
-            assertContentEquals(ark, used.ark)
+            used.withArk { assertContentEquals(ark, it) }
         }
 
         assertIs<Result.Success<*, *>>(result)
 
         val used = factory.lastSession
         assertIs<BackupSession>(used)
-        assertTrue(assertNotNull(used.ark).all { it == 0.toByte() })
+        used.withArk { recovered -> assertTrue(recovered.all { it == 0.toByte() }) }
     }
 
     @Test
@@ -150,6 +150,6 @@ class BackupArkUnlockerTest {
 
         unlocker(session).withArk { }
 
-        assertTrue(assertNotNull(session.ark).any { it != 0.toByte() })
+        assertTrue(assertNotNull(session.currentArk).any { it != 0.toByte() })
     }
 }

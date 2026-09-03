@@ -76,7 +76,8 @@ class ExportBackupUseCaseTest {
 
     private suspend fun provision(session: FakeSession) {
         val cipher = keyStore.getOrCreateCipherFor(KeyId.BackupArkKey, CryptographicMode.Encrypt)
-        arkStore.save(CryptographicData(cipher.doFinal(assertNotNull(session.ark)), cipher.iv))
+        val ark = assertNotNull(session.currentArk)
+        arkStore.save(CryptographicData(cipher.doFinal(ark), cipher.iv))
     }
 
     private val csvJob = BackupJob(
@@ -197,7 +198,7 @@ class ExportBackupUseCaseTest {
 
         assertIs<ExportProgress.Succeeded>(emissions.last())
         val credential = assertIs<BackupCredential.Ark>(json.exportCalls.single().credential)
-        assertContentEquals(session.ark, credential.key)
+        assertContentEquals(session.currentArk, credential.key)
     }
 
     @Test
@@ -217,7 +218,7 @@ class ExportBackupUseCaseTest {
 
         assertIs<ExportProgress.Succeeded>(emissions.last())
         val credential = assertIs<BackupCredential.Ark>(json.exportCalls.single().credential)
-        assertContentEquals(unlockedSession.ark, credential.key)
+        assertContentEquals(unlockedSession.currentArk, credential.key)
     }
 
     @Test

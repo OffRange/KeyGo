@@ -15,6 +15,7 @@ import kotlinx.coroutines.test.runTest
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -90,7 +91,7 @@ class CreateAccessUseCaseTest {
 
         assertTrue(result.isSuccess())
         assertTrue(session.startSessionCalled)
-        assertEquals(accountManager.createAccount.account.ark, session.ark)
+        assertContentEquals(accountManager.createAccount.account.ark, session.currentArk)
     }
 
     @Test

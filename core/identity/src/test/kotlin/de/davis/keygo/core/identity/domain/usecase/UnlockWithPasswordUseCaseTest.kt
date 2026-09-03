@@ -91,6 +91,6 @@ class UnlockWithPasswordUseCaseTest {
 
         assertTrue(result.isSuccess())
         assertTrue(session.startSessionCalled)
-        assertContentEquals(ark, session.ark)
+        assertContentEquals(ark, session.currentArk)
     }
 }

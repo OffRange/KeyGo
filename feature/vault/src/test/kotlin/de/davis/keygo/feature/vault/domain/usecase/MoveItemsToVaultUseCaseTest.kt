@@ -316,7 +316,7 @@ class MoveItemsToVaultUseCaseTest {
     private fun makeVault(name: String, id: VaultId = newVaultId()): Vault {
         val vaultKey = ByteArray(32) { (id.hashCode() + it).toByte() }
         val wrapped = keyWrapper.wrapVaultKey(
-            ark = assertNotNull(session.ark),
+            ark = assertNotNull(session.currentArk),
             vaultKey = vaultKey,
             vaultId = id,
         )

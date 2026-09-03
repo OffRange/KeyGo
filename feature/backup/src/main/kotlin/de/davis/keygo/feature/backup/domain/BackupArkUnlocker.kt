@@ -32,11 +32,10 @@ internal class BackupArkUnlocker(
 
     /**
      * Runs [block] with the ARK for this backup. A recovered ARK is zeroed afterwards; a live
-     * [Session.ark] is the app's own session key and is left alone.
+     * session's ARK is the app's own key, left for the session to wipe.
      */
     suspend fun <R> withArk(block: suspend (ByteArray) -> R): Result<R, ExportError> {
-        val live = session.ark
-        if (live != null) return Result.Success(block(live))
+        session.withArk { ark -> Result.Success<R, ExportError>(block(ark)) }?.let { return it }
 
         return resultBinding {
             val ark = recoverArk().bind()
@@ -53,8 +52,9 @@ internal class BackupArkUnlocker(
     suspend fun <R> withScope(
         block: suspend (ItemWithCryptoScopeUseCase) -> R,
     ): Result<R, ExportError> {
-        val live = session.ark
-        if (live != null) return Result.Success(block(scopeFor(session)))
+        // The ark itself goes unused: this is the liveness check that prefers the live session.
+        session.withArk { Result.Success<R, ExportError>(block(scopeFor(session))) }
+            ?.let { return it }
 
         return resultBinding {
             val ark = recoverArk().bind()

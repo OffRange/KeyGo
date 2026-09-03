@@ -8,6 +8,7 @@ import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.withArkOr
 import de.davis.keygo.core.security.presentation.BiometricCryptoController
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
@@ -32,11 +33,9 @@ internal class BiometricEnrollmentAdapterImpl(
         val cipher = requestCipher(KeyId.BiometricVaultKek, CryptographicMode.Wrap, policy)
             .bind { BiometricEnrollmentError.BiometricFailed(it) }
 
-
-        val ark = session.ark.asResult(BiometricEnrollmentError.NoActiveSession).bind()
-
-        val wrapped = wrapArk(ark, cipher)
-            .asResult(BiometricEnrollmentError.WrappingFailed).bind()
+        val wrapped = session.withArkOr(BiometricEnrollmentError.NoActiveSession) { ark ->
+            wrapArk(ark, cipher).asResult(BiometricEnrollmentError.WrappingFailed)
+        }.bind()
 
         accountRepository.set(account.copy(biometricWrappedArk = wrapped)).bind {
             BiometricEnrollmentError.PersistenceFailed
