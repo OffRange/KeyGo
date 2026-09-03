@@ -10,6 +10,11 @@ import de.davis.keygo.feature.totp.presentation.TotpImportRedirect
 /**
  * Handles navigation events by updating [AppNavigationState]. Everything the UI can do to the back
  * stacks goes through here, so the rules for what replaces what live in one place.
+ *
+ * Every entry point the UI can reach refuses to run while the gate is up. The chrome does not
+ * vanish the instant [lock] fires, it animates out, so the navigation bar and the create button
+ * stay composed and clickable for a moment behind the gate. Without the guard a tap in that window
+ * would push its destination onto the overlay, above the gate, and show it unauthenticated.
  */
 class AppNavigator(val state: AppNavigationState) {
 
@@ -32,6 +37,7 @@ class AppNavigator(val state: AppNavigationState) {
         }
 
     fun navigate(route: NavKey) {
+        if (isGated) return
         val isTopLevel = !state.isOverlaid && route in state.backStacks
         if (isTopLevel) selectTopLevel(route)
         else state.currentStack.add(route)
@@ -53,8 +59,13 @@ class AppNavigator(val state: AppNavigationState) {
         state.overlayStack.add(route)
     }
 
-    /** Clears the overlay and hands the window to the app proper. */
+    /**
+     * Clears the overlay and hands the window to the app proper. Refused while the gate is up:
+     * this is the one path that would drop a gate without anything having authenticated, and the
+     * screens that call it sit under the gate rather than over it.
+     */
     fun clearOverlay() {
+        if (isGated) return
         state.overlayStack.clear()
     }
 
@@ -85,12 +96,14 @@ class AppNavigator(val state: AppNavigationState) {
      * from a detail always lands on the list.
      */
     fun showDetail(detail: RouteDestination.Detail) {
+        if (isGated) return
         closeDetail()
         state.currentStack.add(detail)
     }
 
     /** Opens [detail] on top of the detail already showing, so back returns to it. */
     fun openOnTopOfDetail(detail: RouteDestination.Detail) {
+        if (isGated) return
         state.currentStack.add(detail)
     }
 
@@ -103,9 +116,15 @@ class AppNavigator(val state: AppNavigationState) {
     /**
      * Drops a detail the list picked on the user's behalf. A form is left alone: it may hold typing
      * that is not saved yet.
+     *
+     * Reaches past the overlay to the tab that owns the detail, rather than going through
+     * [AppNavigationState.currentStack]. The window can narrow while the gate is up - rotating at
+     * the lock screen is an ordinary thing to do - and the overlay's top entry is never a detail,
+     * so this would find nothing to drop and the tab would keep a selection the user never made,
+     * waiting full screen behind the unlock.
      */
     fun dropAutoSelectedDetail() {
-        val stack = state.currentStack
+        val stack = state.backStacks.getValue(state.topLevelRoute)
         if (stack.lastOrNull() is RouteDestination.ViewItem) stack.removeLastOrNull()
     }
 

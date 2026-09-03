@@ -36,10 +36,11 @@ class AppNavigatorTest {
 
     @Test
     fun `the overlay owns the window until it is cleared`() {
-        val navigator = navigator()
+        // Cleared with a first run overlay: a gate refuses clearOverlay and is popped by unlock.
+        val navigator = navigator(launchRoute = OnboardingRoute())
 
         assertTrue(navigator.state.isOverlaid)
-        assertEquals(listOf(AuthRoute()), navigator.shown)
+        assertEquals(listOf(OnboardingRoute()), navigator.shown)
 
         navigator.clearOverlay()
 
@@ -99,12 +100,15 @@ class AppNavigatorTest {
 
     @Test
     fun `a top level route is not switched to while the overlay owns the window`() {
-        val navigator = navigator()
+        val navigator = navigator(launchRoute = TotpImportRedirect(DEEP_LINK_URI))
 
         navigator.navigate(SettingsRoute)
 
         assertTrue(navigator.state.isOverlaid)
-        assertEquals(listOf(AuthRoute(), SettingsRoute), navigator.shown)
+        assertEquals(
+            listOf(TotpImportRedirect(DEEP_LINK_URI), SettingsRoute),
+            navigator.shown,
+        )
     }
 
     // ---- top level routes ----
@@ -391,6 +395,77 @@ class AppNavigatorTest {
     }
 
     @Test
+    fun `the chrome still standing behind the gate cannot navigate anywhere`() {
+        // The navigation bar animates out rather than disappearing, so it stays clickable for a
+        // moment after the gate goes up. A tap landing then must not push over the gate.
+        val navigator = unlocked()
+        navigator.lock()
+
+        navigator.navigate(SettingsRoute)
+        navigator.navigate(RouteDestination.Home)
+
+        assertEquals(listOf(AuthRoute()), navigator.shown)
+        assertEquals(RouteDestination.Home, navigator.state.topLevelRoute)
+    }
+
+    @Test
+    fun `the create button still standing behind the gate cannot open a detail`() {
+        val navigator = unlocked()
+        navigator.lock()
+
+        navigator.showDetail(RouteDestination.CreateItem(VaultItemType.Login))
+        navigator.openOnTopOfDetail(RouteDestination.ViewItem(newItemId()))
+
+        assertEquals(listOf(AuthRoute()), navigator.shown)
+    }
+
+    @Test
+    fun `a narrowing window drops the tab's auto-selected detail even behind the gate`() {
+        // Rotating at the lock screen is ordinary now that the gate shows on every resume. The
+        // overlay's top is the gate, never a detail, so reading it would drop nothing and leave the
+        // tab holding a selection the user never made.
+        val navigator = unlocked()
+        navigator.showDetail(RouteDestination.ViewItem(newItemId()))
+        navigator.lock()
+
+        navigator.dropAutoSelectedDetail()
+
+        assertEquals(
+            listOf(RouteDestination.Home),
+            navigator.state.backStacks.getValue(RouteDestination.Home).toList(),
+        )
+        assertEquals(listOf(AuthRoute()), navigator.shown)
+    }
+
+    @Test
+    fun `a form is still left alone when the window narrows behind the gate`() {
+        val navigator = unlocked()
+        navigator.showDetail(RouteDestination.CreateItem(VaultItemType.Login))
+        navigator.lock()
+
+        navigator.dropAutoSelectedDetail()
+
+        assertEquals(
+            listOf(RouteDestination.Home, RouteDestination.CreateItem(VaultItemType.Login)),
+            navigator.state.backStacks.getValue(RouteDestination.Home).toList(),
+        )
+    }
+
+    @Test
+    fun `the gate is not cleared away by a flow finishing underneath it`() {
+        val navigator = navigator()
+        navigator.replaceOverlay(SelectItemForTotpRoute(DEEP_LINK_URI))
+        navigator.lock()
+
+        navigator.clearOverlay()
+
+        assertEquals(
+            listOf(SelectItemForTotpRoute(DEEP_LINK_URI), AuthRoute()),
+            navigator.shown,
+        )
+    }
+
+    @Test
     fun `back works normally again once unlocked`() {
         val navigator = unlocked()
         navigator.navigate(SettingsRoute)
@@ -491,7 +566,7 @@ class AppNavigatorTest {
         assertEquals(listOf(SelectItemForTotpRoute(DEEP_LINK_URI)), navigator.shown)
     }
 
-    private fun unlocked(): AppNavigator = navigator().apply { clearOverlay() }
+    private fun unlocked(): AppNavigator = navigator().apply { unlock() }
 
     private companion object {
         val TOP_LEVEL_ROUTES: Set<NavKey> = linkedSetOf(

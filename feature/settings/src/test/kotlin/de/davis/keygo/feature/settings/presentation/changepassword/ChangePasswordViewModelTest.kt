@@ -34,6 +34,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChangePasswordViewModelTest {
@@ -338,6 +339,28 @@ class ChangePasswordViewModelTest {
         assertFalse(vm.state.value.currentPassword.undoState.canUndo)
         assertFalse(vm.state.value.newPassword.undoState.canUndo)
         assertFalse(vm.state.value.confirmPassword.undoState.canUndo)
+    }
+
+    @Test
+    fun `the session ending puts the rest of the screen back to rest too`() = runTest(dispatcher) {
+        // The errors and the dialog all describe input the clear just removed. Left standing, the
+        // user comes back from the unlock to a re-auth dialog over three emptied fields, or to
+        // "this field is empty" on a form they did fill in.
+        val vm = viewModel()
+        vm.onBiometricResult(Result.Failure(BiometricAuthError.Declined))
+        vm.submitWithPassword()
+        advanceUntilIdle()
+
+        assertEquals(true, vm.state.value.showReauthDialog)
+        assertEquals(UiFieldError.Empty, vm.state.value.newPasswordError)
+
+        session.endSession()
+        advanceUntilIdle()
+
+        assertEquals(false, vm.state.value.showReauthDialog)
+        assertNull(vm.state.value.newPasswordError)
+        assertNull(vm.state.value.currentPasswordError)
+        assertNull(vm.state.value.confirmPasswordError)
     }
 
     @Test
