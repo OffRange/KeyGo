@@ -156,7 +156,8 @@ internal class AutofillActivity : FragmentActivity() {
                         onContinue = { viewModel.onEvent(AutofillUiEvent.OnContinueInSuspicion) },
                         onAbort = { viewModel.onEvent(AutofillUiEvent.OnAbortInSuspicion) },
                         appPackageName = suspicionDialogVisibility.appPackageName,
-                        website = suspicionDialogVisibility.website
+                        website = suspicionDialogVisibility.website,
+                        reason = suspicionDialogVisibility.reason
                     )
 
 
