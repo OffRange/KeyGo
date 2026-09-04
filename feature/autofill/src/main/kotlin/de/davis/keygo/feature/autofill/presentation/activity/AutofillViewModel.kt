@@ -20,6 +20,7 @@ import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
+import de.davis.keygo.feature.autofill.domain.model.WebsiteLinkStatus
 import de.davis.keygo.feature.autofill.domain.usecase.AddRegistrableDomainsToLoginUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.DoesItemHaveDomainReferencesUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.IsAppLinkedToWebsiteUseCase
@@ -29,6 +30,7 @@ import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillBiome
 import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillEvent
 import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillUiEvent
 import de.davis.keygo.feature.autofill.presentation.activity.model.SuspicionDialogVisibility
+import de.davis.keygo.feature.autofill.presentation.activity.model.SuspicionReason
 import de.davis.keygo.feature.autofill.presentation.model.AutofillUiState
 import de.davis.keygo.feature.autofill.presentation.model.AutofillValue
 import de.davis.keygo.feature.autofill.presentation.model.FieldType
@@ -108,31 +110,37 @@ internal class AutofillViewModel(
     private fun handleRequestData(ignoreSuspicion: Boolean = false) =
         viewModelScope.launch {
             val handleSuspicion = !ignoreSuspicion && requestData.form.isSuspicious
-            val linked = when {
+            val linkStatus = when {
                 handleSuspicion -> requestData.form.url?.let {
                     isAppLinkedToWebsite(
                         packageName = requestData.form.appPackageName,
                         domain = it
                     )
-                } == true
+                } ?: WebsiteLinkStatus.NotLinked
 
-                else -> false
+                else -> null
             }
 
-            val showSuspicionDialog = !linked && handleSuspicion
+            val suspicionReason = when (linkStatus) {
+                WebsiteLinkStatus.NotLinked -> SuspicionReason.NotLinked
+                WebsiteLinkStatus.Unverified -> SuspicionReason.Unverified
+                WebsiteLinkStatus.Linked,
+                null -> null
+            }
 
             _uiState.update {
                 it.copy(
-                    suspicionDialogVisibility = if (showSuspicionDialog)
+                    suspicionDialogVisibility = if (suspicionReason != null)
                         SuspicionDialogVisibility.Visible(
                             appPackageName = requestData.form.appPackageName,
-                            website = requestData.form.url.orEmpty()
+                            website = requestData.form.url.orEmpty(),
+                            reason = suspicionReason,
                         )
                     else SuspicionDialogVisibility.Hidden
                 )
             }
 
-            if (showSuspicionDialog) return@launch
+            if (suspicionReason != null) return@launch
 
             when (requestData) {
                 is SaveRequestData -> handleSaveRequest(requestData)
@@ -236,9 +244,9 @@ internal class AutofillViewModel(
 
     fun onBiometricLoginFailed(error: UnlockError) {
         viewModelScope.launch {
-            when(error) {
+            when (error) {
                 is UnlockError.BiometricFailed -> {
-                    when(error.error) {
+                    when (error.error) {
                         BiometricAuthError.Canceled -> eventChannel.send(AutofillEvent.Abort)
                         else -> _uiState.update { it.copy(request = Request.JustAuthenticateWithPwd) }
                     }

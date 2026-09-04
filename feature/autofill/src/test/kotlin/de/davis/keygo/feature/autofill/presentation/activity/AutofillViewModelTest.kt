@@ -33,6 +33,7 @@ import de.davis.keygo.feature.autofill.presentation.activity.model.AssociationDi
 import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillEvent
 import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillUiEvent
 import de.davis.keygo.feature.autofill.presentation.activity.model.SuspicionDialogVisibility
+import de.davis.keygo.feature.autofill.presentation.activity.model.SuspicionReason
 import de.davis.keygo.feature.autofill.presentation.model.FieldType
 import de.davis.keygo.feature.autofill.presentation.model.FillRequestData
 import de.davis.keygo.feature.autofill.presentation.model.Form
@@ -194,7 +195,9 @@ internal class AutofillViewModelTest {
         val vm = buildVm(requestData)
         vm.start()
 
-        assertIs<SuspicionDialogVisibility.Visible>(vm.uiState.value.suspicionDialogVisibility)
+        val visibility = vm.uiState.value.suspicionDialogVisibility
+        assertIs<SuspicionDialogVisibility.Visible>(visibility)
+        assertEquals(SuspicionReason.NotLinked, visibility.reason)
         assertEquals(Request.None, vm.uiState.value.request)
     }
 
@@ -220,6 +223,23 @@ internal class AutofillViewModelTest {
 
         assertEquals(SuspicionDialogVisibility.Hidden, vm.uiState.value.suspicionDialogVisibility)
         assertEquals(Request.SelectItem, vm.uiState.value.request)
+    }
+
+    @Test
+    fun `suspicious form whose lookup fails shows the unverified dialog`() = runTest {
+        signatureProvider.signatures = mapOf("com.example" to setOf("sig1"))
+        dalRepo.linkedTriples = setOf(Triple("com.example", "sig1", "https://example.com"))
+        dalRepo.failingSignatures = setOf("sig1")
+        val requestData = FillRequestData.App(
+            form(isSuspicious = true, url = "https://example.com", appPackageName = "com.example"),
+        )
+        val vm = buildVm(requestData)
+        vm.start()
+
+        val visibility = vm.uiState.value.suspicionDialogVisibility
+        assertIs<SuspicionDialogVisibility.Visible>(visibility)
+        assertEquals(SuspicionReason.Unverified, visibility.reason)
+        assertEquals(Request.None, vm.uiState.value.request)
     }
 
     @Test

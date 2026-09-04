@@ -2,10 +2,11 @@ package de.davis.keygo.feature.autofill.domain.usecase
 
 import de.davis.keygo.core.feature.autofill.FakeDigitalAssetLinkRepository
 import de.davis.keygo.core.feature.autofill.FakeSignatureInfoProvider
+import de.davis.keygo.feature.autofill.domain.model.WebsiteLinkStatus
 import kotlinx.coroutines.test.runTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
-import kotlin.test.assertFalse
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class IsAppLinkedToWebsiteUseCaseTest {
@@ -23,19 +24,19 @@ class IsAppLinkedToWebsiteUseCaseTest {
     }
 
     @Test
-    fun `empty signatures returns false without querying digital asset links`() = runTest {
+    fun `empty signatures returns unlinked without querying digital asset links`() = runTest {
         val packageName = "com.example.app"
         val domain = "example.com"
         signatureInfoProvider.signatures = mapOf(packageName to emptySet())
 
         val result = useCase(packageName, domain)
 
-        assertFalse(result)
+        assertEquals(WebsiteLinkStatus.NotLinked, result)
         assertTrue(digitalAssetLinkRepository.linkedCalls.isEmpty())
     }
 
     @Test
-    fun `one linked signature returns true`() = runTest {
+    fun `one linked signature returns linked`() = runTest {
         val packageName = "com.example.app"
         val signature = "ABCD1234"
         val domain = "example.com"
@@ -44,11 +45,11 @@ class IsAppLinkedToWebsiteUseCaseTest {
 
         val result = useCase(packageName, domain)
 
-        assertTrue(result)
+        assertEquals(WebsiteLinkStatus.Linked, result)
     }
 
     @Test
-    fun `all unlinked signatures returns false`() = runTest {
+    fun `all unlinked signatures returns unlinked`() = runTest {
         val packageName = "com.example.app"
         val sig1 = "SIGNATURE_1"
         val sig2 = "SIGNATURE_2"
@@ -58,11 +59,11 @@ class IsAppLinkedToWebsiteUseCaseTest {
 
         val result = useCase(packageName, domain)
 
-        assertFalse(result)
+        assertEquals(WebsiteLinkStatus.NotLinked, result)
     }
 
     @Test
-    fun `first linked signature returns true`() = runTest {
+    fun `first linked signature returns linked`() = runTest {
         val packageName = "com.example.app"
         val sig1 = "SIGNATURE_1"
         val sig2 = "SIGNATURE_2"
@@ -72,6 +73,35 @@ class IsAppLinkedToWebsiteUseCaseTest {
 
         val result = useCase(packageName, domain)
 
-        assertTrue(result)
+        assertEquals(WebsiteLinkStatus.Linked, result)
+    }
+
+    @Test
+    fun `failed lookup is not treated as linked`() = runTest {
+        val packageName = "com.example.app"
+        val signature = "ABCD1234"
+        val domain = "example.com"
+        signatureInfoProvider.signatures = mapOf(packageName to setOf(signature))
+        digitalAssetLinkRepository.linkedTriples = setOf(Triple(packageName, signature, domain))
+        digitalAssetLinkRepository.failingSignatures = setOf(signature)
+
+        val result = useCase(packageName, domain)
+
+        assertEquals(WebsiteLinkStatus.Unverified, result)
+    }
+
+    @Test
+    fun `a proven signature wins over a failed lookup`() = runTest {
+        val packageName = "com.example.app"
+        val failing = "SIGNATURE_1"
+        val linked = "SIGNATURE_2"
+        val domain = "example.com"
+        signatureInfoProvider.signatures = mapOf(packageName to setOf(failing, linked))
+        digitalAssetLinkRepository.linkedTriples = setOf(Triple(packageName, linked, domain))
+        digitalAssetLinkRepository.failingSignatures = setOf(failing)
+
+        val result = useCase(packageName, domain)
+
+        assertEquals(WebsiteLinkStatus.Linked, result)
     }
 }
