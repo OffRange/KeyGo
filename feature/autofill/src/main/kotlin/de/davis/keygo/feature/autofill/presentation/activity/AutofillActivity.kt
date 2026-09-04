@@ -5,7 +5,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.service.autofill.Dataset
 import android.view.autofill.AutofillManager
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,6 +19,7 @@ import de.davis.keygo.core.identity.presentation.rememberBiometricUnlockAdapter
 import de.davis.keygo.core.identity.presentation.useAdapter
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
+import de.davis.keygo.core.security.presentation.rememberHandoffLauncher
 import de.davis.keygo.core.ui.clipboard.setText
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.onFailure
@@ -69,7 +69,7 @@ internal class AutofillActivity : FragmentActivity() {
                 val clipboard = LocalClipboard.current
                 val passwordLabel = stringResource(CoreItemR.string.password)
 
-                val smsConsentLauncher = rememberLauncherForActivityResult(
+                val smsConsentLauncher = rememberHandoffLauncher(
                     ActivityResultContracts.StartIntentSenderForResult(),
                 ) { result ->
                     viewModel.onEvent(

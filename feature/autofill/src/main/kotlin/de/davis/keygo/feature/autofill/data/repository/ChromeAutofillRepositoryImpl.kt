@@ -6,6 +6,8 @@ import android.content.Intent
 import android.database.Cursor
 import android.net.Uri
 import android.util.Log
+import de.davis.keygo.core.security.domain.SystemHandoff
+import de.davis.keygo.core.security.domain.forRoundTrip
 import de.davis.keygo.feature.autofill.domain.repository.ChromeAutofillRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,6 +16,7 @@ import org.koin.core.annotation.Single
 @Single
 internal class ChromeAutofillRepositoryImpl(
     private val context: Context,
+    private val handoff: SystemHandoff,
 ) : ChromeAutofillRepository {
 
     private val thirdPartyModeUri: Uri
@@ -60,7 +63,7 @@ internal class ChromeAutofillRepositoryImpl(
 
         val chooser = Intent.createChooser(intent, "Pick Chrome Channel")
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(chooser)
+        handoff.forRoundTrip { context.startActivity(chooser) }
     }
 
     private companion object {

@@ -18,6 +18,7 @@ dependencies {
     api(projects.core.util)
     api(projects.rust)
 
+    testImplementation(libs.robolectric)
     testImplementation(testFixtures(projects.rust))
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.util))

@@ -5,7 +5,6 @@ import android.content.Intent
 import android.provider.Settings
 import android.util.Log
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -59,6 +58,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
+import de.davis.keygo.core.security.presentation.rememberHandoffLauncher
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
@@ -106,7 +106,7 @@ fun OnboardingScreen(route: OnboardingRoute, onSuccess: () -> Unit) {
 
     val context = LocalContext.current
     val autofillPickerLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {}
+        rememberHandoffLauncher(ActivityResultContracts.StartActivityForResult()) {}
 
     ObserveAsEvents(viewModel.autofillPickerFlow) {
         try {

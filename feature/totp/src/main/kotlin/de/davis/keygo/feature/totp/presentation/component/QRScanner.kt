@@ -45,6 +45,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
+import de.davis.keygo.core.security.presentation.rememberHandoffStarter
 import de.davis.keygo.feature.totp.R
 import de.davis.keygo.feature.totp.domain.model.camera.Frame
 import de.davis.keygo.feature.totp.domain.qr.QRScanner
@@ -90,9 +91,10 @@ fun QRScanner(
         permissionRequested -> {
             // Permission was denied permanently (no rationale, not granted, already requested)
             val context = LocalContext.current
+            val openSystemScreen = rememberHandoffStarter()
             PermissionDeniedDialog(
                 onOpenSettings = {
-                    context.startActivity(
+                    openSystemScreen.launch(
                         Intent(
                             Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                             Uri.fromParts("package", context.packageName, null)
