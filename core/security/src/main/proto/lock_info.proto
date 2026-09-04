@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package de.davis.keygo.core.security.data.local.model;
+option java_multiple_files = true;
+
+message ProtoLockInfo {
+
+  /*
+   * The timeout for the auto-lock feature. The entries must be exactly the same as the values in
+   * the LockInfo.Timeout enum. The default value is LOCK_TIMEOUT_ONE_MINUTE.
+   */
+  enum LockTimeout {
+    LOCK_TIMEOUT_IMMEDIATELY = 0;
+    LOCK_TIMEOUT_ONE_MINUTE = 1;
+    LOCK_TIMEOUT_TWO_MINUTES = 2;
+    LOCK_TIMEOUT_FIVE_MINUTES = 3;
+  }
+
+  LockTimeout auto_lock_timeout = 1;
+  int64 backgrounded_at = 2;
+}
