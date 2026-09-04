@@ -2,7 +2,6 @@ package de.davis.keygo.feature.settings.presentation
 
 import android.content.Intent
 import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -16,6 +15,7 @@ import de.davis.keygo.core.identity.presentation.rememberBiometricEnrollmentAdap
 import de.davis.keygo.core.identity.presentation.useEnrollmentAdapter
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
+import de.davis.keygo.core.security.presentation.rememberHandoffLauncher
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
@@ -37,7 +37,7 @@ fun SettingsScreen(
     val enrollmentAdapter = rememberBiometricEnrollmentAdapter()
 
     val enableAutofillLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {}
+        rememberHandoffLauncher(ActivityResultContracts.StartActivityForResult()) {}
 
     // OS-owned state (autofill / biometric availability) can change while the user is
     // in a system screen; re-read it whenever we come back to the foreground.
