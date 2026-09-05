@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import de.davis.keygo.core.security.domain.SystemHandoff
 import de.davis.keygo.core.security.domain.forRoundTrip
+import de.davis.keygo.core.util.Result
 import org.koin.compose.koinInject
 
 class HandoffLauncher<I>(
@@ -15,7 +16,7 @@ class HandoffLauncher<I>(
     private val onLaunch: (I) -> Unit,
 ) {
 
-    fun launch(input: I) = handoff.forRoundTrip { onLaunch(input) }
+    fun launch(input: I): Result<Unit, Throwable> = handoff.forRoundTrip { onLaunch(input) }
 }
 
 @Composable

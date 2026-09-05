@@ -2,6 +2,7 @@ package de.davis.keygo.feature.settings.presentation
 
 import android.content.Intent
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,6 +24,8 @@ import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.core.util.presentation.snackbar.LocalSnackbarManager
 import de.davis.keygo.feature.settings.R
 import org.koin.androidx.compose.koinViewModel
+
+private const val TAG = "SettingsScreen"
 
 @Composable
 fun SettingsScreen(
@@ -60,7 +63,9 @@ fun SettingsScreen(
                     Intent(Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE).apply {
                         data = "package:${context.packageName}".toUri()
                     }
-                )
+                ).onFailure {
+                    Log.w(TAG, "No activity found to handle the autofill selection", it)
+                }
             }
 
             is SettingsEvent.EnableBiometric -> {

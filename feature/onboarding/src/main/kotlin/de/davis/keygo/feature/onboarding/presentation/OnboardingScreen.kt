@@ -1,6 +1,5 @@
 package de.davis.keygo.feature.onboarding.presentation
 
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.provider.Settings
 import android.util.Log
@@ -109,17 +108,15 @@ fun OnboardingScreen(route: OnboardingRoute, onSuccess: () -> Unit) {
         rememberHandoffLauncher(ActivityResultContracts.StartActivityForResult()) {}
 
     ObserveAsEvents(viewModel.autofillPickerFlow) {
-        try {
-            autofillPickerLauncher.launch(
-                Intent(Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE).apply {
-                    data = "package:${context.packageName}".toUri()
-                }
-            )
-        } catch (e: ActivityNotFoundException) {
+        autofillPickerLauncher.launch(
+            Intent(Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE).apply {
+                data = "package:${context.packageName}".toUri()
+            }
+        ).onFailure {
             // Some AOSP builds, Android TV, and a few OEM ROMs have nothing that resolves this
             // intent. The user still has the "Finish setup" button to move past the step, so
             // failing quietly here is acceptable as long as it stays diagnosable.
-            Log.w(TAG, "No activity found to handle the system autofill picker", e)
+            Log.w(TAG, "No activity found to handle the system autofill picker", it)
         }
     }
 

@@ -1,9 +1,10 @@
 package de.davis.keygo.core.security.presentation
 
 import de.davis.keygo.core.security.data.SystemHandoffImpl
+import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.isFailure
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -34,7 +35,7 @@ internal class HandoffLauncherTest {
     fun `a system screen that will not open leaves no handoff armed behind it`() {
         val launcher = HandoffLauncher<Unit>(handoff) { error("nothing resolves this intent") }
 
-        assertFailsWith<IllegalStateException> { launcher.launch(Unit) }
+        launcher.launch(Unit)
 
         assertFalse(handoff.isPending)
     }
@@ -43,8 +44,9 @@ internal class HandoffLauncherTest {
     fun `a system screen that will not open still reports the failure to the caller`() {
         val launcher = HandoffLauncher<Unit>(handoff) { error("nothing resolves this intent") }
 
-        val thrown = assertFailsWith<IllegalStateException> { launcher.launch(Unit) }
+        val result = launcher.launch(Unit)
 
-        assertEquals("nothing resolves this intent", thrown.message)
+        assertTrue(result.isFailure())
+        assertEquals("nothing resolves this intent", (result as Result.Failure).error.message)
     }
 }

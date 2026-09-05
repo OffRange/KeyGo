@@ -8,6 +8,7 @@ import android.net.Uri
 import android.util.Log
 import de.davis.keygo.core.security.domain.SystemHandoff
 import de.davis.keygo.core.security.domain.forRoundTrip
+import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.feature.autofill.domain.repository.ChromeAutofillRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -64,6 +65,7 @@ internal class ChromeAutofillRepositoryImpl(
         val chooser = Intent.createChooser(intent, "Pick Chrome Channel")
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         handoff.forRoundTrip { context.startActivity(chooser) }
+            .onFailure { Log.w(TAG, "Failed to open Chrome's autofill settings", it) }
     }
 
     private companion object {

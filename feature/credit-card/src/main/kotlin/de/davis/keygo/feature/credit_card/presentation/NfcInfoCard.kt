@@ -2,6 +2,7 @@ package de.davis.keygo.feature.credit_card.presentation
 
 import android.content.Intent
 import android.provider.Settings
+import android.util.Log
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
@@ -43,11 +44,13 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.security.presentation.rememberHandoffStarter
+import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.feature.credit_card.R
 import de.davis.keygo.feature.credit_card.domain.model.Card
 import de.davis.keygo.feature.credit_card.domain.model.CardReadFailure
 import java.time.YearMonth
 
+private const val TAG = "NfcInfoCard"
 private const val DescriptionLines = 2
 private val IndicatorSize = 56.dp
 
@@ -82,7 +85,12 @@ internal fun NfcInfoCard(
     modifier: Modifier = Modifier,
 ) {
     val openSystemScreen = rememberHandoffStarter()
-    val onEnableNfc = { openSystemScreen.launch(Intent(Settings.ACTION_NFC_SETTINGS)) }
+    val onEnableNfc: () -> Unit = {
+        openSystemScreen.launch(Intent(Settings.ACTION_NFC_SETTINGS)).onFailure {
+            // A few OEM builds have nothing that resolves NFC settings.
+            Log.w(TAG, "No activity found to handle NFC settings", it)
+        }
+    }
 
     // 0 = no action (text sits lower under the indicator), 1 = action shown
     // (text slid up, action revealed below). Hoisted out of AnimatedContent so a

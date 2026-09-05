@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.service.autofill.Dataset
+import android.util.Log
 import android.view.autofill.AutofillManager
 import androidx.activity.compose.setContent
 import androidx.activity.result.IntentSenderRequest
@@ -39,6 +40,7 @@ import de.davis.keygo.feature.item.create.presentation.password.GeneratePassword
 import org.koin.androidx.compose.koinViewModel
 import de.davis.keygo.core.item.R as CoreItemR
 
+private const val TAG = "AutofillActivity"
 
 /**
  * This activity is transparent and does not show up in the recent apps list. It is used to gather
@@ -95,7 +97,9 @@ internal class AutofillActivity : FragmentActivity() {
                         is AutofillEvent.RequestSmsConsent ->
                             smsConsentLauncher.launch(
                                 IntentSenderRequest.Builder(event.intentSender).build(),
-                            )
+                            ).onFailure {
+                                Log.w(TAG, "Failed to launch the SMS consent prompt", it)
+                            }
                     }
                 }
 

@@ -1,5 +1,7 @@
 package de.davis.keygo.core.security.domain
 
+import de.davis.keygo.core.util.Result
+
 interface SystemHandoff {
 
     val isPending: Boolean
@@ -9,12 +11,17 @@ interface SystemHandoff {
     fun clear()
 }
 
-inline fun SystemHandoff.forRoundTrip(open: () -> Unit) {
+/**
+ * [open] failing to launch the system screen (no activity resolves the intent, say) is expected
+ * and foreseeable, not exceptional, so it is reported as a [Result.Failure] rather than thrown.
+ */
+inline fun SystemHandoff.forRoundTrip(open: () -> Unit): Result<Unit, Throwable> {
     expectReturn()
-    try {
+    return try {
         open()
+        Result.Success(Unit)
     } catch (e: Throwable) {
         returned()
-        throw e
+        Result.Failure(e)
     }
 }
