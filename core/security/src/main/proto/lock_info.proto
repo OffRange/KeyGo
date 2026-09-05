@@ -17,5 +17,4 @@ message ProtoLockInfo {
   }
 
   LockTimeout auto_lock_timeout = 1;
-  int64 backgrounded_at = 2;
 }

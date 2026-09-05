@@ -154,7 +154,6 @@ class SettingsViewModelTest {
     fun `state carries the stored auto lock timeout`() = runTest(dispatcher) {
         lockInfoRepository.lockInfo = LockInfo(
             autoLockTimeout = LockInfo.Timeout.FIVE_MINUTES,
-            backgroundedAt = 0L,
         )
         val vm = viewModel()
 

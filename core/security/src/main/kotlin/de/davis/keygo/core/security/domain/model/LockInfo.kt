@@ -6,7 +6,6 @@ import kotlin.time.Duration.Companion.minutes
 
 data class LockInfo(
     val autoLockTimeout: Timeout,
-    val backgroundedAt: Long,
 ) {
     enum class Timeout(val duration: Duration) {
         IMMEDIATELY(0.milliseconds),

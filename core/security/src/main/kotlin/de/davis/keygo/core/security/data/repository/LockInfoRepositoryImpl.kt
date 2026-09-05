@@ -25,13 +25,5 @@ internal class LockInfoRepositoryImpl(
         }
     }
 
-    override suspend fun setBackgroundedAt(backgroundedAt: Long) {
-        dataStore.updateData {
-            it.toBuilder()
-                .setBackgroundedAt(backgroundedAt)
-                .build()
-        }
-    }
-
-    override fun observeLockInfo(): Flow<LockInfo> = dataStore.data.map(toDomain)
+    override fun observeLockInfo(): Flow<LockInfo> = dataStore.data.map(ProtoLockInfo::toDomain)
 }
