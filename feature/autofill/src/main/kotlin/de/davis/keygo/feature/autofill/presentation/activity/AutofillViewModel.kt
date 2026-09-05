@@ -29,6 +29,7 @@ import de.davis.keygo.feature.autofill.presentation.activity.model.AssociationDi
 import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillBiometricRequest
 import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillEvent
 import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillUiEvent
+import de.davis.keygo.feature.autofill.presentation.activity.model.LinkCheckDialogVisibility
 import de.davis.keygo.feature.autofill.presentation.activity.model.SuspicionDialogVisibility
 import de.davis.keygo.feature.autofill.presentation.activity.model.SuspicionReason
 import de.davis.keygo.feature.autofill.presentation.model.AutofillUiState
@@ -46,12 +47,14 @@ import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.totp.domain.repository.TotpGenerator
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
+import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
 internal class AutofillViewModel(
@@ -82,6 +85,7 @@ internal class AutofillViewModel(
     val uiState = _uiState.asStateFlow()
 
     private var smsOtpJob: Job? = null
+    private var requestJob: Job? = null
 
     fun start() {
         handleRequestData()
@@ -107,16 +111,13 @@ internal class AutofillViewModel(
         _uiState.update { it.copy(request = Request.SaveItem(requestData.form.toRawItem())) }
     }
 
-    private fun handleRequestData(ignoreSuspicion: Boolean = false) =
-        viewModelScope.launch {
+    private fun handleRequestData(ignoreSuspicion: Boolean = false) {
+        requestJob?.cancel()
+        requestJob = viewModelScope.launch {
             val handleSuspicion = !ignoreSuspicion && requestData.form.isSuspicious
             val linkStatus = when {
-                handleSuspicion -> requestData.form.url?.let {
-                    isAppLinkedToWebsite(
-                        packageName = requestData.form.appPackageName,
-                        domain = it
-                    )
-                } ?: WebsiteLinkStatus.NotLinked
+                handleSuspicion -> requestData.form.url?.let { checkWebsiteLink(it) }
+                    ?: WebsiteLinkStatus.NotLinked
 
                 else -> null
             }
@@ -157,6 +158,35 @@ internal class AutofillViewModel(
                 is FillRequestData.Suggestion -> handleSuggestionRequest(requestData)
             }
         }
+    }
+
+    private suspend fun checkWebsiteLink(domain: String): WebsiteLinkStatus {
+        val indicator = viewModelScope.launch {
+            delay(LINK_CHECK_INDICATOR_DELAY)
+            _uiState.update {
+                it.copy(linkCheckDialogVisibility = LinkCheckDialogVisibility.Visible(domain))
+            }
+        }
+
+        return try {
+            isAppLinkedToWebsite(
+                packageName = requestData.form.appPackageName,
+                domain = domain,
+            )
+        } finally {
+            indicator.cancel()
+            _uiState.update {
+                it.copy(linkCheckDialogVisibility = LinkCheckDialogVisibility.Hidden)
+            }
+        }
+    }
+
+    private fun cancelLinkCheck() {
+        requestJob?.cancel()
+        requestJob = null
+        _uiState.update { it.copy(linkCheckDialogVisibility = LinkCheckDialogVisibility.Hidden) }
+        viewModelScope.launch { eventChannel.send(AutofillEvent.Abort) }
+    }
 
     private suspend fun handleSuggestionRequest(suggestionInfo: FillRequestData.Suggestion) {
         _uiState.update { it.copy(itemId = suggestionInfo.vaultId) }
@@ -310,6 +340,7 @@ internal class AutofillViewModel(
             AutofillUiEvent.OnAuthenticated -> onAuthenticated()
             AutofillUiEvent.OnCancelAssociation -> hideAssociationDialog()
             is AutofillUiEvent.OnItemSelected -> onItemSelected(event.itemId)
+            AutofillUiEvent.OnCancelLinkCheck -> cancelLinkCheck()
 
             AutofillUiEvent.OnContinueInSuspicion -> {
                 _uiState.update { it.copy(suspicionDialogVisibility = SuspicionDialogVisibility.Hidden) }
@@ -493,5 +524,7 @@ internal class AutofillViewModel(
 
     companion object {
         const val KEY_AUTOFILL_INFORMATION = "extraction"
+
+        private val LINK_CHECK_INDICATOR_DELAY = 150.milliseconds
     }
 }

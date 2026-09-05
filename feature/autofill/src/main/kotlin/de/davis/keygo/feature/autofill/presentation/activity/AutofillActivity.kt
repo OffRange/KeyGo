@@ -27,11 +27,13 @@ import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.autofill.presentation.activity.component.AssociationDialog
+import de.davis.keygo.feature.autofill.presentation.activity.component.LinkCheckPendingDialog
 import de.davis.keygo.feature.autofill.presentation.activity.component.SmsCodePendingDialog
 import de.davis.keygo.feature.autofill.presentation.activity.component.SuspicionDialog
 import de.davis.keygo.feature.autofill.presentation.activity.model.AssociationDialogVisibility
 import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillEvent
 import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillUiEvent
+import de.davis.keygo.feature.autofill.presentation.activity.model.LinkCheckDialogVisibility
 import de.davis.keygo.feature.autofill.presentation.activity.model.SuspicionDialogVisibility
 import de.davis.keygo.feature.autofill.presentation.model.Request
 import de.davis.keygo.feature.autofill.presentation.model.RequestData
@@ -62,6 +64,7 @@ internal class AutofillActivity : FragmentActivity() {
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                 val dialogVisibility = uiState.associationDialogVisibility
                 val suspicionDialogVisibility = uiState.suspicionDialogVisibility
+                val linkCheckDialogVisibility = uiState.linkCheckDialogVisibility
 
                 val biometricCryptoController = rememberBiometricCryptoController()
                 val biometricUnlockAdapter = rememberBiometricUnlockAdapter()
@@ -149,6 +152,12 @@ internal class AutofillActivity : FragmentActivity() {
                         onDismissRequest = {},
                         onConfirm = { viewModel.onEvent(AutofillUiEvent.OnAssociate) },
                         onDismiss = { viewModel.onEvent(AutofillUiEvent.OnCancelAssociation) }
+                    )
+
+                if (linkCheckDialogVisibility is LinkCheckDialogVisibility.Visible)
+                    LinkCheckPendingDialog(
+                        website = linkCheckDialogVisibility.website,
+                        onCancel = { viewModel.onEvent(AutofillUiEvent.OnCancelLinkCheck) }
                     )
 
                 if (suspicionDialogVisibility is SuspicionDialogVisibility.Visible)
