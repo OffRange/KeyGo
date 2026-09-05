@@ -1,5 +1,8 @@
 package de.davis.keygo.core.security.data
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -70,6 +73,25 @@ class SessionImplTest {
 
         assertContentEquals(ByteArray(32), replaced)
     }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `startSession pulses isActive through false when replacing an already-active session`() =
+        runTest(UnconfinedTestDispatcher()) {
+            // A plain `.value = true` no-ops on an already-true StateFlow. Collectors keyed on the
+            // false transition (e.g. wiping a typed password on lock) must still see it fire here.
+            // Unconfined so the collector resumes inline, the way a real Dispatchers.Main.immediate
+            // collector would - a queuing dispatcher would conflate both writes before it ever runs.
+            session.startSession(generateArk())
+
+            val collected = mutableListOf<Boolean>()
+            val job = launch { session.isActive.collect { collected.add(it) } }
+
+            session.startSession(generateArk())
+
+            job.cancel()
+            assertEquals(listOf(true, false, true), collected)
+        }
 
     @Test
     fun `endSession is safe to call without active session`() {

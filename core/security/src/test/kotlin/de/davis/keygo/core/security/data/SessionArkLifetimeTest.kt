@@ -100,6 +100,29 @@ class SessionArkLifetimeTest {
     }
 
     @Test
+    fun `a still-held ark is wiped once its own last reader finishes, not blocked by a newer generation's readers`() =
+        runTest {
+            // The defect this test guards: a reader count shared across generations meant an
+            // overlapping reader on a newer ark could keep an older, already-replaced one resident
+            // well past when its own last reader was done with it.
+            val first = generateArk()
+            session.startSession(first)
+
+            val heldFirst = holdArk()
+            session.endSession()
+            session.startSession(generateArk())
+
+            val heldSecond = holdArk()
+            heldFirst.finish()
+
+            assertTrue(
+                first.all { it == 0.toByte() },
+                "old generation not wiped once its own last reader finished"
+            )
+            heldSecond.finish()
+        }
+
+    @Test
     fun `a block that throws still releases the ark for wiping`() = runTest {
         session.startSession(generateArk())
         val handedOut = CompletableDeferred<ByteArray>()
