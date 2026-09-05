@@ -4,23 +4,26 @@ class ArkHolder {
 
     private val lock = Any()
 
-    private var ark: ByteArray? = null
-    private var readers = 0
-    private val awaitingWipe = mutableListOf<ByteArray>()
+    private class Generation(val ark: ByteArray) {
+        var readers = 0
+        var wipe = false
+    }
+
+    private var current: Generation? = null
 
     suspend fun <R> withArk(block: suspend (ByteArray) -> R): R? {
-        val live = synchronized(lock) {
-            val current = ark ?: return null
-            readers++
-            current
+        val generation = synchronized(lock) {
+            val gen = current ?: return null
+            gen.readers++
+            gen
         }
 
         try {
-            return block(live)
+            return block(generation.ark)
         } finally {
             synchronized(lock) {
-                readers--
-                if (readers == 0) wipePending()
+                generation.readers--
+                if (generation.readers == 0 && generation.wipe) generation.ark.fill(0)
             }
         }
     }
@@ -31,14 +34,11 @@ class ArkHolder {
 
     private fun replace(next: ByteArray?) {
         synchronized(lock) {
-            ark?.let { awaitingWipe += it }
-            ark = next
-            if (readers == 0) wipePending()
+            current?.let { retiring ->
+                retiring.wipe = true
+                if (retiring.readers == 0) retiring.ark.fill(0)
+            }
+            current = next?.let { Generation(it) }
         }
-    }
-
-    private fun wipePending() {
-        awaitingWipe.forEach { it.fill(0) }
-        awaitingWipe.clear()
     }
 }

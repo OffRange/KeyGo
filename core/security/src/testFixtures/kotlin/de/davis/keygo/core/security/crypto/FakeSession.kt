@@ -5,6 +5,7 @@ import de.davis.keygo.core.security.domain.Session
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.runBlocking
 
 /**
  * A fake [Session] with a fixed ARK. Shares [ArkHolder] with the real one, so it wipes the same
@@ -17,12 +18,16 @@ class FakeSession(
     var startSessionCalled = false
 
     private val holder = ArkHolder()
-    private var live: ByteArray? = null
     private val _isActive = MutableStateFlow(false)
 
-    /** The live ARK as a copy, for assertions. Null once the session has ended. */
+    /**
+     * The live ARK as a copy, for assertions. Null once the session has ended. Goes through
+     * [ArkHolder.withArk] like any other reader - `runBlocking` only bridges the suspend call for
+     * a synchronous test property, it does not bypass the reader accounting the way a raw peek
+     * would.
+     */
     val currentArk: ByteArray?
-        get() = live?.copyOf()
+        get() = runBlocking { holder.withArk { it.copyOf() } }
 
     override val isActive: StateFlow<Boolean> = _isActive.asStateFlow()
 
@@ -37,14 +42,12 @@ class FakeSession(
     override suspend fun <R> withArk(block: suspend (ByteArray) -> R): R? = holder.withArk(block)
 
     override fun startSession(ark: ByteArray) {
-        live = ark
         holder.set(ark)
         _isActive.value = true
         startSessionCalled = true
     }
 
     override fun endSession() {
-        live = null
         holder.clear()
         _isActive.value = false
     }
