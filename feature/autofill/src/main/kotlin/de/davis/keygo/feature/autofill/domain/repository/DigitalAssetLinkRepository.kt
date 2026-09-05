@@ -7,7 +7,7 @@ interface DigitalAssetLinkRepository {
 
     suspend fun isLinked(
         packageName: String,
-        signature: String,
         domain: String,
+        signatures: Set<String>,
     ): Result<Boolean, DigitalAssetLinkFailure>
 }

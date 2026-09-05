@@ -3,37 +3,58 @@ package de.davis.keygo.core.feature.autofill
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.feature.autofill.domain.model.DigitalAssetLinkFailure
 import de.davis.keygo.feature.autofill.domain.repository.DigitalAssetLinkRepository
+import kotlinx.coroutines.CompletableDeferred
 
 /**
  * In-memory [DigitalAssetLinkRepository] for tests.
  *
- * Set [linkedTriples] to configure which (packageName, signature, domain) combinations are linked,
- * and [failingSignatures] to make a lookup come back without a verdict. Inspect [linkedCalls] to
- * verify which combinations were queried.
+ * Set [links] to configure which app proves which domain with which signature, and [failingDomains]
+ * to make a domain answer with [failure] instead of a verdict. Setting [gate] makes each lookup
+ * suspend on it first, which lets a test hold one open and check what is on screen meanwhile.
+ * Inspect [lookups] to see what was asked.
  */
 class FakeDigitalAssetLinkRepository : DigitalAssetLinkRepository {
-    // Configurable: set of (packageName, signature, domain) triples that are "linked"
-    var linkedTriples: Set<Triple<String, String, String>> = emptySet()
 
-    // Configurable: signatures whose lookup fails with [failure] instead of returning a verdict
-    var failingSignatures: Set<String> = emptySet()
+    /** One statement a site publishes: [signature] proves [packageName] owns [domain]. */
+    data class Link(
+        val packageName: String,
+        val domain: String,
+        val signature: String,
+    )
 
-    // Configurable: the failure reported for [failingSignatures]
+    /** A lookup answers true when any queried signature matches one of these. */
+    var links: Set<Link> = emptySet()
+
+    /** Domains whose statement list cannot be read; they answer with [failure]. */
+    var failingDomains: Set<String> = emptySet()
+
+    /** The failure reported for [failingDomains]. */
     var failure: DigitalAssetLinkFailure = DigitalAssetLinkFailure.Unreachable
 
-    // Track calls for assertion (e.g., fake.linkedCalls.isEmpty() or fake.linkedCalls.contains(Triple(...)))
-    val linkedCalls: MutableList<Triple<String, String, String>> = mutableListOf()
+    /** When set, every lookup suspends on it before answering. */
+    var gate: CompletableDeferred<Unit>? = null
+
+    /** Every lookup, in order, for assertions such as `lookups.isEmpty()`. */
+    val lookups: MutableList<Lookup> = mutableListOf()
+
+    data class Lookup(
+        val packageName: String,
+        val domain: String,
+        val signatures: Set<String>,
+    )
 
     override suspend fun isLinked(
         packageName: String,
-        signature: String,
         domain: String,
+        signatures: Set<String>,
     ): Result<Boolean, DigitalAssetLinkFailure> {
-        val call = Triple(packageName, signature, domain)
-        linkedCalls += call
+        lookups += Lookup(packageName, domain, signatures)
+        gate?.await()
 
-        if (signature in failingSignatures) return Result.Failure(failure)
+        if (domain in failingDomains) return Result.Failure(failure)
 
-        return Result.Success(call in linkedTriples)
+        return Result.Success(
+            signatures.any { Link(packageName, domain, it) in links },
+        )
     }
 }

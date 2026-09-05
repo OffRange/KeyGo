@@ -214,7 +214,9 @@ internal class AutofillViewModelTest {
     @Test
     fun `suspicious form linked to website shows no suspicion dialog`() = runTest {
         signatureProvider.signatures = mapOf("com.example" to setOf("sig1"))
-        dalRepo.linkedTriples = setOf(Triple("com.example", "sig1", "https://example.com"))
+        dalRepo.links = setOf(
+            FakeDigitalAssetLinkRepository.Link("com.example", "https://example.com", "sig1"),
+        )
         val requestData = FillRequestData.App(
             form(isSuspicious = true, url = "https://example.com", appPackageName = "com.example"),
         )
@@ -228,8 +230,10 @@ internal class AutofillViewModelTest {
     @Test
     fun `suspicious form whose lookup fails shows the unverified dialog`() = runTest {
         signatureProvider.signatures = mapOf("com.example" to setOf("sig1"))
-        dalRepo.linkedTriples = setOf(Triple("com.example", "sig1", "https://example.com"))
-        dalRepo.failingSignatures = setOf("sig1")
+        dalRepo.links = setOf(
+            FakeDigitalAssetLinkRepository.Link("com.example", "https://example.com", "sig1"),
+        )
+        dalRepo.failingDomains = setOf("https://example.com")
         val requestData = FillRequestData.App(
             form(isSuspicious = true, url = "https://example.com", appPackageName = "com.example"),
         )
