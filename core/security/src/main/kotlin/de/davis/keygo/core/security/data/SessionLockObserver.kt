@@ -40,12 +40,8 @@ internal class SessionLockObserver(
     private var watchingScreenOff = false
     private var lockJob: Job? = null
 
-    /**
-     * Kept hot so [onStop] can decide without suspending. Reading the setting there would leave the
-     * ARK in memory for as long as the read took, at the one moment the app is leaving the
-     * foreground. IMMEDIATELY until the first read lands, so a setting we do not know yet locks
-     * rather than lingers.
-     */
+    private val lockGuard = Any()
+
     private val autoLockTimeout = lockInfoRepository.observeLockInfo()
         .map { it.autoLockTimeout }
         .stateIn(scope, SharingStarted.Eagerly, LockInfo.Timeout.IMMEDIATELY)
@@ -59,14 +55,18 @@ internal class SessionLockObserver(
         handoff.clear()
         lockJob?.cancel()
 
-        // Read before markActive drops the stamp this depends on.
-        if (sessionClock.expired(autoLockTimeout.value)) session.endSession()
-        sessionClock.markActive()
+        synchronized(lockGuard) {
+            // Read before markActive drops the stamp this depends on.
+            if (sessionClock.expired(autoLockTimeout.value)) session.endSession()
+            sessionClock.markActive()
+        }
     }
 
     override fun onStop(owner: LifecycleOwner) {
-        if (handoff.isPending) watchScreenOff()
-        else {
+        if (handoff.isPending) {
+            watchScreenOff()
+            scheduleHandoffBackstop()
+        } else {
             sessionClock.markInactive()
             val timeout = autoLockTimeout.value
             if (timeout == LockInfo.Timeout.IMMEDIATELY) session.endSession()
@@ -81,9 +81,22 @@ internal class SessionLockObserver(
             // [onStart] stays the authority. This only ever locks earlier, never later.
             delay(timeout.duration)
 
-            // Re-read rather than trusting the cancel alone: a foreground that raced the delay has
-            // already dropped the stamp, and must not be locked out by a timer it just beat.
-            if (sessionClock.expired(timeout)) session.endSession()
+            synchronized(lockGuard) {
+                // Re-read rather than trusting the cancel alone: a foreground that raced the delay
+                // has already dropped the stamp, and must not be locked out by a timer it just beat.
+                if (sessionClock.expired(timeout)) session.endSession()
+            }
+        }
+    }
+
+    private fun scheduleHandoffBackstop() {
+        lockJob?.cancel()
+        lockJob = scope.launch {
+            delay(LockInfo.Timeout.FIVE_MINUTES.duration)
+
+            synchronized(lockGuard) {
+                if (handoff.isPending) session.endSession()
+            }
         }
     }
 

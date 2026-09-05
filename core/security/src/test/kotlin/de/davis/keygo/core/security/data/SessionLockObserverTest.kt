@@ -191,12 +191,36 @@ internal class SessionLockObserverTest {
     }
 
     @Test
-    fun `a handoff schedules no wipe`() {
+    fun `a handoff schedules no wipe against the configured timeout`() {
         val observer = observer(LockInfo.Timeout.FIVE_MINUTES)
         handoff.expectReturn()
 
         observer.onStop(owner)
-        elapse(fiveMinutes * 2)
+        elapse(fiveMinutes - 1)
+
+        assertEquals(true, session.isActive.value)
+    }
+
+    @Test
+    fun `an abandoned handoff still ends the session once the grace period passes`() {
+        // The defect this guards: a handoff that is never returned from (the user never comes
+        // back, the screen never turns off) must not hold auto-lock open forever.
+        val observer = observer()
+        handoff.expectReturn()
+
+        observer.onStop(owner)
+        elapse(LockInfo.Timeout.FIVE_MINUTES.duration.inWholeMilliseconds)
+
+        assertEquals(false, session.isActive.value)
+    }
+
+    @Test
+    fun `a handoff still within its grace period keeps the session`() {
+        val observer = observer()
+        handoff.expectReturn()
+
+        observer.onStop(owner)
+        elapse(LockInfo.Timeout.FIVE_MINUTES.duration.inWholeMilliseconds - 1)
 
         assertEquals(true, session.isActive.value)
     }
