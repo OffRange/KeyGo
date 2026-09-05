@@ -32,7 +32,9 @@ import de.davis.keygo.feature.autofill.domain.usecase.IsAppLinkedToWebsiteUseCas
 import de.davis.keygo.feature.autofill.presentation.activity.model.AssociationDialogVisibility
 import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillEvent
 import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillUiEvent
+import de.davis.keygo.feature.autofill.presentation.activity.model.LinkCheckDialogVisibility
 import de.davis.keygo.feature.autofill.presentation.activity.model.SuspicionDialogVisibility
+import de.davis.keygo.feature.autofill.presentation.activity.model.SuspicionReason
 import de.davis.keygo.feature.autofill.presentation.model.FieldType
 import de.davis.keygo.feature.autofill.presentation.model.FillRequestData
 import de.davis.keygo.feature.autofill.presentation.model.Form
@@ -49,7 +51,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -194,7 +198,9 @@ internal class AutofillViewModelTest {
         val vm = buildVm(requestData)
         vm.start()
 
-        assertIs<SuspicionDialogVisibility.Visible>(vm.uiState.value.suspicionDialogVisibility)
+        val visibility = vm.uiState.value.suspicionDialogVisibility
+        assertIs<SuspicionDialogVisibility.Visible>(visibility)
+        assertEquals(SuspicionReason.NotLinked, visibility.reason)
         assertEquals(Request.None, vm.uiState.value.request)
     }
 
@@ -211,7 +217,9 @@ internal class AutofillViewModelTest {
     @Test
     fun `suspicious form linked to website shows no suspicion dialog`() = runTest {
         signatureProvider.signatures = mapOf("com.example" to setOf("sig1"))
-        dalRepo.linkedTriples = setOf(Triple("com.example", "sig1", "https://example.com"))
+        dalRepo.links = setOf(
+            FakeDigitalAssetLinkRepository.Link("com.example", "https://example.com", "sig1"),
+        )
         val requestData = FillRequestData.App(
             form(isSuspicious = true, url = "https://example.com", appPackageName = "com.example"),
         )
@@ -220,6 +228,124 @@ internal class AutofillViewModelTest {
 
         assertEquals(SuspicionDialogVisibility.Hidden, vm.uiState.value.suspicionDialogVisibility)
         assertEquals(Request.SelectItem, vm.uiState.value.request)
+    }
+
+    @Test
+    fun `suspicious form whose lookup fails shows the unverified dialog`() = runTest {
+        signatureProvider.signatures = mapOf("com.example" to setOf("sig1"))
+        dalRepo.links = setOf(
+            FakeDigitalAssetLinkRepository.Link("com.example", "https://example.com", "sig1"),
+        )
+        dalRepo.failingDomains = setOf("https://example.com")
+        val requestData = FillRequestData.App(
+            form(isSuspicious = true, url = "https://example.com", appPackageName = "com.example"),
+        )
+        val vm = buildVm(requestData)
+        vm.start()
+
+        val visibility = vm.uiState.value.suspicionDialogVisibility
+        assertIs<SuspicionDialogVisibility.Visible>(visibility)
+        assertEquals(SuspicionReason.Unverified, visibility.reason)
+        assertEquals(Request.None, vm.uiState.value.request)
+    }
+
+    @Test
+    fun `a slow website link check shows the loading dialog until it answers`() = runTest {
+        signatureProvider.signatures = mapOf("com.example" to setOf("sig1"))
+        dalRepo.links = setOf(
+            FakeDigitalAssetLinkRepository.Link("com.example", "https://example.com", "sig1"),
+        )
+        val gate = CompletableDeferred<Unit>()
+        dalRepo.gate = gate
+
+        val requestData = FillRequestData.App(
+            form(isSuspicious = true, url = "https://example.com", appPackageName = "com.example"),
+        )
+        val vm = buildVm(requestData)
+        vm.start()
+        advanceUntilIdle()
+
+        val visibility = vm.uiState.value.linkCheckDialogVisibility
+        assertIs<LinkCheckDialogVisibility.Visible>(visibility)
+        assertEquals("https://example.com", visibility.website)
+
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(LinkCheckDialogVisibility.Hidden, vm.uiState.value.linkCheckDialogVisibility)
+        assertEquals(Request.SelectItem, vm.uiState.value.request)
+    }
+
+    @Test
+    fun `a website link check that answers at once never shows the loading dialog`() = runTest {
+        signatureProvider.signatures = mapOf("com.example" to setOf("sig1"))
+        dalRepo.links = setOf(
+            FakeDigitalAssetLinkRepository.Link("com.example", "https://example.com", "sig1"),
+        )
+
+        val requestData = FillRequestData.App(
+            form(isSuspicious = true, url = "https://example.com", appPackageName = "com.example"),
+        )
+        val vm = buildVm(requestData)
+
+        val seen = mutableListOf<LinkCheckDialogVisibility>()
+        val collector = launch(UnconfinedTestDispatcher(testScheduler)) {
+            vm.uiState.collect { seen += it.linkCheckDialogVisibility }
+        }
+
+        vm.start()
+        advanceUntilIdle()
+        collector.cancel()
+
+        assertTrue(seen.isNotEmpty())
+        assertTrue(seen.all { it is LinkCheckDialogVisibility.Hidden })
+        assertEquals(Request.SelectItem, vm.uiState.value.request)
+    }
+
+    @Test
+    fun `cancelling the website link check aborts and clears the loading dialog`() = runTest {
+        signatureProvider.signatures = mapOf("com.example" to setOf("sig1"))
+        dalRepo.gate = CompletableDeferred()
+
+        val requestData = FillRequestData.App(
+            form(isSuspicious = true, url = "https://example.com", appPackageName = "com.example"),
+        )
+        val vm = buildVm(requestData)
+        vm.start()
+        advanceUntilIdle()
+
+        assertIs<LinkCheckDialogVisibility.Visible>(vm.uiState.value.linkCheckDialogVisibility)
+
+        val abortDeferred = async { vm.events.first() }
+        vm.onEvent(AutofillUiEvent.OnCancelLinkCheck)
+
+        assertEquals(AutofillEvent.Abort, abortDeferred.await())
+        assertEquals(LinkCheckDialogVisibility.Hidden, vm.uiState.value.linkCheckDialogVisibility)
+        assertEquals(Request.None, vm.uiState.value.request)
+    }
+
+    @Test
+    fun `a verdict arriving after cancellation shows no suspicion dialog`() = runTest {
+        signatureProvider.signatures = mapOf("com.example" to setOf("sig1"))
+        val gate = CompletableDeferred<Unit>()
+        dalRepo.gate = gate
+
+        val requestData = FillRequestData.App(
+            form(isSuspicious = true, url = "https://example.com", appPackageName = "com.example"),
+        )
+        val vm = buildVm(requestData)
+        vm.start()
+        advanceUntilIdle()
+
+        val abortDeferred = async { vm.events.first() }
+        vm.onEvent(AutofillUiEvent.OnCancelLinkCheck)
+        assertEquals(AutofillEvent.Abort, abortDeferred.await())
+
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(SuspicionDialogVisibility.Hidden, vm.uiState.value.suspicionDialogVisibility)
+        assertEquals(Request.None, vm.uiState.value.request)
     }
 
     @Test

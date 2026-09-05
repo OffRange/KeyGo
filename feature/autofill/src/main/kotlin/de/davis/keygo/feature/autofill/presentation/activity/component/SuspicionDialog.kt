@@ -13,7 +13,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import de.davis.keygo.core.ui.text.htmlStringResource
 import de.davis.keygo.feature.autofill.R
+import de.davis.keygo.feature.autofill.presentation.activity.model.SuspicionReason
 
 @Composable
 internal fun SuspicionDialog(
@@ -21,6 +23,7 @@ internal fun SuspicionDialog(
     onAbort: () -> Unit,
     appPackageName: String,
     website: String,
+    reason: SuspicionReason,
     modifier: Modifier = Modifier
 ) {
     AlertDialog(
@@ -43,12 +46,22 @@ internal fun SuspicionDialog(
             Icon(imageVector = Icons.Default.WarningAmber, contentDescription = null)
         },
         title = {
-            Text(text = stringResource(R.string.suspicious_activity))
+            Text(
+                text = htmlStringResource(
+                    when (reason) {
+                        SuspicionReason.NotLinked -> R.string.suspicious_activity
+                        SuspicionReason.Unverified -> R.string.unverified_activity
+                    },
+                )
+            )
         },
         text = {
             Text(
-                text = stringResource(
-                    R.string.suspicious_activity_description,
+                text = htmlStringResource(
+                    when (reason) {
+                        SuspicionReason.NotLinked -> R.string.suspicious_activity_description
+                        SuspicionReason.Unverified -> R.string.unverified_activity_description
+                    },
                     appPackageName,
                     website
                 )
@@ -67,6 +80,22 @@ private fun SuspicionDialogPreview() {
             onAbort = {},
             appPackageName = "com.example.app",
             website = "example.com",
+            reason = SuspicionReason.NotLinked,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun SuspicionDialogUnverifiedPreview() {
+    MaterialTheme {
+        SuspicionDialog(
+            onContinue = {},
+            onAbort = {},
+            appPackageName = "com.example.app",
+            website = "example.com",
+            reason = SuspicionReason.Unverified,
             modifier = Modifier.fillMaxWidth()
         )
     }

@@ -14,6 +14,7 @@ import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Module
 import org.koin.core.annotation.Single
+import kotlin.time.Duration.Companion.seconds
 
 @Module(includes = [CoreIdentityModule::class, CoreUtilModule::class])
 @Configuration
@@ -35,6 +36,7 @@ object AutofillModule {
                 maxSize = 3 * 1024 * 1024 // 3 MB
             )
         )
+        .callTimeout(5.seconds)
         .build()
 
     @Single

@@ -8,6 +8,8 @@ internal sealed interface AutofillUiEvent {
     data object OnAssociate : AutofillUiEvent
     data object OnCancelAssociation : AutofillUiEvent
 
+    data object OnCancelLinkCheck : AutofillUiEvent
+
     data object OnContinueInSuspicion : AutofillUiEvent
     data object OnAbortInSuspicion : AutofillUiEvent
 

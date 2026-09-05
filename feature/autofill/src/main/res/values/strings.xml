@@ -3,8 +3,14 @@
     <string name="autofill_service">Autofill Service</string>
     <string name="fill_anyway">Fill anyway</string>
 
+    <string name="checking_website_link">Checking this app</string>
+    <string name="checking_website_link_description">KeyGo is asking &lt;b>%1$s&lt;/b> whether this app is allowed to use it.</string>
+
     <string name="suspicious_activity">Suspicious Activity</string>
-    <string name="suspicious_activity_description">This app (<b>%1$s</b>) isn\'t a recognized browser. It is showing a website (<b>%2$s</b>). Autofilling here may give your credentials to this app. Only continue if you trust this app and the site.</string>
+    <string name="suspicious_activity_description">This app (&lt;b>%1$s&lt;/b>) isn\'t a recognized browser. It is showing a website (&lt;b>%2$s&lt;/b>). Autofilling here may give your credentials to this app. Only continue if you trust this app and the site.</string>
+
+    <string name="unverified_activity">Couldn\'t verify this app</string>
+    <string name="unverified_activity_description">This app (&lt;b>%1$s&lt;/b>) isn\'t a recognized browser, and it wasn\'t possible to check whether it is allowed to use &lt;b>%2$s&lt;/b>. The verification service couldn\'t be reached, which usually means this device is offline or this app has no network access. Only continue if you trust this app and the site.</string>
 
     <string name="suggest">Suggest</string>
     <string name="suggest_for_this_app">Suggest this item</string>

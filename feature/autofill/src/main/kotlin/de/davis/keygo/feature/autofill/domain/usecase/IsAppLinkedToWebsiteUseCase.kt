@@ -1,9 +1,9 @@
 package de.davis.keygo.feature.autofill.domain.usecase
 
+import de.davis.keygo.core.util.fold
 import de.davis.keygo.feature.autofill.domain.SignatureInfoProvider
+import de.davis.keygo.feature.autofill.domain.model.WebsiteLinkStatus
 import de.davis.keygo.feature.autofill.domain.repository.DigitalAssetLinkRepository
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.coroutineScope
 import org.koin.core.annotation.Single
 
 @Single
@@ -12,20 +12,20 @@ class IsAppLinkedToWebsiteUseCase(
     private val signatureInfoProvider: SignatureInfoProvider,
 ) {
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     suspend operator fun invoke(
         packageName: String,
-        domain: String
-    ): Boolean = coroutineScope {
+        domain: String,
+    ): WebsiteLinkStatus {
         val signatures = signatureInfoProvider.getSignatureInfo(packageName)
-        if (signatures.isEmpty()) return@coroutineScope false
+        if (signatures.isEmpty()) return WebsiteLinkStatus.NotLinked
 
-        signatures.any { sign ->
-            digitalAssetLinkCheck.isLinked(
-                packageName = packageName,
-                signature = sign,
-                domain = domain
-            )
-        }
+        return digitalAssetLinkCheck.isLinked(
+            packageName = packageName,
+            domain = domain,
+            signatures = signatures,
+        ).fold(
+            onSuccess = { if (it) WebsiteLinkStatus.Linked else WebsiteLinkStatus.NotLinked },
+            onFailure = { WebsiteLinkStatus.Unverified }
+        )
     }
 }
