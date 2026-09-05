@@ -36,8 +36,12 @@ class AppNavigator(val state: AppNavigationState) {
             else -> false
         }
 
-    fun navigate(route: NavKey) {
-        if (isGated) return
+    /** The one choke point every gated mutator below shares, so none can forget the check. */
+    private inline fun whenUnlocked(action: () -> Unit) {
+        if (!isGated) action()
+    }
+
+    fun navigate(route: NavKey) = whenUnlocked {
         val isTopLevel = !state.isOverlaid && route in state.backStacks
         if (isTopLevel) selectTopLevel(route)
         else state.currentStack.add(route)
@@ -53,7 +57,12 @@ class AppNavigator(val state: AppNavigationState) {
         else state.topLevelRoute = route
     }
 
-    /** Replaces the overlay with [route], so back from it leaves the app. */
+    /**
+     * Replaces the overlay with [route], so back from it leaves the app. Deliberately not gated,
+     * unlike [pushOntoOverlay]: it clears whatever is on top first - including a gate - rather
+     * than stacking above it, so it also doubles as how a gate is legitimately swapped for another
+     * (see `AppNavigator.openGateFor`).
+     */
     fun replaceOverlay(route: NavKey) {
         state.overlayStack.clear()
         state.overlayStack.add(route)
@@ -64,15 +73,14 @@ class AppNavigator(val state: AppNavigationState) {
      * this is the one path that would drop a gate without anything having authenticated, and the
      * screens that call it sit under the gate rather than over it.
      */
-    fun clearOverlay() {
-        if (isGated) return
-        state.overlayStack.clear()
-    }
+    fun clearOverlay() = whenUnlocked { state.overlayStack.clear() }
 
-    /** Adds [route] to the overlay without disturbing whatever is already on it. */
-    fun pushOntoOverlay(route: NavKey) {
-        state.overlayStack.add(route)
-    }
+    /**
+     * Adds [route] to the overlay without disturbing whatever is already on it. Gated, unlike
+     * [replaceOverlay]: stacking on top of an existing gate would show [route] unauthenticated
+     * above it.
+     */
+    fun pushOntoOverlay(route: NavKey) = whenUnlocked { state.overlayStack.add(route) }
 
     /**
      * Hides what is showing behind an unlock gate and blocks back until [unlock]. Nothing
@@ -95,15 +103,13 @@ class AppNavigator(val state: AppNavigationState) {
      * Shows [detail] in the dashboard's detail pane, replacing any detail already open, so back
      * from a detail always lands on the list.
      */
-    fun showDetail(detail: RouteDestination.Detail) {
-        if (isGated) return
+    fun showDetail(detail: RouteDestination.Detail) = whenUnlocked {
         closeDetail()
         state.currentStack.add(detail)
     }
 
     /** Opens [detail] on top of the detail already showing, so back returns to it. */
-    fun openOnTopOfDetail(detail: RouteDestination.Detail) {
-        if (isGated) return
+    fun openOnTopOfDetail(detail: RouteDestination.Detail) = whenUnlocked {
         state.currentStack.add(detail)
     }
 
@@ -132,8 +138,7 @@ class AppNavigator(val state: AppNavigationState) {
      * Goes back one destination, never down to nothing, and never while the gate is up: the
      * overlay can be deeper than one entry then, so a depth check alone would pop the gate.
      */
-    fun goBack() {
-        if (isGated) return
+    fun goBack() = whenUnlocked {
         val stack = state.currentStack
         if (stack.size > 1) stack.removeLastOrNull()
     }
