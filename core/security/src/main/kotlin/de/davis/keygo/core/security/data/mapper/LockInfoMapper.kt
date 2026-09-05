@@ -5,7 +5,6 @@ import de.davis.keygo.core.security.domain.model.LockInfo
 
 internal fun ProtoLockInfo.toDomain() = LockInfo(
     autoLockTimeout = autoLockTimeout.toDomain(),
-    backgroundedAt = backgroundedAt
 )
 
 internal fun LockInfo.Timeout.toProto() = ProtoLockInfo.LockTimeout.entries[ordinal]

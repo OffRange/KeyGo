@@ -6,7 +6,6 @@ import kotlinx.coroutines.flow.Flow
 interface LockInfoRepository {
 
     suspend fun setAutoLockTimeout(timeout: LockInfo.Timeout)
-    suspend fun setBackgroundedAt(backgroundedAt: Long)
 
     fun observeLockInfo(): Flow<LockInfo>
 }

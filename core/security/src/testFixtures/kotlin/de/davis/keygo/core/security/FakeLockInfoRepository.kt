@@ -8,21 +8,21 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 class FakeLockInfoRepository(
-    initLockInfo: LockInfo = LockInfo(
-        autoLockTimeout = LockInfo.Timeout.IMMEDIATELY,
-        backgroundedAt = 0L,
-    ),
+    initLockInfo: LockInfo = LockInfo(autoLockTimeout = LockInfo.Timeout.IMMEDIATELY),
 ) : LockInfoRepository {
 
-    private val lockInfo = MutableStateFlow(initLockInfo)
+    private val _lockInfo = MutableStateFlow(initLockInfo)
+
+    /** The stored record, settable so a test can arrange one without going through the setters. */
+    var lockInfo: LockInfo
+        get() = _lockInfo.value
+        set(value) {
+            _lockInfo.update { value }
+        }
 
     override suspend fun setAutoLockTimeout(timeout: LockInfo.Timeout) {
-        lockInfo.update { it.copy(autoLockTimeout = timeout) }
+        _lockInfo.update { it.copy(autoLockTimeout = timeout) }
     }
 
-    override suspend fun setBackgroundedAt(backgroundedAt: Long) {
-        lockInfo.update { it.copy(backgroundedAt = backgroundedAt) }
-    }
-
-    override fun observeLockInfo(): Flow<LockInfo> = lockInfo.asStateFlow()
+    override fun observeLockInfo(): Flow<LockInfo> = _lockInfo.asStateFlow()
 }
