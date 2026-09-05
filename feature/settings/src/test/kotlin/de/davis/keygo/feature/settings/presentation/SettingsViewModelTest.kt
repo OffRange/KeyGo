@@ -4,7 +4,9 @@ import de.davis.keygo.core.feature.autofill.FakeAutofillServiceRepository
 import de.davis.keygo.core.feature.autofill.FakeChromeAutofillRepository
 import de.davis.keygo.core.feature.settings.FakeAppVersionRepository
 import de.davis.keygo.core.identity.FakeAccountRepository
+import de.davis.keygo.core.security.FakeLockInfoRepository
 import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
+import de.davis.keygo.core.security.domain.model.LockInfo
 import de.davis.keygo.feature.backup.FakeBackupJobRepository
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
 import de.davis.keygo.feature.backup.domain.model.BackupJob
@@ -37,6 +39,7 @@ class SettingsViewModelTest {
     private val chromeAutofillRepository = FakeChromeAutofillRepository()
     private val appVersionRepository = FakeAppVersionRepository()
     private val backupJobRepository = FakeBackupJobRepository()
+    private val lockInfoRepository = FakeLockInfoRepository()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(dispatcher)
@@ -48,6 +51,7 @@ class SettingsViewModelTest {
         biometricAvailabilityRepository = biometricAvailability,
         autofillServiceRepository = autofillServiceRepository,
         chromeAutofillRepository = chromeAutofillRepository,
+        lockInfoRepository = lockInfoRepository,
         accountRepository = accountRepository,
         appVersionRepository = appVersionRepository,
         observeLastBackup = ObserveLastBackupUseCase(backupJobRepository),
@@ -145,6 +149,31 @@ class SettingsViewModelTest {
 
             vm.state.first { it.chromeAutofillEnabled }
         }
+
+    @Test
+    fun `state carries the stored auto lock timeout`() = runTest(dispatcher) {
+        lockInfoRepository.lockInfo = LockInfo(
+            autoLockTimeout = LockInfo.Timeout.FIVE_MINUTES,
+            backgroundedAt = 0L,
+        )
+        val vm = viewModel()
+
+        assertEquals(
+            LockInfo.Timeout.FIVE_MINUTES,
+            vm.state.first { it.lockTimeout == LockInfo.Timeout.FIVE_MINUTES }.lockTimeout,
+        )
+    }
+
+    @Test
+    fun `selecting an auto lock timeout persists it and updates the ui`() = runTest(dispatcher) {
+        val vm = viewModel()
+        vm.state.first()
+
+        vm.onEvent(SettingsUiEvent.SetAutoLockTimeout(LockInfo.Timeout.TWO_MINUTES))
+
+        vm.state.first { it.lockTimeout == LockInfo.Timeout.TWO_MINUTES }
+        assertEquals(LockInfo.Timeout.TWO_MINUTES, lockInfoRepository.lockInfo.autoLockTimeout)
+    }
 
     @Test
     fun `opening chrome autofill settings calls the repository directly without emitting an event`() =

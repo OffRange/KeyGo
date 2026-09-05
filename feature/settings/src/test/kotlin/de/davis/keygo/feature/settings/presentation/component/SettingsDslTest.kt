@@ -4,6 +4,7 @@ import androidx.compose.material3.ListItemColors
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.util.presentation.UIText
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -79,6 +80,82 @@ class SettingsDslTest {
         }.build()
 
         assertEquals(listOf(11), entries.map { it.title })
+    }
+
+    @Test
+    fun `picker entry resolves the selected option to an index`() {
+        val entry = SectionScope().apply {
+            picker(
+                title = 30,
+                selected = "b",
+                options = listOf("a", "b", "c"),
+                label = { UIText.RawString(it) },
+                onSelect = {},
+                colors = colors,
+            )
+        }.build().single()
+
+        val picker = assertIs<SettingsEntry.Picker>(entry)
+        assertEquals(1, picker.selectedIndex)
+        assertEquals(
+            listOf("a", "b", "c").map(UIText::RawString),
+            picker.options.map { it.label },
+        )
+    }
+
+    @Test
+    fun `picker entry supports the row with the selected label`() {
+        val entry = SectionScope().apply {
+            picker(
+                title = 30,
+                selected = "b",
+                options = listOf("a", "b"),
+                label = { UIText.RawString(it) },
+                onSelect = {},
+                colors = colors,
+            )
+        }.build().single()
+
+        val picker = assertIs<SettingsEntry.Picker>(entry)
+        assertEquals(UIText.RawString("b"), picker.supporting)
+    }
+
+    @Test
+    fun `picker option reports the option it was built from`() {
+        var observed: String? = null
+        val entry = SectionScope().apply {
+            picker(
+                title = 30,
+                selected = "a",
+                options = listOf("a", "b", "c"),
+                label = { UIText.RawString(it) },
+                onSelect = { observed = it },
+                colors = colors,
+            )
+        }.build().single()
+
+        val picker = assertIs<SettingsEntry.Picker>(entry)
+        picker.options[2].onSelect()
+
+        assertEquals("c", observed)
+    }
+
+    @Test
+    fun `picker entry with a selection outside its options has no supporting line`() {
+        val entry = SectionScope().apply {
+            picker(
+                title = 30,
+                selected = "z",
+                options = listOf("a", "b"),
+                label = { UIText.RawString(it) },
+                onSelect = {},
+                colors = colors,
+            )
+        }.build().single()
+
+        val picker = assertIs<SettingsEntry.Picker>(entry)
+        assertEquals(-1, picker.selectedIndex)
+        assertNull(picker.supporting)
     }
 
     private fun testIcon(): ImageVector = ImageVector.Builder(

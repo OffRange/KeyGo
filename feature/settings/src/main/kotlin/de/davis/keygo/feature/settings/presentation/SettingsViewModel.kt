@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
+import de.davis.keygo.core.security.domain.repository.LockInfoRepository
+import de.davis.keygo.core.util.combine
 import de.davis.keygo.feature.autofill.domain.repository.AutofillServiceRepository
 import de.davis.keygo.feature.autofill.domain.repository.ChromeAutofillRepository
 import de.davis.keygo.feature.backup.domain.usecase.ObserveLastBackupUseCase
@@ -11,7 +13,6 @@ import de.davis.keygo.feature.settings.domain.repository.AppVersionRepository
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -23,6 +24,7 @@ internal class SettingsViewModel(
     private val biometricAvailabilityRepository: BiometricAvailabilityRepository,
     private val autofillServiceRepository: AutofillServiceRepository,
     private val chromeAutofillRepository: ChromeAutofillRepository,
+    private val lockInfoRepository: LockInfoRepository,
     accountRepository: AccountRepository,
     appVersionRepository: AppVersionRepository,
     observeLastBackup: ObserveLastBackupUseCase,
@@ -45,11 +47,12 @@ internal class SettingsViewModel(
 
     val state = combine(
         accountRepository.observe(),
+        lockInfoRepository.observeLockInfo(),
         autofillEnabled,
         chromeAutofillEnabled,
         biometricsAvailable,
         observeLastBackup(),
-    ) { account, autofill, chromeAutofill, biometrics, lastBackup ->
+    ) { account, lockInfo, autofill, chromeAutofill, biometrics, lastBackup ->
         SettingsUiState(
             autofillEnabled = autofill,
             chromeAutofillEnabled = chromeAutofill,
@@ -57,6 +60,7 @@ internal class SettingsViewModel(
             biometricsEnabled = biometrics && account?.biometricWrappedArk != null,
             version = versionName,
             lastBackupAt = lastBackup?.finishedAt,
+            lockTimeout = lockInfo.autoLockTimeout,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -77,6 +81,11 @@ internal class SettingsViewModel(
     fun onEvent(event: SettingsUiEvent) {
         when (event) {
             is SettingsUiEvent.SetBiometrics -> _event.trySend(SettingsEvent.EnableBiometric(event.enabled))
+
+            is SettingsUiEvent.SetAutoLockTimeout -> viewModelScope.launch {
+                lockInfoRepository.setAutoLockTimeout(event.timeout)
+            }
+
             is SettingsUiEvent.SetAutofill -> when {
                 event.enabledRequest -> _event.trySend(SettingsEvent.OpenAutofillSelection)
                 else -> {

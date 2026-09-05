@@ -77,5 +77,25 @@ internal class SectionScope {
         )
     }
 
+    fun <T> picker(
+        @StringRes title: Int,
+        selected: T,
+        options: List<T>,
+        label: (T) -> UIText,
+        onSelect: (T) -> Unit,
+        colors: ListItemColors,
+        icon: ImageVector? = null,
+    ) {
+        entries += SettingsEntry.Picker(
+            title = title,
+            icon = icon,
+            colors = colors,
+            selectedIndex = options.indexOf(selected),
+            options = options.map { option ->
+                SettingsEntry.Picker.Option(label(option)) { onSelect(option) }
+            },
+        )
+    }
+
     fun build(): List<SettingsEntry> = entries.toList()
 }
