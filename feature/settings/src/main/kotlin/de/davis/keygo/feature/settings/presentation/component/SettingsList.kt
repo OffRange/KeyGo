@@ -3,32 +3,48 @@ package de.davis.keygo.feature.settings.presentation.component
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.util.presentation.asString
+import de.davis.keygo.feature.settings.R
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -162,7 +178,81 @@ private fun SettingsEntryRow(
             modifier = modifier,
             content = headlineContent,
         )
+
+        is SettingsEntry.Picker -> {
+            var pickerOpen by remember { mutableStateOf(false) }
+
+            SegmentedListItem(
+                onClick = { pickerOpen = true },
+                shapes = shapes,
+                colors = colors,
+                leadingContent = leadingContent,
+                supportingContent = supportingContent,
+                verticalAlignment = verticalAlignment,
+                modifier = modifier,
+                content = headlineContent,
+            )
+
+            if (pickerOpen) PickerDialog(
+                title = entry.title,
+                options = entry.options,
+                selectedIndex = entry.selectedIndex,
+                onSelect = { option ->
+                    pickerOpen = false
+                    option.onSelect()
+                },
+                onDismiss = { pickerOpen = false },
+            )
+        }
     }
+}
+
+@Composable
+private fun PickerDialog(
+    @StringRes title: Int,
+    options: List<SettingsEntry.Picker.Option>,
+    selectedIndex: Int,
+    onSelect: (SettingsEntry.Picker.Option) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(title)) },
+        text = {
+            Column(modifier = Modifier.selectableGroup()) {
+                options.forEachIndexed { index, option ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .minimumInteractiveComponentSize()
+                            .clip(MaterialTheme.shapes.small)
+                            .selectable(
+                                selected = index == selectedIndex,
+                                role = Role.RadioButton,
+                                onClick = { onSelect(option) },
+                            )
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = index == selectedIndex,
+                            onClick = null,
+                        )
+                        Text(
+                            text = option.label.asString(),
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(start = 16.dp),
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(R.string.cancel))
+            }
+        },
+    )
 }
 
 @Composable

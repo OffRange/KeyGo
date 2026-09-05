@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockReset
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.Public
@@ -22,7 +23,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.security.domain.model.LockInfo
 import de.davis.keygo.core.util.presentation.UIText
+import de.davis.keygo.core.util.presentation.UIText.Companion.PluralsString
 import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.feature.settings.R
 import de.davis.keygo.feature.settings.presentation.component.SectionScope
@@ -82,6 +85,16 @@ internal fun SettingsContent(
                 )
 
                 autofillEntries(state, warningColors, onEvent)
+
+                picker(
+                    title = R.string.settings_auto_lock,
+                    icon = Icons.Default.Lock,
+                    colors = defaultColors,
+                    selected = state.lockTimeout,
+                    options = LockInfo.Timeout.entries,
+                    label = { it.label },
+                    onSelect = { onEvent(SettingsUiEvent.SetAutoLockTimeout(it)) },
+                )
             }
 
             section(title = R.string.settings_backup) {
@@ -154,6 +167,16 @@ private fun lastBackupText(lastBackupAt: Long?): UIText = when (lastBackupAt) {
     )
 }
 
+private val LockInfo.Timeout.label: UIText
+    get() = when (this) {
+        LockInfo.Timeout.IMMEDIATELY -> ResourceString(R.string.settings_auto_lock_immediately)
+        else -> PluralsString(
+            R.plurals.settings_auto_lock_n_minute,
+            duration.inWholeMinutes.toInt(),
+            duration.inWholeMinutes,
+        )
+    }
+
 @Preview
 @Composable
 private fun SettingsContentPreview() {
@@ -162,7 +185,10 @@ private fun SettingsContentPreview() {
             modifier = Modifier.fillMaxSize(),
         ) {
             SettingsContent(
-                state = SettingsUiState(autofillEnabled = true),
+                state = SettingsUiState(
+                    autofillEnabled = true,
+                    lockTimeout = LockInfo.Timeout.TWO_MINUTES
+                ),
                 onEvent = {},
             )
         }

@@ -7,7 +7,8 @@ import de.davis.keygo.core.security.data.mapper.toProto
 import de.davis.keygo.core.security.di.annotation.LockInfoQualifier
 import de.davis.keygo.core.security.domain.model.LockInfo
 import de.davis.keygo.core.security.domain.repository.LockInfoRepository
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import org.koin.core.annotation.Single
 
 @Single
@@ -32,5 +33,5 @@ internal class LockInfoRepositoryImpl(
         }
     }
 
-    override suspend fun getLockInfo(): LockInfo = dataStore.data.first().toDomain()
+    override fun observeLockInfo(): Flow<LockInfo> = dataStore.data.map(toDomain)
 }

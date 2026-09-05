@@ -10,6 +10,12 @@
     <string name="settings_autofill_finish_setup">Finish setting up autofill</string>
     <string name="settings_autofill_finish_setup_needs_chrome">Turn on third-party autofill in Chrome to finish</string>
     <string name="settings_biometric_update_failed">Could not update biometric unlock</string>
+    <string name="settings_auto_lock">Auto Lock</string>
+    <string name="settings_auto_lock_immediately">Immediately</string>
+    <plurals name="settings_auto_lock_n_minute">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
 
     <string name="settings_backup">Backup</string>
     <string name="settings_backup_and_restore">Backup &amp; Restore</string>
@@ -30,4 +36,6 @@
     <string name="reauth_dialog_title">Enter your current password</string>
     <string name="password_changed">Password changed</string>
     <string name="change_password_failed">Could not change password</string>
+
+    <string name="cancel">Cancel</string>
 </resources>

@@ -41,6 +41,19 @@ internal sealed interface SettingsEntry {
         val value: String,
         val onClick: (() -> Unit)? = null,
     ) : SettingsEntry
+
+    data class Picker(
+        @param:StringRes override val title: Int,
+        override val icon: ImageVector? = null,
+        override val colors: ListItemColors,
+        val selectedIndex: Int,
+        val options: List<Option>,
+    ) : SettingsEntry {
+
+        override val supporting: UIText? = options.getOrNull(selectedIndex)?.label
+
+        data class Option(val label: UIText, val onSelect: () -> Unit)
+    }
 }
 
 internal data class SettingsSection(
