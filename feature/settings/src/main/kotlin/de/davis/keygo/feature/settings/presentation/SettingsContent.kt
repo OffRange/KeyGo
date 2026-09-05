@@ -187,7 +187,7 @@ private fun SettingsContentPreview() {
             SettingsContent(
                 state = SettingsUiState(
                     autofillEnabled = true,
-                    lockTimeout = LockInfo.Timeout.TWO_MINUTES
+                    lockTimeout = LockInfo.Timeout.TWO_MINUTES,
                 ),
                 onEvent = {},
             )
