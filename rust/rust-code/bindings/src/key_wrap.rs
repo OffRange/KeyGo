@@ -1,9 +1,9 @@
-use lib::crypto::error::CryptoError;
-use lib::crypto::item_key::{ItemAad, ItemKey};
-use lib::crypto::key::KeyMaterial;
-use lib::crypto::keys::{AccountRootKey, RootKEK, VaultKey};
-use lib::crypto::primitive::wrap_key::{KeyWrapper as KeyWrapperTrait, WrappedKey};
-use lib::crypto::types::{UserId, VaultId};
+use keygo_core::crypto::KeyMaterial;
+use keygo_core::crypto::error::CryptoError;
+use keygo_core::crypto::primitive::wrap_key::{KeyWrapper as KeyWrapperTrait, WrappedKey};
+use keygo_core::crypto::types::{UserId, VaultId};
+use keygo_core::crypto::{AccountRootKey, RootKEK, VaultKey};
+use keygo_core::crypto::{ItemAad, ItemKey};
 use std::sync::Arc;
 
 uniffi::custom_type!(RootKEK, Vec<u8>, {

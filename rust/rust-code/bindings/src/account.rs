@@ -1,8 +1,6 @@
-use lib::crypto::types::{UserId, VaultId};
-use lib::crypto::{AccountRootKey, KeyMaterial, VaultKey};
-use lib::item::account::Account;
-use lib::item::create_account::CreateAccount;
-use lib::item::vault::Vault;
+use keygo_core::account::{Account, CreateAccount, Vault};
+use keygo_core::crypto::types::{UserId, VaultId};
+use keygo_core::crypto::{AccountRootKey, KeyMaterial, VaultKey};
 use std::sync::Arc;
 use uuid::Uuid;
 

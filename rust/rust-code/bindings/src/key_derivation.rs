@@ -1,8 +1,8 @@
-use lib::crypto::TryDeriveFrom;
-use lib::crypto::error::CryptoError;
-use lib::crypto::keys::RootKEK;
-use lib::crypto::primitive::argon2::MIN_SALT_LEN;
-use lib::crypto::random::random_bytes;
+use keygo_core::crypto::RootKEK;
+use keygo_core::crypto::TryDeriveFrom;
+use keygo_core::crypto::error::CryptoError;
+use keygo_core::crypto::primitive::argon2::MIN_SALT_LEN;
+use keygo_core::crypto::random::random_bytes;
 use std::sync::Arc;
 
 const PASSWORD_DOMAIN: &[u8] = b"v1:kek/pwd";

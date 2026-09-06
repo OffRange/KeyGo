@@ -1,8 +1,8 @@
-use lib::crypto::KeyMaterial;
-use lib::crypto::error::CryptoError;
-use lib::crypto::item_key::{ItemAad, ItemDataAad, ItemKey};
-use lib::crypto::primitive::aead_data::{AeadCiphertext, AeadEncryptor};
-use lib::crypto::types::{ItemId, VaultId};
+use keygo_core::crypto::KeyMaterial;
+use keygo_core::crypto::error::CryptoError;
+use keygo_core::crypto::primitive::aead_data::{AeadCiphertext, AeadEncryptor};
+use keygo_core::crypto::types::{ItemId, VaultId};
+use keygo_core::crypto::{ItemAad, ItemDataAad, ItemKey};
 use std::sync::Arc;
 
 uniffi::custom_type!(ItemKey, Vec<u8>, {

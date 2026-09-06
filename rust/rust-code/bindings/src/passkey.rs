@@ -1,8 +1,8 @@
-use lib::passkey::provider::{ProviderError, provide_passkey};
-use lib::passkey::registration::{
+use keygo_core::passkey::{
     KeyGoRegistrationResponse, PasskeyInformation as CorePasskeyInformation, RegistrationError,
     get_passkey_information, register_passkey,
 };
+use keygo_core::passkey::{ProviderError, provide_passkey};
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
