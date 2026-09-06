@@ -76,12 +76,11 @@ class SessionImplTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `startSession pulses isActive through false when replacing an already-active session`() =
+    fun `startSession does not pulse isActive when replacing an already-active session`() =
         runTest(UnconfinedTestDispatcher()) {
-            // A plain `.value = true` no-ops on an already-true StateFlow. Collectors keyed on the
-            // false transition (e.g. wiping a typed password on lock) must still see it fire here.
-            // Unconfined so the collector resumes inline, the way a real Dispatchers.Main.immediate
-            // collector would - a queuing dispatcher would conflate both writes before it ever runs.
+            // A swap is not a lock. The app gate locks on any false it observes and only a
+            // successful unlock takes it back down, so a pulse here would make replacing a live
+            // session cost a re-auth. Unconfined so a collector that could see the edge does.
             session.startSession(generateArk())
 
             val collected = mutableListOf<Boolean>()
@@ -90,7 +89,7 @@ class SessionImplTest {
             session.startSession(generateArk())
 
             job.cancel()
-            assertEquals(listOf(true, false, true), collected)
+            assertEquals(listOf(true), collected)
         }
 
     @Test

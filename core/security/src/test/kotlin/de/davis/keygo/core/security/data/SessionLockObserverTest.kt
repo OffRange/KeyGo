@@ -8,8 +8,11 @@ import androidx.lifecycle.LifecycleRegistry
 import de.davis.keygo.core.security.FakeLockInfoRepository
 import de.davis.keygo.core.security.data.time.SessionClockImpl
 import de.davis.keygo.core.security.domain.model.LockInfo
+import de.davis.keygo.core.security.domain.repository.LockInfoRepository
 import de.davis.keygo.core.security.time.FakeElapsedTimeProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.runner.RunWith
@@ -26,8 +29,8 @@ internal class SessionLockObserverTest {
 
     private val context = RuntimeEnvironment.getApplication()
     private val session = SessionImpl().apply { startSession(ByteArray(32) { it.toByte() }) }
-    private val handoff = SystemHandoffImpl()
     private val time = FakeElapsedTimeProvider()
+    private val handoff = SystemHandoffImpl()
     private val clock = SessionClockImpl(time)
     private val lockInfoRepository = FakeLockInfoRepository()
 
@@ -104,6 +107,16 @@ internal class SessionLockObserverTest {
     }
 
     @Test
+    fun `the screen going off during an ordinary background ends the session`() {
+        val observer = observer(LockInfo.Timeout.FIVE_MINUTES)
+        observer.onStop(owner)
+
+        screenOff()
+
+        assertEquals(false, session.isActive.value)
+    }
+
+    @Test
     fun `the screen stops being watched once the app is back in the foreground`() {
         val observer = observer()
         handoff.expectReturn()
@@ -147,7 +160,22 @@ internal class SessionLockObserverTest {
     }
 
     @Test
-    fun `a slow handoff is not timed against the auto lock timeout`() {
+    fun `a handoff is timed against its grace period, not the auto lock timeout`() {
+        val observer = observer(LockInfo.Timeout.ONE_MINUTE)
+        handoff.expectReturn()
+        observer.onStop(owner)
+
+        time.advanceBy(LockInfo.Timeout.ONE_MINUTE.duration.inWholeMilliseconds)
+        observer.onStart(owner)
+
+        assertEquals(true, session.isActive.value)
+    }
+
+    @Test
+    fun `a handoff that outlasts its grace period ends the session on return`() {
+        // The frozen process case: the scheduled wipe never got to run, so the stamp taken on the
+        // way out is all that is left to judge the return by. Without it the ARK stays resident for
+        // however long the user was gone.
         val observer = observer(LockInfo.Timeout.FIVE_MINUTES)
         handoff.expectReturn()
         observer.onStop(owner)
@@ -155,7 +183,21 @@ internal class SessionLockObserverTest {
         time.advanceBy(fiveMinutes * 2)
         observer.onStart(owner)
 
-        assertEquals(true, session.isActive.value)
+        assertEquals(false, session.isActive.value)
+    }
+
+    @Test
+    fun `a handoff arming outlives at most one background`() {
+        // Backing straight out of the screen we opened happens inside the ON_STOP debounce, so no
+        // lifecycle callback runs to spend the arming and it is still there at the next background.
+        // That one gets the grace; every background after it must not.
+        val observer = observer()
+        handoff.expectReturn()
+
+        observer.onStop(owner)
+        observer.onStop(owner)
+
+        assertEquals(false, session.isActive.value)
     }
 
     @Test
@@ -237,6 +279,29 @@ internal class SessionLockObserverTest {
 
         assertEquals(true, session.isActive.value)
     }
+
+    @Test
+    fun `a setting that has not been read yet locks rather than lingers`() {
+        // The seed stands in until the first read lands. It has to be the locking one: a timeout
+        // we do not know yet must not be read as permission to leave the ARK in memory.
+        val observer = SessionLockObserver(
+            context,
+            session,
+            handoff,
+            clock,
+            scope,
+            NeverEmittingLockInfoRepository,
+        )
+
+        observer.onStop(owner)
+
+        assertEquals(false, session.isActive.value)
+    }
+}
+
+private object NeverEmittingLockInfoRepository : LockInfoRepository {
+    override suspend fun setAutoLockTimeout(timeout: LockInfo.Timeout) = Unit
+    override fun observeLockInfo(): Flow<LockInfo> = MutableSharedFlow()
 }
 
 private class StubLifecycleOwner : LifecycleOwner {
