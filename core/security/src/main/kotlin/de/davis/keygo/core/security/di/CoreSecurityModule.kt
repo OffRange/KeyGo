@@ -19,8 +19,8 @@ object CoreSecurityModule {
         "lock_info.pb",
         DefaultProtoSerializer(
             defaultInstance = ProtoLockInfo.getDefaultInstance(),
-            parser = ProtoLockInfo.parser()
-        )
+            parser = ProtoLockInfo.parser(),
+        ),
     )
 
     @Single

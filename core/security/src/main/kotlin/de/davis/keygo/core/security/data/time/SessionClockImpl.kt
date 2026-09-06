@@ -10,8 +10,8 @@ internal class SessionClockImpl(
     private val timeProvider: ElapsedTimeProvider,
 ) : SessionClock {
 
-    // Written on the main thread from the process lifecycle callbacks, read from the autofill and
-    // credential provider services on their own dispatchers.
+    // Written on the main thread from the process lifecycle callbacks, read from there and from the
+    // scheduled wipe on the app scope's dispatcher.
     @Volatile
     private var backgroundedAt: Long? = null
 

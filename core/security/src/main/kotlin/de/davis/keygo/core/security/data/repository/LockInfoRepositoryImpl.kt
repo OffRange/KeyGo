@@ -14,7 +14,7 @@ import org.koin.core.annotation.Single
 @Single
 internal class LockInfoRepositoryImpl(
     @param:LockInfoQualifier
-    private val dataStore: DataStore<ProtoLockInfo>
+    private val dataStore: DataStore<ProtoLockInfo>,
 ) : LockInfoRepository {
 
     override suspend fun setAutoLockTimeout(timeout: LockInfo.Timeout) {
