@@ -7,7 +7,7 @@ message ProtoLockInfo {
 
   /*
    * The timeout for the auto-lock feature. The entries must be exactly the same as the values in
-   * the LockInfo.Timeout enum. The default value is LOCK_TIMEOUT_ONE_MINUTE.
+   * the LockInfo.Timeout enum. The default value is LOCK_TIMEOUT_IMMEDIATELY.
    */
   enum LockTimeout {
     LOCK_TIMEOUT_IMMEDIATELY = 0;
