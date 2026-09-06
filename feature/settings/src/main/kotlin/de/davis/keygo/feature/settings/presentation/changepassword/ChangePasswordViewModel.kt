@@ -1,5 +1,7 @@
 package de.davis.keygo.feature.settings.presentation.changepassword
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.text.input.delete
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -9,6 +11,7 @@ import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.identity.domain.usecase.ChangePasswordUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
@@ -24,6 +27,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -40,6 +44,7 @@ internal class ChangePasswordViewModel(
     private val biometricAvailabilityRepository: BiometricAvailabilityRepository,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val changePassword: ChangePasswordUseCase,
+    private val session: Session,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChangePasswordState())
@@ -70,6 +75,9 @@ internal class ChangePasswordViewModel(
 
     init {
         resolveBiometricAvailability()
+        viewModelScope.launch {
+            session.isActive.filter { !it }.collect { clearSensitiveFields() }
+        }
     }
 
     private fun resolveBiometricAvailability() {
@@ -193,6 +201,25 @@ internal class ChangePasswordViewModel(
                 _state.update { it.copy(currentPasswordError = UiFieldError.Incorrect) }
 
             else -> _event.trySend(ChangePasswordEvent.GenericError)
+        }
+    }
+
+    @OptIn(ExperimentalFoundationApi::class)
+    private fun clearSensitiveFields() {
+        _state.value.currentPassword.edit { delete(0, length) }
+        _state.value.currentPassword.undoState.clearHistory()
+        _state.value.newPassword.edit { delete(0, length) }
+        _state.value.newPassword.undoState.clearHistory()
+        _state.value.confirmPassword.edit { delete(0, length) }
+        _state.value.confirmPassword.undoState.clearHistory()
+
+        _state.update {
+            it.copy(
+                currentPasswordError = null,
+                newPasswordError = null,
+                confirmPasswordError = null,
+                showReauthDialog = false,
+            )
         }
     }
 }

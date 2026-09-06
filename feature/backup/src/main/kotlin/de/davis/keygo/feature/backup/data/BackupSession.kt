@@ -10,8 +10,10 @@ import kotlinx.coroutines.flow.StateFlow
  */
 internal class BackupSession(private val backupArk: ByteArray) : Session {
 
-    override val ark: ByteArray get() = backupArk
     override val isActive: StateFlow<Boolean> = MutableStateFlow(true)
+
+    /** Always runs [block]: the ARK was already recovered, and whoever recovered it wipes it. */
+    override suspend fun <R> withArk(block: suspend (ByteArray) -> R): R? = block(backupArk)
 
     override fun startSession(ark: ByteArray) =
         error("BackupSession is read-only")

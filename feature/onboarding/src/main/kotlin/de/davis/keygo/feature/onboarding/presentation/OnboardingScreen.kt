@@ -1,11 +1,9 @@
 package de.davis.keygo.feature.onboarding.presentation
 
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.provider.Settings
 import android.util.Log
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -59,6 +57,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
+import de.davis.keygo.core.security.presentation.rememberHandoffLauncher
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
@@ -106,20 +105,18 @@ fun OnboardingScreen(route: OnboardingRoute, onSuccess: () -> Unit) {
 
     val context = LocalContext.current
     val autofillPickerLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {}
+        rememberHandoffLauncher(ActivityResultContracts.StartActivityForResult()) {}
 
     ObserveAsEvents(viewModel.autofillPickerFlow) {
-        try {
-            autofillPickerLauncher.launch(
-                Intent(Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE).apply {
-                    data = "package:${context.packageName}".toUri()
-                }
-            )
-        } catch (e: ActivityNotFoundException) {
+        autofillPickerLauncher.launch(
+            Intent(Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE).apply {
+                data = "package:${context.packageName}".toUri()
+            }
+        ).onFailure {
             // Some AOSP builds, Android TV, and a few OEM ROMs have nothing that resolves this
             // intent. The user still has the "Finish setup" button to move past the step, so
             // failing quietly here is acceptable as long as it stays diagnosable.
-            Log.w(TAG, "No activity found to handle the system autofill picker", e)
+            Log.w(TAG, "No activity found to handle the system autofill picker", it)
         }
     }
 

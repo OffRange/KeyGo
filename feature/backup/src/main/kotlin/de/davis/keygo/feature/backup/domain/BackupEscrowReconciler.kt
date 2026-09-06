@@ -1,9 +1,9 @@
 package de.davis.keygo.feature.backup.domain
 
+import de.davis.keygo.core.util.di.annotation.AppScopeQualifier
 import de.davis.keygo.feature.backup.domain.usecase.CleanupBackupResourcesUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.Single
 
@@ -24,10 +24,13 @@ import org.koin.core.annotation.Single
 @Single(createdAtStart = true)
 internal class BackupEscrowReconciler(
     cleanupBackupResources: CleanupBackupResourcesUseCase,
+    @AppScopeQualifier appScope: CoroutineScope,
 ) {
 
     init {
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+        // Dispatchers.IO rather than the app scope's default: reconcile reads DataStore and the
+        // WorkManager schedule.
+        appScope.launch(Dispatchers.IO) {
             cleanupBackupResources.reconcile()
         }
     }

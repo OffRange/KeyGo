@@ -4,8 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.service.autofill.Dataset
+import android.util.Log
 import android.view.autofill.AutofillManager
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,6 +20,7 @@ import de.davis.keygo.core.identity.presentation.rememberBiometricUnlockAdapter
 import de.davis.keygo.core.identity.presentation.useAdapter
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
+import de.davis.keygo.core.security.presentation.rememberHandoffLauncher
 import de.davis.keygo.core.ui.clipboard.setText
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.onFailure
@@ -41,6 +42,7 @@ import de.davis.keygo.feature.item.create.presentation.password.GeneratePassword
 import org.koin.androidx.compose.koinViewModel
 import de.davis.keygo.core.item.R as CoreItemR
 
+private const val TAG = "AutofillActivity"
 
 /**
  * This activity is transparent and does not show up in the recent apps list. It is used to gather
@@ -72,7 +74,7 @@ internal class AutofillActivity : FragmentActivity() {
                 val clipboard = LocalClipboard.current
                 val passwordLabel = stringResource(CoreItemR.string.password)
 
-                val smsConsentLauncher = rememberLauncherForActivityResult(
+                val smsConsentLauncher = rememberHandoffLauncher(
                     ActivityResultContracts.StartIntentSenderForResult(),
                 ) { result ->
                     viewModel.onEvent(
@@ -98,7 +100,9 @@ internal class AutofillActivity : FragmentActivity() {
                         is AutofillEvent.RequestSmsConsent ->
                             smsConsentLauncher.launch(
                                 IntentSenderRequest.Builder(event.intentSender).build(),
-                            )
+                            ).onFailure {
+                                Log.w(TAG, "Failed to launch the SMS consent prompt", it)
+                            }
                     }
                 }
 

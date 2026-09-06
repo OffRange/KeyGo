@@ -11,6 +11,7 @@ import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
 import de.davis.keygo.feature.settings.presentation.ChangePasswordRoute
 import de.davis.keygo.feature.settings.presentation.SettingsRoute
 import de.davis.keygo.feature.totp.presentation.SelectItemForTotpRoute
+import de.davis.keygo.feature.totp.presentation.TotpImportRedirect
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -20,7 +21,7 @@ class AppNavigatorTest {
 
     private fun navigator(launchRoute: NavKey = AuthRoute()): AppNavigator {
         val state = AppNavigationState(
-            launchStack = NavBackStack(launchRoute),
+            overlayStack = NavBackStack(launchRoute),
             topLevelRoute = mutableStateOf(RouteDestination.Home),
             backStacks = TOP_LEVEL_ROUTES.associateWith { NavBackStack<NavKey>(it) },
         )
@@ -28,21 +29,22 @@ class AppNavigatorTest {
     }
 
     private val AppNavigator.shown: List<NavKey>
-        get() = if (state.isLaunching) state.launchStack.toList()
+        get() = if (state.isOverlaid) state.overlayStack.toList()
         else state.backStacks.getValue(state.topLevelRoute).toList()
 
-    // ---- the launch flow ----
+    // ---- the overlay ----
 
     @Test
-    fun `the launch flow owns the window until it finishes`() {
-        val navigator = navigator()
+    fun `the overlay owns the window until it is cleared`() {
+        // Cleared with a first run overlay: a gate refuses clearOverlay and is popped by unlock.
+        val navigator = navigator(launchRoute = OnboardingRoute())
 
-        assertTrue(navigator.state.isLaunching)
-        assertEquals(listOf(AuthRoute()), navigator.shown)
+        assertTrue(navigator.state.isOverlaid)
+        assertEquals(listOf(OnboardingRoute()), navigator.shown)
 
-        navigator.finishLaunchFlow()
+        navigator.clearOverlay()
 
-        assertFalse(navigator.state.isLaunching)
+        assertFalse(navigator.state.isOverlaid)
         assertEquals(listOf(RouteDestination.Home), navigator.shown)
     }
 
@@ -68,16 +70,16 @@ class AppNavigatorTest {
     fun `the picker replaces the gate, so back leaves the app`() {
         val navigator = navigator()
 
-        navigator.replaceLaunchFlow(SelectItemForTotpRoute(DEEP_LINK_URI))
+        navigator.replaceOverlay(SelectItemForTotpRoute(DEEP_LINK_URI))
 
         assertEquals(listOf(SelectItemForTotpRoute(DEEP_LINK_URI)), navigator.shown)
         assertEquals(1, navigator.shown.size)
     }
 
     @Test
-    fun `assigning a code pushes onto the launch flow and back returns to the picker`() {
+    fun `assigning a code pushes onto the overlay and back returns to the picker`() {
         val navigator = navigator()
-        navigator.replaceLaunchFlow(SelectItemForTotpRoute(DEEP_LINK_URI))
+        navigator.replaceOverlay(SelectItemForTotpRoute(DEEP_LINK_URI))
 
         navigator.navigate(TestAssignRoute)
         assertEquals(listOf(SelectItemForTotpRoute(DEEP_LINK_URI), TestAssignRoute), navigator.shown)
@@ -87,23 +89,26 @@ class AppNavigatorTest {
     }
 
     @Test
-    fun `back never empties the launch flow, so the app is what exits`() {
+    fun `back never empties the overlay, so the app is what exits`() {
         val navigator = navigator()
 
         navigator.goBack()
 
-        assertTrue(navigator.state.isLaunching)
+        assertTrue(navigator.state.isOverlaid)
         assertEquals(listOf(AuthRoute()), navigator.shown)
     }
 
     @Test
-    fun `a top level route is not switched to while the launch flow is running`() {
-        val navigator = navigator()
+    fun `a top level route is not switched to while the overlay owns the window`() {
+        val navigator = navigator(launchRoute = TotpImportRedirect(DEEP_LINK_URI))
 
         navigator.navigate(SettingsRoute)
 
-        assertTrue(navigator.state.isLaunching)
-        assertEquals(listOf(AuthRoute(), SettingsRoute), navigator.shown)
+        assertTrue(navigator.state.isOverlaid)
+        assertEquals(
+            listOf(TotpImportRedirect(DEEP_LINK_URI), SettingsRoute),
+            navigator.shown,
+        )
     }
 
     // ---- top level routes ----
@@ -286,7 +291,282 @@ class AppNavigatorTest {
         assertEquals(listOf(RouteDestination.Home), navigator.shown)
     }
 
-    private fun unlocked(): AppNavigator = navigator().apply { finishLaunchFlow() }
+    // ---- locking ----
+
+    @Test
+    fun `locking leaves every tab exactly as it was`() {
+        val navigator = unlocked()
+        navigator.navigate(SettingsRoute)
+        navigator.navigate(ChangePasswordRoute)
+        navigator.navigate(RouteDestination.Home)
+        val itemId = newItemId()
+        navigator.showDetail(RouteDestination.ViewItem(itemId))
+
+        navigator.lock()
+
+        assertEquals(
+            listOf(RouteDestination.Home, RouteDestination.ViewItem(itemId)),
+            navigator.state.backStacks.getValue(RouteDestination.Home).toList(),
+        )
+        assertEquals(
+            listOf(SettingsRoute, ChangePasswordRoute),
+            navigator.state.backStacks.getValue(SettingsRoute).toList(),
+        )
+    }
+
+    @Test
+    fun `locking pushes the gate without clearing what was already on the overlay`() {
+        val navigator = navigator()
+        navigator.replaceOverlay(SelectItemForTotpRoute(DEEP_LINK_URI))
+
+        navigator.lock()
+
+        assertEquals(
+            listOf(SelectItemForTotpRoute(DEEP_LINK_URI), AuthRoute()),
+            navigator.shown,
+        )
+    }
+
+    @Test
+    fun `locking from a tab pushes the gate onto an otherwise empty overlay`() {
+        val navigator = unlocked()
+        navigator.navigate(SettingsRoute)
+
+        navigator.lock()
+
+        assertTrue(navigator.state.isOverlaid)
+        assertEquals(listOf(AuthRoute()), navigator.shown)
+    }
+
+    @Test
+    fun `locking is refused while first run is showing`() {
+        val navigator = navigator(launchRoute = OnboardingRoute())
+
+        navigator.lock()
+
+        assertEquals(listOf(OnboardingRoute()), navigator.shown)
+    }
+
+    @Test
+    fun `locking is refused while the deep link redirect is showing`() {
+        val navigator = navigator(launchRoute = TotpImportRedirect(DEEP_LINK_URI))
+
+        navigator.lock()
+
+        assertEquals(listOf(TotpImportRedirect(DEEP_LINK_URI)), navigator.shown)
+    }
+
+    @Test
+    fun `unlocking reveals the active tab exactly as it was`() {
+        val navigator = unlocked()
+        navigator.navigate(SettingsRoute)
+        navigator.navigate(ChangePasswordRoute)
+        navigator.lock()
+
+        navigator.unlock()
+
+        assertFalse(navigator.state.isOverlaid)
+        assertEquals(listOf(SettingsRoute, ChangePasswordRoute), navigator.shown)
+    }
+
+    @Test
+    fun `unlocking reveals a picker that was preserved under the gate`() {
+        val navigator = navigator()
+        navigator.replaceOverlay(SelectItemForTotpRoute(DEEP_LINK_URI))
+        navigator.lock()
+
+        navigator.unlock()
+
+        assertEquals(listOf(SelectItemForTotpRoute(DEEP_LINK_URI)), navigator.shown)
+    }
+
+    @Test
+    fun `back cannot pop the gate away, even over a picker underneath it`() {
+        val navigator = navigator()
+        navigator.replaceOverlay(SelectItemForTotpRoute(DEEP_LINK_URI))
+        navigator.lock()
+
+        navigator.goBack()
+
+        assertEquals(
+            listOf(SelectItemForTotpRoute(DEEP_LINK_URI), AuthRoute()),
+            navigator.shown,
+        )
+    }
+
+    @Test
+    fun `the chrome still standing behind the gate cannot navigate anywhere`() {
+        // The navigation bar animates out rather than disappearing, so it stays clickable for a
+        // moment after the gate goes up. A tap landing then must not push over the gate.
+        val navigator = unlocked()
+        navigator.lock()
+
+        navigator.navigate(SettingsRoute)
+        navigator.navigate(RouteDestination.Home)
+
+        assertEquals(listOf(AuthRoute()), navigator.shown)
+        assertEquals(RouteDestination.Home, navigator.state.topLevelRoute)
+    }
+
+    @Test
+    fun `the create button still standing behind the gate cannot open a detail`() {
+        val navigator = unlocked()
+        navigator.lock()
+
+        navigator.showDetail(RouteDestination.CreateItem(VaultItemType.Login))
+        navigator.openOnTopOfDetail(RouteDestination.ViewItem(newItemId()))
+
+        assertEquals(listOf(AuthRoute()), navigator.shown)
+    }
+
+    @Test
+    fun `a narrowing window drops the tab's auto-selected detail even behind the gate`() {
+        // Rotating at the lock screen is ordinary now that the gate shows on every resume. The
+        // overlay's top is the gate, never a detail, so reading it would drop nothing and leave the
+        // tab holding a selection the user never made.
+        val navigator = unlocked()
+        navigator.showDetail(RouteDestination.ViewItem(newItemId()))
+        navigator.lock()
+
+        navigator.dropAutoSelectedDetail()
+
+        assertEquals(
+            listOf(RouteDestination.Home),
+            navigator.state.backStacks.getValue(RouteDestination.Home).toList(),
+        )
+        assertEquals(listOf(AuthRoute()), navigator.shown)
+    }
+
+    @Test
+    fun `a form is still left alone when the window narrows behind the gate`() {
+        val navigator = unlocked()
+        navigator.showDetail(RouteDestination.CreateItem(VaultItemType.Login))
+        navigator.lock()
+
+        navigator.dropAutoSelectedDetail()
+
+        assertEquals(
+            listOf(RouteDestination.Home, RouteDestination.CreateItem(VaultItemType.Login)),
+            navigator.state.backStacks.getValue(RouteDestination.Home).toList(),
+        )
+    }
+
+    @Test
+    fun `the gate is not cleared away by a flow finishing underneath it`() {
+        val navigator = navigator()
+        navigator.replaceOverlay(SelectItemForTotpRoute(DEEP_LINK_URI))
+        navigator.lock()
+
+        navigator.clearOverlay()
+
+        assertEquals(
+            listOf(SelectItemForTotpRoute(DEEP_LINK_URI), AuthRoute()),
+            navigator.shown,
+        )
+    }
+
+    @Test
+    fun `back works normally again once unlocked`() {
+        val navigator = unlocked()
+        navigator.navigate(SettingsRoute)
+        navigator.navigate(ChangePasswordRoute)
+        navigator.lock()
+        navigator.unlock()
+
+        navigator.goBack()
+
+        assertEquals(listOf(SettingsRoute), navigator.shown)
+    }
+
+    @Test
+    fun `unlocking a cold start gate hands the window to the app proper`() {
+        // The cold-start screen is on the overlay as the launch route, not because lock() gated
+        // it - but it is an AuthRoute all the same, so unlock() pops it.
+        val navigator = navigator()
+
+        navigator.unlock()
+
+        assertFalse(navigator.state.isOverlaid)
+        assertEquals(listOf(RouteDestination.Home), navigator.shown)
+    }
+
+    @Test
+    fun `finishing first run hands the window to the app proper`() {
+        // First run is not a gate, so unlock() would refuse it. It is cleared instead.
+        val navigator = navigator(launchRoute = OnboardingRoute())
+
+        navigator.finishFirstRun(totpUri = null)
+
+        assertFalse(navigator.state.isOverlaid)
+        assertEquals(listOf(RouteDestination.Home), navigator.shown)
+    }
+
+    @Test
+    fun `a code carried through first run opens its picker`() {
+        val navigator = navigator(launchRoute = OnboardingRoute(uri = DEEP_LINK_URI))
+
+        navigator.finishFirstRun(DEEP_LINK_URI)
+
+        assertEquals(listOf(SelectItemForTotpRoute(DEEP_LINK_URI)), navigator.shown)
+    }
+
+    @Test
+    fun `a code carried through the unlock opens its picker`() {
+        val navigator = navigator(launchRoute = AuthRoute(uri = DEEP_LINK_URI))
+
+        navigator.finishUnlock(DEEP_LINK_URI)
+
+        assertEquals(listOf(SelectItemForTotpRoute(DEEP_LINK_URI)), navigator.shown)
+    }
+
+    @Test
+    fun `a gate restored from saved state is not pushed a second time`() {
+        val state = AppNavigationState(
+            overlayStack = NavBackStack(AuthRoute()),
+            topLevelRoute = mutableStateOf(RouteDestination.Home),
+            backStacks = TOP_LEVEL_ROUTES.associateWith { NavBackStack<NavKey>(it) },
+        )
+        val navigator = AppNavigator(state)
+
+        navigator.lock()
+
+        assertEquals(listOf(AuthRoute()), navigator.shown)
+    }
+
+    @Test
+    fun `back still cannot pop a gate restored from saved state, even over a preserved picker`() {
+        val state = AppNavigationState(
+            overlayStack = NavBackStack(SelectItemForTotpRoute(DEEP_LINK_URI), AuthRoute()),
+            topLevelRoute = mutableStateOf(RouteDestination.Home),
+            backStacks = TOP_LEVEL_ROUTES.associateWith { NavBackStack<NavKey>(it) },
+        )
+        val navigator = AppNavigator(state)
+
+        navigator.goBack()
+
+        assertEquals(
+            listOf(SelectItemForTotpRoute(DEEP_LINK_URI), AuthRoute()),
+            navigator.shown,
+        )
+    }
+
+    @Test
+    fun `an import restored on the overlay does not block back the way a gate does`() {
+        // Out of reach is not the same as back being forbidden: stepping from the import's
+        // assign screen back to its picker is ordinary navigation.
+        val state = AppNavigationState(
+            overlayStack = NavBackStack(SelectItemForTotpRoute(DEEP_LINK_URI), TestAssignRoute),
+            topLevelRoute = mutableStateOf(RouteDestination.Home),
+            backStacks = TOP_LEVEL_ROUTES.associateWith { NavBackStack<NavKey>(it) },
+        )
+        val navigator = AppNavigator(state)
+
+        navigator.goBack()
+
+        assertEquals(listOf(SelectItemForTotpRoute(DEEP_LINK_URI)), navigator.shown)
+    }
+
+    private fun unlocked(): AppNavigator = navigator().apply { unlock() }
 
     private companion object {
         val TOP_LEVEL_ROUTES: Set<NavKey> = linkedSetOf(

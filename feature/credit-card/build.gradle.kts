@@ -12,6 +12,7 @@ android {
 
 dependencies {
     api(projects.core.util)
+    implementation(projects.core.security)
     implementation(projects.core.ui)
 
     implementation(libs.devnied.emvnfccard)

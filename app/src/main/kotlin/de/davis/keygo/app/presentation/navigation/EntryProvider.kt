@@ -63,7 +63,7 @@ fun keyGoEntryProvider(navigator: AppNavigator, hasAccess: Boolean): (NavKey) ->
 
         assignTotpEntries(
             metadata = WindowOwning,
-            onImportFinished = { navigator.finishLaunchFlow() },
+            onImportFinished = { navigator.clearOverlay() },
             navigateUp = { navigator.goBack() },
         )
 
@@ -74,7 +74,7 @@ fun keyGoEntryProvider(navigator: AppNavigator, hasAccess: Boolean): (NavKey) ->
 
         onboardingEntries(
             metadata = WindowOwning,
-            onSuccess = { totpUri -> navigator.finishUnlock(totpUri) },
+            onSuccess = { totpUri -> navigator.finishFirstRun(totpUri) },
         )
 
         dashboardEntries(navigator = navigator)
@@ -132,12 +132,24 @@ fun keyGoEntryProvider(navigator: AppNavigator, hasAccess: Boolean): (NavKey) ->
     }
 }
 
-/** Replaces the launch flow, so back from the gate leaves the app rather than a consumed link. */
+/** Replaces the overlay, so back from the gate leaves the app rather than a consumed link. */
 internal fun AppNavigator.openGateFor(hasAccess: Boolean, uri: String) {
-    replaceLaunchFlow(if (hasAccess) AuthRoute(uri = uri) else OnboardingRoute(uri = uri))
+    replaceOverlay(if (hasAccess) AuthRoute(uri = uri) else OnboardingRoute(uri = uri))
 }
 
-private fun AppNavigator.finishUnlock(totpUri: String?) {
-    if (totpUri == null) finishLaunchFlow()
-    else replaceLaunchFlow(SelectItemForTotpRoute(totpUri))
+/** Lifts the gate that just authenticated, revealing a picker preserved under it. */
+internal fun AppNavigator.finishUnlock(totpUri: String?) {
+    unlock()
+    startImport(totpUri)
+}
+
+/** Takes first run down. It is on the overlay as the launch route, not as a gate. */
+internal fun AppNavigator.finishFirstRun(totpUri: String?) {
+    clearOverlay()
+    startImport(totpUri)
+}
+
+/** A code this run carried replaces whatever the dismissal revealed. */
+private fun AppNavigator.startImport(totpUri: String?) {
+    if (totpUri != null) pushOntoOverlay(SelectItemForTotpRoute(totpUri))
 }

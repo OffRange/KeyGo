@@ -23,10 +23,8 @@ internal class AppViewModel(
     val isReturningUser = _isReturningUser.asStateFlow()
 
     /**
-     * A restored back stack can hand the app proper the window straight after process death,
-     * skipping the launch flow; the fresh process's [Session] is never unlocked in that case, and
-     * nothing routes back to the unlock on its own once the launch stack has been emptied.
-     * [MainActivity] observes this and redirects whenever it goes false.
+     * The session's raw state, which [MainActivity] gates on: no ARK means the user has to
+     * authenticate again, whether the session just ended or a restored process never had one.
      */
     val isSessionActive: StateFlow<Boolean> = session.isActive
 

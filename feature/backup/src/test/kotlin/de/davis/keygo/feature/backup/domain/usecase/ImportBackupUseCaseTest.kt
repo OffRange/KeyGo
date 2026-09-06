@@ -230,7 +230,7 @@ class ImportBackupUseCaseTest {
 
         assertIs<ImportProgress.Succeeded>(emissions.last())
         val credential = assertIs<BackupCredential.Ark>(json.importCalls.single().credential)
-        assertContentEquals(session.ark, credential.key)
+        assertContentEquals(session.currentArk, credential.key)
     }
 
     @Test

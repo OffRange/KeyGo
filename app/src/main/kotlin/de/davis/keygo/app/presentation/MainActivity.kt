@@ -89,7 +89,11 @@ private fun Intent.totpImportRedirect(): TotpImportRedirect? {
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
-private fun App(hasAccess: Boolean, launchRoute: NavKey, isSessionActive: Boolean) {
+private fun App(
+    hasAccess: Boolean,
+    launchRoute: NavKey,
+    isSessionActive: Boolean,
+) {
     val navigationState = rememberAppNavigationState(
         launchRoute = launchRoute,
         startRoute = RouteDestination.Home,
@@ -97,7 +101,7 @@ private fun App(hasAccess: Boolean, launchRoute: NavKey, isSessionActive: Boolea
     )
     val navigator = remember(navigationState) { AppNavigator(navigationState) }
 
-    RedirectToAuthWhenSessionEnds(isSessionActive, navigator)
+    LockAppWhenSessionEnds(isSessionActive, navigator)
 
     val windowAdaptiveInfo = currentWindowAdaptiveInfoV2()
     val directive = remember(windowAdaptiveInfo) {
@@ -140,25 +144,17 @@ private fun App(hasAccess: Boolean, launchRoute: NavKey, isSessionActive: Boolea
 }
 
 /**
- * The navigation state outlives the process, so a restored back stack can hand the app proper the
- * window again without the launch flow ever running. The fresh process has no unlocked session in
- * that case, and nothing routes back to the unlock on its own once
- * [AppNavigator.finishLaunchFlow] has emptied the launch stack, so the unlock is put back on top
- * here.
- *
- * Keyed on the launch state as well, so this only acts while the app proper owns the window, and
- * so a session that dies later (an auto lock, say) redirects at once rather than waiting for the
- * next navigation. Onboarding and the unlock itself both run with no session by design, and
- * redirecting there would take a first run user straight back out of setup.
+ * No ARK means the user has to authenticate again, so the session's own state is the whole rule -
+ * a session that just ended and a restored process that never had one are the same thing here.
+ * [AppNavigator.lock] is what knows when a gate would be wrong, so onboarding and the deep link
+ * redirect need no special case. Keyed on what the overlay is showing as well, so it re-decides
+ * when that changes under a session that is still ended.
  */
 @Composable
-private fun RedirectToAuthWhenSessionEnds(
-    isSessionActive: Boolean,
-    navigator: AppNavigator,
-) {
-    val isLaunching = navigator.state.isLaunching
-    LaunchedEffect(isSessionActive, isLaunching) {
-        if (!isSessionActive && !isLaunching) navigator.replaceLaunchFlow(AuthRoute())
+private fun LockAppWhenSessionEnds(isSessionActive: Boolean, navigator: AppNavigator) {
+    val topOverlayRoute = navigator.state.overlayStack.lastOrNull()
+    LaunchedEffect(isSessionActive, topOverlayRoute) {
+        if (!isSessionActive) navigator.lock()
     }
 }
 

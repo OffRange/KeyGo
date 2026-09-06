@@ -21,8 +21,8 @@ import de.davis.keygo.feature.backup.domain.model.FinishExportWizardError
 import de.davis.keygo.feature.backup.domain.model.IntervalUnit
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertContentEquals
+import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -135,7 +135,7 @@ class FinishExportWizardUseCaseTest {
         val recovered = keyStoreManager
             .getOrCreateCipherFor(KeyId.BackupArkKey, CryptographicMode.Decrypt, wrapped.iv)
             .doFinal(wrapped.data)
-        assertContentEquals(session.ark, recovered)
+        assertContentEquals(session.currentArk, recovered)
     }
 
     @Test

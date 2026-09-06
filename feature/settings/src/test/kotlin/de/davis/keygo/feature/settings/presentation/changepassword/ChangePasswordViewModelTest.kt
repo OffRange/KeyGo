@@ -1,5 +1,7 @@
 package de.davis.keygo.feature.settings.presentation.changepassword
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.runtime.snapshots.Snapshot
 import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
@@ -8,6 +10,7 @@ import de.davis.keygo.core.identity.domain.usecase.ChangePasswordUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
+import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.util.Result
@@ -30,6 +33,8 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChangePasswordViewModelTest {
@@ -38,6 +43,7 @@ class ChangePasswordViewModelTest {
 
     private val accountRepository = FakeAccountRepository()
     private val biometricAvailability = FakeBiometricAvailabilityRepository()
+    private val session = FakeSession(startOnConstruct = true)
     private val keyDeriver = FakeKeyDeriver()
     private val keyWrapper = FakeKeyWrapper()
     private val estimator = object : PasswordStrengthEstimator {
@@ -90,6 +96,7 @@ class ChangePasswordViewModelTest {
         biometricAvailabilityRepository = biometricAvailability,
         passwordStrengthEstimator = estimator,
         changePassword = changePassword,
+        session = session,
     ).also { it.state.launchIn(backgroundScope) }
 
     @Test
@@ -312,5 +319,94 @@ class ChangePasswordViewModelTest {
         vm.onBiometricResult(failure)
 
         assertEquals(false, vm.state.value.showReauthDialog)
+    }
+
+    @OptIn(ExperimentalFoundationApi::class)
+    @Test
+    fun `the session ending clears all three password fields`() = runTest(dispatcher) {
+        val vm = viewModel()
+        vm.state.value.currentPassword.edit { append("old-pw") }
+        vm.state.value.newPassword.edit { append("new-pw") }
+        vm.state.value.confirmPassword.edit { append("new-pw") }
+        advanceUntilIdle()
+
+        session.endSession()
+        advanceUntilIdle()
+
+        assertEquals("", vm.state.value.currentPassword.text.toString())
+        assertEquals("", vm.state.value.newPassword.text.toString())
+        assertEquals("", vm.state.value.confirmPassword.text.toString())
+        assertFalse(vm.state.value.currentPassword.undoState.canUndo)
+        assertFalse(vm.state.value.newPassword.undoState.canUndo)
+        assertFalse(vm.state.value.confirmPassword.undoState.canUndo)
+    }
+
+    @Test
+    fun `the session ending puts the rest of the screen back to rest too`() = runTest(dispatcher) {
+        // The errors and the dialog all describe input the clear just removed. Left standing, the
+        // user comes back from the unlock to a re-auth dialog over three emptied fields, or to
+        // "this field is empty" on a form they did fill in.
+        val vm = viewModel()
+        vm.onBiometricResult(Result.Failure(BiometricAuthError.Declined))
+        vm.submitWithPassword()
+        advanceUntilIdle()
+
+        assertEquals(true, vm.state.value.showReauthDialog)
+        assertEquals(UiFieldError.Empty, vm.state.value.newPasswordError)
+
+        session.endSession()
+        advanceUntilIdle()
+
+        assertEquals(false, vm.state.value.showReauthDialog)
+        assertNull(vm.state.value.newPasswordError)
+        assertNull(vm.state.value.currentPasswordError)
+        assertNull(vm.state.value.confirmPasswordError)
+    }
+
+    @Test
+    fun `ordinary use does not clear the fields while the session stays active`() = runTest(dispatcher) {
+        val vm = viewModel()
+        vm.state.value.currentPassword.edit { append("old-pw") }
+        advanceUntilIdle()
+
+        assertEquals("old-pw", vm.state.value.currentPassword.text.toString())
+    }
+
+    @Test
+    fun `the strength meter still tracks the new password after a clear`() = runTest(dispatcher) {
+        // The meter's snapshotFlow tracks the TextFieldState instance it last read, so clearing by
+        // swapping in fresh instances would leave it watching an abandoned one that is never
+        // mutated again - freezing the score for the rest of the ViewModel's life.
+        val vm = ChangePasswordViewModel(
+            accountRepository = accountRepository,
+            biometricAvailabilityRepository = biometricAvailability,
+            passwordStrengthEstimator = object : PasswordStrengthEstimator {
+                override suspend fun estimate(password: String) =
+                    PasswordScore(password.length.coerceAtMost(5))
+            },
+            changePassword = changePassword,
+            session = session,
+        ).also { it.state.launchIn(backgroundScope) }
+        // No Recomposer drives the frame clock here, so snapshotFlow is told about writes by hand.
+        // The first advance is what lets the session-ended collector do its write in the first
+        // place; the notification has to come after it, and the debounce after that.
+        suspend fun settle() {
+            advanceUntilIdle()
+            Snapshot.sendApplyNotifications()
+            advanceUntilIdle()
+        }
+
+        vm.state.value.newPassword.edit { append("aaaa") }
+        settle()
+        assertEquals(PasswordScore.Strong, vm.state.value.passwordScore)
+
+        session.endSession()
+        settle()
+        assertEquals(PasswordScore.None, vm.state.value.passwordScore)
+
+        vm.state.value.newPassword.edit { append("aa") }
+        settle()
+
+        assertEquals(PasswordScore.Weak, vm.state.value.passwordScore)
     }
 }

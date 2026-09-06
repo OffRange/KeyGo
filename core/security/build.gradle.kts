@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.keygo.android.compose)
+    alias(libs.plugins.keygo.android.protobuf)
 }
 
 android {
@@ -12,11 +13,13 @@ android {
 
 dependencies {
     implementation(libs.androidx.biometric)
+    implementation(libs.androidx.lifecycle.process)
 
     implementation(projects.core.item)
     api(projects.core.util)
     api(projects.rust)
 
+    testImplementation(libs.robolectric)
     testImplementation(testFixtures(projects.rust))
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.util))
@@ -29,5 +32,4 @@ dependencies {
     testFixturesImplementation(libs.androidx.compose.runtime) {
         because("https://issuetracker.google.com/issues/259523353#comment32")
     }
-
 }

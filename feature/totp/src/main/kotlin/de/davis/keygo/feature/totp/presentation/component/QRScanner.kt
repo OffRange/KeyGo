@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.camera.compose.CameraXViewfinder
 import androidx.camera.core.CameraSelector
@@ -45,6 +46,8 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
+import de.davis.keygo.core.security.presentation.rememberHandoffStarter
+import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.feature.totp.R
 import de.davis.keygo.feature.totp.domain.model.camera.Frame
 import de.davis.keygo.feature.totp.domain.qr.QRScanner
@@ -52,6 +55,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+
+private const val TAG = "QRScanner"
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -90,14 +95,17 @@ fun QRScanner(
         permissionRequested -> {
             // Permission was denied permanently (no rationale, not granted, already requested)
             val context = LocalContext.current
+            val openSystemScreen = rememberHandoffStarter()
             PermissionDeniedDialog(
                 onOpenSettings = {
-                    context.startActivity(
+                    openSystemScreen.launch(
                         Intent(
                             Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                             Uri.fromParts("package", context.packageName, null)
                         )
-                    )
+                    ).onFailure {
+                        Log.w(TAG, "No activity found to handle the app details settings", it)
+                    }
                 },
                 onClose = onClose
             )
