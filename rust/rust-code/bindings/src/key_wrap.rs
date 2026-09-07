@@ -50,7 +50,7 @@ impl From<CryptoError> for KeyWrapError {
     }
 }
 
-fn wrap<Wrapper, Target>(
+pub(crate) fn wrap<Wrapper, Target>(
     wrapper: &Wrapper,
     target: &Target,
     aad: &Wrapper::Aad,
@@ -66,7 +66,7 @@ where
     })
 }
 
-fn unwrap<Wrapper, Target>(
+pub(crate) fn unwrap<Wrapper, Target>(
     wrapper: &Wrapper,
     blob: &WrappedKeyBlob,
     aad: &Wrapper::Aad,
