@@ -70,13 +70,11 @@ internal class BackupArkUnlocker(
         val wrapped = arkKeyStore.load()
             .asResult(ExportError.NotProvisioned).bind()
 
-        val cipher = runCatching {
-            keyStoreManager.getOrCreateCipherFor(
-                keyId = KeyId.BackupArkKey,
-                cryptographicMode = CryptographicMode.Decrypt,
-                iv = wrapped.iv,
-            )
-        }.getOrNull().asResult(ExportError.DeviceLocked).bind()
+        val cipher = keyStoreManager.getOrCreateCipherFor(
+            keyId = KeyId.BackupArkKey,
+            cryptographicMode = CryptographicMode.Decrypt,
+            iv = wrapped.iv,
+        ).bind { ExportError.DeviceLocked }
 
         cipher.suspendDoFinal(wrapped.data).bind { ExportError.DeviceLocked }
     }

@@ -5,10 +5,12 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import android.util.Log
 import androidx.annotation.RequiresApi
 import de.davis.keygo.core.security.domain.KeyStoreManager
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.util.Result
 import org.koin.core.annotation.Single
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -31,7 +33,7 @@ internal class KeyStoreManagerImpl(
         keyId: KeyId,
         cryptographicMode: CryptographicMode,
         iv: ByteArray?,
-    ): Cipher {
+    ): Result<Cipher, Throwable> = runCatching {
         val alias = keyId.id
         val key = when (keyStore.containsAlias(alias)) {
             true -> keyStore.getKey(alias, null)
@@ -52,8 +54,14 @@ internal class KeyStoreManagerImpl(
         }
 
         cipher.init(cipherMode, key, params)
-        return cipher
-    }
+        cipher
+    }.fold(
+        onSuccess = { Result.Success(it) },
+        onFailure = {
+            Log.e(TAG, "Could not initialise a cipher for $keyId", it)
+            Result.Failure(it)
+        },
+    )
 
     override fun deleteKey(keyId: KeyId) {
         if (keyStore.containsAlias(keyId.id)) keyStore.deleteEntry(keyId.id)
@@ -99,6 +107,8 @@ internal class KeyStoreManagerImpl(
     }
 
     companion object {
+        private const val TAG = "KeyStoreManager"
+
         private const val ALGORITHM = KeyProperties.KEY_ALGORITHM_AES
         private const val BLOCK_MODE = KeyProperties.BLOCK_MODE_GCM
         private const val PADDING_MODE = KeyProperties.ENCRYPTION_PADDING_NONE

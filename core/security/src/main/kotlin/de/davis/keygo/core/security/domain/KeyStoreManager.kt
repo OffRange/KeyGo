@@ -2,6 +2,7 @@ package de.davis.keygo.core.security.domain
 
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.util.Result
 import javax.crypto.Cipher
 
 interface KeyStoreManager {
@@ -10,7 +11,7 @@ interface KeyStoreManager {
         keyId: KeyId,
         cryptographicMode: CryptographicMode,
         iv: ByteArray? = null
-    ): Cipher
+    ): Result<Cipher, Throwable>
 
     fun deleteKey(keyId: KeyId)
 }
