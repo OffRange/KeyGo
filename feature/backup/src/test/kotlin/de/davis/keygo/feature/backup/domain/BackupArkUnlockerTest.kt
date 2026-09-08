@@ -9,15 +9,18 @@ import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
 import de.davis.keygo.feature.backup.data.BackupSession
 import de.davis.keygo.feature.backup.domain.model.ExportError
+import de.davis.keygo.feature.backup.domain.model.retryable
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -84,6 +87,22 @@ class BackupArkUnlockerTest {
 
         val result = unlocker(FakeSession(startOnConstruct = false)).withScope { }
         assertEquals(Result.Failure(ExportError.DeviceLocked), result)
+    }
+
+    /**
+     * The escrow key is gone for good, so a retry can only fail the same way. Reporting it as
+     * [ExportError.DeviceLocked] would be read as "try again later" and spend every attempt the
+     * worker has while holding the escrow open; only a terminal error lets the job be cleaned up.
+     */
+    @Test
+    fun `locked provisioned but key permanently invalidated fails terminally`() = runTest {
+        provision(ByteArray(32) { it.toByte() })
+        keyStore.failure = KeyStoreManagerError.KeyInvalidated
+
+        val result = unlocker(FakeSession(startOnConstruct = false)).withScope { }
+
+        assertEquals(Result.Failure(ExportError.CryptoFailed), result)
+        assertFalse(ExportError.CryptoFailed.retryable)
     }
 
     @Test

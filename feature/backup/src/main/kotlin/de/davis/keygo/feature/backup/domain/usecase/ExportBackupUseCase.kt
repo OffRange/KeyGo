@@ -23,6 +23,7 @@ import de.davis.keygo.feature.backup.domain.model.ExportError
 import de.davis.keygo.feature.backup.domain.model.ExportProgress
 import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.domain.model.backupFileName
+import de.davis.keygo.feature.backup.domain.model.exportError
 import de.davis.keygo.rust.backup.exportWithResult
 import de.davisalessandro.keygo.rust.Backup
 import de.davisalessandro.keygo.rust.BackupCredential
@@ -130,7 +131,7 @@ internal class ExportBackupUseCase(
                 keyId = KeyId.BackupPassphraseKey,
                 cryptographicMode = CryptographicMode.Decrypt,
                 iv = wrapped.iv,
-            ).bind { ExportError.DeviceLocked }
+            ).bind { it.exportError }
 
             cipher.suspendDoFinal(wrapped.data).bind { ExportError.CryptoFailed }
         }

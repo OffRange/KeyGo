@@ -12,6 +12,7 @@ import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
 import de.davis.keygo.feature.backup.FakeBackupFileStore
@@ -187,6 +188,31 @@ class ExportBackupUseCaseTest {
 
         val failed = assertIs<ExportProgress.Failed>(emissions.last())
         assertEquals(ExportError.DeviceLocked, failed.error)
+    }
+
+    @Test
+    fun `passphrase decryption with a permanently invalidated key fails terminally`() = runTest {
+        seedSingleLogin()
+        val cipher = assertNotNull(
+            keyStore
+                .getOrCreateCipherFor(KeyId.BackupPassphraseKey, CryptographicMode.Encrypt)
+                .getOrNull(),
+        )
+        val wrappedPassphrase =
+            CryptographicData(cipher.doFinal("pw".encodeToByteArray()), cipher.iv)
+        val jsonJob = BackupJob(
+            uri = folder,
+            wrappedPassphrase = wrappedPassphrase,
+            format = FileFormat.JSON,
+        )
+        keyStore.failure = KeyStoreManagerError.KeyInvalidated
+
+        val emissions = useCase(unlocked())(jsonJob).toList()
+
+        // Terminal, not DeviceLocked: this key never decrypts again, so retrying only burns the
+        // worker's attempts and keeps the escrow alive for the whole retry window.
+        val failed = assertIs<ExportProgress.Failed>(emissions.last())
+        assertEquals(ExportError.CryptoFailed, failed.error)
     }
 
     @Test

@@ -13,6 +13,7 @@ import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.backup.data.BackupSession
 import de.davis.keygo.feature.backup.domain.model.ExportError
+import de.davis.keygo.feature.backup.domain.model.exportError
 import de.davis.keygo.feature.backup.domain.repository.BackupArkKeyStore
 import org.koin.core.annotation.Single
 
@@ -74,7 +75,7 @@ internal class BackupArkUnlocker(
             keyId = KeyId.BackupArkKey,
             cryptographicMode = CryptographicMode.Decrypt,
             iv = wrapped.iv,
-        ).bind { ExportError.DeviceLocked }
+        ).bind { it.exportError }
 
         cipher.suspendDoFinal(wrapped.data).bind { ExportError.DeviceLocked }
     }
