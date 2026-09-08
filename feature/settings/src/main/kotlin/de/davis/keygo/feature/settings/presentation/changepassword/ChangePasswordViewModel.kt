@@ -145,6 +145,8 @@ internal class ChangePasswordViewModel(
                 BiometricAuthError.Declined,
                 BiometricAuthError.LockedOut,
                 BiometricAuthError.NoCipher,
+                BiometricAuthError.CryptoFailed,
+                BiometricAuthError.KeyInvalidated,
                 is BiometricAuthError.CanNotAuthenticate,
                     -> _state.update { it.copy(showReauthDialog = true) }
 

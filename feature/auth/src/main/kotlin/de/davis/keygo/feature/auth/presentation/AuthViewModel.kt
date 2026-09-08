@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
+import de.davis.keygo.core.identity.domain.model.UnlockError
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockWithPasswordUseCase
@@ -95,6 +96,17 @@ internal class AuthViewModel(
 
     private var migrationJob: Job? = null
     private var authJob: Job? = null
+
+    fun onBiometricUnlockFailed(error: UnlockError) {
+        if (error != UnlockError.BiometricEnrollmentReset) return
+
+        _uiState.update { state ->
+            when (state) {
+                is AuthState.Login -> state.copy(biometricAuthenticationAvailable = false)
+                else -> state
+            }
+        }
+    }
 
     fun onEvent(event: AuthUIEvent) {
         when (event) {

@@ -1,5 +1,7 @@
 package de.davis.keygo.core.security.presentation
 
+import android.security.keystore.KeyPermanentlyInvalidatedException
+import android.util.Log
 import androidx.activity.compose.LocalActivity
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
@@ -14,13 +16,15 @@ import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.util.Result
-import de.davis.keygo.core.util.asResult
+import de.davis.keygo.core.util.getOrNull
+import de.davis.keygo.core.util.onFailure
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.koin.compose.koinInject
 import java.security.Key
+import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
 import kotlin.coroutines.resume
 
@@ -97,10 +101,17 @@ internal class BiometricCryptoControllerImpl(
             Dispatchers.Main.asExecutor(),
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    result.cryptoObject?.cipher
-                        ?.let(onSuccess)
-                        .asResult<T, BiometricAuthError>(BiometricAuthError.NoCipher)
-                        .let(c::resume)
+                    val cipher = result.cryptoObject?.cipher ?: return c.resume(
+                        Result.Failure(BiometricAuthError.NoCipher)
+                    )
+
+                    runCatching { onSuccess(cipher) }.fold(
+                        onSuccess = { c.resume(Result.Success(it)) },
+                        onFailure = {
+                            Log.e(TAG, "Cipher operation failed after authentication succeeded", it)
+                            c.resume(Result.Failure(biometricCryptoErrorFrom(it)))
+                        },
+                    )
                 }
 
                 override fun onAuthenticationError(
@@ -124,9 +135,11 @@ internal class BiometricCryptoControllerImpl(
             .setAllowedAuthenticators(AUTHENTICATORS)
             .build()
 
-        val cipher = keyStoreManager.getOrCreateCipherFor(keyId, mode, iv)
-        val cryptoObj = BiometricPrompt.CryptoObject(cipher)
+        val cipher = keyStoreManager.getOrCreateCipherFor(keyId, mode, iv).onFailure {
+            c.resume(Result.Failure(biometricCryptoErrorFrom(it)))
+        }.getOrNull() ?: return@suspendCancellableCoroutine
 
+        val cryptoObj = BiometricPrompt.CryptoObject(cipher)
         prompt.authenticate(promptInfo, cryptoObj)
 
         c.invokeOnCancellation {
@@ -135,9 +148,24 @@ internal class BiometricCryptoControllerImpl(
     }
 
     companion object {
+        private const val TAG = "BiometricCryptoController"
         private const val AUTHENTICATORS = BiometricManager.Authenticators.BIOMETRIC_STRONG
     }
 }
+
+internal fun biometricCryptoErrorFrom(throwable: Throwable): BiometricAuthError {
+    val causes = generateSequence(throwable) { current -> current.cause?.takeIf { it !== current } }
+        .take(MAX_CAUSE_DEPTH)
+
+    return when {
+        causes.any { it is KeyPermanentlyInvalidatedException || it is AEADBadTagException } ->
+            BiometricAuthError.KeyInvalidated
+
+        else -> BiometricAuthError.CryptoFailed
+    }
+}
+
+private const val MAX_CAUSE_DEPTH = 8
 
 /**
  * Classify a [BiometricPrompt] error code into a semantic [BiometricAuthError] once, at the source,
