@@ -102,7 +102,11 @@ internal class AuthViewModel(
 
         _uiState.update { state ->
             when (state) {
-                is AuthState.Login -> state.copy(biometricAuthenticationAvailable = false)
+                is AuthState.Login -> state.copy(
+                    biometricAuthenticationAvailable = false,
+                    showBiometricResetNotice = true,
+                )
+
                 else -> state
             }
         }
@@ -143,6 +147,11 @@ internal class AuthViewModel(
                         }
                     }
                 }
+            }
+
+            AuthUIEvent.DismissBiometricResetNotice -> _uiState.update {
+                if (it !is AuthState.Login) return@update it
+                it.copy(showBiometricResetNotice = false)
             }
 
             AuthUIEvent.CloseMigrationDialog -> {

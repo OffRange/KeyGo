@@ -299,8 +299,39 @@ private fun InteractableAuthContent(
 
             if (state is AuthState.Migrating && state.showMigrationDialog)
                 MigrationDialog(onClick = { onEvent(AuthUIEvent.CloseMigrationDialog) })
+
+            if (state is AuthState.Login && state.showBiometricResetNotice)
+                BiometricResetDialog(
+                    onClick = { onEvent(AuthUIEvent.DismissBiometricResetNotice) },
+                )
         }
     }
+}
+
+@Composable
+fun BiometricResetDialog(onClick: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onClick,
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Fingerprint,
+                contentDescription = null
+            )
+        },
+        title = {
+            Text(text = stringResource(R.string.biometric_reset_title))
+        },
+        text = {
+            Text(text = stringResource(R.string.biometric_reset_description))
+        },
+        confirmButton = {
+            Button(
+                onClick = onClick
+            ) {
+                Text(text = stringResource(R.string.got_it))
+            }
+        }
+    )
 }
 
 @Composable
