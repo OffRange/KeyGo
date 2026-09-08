@@ -290,6 +290,20 @@ class ChangePasswordViewModelTest {
     }
 
     @Test
+    fun `onBiometricResult CryptoFailed opens the reauth dialog`() = runTest(dispatcher) {
+        enableBiometric()
+        val vm = viewModel()
+        advanceUntilIdle()
+        val failure: Result<Key, BiometricAuthError> =
+            Result.Failure(BiometricAuthError.CryptoFailed)
+
+        vm.onBiometricResult(failure)
+        advanceUntilIdle()
+
+        assertEquals(true, vm.state.value.showReauthDialog)
+    }
+
+    @Test
     fun `onBiometricResult Declined opens the reauth dialog`() = runTest(dispatcher) {
         enableBiometric()
         val vm = viewModel()

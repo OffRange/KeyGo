@@ -48,6 +48,8 @@ fun AuthScreen(onSuccess: () -> Unit) {
                     biometricCryptoController.requestUnlockVault()
                 }.onSuccess {
                     viewModel.onSessionEstablished()
+                }.onFailure {
+                    viewModel.onBiometricUnlockFailed(it)
                 }
             }
         }

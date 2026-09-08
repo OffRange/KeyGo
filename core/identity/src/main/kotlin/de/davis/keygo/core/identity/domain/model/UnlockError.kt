@@ -8,4 +8,5 @@ sealed interface UnlockError {
     data object DerivationFailed : UnlockError
     data object ActiveAccountNotFound : UnlockError
     data class BiometricFailed(val error: BiometricAuthError) : UnlockError
+    data object BiometricEnrollmentReset : UnlockError
 }

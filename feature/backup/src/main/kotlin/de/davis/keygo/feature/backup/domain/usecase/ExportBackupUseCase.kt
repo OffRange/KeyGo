@@ -6,7 +6,6 @@ import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.ResultBinding
-import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
@@ -24,6 +23,7 @@ import de.davis.keygo.feature.backup.domain.model.ExportError
 import de.davis.keygo.feature.backup.domain.model.ExportProgress
 import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.domain.model.backupFileName
+import de.davis.keygo.feature.backup.domain.model.exportError
 import de.davis.keygo.rust.backup.exportWithResult
 import de.davisalessandro.keygo.rust.Backup
 import de.davisalessandro.keygo.rust.BackupCredential
@@ -127,13 +127,11 @@ internal class ExportBackupUseCase(
             val wrapped = job.wrappedPassphrase
                 ?: return Result.Failure(ExportError.CryptoFailed)
 
-            val cipher = runCatching {
-                keyStoreManager.getOrCreateCipherFor(
-                    keyId = KeyId.BackupPassphraseKey,
-                    cryptographicMode = CryptographicMode.Decrypt,
-                    iv = wrapped.iv,
-                )
-            }.getOrNull().asResult(ExportError.DeviceLocked).bind()
+            val cipher = keyStoreManager.getOrCreateCipherFor(
+                keyId = KeyId.BackupPassphraseKey,
+                cryptographicMode = CryptographicMode.Decrypt,
+                iv = wrapped.iv,
+            ).bind { it.exportError }
 
             cipher.suspendDoFinal(wrapped.data).bind { ExportError.CryptoFailed }
         }

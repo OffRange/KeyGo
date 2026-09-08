@@ -13,4 +13,7 @@ sealed interface BiometricAuthError {
     /** Biometrics cannot be used at all (no hardware, none enrolled, etc.). */
     data class CanNotAuthenticate(val code: Int) : BiometricAuthError
     data object NoCipher : BiometricAuthError
+
+    data object CryptoFailed : BiometricAuthError
+    data object KeyInvalidated : BiometricAuthError
 }
