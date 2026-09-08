@@ -12,6 +12,7 @@ import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
 import de.davis.keygo.feature.backup.FakeBackupFileStore
 import de.davis.keygo.feature.backup.domain.BackupArkUnlocker
@@ -75,7 +76,11 @@ class ExportBackupUseCaseTest {
     }
 
     private suspend fun provision(session: FakeSession) {
-        val cipher = keyStore.getOrCreateCipherFor(KeyId.BackupArkKey, CryptographicMode.Encrypt)
+        val cipher = assertNotNull(
+            keyStore
+                .getOrCreateCipherFor(KeyId.BackupArkKey, CryptographicMode.Encrypt)
+                .getOrNull(),
+        )
         arkStore.save(CryptographicData(cipher.doFinal(assertNotNull(session.ark)), cipher.iv))
     }
 
@@ -164,8 +169,11 @@ class ExportBackupUseCaseTest {
     @Test
     fun `passphrase decryption on a locked device fails with DeviceLocked`() = runTest {
         seedSingleLogin()
-        val cipher =
-            keyStore.getOrCreateCipherFor(KeyId.BackupPassphraseKey, CryptographicMode.Encrypt)
+        val cipher = assertNotNull(
+            keyStore
+                .getOrCreateCipherFor(KeyId.BackupPassphraseKey, CryptographicMode.Encrypt)
+                .getOrNull(),
+        )
         val wrappedPassphrase =
             CryptographicData(cipher.doFinal("pw".encodeToByteArray()), cipher.iv)
         val jsonJob = BackupJob(

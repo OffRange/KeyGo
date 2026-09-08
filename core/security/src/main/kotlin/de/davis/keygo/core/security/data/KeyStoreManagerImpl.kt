@@ -1,18 +1,21 @@
 package de.davis.keygo.core.security.data
 
 import android.content.Context
-import android.content.pm.PackageManager
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
+import android.security.keystore.UserNotAuthenticatedException
 import android.util.Log
 import androidx.annotation.RequiresApi
 import de.davis.keygo.core.security.domain.KeyStoreManager
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
 import de.davis.keygo.core.util.Result
 import org.koin.core.annotation.Single
 import java.security.KeyStore
+import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -33,7 +36,7 @@ internal class KeyStoreManagerImpl(
         keyId: KeyId,
         cryptographicMode: CryptographicMode,
         iv: ByteArray?,
-    ): Result<Cipher, Throwable> = runCatching {
+    ): Result<Cipher, KeyStoreManagerError> = runCatching {
         val alias = keyId.id
         val key = when (keyStore.containsAlias(alias)) {
             true -> keyStore.getKey(alias, null)
@@ -59,7 +62,7 @@ internal class KeyStoreManagerImpl(
         onSuccess = { Result.Success(it) },
         onFailure = {
             Log.e(TAG, "Could not initialise a cipher for $keyId", it)
-            Result.Failure(it)
+            Result.Failure(keyStoreManagerErrorFrom(it))
         },
     )
 
@@ -78,16 +81,22 @@ internal class KeyStoreManagerImpl(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) setUnlockedDeviceRequired(true)
 
             setUserAuthenticationRequired(keyId.needsAuthentication)
+
+            // TODO: maybe add a setting to set that flag
             setInvalidatedByBiometricEnrollment(true)
 
             setRandomizedEncryptionRequired(true)
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-                setIsStrongBoxBacked(
-                    applicationContext.packageManager.hasSystemFeature(
-                        PackageManager.FEATURE_STRONGBOX_KEYSTORE
-                    )
-                )
+            // Some StrongBox implementations (reported on a Redmi Note 14 Pro+ 5G running
+            // Android 16) return AES-GCM ciphertext under an auth-bound key that the same
+            // StrongBox then refuses to verify, failing every unwrap with VERIFICATION_FAILED
+            // even in the process that produced it.
+            // if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+            //     setIsStrongBoxBacked(
+            //         applicationContext.packageManager.hasSystemFeature(
+            //             PackageManager.FEATURE_STRONGBOX_KEYSTORE
+            //         )
+            //     )
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                 setUserAuthenticationParameters(
@@ -122,3 +131,20 @@ internal class KeyStoreManagerImpl(
         private const val INVALIDATE_IMMEDIATE_R = 0
     }
 }
+
+internal fun keyStoreManagerErrorFrom(throwable: Throwable): KeyStoreManagerError {
+    val causes = generateSequence(throwable) { current -> current.cause?.takeIf { it !== current } }
+        .take(MAX_CAUSE_DEPTH)
+        .toList()
+
+    return when {
+        causes.any { it is KeyPermanentlyInvalidatedException || it is AEADBadTagException }
+            -> KeyStoreManagerError.KeyInvalidated
+
+        causes.any { it is UserNotAuthenticatedException } -> KeyStoreManagerError.AuthenticationRequired
+
+        else -> KeyStoreManagerError.Unknown
+    }
+}
+
+private const val MAX_CAUSE_DEPTH = 8

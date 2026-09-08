@@ -3,6 +3,7 @@ package de.davis.keygo.core.security.crypto
 import de.davis.keygo.core.security.domain.KeyStoreManager
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
 import de.davis.keygo.core.util.Result
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -24,7 +25,7 @@ class FakeKeyStoreManager(
         keyId: KeyId,
         cryptographicMode: CryptographicMode,
         iv: ByteArray?,
-    ): Result<Cipher, Throwable> = runCatching {
+    ): Result<Cipher, KeyStoreManagerError> = runCatching {
         if (deviceLocked)
             throw IllegalStateException("device locked")
 
@@ -41,7 +42,7 @@ class FakeKeyStoreManager(
         cipher
     }.fold(
         onSuccess = { Result.Success(it) },
-        onFailure = { Result.Failure(it) },
+        onFailure = { Result.Failure(KeyStoreManagerError.Unknown) },
     )
 
     override fun deleteKey(keyId: KeyId) {
