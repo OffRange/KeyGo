@@ -1,6 +1,5 @@
 package de.davis.keygo.core.security.data
 
-import android.content.Context
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyPermanentlyInvalidatedException
@@ -22,9 +21,7 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 @Single
-internal class KeyStoreManagerImpl(
-    private val applicationContext: Context
-) : KeyStoreManager {
+internal class KeyStoreManagerImpl : KeyStoreManager {
 
     private val keyStore by lazy {
         KeyStore.getInstance("AndroidKeyStore").apply {
@@ -87,10 +84,10 @@ internal class KeyStoreManagerImpl(
 
             setRandomizedEncryptionRequired(true)
 
-            // Some StrongBox implementations (reported on a Redmi Note 14 Pro+ 5G running
-            // Android 16) return AES-GCM ciphertext under an auth-bound key that the same
-            // StrongBox then refuses to verify, failing every unwrap with VERIFICATION_FAILED
-            // even in the process that produced it.
+            // No setIsStrongBoxBacked here: some StrongBox implementations (reported on a
+            // Redmi Note 14 Pro+ 5G running Android 16) return AES-GCM ciphertext under an
+            // auth-bound key that the same StrongBox then refuses to verify, failing every
+            // unwrap with VERIFICATION_FAILED even in the process that produced it.
             // if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
             //     setIsStrongBoxBacked(
             //         applicationContext.packageManager.hasSystemFeature(

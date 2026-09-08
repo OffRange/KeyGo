@@ -36,6 +36,21 @@ class BiometricEnrollmentAdapterImplTest {
         keyStoreManager = keyStoreManager,
     )
 
+    private fun seedUnenrolledAccount() {
+        accountRepository.seed(
+            Account(
+                id = UUID.randomUUID(),
+                displayName = "Test",
+                passwordWrappedArk = PasswordWrappedArk(
+                    key = byteArrayOf(1),
+                    keyIV = byteArrayOf(2),
+                    salt = byteArrayOf(3),
+                ),
+                biometricWrappedArk = null,
+            )
+        )
+    }
+
     private fun seedEnrolledAccount() {
         keyStoreManager.getOrCreateCipherFor(KeyId.BiometricVaultKek, CryptographicMode.Wrap)
         accountRepository.seed(
@@ -103,6 +118,36 @@ class BiometricEnrollmentAdapterImplTest {
             result.error,
         )
         assertTrue(KeyId.BiometricVaultKek in keyStoreManager.keys)
+        assertNotNull(accountRepository.getOrNull()?.biometricWrappedArk)
+    }
+
+    /**
+     * The interrupted-disable case: the wrapped ARK is gone but its key survived. Nothing can open
+     * that key any more, so an enrollment starting here must not adopt it - on the devices this
+     * exists for, adopting it is how the unusable key comes back.
+     */
+    @Test
+    fun `enrolling from an unenrolled account drops the key left behind`() = runTest {
+        seedUnenrolledAccount()
+        keyStoreManager.getOrCreateCipherFor(KeyId.BiometricVaultKek, CryptographicMode.Wrap)
+
+        // The prompt fails afterwards, so what is left on the keystore is what enrollment decided
+        // to start from: nothing.
+        with(adapter) { controller.requestEnableBiometric(BiometricPolicy.Default) }
+
+        assertFalse(KeyId.BiometricVaultKek in keyStoreManager.keys)
+    }
+
+    @Test
+    fun `enrolling while still enrolled keeps the key the stored ARK needs`() = runTest {
+        seedEnrolledAccount()
+        val inUse = keyStoreManager.keys.getValue(KeyId.BiometricVaultKek)
+
+        // The prompt fails, as a user declining it would. The stored ARK is still wrapped under
+        // this key, so taking it down here would strand an enrollment that works.
+        with(adapter) { controller.requestEnableBiometric(BiometricPolicy.Default) }
+
+        assertEquals(inUse, keyStoreManager.keys[KeyId.BiometricVaultKek])
         assertNotNull(accountRepository.getOrNull()?.biometricWrappedArk)
     }
 

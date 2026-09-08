@@ -24,8 +24,7 @@ internal class BiometricUnlockAdapterImpl(
     override suspend fun BiometricCryptoController.requestUnlockVault(
         policy: BiometricPolicy
     ): Result<Unit, UnlockError> {
-        val account = accountRepository.getOrNull()
-        val wrappedKey = account?.biometricWrappedArk
+        val wrappedKey = accountRepository.getOrNull()?.biometricWrappedArk
             ?: return Result.Failure(UnlockError.WrappedKeyNotFound)
 
         val unwrapResult = requestUnwrap(
@@ -64,7 +63,7 @@ fun rememberBiometricUnlockAdapter(): BiometricUnlockAdapter {
     val accountRepository = koinInject<AccountRepository>()
     val biometricEnrollmentAdapter = rememberBiometricEnrollmentAdapter()
 
-    return remember(session, accountRepository) {
+    return remember(session, accountRepository, biometricEnrollmentAdapter) {
         BiometricUnlockAdapterImpl(
             session = session,
             accountRepository = accountRepository,

@@ -31,6 +31,8 @@ internal class BiometricEnrollmentAdapterImpl(
         val account = accountRepository.getOrNull()
             .asResult(BiometricEnrollmentError.NoActiveAccount).bind()
 
+        if (account.biometricWrappedArk == null) keyStoreManager.deleteKey(KeyId.BiometricVaultKek)
+
         val cipher = requestCipher(KeyId.BiometricVaultKek, CryptographicMode.Wrap, policy)
             .bind { BiometricEnrollmentError.BiometricFailed(it) }
 

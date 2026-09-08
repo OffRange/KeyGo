@@ -7,6 +7,7 @@ import androidx.biometric.BiometricPrompt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.fragment.app.FragmentActivity
+import de.davis.keygo.core.security.data.keyStoreManagerErrorFrom
 import de.davis.keygo.core.security.data.resolve
 import de.davis.keygo.core.security.domain.KeyStoreManager
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
@@ -108,7 +109,7 @@ internal class BiometricCryptoControllerImpl(
                         onSuccess = { c.resume(Result.Success(it)) },
                         onFailure = {
                             Log.e(TAG, "Cipher operation failed after authentication succeeded", it)
-                            c.resume(Result.Failure(BiometricAuthError.CryptoFailed))
+                            c.resume(Result.Failure(cipherFailureToBiometricAuthError(it)))
                         },
                     )
                 }
@@ -152,10 +153,13 @@ internal class BiometricCryptoControllerImpl(
     }
 }
 
+internal fun cipherFailureToBiometricAuthError(throwable: Throwable): BiometricAuthError =
+    keyStoreManagerErrorFrom(throwable).toBiometricAuthError()
+
 internal fun KeyStoreManagerError.toBiometricAuthError(): BiometricAuthError = when (this) {
     KeyStoreManagerError.KeyInvalidated -> BiometricAuthError.KeyInvalidated
     KeyStoreManagerError.AuthenticationRequired -> BiometricAuthError.CryptoFailed
-    is KeyStoreManagerError.Unknown -> BiometricAuthError.CryptoFailed
+    KeyStoreManagerError.Unknown -> BiometricAuthError.CryptoFailed
 }
 
 /**

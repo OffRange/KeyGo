@@ -12,11 +12,17 @@ import javax.crypto.spec.GCMParameterSpec
 
 /**
  * Software AES-256/GCM stand-in for AndroidKeyStore. Keys are generated per alias and kept
- * in-memory, so wrap/unwrap round-trips deterministically in JVM unit tests. Set [deviceLocked]
- * to simulate a key gated by setUnlockedDeviceRequired(true) being used while the device is locked.
+ * in-memory, so wrap/unwrap round-trips deterministically in JVM unit tests.
+ *
+ * Two ways to make a cipher request fail. [deviceLocked] models a key gated by
+ * setUnlockedDeviceRequired(true) being used while the device is locked, which is what the real
+ * keystore answers with [KeyStoreManagerError.AuthenticationRequired]. [failure] is the general
+ * form: it hands back whatever the caller wants to be told, so the paths that only a permanently
+ * invalidated key reaches can be driven from a test at all.
  */
 class FakeKeyStoreManager(
     var deviceLocked: Boolean = false,
+    var failure: KeyStoreManagerError? = null,
 ) : KeyStoreManager {
 
     val keys = mutableMapOf<KeyId, SecretKey>()
@@ -25,10 +31,18 @@ class FakeKeyStoreManager(
         keyId: KeyId,
         cryptographicMode: CryptographicMode,
         iv: ByteArray?,
-    ): Result<Cipher, KeyStoreManagerError> = runCatching {
-        if (deviceLocked)
-            throw IllegalStateException("device locked")
+    ): Result<Cipher, KeyStoreManagerError> {
+        failure?.let { return Result.Failure(it) }
+        if (deviceLocked) return Result.Failure(KeyStoreManagerError.AuthenticationRequired)
 
+        return createCipher(keyId, cryptographicMode, iv)
+    }
+
+    private fun createCipher(
+        keyId: KeyId,
+        cryptographicMode: CryptographicMode,
+        iv: ByteArray?,
+    ): Result<Cipher, KeyStoreManagerError> = runCatching {
         val key = keys.getOrPut(keyId) {
             KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
         }
