@@ -122,6 +122,20 @@ class BiometricUnlockAdapterImplTest {
     }
 
     @Test
+    fun `a teardown that does not persist is not reported as a reset`() = runTest {
+        seedAccountWithBiometric()
+        controller.unwrapResult = Result.Failure(BiometricAuthError.KeyInvalidated)
+        accountRepository.setFails = true
+
+        val result = with(adapter) { controller.requestUnlockVault(BiometricPolicy.Default) }
+
+        assertTrue(result.isFailure())
+        assertEquals(UnlockError.BiometricFailed(BiometricAuthError.KeyInvalidated), result.error)
+        assertNotNull(accountRepository.getOrNull()?.biometricWrappedArk)
+        assertTrue(KeyId.BiometricVaultKek in keyStoreManager.keys)
+    }
+
+    @Test
     fun `a retryable biometric failure leaves the stored enrollment in place`() = runTest {
         seedAccountWithBiometric()
         controller.unwrapResult = Result.Failure(BiometricAuthError.CryptoFailed)

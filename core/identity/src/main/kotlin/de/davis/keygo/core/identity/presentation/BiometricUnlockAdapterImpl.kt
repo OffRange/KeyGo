@@ -38,13 +38,14 @@ internal class BiometricUnlockAdapterImpl(
 
         return when (unwrapResult) {
             is Result.Failure -> when (unwrapResult.error) {
-                // The wrapped ARK cannot be opened by this key again, so keeping it would leave the
-                // user tapping a biometric unlock that can never succeed. Dropping it falls the
-                // account back to the password and lets a fresh enrollment mint a usable key.
-                BiometricAuthError.KeyInvalidated -> {
-                    biometricEnrollmentAdapter.disableBiometric()
-                    Result.Failure(UnlockError.BiometricEnrollmentReset)
-                }
+                BiometricAuthError.KeyInvalidated ->
+                    when (biometricEnrollmentAdapter.disableBiometric()) {
+                        is Result.Success -> Result.Failure(UnlockError.BiometricEnrollmentReset)
+
+                        is Result.Failure -> Result.Failure(
+                            UnlockError.BiometricFailed(BiometricAuthError.KeyInvalidated),
+                        )
+                    }
 
                 else -> Result.Failure(UnlockError.BiometricFailed(unwrapResult.error))
             }
