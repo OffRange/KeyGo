@@ -1,6 +1,6 @@
 package de.davis.keygo.feature.backup.domain.usecase
 
-import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.LegacySession
 import de.davis.keygo.core.security.domain.withArkOr
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.fold
@@ -32,7 +32,7 @@ internal class ImportBackupUseCase(
     private val jsonBackupManager: JsonBackupManagerInterface,
     private val csvBackupManager: CsvBackupManagerInterface,
     private val restorer: BackupRestorer,
-    private val session: Session,
+    private val session: LegacySession,
 ) {
 
     /**

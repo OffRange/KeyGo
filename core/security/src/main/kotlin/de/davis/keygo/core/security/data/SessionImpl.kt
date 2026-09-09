@@ -1,14 +1,14 @@
 package de.davis.keygo.core.security.data
 
 import de.davis.keygo.core.security.domain.ArkHolder
-import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.LegacySession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.koin.core.annotation.Single
 
 @Single
-internal class SessionImpl : Session {
+internal class SessionImpl : LegacySession {
 
     private val holder = ArkHolder()
     private val _isActive = MutableStateFlow(false)

@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import de.davis.keygo.core.identity.domain.model.BiometricEnrollmentError
 import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
-import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.LegacySession
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
@@ -21,7 +21,7 @@ import javax.crypto.spec.SecretKeySpec
 @Single
 internal class BiometricEnrollmentAdapterImpl(
     private val accountRepository: AccountRepository,
-    private val session: Session,
+    private val session: LegacySession,
 ) : BiometricEnrollmentAdapter {
 
     override suspend fun BiometricCryptoController.requestEnableBiometric(

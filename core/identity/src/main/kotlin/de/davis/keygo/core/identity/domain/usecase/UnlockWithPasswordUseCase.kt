@@ -3,7 +3,7 @@ package de.davis.keygo.core.identity.domain.usecase
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.model.UnlockError
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
-import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.LegacySession
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.rust.derive.KeyDeriver
@@ -19,7 +19,7 @@ import java.util.UUID
 
 @Single
 class UnlockWithPasswordUseCase(
-    private val session: Session,
+    private val session: LegacySession,
     private val accountRepository: AccountRepository,
     private val keyDeriver: KeyDeriver,
     private val keyWrapper: KeyWrapper,

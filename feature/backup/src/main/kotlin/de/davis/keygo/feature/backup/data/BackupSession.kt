@@ -1,15 +1,16 @@
 package de.davis.keygo.feature.backup.data
 
-import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.LegacySession
 import de.davisalessandro.keygo.rust.ArkSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * A read-only [Session] holding a recovered ARK for the duration of a single backup. It never
- * mutates app-wide session state; [startSession] is unsupported and [endSession] is a no-op.
+ * A read-only [LegacySession] holding a recovered ARK for the duration of a single backup. It
+ * never mutates app-wide session state; [startSession] is unsupported and [endSession] is a
+ * no-op.
  */
-internal class BackupSession(private val backupArk: ByteArray) : Session {
+internal class BackupSession(private val backupArk: ByteArray) : LegacySession {
 
     override val isActive: StateFlow<Boolean> = MutableStateFlow(true)
 

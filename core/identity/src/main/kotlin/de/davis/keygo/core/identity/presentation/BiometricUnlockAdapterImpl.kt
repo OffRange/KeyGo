@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import de.davis.keygo.core.identity.domain.model.UnlockError
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
-import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.LegacySession
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.security.domain.model.KeyId
@@ -15,7 +15,7 @@ import org.koin.core.annotation.Single
 
 @Single
 internal class BiometricUnlockAdapterImpl(
-    private val session: Session,
+    private val session: LegacySession,
     private val accountRepository: AccountRepository,
 ) : BiometricUnlockAdapter {
 
@@ -46,7 +46,7 @@ internal class BiometricUnlockAdapterImpl(
 
 @Composable
 fun rememberBiometricUnlockAdapter(): BiometricUnlockAdapter {
-    val session = koinInject<Session>()
+    val session = koinInject<LegacySession>()
     val accountRepository = koinInject<AccountRepository>()
 
     return remember(session, accountRepository) {

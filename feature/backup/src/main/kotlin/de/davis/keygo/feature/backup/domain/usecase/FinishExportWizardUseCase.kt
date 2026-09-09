@@ -1,7 +1,7 @@
 package de.davis.keygo.feature.backup.domain.usecase
 
 import de.davis.keygo.core.security.domain.KeyStoreManager
-import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.LegacySession
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.crypto.suspendDoFinal
 import de.davis.keygo.core.security.domain.model.CryptographicMode
@@ -31,7 +31,7 @@ class FinishExportWizardUseCase(
     private val destinationResolver: BackupDestinationResolver,
     private val keyStoreManager: KeyStoreManager,
     private val persistableUriManager: PersistableUriManager,
-    private val session: Session,
+    private val session: LegacySession,
     private val arkKeyStore: BackupArkKeyStore,
     private val provisioningLock: BackupProvisioningLock,
 ) {

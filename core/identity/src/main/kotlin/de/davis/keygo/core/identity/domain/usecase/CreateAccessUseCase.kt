@@ -8,7 +8,7 @@ import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
-import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.LegacySession
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.getOrNull
@@ -35,7 +35,7 @@ class CreateAccessUseCase(
     private val accountRepository: AccountRepository,
     private val vaultRepository: VaultRepository,
     private val vaultContextRepository: VaultContextRepository,
-    private val session: Session
+    private val session: LegacySession
 ) {
 
     /**

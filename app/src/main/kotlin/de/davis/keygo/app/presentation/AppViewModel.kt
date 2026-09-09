@@ -3,7 +3,7 @@ package de.davis.keygo.app.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
-import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.LegacySession
 import de.davis.keygo.legacy_migration.domain.usecase.HasMainPasswordUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +16,7 @@ import org.koin.core.annotation.KoinViewModel
 internal class AppViewModel(
     private val accountRepository: AccountRepository,
     private val hasV1Password: HasMainPasswordUseCase,
-    session: Session,
+    session: LegacySession,
 ) : ViewModel() {
 
     private val _isReturningUser = MutableStateFlow<Boolean?>(null)

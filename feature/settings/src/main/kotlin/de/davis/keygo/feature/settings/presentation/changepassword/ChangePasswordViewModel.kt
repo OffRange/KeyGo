@@ -11,7 +11,7 @@ import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.identity.domain.usecase.ChangePasswordUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.PasswordScore
-import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.LegacySession
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
@@ -44,7 +44,7 @@ internal class ChangePasswordViewModel(
     private val biometricAvailabilityRepository: BiometricAvailabilityRepository,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val changePassword: ChangePasswordUseCase,
-    private val session: Session,
+    private val session: LegacySession,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChangePasswordState())

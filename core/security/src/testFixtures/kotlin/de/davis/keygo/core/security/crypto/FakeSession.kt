@@ -1,19 +1,19 @@
 package de.davis.keygo.core.security.crypto
 
 import de.davis.keygo.core.security.domain.ArkHolder
-import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.LegacySession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
 
 /**
- * A fake [Session] with a fixed ARK. Shares [ArkHolder] with the real one, so it wipes the same
- * way - a fake that skipped the wipe would hide use-after-wipe bugs from every test.
+ * A fake [LegacySession] with a fixed ARK. Shares [ArkHolder] with the real one, so it wipes the
+ * same way - a fake that skipped the wipe would hide use-after-wipe bugs from every test.
  */
 class FakeSession(
     startOnConstruct: Boolean = false
-) : Session {
+) : LegacySession {
 
     var startSessionCalled = false
 

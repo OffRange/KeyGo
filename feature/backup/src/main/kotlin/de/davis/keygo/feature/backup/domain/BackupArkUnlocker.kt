@@ -2,7 +2,7 @@ package de.davis.keygo.feature.backup.domain
 
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.KeyStoreManager
-import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.LegacySession
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProviderFactory
 import de.davis.keygo.core.security.domain.crypto.suspendDoFinal
 import de.davis.keygo.core.security.domain.model.CryptographicMode
@@ -17,13 +17,13 @@ import de.davis.keygo.feature.backup.domain.repository.BackupArkKeyStore
 import org.koin.core.annotation.Single
 
 /**
- * Resolves the crypto scope for a backup. Prefers the live [Session]; when locked, silently recovers
- * the ARK copy via the non-auth [KeyId.BackupArkKey] and binds the scope to a throwaway
+ * Resolves the crypto scope for a backup. Prefers the live [LegacySession]; when locked, silently
+ * recovers the ARK copy via the non-auth [KeyId.BackupArkKey] and binds the scope to a throwaway
  * [BackupSession]. The global session is never touched.
  */
 @Single
 internal class BackupArkUnlocker(
-    private val session: Session,
+    private val session: LegacySession,
     private val keyStoreManager: KeyStoreManager,
     private val arkKeyStore: BackupArkKeyStore,
     private val scopeProviderFactory: CryptographicScopeProviderFactory,
@@ -81,6 +81,6 @@ internal class BackupArkUnlocker(
         cipher.suspendDoFinal(wrapped.data).bind { ExportError.DeviceLocked }
     }
 
-    private fun scopeFor(session: Session): ItemWithCryptoScopeUseCase =
+    private fun scopeFor(session: LegacySession): ItemWithCryptoScopeUseCase =
         ItemWithCryptoScopeUseCase(vaultRepository, scopeProviderFactory.forSession(session))
 }
