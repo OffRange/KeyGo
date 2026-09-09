@@ -6,22 +6,24 @@ import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.model.UnlockError
 import de.davis.keygo.core.security.crypto.FakeBiometricCryptoController
-import de.davis.keygo.core.security.crypto.FakeSession
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
+import de.davis.keygo.rust.FakeArkSession
 import kotlinx.coroutines.test.runTest
 import java.util.UUID
 import javax.crypto.spec.SecretKeySpec
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class BiometricUnlockAdapterImplTest {
 
-    private val session = FakeSession()
+    private val session = Session(FakeArkSession())
     private val accountRepository = FakeAccountRepository()
     private val controller = FakeBiometricCryptoController()
 
@@ -102,6 +104,19 @@ class BiometricUnlockAdapterImplTest {
         val result = with(adapter) { controller.requestUnlockVault(BiometricPolicy.Default) }
 
         assertTrue(result.isSuccess())
-        assertTrue(session.startSessionCalled)
+        assertTrue(session.isActive.value)
     }
+
+    @Test
+    fun `returns UnwrappingFailed and stays locked when the recovered key is not an ARK`() =
+        runTest {
+            seedAccountWithBiometric()
+            controller.unwrapResult = Result.Success(SecretKeySpec(ByteArray(16) { 1 }, "AES"))
+
+            val result = with(adapter) { controller.requestUnlockVault(BiometricPolicy.Default) }
+
+            assertTrue(result.isFailure())
+            assertEquals(UnlockError.UnwrappingFailed, result.error)
+            assertFalse(session.isActive.value)
+        }
 }

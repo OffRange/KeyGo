@@ -4,7 +4,7 @@ import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultContext
-import de.davis.keygo.core.security.crypto.FakeSession
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.backup.FakeBackupFileStore
 import de.davis.keygo.feature.backup.RestorerTestEnv
@@ -22,6 +22,7 @@ import de.davis.keygo.feature.backup.presentation.import.model.ImportWizardStep
 import de.davis.keygo.feature.backup.presentation.import.model.ImportWizardUiEvent
 import de.davis.keygo.feature.backup.testVault
 import de.davis.keygo.feature.vault.domain.usecase.ObserveVaultsAndSelectionUseCase
+import de.davis.keygo.rust.FakeArkSession
 import de.davis.keygo.rust.FakeCsvBackupManager
 import de.davis.keygo.rust.FakeJsonBackupManager
 import de.davisalessandro.keygo.rust.Backup
@@ -50,7 +51,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
-import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -98,7 +98,7 @@ class ImportWizardViewModelTest {
      */
     private fun TestScope.viewModel(
         resolver: FakeBackupDestinationResolver = FakeBackupDestinationResolver(),
-        session: FakeSession = FakeSession(startOnConstruct = true),
+        session: Session = Session(FakeArkSession(startUnlocked = true)),
         contextRepo: FakeVaultContextRepository = FakeVaultContextRepository(),
     ) = ImportWizardViewModel(
         resolver,
@@ -176,7 +176,6 @@ class ImportWizardViewModelTest {
     }
 
     @Test
-    @Ignore("re-enabled in Task 5 against FakeArkSession")
     fun `Continue on selected JSON runs import and surfaces the summary`() = runTest {
         // ARK-sealed: the one JSON shape that imports straight through without a passphrase step.
         json.inspectResult = JsonEncryption.ARK
@@ -231,7 +230,6 @@ class ImportWizardViewModelTest {
     }
 
     @Test
-    @Ignore("re-enabled in Task 5 against FakeArkSession")
     fun `terminal import error surfaces as failure`() = runTest {
         json.inspectResult = JsonEncryption.ARK
         fileStore.contents = """{"vaults":[]}"""
@@ -618,7 +616,6 @@ class ImportWizardViewModelTest {
     }
 
     @Test
-    @Ignore("re-enabled in Task 5 against FakeArkSession")
     fun `seeding an ARK sealed JSON imports without asking anything`() = runTest {
         json.inspectResult = JsonEncryption.ARK
         fileStore.contents = """{"vaults":[]}"""
@@ -722,7 +719,6 @@ class ImportWizardViewModelTest {
     }
 
     @Test
-    @Ignore("re-enabled in Task 5 against FakeArkSession")
     fun `seeding a different file after backing out of a mapping does not carry over the old file's state`() =
         runTest {
             fileStore.contents = "name,secret\nEmail,s3cr3t\n"

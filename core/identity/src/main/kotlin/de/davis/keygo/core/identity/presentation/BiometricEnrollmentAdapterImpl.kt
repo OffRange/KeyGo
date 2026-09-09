@@ -4,11 +4,10 @@ import androidx.compose.runtime.Composable
 import de.davis.keygo.core.identity.domain.model.BiometricEnrollmentError
 import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
-import de.davis.keygo.core.security.domain.LegacySession
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
-import de.davis.keygo.core.security.domain.withArkOr
 import de.davis.keygo.core.security.presentation.BiometricCryptoController
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
@@ -21,7 +20,7 @@ import javax.crypto.spec.SecretKeySpec
 @Single
 internal class BiometricEnrollmentAdapterImpl(
     private val accountRepository: AccountRepository,
-    private val session: LegacySession,
+    private val session: Session,
 ) : BiometricEnrollmentAdapter {
 
     override suspend fun BiometricCryptoController.requestEnableBiometric(
@@ -33,9 +32,12 @@ internal class BiometricEnrollmentAdapterImpl(
         val cipher = requestCipher(KeyId.BiometricVaultKek, CryptographicMode.Wrap, policy)
             .bind { BiometricEnrollmentError.BiometricFailed(it) }
 
-        val wrapped = session.withArkOr(BiometricEnrollmentError.NoActiveSession) { ark ->
-            wrapArk(ark, cipher).asResult(BiometricEnrollmentError.WrappingFailed)
-        }.bind()
+        val ark = session.exportArk().bind { BiometricEnrollmentError.NoActiveSession }
+        val wrapped = try {
+            wrapArk(ark, cipher).asResult(BiometricEnrollmentError.WrappingFailed).bind()
+        } finally {
+            ark.fill(0)
+        }
 
         accountRepository.set(account.copy(biometricWrappedArk = wrapped)).bind {
             BiometricEnrollmentError.PersistenceFailed

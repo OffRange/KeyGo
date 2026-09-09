@@ -1,12 +1,10 @@
 package de.davis.keygo.feature.backup.domain.usecase
 
-import de.davis.keygo.core.security.domain.LegacySession
-import de.davis.keygo.core.security.domain.withArkOr
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.mapFailure
 import de.davis.keygo.core.util.resultBinding
-import de.davis.keygo.feature.backup.data.arkSession
 import de.davis.keygo.feature.backup.domain.BackupFileStore
 import de.davis.keygo.feature.backup.domain.BackupRestorer
 import de.davis.keygo.feature.backup.domain.mapper.toImportError
@@ -32,7 +30,7 @@ internal class ImportBackupUseCase(
     private val jsonBackupManager: JsonBackupManagerInterface,
     private val csvBackupManager: CsvBackupManagerInterface,
     private val restorer: BackupRestorer,
-    private val session: LegacySession,
+    private val session: Session,
 ) {
 
     /**
@@ -86,9 +84,11 @@ internal class ImportBackupUseCase(
                         }
                     }
 
-                    JsonEncryption.ARK -> session.withArkOr(ImportError.SessionLocked) { ark ->
-                        importJson(text, BackupCredential.Session(arkSession(ark)))
-                    }.bind()
+                    JsonEncryption.ARK -> {
+                        if (!session.isActive.value)
+                            Result.Failure<Nothing, ImportError>(ImportError.SessionLocked).bind()
+                        importJson(text, BackupCredential.Session(session.binding)).bind()
+                    }
                 }
 
                 FileFormat.CSV -> {

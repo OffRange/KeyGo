@@ -18,7 +18,7 @@ import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.security.crypto.BindingCryptographicScopeProvider
-import de.davis.keygo.core.security.crypto.FakeSession
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.crypto.encrypt
@@ -32,6 +32,7 @@ import de.davis.keygo.core.util.isSuccess
 import de.davis.keygo.feature.vault.domain.model.MoveItemsError
 import de.davis.keygo.feature.vault.domain.model.MoveItemsProgress
 import de.davis.keygo.rust.FakeItemManager
+import de.davis.keygo.rust.FakeArkSession
 import de.davis.keygo.rust.FakeKeyWrapper
 import de.davisalessandro.keygo.rust.ItemAad
 import de.davisalessandro.keygo.rust.KeyWrapException
@@ -47,7 +48,8 @@ import kotlin.test.assertTrue
 
 class MoveItemsToVaultUseCaseTest {
 
-    private val session = FakeSession(startOnConstruct = true)
+    private val arkSession = FakeArkSession(startUnlocked = true)
+    private val session = Session(arkSession)
     private val loginRepository = FakeLoginRepository()
     private val itemRepository = FakeItemRepository(loginRepository)
     private val itemManager = FakeItemManager()
@@ -315,11 +317,9 @@ class MoveItemsToVaultUseCaseTest {
 
     private fun makeVault(name: String, id: VaultId = newVaultId()): Vault {
         val vaultKey = ByteArray(32) { (id.hashCode() + it).toByte() }
-        val wrapped = keyWrapper.wrapVaultKey(
-            ark = assertNotNull(session.currentArk),
-            vaultKey = vaultKey,
-            vaultId = id,
-        )
+        // Straight off the fake rather than through [session]: this runs from a property
+        // initialiser, and the wrapping is the same either way.
+        val wrapped = arkSession.wrapVaultKey(vaultKey = vaultKey, vaultId = id)
         return Vault(
             id = id,
             name = name,

@@ -8,7 +8,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
-import de.davis.keygo.core.security.domain.LegacySession
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.SystemHandoff
 import de.davis.keygo.core.security.domain.model.LockInfo
 import de.davis.keygo.core.security.domain.repository.LockInfoRepository
@@ -26,7 +26,7 @@ import org.koin.core.annotation.Single
 @Single(createdAtStart = true)
 internal class SessionLockObserver(
     private val context: Context,
-    private val session: LegacySession,
+    private val session: Session,
     private val handoff: SystemHandoff,
     private val sessionClock: SessionClock,
     @param:AppScopeQualifier private val scope: CoroutineScope,

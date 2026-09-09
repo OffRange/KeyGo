@@ -4,18 +4,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import de.davis.keygo.core.identity.domain.model.UnlockError
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
-import de.davis.keygo.core.security.domain.LegacySession
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.security.presentation.BiometricCryptoController
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.mapFailure
 import org.koin.compose.koinInject
 import org.koin.core.annotation.Single
 
 @Single
 internal class BiometricUnlockAdapterImpl(
-    private val session: LegacySession,
+    private val session: Session,
     private val accountRepository: AccountRepository,
 ) : BiometricUnlockAdapter {
 
@@ -37,8 +38,12 @@ internal class BiometricUnlockAdapterImpl(
         return when (unwrapResult) {
             is Result.Failure -> Result.Failure(UnlockError.BiometricFailed(unwrapResult.error))
             is Result.Success -> {
-                session.startSession(unwrapResult.success.encoded)
-                Result.Success(Unit)
+                val ark = unwrapResult.success.encoded
+                try {
+                    session.unlockWithArk(ark).mapFailure { UnlockError.UnwrappingFailed }
+                } finally {
+                    ark.fill(0)
+                }
             }
         }
     }
@@ -46,7 +51,7 @@ internal class BiometricUnlockAdapterImpl(
 
 @Composable
 fun rememberBiometricUnlockAdapter(): BiometricUnlockAdapter {
-    val session = koinInject<LegacySession>()
+    val session = koinInject<Session>()
     val accountRepository = koinInject<AccountRepository>()
 
     return remember(session, accountRepository) {

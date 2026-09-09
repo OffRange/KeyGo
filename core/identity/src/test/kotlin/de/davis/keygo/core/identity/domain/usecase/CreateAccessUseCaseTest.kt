@@ -4,36 +4,29 @@ import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.model.CreateAccessError
 import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
-import de.davis.keygo.core.security.crypto.FakeSession
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
-import de.davis.keygo.rust.FakeAccountManager
-import de.davis.keygo.rust.FakeKeyDeriver
-import de.davis.keygo.rust.FakeKeyWrapper
+import de.davis.keygo.rust.FakeArkSession
+import de.davisalessandro.keygo.rust.WrappedKeyBlob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class CreateAccessUseCaseTest {
 
-    private val session = FakeSession()
+    private val arkSession = FakeArkSession()
+    private val session = Session(arkSession)
     private val accountRepository = FakeAccountRepository()
     private val vaultRepository = FakeVaultRepository()
     private val vaultContextRepository = FakeVaultContextRepository()
-    private val keyDeriver = FakeKeyDeriver()
-    private val keyWrapper = FakeKeyWrapper()
-    private val accountManager = FakeAccountManager()
 
     private val useCase = CreateAccessUseCase(
-        keyDeriver = keyDeriver,
-        keyWrapper = keyWrapper,
-        accountManager = accountManager,
         accountRepository = accountRepository,
         vaultRepository = vaultRepository,
         vaultContextRepository = vaultContextRepository,
@@ -42,7 +35,7 @@ class CreateAccessUseCaseTest {
 
     @Test
     fun `returns KeyDerivationFailed when derivation fails`() = runTest {
-        keyDeriver.failDerivation = true
+        arkSession.failDerivation = true
 
         val result = useCase("password")
 
@@ -86,12 +79,22 @@ class CreateAccessUseCaseTest {
         }
 
     @Test
-    fun `returns Success and starts session without biometric cipher`() = runTest {
+    fun `returns Success and leaves the session unlocked without biometric cipher`() = runTest {
         val result = useCase("password", biometricCipher = null)
 
         assertTrue(result.isSuccess())
-        assertTrue(session.startSessionCalled)
-        assertContentEquals(accountManager.createAccount.account.ark, session.currentArk)
+        assertTrue(session.isActive.value)
+        // The vault the use case persisted has to unwrap under the ARK the session now holds.
+        val vault = vaultRepository.observeVaults().first().single()
+        assertTrue(
+            session.unwrapVaultKey(
+                wrapped = WrappedKeyBlob(
+                    ciphertext = vault.keyInformation.wrappedKey,
+                    nonce = vault.keyInformation.keyNonce,
+                ),
+                vaultId = vault.id,
+            ).isSuccess()
+        )
     }
 
     @Test

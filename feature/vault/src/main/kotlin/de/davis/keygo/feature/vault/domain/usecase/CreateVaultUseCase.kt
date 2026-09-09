@@ -5,15 +5,12 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
-import de.davis.keygo.core.security.domain.LegacySession
-import de.davis.keygo.core.security.domain.withArkOr
+import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.SessionError
 import de.davis.keygo.core.util.Result
-import de.davis.keygo.core.util.mapFailure
 import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.vault.domain.model.VaultCreationError
 import de.davis.keygo.rust.vault.VaultManager
-import de.davis.keygo.rust.wrap.KeyWrapper
-import de.davis.keygo.rust.wrap.wrapVaultKeyWithResult
 import org.koin.core.annotation.Single
 
 /**
@@ -25,8 +22,7 @@ class CreateVaultUseCase(
     private val vaultRepository: VaultRepository,
     private val vaultContextRepository: VaultContextRepository,
     private val vaultManager: VaultManager,
-    private val keyWrapper: KeyWrapper,
-    private val session: LegacySession
+    private val session: Session,
 ) {
 
     suspend operator fun invoke(
@@ -38,10 +34,11 @@ class CreateVaultUseCase(
         val vaultId = newVaultId()
 
         val vaultKey = vaultManager.createNewVaultKey()
-        val wrappedVaultKey = session.withArkOr(VaultCreationError.NoActiveSession) { ark ->
-            keyWrapper.wrapVaultKeyWithResult(ark, vaultKey, vaultId)
-                .mapFailure { VaultCreationError.WrapFailed }
-        }.bind()
+        val wrappedVaultKey = session.wrapVaultKey(vaultKey, vaultId)
+            .bind {
+                if (it == SessionError.Locked) VaultCreationError.NoActiveSession
+                else VaultCreationError.WrapFailed
+            }
 
         val vault = Vault(
             id = vaultId,

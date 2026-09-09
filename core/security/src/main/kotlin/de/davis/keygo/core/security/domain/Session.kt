@@ -1,8 +1,8 @@
 package de.davis.keygo.core.security.domain
 
 import de.davis.keygo.core.util.Result
+import de.davisalessandro.keygo.rust.ArkSession
 import de.davisalessandro.keygo.rust.ArkSessionException
-import de.davisalessandro.keygo.rust.ArkSessionInterface
 import de.davisalessandro.keygo.rust.KeyWrapException
 import de.davisalessandro.keygo.rust.NewAccount
 import de.davisalessandro.keygo.rust.PasswordWrapped
@@ -14,31 +14,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
-interface LegacySession {
-
-    /** Observable lock state, for callers that have to react to a session ending rather than read it. */
-    val isActive: StateFlow<Boolean>
-
-    /**
-     * Runs [block] with the live ARK, or returns `null` without running it when locked. Null is the
-     * ordinary locked branch every caller handles.
-     *
-     * The ARK is wiped in place when a session ends, so the array is only valid inside [block] -
-     * copy what has to outlive it. The bytes stay intact for the whole of [block] however long it
-     * suspends, even if the session ends underneath.
-     */
-    suspend fun <R> withArk(block: suspend (ByteArray) -> R): R?
-
-    fun startSession(ark: ByteArray)
-    fun endSession()
-}
-
-/** [LegacySession.withArk] for callers in [Result]: a locked session becomes [locked], not a null. */
-suspend fun <R, E> LegacySession.withArkOr(
-    locked: E,
-    block: suspend (ByteArray) -> Result<R, E>,
-): Result<R, E> = withArk(block) ?: Result.Failure(locked)
-
 /**
  * Custody of the ARK, held in Rust. The key material never enters the JVM heap except through
  * [exportArk] and [unlockWithArk], which exist because the Android Keystore ciphers that seal the
@@ -47,7 +22,7 @@ suspend fun <R, E> LegacySession.withArkOr(
  * [binding] is the generated UniFFI object. Passing it on is how backup hands the session across the
  * FFI; it grants no access this class does not already expose.
  */
-class Session(val binding: ArkSessionInterface) {
+class Session(val binding: ArkSession) {
 
     private val _isActive = MutableStateFlow(binding.isActive())
 
@@ -121,7 +96,7 @@ class Session(val binding: ArkSessionInterface) {
         }
 
     /**
-     * Republishes the lock state, swallowing anything [ArkSessionInterface.isActive] throws.
+     * Republishes the lock state, swallowing anything [ArkSession.isActive] throws.
      * It can throw on a destroyed handle, and this runs in a `finally`: an exception raised here
      * would replace a perfectly good return value, or discard an in-flight exception on its way
      * out. Losing one lock-state update is the smaller failure, and the next call republishes it.

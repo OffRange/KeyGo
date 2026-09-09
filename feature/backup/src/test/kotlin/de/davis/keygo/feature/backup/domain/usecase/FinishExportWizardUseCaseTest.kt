@@ -1,10 +1,11 @@
 package de.davis.keygo.feature.backup.domain.usecase
 
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
-import de.davis.keygo.core.security.crypto.FakeSession
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
 import de.davis.keygo.feature.backup.FakeBackupScheduler
 import de.davis.keygo.feature.backup.FakePersistableUriManager
@@ -19,6 +20,7 @@ import de.davis.keygo.feature.backup.domain.model.ExportDetails
 import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.domain.model.FinishExportWizardError
 import de.davis.keygo.feature.backup.domain.model.IntervalUnit
+import de.davis.keygo.rust.FakeArkSession
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -32,7 +34,7 @@ class FinishExportWizardUseCaseTest {
 
     private val scheduler = FakeBackupScheduler()
     private val persistable = FakePersistableUriManager()
-    private val session = FakeSession(startOnConstruct = true)
+    private val session = Session(FakeArkSession(startUnlocked = true))
     private val keyStoreManager = FakeKeyStoreManager()
     private val arkKeyStore = FakeBackupArkKeyStore()
     private val destinationResolver = FakeBackupDestinationResolver()
@@ -135,7 +137,7 @@ class FinishExportWizardUseCaseTest {
         val recovered = keyStoreManager
             .getOrCreateCipherFor(KeyId.BackupArkKey, CryptographicMode.Decrypt, wrapped.iv)
             .doFinal(wrapped.data)
-        assertContentEquals(session.currentArk, recovered)
+        assertContentEquals(session.exportArk().getOrNull(), recovered)
     }
 
     @Test

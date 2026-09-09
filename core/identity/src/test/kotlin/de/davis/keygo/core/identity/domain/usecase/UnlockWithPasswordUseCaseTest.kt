@@ -4,53 +4,51 @@ import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.model.UnlockError
-import de.davis.keygo.core.security.crypto.FakeSession
+import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
-import de.davis.keygo.rust.FakeKeyDeriver
-import de.davis.keygo.rust.FakeKeyWrapper
+import de.davis.keygo.rust.FakeArkSession
+import de.davisalessandro.keygo.rust.NewAccount
 import kotlinx.coroutines.test.runTest
-import java.util.UUID
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class UnlockWithPasswordUseCaseTest {
 
-    private val session = FakeSession()
+    private val arkSession = FakeArkSession()
+    private val session = Session(arkSession)
     private val accountRepository = FakeAccountRepository()
-    private val keyDeriver = FakeKeyDeriver()
-    private val keyWrapper = FakeKeyWrapper()
 
     private val useCase = UnlockWithPasswordUseCase(
         session = session,
         accountRepository = accountRepository,
-        keyDeriver = keyDeriver,
-        keyWrapper = keyWrapper,
     )
 
-    private fun seedAccount(
-        password: String,
-        accountId: UUID = UUID.randomUUID(),
-        ark: ByteArray = ByteArray(32) { it.toByte() },
-    ): Account {
-        val salt = keyDeriver.generateSalt()
-        val kek = keyDeriver.deriveRootKekFromPassword(password, salt)
-        val wrapped = keyWrapper.wrapAccountRootKey(kek, ark, accountId)
+    /**
+     * Mints an account through the session, persists what the app would persist, then locks the
+     * session again so the use case has something to unlock.
+     */
+    private suspend fun seedAccount(password: String): NewAccount {
+        val created = checkNotNull(session.createAccount(password).getOrNull())
 
-        val account = Account(
-            id = accountId,
-            displayName = "Test",
-            passwordWrappedArk = PasswordWrappedArk(
-                key = wrapped.ciphertext,
-                keyIV = wrapped.nonce,
-                salt = salt,
+        accountRepository.seed(
+            Account(
+                id = created.userId,
+                displayName = "Test",
+                passwordWrappedArk = PasswordWrappedArk(
+                    key = created.passwordWrappedArk.ciphertext,
+                    keyIV = created.passwordWrappedArk.nonce,
+                    salt = created.salt,
+                ),
+                biometricWrappedArk = null,
             ),
-            biometricWrappedArk = null,
         )
-        accountRepository.seed(account)
-        return account
+
+        session.endSession()
+        return created
     }
 
     @Test
@@ -64,7 +62,7 @@ class UnlockWithPasswordUseCaseTest {
     @Test
     fun `returns DerivationFailed when key derivation fails`() = runTest {
         seedAccount("password")
-        keyDeriver.failDerivation = true
+        arkSession.failDerivation = true
 
         val result = useCase("password")
 
@@ -80,17 +78,19 @@ class UnlockWithPasswordUseCaseTest {
 
         assertTrue(result.isFailure())
         assertEquals(UnlockError.UnwrappingFailed, result.error)
+        assertFalse(session.isActive.value)
     }
 
     @Test
     fun `returns Success and starts session with correct password`() = runTest {
-        val ark = ByteArray(32) { (it + 1).toByte() }
-        seedAccount("password", ark = ark)
+        val created = seedAccount("password")
 
         val result = useCase("password")
 
         assertTrue(result.isSuccess())
-        assertTrue(session.startSessionCalled)
-        assertContentEquals(ark, session.currentArk)
+        assertTrue(session.isActive.value)
+        // The recovered ARK is the one the account was created under: it still unwraps the
+        // default vault's key.
+        assertTrue(session.unwrapVaultKey(created.wrappedVaultKey, created.vaultId).isSuccess())
     }
 }

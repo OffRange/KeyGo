@@ -8,10 +8,11 @@ import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProviderFactory
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
-import de.davis.keygo.core.security.crypto.FakeSession
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
 import de.davis.keygo.feature.backup.FakeBackupFileStore
 import de.davis.keygo.feature.backup.domain.BackupArkUnlocker
@@ -26,6 +27,7 @@ import de.davis.keygo.feature.backup.domain.model.ExportProgress
 import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.testLogin
 import de.davis.keygo.feature.backup.testVault
+import de.davis.keygo.rust.FakeArkSession
 import de.davis.keygo.rust.FakeCsvBackupManager
 import de.davis.keygo.rust.FakeJsonBackupManager
 import de.davisalessandro.keygo.rust.BackupCredential
@@ -33,7 +35,6 @@ import de.davisalessandro.keygo.rust.BackupException
 import de.davisalessandro.keygo.rust.ExportPreset
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
-import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -56,8 +57,15 @@ class ExportBackupUseCaseTest {
 
     private val folder = BackupDestinationUri("content://tree")
 
-    private fun useCase(session: FakeSession): ExportBackupUseCase {
-        val arkUnlocker = BackupArkUnlocker(session, keyStore, arkStore, factory, vaultRepo)
+    private fun useCase(session: Session): ExportBackupUseCase {
+        val arkUnlocker = BackupArkUnlocker(
+            session = session,
+            sessionFactory = { Session(FakeArkSession()) },
+            keyStoreManager = keyStore,
+            arkKeyStore = arkStore,
+            scopeProviderFactory = factory,
+            vaultRepository = vaultRepo,
+        )
         return ExportBackupUseCase(
             collector = BackupCollector(
                 vaultRepository = vaultRepo,
@@ -74,9 +82,9 @@ class ExportBackupUseCaseTest {
         )
     }
 
-    private suspend fun provision(session: FakeSession) {
+    private suspend fun provision(session: Session) {
         val cipher = keyStore.getOrCreateCipherFor(KeyId.BackupArkKey, CryptographicMode.Encrypt)
-        val ark = assertNotNull(session.currentArk)
+        val ark = assertNotNull(session.exportArk().getOrNull())
         arkStore.save(CryptographicData(cipher.doFinal(ark), cipher.iv))
     }
 
@@ -86,7 +94,7 @@ class ExportBackupUseCaseTest {
         format = FileFormat.CSV,
     )
 
-    private fun unlocked() = FakeSession(startOnConstruct = true)
+    private fun unlocked() = Session(FakeArkSession(startUnlocked = true))
 
     private fun seedSingleLogin() {
         val vault = testVault(name = "V")
@@ -101,7 +109,7 @@ class ExportBackupUseCaseTest {
     @Test
     fun `locked and unprovisioned session fails with NotProvisioned`() = runTest {
         seedSingleLogin()
-        val emissions = useCase(FakeSession(startOnConstruct = false))(csvJob).toList()
+        val emissions = useCase(Session(FakeArkSession()))(csvJob).toList()
         assertEquals(ExportProgress.Failed(ExportError.NotProvisioned), emissions.last())
     }
 
@@ -110,7 +118,7 @@ class ExportBackupUseCaseTest {
         seedSingleLogin()
         csv.exportResult = "data"
         provision(unlocked())
-        val emissions = useCase(FakeSession(startOnConstruct = false))(csvJob).toList()
+        val emissions = useCase(Session(FakeArkSession()))(csvJob).toList()
         assertIs<ExportProgress.Succeeded>(emissions.last())
     }
 
@@ -183,7 +191,6 @@ class ExportBackupUseCaseTest {
     }
 
     @Test
-    @Ignore("re-enabled in Task 5 against FakeArkSession")
     fun `ark json job seals with the session ark`() = runTest {
         seedSingleLogin()
         json.exportResult = "{}"
@@ -202,7 +209,6 @@ class ExportBackupUseCaseTest {
     }
 
     @Test
-    @Ignore("re-enabled in Task 5 against FakeArkSession")
     fun `ark json job on a locked provisioned device uses the recovered ark`() = runTest {
         seedSingleLogin()
         json.exportResult = "{}"
@@ -215,7 +221,7 @@ class ExportBackupUseCaseTest {
             encryption = EncryptionMethod.Ark,
         )
 
-        val emissions = useCase(FakeSession(startOnConstruct = false))(jsonJob).toList()
+        val emissions = useCase(Session(FakeArkSession()))(jsonJob).toList()
 
         assertIs<ExportProgress.Succeeded>(emissions.last())
         assertIs<BackupCredential.Session>(json.exportCalls.single().credential)

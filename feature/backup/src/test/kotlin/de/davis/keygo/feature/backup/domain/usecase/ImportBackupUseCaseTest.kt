@@ -1,6 +1,6 @@
 package de.davis.keygo.feature.backup.domain.usecase
 
-import de.davis.keygo.core.security.crypto.FakeSession
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.feature.backup.FakeBackupFileStore
 import de.davis.keygo.feature.backup.RestorerTestEnv
@@ -13,6 +13,7 @@ import de.davis.keygo.feature.backup.domain.model.ImportProgress
 import de.davis.keygo.feature.backup.domain.model.ImportRequest
 import de.davis.keygo.feature.backup.domain.model.ImportTarget
 import de.davis.keygo.feature.backup.testVault
+import de.davis.keygo.rust.FakeArkSession
 import de.davis.keygo.rust.FakeCsvBackupManager
 import de.davis.keygo.rust.FakeJsonBackupManager
 import de.davisalessandro.keygo.rust.Backup
@@ -28,7 +29,6 @@ import de.davisalessandro.keygo.rust.JsonEncryption
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
-import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -41,7 +41,7 @@ class ImportBackupUseCaseTest {
     private val json = FakeJsonBackupManager()
     private val csv = FakeCsvBackupManager()
 
-    private fun useCase(session: FakeSession = FakeSession(startOnConstruct = true)) =
+    private fun useCase(session: Session = Session(FakeArkSession(startUnlocked = true))) =
         ImportBackupUseCase(fileStore, json, csv, env.restorer, session)
 
     private fun jsonRequest(passphrase: String? = "pw") = ImportRequest(
@@ -64,7 +64,7 @@ class ImportBackupUseCaseTest {
 
     @Test
     fun `locked session fails fast`() = runTest {
-        val emissions = useCase(FakeSession(startOnConstruct = false))(jsonRequest()).toList()
+        val emissions = useCase(Session(FakeArkSession()))(jsonRequest()).toList()
         assertEquals(listOf(ImportProgress.Failed(ImportError.SessionLocked)), emissions)
     }
 
@@ -221,12 +221,11 @@ class ImportBackupUseCaseTest {
     }
 
     @Test
-    @Ignore("re-enabled in Task 5 against FakeArkSession")
     fun `ark-sealed json imports with the session ark`() = runTest {
         fileStore.contents = "{}"
         json.inspectResult = JsonEncryption.ARK
         json.importResult = Backup(listOf(backupVault("V", listOf(login("A")))))
-        val session = FakeSession(startOnConstruct = true)
+        val session = Session(FakeArkSession(startUnlocked = true))
 
         val emissions = useCase(session)(jsonRequest(passphrase = null)).toList()
 
@@ -275,7 +274,7 @@ class ImportBackupUseCaseTest {
     @Test
     fun `session locked between read and parse fails with SessionLocked instead of throwing`() =
         runTest {
-            val session = FakeSession(startOnConstruct = true)
+            val session = Session(FakeArkSession(startUnlocked = true))
             fileStore.contents = "{}"
             json.inspectResult = JsonEncryption.ARK
             val lockDuringRead = object : BackupFileStore by fileStore {

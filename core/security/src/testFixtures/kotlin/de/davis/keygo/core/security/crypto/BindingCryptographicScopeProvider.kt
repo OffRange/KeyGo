@@ -2,7 +2,7 @@ package de.davis.keygo.core.security.crypto
 
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.security.data.crypto.CryptographicScopeProviderImpl
-import de.davis.keygo.core.security.domain.LegacySession
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davisalessandro.keygo.rust.ItemManagerInterface
 import de.davisalessandro.keygo.rust.KeyWrapperInterface
@@ -17,7 +17,7 @@ import de.davisalessandro.keygo.rust.KeyWrapperInterface
  */
 @Suppress("TestFunctionName")
 fun BindingCryptographicScopeProvider(
-    session: LegacySession,
+    session: Session,
     itemRepository: ItemRepository,
     itemManager: ItemManagerInterface,
     keyWrapper: KeyWrapperInterface,
