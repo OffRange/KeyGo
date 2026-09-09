@@ -11,6 +11,10 @@ use std::sync::Arc;
 pub enum ArkSessionError {
     #[error("No active session")]
     Locked,
+    #[error("Wrong password")]
+    WrongPassword,
+    #[error("Key derivation failed: {0}")]
+    Derivation(String),
     #[error("{0}")]
     KeyWrap(#[from] KeyWrapError),
 }
@@ -19,6 +23,8 @@ impl From<CoreArkSessionError> for ArkSessionError {
     fn from(value: CoreArkSessionError) -> Self {
         match value {
             CoreArkSessionError::Locked => Self::Locked,
+            CoreArkSessionError::WrongPassword => Self::WrongPassword,
+            CoreArkSessionError::Derivation(msg) => Self::Derivation(msg),
             CoreArkSessionError::KeyWrap(crypto_error) => Self::KeyWrap(crypto_error.into()),
         }
     }
