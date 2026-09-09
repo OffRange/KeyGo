@@ -125,6 +125,8 @@ impl ArkSession {
         })
     }
 
+    /// Preserves `KeyWrap` rather than collapsing it, unlike `verify_password`, so the caller can
+    /// tell a wrong password apart from a corrupt blob.
     pub fn unlock_with_password(
         &self,
         password: &str,
@@ -152,7 +154,9 @@ impl ArkSession {
     }
 
     /// Prove a password by unwrapping the stored blob and discarding the result. The session's
-    /// own ARK is untouched either way.
+    /// own ARK is untouched either way. Deliberately collapses any unwrap failure to
+    /// `WrongPassword`, unlike `unlock_with_password`, because a verification has only a
+    /// yes/no answer.
     pub fn verify_password(
         &self,
         password: &str,
@@ -182,18 +186,20 @@ impl ArkSession {
         new_password: &str,
         user_id: UserId,
     ) -> ArkSessionResult<PasswordWrapped> {
-        let guard = self.lock();
-        let ark = guard.as_ref().ok_or(ArkSessionError::Locked)?;
-
         let salt = random_bytes::<SALT_LEN>().to_vec();
         let kek = derive_kek(new_password, &salt)?;
+
+        let guard = self.lock();
+        let ark = guard.as_ref().ok_or(ArkSessionError::Locked)?;
         let wrapped = kek.wrap_key(ark, &user_id)?;
 
         Ok(PasswordWrapped { salt, wrapped })
     }
 
     /// Borrow the live ARK for the length of `f`. Lets callers inside Rust use the ARK without
-    /// it ever being copied out.
+    /// it ever being copied out. `f` must not call back into this session: the lock it runs
+    /// under is not reentrant, so a callback that touches the session (for example, calling
+    /// `export_ark`) deadlocks.
     pub fn with_ark<R>(&self, f: impl FnOnce(&AccountRootKey) -> R) -> ArkSessionResult<R> {
         let guard = self.lock();
         let ark = guard.as_ref().ok_or(ArkSessionError::Locked)?;
@@ -209,7 +215,6 @@ fn derive_kek(password: &str, salt: &[u8]) -> ArkSessionResult<RootKEK> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crypto::KeyMaterial;
 
     const PASSWORD: &str = "hunter2";
 
@@ -270,6 +275,43 @@ mod tests {
     }
 
     #[test]
+    fn unlock_with_password_rejects_a_blob_wrapped_for_a_different_user_id() {
+        let (session, account) = unlocked();
+        session.end();
+
+        // The blob was wrapped with account.user_id as AAD; unlocking with a different id must
+        // fail the AEAD tag check, the same binding that stops a blob transplant between users.
+        let result = session.unlock_with_password(
+            PASSWORD,
+            &account.salt,
+            account.password_wrapped_ark,
+            UserId::new_v4(),
+        );
+
+        assert!(matches!(result, Err(ArkSessionError::KeyWrap(_))));
+        assert!(!session.is_active());
+    }
+
+    #[test]
+    fn failed_unlock_on_an_active_session_retains_the_original_ark() {
+        let (session, account) = unlocked();
+        let original = session.export_ark().unwrap();
+
+        let result = session.unlock_with_password(
+            "wrong",
+            &account.salt,
+            account.password_wrapped_ark,
+            account.user_id,
+        );
+
+        // A failed unlock attempt must not log the user out: the session stays active and keeps
+        // holding the ARK it had before the attempt.
+        assert!(result.is_err());
+        assert!(session.is_active());
+        assert_eq!(session.export_ark().unwrap(), original);
+    }
+
+    #[test]
     fn export_and_unlock_with_ark_round_trip() {
         let (session, account) = unlocked();
         let exported = session.export_ark().unwrap();
@@ -296,7 +338,10 @@ mod tests {
     fn unlock_with_ark_rejects_a_wrong_length_key() {
         let session = ArkSession::new();
 
-        assert!(session.unlock_with_ark(&[0u8; 8]).is_err());
+        assert!(matches!(
+            session.unlock_with_ark(&[0u8; 8]),
+            Err(ArkSessionError::KeyWrap(_))
+        ));
         assert!(!session.is_active());
     }
 
@@ -379,6 +424,26 @@ mod tests {
             session.rewrap_for_new_password("new-password", UserId::new_v4()),
             Err(ArkSessionError::Locked)
         ));
+    }
+
+    /// Known-answer test: pins `PASSWORD_DOMAIN` together with the Argon2 cost profile and the
+    /// derived key length behind it. Every shipped account's ARK is wrapped under a KEK derived
+    /// with this exact domain and parameter set, so if any of them drift, no existing account's
+    /// password can unlock it again. This is the tripwire for that.
+    #[test]
+    fn password_domain_is_pinned() {
+        assert_eq!(PASSWORD_DOMAIN, b"v1:kek/pwd");
+
+        const SALT: [u8; 16] = [7; 16];
+        let kek = derive_kek("hunter2", &SALT).unwrap();
+
+        assert_eq!(
+            kek.as_bytes(),
+            &[
+                243, 77, 26, 134, 177, 95, 102, 67, 54, 167, 232, 38, 115, 170, 132, 28, 98, 29,
+                146, 108, 157, 245, 225, 131, 93, 9, 236, 235, 207, 6, 219, 103,
+            ][..]
+        );
     }
 
     #[test]
