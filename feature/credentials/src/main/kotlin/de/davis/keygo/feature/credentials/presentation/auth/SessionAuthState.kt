@@ -18,11 +18,15 @@ internal fun mapUnlockError(error: UnlockError): UnlockOutcome = when (error) {
 
         BiometricAuthError.Declined,
         BiometricAuthError.LockedOut,
+        BiometricAuthError.CryptoFailed,
+        BiometricAuthError.KeyInvalidated,
         is BiometricAuthError.Unknown,
         is BiometricAuthError.CanNotAuthenticate -> UnlockOutcome.NeedsPassword
     }
 
+    UnlockError.BiometricEnrollmentReset,
     UnlockError.WrappedKeyNotFound -> UnlockOutcome.NeedsPassword
+
     UnlockError.UnwrappingFailed,
     UnlockError.DerivationFailed,
     UnlockError.ActiveAccountNotFound -> UnlockOutcome.Abort

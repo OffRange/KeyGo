@@ -36,6 +36,7 @@ sealed interface AuthState {
         override val passwordError: UiFieldError? = null,
         override val loading: Boolean = false,
         val biometricAuthenticationAvailable: Boolean = false,
+        val showBiometricResetNotice: Boolean = false,
     ) : Interactable
 
     data class Migrating(

@@ -5,6 +5,7 @@ import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
 import de.davis.keygo.feature.backup.FakeBackupScheduler
 import de.davis.keygo.feature.backup.FakePersistableUriManager
@@ -132,9 +133,12 @@ class FinishExportWizardUseCaseTest {
 
         val wrapped = arkKeyStore.load()
         assertNotNull(wrapped)
-        val recovered = keyStoreManager
-            .getOrCreateCipherFor(KeyId.BackupArkKey, CryptographicMode.Decrypt, wrapped.iv)
-            .doFinal(wrapped.data)
+        val cipher = assertNotNull(
+            keyStoreManager
+                .getOrCreateCipherFor(KeyId.BackupArkKey, CryptographicMode.Decrypt, wrapped.iv)
+                .getOrNull(),
+        )
+        val recovered = cipher.doFinal(wrapped.data)
         assertContentEquals(session.currentArk, recovered)
     }
 

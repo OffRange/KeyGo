@@ -6,6 +6,7 @@ sealed interface AuthUIEvent {
     data object RequestBiometricAuthentication : AuthUIEvent
 
     data object CloseMigrationDialog : AuthUIEvent
+    data object DismissBiometricResetNotice : AuthUIEvent
 
     data class ToggleUseBiometrics(val checked: Boolean) : AuthUIEvent
 

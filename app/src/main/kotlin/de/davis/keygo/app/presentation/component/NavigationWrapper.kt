@@ -295,7 +295,26 @@ fun KeyGoNavigationWrapper(
                     Box(
                         Modifier
                             .fillMaxSize()
-                            .consumeWindowInsets(navigationInsets(layoutType, scaffoldState))
+                            // We only consume system insets if the navigation UI (showChrome) is
+                            // visible. Otherwise, the content goes edge-to-edge and needs the
+                            // insets to prevent buttons (like in onboarding/backup wizards) from
+                            // hiding under the system nav bar.
+                            .consumeWindowInsets(
+                                when {
+                                    !showChrome -> WindowInsets(0, 0, 0, 0)
+
+                                    layoutType == NavigationSuiteType.NavigationBar ->
+                                        NavigationBarDefaults.windowInsets.only(WindowInsetsSides.Bottom)
+
+                                    layoutType == NavigationSuiteType.NavigationRail ->
+                                        NavigationRailDefaults.windowInsets.only(WindowInsetsSides.Start)
+
+                                    layoutType == NavigationSuiteType.NavigationDrawer ->
+                                        DrawerDefaults.windowInsets.only(WindowInsetsSides.Start)
+
+                                    else -> WindowInsets(0, 0, 0, 0)
+                                }
+                            )
                             .then(
                                 if (hidesOnScroll) Modifier.nestedScroll(scrollConnection)
                                 else Modifier

@@ -5,6 +5,7 @@ import androidx.compose.runtime.remember
 import de.davis.keygo.core.identity.domain.model.UnlockError
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.security.domain.model.KeyId
@@ -17,6 +18,7 @@ import org.koin.core.annotation.Single
 internal class BiometricUnlockAdapterImpl(
     private val session: Session,
     private val accountRepository: AccountRepository,
+    private val biometricEnrollmentAdapter: BiometricEnrollmentAdapter
 ) : BiometricUnlockAdapter {
 
     override suspend fun BiometricCryptoController.requestUnlockVault(
@@ -35,7 +37,19 @@ internal class BiometricUnlockAdapterImpl(
         )
 
         return when (unwrapResult) {
-            is Result.Failure -> Result.Failure(UnlockError.BiometricFailed(unwrapResult.error))
+            is Result.Failure -> when (unwrapResult.error) {
+                BiometricAuthError.KeyInvalidated ->
+                    when (biometricEnrollmentAdapter.disableBiometric()) {
+                        is Result.Success -> Result.Failure(UnlockError.BiometricEnrollmentReset)
+
+                        is Result.Failure -> Result.Failure(
+                            UnlockError.BiometricFailed(BiometricAuthError.KeyInvalidated),
+                        )
+                    }
+
+                else -> Result.Failure(UnlockError.BiometricFailed(unwrapResult.error))
+            }
+
             is Result.Success -> {
                 session.startSession(unwrapResult.success.encoded)
                 Result.Success(Unit)
@@ -48,11 +62,13 @@ internal class BiometricUnlockAdapterImpl(
 fun rememberBiometricUnlockAdapter(): BiometricUnlockAdapter {
     val session = koinInject<Session>()
     val accountRepository = koinInject<AccountRepository>()
+    val biometricEnrollmentAdapter = rememberBiometricEnrollmentAdapter()
 
-    return remember(session, accountRepository) {
+    return remember(session, accountRepository, biometricEnrollmentAdapter) {
         BiometricUnlockAdapterImpl(
             session = session,
-            accountRepository = accountRepository
+            accountRepository = accountRepository,
+            biometricEnrollmentAdapter = biometricEnrollmentAdapter,
         )
     }
 }

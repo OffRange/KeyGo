@@ -6,12 +6,14 @@ import android.os.Bundle
 import android.service.autofill.Dataset
 import android.util.Log
 import android.view.autofill.AutofillManager
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -41,6 +43,7 @@ import de.davis.keygo.feature.autofill.presentation.model.RequestData
 import de.davis.keygo.feature.item.create.presentation.password.GeneratePasswordModalBottomSheet
 import org.koin.androidx.compose.koinViewModel
 import de.davis.keygo.core.item.R as CoreItemR
+import de.davis.keygo.feature.item.core.R as FeatureItemCoreR
 
 private const val TAG = "AutofillActivity"
 
@@ -72,7 +75,9 @@ internal class AutofillActivity : FragmentActivity() {
                 val biometricUnlockAdapter = rememberBiometricUnlockAdapter()
 
                 val clipboard = LocalClipboard.current
+                val context = LocalContext.current
                 val passwordLabel = stringResource(CoreItemR.string.password)
+                val copiedMessage = stringResource(FeatureItemCoreR.string.copied, passwordLabel)
 
                 val smsConsentLauncher = rememberHandoffLauncher(
                     ActivityResultContracts.StartIntentSenderForResult(),
@@ -92,6 +97,8 @@ internal class AutofillActivity : FragmentActivity() {
                                     text = it,
                                     sensitive = true,
                                 )
+
+                                Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
                             }
 
                             finishWithResult(event.dataset)

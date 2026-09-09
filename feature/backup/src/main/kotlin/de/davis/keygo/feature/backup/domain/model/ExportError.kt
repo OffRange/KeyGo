@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.backup.domain.model
 
+import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
 import de.davisalessandro.keygo.rust.BackupException
 
 sealed interface ExportError {
@@ -11,6 +12,14 @@ sealed interface ExportError {
     data object NotProvisioned : ExportError
     data object DeviceLocked : ExportError
 }
+
+internal val KeyStoreManagerError.exportError: ExportError
+    get() = when (this) {
+        KeyStoreManagerError.KeyInvalidated -> ExportError.CryptoFailed
+
+        KeyStoreManagerError.AuthenticationRequired,
+        KeyStoreManagerError.Unknown -> ExportError.DeviceLocked
+    }
 
 /**
  * Failures that mean "try again later", not "this backup failed". A retryable outcome must never be
