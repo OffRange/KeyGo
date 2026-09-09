@@ -5,7 +5,10 @@ sealed interface SessionError {
     /** No ARK in custody: the session was never unlocked, or it has ended. */
     data object Locked : SessionError
 
-    /** The supplied password did not unwrap the stored ARK. */
+    /**
+     * The supplied password did not unwrap the stored ARK. Only [Session.verifyPassword] reports
+     * this; [Session.unlockWithPassword] reports the underlying [KeyWrap] failure instead.
+     */
     data object WrongPassword : SessionError
 
     /** Argon2 could not derive a KEK. */

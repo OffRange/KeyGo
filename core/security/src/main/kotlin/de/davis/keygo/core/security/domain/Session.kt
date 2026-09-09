@@ -3,6 +3,7 @@ package de.davis.keygo.core.security.domain
 import de.davis.keygo.core.util.Result
 import de.davisalessandro.keygo.rust.ArkSessionException
 import de.davisalessandro.keygo.rust.ArkSessionInterface
+import de.davisalessandro.keygo.rust.KeyWrapException
 import de.davisalessandro.keygo.rust.NewAccount
 import de.davisalessandro.keygo.rust.PasswordWrapped
 import de.davisalessandro.keygo.rust.WrappedKeyBlob
@@ -54,7 +55,7 @@ class Session(val binding: ArkSessionInterface) {
     val isActive: StateFlow<Boolean> = _isActive.asStateFlow()
 
     suspend fun createAccount(password: String): Result<NewAccount, SessionError> =
-        derived { binding.createAccount(password) }.also { _isActive.value = binding.isActive() }
+        derived { binding.createAccount(password) }
 
     suspend fun unlockWithPassword(
         password: String,
@@ -63,7 +64,6 @@ class Session(val binding: ArkSessionInterface) {
         userId: UUID,
     ): Result<Unit, SessionError> =
         derived { binding.unlockWithPassword(password, salt, wrapped, userId) }
-            .also { _isActive.value = binding.isActive() }
 
     /** Takes custody of an ARK recovered from the Keystore. The caller still owns [arkBytes]. */
     fun unlockWithArk(arkBytes: ByteArray): Result<Unit, SessionError> =
@@ -100,22 +100,51 @@ class Session(val binding: ArkSessionInterface) {
 
     fun endSession() {
         binding.end()
-        _isActive.value = false
+        _isActive.value = binding.isActive()
     }
 
-    /** Runs off the main thread: everything in here reaches Argon2. */
+    /**
+     * Runs off the main thread: everything in here reaches Argon2. Re-publishes [isActive] in a
+     * `finally` inside the dispatched block, not after it: `binding.createAccount` and
+     * `binding.unlockWithPassword` are blocking JNI calls that run to completion regardless of
+     * cancellation, so if the caller's coroutine is cancelled while this suspends, `withContext`
+     * throws on resumption instead of returning - a sync placed after the `withContext` call would
+     * never run, leaving [isActive] stale while Rust already holds (or released) the ARK.
+     */
     private suspend fun <R> derived(block: () -> R): Result<R, SessionError> =
-        withContext(Dispatchers.Default) { catching(block) }
+        withContext(Dispatchers.Default) {
+            try {
+                catching(block)
+            } finally {
+                _isActive.value = binding.isActive()
+            }
+        }
 
-    private fun <R> catching(block: () -> R): Result<R, SessionError> = runCatching(block).fold(
-        onSuccess = { Result.Success(it) },
-        onFailure = { Result.Failure((it as ArkSessionException).toSessionError()) },
-    )
+    /** Only [ArkSessionException] is an expected failure; anything else is a bug and propagates. */
+    private fun <R> catching(block: () -> R): Result<R, SessionError> = try {
+        Result.Success(block())
+    } catch (e: ArkSessionException) {
+        Result.Failure(e.toSessionError())
+    }
 }
 
 private fun ArkSessionException.toSessionError(): SessionError = when (this) {
     is ArkSessionException.Locked -> SessionError.Locked
     is ArkSessionException.WrongPassword -> SessionError.WrongPassword
     is ArkSessionException.Derivation -> SessionError.Derivation(v1)
-    is ArkSessionException.KeyWrap -> SessionError.KeyWrap(v1.message.orEmpty())
+    is ArkSessionException.KeyWrap -> SessionError.KeyWrap(v1.describe())
+}
+
+/**
+ * A message for each [KeyWrapException] variant, read from its own fields rather than its
+ * generated `message`: that getter prefixes [KeyWrapException.Other] with `"v1="`, and `Other` is
+ * production-reachable (the catch-all arm of `From<CryptoError> for KeyWrapError` on the Rust
+ * side), so that prefix could otherwise leak into a real [SessionError.KeyWrap] payload.
+ */
+private fun KeyWrapException.describe(): String = when (this) {
+    is KeyWrapException.WrapFailed -> "wrap failed"
+    is KeyWrapException.UnwrapFailed -> "unwrap failed"
+    is KeyWrapException.InvalidKey -> "invalid key"
+    is KeyWrapException.InvalidKeyLength -> "invalid key length: expected $expected, got $got"
+    is KeyWrapException.Other -> v1
 }

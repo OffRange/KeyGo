@@ -21,9 +21,13 @@ import java.util.UUID
  * native library, so this stays a normal JVM unit test fixture despite subclassing a UniFFI type.
  *
  * Wrapping XORs the key with a stream derived from (outer key, id, nonce), the same scheme
- * [FakeKeyWrapper] uses, so a blob round-trips only under the outer key and id it was wrapped
- * with. A password-derived KEK is SHA-256 over (password + salt), so a wrong password produces a
- * different KEK and the unwrap fails.
+ * [FakeKeyWrapper] uses. Unlike [FakeKeyWrapper] though, a [FakeArkSession] is not a single shared
+ * instance: backup recovers an escrowed ARK into a throwaway session distinct from the one that
+ * wrapped the blob in the first place, so unwrapping has to work across instances. XOR is its own
+ * inverse, so `unwrap` re-derives the same stream instead of looking anything up in memory; a
+ * short tag appended to the nonce (via [tagFor]) still fails a blob wrapped under a different
+ * outer key or id. A password-derived KEK is SHA-256 over (password + salt), so a wrong password
+ * produces a different KEK and the unwrap fails the tag check.
  *
  * Set [failDerivation] to force derivation to throw, mirroring an Argon2 failure. Set
  * [startUnlocked] to seed the fake with an account already in place, for tests that use it as a
@@ -34,7 +38,6 @@ class FakeArkSession(startUnlocked: Boolean = false) : ArkSession(NoHandle) {
     var failDerivation: Boolean = false
 
     private var ark: ByteArray? = null
-    private val wrapRecord = mutableMapOf<Triple<List<Byte>, List<Byte>, UUID>, ByteArray>()
 
     init {
         if (startUnlocked) createAccount(SEED_PASSWORD)
@@ -71,11 +74,9 @@ class FakeArkSession(startUnlocked: Boolean = false) : ArkSession(NoHandle) {
     }
 
     override fun unlockWithArk(ark: ByteArray) {
-        if (ark.size != 32) {
-            throw ArkSessionException.KeyWrap(
-                KeyWrapException.InvalidKeyLength(expected = 32UL, got = ark.size.toULong()),
-            )
-        }
+        if (ark.size != 32) throw ArkSessionException.KeyWrap(
+            KeyWrapException.InvalidKeyLength(expected = 32UL, got = ark.size.toULong()),
+        )
         this.ark = ark.copyOf()
     }
 
@@ -87,7 +88,11 @@ class FakeArkSession(startUnlocked: Boolean = false) : ArkSession(NoHandle) {
         wrapped: WrappedKeyBlob,
         userId: UUID,
     ) {
-        runCatching { unwrap(kek(password, salt), wrapped, userId) }
+        // Derive first, outside the catch: a derivation failure is Derivation, not WrongPassword.
+        // Only the unwrap step below collapses to WrongPassword, mirroring the real session
+        // (core/src/ark_session.rs:167-169).
+        val kek = kek(password, salt)
+        runCatching { unwrap(kek, wrapped, userId) }
             .onFailure { throw ArkSessionException.WrongPassword() }
     }
 
@@ -111,6 +116,16 @@ class FakeArkSession(startUnlocked: Boolean = false) : ArkSession(NoHandle) {
         ark = null
     }
 
+    /**
+     * `Session` never calls this: it exists on [ArkSessionInterface] only because Task 6 has not
+     * yet deleted it. Left un-overridden, it would fall through to [ArkSession]'s real
+     * implementation, which dials into JNI with a zero handle and crashes there instead of failing
+     * legibly. Fail loudly here instead, so a future caller gets a clear message rather than a
+     * native crash.
+     */
+    override fun unlock(kek: ByteArray, wrapped: WrappedKeyBlob, userId: UUID): Unit =
+        error("FakeArkSession.unlock is unused: Session never calls it, and Task 6 removes it")
+
     private fun requireActive(): ByteArray = ark ?: throw ArkSessionException.Locked()
 
     private fun kek(password: String, salt: ByteArray): ByteArray {
@@ -118,16 +133,44 @@ class FakeArkSession(startUnlocked: Boolean = false) : ArkSession(NoHandle) {
         return MessageDigest.getInstance("SHA-256").digest(password.toByteArray() + salt)
     }
 
+    /**
+     * Wraps [innerKey] under (outerKey, id). The nonce plus a short tag ride along together in
+     * [WrappedKeyBlob.nonce].
+     */
     private fun wrap(outerKey: ByteArray, innerKey: ByteArray, id: UUID): WrappedKeyBlob {
-        val nonce = randomBytes(12)
+        val nonce = randomBytes(NONCE_SIZE)
         val ciphertext = xorStream(innerKey, outerKey, id, nonce)
-        wrapRecord[Triple(outerKey.toList(), ciphertext.toList(), id)] = innerKey.copyOf()
-        return WrappedKeyBlob(ciphertext = ciphertext, nonce = nonce)
+        val tag = tagFor(outerKey, id, nonce, innerKey)
+        return WrappedKeyBlob(ciphertext = ciphertext, nonce = nonce + tag)
     }
 
-    private fun unwrap(outerKey: ByteArray, wrapped: WrappedKeyBlob, id: UUID): ByteArray =
-        wrapRecord[Triple(outerKey.toList(), wrapped.ciphertext.toList(), id)]?.copyOf()
-            ?: throw ArkSessionException.KeyWrap(KeyWrapException.UnwrapFailed())
+    /**
+     * Inverts [wrap]. XOR is its own inverse, so re-deriving the stream from (outerKey, id, the
+     * stored nonce) recovers the plaintext key with no state to look up - the same math the real
+     * session runs, just XOR instead of AES-GCM. The trailing tag is what turns a wrong outer key
+     * or id into a thrown [KeyWrapException.UnwrapFailed] instead of a silently wrong key: without
+     * it, unwrapping under the wrong key would "succeed" with garbage bytes.
+     */
+    private fun unwrap(outerKey: ByteArray, wrapped: WrappedKeyBlob, id: UUID): ByteArray {
+        val nonce = wrapped.nonce.copyOfRange(0, NONCE_SIZE)
+        val tag = wrapped.nonce.copyOfRange(NONCE_SIZE, wrapped.nonce.size)
+        val candidate = xorStream(wrapped.ciphertext, outerKey, id, nonce)
+        if (!tagFor(outerKey, id, nonce, candidate).contentEquals(tag)) {
+            throw ArkSessionException.KeyWrap(KeyWrapException.UnwrapFailed())
+        }
+        return candidate
+    }
+
+    /** A short, non-cryptographic integrity tag: enough to reject a wrong key or id in tests. */
+    private fun tagFor(
+        outerKey: ByteArray,
+        id: UUID,
+        nonce: ByteArray,
+        innerKey: ByteArray,
+    ): ByteArray =
+        MessageDigest.getInstance("SHA-256")
+            .digest(outerKey + id.toString().toByteArray() + nonce + innerKey)
+            .copyOf(TAG_SIZE)
 
     private fun xorStream(
         innerKey: ByteArray,
@@ -152,5 +195,11 @@ class FakeArkSession(startUnlocked: Boolean = false) : ArkSession(NoHandle) {
     private companion object {
         /** Password used to seed the account when [startUnlocked] is set. Value is arbitrary. */
         const val SEED_PASSWORD = "fake-ark-session-seed"
+
+        /** Length of the XOR nonce portion of [WrappedKeyBlob.nonce]; the tag follows it. */
+        const val NONCE_SIZE = 12
+
+        /** Length of the integrity tag appended after the nonce. */
+        const val TAG_SIZE = 8
     }
 }

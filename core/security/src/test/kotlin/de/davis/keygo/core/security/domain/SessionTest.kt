@@ -45,6 +45,13 @@ class SessionTest {
         assertTrue(session.isActive.value)
     }
 
+    /**
+     * Unlocking reports the unwrap failure itself, where verifying collapses the same failure to
+     * [SessionError.WrongPassword] (see `verifyPassword rejects the wrong password`). That
+     * asymmetry is deliberate and shipped: the unlock screen shows an unwrap failure, and only the
+     * change-password screen claims to know the password was wrong. The message is asserted whole
+     * so it stays free of the `v1=` prefix the generated exception's own `message` carries.
+     */
     @Test
     fun `a wrong password keeps the session locked`() = runTest {
         val account = checkNotNull(session.createAccount("hunter2").getOrNull())
@@ -57,7 +64,7 @@ class SessionTest {
             userId = account.userId,
         )
 
-        assertIs<Result.Failure<Unit, SessionError>>(result)
+        assertEquals(SessionError.KeyWrap("unwrap failed"), (result as Result.Failure).error)
         assertFalse(session.isActive.value)
     }
 
