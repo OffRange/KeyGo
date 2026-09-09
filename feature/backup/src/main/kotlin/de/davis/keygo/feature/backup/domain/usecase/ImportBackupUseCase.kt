@@ -6,6 +6,7 @@ import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.mapFailure
 import de.davis.keygo.core.util.resultBinding
+import de.davis.keygo.feature.backup.data.arkSession
 import de.davis.keygo.feature.backup.domain.BackupFileStore
 import de.davis.keygo.feature.backup.domain.BackupRestorer
 import de.davis.keygo.feature.backup.domain.mapper.toImportError
@@ -86,7 +87,7 @@ internal class ImportBackupUseCase(
                     }
 
                     JsonEncryption.ARK -> session.withArkOr(ImportError.SessionLocked) { ark ->
-                        importJson(text, BackupCredential.Ark(ark))
+                        importJson(text, BackupCredential.Session(arkSession(ark)))
                     }.bind()
                 }
 

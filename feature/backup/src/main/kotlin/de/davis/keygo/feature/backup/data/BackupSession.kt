@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.backup.data
 
 import de.davis.keygo.core.security.domain.Session
+import de.davisalessandro.keygo.rust.ArkSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -20,3 +21,6 @@ internal class BackupSession(private val backupArk: ByteArray) : Session {
 
     override fun endSession() = Unit
 }
+
+/** Temporary bridge: Task 5 replaces the ByteArray plumbing with a Session throughout. */
+internal fun arkSession(ark: ByteArray): ArkSession = ArkSession().apply { unlockWithArk(ark) }

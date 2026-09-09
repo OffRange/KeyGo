@@ -11,6 +11,7 @@ import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.resultBinding
+import de.davis.keygo.feature.backup.data.arkSession
 import de.davis.keygo.feature.backup.domain.BackupArkUnlocker
 import de.davis.keygo.feature.backup.domain.BackupCollector
 import de.davis.keygo.feature.backup.domain.BackupFileStore
@@ -94,7 +95,8 @@ internal class ExportBackupUseCase(
             when (job.format) {
                 FileFormat.JSON -> when (job.encryption) {
                     EncryptionMethod.Ark -> arkUnlocker.withArk { ark ->
-                        jsonBackupManager.exportWithResult(backup, BackupCredential.Ark(ark))
+                        jsonBackupManager
+                            .exportWithResult(backup, BackupCredential.Session(arkSession(ark)))
                             .bindToSerializationFailed()
                     }.bind()
 

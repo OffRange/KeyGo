@@ -3,27 +3,35 @@ mod model;
 
 use std::sync::Arc;
 
+use keygo_core::ark_session::ArkSessionError;
 use keygo_core::backup::{
     Backup, BackupCredential as CoreCredential, BackupError as CoreError, ExportPreset, KeySource,
     csv as core_csv, json as core_json,
 };
-use keygo_core::crypto::AccountRootKey;
 
 use self::csv::{ColumnMapping, CsvAnalysis, CsvImportResult, JsonEncryption};
+use crate::ark_session::ArkSession;
 
 #[derive(uniffi::Enum)]
 pub enum BackupCredential {
     Passphrase { bytes: Vec<u8> },
-    Ark { key: AccountRootKey },
+    Session { session: Arc<ArkSession> },
 }
 
 impl BackupCredential {
-    /// Borrow as the core credential. Core takes the secret by reference, so this
-    /// cannot be a `From` impl - the borrow has to outlive the call, not the value.
-    fn as_core(&self) -> CoreCredential<'_> {
+    /// Run `f` with the core credential. The ARK is borrowed from the session for exactly the
+    /// length of the call, so it is never copied out to build a credential.
+    fn with_core<R>(
+        &self,
+        f: impl FnOnce(CoreCredential<'_>) -> Result<R, CoreError>,
+    ) -> Result<R, BackupError> {
         match self {
-            Self::Passphrase { bytes } => CoreCredential::Passphrase(bytes),
-            Self::Ark { key } => CoreCredential::Ark(key),
+            Self::Passphrase { bytes } => Ok(f(CoreCredential::Passphrase(bytes))?),
+            Self::Session { session } => session
+                .session
+                .with_ark(|ark| f(CoreCredential::Ark(ark)))
+                .map_err(BackupError::from)?
+                .map_err(BackupError::from),
         }
     }
 }
@@ -46,6 +54,8 @@ pub enum BackupError {
     Csv(String),
     #[error("csv contained no rows")]
     EmptyCsv,
+    #[error("no active session")]
+    Locked,
 }
 
 impl From<CoreError> for BackupError {
@@ -59,6 +69,15 @@ impl From<CoreError> for BackupError {
             CoreError::CredentialMismatch => Self::CredentialMismatch,
             CoreError::Csv(s) => Self::Csv(s),
             CoreError::EmptyCsv => Self::EmptyCsv,
+        }
+    }
+}
+
+impl From<ArkSessionError> for BackupError {
+    fn from(e: ArkSessionError) -> Self {
+        match e {
+            ArkSessionError::Locked => Self::Locked,
+            other => Self::Crypto(format!("{other}")),
         }
     }
 }
@@ -78,7 +97,7 @@ impl JsonBackupManager {
         backup: Backup,
         credential: BackupCredential,
     ) -> Result<String, BackupError> {
-        Ok(core_json::export(&backup, credential.as_core())?)
+        credential.with_core(|c| core_json::export(&backup, c))
     }
 
     pub fn import(
@@ -86,7 +105,7 @@ impl JsonBackupManager {
         data: String,
         credential: BackupCredential,
     ) -> Result<Backup, BackupError> {
-        Ok(core_json::import(&data, credential.as_core())?)
+        credential.with_core(|c| core_json::import(&data, c))
     }
 
     pub fn inspect(&self, data: String) -> Result<JsonEncryption, BackupError> {

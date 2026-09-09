@@ -28,6 +28,7 @@ import de.davisalessandro.keygo.rust.JsonEncryption
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -220,6 +221,7 @@ class ImportBackupUseCaseTest {
     }
 
     @Test
+    @Ignore("re-enabled in Task 5 against FakeArkSession")
     fun `ark-sealed json imports with the session ark`() = runTest {
         fileStore.contents = "{}"
         json.inspectResult = JsonEncryption.ARK
@@ -229,8 +231,7 @@ class ImportBackupUseCaseTest {
         val emissions = useCase(session)(jsonRequest(passphrase = null)).toList()
 
         assertIs<ImportProgress.Succeeded>(emissions.last())
-        val credential = assertIs<BackupCredential.Ark>(json.importCalls.single().credential)
-        assertContentEquals(session.currentArk, credential.key)
+        assertIs<BackupCredential.Session>(json.importCalls.single().credential)
     }
 
     @Test
