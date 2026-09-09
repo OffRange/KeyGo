@@ -24,8 +24,8 @@ import java.util.UUID
  * [FakeKeyWrapper] uses. Unlike [FakeKeyWrapper] though, a [FakeArkSession] is not a single shared
  * instance: backup recovers an escrowed ARK into a throwaway session distinct from the one that
  * wrapped the blob in the first place, so unwrapping has to work across instances. XOR is its own
- * inverse, so `unwrap` re-derives the same stream instead of looking anything up in memory; a
- * short tag appended to the nonce (via [tagFor]) still fails a blob wrapped under a different
+ * inverse, so `unwrap` re-derives the same stream instead of looking anything up in memory, and
+ * a short tag appended to the nonce (via [tagFor]) still fails a blob wrapped under a different
  * outer key or id. A password-derived KEK is SHA-256 over (password + salt), so a wrong password
  * produces a different KEK and the unwrap fails the tag check.
  *
@@ -119,9 +119,8 @@ class FakeArkSession(startUnlocked: Boolean = false) : ArkSession(NoHandle) {
     /**
      * `Session` never calls this: it exists on [ArkSessionInterface] only because Task 6 has not
      * yet deleted it. Left un-overridden, it would fall through to [ArkSession]'s real
-     * implementation, which dials into JNI with a zero handle and crashes there instead of failing
-     * legibly. Fail loudly here instead, so a future caller gets a clear message rather than a
-     * native crash.
+     * implementation, which sees the zero handle and raises uniffi's own `InternalException`
+     * before reaching JNI. Fail here instead, so a future caller reads why rather than guessing.
      */
     override fun unlock(kek: ByteArray, wrapped: WrappedKeyBlob, userId: UUID): Unit =
         error("FakeArkSession.unlock is unused: Session never calls it, and Task 6 removes it")
@@ -146,18 +145,24 @@ class FakeArkSession(startUnlocked: Boolean = false) : ArkSession(NoHandle) {
 
     /**
      * Inverts [wrap]. XOR is its own inverse, so re-deriving the stream from (outerKey, id, the
-     * stored nonce) recovers the plaintext key with no state to look up - the same math the real
-     * session runs, just XOR instead of AES-GCM. The trailing tag is what turns a wrong outer key
+     * stored nonce) recovers the plaintext key with no state to look up, which is the same shape
+     * the real session runs, just XOR instead of AES-GCM. The trailing tag turns a wrong outer key
      * or id into a thrown [KeyWrapException.UnwrapFailed] instead of a silently wrong key: without
      * it, unwrapping under the wrong key would "succeed" with garbage bytes.
      */
     private fun unwrap(outerKey: ByteArray, wrapped: WrappedKeyBlob, id: UUID): ByteArray {
+        // A blob this fake did not produce may carry any nonce at all. Reject a short one the same
+        // way a bad tag is rejected, so callers see an unwrap failure rather than an index error
+        // escaping the Result contract.
+        if (wrapped.nonce.size < NONCE_SIZE + TAG_SIZE)
+            throw ArkSessionException.KeyWrap(KeyWrapException.UnwrapFailed())
+
         val nonce = wrapped.nonce.copyOfRange(0, NONCE_SIZE)
         val tag = wrapped.nonce.copyOfRange(NONCE_SIZE, wrapped.nonce.size)
         val candidate = xorStream(wrapped.ciphertext, outerKey, id, nonce)
-        if (!tagFor(outerKey, id, nonce, candidate).contentEquals(tag)) {
+        if (!tagFor(outerKey, id, nonce, candidate).contentEquals(tag))
             throw ArkSessionException.KeyWrap(KeyWrapException.UnwrapFailed())
-        }
+
         return candidate
     }
 

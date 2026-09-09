@@ -67,7 +67,7 @@ class Session(val binding: ArkSessionInterface) {
 
     /** Takes custody of an ARK recovered from the Keystore. The caller still owns [arkBytes]. */
     fun unlockWithArk(arkBytes: ByteArray): Result<Unit, SessionError> =
-        catching { binding.unlockWithArk(arkBytes) }.also { _isActive.value = binding.isActive() }
+        catching { binding.unlockWithArk(arkBytes) }.also { syncIsActive() }
 
     /** The caller owns the returned array and must wipe it once the Keystore has sealed it. */
     fun exportArk(): Result<ByteArray, SessionError> = catching { binding.exportArk() }
@@ -100,15 +100,15 @@ class Session(val binding: ArkSessionInterface) {
 
     fun endSession() {
         binding.end()
-        _isActive.value = binding.isActive()
+        syncIsActive()
     }
 
     /**
      * Runs off the main thread: everything in here reaches Argon2. Re-publishes [isActive] in a
-     * `finally` inside the dispatched block, not after it: `binding.createAccount` and
+     * `finally` inside the dispatched block rather than after it. `binding.createAccount` and
      * `binding.unlockWithPassword` are blocking JNI calls that run to completion regardless of
      * cancellation, so if the caller's coroutine is cancelled while this suspends, `withContext`
-     * throws on resumption instead of returning - a sync placed after the `withContext` call would
+     * throws on resumption instead of returning. A sync placed after the `withContext` call would
      * never run, leaving [isActive] stale while Rust already holds (or released) the ARK.
      */
     private suspend fun <R> derived(block: () -> R): Result<R, SessionError> =
@@ -116,9 +116,19 @@ class Session(val binding: ArkSessionInterface) {
             try {
                 catching(block)
             } finally {
-                _isActive.value = binding.isActive()
+                syncIsActive()
             }
         }
+
+    /**
+     * Republishes the lock state, swallowing anything [ArkSessionInterface.isActive] throws.
+     * It can throw on a destroyed handle, and this runs in a `finally`: an exception raised here
+     * would replace a perfectly good return value, or discard an in-flight exception on its way
+     * out. Losing one lock-state update is the smaller failure, and the next call republishes it.
+     */
+    private fun syncIsActive() {
+        _isActive.value = runCatching { binding.isActive() }.getOrDefault(_isActive.value)
+    }
 
     /** Only [ArkSessionException] is an expected failure; anything else is a bug and propagates. */
     private fun <R> catching(block: () -> R): Result<R, SessionError> = try {
