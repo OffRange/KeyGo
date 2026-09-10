@@ -102,6 +102,11 @@ impl ArkSession {
 
     /// Generate an account and its default vault, wrap both, and leave the session unlocked.
     /// The caller receives blobs to persist and no key material.
+    ///
+    /// Replaces any ARK already in the session. That is deliberate and safe: the
+    /// displaced [`AccountRootKey`] is `ZeroizeOnDrop`, so it is wiped on assignment.
+    /// The only risk is logical, a caller silently swapping the session's identity, and
+    /// both callers are gated by the flow they belong to.
     pub fn create_account(&self, password: &str) -> ArkSessionResult<NewAccount> {
         let user_id = UserId::new_v4();
         let vault_id = VaultId::new_v4();
@@ -138,9 +143,15 @@ impl ArkSession {
         self.unlock(kek, wrapped, user_id)
     }
 
-    /// Take custody of an ARK recovered outside Rust. The only inbound ARK door: the biometric
+    /// Take custody of an ARK recovered outside Rust. The only door that takes custody of one
+    /// from the JVM (`verify_ark` also accepts ARK bytes, but only to compare them): the biometric
     /// unlock and the backup escrow both hold their copy under an Android Keystore key, which
     /// only exists on the JVM side.
+    ///
+    /// Replaces any ARK already in the session. That is deliberate and safe: the
+    /// displaced [`AccountRootKey`] is `ZeroizeOnDrop`, so it is wiped on assignment.
+    /// The only risk is logical, a caller silently swapping the session's identity, and
+    /// both callers are gated by the flow they belong to.
     pub fn unlock_with_ark(&self, ark: &[u8]) -> ArkSessionResult<()> {
         let ark = AccountRootKey::try_from_bytes(ark)?;
         *self.lock() = Some(ark);
@@ -196,14 +207,27 @@ impl ArkSession {
         Ok(PasswordWrapped { salt, wrapped })
     }
 
-    /// Borrow the live ARK for the length of `f`. Lets callers inside Rust use the ARK without
-    /// it ever being copied out. `f` must not call back into this session: the lock it runs
-    /// under is not reentrant, so a callback that touches the session (for example, calling
-    /// `export_ark`) deadlocks.
+    /// Borrow the ARK for the length of `f`. Lets callers inside Rust use the ARK without it
+    /// ever being copied out of Rust.
+    ///
+    /// `f` runs on a private clone, taken while the lock is held and released before `f` starts.
+    /// Holding the lock across `f` would be simpler, but `f` is an arbitrary caller-supplied
+    /// closure: sealing a backup runs a full serialization and one AEAD pass over an entire vault
+    /// under it. Every other session operation takes the same lock, `end()` among them, and
+    /// `end()` is called from the lock observer on the Android main thread. A long `f` would
+    /// block auto-lock there for as long as it ran.
+    ///
+    /// The clone is an [`AccountRootKey`], so it is zeroized when it drops at the end of this
+    /// call, and it never leaves Rust. Cloning also makes `f` reentrant: it may call back into
+    /// this session, which under a held lock would have deadlocked.
     pub fn with_ark<R>(&self, f: impl FnOnce(&AccountRootKey) -> R) -> ArkSessionResult<R> {
-        let guard = self.lock();
-        let ark = guard.as_ref().ok_or(ArkSessionError::Locked)?;
-        Ok(f(ark))
+        let ark = {
+            let guard = self.lock();
+            let live = guard.as_ref().ok_or(ArkSessionError::Locked)?;
+            AccountRootKey::try_from_bytes(live.as_bytes())?
+        };
+
+        Ok(f(&ark))
     }
 }
 
@@ -444,6 +468,42 @@ mod tests {
                 146, 108, 157, 245, 225, 131, 93, 9, 236, 235, 207, 6, 219, 103,
             ][..]
         );
+    }
+
+    #[test]
+    fn with_ark_does_not_hold_the_lock_across_the_closure() {
+        let (session, _) = unlocked();
+
+        // Every one of these takes the same lock. Under a lock held across the closure they would
+        // all deadlock rather than fail, so this test hanging is itself the regression signal.
+        let reentered = session
+            .with_ark(|ark| {
+                let exported = session.export_ark().unwrap();
+                assert_eq!(exported, ark.as_bytes());
+                assert!(session.is_active());
+                session.verify_ark(ark.as_bytes())
+            })
+            .unwrap();
+
+        assert!(reentered);
+    }
+
+    #[test]
+    fn with_ark_sees_the_ark_that_was_live_when_it_started() {
+        let (session, _) = unlocked();
+        let original = session.export_ark().unwrap();
+
+        // Ending the session mid-closure is the case the clone exists for: `f` keeps working on
+        // the key it was handed instead of reading a slot that is now empty.
+        let observed = session
+            .with_ark(|ark| {
+                session.end();
+                ark.as_bytes().to_vec()
+            })
+            .unwrap();
+
+        assert_eq!(observed, original);
+        assert!(!session.is_active());
     }
 
     #[test]

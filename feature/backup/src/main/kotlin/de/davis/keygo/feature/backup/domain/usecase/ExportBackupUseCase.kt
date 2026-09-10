@@ -14,6 +14,7 @@ import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.backup.domain.BackupArkUnlocker
 import de.davis.keygo.feature.backup.domain.BackupCollector
 import de.davis.keygo.feature.backup.domain.BackupFileStore
+import de.davis.keygo.feature.backup.domain.mapper.toExportError
 import de.davis.keygo.feature.backup.domain.mapper.toRust
 import de.davis.keygo.feature.backup.domain.model.BACKUP_BASE_NAME
 import de.davis.keygo.feature.backup.domain.model.BackupEntry
@@ -121,7 +122,7 @@ internal class ExportBackupUseCase(
 
     context(binder: ResultBinding<ExportError>)
     private fun Result<String, BackupException>.bindToSerializationFailed(): String =
-        with(binder) { bind { ExportError.SerializationFailed(it) } }
+        with(binder) { bind { it.toExportError() } }
 
     private suspend fun decryptPassphrase(job: BackupJob): Result<ByteArray, ExportError> =
         resultBinding {

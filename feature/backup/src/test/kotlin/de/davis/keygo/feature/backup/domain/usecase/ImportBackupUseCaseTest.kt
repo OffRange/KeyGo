@@ -271,6 +271,25 @@ class ImportBackupUseCaseTest {
         assertIs<ImportProgress.Failed>(emissions.last())
     }
 
+    /**
+     * The guard at the `isActive` check cannot cover the call that follows it: auto-lock fires from
+     * the lock observer, so the session can end in between. When it does, Rust raises `Locked` and
+     * only the mapper can tell the user what actually happened rather than blaming the file.
+     */
+    @Test
+    fun `a lock raised by rust during parse reports SessionLocked, not a parse failure`() = runTest {
+        val session = Session(FakeArkSession(startUnlocked = true))
+        fileStore.contents = "{}"
+        json.inspectResult = JsonEncryption.ARK
+        json.importException = BackupException.Locked()
+
+        val emissions = ImportBackupUseCase(fileStore, json, csv, env.restorer, session)(
+            jsonRequest(passphrase = null),
+        ).toList()
+
+        assertEquals(ImportProgress.Failed(ImportError.SessionLocked), emissions.last())
+    }
+
     @Test
     fun `session locked between read and parse fails with SessionLocked instead of throwing`() =
         runTest {

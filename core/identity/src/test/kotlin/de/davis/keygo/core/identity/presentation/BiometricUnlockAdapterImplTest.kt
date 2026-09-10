@@ -13,10 +13,12 @@ import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
 import de.davis.keygo.rust.FakeArkSession
+import de.davis.keygo.rust.RecordingArkSession
 import kotlinx.coroutines.test.runTest
 import java.util.UUID
 import javax.crypto.spec.SecretKeySpec
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -29,6 +31,11 @@ class BiometricUnlockAdapterImplTest {
 
     private val adapter = BiometricUnlockAdapterImpl(
         session = session,
+        accountRepository = accountRepository,
+    )
+
+    private fun adapterOver(arkSession: RecordingArkSession) = BiometricUnlockAdapterImpl(
+        session = Session(arkSession),
         accountRepository = accountRepository,
     )
 
@@ -105,6 +112,42 @@ class BiometricUnlockAdapterImplTest {
 
         assertTrue(result.isSuccess())
         assertTrue(session.isActive.value)
+    }
+
+    /**
+     * Unlocking is the inbound half of the two Keystore doors: the biometric cipher runs JVM-side,
+     * so the ARK exists here as a plain array before Rust takes custody of it. [RecordingArkSession]
+     * keeps the array it was handed rather than copying, which is what makes the wipe observable.
+     *
+     * Note this covers only the copy this code owns. `SecretKeySpec.getEncoded` hands back a fresh
+     * copy each call, so JCA still holds one that no `fill(0)` here can reach.
+     */
+    @Test
+    fun `wipes the recovered ARK once the session has taken it`() = runTest {
+        val recording = RecordingArkSession()
+        seedAccountWithBiometric()
+        controller.unwrapResult = Result.Success(SecretKeySpec(ByteArray(32) { 1 }, "AES"))
+
+        val result = with(adapterOver(recording)) {
+            controller.requestUnlockVault(BiometricPolicy.Default)
+        }
+
+        assertTrue(result.isSuccess())
+        assertContentEquals(ByteArray(32), recording.handedOver)
+    }
+
+    @Test
+    fun `wipes the recovered ARK even when the session rejects it`() = runTest {
+        val recording = RecordingArkSession().apply { failUnlock = true }
+        seedAccountWithBiometric()
+        controller.unwrapResult = Result.Success(SecretKeySpec(ByteArray(32) { 1 }, "AES"))
+
+        val result = with(adapterOver(recording)) {
+            controller.requestUnlockVault(BiometricPolicy.Default)
+        }
+
+        assertTrue(result.isFailure())
+        assertContentEquals(ByteArray(32), recording.handedOver)
     }
 
     @Test

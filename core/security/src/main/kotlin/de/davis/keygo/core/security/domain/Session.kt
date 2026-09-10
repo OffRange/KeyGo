@@ -15,9 +15,16 @@ import kotlinx.coroutines.withContext
 import java.util.UUID
 
 /**
- * Custody of the ARK, held in Rust. The key material never enters the JVM heap except through
- * [exportArk] and [unlockWithArk], which exist because the Android Keystore ciphers that seal the
+ * Custody of the ARK, held in Rust. The key material enters the JVM heap only through [exportArk],
+ * [unlockWithArk] and [verifyArk], which exist because the Android Keystore ciphers that seal the
  * biometric copy and the backup escrow only run on this side of the boundary.
+ *
+ * Every caller of those three wipes its array in a `finally`, and each of those wipes has a test.
+ * That covers the copy the caller owns, which is all this code can reach. It is not a claim that no
+ * ARK bytes remain in the heap: the biometric paths obtain the key from `javax.crypto`, whose
+ * `SecretKey.getEncoded` hands back a fresh copy and keeps its own, and a moving GC may have copied
+ * any of them. Rust custody is what makes the ARK's *resident* lifetime bounded; the JVM-side wipes
+ * shorten the window at these three doors rather than closing it.
  *
  * [binding] is the generated UniFFI object. Passing it on is how backup hands the session across the
  * FFI; it grants no access this class does not already expose.

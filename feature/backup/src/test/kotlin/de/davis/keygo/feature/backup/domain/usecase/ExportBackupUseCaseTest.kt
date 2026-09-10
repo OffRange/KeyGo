@@ -25,6 +25,8 @@ import de.davis.keygo.feature.backup.domain.model.EncryptionMethod
 import de.davis.keygo.feature.backup.domain.model.ExportError
 import de.davis.keygo.feature.backup.domain.model.ExportProgress
 import de.davis.keygo.feature.backup.domain.model.FileFormat
+import de.davis.keygo.feature.backup.domain.model.failureReason
+import de.davis.keygo.feature.backup.domain.model.retryable
 import de.davis.keygo.feature.backup.testLogin
 import de.davis.keygo.feature.backup.testVault
 import de.davis.keygo.rust.FakeArkSession
@@ -37,8 +39,10 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ExportBackupUseCaseTest {
@@ -245,6 +249,51 @@ class ExportBackupUseCaseTest {
         useCase(unlocked())(csvJob).toList()
 
         assertEquals(ExportPreset.BROWSER, csv.exportCalls.single().preset)
+    }
+
+    /**
+     * The session can lock at any point after [BackupArkUnlocker] hands back the live session,
+     * because auto-lock fires from the lock observer and not from this flow. Folding that into
+     * [ExportError.SerializationFailed] would record the job as terminally failed and release the
+     * escrowed credentials its retry needs, so the distinction is what keeps the retry possible.
+     */
+    @Test
+    fun `a session locked mid-export is retryable rather than a serialization failure`() = runTest {
+        seedSingleLogin()
+        val session = unlocked()
+        json.exportException = BackupException.Locked()
+        val jsonJob = BackupJob(
+            uri = folder,
+            wrappedPassphrase = null,
+            format = FileFormat.JSON,
+            encryption = EncryptionMethod.Ark,
+        )
+
+        val emissions = useCase(session)(jsonJob).toList()
+
+        val failed = assertIs<ExportProgress.Failed>(emissions.last())
+        assertEquals(ExportError.SessionLocked, failed.error)
+        assertTrue(failed.error.retryable)
+        assertNull(failed.error.failureReason)
+    }
+
+    @Test
+    fun `a non-lock export exception is still a terminal serialization failure`() = runTest {
+        seedSingleLogin()
+        val session = unlocked()
+        json.exportException = BackupException.Crypto("boom")
+        val jsonJob = BackupJob(
+            uri = folder,
+            wrappedPassphrase = null,
+            format = FileFormat.JSON,
+            encryption = EncryptionMethod.Ark,
+        )
+
+        val emissions = useCase(session)(jsonJob).toList()
+
+        val failed = assertIs<ExportProgress.Failed>(emissions.last())
+        assertIs<ExportError.SerializationFailed>(failed.error)
+        assertFalse(failed.error.retryable)
     }
 
     @Test
