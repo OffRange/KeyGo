@@ -10,12 +10,12 @@ use keygo_core::backup::{
 };
 
 use self::csv::{ColumnMapping, CsvAnalysis, CsvImportResult, JsonEncryption};
-use crate::ark_session::ArkSession;
+use crate::ark_session::ArkCredential;
 
 #[derive(uniffi::Enum)]
 pub enum BackupCredential {
     Passphrase { bytes: Vec<u8> },
-    Session { session: Arc<ArkSession> },
+    Ark { credential: Arc<ArkCredential> },
 }
 
 impl BackupCredential {
@@ -27,8 +27,8 @@ impl BackupCredential {
     ) -> Result<R, BackupError> {
         match self {
             Self::Passphrase { bytes } => Ok(f(CoreCredential::Passphrase(bytes))?),
-            Self::Session { session } => session
-                .session
+            Self::Ark { credential } => credential
+                .session()
                 .with_ark(|ark| f(CoreCredential::Ark(ark)))
                 .map_err(BackupError::from)?
                 .map_err(BackupError::from),
@@ -141,5 +141,48 @@ impl CsvBackupManager {
 
     pub fn export(&self, backup: Backup, preset: ExportPreset) -> Result<String, BackupError> {
         Ok(core_csv::export(&backup, preset)?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use keygo_core::crypto::KeyMaterial;
+
+    use super::*;
+    use crate::ark_session::ArkSession;
+
+    #[test]
+    fn an_ark_credential_resolves_to_its_own_sessions_ark() {
+        let session = ArkSession::new();
+        session
+            .create_account("hunter2".to_string())
+            .expect("account creation");
+        let expected = session.export_ark().expect("live ark");
+
+        let credential = BackupCredential::Ark {
+            credential: Arc::clone(&session).ark_credential(),
+        };
+
+        let seen = credential
+            .with_core(|core| match core {
+                CoreCredential::Ark(ark) => Ok(ark.as_bytes().to_vec()),
+                CoreCredential::Passphrase(_) => panic!("expected the ark key source"),
+            })
+            .expect("credential resolves");
+
+        assert_eq!(expected, seen);
+    }
+
+    #[test]
+    fn an_ark_credential_from_a_locked_session_reports_locked() {
+        let session = ArkSession::new();
+
+        let credential = BackupCredential::Ark {
+            credential: session.ark_credential(),
+        };
+
+        let resolved = credential.with_core(|_| Ok(()));
+
+        assert!(matches!(resolved, Err(BackupError::Locked)));
     }
 }

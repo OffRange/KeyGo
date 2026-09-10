@@ -190,7 +190,7 @@ class ImportWizardViewModelTest {
 
         val succeeded = assertIs<ImportProgress.Succeeded>(finalState.progress)
         assertEquals(1, succeeded.summary.imported)
-        assertIs<BackupCredential.Session>(json.importCalls.single().credential)
+        assertIs<BackupCredential.Ark>(json.importCalls.single().credential)
     }
 
     @Test

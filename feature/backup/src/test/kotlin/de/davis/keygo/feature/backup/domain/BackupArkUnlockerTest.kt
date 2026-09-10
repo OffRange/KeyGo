@@ -8,9 +8,11 @@ import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.SessionFactory
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
+import de.davis.keygo.core.security.domain.exportArk
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
-import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.assertFailure
+import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
 import de.davis.keygo.feature.backup.domain.model.ExportError
@@ -21,7 +23,6 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertSame
@@ -64,32 +65,32 @@ class BackupArkUnlockerTest {
     @Test
     fun `unlocked session builds a scope on the live session`() = runTest {
         val session = unlocked()
-        val result = unlocker(session).withScope { }
-        assertIs<Result.Success<*, *>>(result)
+        unlocker(session).withScope { }.assertSuccess()
         assertEquals(session, factory.lastSession)
     }
 
     @Test
     fun `locked and unprovisioned fails with NotProvisioned`() = runTest {
-        val result = unlocker(locked()).withScope { }
-        assertEquals(Result.Failure(ExportError.NotProvisioned), result)
+        val result = unlocker(locked()).withScope { }.assertFailure()
+        assertEquals(ExportError.NotProvisioned, result)
     }
 
     @Test
     fun `locked but provisioned builds a scope on a throwaway session holding the ARK`() =
         runTest {
             val live = unlocked()
-            val ark = assertNotNull(live.exportArk().getOrNull())
-            provision(ark)
+            live.useArk { ark ->
+                provision(ark)
 
-            // The throwaway session ends once the block returns, so assert from inside it.
-            val result = unlocker(locked()).withScope {
-                val used = assertNotNull(factory.lastSession)
-                assertNotEquals(live, used)
-                assertContentEquals(ark, used.exportArk().getOrNull())
-            }
+                unlocker(locked()).withScope {
+                    val used = assertNotNull(factory.lastSession)
+                    assertNotEquals(live, used)
 
-            assertIs<Result.Success<*, *>>(result)
+                    used.useArk { lastArk ->
+                        assertContentEquals(ark, lastArk)
+                    }
+                }.assertSuccess()
+            }.assertSuccess()
         }
 
     @Test
@@ -97,17 +98,15 @@ class BackupArkUnlockerTest {
         provision(ByteArray(32) { it.toByte() })
         keyStore.deviceLocked = true
 
-        val result = unlocker(locked()).withScope { }
-        assertEquals(Result.Failure(ExportError.DeviceLocked), result)
+        val result = unlocker(locked()).withScope { }.assertFailure()
+        assertEquals(ExportError.DeviceLocked, result)
     }
 
     @Test
     fun `withSession hands over the live session itself`() = runTest {
         val session = unlocked()
 
-        val result = unlocker(session).withSession { assertSame(session, it) }
-
-        assertIs<Result.Success<*, *>>(result)
+        unlocker(session).withSession { assertSame(session, it) }.assertSuccess()
     }
 
     @Test
@@ -117,20 +116,18 @@ class BackupArkUnlockerTest {
             provision(ark)
             val throwaway = Session(FakeArkSession())
 
-            val result = unlocker(locked(), SessionFactory { throwaway }).withSession {
+            unlocker(locked(), SessionFactory { throwaway }).withSession {
                 assertSame(throwaway, it)
-                assertContentEquals(ark, it.exportArk().getOrNull())
-            }
-
-            assertIs<Result.Success<*, *>>(result)
+                it.useArk { sessionArk ->
+                    assertContentEquals(ark, sessionArk)
+                }.assertSuccess()
+            }.assertSuccess()
         }
 
     @Test
     fun `withSession fails with NotProvisioned when locked and no ark copy exists`() = runTest {
-        val result = unlocker(locked()).withSession { }
-
-        val failure = assertIs<Result.Failure<Unit, ExportError>>(result)
-        assertEquals(ExportError.NotProvisioned, failure.error)
+        val result = unlocker(locked()).withSession { }.assertFailure()
+        assertEquals(ExportError.NotProvisioned, result)
     }
 
     @Test
@@ -165,9 +162,10 @@ class BackupArkUnlockerTest {
         provision(ByteArray(32) { (it + 1).toByte() })
         val recorder = RecordingArkSession().apply { failUnlock = true }
 
-        val result = unlocker(locked(), SessionFactory { Session(recorder) }).withSession { }
+        unlocker(locked(), SessionFactory { Session(recorder) })
+            .withSession { }
+            .assertFailure()
 
-        assertIs<Result.Failure<Unit, ExportError>>(result)
         assertTrue(assertNotNull(recorder.handedOver).all { it == 0.toByte() })
     }
 
@@ -195,7 +193,7 @@ class BackupArkUnlockerTest {
         val session = unlocked()
         val before = assertNotNull(session.exportArk().getOrNull())
 
-        unlocker(session).withSession { }
+        unlocker(session).withSession { }.assertSuccess()
 
         assertTrue(session.isActive.value)
         assertContentEquals(before, session.exportArk().getOrNull())

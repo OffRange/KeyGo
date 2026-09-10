@@ -10,6 +10,7 @@ import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProviderFactory
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
+import de.davis.keygo.core.security.domain.exportArk
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.util.getOrNull
@@ -29,6 +30,7 @@ import de.davis.keygo.feature.backup.domain.model.failureReason
 import de.davis.keygo.feature.backup.domain.model.retryable
 import de.davis.keygo.feature.backup.testLogin
 import de.davis.keygo.feature.backup.testVault
+import de.davis.keygo.rust.FakeArkCredential
 import de.davis.keygo.rust.FakeArkSession
 import de.davis.keygo.rust.FakeCsvBackupManager
 import de.davis.keygo.rust.FakeJsonBackupManager
@@ -42,6 +44,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
+import kotlin.test.assertNotSame
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -209,7 +212,7 @@ class ExportBackupUseCaseTest {
         val emissions = useCase(session)(jsonJob).toList()
 
         assertIs<ExportProgress.Succeeded>(emissions.last())
-        assertIs<BackupCredential.Session>(json.exportCalls.single().credential)
+        assertIs<BackupCredential.Ark>(json.exportCalls.single().credential)
     }
 
     @Test
@@ -225,10 +228,15 @@ class ExportBackupUseCaseTest {
             encryption = EncryptionMethod.Ark,
         )
 
-        val emissions = useCase(Session(FakeArkSession()))(jsonJob).toList()
+        val locked = FakeArkSession()
+
+        val emissions = useCase(Session(locked))(jsonJob).toList()
 
         assertIs<ExportProgress.Succeeded>(emissions.last())
-        assertIs<BackupCredential.Session>(json.exportCalls.single().credential)
+        // The credential has to come from the throwaway session holding the recovered ARK. The
+        // locked app session is still locked and could not have sealed anything.
+        val credential = assertIs<BackupCredential.Ark>(json.exportCalls.single().credential)
+        assertNotSame(locked, assertIs<FakeArkCredential>(credential.credential).session)
     }
 
     @Test

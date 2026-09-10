@@ -1,5 +1,6 @@
 package de.davis.keygo.rust
 
+import de.davisalessandro.keygo.rust.ArkCredential
 import de.davisalessandro.keygo.rust.ArkSession
 import de.davisalessandro.keygo.rust.ArkSessionException
 import de.davisalessandro.keygo.rust.NewAccount
@@ -80,6 +81,10 @@ class RecordingArkSession(startUnlocked: Boolean = false) : ArkSession(NoHandle)
 
     override fun unwrapVaultKey(wrapped: WrappedKeyBlob, vaultId: UUID): ByteArray =
         delegate.unwrapVaultKey(wrapped, vaultId)
+
+    // Bound to this recorder rather than the delegate, so a test that asserts which session a
+    // credential came from sees the session it actually handed over.
+    override fun arkCredential(): ArkCredential = FakeArkCredential(this)
 
     override fun isActive(): Boolean = delegate.isActive()
 

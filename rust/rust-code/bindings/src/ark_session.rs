@@ -57,6 +57,18 @@ where
 }
 
 #[derive(uniffi::Object)]
+pub struct ArkCredential {
+    ark_session: Arc<ArkSession>,
+}
+
+impl ArkCredential {
+    /// The session this credential borrows its key from.
+    pub(crate) fn session(&self) -> &CoreArkSession {
+        &self.ark_session.session
+    }
+}
+
+#[derive(uniffi::Object)]
 pub struct ArkSession {
     pub(crate) session: CoreArkSession,
 }
@@ -161,5 +173,9 @@ impl ArkSession {
             .wrap_vault_key(vault_key, vault_id)
             .map_err(ArkSessionError::from)
             .map(|wrapped| blob(&wrapped))
+    }
+
+    pub fn ark_credential(self: Arc<Self>) -> Arc<ArkCredential> {
+        Arc::new(ArkCredential { ark_session: self })
     }
 }

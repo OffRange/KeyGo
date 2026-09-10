@@ -96,7 +96,7 @@ internal class ExportBackupUseCase(
                 FileFormat.JSON -> when (job.encryption) {
                     EncryptionMethod.Ark -> arkUnlocker.withSession { session ->
                         jsonBackupManager
-                            .exportWithResult(backup, BackupCredential.Session(session.binding))
+                            .exportWithResult(backup, BackupCredential.Ark(session.arkCredential()))
                             .bindToSerializationFailed()
                     }.bind()
 

@@ -32,12 +32,9 @@ internal class BiometricEnrollmentAdapterImpl(
         val cipher = requestCipher(KeyId.BiometricVaultKek, CryptographicMode.Wrap, policy)
             .bind { BiometricEnrollmentError.BiometricFailed(it) }
 
-        val ark = session.exportArk().bind { BiometricEnrollmentError.NoActiveSession }
-        val wrapped = try {
+        val wrapped = session.useArk { ark ->
             wrapArk(ark, cipher).asResult(BiometricEnrollmentError.WrappingFailed).bind()
-        } finally {
-            ark.fill(0)
-        }
+        }.bind { BiometricEnrollmentError.NoActiveSession }
 
         accountRepository.set(account.copy(biometricWrappedArk = wrapped)).bind {
             BiometricEnrollmentError.PersistenceFailed

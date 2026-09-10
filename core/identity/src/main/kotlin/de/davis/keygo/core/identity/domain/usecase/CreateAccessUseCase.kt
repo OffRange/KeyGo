@@ -71,12 +71,9 @@ class CreateAccessUseCase(
             }
 
         val biometricWrappedArk = biometricCipher?.let { cipher ->
-            val ark = session.exportArk().bind { CreateAccessError.WrappingFailed }
-            try {
+            session.useArk { ark ->
                 wrapArk(ark, cipher).asResult(CreateAccessError.WrappingFailed).bind()
-            } finally {
-                ark.fill(0)
-            }
+            }.bind { CreateAccessError.WrappingFailed }
         }
 
         // Persist the account before the vault: the vault is encrypted under the account's

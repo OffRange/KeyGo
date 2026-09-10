@@ -1,5 +1,6 @@
 package de.davis.keygo.rust
 
+import de.davisalessandro.keygo.rust.ArkCredential
 import de.davisalessandro.keygo.rust.ArkSession
 import de.davisalessandro.keygo.rust.ArkSessionException
 import de.davisalessandro.keygo.rust.ArkSessionInterface
@@ -15,7 +16,7 @@ import java.util.UUID
 /**
  * In-memory [ArkSessionInterface] for tests. Extends the generated [ArkSession] through its
  * `NoHandle` test constructor rather than implementing the interface directly: a caller can pass
- * this into anything that expects the concrete `ArkSession` (backup's `BackupCredential.Session`,
+ * this into anything that expects the concrete `ArkSession` (`Session`'s own constructor,
  * for one), and every generated member of that class is a plain `override fun`, so all of them are
  * free to be replaced here. `ArkSession(NoHandle)` allocates no Rust object and never touches the
  * native library, so this stays a normal JVM unit test fixture despite subclassing a UniFFI type.
@@ -109,6 +110,8 @@ class FakeArkSession(startUnlocked: Boolean = false) : ArkSession(NoHandle) {
 
     override fun unwrapVaultKey(wrapped: WrappedKeyBlob, vaultId: UUID): ByteArray =
         unwrap(requireActive(), wrapped, vaultId)
+
+    override fun arkCredential(): ArkCredential = FakeArkCredential(this)
 
     override fun isActive(): Boolean = ark != null
 

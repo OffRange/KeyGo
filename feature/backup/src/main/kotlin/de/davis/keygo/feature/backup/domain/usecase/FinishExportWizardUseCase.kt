@@ -110,8 +110,7 @@ class FinishExportWizardUseCase(
     }
 
     private suspend fun provisionBackupArk() = resultBinding {
-        val ark = session.exportArk().bind { FinishExportWizardError.CryptoFailed }
-        val escrowed = try {
+        val escrowed = session.useArk { ark ->
             val cipher = keyStoreManager.getOrCreateCipherFor(
                 keyId = KeyId.BackupArkKey,
                 cryptographicMode = CryptographicMode.Encrypt,
@@ -121,9 +120,7 @@ class FinishExportWizardUseCase(
                 .mapSuccess { CryptographicData(it, cipher.iv) }
                 .mapFailure { FinishExportWizardError.CryptoFailed }
                 .bind()
-        } finally {
-            ark.fill(0)
-        }
+        }.bind { FinishExportWizardError.CryptoFailed }
 
         arkKeyStore.save(escrowed)
     }

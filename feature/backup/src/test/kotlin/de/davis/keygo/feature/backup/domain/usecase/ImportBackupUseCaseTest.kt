@@ -230,7 +230,7 @@ class ImportBackupUseCaseTest {
         val emissions = useCase(session)(jsonRequest(passphrase = null)).toList()
 
         assertIs<ImportProgress.Succeeded>(emissions.last())
-        assertIs<BackupCredential.Session>(json.importCalls.single().credential)
+        assertIs<BackupCredential.Ark>(json.importCalls.single().credential)
     }
 
     @Test

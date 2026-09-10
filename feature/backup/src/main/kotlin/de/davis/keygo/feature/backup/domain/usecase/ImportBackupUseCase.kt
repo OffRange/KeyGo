@@ -87,7 +87,7 @@ internal class ImportBackupUseCase(
                     JsonEncryption.ARK -> {
                         if (!session.isActive.value)
                             Result.Failure<Nothing, ImportError>(ImportError.SessionLocked).bind()
-                        importJson(text, BackupCredential.Session(session.binding)).bind()
+                        importJson(text, BackupCredential.Ark(session.arkCredential())).bind()
                     }
                 }
 
