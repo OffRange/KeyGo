@@ -63,7 +63,7 @@ mod tests {
                 ..Argon2Params::default()
             },
         )
-            .unwrap();
+        .unwrap();
         assert_ne!(a.as_bytes(), b.as_bytes());
     }
 

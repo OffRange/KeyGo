@@ -103,7 +103,7 @@ mod tests {
             GOLDEN_V1,
             BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE),
         )
-            .unwrap();
+        .unwrap();
         // Assert on stable, semantic values so the test survives future additive
         // schema changes (new Option fields) without needing a fresh golden.
         let vault = &backup.vaults[0];
@@ -164,7 +164,7 @@ mod tests {
             GOLDEN_V1,
             BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE),
         )
-            .unwrap();
+        .unwrap();
         assert!(backup.vaults[0].icon.is_empty());
     }
 
@@ -176,7 +176,7 @@ mod tests {
             GOLDEN_V1,
             BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE),
         )
-            .unwrap();
+        .unwrap();
         assert!(backup.vaults[0].logins[0].passkeys.is_empty());
     }
 
@@ -189,7 +189,7 @@ mod tests {
             GOLDEN_V1,
             BackupCredential::Passphrase(GOLDEN_V1_PASSPHRASE),
         )
-            .unwrap();
+        .unwrap();
         assert!(backup.vaults[0].logins[0].websites.is_empty());
     }
 
