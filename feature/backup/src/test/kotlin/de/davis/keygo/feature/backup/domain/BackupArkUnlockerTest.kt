@@ -15,8 +15,7 @@ import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
 import de.davis.keygo.feature.backup.domain.model.ExportError
 import de.davis.keygo.rust.FakeArkSession
-import de.davisalessandro.keygo.rust.ArkSession
-import de.davisalessandro.keygo.rust.NoHandle
+import de.davis.keygo.rust.RecordingArkSession
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -156,6 +155,41 @@ class BackupArkUnlockerTest {
         assertFalse(throwaway.isActive.value)
     }
 
+    /**
+     * The recovered ARK is in hand before the throwaway session exists, so everything from that
+     * point on has to sit inside the wipe guard. This is the observable half: the recorder keeps
+     * the array it was handed, then fails, and the array still comes back zeroed.
+     */
+    @Test
+    fun `the recovered ark is zeroed when unlocking the throwaway session fails`() = runTest {
+        provision(ByteArray(32) { (it + 1).toByte() })
+        val recorder = RecordingArkSession().apply { failUnlock = true }
+
+        val result = unlocker(locked(), SessionFactory { Session(recorder) }).withSession { }
+
+        assertIs<Result.Failure<Unit, ExportError>>(result)
+        assertTrue(assertNotNull(recorder.handedOver).all { it == 0.toByte() })
+    }
+
+    /**
+     * The other half, which no assertion can watch directly because the array never leaves
+     * `withSession` on this path: a factory that throws must not escape without the wipe running.
+     * Creating the session inside the guard is what makes that true, so this pins the propagation
+     * and leaves the wipe itself to the test above.
+     */
+    @Test
+    fun `a throwing session factory propagates without leaving a session behind`() = runTest {
+        provision(ByteArray(32) { (it + 1).toByte() })
+        val live = locked()
+
+        val thrown = runCatching {
+            unlocker(live, SessionFactory { error("no session for you") }).withSession { }
+        }
+
+        assertTrue(thrown.isFailure)
+        assertFalse(live.isActive.value)
+    }
+
     @Test
     fun `a live session is left holding its own ark`() = runTest {
         // Ending the live session, or wiping its ARK, would be wiping the app's own session key.
@@ -166,29 +200,5 @@ class BackupArkUnlockerTest {
 
         assertTrue(session.isActive.value)
         assertContentEquals(before, session.exportArk().getOrNull())
-    }
-}
-
-/**
- * Keeps the array it is handed instead of copying it, so a test can watch the caller wipe it.
- * Extends the generated class through uniffi's `NoHandle` constructor the same way `FakeArkSession`
- * does: no Rust object is allocated and the native library is never touched.
- */
-private class RecordingArkSession : ArkSession(NoHandle) {
-
-    var handedOver: ByteArray? = null
-        private set
-
-    private var active = false
-
-    override fun unlockWithArk(ark: ByteArray) {
-        handedOver = ark
-        active = true
-    }
-
-    override fun isActive(): Boolean = active
-
-    override fun end() {
-        active = false
     }
 }

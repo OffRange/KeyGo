@@ -14,11 +14,14 @@ class FakeBiometricCryptoController : BiometricCryptoController {
 
     var unwrapResult: Result<Key, BiometricAuthError> = Result.Failure(BiometricAuthError.NoCipher)
 
+    var cipherResult: Result<Cipher, BiometricAuthError> =
+        Result.Failure(BiometricAuthError.NoCipher)
+
     override suspend fun requestCipher(
         keyId: KeyId,
         mode: CryptographicMode,
         policy: BiometricPolicy,
-    ): Result<Cipher, BiometricAuthError> = Result.Failure(BiometricAuthError.NoCipher)
+    ): Result<Cipher, BiometricAuthError> = cipherResult
 
     override suspend fun requestUnwrap(
         keyId: KeyId,

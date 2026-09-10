@@ -50,11 +50,11 @@ class ChangePasswordUseCase(
                 ),
                 userId = account.id,
             ).bind {
-                when (it) {
-                    is SessionError.Derivation -> ChangePasswordError.KeyDerivationFailed
-                    SessionError.Locked -> ChangePasswordError.ActiveAccountNotFound
-                    else -> ChangePasswordError.IncorrectPassword
-                }
+                // No Locked arm: verify_password derives a KEK and unwraps the stored blob without
+                // reading session state, so it cannot report a locked session. Reauthentication
+                // succeeding on a locked session is fine; the rewrap below is what needs the ARK.
+                if (it is SessionError.Derivation) ChangePasswordError.KeyDerivationFailed
+                else ChangePasswordError.IncorrectPassword
             }
 
             is Reauthentication.Biometric -> {
@@ -65,9 +65,15 @@ class ChangePasswordUseCase(
             }
         }
 
+        // The narrowing this refactor introduces: rewrapping reads the live ARK, so changing a
+        // password now needs an active session. The screen is only reachable while unlocked, so
+        // Locked here is a defensive path rather than one a user can walk into.
         val rewrapped = session.rewrapForNewPassword(newPassword, account.id).bind {
-            if (it is SessionError.Derivation) ChangePasswordError.KeyDerivationFailed
-            else ChangePasswordError.WrappingFailed
+            when (it) {
+                is SessionError.Derivation -> ChangePasswordError.KeyDerivationFailed
+                SessionError.Locked -> ChangePasswordError.ActiveAccountNotFound
+                else -> ChangePasswordError.WrappingFailed
+            }
         }
 
         accountRepository.set(

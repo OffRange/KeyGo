@@ -42,6 +42,22 @@ class CreateAccessUseCase(
         biometricCipher: Cipher? = null,
         vaultName: String = "Default Vault",
         accountDisplayName: String = "Default Account",
+    ): Result<Unit, CreateAccessError> {
+        val result = create(password, biometricCipher, vaultName, accountDisplayName)
+
+        // createAccount takes custody of the ARK before anything is written, so a failure anywhere
+        // after it leaves a key in memory with nothing persisted to unwrap. Hand it back rather
+        // than let it sit resident until the next lock; a retry mints a fresh account anyway.
+        if (result is Result.Failure) session.endSession()
+
+        return result
+    }
+
+    private suspend fun create(
+        password: String,
+        biometricCipher: Cipher?,
+        vaultName: String,
+        accountDisplayName: String,
     ): Result<Unit, CreateAccessError> = resultBinding {
         val created = session.createAccount(password)
             .bind {

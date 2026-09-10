@@ -42,13 +42,19 @@ internal class BackupArkUnlocker(
 
         return resultBinding {
             val ark = recoverArk().bind()
-            val recovered = sessionFactory.create()
             try {
-                recovered.unlockWithArk(ark).bind { ExportError.DeviceLocked }
-                block(recovered)
+                // Creating the session sits inside the wipe guard: it can throw, and the recovered
+                // ARK is already in hand by then. Ending it has its own guard, so a session is
+                // never left holding a key because the block below failed.
+                val recovered = sessionFactory.create()
+                try {
+                    recovered.unlockWithArk(ark).bind { ExportError.DeviceLocked }
+                    block(recovered)
+                } finally {
+                    recovered.endSession()
+                }
             } finally {
                 ark.fill(0)
-                recovered.endSession()
             }
         }
     }

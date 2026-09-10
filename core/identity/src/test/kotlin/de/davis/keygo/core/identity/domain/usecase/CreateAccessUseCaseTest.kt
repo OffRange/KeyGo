@@ -8,13 +8,16 @@ import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
 import de.davis.keygo.rust.FakeArkSession
+import de.davis.keygo.rust.RecordingArkSession
 import de.davisalessandro.keygo.rust.WrappedKeyBlob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -144,6 +147,65 @@ class CreateAccessUseCaseTest {
 
         assertEquals("Work", accountRepository.getOrNull()?.displayName)
     }
+
+    /**
+     * The ARK reaches the JVM here only so a Keystore cipher can wrap it, and the `finally` that
+     * zeroes it afterwards is the only thing keeping it from staying resident. [RecordingArkSession]
+     * hands out the array itself rather than a copy, so the wipe is observable.
+     */
+    @Test
+    fun `wipes the exported ARK after wrapping it for biometrics`() = runTest {
+        val recording = RecordingArkSession(startUnlocked = true)
+        val biometricKek = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
+        val biometricCipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
+            init(Cipher.WRAP_MODE, biometricKek)
+        }
+
+        useCaseOver(recording)("password", biometricCipher = biometricCipher)
+
+        assertContentEquals(ByteArray(32), recording.onlyExported())
+    }
+
+    @Test
+    fun `wipes the exported ARK even when wrapping fails`() = runTest {
+        val recording = RecordingArkSession(startUnlocked = true)
+        // A cipher in the wrong mode makes Cipher.wrap throw, so the wrap fails after the export.
+        val kek = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
+        val wrongMode = Cipher.getInstance("AES/GCM/NoPadding").apply {
+            init(Cipher.ENCRYPT_MODE, kek)
+        }
+
+        val result = useCaseOver(recording)("password", biometricCipher = wrongMode)
+
+        assertTrue(result.isFailure())
+        assertContentEquals(ByteArray(32), recording.onlyExported())
+    }
+
+    @Test
+    fun `ends the session when account persistence fails`() = runTest {
+        accountRepository.setFails = true
+
+        useCase("password")
+
+        // Nothing was persisted, so a retained ARK would be a key with nothing left to unwrap.
+        assertFalse(session.isActive.value)
+    }
+
+    @Test
+    fun `ends the session when vault persistence fails`() = runTest {
+        vaultRepository.createError = RuntimeException("disk full")
+
+        useCase("password")
+
+        assertFalse(session.isActive.value)
+    }
+
+    private fun useCaseOver(arkSession: RecordingArkSession) = CreateAccessUseCase(
+        accountRepository = accountRepository,
+        vaultRepository = vaultRepository,
+        vaultContextRepository = vaultContextRepository,
+        session = Session(arkSession),
+    )
 
     @Test
     fun `generates different salts for different invocations`() = runTest {

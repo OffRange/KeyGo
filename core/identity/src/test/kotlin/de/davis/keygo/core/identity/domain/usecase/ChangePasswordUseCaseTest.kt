@@ -188,14 +188,20 @@ class ChangePasswordUseCaseTest {
         assertEquals(ChangePasswordError.PersistenceFailed, result.error)
     }
 
+    /**
+     * The narrowing this refactor introduces. Reauthentication still succeeds on a locked session,
+     * because verify_password only unwraps the stored blob, but rewrapping needs the live ARK, so
+     * that is where the failure surfaces and what the reported error names.
+     */
     @Test
-    fun `change password fails when the session is locked`() = runTest {
+    fun `change password fails as ActiveAccountNotFound when the session is locked`() = runTest {
         seedAccount("old")
         session.endSession()
 
         val result = useCase(Reauthentication.Password("old"), "new")
 
         assertTrue(result.isFailure())
+        assertEquals(ChangePasswordError.ActiveAccountNotFound, result.error)
     }
 
     @Test

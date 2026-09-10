@@ -21,6 +21,7 @@ import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.domain.model.FinishExportWizardError
 import de.davis.keygo.feature.backup.domain.model.IntervalUnit
 import de.davis.keygo.rust.FakeArkSession
+import de.davis.keygo.rust.RecordingArkSession
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -139,6 +140,47 @@ class FinishExportWizardUseCaseTest {
             .doFinal(wrapped.data)
         assertContentEquals(session.exportArk().getOrNull(), recovered)
     }
+
+    /**
+     * Escrowing the ARK is the one place this use case pulls key bytes into the JVM, and the
+     * `finally` that zeroes them is all that keeps them from staying there. [RecordingArkSession]
+     * hands out the array itself rather than a copy, so the wipe is observable.
+     */
+    @Test
+    fun `wipes the exported ARK after escrowing it`() = runTest {
+        val recording = RecordingArkSession(startUnlocked = true)
+
+        useCaseOver(Session(recording))(
+            details(interval = BackupInterval(count = 3, unit = IntervalUnit.Days)),
+        )
+
+        assertContentEquals(ByteArray(32), recording.onlyExported())
+    }
+
+    @Test
+    fun `wipes the exported ARK even when escrowing fails`() = runTest {
+        val recording = RecordingArkSession(startUnlocked = true)
+        // A locked device fails the Keystore cipher, which is the step right after the export.
+        keyStoreManager.deviceLocked = true
+
+        runCatching {
+            useCaseOver(Session(recording))(
+                details(interval = BackupInterval(count = 3, unit = IntervalUnit.Days)),
+            )
+        }
+
+        assertContentEquals(ByteArray(32), recording.onlyExported())
+    }
+
+    private fun useCaseOver(session: Session) = FinishExportWizardUseCase(
+        backupScheduler = scheduler,
+        destinationResolver = destinationResolver,
+        keyStoreManager = keyStoreManager,
+        persistableUriManager = persistable,
+        session = session,
+        arkKeyStore = arkKeyStore,
+        provisioningLock = BackupProvisioningLock(),
+    )
 
     @Test
     fun `ark encryption schedules without a passphrase`() = runTest {
