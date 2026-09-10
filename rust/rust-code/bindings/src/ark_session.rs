@@ -4,7 +4,7 @@ use keygo_core::ark_session::{
 };
 use keygo_core::crypto::primitive::wrap_key::{AeadWrappedKey, WrappedKey};
 use keygo_core::crypto::types::{UserId, VaultId};
-use keygo_core::crypto::{RootKEK, VaultKey};
+use keygo_core::crypto::VaultKey;
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
@@ -68,18 +68,6 @@ impl ArkSession {
         Arc::new(Self {
             session: CoreArkSession::new(),
         })
-    }
-
-    pub fn unlock(
-        &self,
-        kek: RootKEK,
-        wrapped: WrappedKeyBlob,
-        user_id: UserId,
-    ) -> Result<(), ArkSessionError> {
-        let wrapped = AeadWrappedKey::from_parts_bytes(wrapped.ciphertext, &wrapped.nonce);
-        self.session
-            .unlock(kek, wrapped, user_id)
-            .map_err(ArkSessionError::from)
     }
 
     pub fn end(&self) {

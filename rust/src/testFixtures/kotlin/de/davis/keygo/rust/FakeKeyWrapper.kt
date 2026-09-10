@@ -1,11 +1,9 @@
 package de.davis.keygo.rust
 
-import de.davisalessandro.keygo.rust.AccountRootKey
 import de.davisalessandro.keygo.rust.ItemAad
 import de.davisalessandro.keygo.rust.ItemKey
 import de.davisalessandro.keygo.rust.KeyWrapException
 import de.davisalessandro.keygo.rust.KeyWrapperInterface
-import de.davisalessandro.keygo.rust.RootKek
 import de.davisalessandro.keygo.rust.VaultKey
 import de.davisalessandro.keygo.rust.WrappedKeyBlob
 import java.security.SecureRandom
@@ -28,30 +26,6 @@ class FakeKeyWrapper : KeyWrapperInterface {
     var failUnwrapItemForId: Pair<UUID, KeyWrapException>? = null
 
     private val wrapRecord = mutableMapOf<Triple<List<Byte>, List<Byte>, UUID>, ByteArray>()
-
-    override fun wrapAccountRootKey(
-        kek: RootKek,
-        ark: AccountRootKey,
-        userId: UUID,
-    ): WrappedKeyBlob = wrap(outerKey = kek, innerKey = ark, id = userId)
-
-    override fun unwrapAccountRootKey(
-        kek: RootKek,
-        wrapped: WrappedKeyBlob,
-        userId: UUID,
-    ): AccountRootKey = unwrap(outerKey = kek, wrapped = wrapped, id = userId)
-
-    override fun wrapVaultKey(
-        ark: AccountRootKey,
-        vaultKey: VaultKey,
-        vaultId: UUID,
-    ): WrappedKeyBlob = wrap(outerKey = ark, innerKey = vaultKey, id = vaultId)
-
-    override fun unwrapVaultKey(
-        ark: AccountRootKey,
-        wrapped: WrappedKeyBlob,
-        vaultId: UUID,
-    ): VaultKey = unwrap(outerKey = ark, wrapped = wrapped, id = vaultId)
 
     override fun wrapItemKey(
         vaultKey: VaultKey,

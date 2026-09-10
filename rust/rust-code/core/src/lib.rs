@@ -1,4 +1,3 @@
-pub mod account;
 pub mod ark_session;
 mod b64;
 pub mod backup;

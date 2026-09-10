@@ -116,15 +116,6 @@ class FakeArkSession(startUnlocked: Boolean = false) : ArkSession(NoHandle) {
         ark = null
     }
 
-    /**
-     * `Session` never calls this: it exists on [ArkSessionInterface] only because Task 6 has not
-     * yet deleted it. Left un-overridden, it would fall through to [ArkSession]'s real
-     * implementation, which sees the zero handle and raises uniffi's own `InternalException`
-     * before reaching JNI. Fail here instead, so a future caller reads why rather than guessing.
-     */
-    override fun unlock(kek: ByteArray, wrapped: WrappedKeyBlob, userId: UUID): Unit =
-        error("FakeArkSession.unlock is unused: Session never calls it, and Task 6 removes it")
-
     private fun requireActive(): ByteArray = ark ?: throw ArkSessionException.Locked()
 
     private fun kek(password: String, salt: ByteArray): ByteArray {
