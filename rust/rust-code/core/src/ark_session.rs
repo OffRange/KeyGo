@@ -57,7 +57,7 @@ impl ArkSession {
         }
     }
 
-    pub fn unlock(
+    fn unlock(
         &self,
         kek: RootKEK,
         wrapped_key: AeadWrappedKey<AccountRootKey, RootKEK>,

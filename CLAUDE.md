@@ -155,12 +155,15 @@ carries its own rules:
 - Do not use mocks as the default way to model dependencies when a fake or testFixture exists
 - Run broader tests for cross-module or security changes
 - **Rust fakes** — `:rust` uses UniFFI (not raw JNI) to generate Kotlin bindings. UniFFI emits
-  `KeyDeriverInterface`/`KeyWrapperInterface`/`AccountManagerInterface`/`ItemManagerInterface`/
-  `VaultManagerInterface`/`CardFormatterInterface`/`CsvBackupManagerInterface`/
-  `JsonBackupManagerInterface`/`RustPasskeyInterface`/`TotpServiceInterface` for test seams; fakes
-  live in `:rust` testFixtures (`de.davis.keygo.rust`).
-  Never instantiate the real UniFFI classes (`KeyDeriver()`, `KeyWrapper()`, etc.) in JVM unit
+  `KeyWrapperInterface`/`ItemManagerInterface`/`VaultManagerInterface`/`CardFormatterInterface`/
+  `CsvBackupManagerInterface`/`JsonBackupManagerInterface`/`RustPasskeyInterface`/
+  `TotpServiceInterface` for test seams; fakes live in `:rust` testFixtures
+  (`de.davis.keygo.rust`).
+  Never instantiate the real UniFFI classes (`KeyWrapper()`, etc.) in JVM unit
   tests — their default constructors require the native Rust library at runtime.
+  `ArkSession(NoHandle)` is uniffi's own test constructor: it sets the handle to 0 and allocates no
+  Rust object, which is how `FakeArkSession` and `RecordingArkSession` extend the generated class
+  without touching the native library.
 - **testFixtures + Compose plugin** — Any module with `kotlin.compose` that enables testFixtures
   must add `testFixturesImplementation(libs.androidx.compose.runtime)` to avoid "Compose Runtime
   not on classpath" compile errors. See `:core:item` for the canonical pattern.

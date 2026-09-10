@@ -2,9 +2,9 @@ use crate::key_wrap::{KeyWrapError, WrappedKeyBlob};
 use keygo_core::ark_session::{
     ArkSession as CoreArkSession, ArkSessionError as CoreArkSessionError,
 };
+use keygo_core::crypto::VaultKey;
 use keygo_core::crypto::primitive::wrap_key::{AeadWrappedKey, WrappedKey};
 use keygo_core::crypto::types::{UserId, VaultId};
-use keygo_core::crypto::VaultKey;
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]

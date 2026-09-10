@@ -1,7 +1,7 @@
 use keygo_core::crypto::KeyMaterial;
+use keygo_core::crypto::VaultKey;
 use keygo_core::crypto::error::CryptoError;
 use keygo_core::crypto::primitive::wrap_key::{KeyWrapper as KeyWrapperTrait, WrappedKey};
-use keygo_core::crypto::VaultKey;
 use keygo_core::crypto::{ItemAad, ItemKey};
 use std::sync::Arc;
 
