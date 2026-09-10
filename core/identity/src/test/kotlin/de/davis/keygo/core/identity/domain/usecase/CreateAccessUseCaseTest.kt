@@ -4,6 +4,8 @@ import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.model.CreateAccessError
 import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
+import de.davis.keygo.core.item.domain.alias.VaultId
+import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
@@ -17,6 +19,7 @@ import javax.crypto.KeyGenerator
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -178,6 +181,7 @@ class CreateAccessUseCaseTest {
         val result = useCaseOver(recording)("password", biometricCipher = wrongMode)
 
         assertTrue(result.isFailure())
+        assertEquals(CreateAccessError.WrappingFailed, result.error)
         assertContentEquals(ByteArray(32), recording.onlyExported())
     }
 
@@ -200,12 +204,21 @@ class CreateAccessUseCaseTest {
         assertFalse(session.isActive.value)
     }
 
-    private fun useCaseOver(arkSession: RecordingArkSession) = CreateAccessUseCase(
-        accountRepository = accountRepository,
-        vaultRepository = vaultRepository,
-        vaultContextRepository = vaultContextRepository,
-        session = Session(arkSession),
-    )
+    @Test
+    fun `ends the session when the last write throws`() = runTest {
+        val throwing = CreateAccessUseCase(
+            accountRepository = accountRepository,
+            vaultRepository = vaultRepository,
+            vaultContextRepository = ThrowingVaultContextRepository(),
+            session = session,
+        )
+
+        assertFailsWith<RuntimeException> { throwing("password") }
+
+        // The throw leaves `create` without a return value, so only a `finally` can hand back
+        // the ARK. A guard on the result would let this path keep the key resident.
+        assertFalse(session.isActive.value)
+    }
 
     @Test
     fun `generates different salts for different invocations`() = runTest {
@@ -217,4 +230,24 @@ class CreateAccessUseCaseTest {
 
         assertTrue(!salt1.contentEquals(salt2))
     }
+
+    private fun useCaseOver(arkSession: RecordingArkSession) = CreateAccessUseCase(
+        accountRepository = accountRepository,
+        vaultRepository = vaultRepository,
+        vaultContextRepository = vaultContextRepository,
+        session = Session(arkSession),
+    )
+}
+
+/**
+ * Throws on the last write the use case makes, which is the only step reached after both persists
+ * have succeeded. None of the fakes throw, so the exception path out of `create` needs its own
+ * stand-in to be observable at all.
+ */
+private class ThrowingVaultContextRepository(
+    private val delegate: FakeVaultContextRepository = FakeVaultContextRepository(),
+) : VaultContextRepository by delegate {
+
+    override suspend fun setContextAndLastInteracted(vaultId: VaultId): Unit =
+        throw RuntimeException("datastore gone")
 }

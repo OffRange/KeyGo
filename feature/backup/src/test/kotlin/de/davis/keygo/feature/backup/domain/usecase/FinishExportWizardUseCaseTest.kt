@@ -40,7 +40,10 @@ class FinishExportWizardUseCaseTest {
     private val arkKeyStore = FakeBackupArkKeyStore()
     private val destinationResolver = FakeBackupDestinationResolver()
 
-    private fun useCase() = FinishExportWizardUseCase(
+    private fun useCase() = useCaseOver(session)
+
+    /** The wipe tests need their own recording session in place of the shared one. */
+    private fun useCaseOver(session: Session) = FinishExportWizardUseCase(
         backupScheduler = scheduler,
         destinationResolver = destinationResolver,
         keyStoreManager = keyStoreManager,
@@ -163,24 +166,17 @@ class FinishExportWizardUseCaseTest {
         // A locked device fails the Keystore cipher, which is the step right after the export.
         keyStoreManager.deviceLocked = true
 
-        runCatching {
+        val outcome = runCatching {
             useCaseOver(Session(recording))(
                 details(interval = BackupInterval(count = 3, unit = IntervalUnit.Days)),
             )
         }
 
+        // Without this the test would pass on a use case that escrowed successfully, which is
+        // the one case where the wipe is not what kept the ARK from staying resident.
+        assertEquals("device locked", outcome.exceptionOrNull()?.message)
         assertContentEquals(ByteArray(32), recording.onlyExported())
     }
-
-    private fun useCaseOver(session: Session) = FinishExportWizardUseCase(
-        backupScheduler = scheduler,
-        destinationResolver = destinationResolver,
-        keyStoreManager = keyStoreManager,
-        persistableUriManager = persistable,
-        session = session,
-        arkKeyStore = arkKeyStore,
-        provisioningLock = BackupProvisioningLock(),
-    )
 
     @Test
     fun `ark encryption schedules without a passphrase`() = runTest {

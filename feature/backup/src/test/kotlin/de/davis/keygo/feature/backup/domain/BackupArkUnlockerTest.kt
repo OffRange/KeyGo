@@ -178,16 +178,15 @@ class BackupArkUnlockerTest {
      * and leaves the wipe itself to the test above.
      */
     @Test
-    fun `a throwing session factory propagates without leaving a session behind`() = runTest {
+    fun `a throwing session factory propagates rather than being swallowed`() = runTest {
         provision(ByteArray(32) { (it + 1).toByte() })
-        val live = locked()
 
         val thrown = runCatching {
-            unlocker(live, SessionFactory { error("no session for you") }).withSession { }
+            unlocker(locked(), SessionFactory { error("no session for you") }).withSession { }
         }
 
-        assertTrue(thrown.isFailure)
-        assertFalse(live.isActive.value)
+        // The factory's own throw, not one raised on the way out by the wipe or the end guard.
+        assertEquals("no session for you", thrown.exceptionOrNull()?.message)
     }
 
     @Test

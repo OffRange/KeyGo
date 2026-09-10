@@ -43,14 +43,19 @@ class CreateAccessUseCase(
         vaultName: String = "Default Vault",
         accountDisplayName: String = "Default Account",
     ): Result<Unit, CreateAccessError> {
-        val result = create(password, biometricCipher, vaultName, accountDisplayName)
-
         // createAccount takes custody of the ARK before anything is written, so a failure anywhere
         // after it leaves a key in memory with nothing persisted to unwrap. Hand it back rather
         // than let it sit resident until the next lock; a retry mints a fresh account anyway.
-        if (result is Result.Failure) session.endSession()
-
-        return result
+        // The guard is a `finally` rather than a check on the returned value because a repository
+        // that throws strands the ARK exactly as a Failure does, and reaches the caller the same way.
+        var handBack = true
+        try {
+            val result = create(password, biometricCipher, vaultName, accountDisplayName)
+            handBack = result is Result.Failure
+            return result
+        } finally {
+            if (handBack) session.endSession()
+        }
     }
 
     private suspend fun create(
