@@ -50,18 +50,24 @@ class ChangePasswordUseCase(
                 ),
                 userId = account.id,
             ).bind {
-                // No Locked arm: verify_password derives a KEK and unwraps the stored blob without
-                // reading session state, so it cannot report a locked session. Reauthentication
-                // succeeding on a locked session is fine; the rewrap below is what needs the ARK.
-                if (it is SessionError.Derivation) ChangePasswordError.KeyDerivationFailed
-                else ChangePasswordError.IncorrectPassword
+                // verify_password proves the password opens the ARK the session holds, not merely
+                // the stored blob. The rewrap below wraps that live ARK, so a blob holding any
+                // other key must not pass as a correct password.
+                when (it) {
+                    is SessionError.Derivation -> ChangePasswordError.KeyDerivationFailed
+                    SessionError.Locked -> ChangePasswordError.ActiveAccountNotFound
+                    else -> ChangePasswordError.IncorrectPassword
+                }
             }
 
             is Reauthentication.Biometric -> {
                 account.biometricWrappedArk
                     ?: return Result.Failure(ChangePasswordError.BiometricNotEnrolled)
-                if (!session.verifyArk(reauthentication.recoveredArk))
-                    return Result.Failure(ChangePasswordError.IncorrectPassword)
+                // Locked is the only failure: there is no live ARK to compare with. Reported like
+                // the password path's, not as a wrong credential, since none was wrong.
+                val matches = session.verifyArk(reauthentication.recoveredArk)
+                    .bind { ChangePasswordError.ActiveAccountNotFound }
+                if (!matches) return Result.Failure(ChangePasswordError.IncorrectPassword)
             }
         }
 

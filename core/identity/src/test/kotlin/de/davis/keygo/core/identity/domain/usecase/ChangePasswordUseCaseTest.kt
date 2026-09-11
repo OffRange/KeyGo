@@ -105,6 +105,24 @@ class ChangePasswordUseCaseTest {
         assertEquals(ChangePasswordError.IncorrectPassword, result.error)
     }
 
+    /**
+     * The stored blob opens under the right password, but around a different key than the session
+     * holds. Rewrapping would put the new password around the session's key, which the stored
+     * account never had, so the next password unlock would open nothing.
+     */
+    @Test
+    fun `returns IncorrectPassword when the stored ARK is not the one the session holds`() =
+        runTest {
+            seedAccount("old")
+            session.unlockWithArk(ByteArray(32) { (it + 7).toByte() })
+
+            val result = useCase(Reauthentication.Password("old"), "new")
+
+            assertTrue(result.isFailure())
+            assertEquals(ChangePasswordError.IncorrectPassword, result.error)
+            assertTrue(unlocksWith("old"))
+        }
+
     @Test
     fun `password path re-wraps ARK so new password unwraps and old fails`() = runTest {
         seedAccount("old")
@@ -158,6 +176,19 @@ class ChangePasswordUseCaseTest {
     }
 
     @Test
+    fun `biometric path on a locked session fails as ActiveAccountNotFound, not IncorrectPassword`() =
+        runTest {
+            seedAccount("old", withBiometric = true)
+            val recovered = liveArk()
+            session.endSession()
+
+            val result = useCase(Reauthentication.Biometric(recovered), "new")
+
+            assertTrue(result.isFailure())
+            assertEquals(ChangePasswordError.ActiveAccountNotFound, result.error)
+        }
+
+    @Test
     fun `returns BiometricNotEnrolled when biometric proof given but none enrolled`() = runTest {
         seedAccount("old", withBiometric = false)
 
@@ -190,9 +221,9 @@ class ChangePasswordUseCaseTest {
     }
 
     /**
-     * The narrowing this refactor introduces. Reauthentication still succeeds on a locked session,
-     * because verify_password only unwraps the stored blob, but rewrapping needs the live ARK, so
-     * that is where the failure surfaces and what the reported error names.
+     * Changing a password needs the live ARK, and proving the current password compares against
+     * it, so a locked session fails at reauthentication. It is reported as the missing session it
+     * is, not as a wrong password.
      */
     @Test
     fun `change password fails as ActiveAccountNotFound when the session is locked`() = runTest {
