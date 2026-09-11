@@ -5,6 +5,7 @@ import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.security.FakeSession
+import de.davis.keygo.core.security.domain.SessionError
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.model.CryptoScopeError
@@ -13,9 +14,11 @@ import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.rust.FakeItemManager
 import de.davis.keygo.rust.FakeKeyWrapper
 import de.davisalessandro.keygo.rust.ItemAad
+import de.davisalessandro.keygo.rust.KeyWrapException
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertIs
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class CryptographicScopeProviderImplTest {
@@ -73,4 +76,27 @@ class CryptographicScopeProviderImplTest {
             val failure = assertIs<Result.Failure<*, *>>(result)
             assertIs<CryptoScopeError.NoActiveSession>(failure.error)
         }
+
+    /**
+     * Rust's own error has to survive the trip through the session. Replacing it with a generic
+     * unwrap failure would make a truncated blob look the same as a wrong key.
+     */
+    @Test
+    fun `itemScope keeps the key-wrap cause the session reported`() = runTest {
+        val vaultId = newVaultId()
+        val itemId = newItemId()
+        val cause = KeyWrapException.InvalidKeyLength(expected = 32uL, got = 7uL)
+
+        session.unlockWithArk(ByteArray(32) { it.toByte() })
+        session.unwrapVaultKeyFailure = SessionError.KeyWrap(cause)
+
+        val result = provider.itemScope(
+            wrappedVaultKeyInformation = wrappedVaultKeyInformation(vaultId),
+            wrappedItemKeyInformation = wrappedItemKeyInformation(itemId, vaultId),
+        ) { }
+
+        val failure = assertIs<Result.Failure<*, *>>(result)
+        val error = assertIs<CryptoScopeError.KeyWrapError>(failure.error)
+        assertSame(cause, error.exception)
+    }
 }

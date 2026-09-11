@@ -5,6 +5,7 @@ import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.SessionError
 import de.davis.keygo.core.util.Result
 import de.davisalessandro.keygo.rust.ArkCredential
+import de.davisalessandro.keygo.rust.KeyWrapException
 import de.davisalessandro.keygo.rust.NewAccount
 import de.davisalessandro.keygo.rust.NoHandle
 import de.davisalessandro.keygo.rust.PasswordWrapped
@@ -20,6 +21,8 @@ class FakeSession(startUnlocked: Boolean = false) : Session {
 
     var failDerivation: Boolean = false
     var failUnlock: Boolean = false
+
+    var unwrapVaultKeyFailure: SessionError? = null
 
     var handedOver: ByteArray? = null
         private set
@@ -68,7 +71,7 @@ class FakeSession(startUnlocked: Boolean = false) : Session {
         if (failDerivation) return Result.Failure(SessionError.Derivation("forced"))
 
         val recovered = unwrap(kek(password, salt), wrapped, userId)
-            ?: return Result.Failure(SessionError.KeyWrap("unwrap failed"))
+            ?: return Result.Failure(SessionError.KeyWrap(KeyWrapException.UnwrapFailed()))
 
         ark = recovered
         _isActive.value = true
@@ -78,7 +81,10 @@ class FakeSession(startUnlocked: Boolean = false) : Session {
     override suspend fun unlockWithArk(arkBytes: ByteArray): Result<Unit, SessionError> {
         handedOver = arkBytes
         if (failUnlock) return Result.Failure(SessionError.Locked)
-        if (arkBytes.size != 32) return Result.Failure(SessionError.KeyWrap("invalid key length"))
+        if (arkBytes.size != 32) {
+            val cause = KeyWrapException.InvalidKeyLength(32uL, arkBytes.size.toULong())
+            return Result.Failure(SessionError.KeyWrap(cause))
+        }
 
         ark = arkBytes.copyOf()
         _isActive.value = true
@@ -99,30 +105,33 @@ class FakeSession(startUnlocked: Boolean = false) : Session {
         wrapped: WrappedKeyBlob,
         userId: UUID,
     ): Result<Unit, SessionError> {
+        val active = ark ?: return Result.Failure(SessionError.Locked)
         if (failDerivation) return Result.Failure(SessionError.Derivation("forced"))
 
-        return if (unwrap(kek(password, salt), wrapped, userId) != null) {
-            Result.Success(Unit)
-        } else {
-            Result.Failure(SessionError.WrongPassword)
-        }
+        // Like Rust: the blob has to open to the ARK this session holds, not merely open.
+        val stored = unwrap(kek(password, salt), wrapped, userId)
+        return if (stored?.contentEquals(active) == true) Result.Success(Unit)
+        else Result.Failure(SessionError.WrongPassword)
     }
 
-    override fun verifyArk(arkBytes: ByteArray): Boolean = ark?.contentEquals(arkBytes) == true
+    override fun verifyArk(arkBytes: ByteArray): Result<Boolean, SessionError> {
+        val active = ark ?: return Result.Failure(SessionError.Locked)
+        return Result.Success(active.contentEquals(arkBytes))
+    }
 
     override suspend fun rewrapForNewPassword(
         newPassword: String,
         userId: UUID,
     ): Result<PasswordWrapped, SessionError> {
-        if (failDerivation) return Result.Failure(SessionError.Derivation("forced"))
         val active = ark ?: return Result.Failure(SessionError.Locked)
+        if (failDerivation) return Result.Failure(SessionError.Derivation("forced"))
 
         val salt = randomBytes(16)
         return Result.Success(
             PasswordWrapped(
                 salt = salt,
-                wrapped = wrap(kek(newPassword, salt), active, userId)
-            )
+                wrapped = wrap(kek(newPassword, salt), active, userId),
+            ),
         )
     }
 
@@ -138,9 +147,10 @@ class FakeSession(startUnlocked: Boolean = false) : Session {
         wrapped: WrappedKeyBlob,
         vaultId: UUID,
     ): Result<ByteArray, SessionError> {
+        unwrapVaultKeyFailure?.let { return Result.Failure(it) }
         val active = ark ?: return Result.Failure(SessionError.Locked)
         val recovered = unwrap(active, wrapped, vaultId)
-            ?: return Result.Failure(SessionError.KeyWrap("unwrap failed"))
+            ?: return Result.Failure(SessionError.KeyWrap(KeyWrapException.UnwrapFailed()))
         return Result.Success(recovered)
     }
 
@@ -158,7 +168,7 @@ class FakeSession(startUnlocked: Boolean = false) : Session {
         val ciphertext = xorStream(innerKey, outerKey, id, nonce)
         return WrappedKeyBlob(
             ciphertext = ciphertext,
-            nonce = nonce + tagFor(outerKey, id, nonce, innerKey)
+            nonce = nonce + tagFor(outerKey, id, nonce, innerKey),
         )
     }
 
@@ -178,7 +188,7 @@ class FakeSession(startUnlocked: Boolean = false) : Session {
         outerKey: ByteArray,
         id: UUID,
         nonce: ByteArray,
-        innerKey: ByteArray
+        innerKey: ByteArray,
     ): ByteArray =
         MessageDigest.getInstance("SHA-256")
             .digest(outerKey + id.toString().toByteArray() + nonce + innerKey)
@@ -188,7 +198,7 @@ class FakeSession(startUnlocked: Boolean = false) : Session {
         data: ByteArray,
         outerKey: ByteArray,
         id: UUID,
-        nonce: ByteArray
+        nonce: ByteArray,
     ): ByteArray {
         val idBytes = id.toString().toByteArray()
         return ByteArray(data.size) { i ->

@@ -22,12 +22,13 @@ import java.util.UUID
 
 @Single
 internal class SessionImpl(
-    private val binding: ArkSessionInterface
+    private val binding: ArkSessionInterface,
 ) : Session {
 
     private val _isActive = MutableStateFlow(binding.isActive())
     override val isActive: StateFlow<Boolean> = _isActive.asStateFlow()
 
+    private val syncLock = Any()
 
     override suspend fun createAccount(password: String): Result<NewAccount, SessionError> =
         derived { binding.createAccount(password) }
@@ -36,7 +37,7 @@ internal class SessionImpl(
         password: String,
         salt: ByteArray,
         wrapped: WrappedKeyBlob,
-        userId: UUID
+        userId: UUID,
     ): Result<Unit, SessionError> =
         derived { binding.unlockWithPassword(password, salt, wrapped, userId) }
 
@@ -52,28 +53,29 @@ internal class SessionImpl(
         password: String,
         salt: ByteArray,
         wrapped: WrappedKeyBlob,
-        userId: UUID
+        userId: UUID,
     ): Result<Unit, SessionError> =
         derived { binding.verifyPassword(password, salt, wrapped, userId) }
 
-    override fun verifyArk(arkBytes: ByteArray): Boolean = binding.verifyArk(arkBytes)
+    override fun verifyArk(arkBytes: ByteArray): Result<Boolean, SessionError> =
+        catching { binding.verifyArk(arkBytes) }
 
     override suspend fun rewrapForNewPassword(
         newPassword: String,
-        userId: UUID
+        userId: UUID,
     ): Result<PasswordWrapped, SessionError> =
         derived { binding.rewrapForNewPassword(newPassword, userId) }
 
     override suspend fun wrapVaultKey(
         vaultKey: ByteArray,
-        vaultId: UUID
+        vaultId: UUID,
     ): Result<WrappedKeyBlob, SessionError> = withContext(Dispatchers.Default) {
         catching { binding.wrapVaultKey(vaultKey, vaultId) }
     }
 
     override suspend fun unwrapVaultKey(
         wrapped: WrappedKeyBlob,
-        vaultId: UUID
+        vaultId: UUID,
     ): Result<ByteArray, SessionError> = withContext(Dispatchers.Default) {
         catching { binding.unwrapVaultKey(wrapped, vaultId) }
     }
@@ -93,7 +95,9 @@ internal class SessionImpl(
         }
 
     private fun syncIsActive() {
-        _isActive.update { runCatching { binding.isActive() }.getOrDefault(_isActive.value) }
+        synchronized(syncLock) {
+            _isActive.update { isActive -> runCatching { binding.isActive() }.getOrDefault(isActive) }
+        }
     }
 
     inline fun <R> catching(block: () -> R): Result<R, SessionError> = try {

@@ -5,7 +5,6 @@ import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.resultBinding
 import de.davisalessandro.keygo.rust.ArkCredential
 import de.davisalessandro.keygo.rust.ArkSessionException
-import de.davisalessandro.keygo.rust.KeyWrapException
 import de.davisalessandro.keygo.rust.NewAccount
 import de.davisalessandro.keygo.rust.PasswordWrapped
 import de.davisalessandro.keygo.rust.WrappedKeyBlob
@@ -43,7 +42,7 @@ interface Session {
         userId: UUID,
     ): Result<Unit, SessionError>
 
-    fun verifyArk(arkBytes: ByteArray): Boolean
+    fun verifyArk(arkBytes: ByteArray): Result<Boolean, SessionError>
 
     suspend fun rewrapForNewPassword(
         newPassword: String,
@@ -88,13 +87,5 @@ internal fun ArkSessionException.toSessionError(): SessionError = when (this) {
     is ArkSessionException.Locked -> SessionError.Locked
     is ArkSessionException.WrongPassword -> SessionError.WrongPassword
     is ArkSessionException.Derivation -> SessionError.Derivation(v1)
-    is ArkSessionException.KeyWrap -> SessionError.KeyWrap(v1.describe())
-}
-
-private fun KeyWrapException.describe(): String = when (this) {
-    is KeyWrapException.WrapFailed -> "wrap failed"
-    is KeyWrapException.UnwrapFailed -> "unwrap failed"
-    is KeyWrapException.InvalidKey -> "invalid key"
-    is KeyWrapException.InvalidKeyLength -> "invalid key length: expected $expected, got $got"
-    is KeyWrapException.Other -> v1
+    is ArkSessionException.KeyWrap -> SessionError.KeyWrap(v1)
 }
