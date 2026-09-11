@@ -170,7 +170,7 @@ mod tests {
             })
             .expect("credential resolves");
 
-        assert_eq!(expected, seen);
+        assert_eq!(&*expected, seen.as_slice());
     }
 
     #[test]

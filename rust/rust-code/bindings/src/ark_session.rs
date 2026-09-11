@@ -119,7 +119,7 @@ impl ArkSession {
     }
 
     pub fn export_ark(&self) -> Result<Vec<u8>, ArkSessionError> {
-        Ok(self.session.export_ark()?)
+        Ok(self.session.export_ark()?.to_vec())
     }
 
     pub fn verify_password(
@@ -135,8 +135,8 @@ impl ArkSession {
             .verify_password(&password, &salt, wrapped, user_id)?)
     }
 
-    pub fn verify_ark(&self, ark: Vec<u8>) -> bool {
-        self.session.verify_ark(&ark)
+    pub fn verify_ark(&self, ark: Vec<u8>) -> Result<bool, ArkSessionError> {
+        Ok(self.session.verify_ark(&ark)?)
     }
 
     pub fn rewrap_for_new_password(

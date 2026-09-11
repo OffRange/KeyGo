@@ -6,6 +6,7 @@ use crate::crypto::types::{UserId, VaultId};
 use crate::crypto::{AccountRootKey, KeyMaterial, RootKEK, TryDeriveFrom, VaultKey};
 use std::sync::Mutex;
 use subtle::ConstantTimeEq;
+use zeroize::Zeroizing;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ArkSessionError {
@@ -158,16 +159,10 @@ impl ArkSession {
         Ok(())
     }
 
-    /// Hand the ARK out for sealing under an Android Keystore key. The only outbound ARK door.
-    /// The session keeps its own copy, so the caller owns the returned bytes and must wipe them.
-    pub fn export_ark(&self) -> ArkSessionResult<Vec<u8>> {
-        self.with_ark(|ark| ark.as_bytes().to_vec())
+    pub fn export_ark(&self) -> ArkSessionResult<Zeroizing<Vec<u8>>> {
+        self.with_ark(|ark| Zeroizing::new(ark.as_bytes().to_vec()))
     }
 
-    /// Prove a password by unwrapping the stored blob and discarding the result. The session's
-    /// own ARK is untouched either way. Deliberately collapses any unwrap failure to
-    /// `WrongPassword`, unlike `unlock_with_password`, because a verification has only a
-    /// yes/no answer.
     pub fn verify_password(
         &self,
         password: &str,
@@ -176,22 +171,25 @@ impl ArkSession {
         user_id: UserId,
     ) -> ArkSessionResult<()> {
         let kek = derive_kek(password, salt)?;
-        kek.unwrap_key(&wrapped, &user_id)
+        let stored = kek
+            .unwrap_key(&wrapped, &user_id)
             .map_err(|_| ArkSessionError::WrongPassword)?;
-        Ok(())
-    }
 
-    /// Constant-time compare against the live ARK. Used to prove a biometric reauthentication,
-    /// where the Keystore hands back an ARK that has to be checked rather than trusted.
-    pub fn verify_ark(&self, candidate: &[u8]) -> bool {
         let guard = self.lock();
-        let Some(ark) = guard.as_ref() else {
-            return false;
-        };
-        ark.as_bytes().ct_eq(candidate).into()
+        let live = guard.as_ref().ok_or(ArkSessionError::Locked)?;
+        if bool::from(live.as_bytes().ct_eq(stored.as_bytes())) {
+            Ok(())
+        } else {
+            Err(ArkSessionError::WrongPassword)
+        }
     }
 
-    /// Rewrap the live ARK under a KEK derived from a new password over a fresh salt.
+    pub fn verify_ark(&self, candidate: &[u8]) -> ArkSessionResult<bool> {
+        let guard = self.lock();
+        let ark = guard.as_ref().ok_or(ArkSessionError::Locked)?;
+        Ok(ark.as_bytes().ct_eq(candidate).into())
+    }
+
     pub fn rewrap_for_new_password(
         &self,
         new_password: &str,
@@ -392,15 +390,58 @@ mod tests {
     }
 
     #[test]
+    fn verify_password_rejects_a_blob_that_holds_a_different_ark() {
+        let (session, _) = unlocked();
+        // Same password, another account: the blob opens, but around a key this session does not
+        // hold. Rewrapping after this would put the new password around the wrong ARK.
+        let (_, other) = unlocked();
+
+        assert!(matches!(
+            session.verify_password(
+                PASSWORD,
+                &other.salt,
+                other.password_wrapped_ark,
+                other.user_id,
+            ),
+            Err(ArkSessionError::WrongPassword)
+        ));
+    }
+
+    #[test]
+    fn verify_password_fails_when_locked() {
+        let (session, account) = unlocked();
+        session.end();
+
+        assert!(matches!(
+            session.verify_password(
+                PASSWORD,
+                &account.salt,
+                account.password_wrapped_ark,
+                account.user_id,
+            ),
+            Err(ArkSessionError::Locked)
+        ));
+    }
+
+    #[test]
     fn verify_ark_matches_only_the_live_ark() {
         let (session, _) = unlocked();
         let exported = session.export_ark().unwrap();
 
-        assert!(session.verify_ark(&exported));
-        assert!(!session.verify_ark(&[0u8; 32]));
+        assert!(session.verify_ark(&exported).unwrap());
+        assert!(!session.verify_ark(&[0u8; 32]).unwrap());
+    }
 
+    #[test]
+    fn verify_ark_reports_a_locked_session_rather_than_a_mismatch() {
+        let (session, _) = unlocked();
+        let exported = session.export_ark().unwrap();
         session.end();
-        assert!(!session.verify_ark(&exported));
+
+        assert!(matches!(
+            session.verify_ark(&exported),
+            Err(ArkSessionError::Locked)
+        ));
     }
 
     #[test]
@@ -479,9 +520,9 @@ mod tests {
         let reentered = session
             .with_ark(|ark| {
                 let exported = session.export_ark().unwrap();
-                assert_eq!(exported, ark.as_bytes());
+                assert_eq!(exported.as_slice(), ark.as_bytes());
                 assert!(session.is_active());
-                session.verify_ark(ark.as_bytes())
+                session.verify_ark(ark.as_bytes()).unwrap()
             })
             .unwrap();
 
@@ -502,7 +543,7 @@ mod tests {
             })
             .unwrap();
 
-        assert_eq!(observed, original);
+        assert_eq!(observed, *original);
         assert!(!session.is_active());
     }
 
