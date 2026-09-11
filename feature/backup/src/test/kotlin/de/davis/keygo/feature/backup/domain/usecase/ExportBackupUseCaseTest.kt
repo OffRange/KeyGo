@@ -9,6 +9,7 @@ import de.davis.keygo.core.item.FakePasskeyRepository
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.security.FakeArkCredential
 import de.davis.keygo.core.security.FakeSession
+import de.davis.keygo.core.security.FakeSessionFactory
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProviderFactory
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
@@ -60,6 +61,7 @@ class ExportBackupUseCaseTest {
     private val keyStore = FakeKeyStoreManager()
     private val arkStore = FakeBackupArkKeyStore()
     private val factory = FakeCryptographicScopeProviderFactory(scope)
+    private val sessionFactory = FakeSessionFactory()
     private val fileStore = FakeBackupFileStore()
     private val json = FakeJsonBackupManager()
     private val csv = FakeCsvBackupManager()
@@ -69,10 +71,9 @@ class ExportBackupUseCaseTest {
     private fun useCase(session: Session): ExportBackupUseCase {
         val arkUnlocker = BackupArkUnlocker(
             session = session,
+            sessionFactory = sessionFactory,
             keyStoreManager = keyStore,
             arkKeyStore = arkStore,
-            scopeProviderFactory = factory,
-            vaultRepository = vaultRepo,
         )
         return ExportBackupUseCase(
             collector = BackupCollector(
@@ -80,7 +81,7 @@ class ExportBackupUseCaseTest {
                 loginRepository = loginRepo,
                 creditCardRepository = cardRepo,
                 passkeyRepository = passkeyRepo,
-                arkUnlocker = arkUnlocker,
+                scopeProviderFactory = factory,
             ),
             fileStore = fileStore,
             jsonBackupManager = json,
@@ -118,7 +119,8 @@ class ExportBackupUseCaseTest {
     fun `locked and unprovisioned session fails with NotProvisioned`() = runTest {
         seedSingleLogin()
         val emissions = useCase(FakeSession())(csvJob).toList()
-        assertEquals(ExportProgress.Failed(ExportError.NotProvisioned), emissions.last())
+        // Fails before any item is counted or reported.
+        assertEquals(listOf(ExportProgress.Failed(ExportError.NotProvisioned)), emissions)
     }
 
     @Test
@@ -234,11 +236,13 @@ class ExportBackupUseCaseTest {
         val emissions = useCase(locked)(jsonJob).toList()
 
         assertIs<ExportProgress.Succeeded>(emissions.last())
-        // BackupArkUnlocker unlocks the same injected session with the recovered ARK rather than
-        // handing off to a separate one, so the credential comes from `locked` itself, now holding
-        // the recovered ARK, not from a distinct throwaway session.
+        // One throwaway session holds the recovered ARK for the whole run: it decrypts the items
+        // and seals the file. The app-wide session is never unlocked with the escrowed key.
+        val throwaway = sessionFactory.created.single()
+        assertSame(throwaway, factory.lastSession)
         val credential = assertIs<BackupCredential.Ark>(json.exportCalls.single().credential)
-        assertSame(locked, assertIs<FakeArkCredential>(credential.credential).session)
+        assertSame(throwaway, assertIs<FakeArkCredential>(credential.credential).session)
+        assertFalse(locked.isActive.value)
     }
 
     @Test
