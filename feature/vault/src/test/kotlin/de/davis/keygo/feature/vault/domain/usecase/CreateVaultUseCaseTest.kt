@@ -4,12 +4,11 @@ import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultContext
-import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
 import de.davis.keygo.feature.vault.domain.model.VaultCreationError
-import de.davis.keygo.rust.FakeArkSession
 import de.davis.keygo.rust.FakeVaultManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -20,7 +19,7 @@ import kotlin.test.assertTrue
 
 class CreateVaultUseCaseTest {
 
-    private val session = Session(FakeArkSession(startUnlocked = true))
+    private val session = FakeSession(startUnlocked = true)
 
     private val vaultRepository = FakeVaultRepository()
     private val vaultContextRepository = FakeVaultContextRepository()

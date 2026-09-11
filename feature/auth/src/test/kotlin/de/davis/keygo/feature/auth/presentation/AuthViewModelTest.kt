@@ -7,8 +7,8 @@ import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockWithPasswordUseCase
 import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
-import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.feature.auth.presentation.model.AuthState
 import de.davis.keygo.feature.auth.presentation.model.AuthUIEvent
@@ -21,7 +21,6 @@ import de.davis.keygo.legacy_migration.domain.usecase.RunPendingMigrationUseCase
 import de.davis.keygo.legacy_migration.hasMainPasswordUseCase
 import de.davis.keygo.legacy_migration.runPendingMigrationUseCase
 import de.davis.keygo.legacy_migration.validateMainPasswordUseCase
-import de.davis.keygo.rust.FakeArkSession
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -63,7 +62,7 @@ class AuthViewModelTest {
     private val accountRepository = FakeAccountRepository()
     private val vaultRepository = FakeVaultRepository()
     private val vaultContextRepository = FakeVaultContextRepository()
-    private val session = Session(FakeArkSession())
+    private val session = FakeSession()
     private val biometricAvailability = FakeBiometricAvailabilityRepository()
     private val mainPasswordRepository = FakeMainPasswordRepository()
 

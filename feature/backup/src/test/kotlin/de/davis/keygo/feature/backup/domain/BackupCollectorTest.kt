@@ -8,6 +8,7 @@ import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.passkeyRef
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProviderFactory
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
@@ -21,7 +22,9 @@ import de.davis.keygo.feature.backup.testCard
 import de.davis.keygo.feature.backup.testLogin
 import de.davis.keygo.feature.backup.testPasskey
 import de.davis.keygo.feature.backup.testVault
-import de.davis.keygo.rust.FakeArkSession
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import java.time.YearMonth
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.Test
@@ -29,9 +32,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.runTest
 
 class BackupCollectorTest {
 
@@ -44,7 +44,7 @@ class BackupCollectorTest {
     )
 
     private fun collector(
-        session: Session = Session(FakeArkSession(startUnlocked = true)),
+        session: Session = FakeSession(startUnlocked = true),
         unlockerVaultRepo: FakeVaultRepository = vaultRepo,
     ) = BackupCollector(
         vaultRepository = vaultRepo,
@@ -53,7 +53,6 @@ class BackupCollectorTest {
         passkeyRepository = passkeyRepo,
         arkUnlocker = BackupArkUnlocker(
             session = session,
-            sessionFactory = { Session(FakeArkSession()) },
             keyStoreManager = FakeKeyStoreManager(),
             arkKeyStore = FakeBackupArkKeyStore(),
             scopeProviderFactory = factory,
@@ -244,7 +243,7 @@ class BackupCollectorTest {
             loginRepo.seed(testLogin(vaultId = vault.id, name = "Email"))
 
             val seen = mutableListOf<Pair<Int, Int>>()
-            val result = collector(session = Session(FakeArkSession()))
+            val result = collector(session = FakeSession())
                 .collect { processed, total -> seen += processed to total }
 
             assertEquals(Result.Failure(ExportError.NotProvisioned), result)

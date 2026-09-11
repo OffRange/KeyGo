@@ -4,13 +4,12 @@ import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.identity.domain.model.BiometricEnrollmentError
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeBiometricCryptoController
-import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
-import de.davis.keygo.rust.RecordingArkSession
 import kotlinx.coroutines.test.runTest
 import java.util.UUID
 import javax.crypto.Cipher
@@ -26,12 +25,11 @@ import kotlin.test.assertTrue
  * Enrolment is one of only three places the ARK crosses into the JVM, because the Keystore cipher
  * that seals the biometric copy only runs on this side of the FFI. The `finally` that zeroes the
  * exported array is the sole thing keeping that copy from staying resident, so it is asserted
- * directly here through [RecordingArkSession], which hands out its array rather than a copy.
+ * directly here through [FakeSession], which hands out its array rather than a copy.
  */
 class BiometricEnrollmentAdapterImplTest {
 
-    private val arkSession = RecordingArkSession(startUnlocked = true)
-    private val session = Session(arkSession)
+    private val session = FakeSession(startUnlocked = true)
     private val accountRepository = FakeAccountRepository()
     private val controller = FakeBiometricCryptoController()
 
@@ -79,7 +77,7 @@ class BiometricEnrollmentAdapterImplTest {
 
         enroll()
 
-        assertContentEquals(ByteArray(32), arkSession.onlyExported())
+        assertContentEquals(ByteArray(32), session.onlyExported())
     }
 
     @Test
@@ -95,7 +93,7 @@ class BiometricEnrollmentAdapterImplTest {
 
         assertTrue(result.isFailure())
         assertEquals(BiometricEnrollmentError.WrappingFailed, result.error)
-        assertContentEquals(ByteArray(32), arkSession.onlyExported())
+        assertContentEquals(ByteArray(32), session.onlyExported())
     }
 
     @Test
@@ -119,7 +117,7 @@ class BiometricEnrollmentAdapterImplTest {
 
         assertTrue(result.isFailure())
         assertEquals(BiometricEnrollmentError.NoActiveAccount, result.error)
-        assertTrue(arkSession.exported.isEmpty())
+        assertTrue(session.exported.isEmpty())
     }
 
     @Test
@@ -134,7 +132,7 @@ class BiometricEnrollmentAdapterImplTest {
             BiometricEnrollmentError.BiometricFailed(BiometricAuthError.NoCipher),
             result.error,
         )
-        assertTrue(arkSession.exported.isEmpty())
+        assertTrue(session.exported.isEmpty())
     }
 
     @Test

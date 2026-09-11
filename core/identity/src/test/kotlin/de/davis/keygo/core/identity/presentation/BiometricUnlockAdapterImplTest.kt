@@ -5,15 +5,13 @@ import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.model.UnlockError
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeBiometricCryptoController
-import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
-import de.davis.keygo.rust.FakeArkSession
-import de.davis.keygo.rust.RecordingArkSession
 import kotlinx.coroutines.test.runTest
 import java.util.UUID
 import javax.crypto.spec.SecretKeySpec
@@ -25,7 +23,7 @@ import kotlin.test.assertTrue
 
 class BiometricUnlockAdapterImplTest {
 
-    private val session = Session(FakeArkSession())
+    private val session = FakeSession()
     private val accountRepository = FakeAccountRepository()
     private val controller = FakeBiometricCryptoController()
 
@@ -34,8 +32,8 @@ class BiometricUnlockAdapterImplTest {
         accountRepository = accountRepository,
     )
 
-    private fun adapterOver(arkSession: RecordingArkSession) = BiometricUnlockAdapterImpl(
-        session = Session(arkSession),
+    private fun adapterOver(session: FakeSession) = BiometricUnlockAdapterImpl(
+        session = session,
         accountRepository = accountRepository,
     )
 
@@ -116,15 +114,15 @@ class BiometricUnlockAdapterImplTest {
 
     /**
      * Unlocking is the inbound half of the two Keystore doors: the biometric cipher runs JVM-side,
-     * so the ARK exists here as a plain array before Rust takes custody of it. [RecordingArkSession]
-     * keeps the array it was handed rather than copying, which is what makes the wipe observable.
+     * so the ARK exists here as a plain array before Rust takes custody of it. [FakeSession] keeps
+     * the array it was handed rather than copying, which is what makes the wipe observable.
      *
      * Note this covers only the copy this code owns. `SecretKeySpec.getEncoded` hands back a fresh
      * copy each call, so JCA still holds one that no `fill(0)` here can reach.
      */
     @Test
     fun `wipes the recovered ARK once the session has taken it`() = runTest {
-        val recording = RecordingArkSession()
+        val recording = FakeSession()
         seedAccountWithBiometric()
         controller.unwrapResult = Result.Success(SecretKeySpec(ByteArray(32) { 1 }, "AES"))
 
@@ -138,7 +136,7 @@ class BiometricUnlockAdapterImplTest {
 
     @Test
     fun `wipes the recovered ARK even when the session rejects it`() = runTest {
-        val recording = RecordingArkSession().apply { failUnlock = true }
+        val recording = FakeSession().apply { failUnlock = true }
         seedAccountWithBiometric()
         controller.unwrapResult = Result.Success(SecretKeySpec(ByteArray(32) { 1 }, "AES"))
 

@@ -1,3 +1,5 @@
+@file:OptIn(ExportArk::class)
+
 package de.davis.keygo.core.identity.domain.usecase
 
 import de.davis.keygo.core.identity.FakeAccountRepository
@@ -6,12 +8,11 @@ import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.ChangePasswordError
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.model.Reauthentication
-import de.davis.keygo.core.security.domain.Session
-import de.davis.keygo.core.security.domain.exportArk
+import de.davis.keygo.core.security.FakeSession
+import de.davis.keygo.core.security.domain.ExportArk
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
-import de.davis.keygo.rust.FakeArkSession
 import de.davisalessandro.keygo.rust.NewAccount
 import de.davisalessandro.keygo.rust.WrappedKeyBlob
 import kotlinx.coroutines.test.runTest
@@ -23,8 +24,7 @@ import kotlin.test.assertTrue
 
 class ChangePasswordUseCaseTest {
 
-    private val arkSession = FakeArkSession()
-    private val session = Session(arkSession)
+    private val session = FakeSession()
     private val accountRepository = FakeAccountRepository()
 
     private val useCase = ChangePasswordUseCase(
@@ -74,7 +74,7 @@ class ChangePasswordUseCaseTest {
      */
     private suspend fun unlocksWith(password: String): Boolean {
         val stored = accountRepository.getOrNull()!!.passwordWrappedArk
-        val probe = Session(FakeArkSession())
+        val probe = FakeSession()
 
         val unlocked = probe.unlockWithPassword(
             password = password,
@@ -170,7 +170,7 @@ class ChangePasswordUseCaseTest {
     @Test
     fun `returns KeyDerivationFailed when derivation fails`() = runTest {
         seedAccount("old")
-        arkSession.failDerivation = true
+        session.failDerivation = true
 
         val result = useCase(Reauthentication.Password("old"), "new")
 

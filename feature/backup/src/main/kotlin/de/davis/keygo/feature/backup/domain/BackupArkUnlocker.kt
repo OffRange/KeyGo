@@ -3,7 +3,6 @@ package de.davis.keygo.feature.backup.domain
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.KeyStoreManager
 import de.davis.keygo.core.security.domain.Session
-import de.davis.keygo.core.security.domain.SessionFactory
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProviderFactory
 import de.davis.keygo.core.security.domain.crypto.suspendDoFinal
 import de.davis.keygo.core.security.domain.model.CryptographicMode
@@ -17,14 +16,13 @@ import de.davis.keygo.feature.backup.domain.repository.BackupArkKeyStore
 import org.koin.core.annotation.Single
 
 /**
- * Resolves the session a backup runs under. Prefers the live [Session]; when locked, silently
- * recovers the ARK copy via the non-auth [KeyId.BackupArkKey] and hands it to a throwaway session
- * from [SessionFactory]. The app-wide session is never touched.
+ * Resolves the session a backup runs under. Prefers the live [Session] when it is already
+ * unlocked; otherwise silently recovers the ARK copy via the non-auth [KeyId.BackupArkKey] and
+ * unlocks the same injected [Session] with it, ending it again once the block returns.
  */
 @Single
 internal class BackupArkUnlocker(
     private val session: Session,
-    private val sessionFactory: SessionFactory,
     private val keyStoreManager: KeyStoreManager,
     private val arkKeyStore: BackupArkKeyStore,
     private val scopeProviderFactory: CryptographicScopeProviderFactory,
@@ -46,12 +44,11 @@ internal class BackupArkUnlocker(
                 // Creating the session sits inside the wipe guard: it can throw, and the recovered
                 // ARK is already in hand by then. Ending it has its own guard, so a session is
                 // never left holding a key because the block below failed.
-                val recovered = sessionFactory.create()
                 try {
-                    recovered.unlockWithArk(ark).bind { ExportError.DeviceLocked }
-                    block(recovered)
+                    session.unlockWithArk(ark).bind { ExportError.DeviceLocked }
+                    block(session)
                 } finally {
-                    recovered.endSession()
+                    session.endSession()
                 }
             } finally {
                 ark.fill(0)

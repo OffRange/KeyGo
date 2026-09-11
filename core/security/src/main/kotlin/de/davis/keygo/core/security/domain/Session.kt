@@ -1,106 +1,87 @@
 package de.davis.keygo.core.security.domain
 
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.fold
+import de.davis.keygo.core.util.resultBinding
 import de.davisalessandro.keygo.rust.ArkCredential
-import de.davisalessandro.keygo.rust.ArkSession
 import de.davisalessandro.keygo.rust.ArkSessionException
 import de.davisalessandro.keygo.rust.KeyWrapException
 import de.davisalessandro.keygo.rust.NewAccount
 import de.davisalessandro.keygo.rust.PasswordWrapped
 import de.davisalessandro.keygo.rust.WrappedKeyBlob
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.withContext
 import java.util.UUID
 
-class Session(@PublishedApi internal val binding: ArkSession) {
+@RequiresOptIn("This API must be used with caution! Callers should wipe the returned ARK. Call `useArk` instead to ensure that the ARK is zeroed after use.")
+@Retention(AnnotationRetention.BINARY)
+annotation class ExportArk
 
-    private val _isActive = MutableStateFlow(binding.isActive())
+interface Session {
 
-    val isActive: StateFlow<Boolean> = _isActive.asStateFlow()
+    val isActive: StateFlow<Boolean>
 
-    suspend fun createAccount(password: String): Result<NewAccount, SessionError> =
-        derived { binding.createAccount(password) }
+    suspend fun createAccount(password: String): Result<NewAccount, SessionError>
 
     suspend fun unlockWithPassword(
         password: String,
         salt: ByteArray,
         wrapped: WrappedKeyBlob,
         userId: UUID,
-    ): Result<Unit, SessionError> =
-        derived { binding.unlockWithPassword(password, salt, wrapped, userId) }
+    ): Result<Unit, SessionError>
 
-    fun unlockWithArk(arkBytes: ByteArray): Result<Unit, SessionError> =
-        catching { binding.unlockWithArk(arkBytes) }.also { syncIsActive() }
+    suspend fun unlockWithArk(arkBytes: ByteArray): Result<Unit, SessionError>
 
-    inline fun <T> useArk(block: (ByteArray) -> T): Result<T, SessionError> = catching {
-        val ark = binding.exportArk()
-        try {
-            block(ark)
-        } finally {
-            ark.fill(0)
-        }
-    }
+    @ExportArk
+    fun exportArk(): Result<ByteArray, SessionError>
 
-    fun arkCredential(): ArkCredential = binding.arkCredential()
+    fun arkCredential(): ArkCredential
 
     suspend fun verifyPassword(
         password: String,
         salt: ByteArray,
         wrapped: WrappedKeyBlob,
         userId: UUID,
-    ): Result<Unit, SessionError> =
-        derived { binding.verifyPassword(password, salt, wrapped, userId) }
+    ): Result<Unit, SessionError>
 
-    fun verifyArk(arkBytes: ByteArray): Boolean = binding.verifyArk(arkBytes)
+    fun verifyArk(arkBytes: ByteArray): Boolean
 
     suspend fun rewrapForNewPassword(
         newPassword: String,
         userId: UUID,
-    ): Result<PasswordWrapped, SessionError> =
-        derived { binding.rewrapForNewPassword(newPassword, userId) }
+    ): Result<PasswordWrapped, SessionError>
 
     suspend fun wrapVaultKey(
         vaultKey: ByteArray,
         vaultId: UUID,
-    ): Result<WrappedKeyBlob, SessionError> = withContext(Dispatchers.Default) {
-        catching { binding.wrapVaultKey(vaultKey, vaultId) }
-    }
+    ): Result<WrappedKeyBlob, SessionError>
 
     suspend fun unwrapVaultKey(
         wrapped: WrappedKeyBlob,
         vaultId: UUID,
-    ): Result<ByteArray, SessionError> = withContext(Dispatchers.Default) {
-        catching { binding.unwrapVaultKey(wrapped, vaultId) }
-    }
+    ): Result<ByteArray, SessionError>
 
-    fun endSession() {
-        binding.end()
-        syncIsActive()
-    }
-
-    private suspend fun <R> derived(block: () -> R): Result<R, SessionError> =
-        withContext(Dispatchers.Default) {
-            try {
-                catching(block)
-            } finally {
-                syncIsActive()
-            }
-        }
-
-    private fun syncIsActive() {
-        _isActive.value = runCatching { binding.isActive() }.getOrDefault(_isActive.value)
-    }
-
-    @PublishedApi
-    internal inline fun <R> catching(block: () -> R): Result<R, SessionError> = try {
-        Result.Success(block())
-    } catch (e: ArkSessionException) {
-        Result.Failure(e.toSessionError())
-    }
+    fun endSession()
 }
+
+/**
+ * Deliberately plain control flow, no [resultBinding]: [block] is caller-supplied and often binds
+ * its own, unrelated error type. Using [resultBinding] here would let a caller's `.bind()` - even
+ * though it resolves correctly to their own outer scope - throw through this function's own catch
+ * on its way out, matching the wrong error type. [fold] can't make that mistake: there is no shared
+ * exception type to catch.
+ */
+@OptIn(ExportArk::class)
+inline fun <T> Session.useArk(block: (ByteArray) -> T): Result<T, SessionError> =
+    exportArk().fold(
+        onSuccess = { ark ->
+            try {
+                Result.Success(block(ark))
+            } finally {
+                ark.fill(0)
+            }
+        },
+        onFailure = { Result.Failure(it) },
+    )
 
 @PublishedApi
 internal fun ArkSessionException.toSessionError(): SessionError = when (this) {

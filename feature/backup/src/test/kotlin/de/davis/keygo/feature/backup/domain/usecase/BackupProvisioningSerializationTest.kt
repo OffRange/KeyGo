@@ -1,7 +1,7 @@
 package de.davis.keygo.feature.backup.domain.usecase
 
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
-import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
@@ -15,7 +15,6 @@ import de.davis.keygo.feature.backup.domain.model.BackupJob
 import de.davis.keygo.feature.backup.domain.model.EncryptionMethod
 import de.davis.keygo.feature.backup.domain.model.ExportDetails
 import de.davis.keygo.feature.backup.domain.model.FileFormat
-import de.davis.keygo.rust.FakeArkSession
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -40,7 +39,7 @@ class BackupProvisioningSerializationTest {
         FakeBackupArkKeyStore(CryptographicData(byteArrayOf(7), byteArrayOf(8)))
     private val keyStoreManager = FakeKeyStoreManager()
     private val uriManager = FakePersistableUriManager()
-    private val session = Session(FakeArkSession(startUnlocked = true))
+    private val session = FakeSession(startUnlocked = true)
     private val lock = BackupProvisioningLock()
     private val scheduler = FakeBackupScheduler(jobRepository)
 

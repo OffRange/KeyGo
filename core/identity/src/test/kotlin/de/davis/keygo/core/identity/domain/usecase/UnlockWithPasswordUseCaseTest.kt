@@ -4,11 +4,10 @@ import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.model.UnlockError
-import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
-import de.davis.keygo.rust.FakeArkSession
 import de.davisalessandro.keygo.rust.NewAccount
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -18,8 +17,7 @@ import kotlin.test.assertTrue
 
 class UnlockWithPasswordUseCaseTest {
 
-    private val arkSession = FakeArkSession()
-    private val session = Session(arkSession)
+    private val session = FakeSession()
     private val accountRepository = FakeAccountRepository()
 
     private val useCase = UnlockWithPasswordUseCase(
@@ -62,7 +60,7 @@ class UnlockWithPasswordUseCaseTest {
     @Test
     fun `returns DerivationFailed when key derivation fails`() = runTest {
         seedAccount("password")
-        arkSession.failDerivation = true
+        session.failDerivation = true
 
         val result = useCase("password")
 

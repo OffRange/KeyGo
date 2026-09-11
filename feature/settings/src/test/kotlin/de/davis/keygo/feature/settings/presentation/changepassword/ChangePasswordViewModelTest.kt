@@ -1,3 +1,5 @@
+@file:OptIn(ExportArk::class)
+
 package de.davis.keygo.feature.settings.presentation.changepassword
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -9,16 +11,18 @@ import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.usecase.ChangePasswordUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
-import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.ExportArk
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.util.Result
-import de.davis.keygo.rust.FakeArkSession
+import de.davis.keygo.core.util.getOrNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -41,12 +45,10 @@ class ChangePasswordViewModelTest {
 
     private val accountRepository = FakeAccountRepository()
     private val biometricAvailability = FakeBiometricAvailabilityRepository()
-    private val arkSession = FakeArkSession()
+    private val session = FakeSession()
 
-    // Declared before [session]: Session reads the lock state once at construction, so the account
-    // has to exist by then for the screen to start out on an unlocked session.
-    private val created = arkSession.createAccount("old")
-    private val session = Session(arkSession)
+    // The screen starts out on an unlocked session, so the account has to exist up front.
+    private val created = checkNotNull(runBlocking { session.createAccount("old") }.getOrNull())
 
     private val estimator = object : PasswordStrengthEstimator {
         override suspend fun estimate(password: String): PasswordScore = PasswordScore.None
@@ -54,7 +56,7 @@ class ChangePasswordViewModelTest {
     private val changePassword = ChangePasswordUseCase(accountRepository, session)
 
     /** The live ARK, which is what a successful biometric prompt hands back to the screen. */
-    private val ark: ByteArray get() = arkSession.exportArk()
+    private val ark: ByteArray get() = checkNotNull(session.exportArk().getOrNull())
 
     @BeforeTest
     fun setUp() {

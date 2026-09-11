@@ -8,6 +8,7 @@ import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.useArk
 import de.davis.keygo.core.security.presentation.BiometricCryptoController
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult

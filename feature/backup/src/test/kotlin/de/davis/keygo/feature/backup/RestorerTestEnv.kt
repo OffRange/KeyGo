@@ -8,13 +8,12 @@ import de.davis.keygo.core.item.FakeTransactionRunner
 import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
-import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.feature.backup.domain.BackupRestorer
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateCreditCardUseCase
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
 import de.davis.keygo.feature.vault.domain.usecase.CreateVaultUseCase
-import de.davis.keygo.rust.FakeArkSession
 import de.davis.keygo.rust.FakeCardFormatter
 import de.davis.keygo.rust.FakeTotpService
 import de.davis.keygo.rust.FakeVaultManager
@@ -46,7 +45,7 @@ internal class RestorerTestEnv {
         vaultRepository = vaultRepo,
         vaultContextRepository = FakeVaultContextRepository(),
         vaultManager = FakeVaultManager(),
-        session = Session(FakeArkSession(startUnlocked = true)),
+        session = FakeSession(startUnlocked = true),
     )
 
     val restorer = BackupRestorer(

@@ -17,8 +17,8 @@ import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.model.Totp
 import de.davis.keygo.core.item.domain.model.Vault
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.BindingCryptographicScopeProvider
-import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.crypto.encrypt
@@ -27,15 +27,16 @@ import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformati
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.model.CryptoScopeError
 import de.davis.keygo.core.util.assertSuccess
+import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
 import de.davis.keygo.feature.vault.domain.model.MoveItemsError
 import de.davis.keygo.feature.vault.domain.model.MoveItemsProgress
-import de.davis.keygo.rust.FakeArkSession
 import de.davis.keygo.rust.FakeItemManager
 import de.davis.keygo.rust.FakeKeyWrapper
 import de.davisalessandro.keygo.rust.ItemAad
 import de.davisalessandro.keygo.rust.KeyWrapException
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -48,8 +49,7 @@ import kotlin.test.assertTrue
 
 class MoveItemsToVaultUseCaseTest {
 
-    private val arkSession = FakeArkSession(startUnlocked = true)
-    private val session = Session(arkSession)
+    private val session = FakeSession(startUnlocked = true)
     private val loginRepository = FakeLoginRepository()
     private val itemRepository = FakeItemRepository(loginRepository)
     private val itemManager = FakeItemManager()
@@ -317,9 +317,8 @@ class MoveItemsToVaultUseCaseTest {
 
     private fun makeVault(name: String, id: VaultId = newVaultId()): Vault {
         val vaultKey = ByteArray(32) { (id.hashCode() + it).toByte() }
-        // Straight off the fake rather than through [session]: this runs from a property
-        // initialiser, and the wrapping is the same either way.
-        val wrapped = arkSession.wrapVaultKey(vaultKey = vaultKey, vaultId = id)
+        // This runs from a property initialiser, which cannot suspend to call session.wrapVaultKey.
+        val wrapped = checkNotNull(runBlocking { session.wrapVaultKey(vaultKey, id) }.getOrNull())
         return Vault(
             id = id,
             name = name,
