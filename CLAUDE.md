@@ -161,9 +161,13 @@ carries its own rules:
   (`de.davis.keygo.rust`).
   Never instantiate the real UniFFI classes (`KeyWrapper()`, etc.) in JVM unit
   tests — their default constructors require the native Rust library at runtime.
-  `ArkSession(NoHandle)` is uniffi's own test constructor: it sets the handle to 0 and allocates no
-  Rust object, which is how `FakeArkSession` and `RecordingArkSession` extend the generated class
-  without touching the native library.
+  `ArkCredential(NoHandle)` is uniffi's own test constructor: it sets the handle to 0 and allocates
+  no Rust object, which is how `FakeArkCredential` extends the generated class without touching the
+  native library.
+- **Session fakes**: the app reaches the Rust session only through the `Session` interface
+  (`SessionImpl` wraps the UniFFI `ArkSessionInterface`). Its fakes live in `:core:security`
+  testFixtures (`de.davis.keygo.core.security`): `FakeSession`, `FakeArkCredential`, and
+  `FakeSessionFactory` for code that opens a throwaway session through `SessionFactory`.
 - **testFixtures + Compose plugin** — Any module with `kotlin.compose` that enables testFixtures
   must add `testFixturesImplementation(libs.androidx.compose.runtime)` to avoid "Compose Runtime
   not on classpath" compile errors. See `:core:item` for the canonical pattern.
