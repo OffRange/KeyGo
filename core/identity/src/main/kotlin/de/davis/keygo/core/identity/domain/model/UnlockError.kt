@@ -1,6 +1,6 @@
 package de.davis.keygo.core.identity.domain.model
 
-import de.davis.keygo.core.security.domain.model.BiometricAuthError
+import de.davis.keygo.core.biometrics.domain.model.BiometricAuthError
 
 sealed interface UnlockError {
     data object WrappedKeyNotFound : UnlockError

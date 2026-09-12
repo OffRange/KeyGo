@@ -44,11 +44,11 @@ internal class BiometricUnlockAdapterImpl(
                         is Result.Success -> Result.Failure(UnlockError.BiometricEnrollmentReset)
 
                         is Result.Failure -> Result.Failure(
-                            UnlockError.BiometricFailed(BiometricAuthError.KeyInvalidated),
+                            UnlockError.BiometricFailed(de.davis.keygo.core.biometrics.domain.model.BiometricAuthError.KeyInvalidated),
                         )
                     }
 
-                else -> Result.Failure(UnlockError.BiometricFailed(unwrapResult.error))
+                else -> Result.Failure(UnlockError.BiometricFailed(de.davis.keygo.core.biometrics.domain.model.BiometricAuthError.CryptoFailed))
             }
 
             is Result.Success -> {

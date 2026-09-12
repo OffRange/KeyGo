@@ -88,7 +88,7 @@ class ResultBinding<E> {
         }
     }
 
-    fun <S, F> Result<S, F>.bind(mapError: (F) -> E): S {
+    inline fun <S, F> Result<S, F>.bind(mapError: (F) -> E): S {
         return when (this) {
             is Result.Success -> success
             is Result.Failure -> throw Abort(mapError(error))
