@@ -1,0 +1,46 @@
+package de.davis.keygo.core.identity.domain.usecase
+
+import de.davis.keygo.core.biometrics.domain.BiometricCrypto
+import de.davis.keygo.core.identity.domain.model.BiometricEnrollmentError
+import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
+import de.davis.keygo.core.identity.domain.repository.AccountRepository
+import de.davis.keygo.core.security.domain.KeyStoreManager
+import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.model.CiphertextData
+import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.useArk
+import de.davis.keygo.core.util.asResult
+import de.davis.keygo.core.util.resultBinding
+import org.koin.core.annotation.Single
+
+@Single
+class EnableBiometricsUseCase(
+    private val accountRepository: AccountRepository,
+    private val session: Session,
+    private val keyStoreManager: KeyStoreManager,
+    private val biometricCrypto: BiometricCrypto,
+) {
+
+    suspend operator fun invoke() = resultBinding {
+        val account = accountRepository.getOrNull()
+            .asResult(BiometricEnrollmentError.NoActiveAccount)
+            .bind()
+
+        if (account.biometricWrappedArk == null) keyStoreManager.deleteKey(KeyId.BiometricVaultKek)
+
+        val wrapped = session.useArk { ark ->
+            biometricCrypto.requestWrap(
+                keyId = KeyId.BiometricVaultKek,
+                key = ark,
+            ).bind { BiometricEnrollmentError.BiometricFailed(it) }
+        }.bind { BiometricEnrollmentError.NoActiveSession }
+
+        accountRepository.set(account.copy(biometricWrappedArk = wrapped.toBiometricWrappedArk()))
+            .bind { BiometricEnrollmentError.PersistenceFailed }
+    }
+
+    private fun CiphertextData.toBiometricWrappedArk() = BiometricWrappedArk(
+        key = bytes,
+        keyIV = iv,
+    )
+}

@@ -12,6 +12,8 @@ android {
 }
 
 dependencies {
+    implementation(projects.core.biometrics)
+
     api(projects.core.security)
     implementation(projects.core.item)
     implementation(projects.rust)

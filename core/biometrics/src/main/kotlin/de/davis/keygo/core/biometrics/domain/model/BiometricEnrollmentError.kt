@@ -1,6 +1,4 @@
-package de.davis.keygo.core.identity.domain.model
-
-import de.davis.keygo.core.biometrics.domain.model.BiometricAuthError
+package de.davis.keygo.core.biometrics.domain.model
 
 sealed interface BiometricEnrollmentError {
     data object NoActiveAccount : BiometricEnrollmentError

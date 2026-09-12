@@ -3,19 +3,17 @@ package de.davis.keygo.core.biometrics.domain
 import de.davis.keygo.core.biometrics.domain.model.BiometricAuthError
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.CiphertextData
-import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.util.Result
 import java.security.Key
-import javax.crypto.Cipher
 
 interface BiometricCrypto {
 
-    suspend fun requestCipher(
+    suspend fun requestWrap(
         keyId: KeyId,
-        mode: CryptographicMode,
+        key: ByteArray,
         policy: BiometricPolicy = BiometricPolicy.Default
-    ): Result<Cipher, BiometricAuthError>
+    ): Result<CiphertextData, BiometricAuthError>
 
     suspend fun requestUnwrap(
         keyId: KeyId,

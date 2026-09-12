@@ -1,6 +1,7 @@
 package de.davis.keygo.core.identity.presentation
 
 import androidx.compose.runtime.Composable
+import de.davis.keygo.core.biometrics.domain.model.BiometricAuthError
 import de.davis.keygo.core.identity.domain.model.BiometricEnrollmentError
 import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
@@ -26,6 +27,7 @@ internal class BiometricEnrollmentAdapterImpl(
     private val keyStoreManager: KeyStoreManager,
 ) : BiometricEnrollmentAdapter {
 
+    @Deprecated("Use EnableBiometricsUseCase instead")
     override suspend fun BiometricCryptoController.requestEnableBiometric(
         policy: BiometricPolicy
     ): Result<Unit, BiometricEnrollmentError> = resultBinding {
@@ -35,7 +37,7 @@ internal class BiometricEnrollmentAdapterImpl(
         if (account.biometricWrappedArk == null) keyStoreManager.deleteKey(KeyId.BiometricVaultKek)
 
         val cipher = requestCipher(KeyId.BiometricVaultKek, CryptographicMode.Wrap, policy)
-            .bind { BiometricEnrollmentError.BiometricFailed(it) }
+            .bind { BiometricEnrollmentError.BiometricFailed(BiometricAuthError.CryptoFailed) }
 
         val wrapped = session.useArk { ark ->
             wrapArk(ark, cipher).asResult(BiometricEnrollmentError.WrappingFailed).bind()
@@ -46,6 +48,7 @@ internal class BiometricEnrollmentAdapterImpl(
         }
     }
 
+    @Deprecated("Use DisableBiometricsUseCase instead")
     override suspend fun disableBiometric(): Result<Unit, BiometricEnrollmentError> =
         resultBinding {
             val account = accountRepository.getOrNull()

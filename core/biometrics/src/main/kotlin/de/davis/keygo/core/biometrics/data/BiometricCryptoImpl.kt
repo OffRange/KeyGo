@@ -35,6 +35,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.koin.core.annotation.Single
 import java.security.Key
 import javax.crypto.Cipher
+import javax.crypto.spec.SecretKeySpec
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -69,15 +70,20 @@ internal class BiometricCryptoImpl(
         host.filterNotNull().first { !it.isDestroyed && !it.isFinishing }
     }
 
-    override suspend fun requestCipher(
+    override suspend fun requestWrap(
         keyId: KeyId,
-        mode: CryptographicMode,
+        key: ByteArray,
         policy: BiometricPolicy
-    ): Result<Cipher, BiometricAuthError> = request(
+    ): Result<CiphertextData, BiometricAuthError> = request(
         keyId = keyId,
         policy = policy,
-        mode = mode
-    ) { it }
+        mode = CryptographicMode.Wrap
+    ) {
+        CiphertextData(
+            bytes = it.wrap(SecretKeySpec(key, 0, key.size, "AES")),
+            iv = it.iv
+        )
+    }
 
     override suspend fun requestUnwrap(
         keyId: KeyId,
