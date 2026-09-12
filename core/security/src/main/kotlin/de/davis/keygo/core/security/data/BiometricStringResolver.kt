@@ -4,7 +4,7 @@ import android.content.Context
 import de.davis.keygo.core.security.R
 import de.davis.keygo.core.security.domain.model.BiometricString
 
-internal fun BiometricString.resolve(context: Context) = when (this) {
+fun BiometricString.resolve(context: Context) = when (this) {
     is BiometricString.Title.Authenticate -> context.getString(
         R.string.authenticate
     )

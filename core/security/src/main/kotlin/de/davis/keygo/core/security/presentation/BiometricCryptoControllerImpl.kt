@@ -28,6 +28,7 @@ import java.security.Key
 import javax.crypto.Cipher
 import kotlin.coroutines.resume
 
+@Deprecated("use :core:biometrics instead")
 internal class BiometricCryptoControllerImpl(
     private val activity: FragmentActivity,
     private val keyStoreManager: KeyStoreManager
