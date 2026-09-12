@@ -140,9 +140,12 @@ class FinishExportWizardUseCaseTest {
 
         val wrapped = arkKeyStore.load()
         assertNotNull(wrapped)
-        val recovered = keyStoreManager
-            .getOrCreateCipherFor(KeyId.BackupArkKey, CryptographicMode.Decrypt, wrapped.iv)
-            .doFinal(wrapped.data)
+        val cipher = assertNotNull(
+            keyStoreManager
+                .getOrCreateCipherFor(KeyId.BackupArkKey, CryptographicMode.Decrypt, wrapped.iv)
+                .getOrNull(),
+        )
+        val recovered = cipher.doFinal(wrapped.data)
         assertContentEquals(session.exportArk().getOrNull(), recovered)
     }
 
@@ -163,15 +166,14 @@ class FinishExportWizardUseCaseTest {
         // A locked device fails the Keystore cipher, which is the step right after the export.
         keyStoreManager.deviceLocked = true
 
-        val outcome = runCatching {
-            useCaseOver(recording)(
-                details(interval = BackupInterval(count = 3, unit = IntervalUnit.Days)),
-            )
-        }
+        val result = useCaseOver(recording)(
+            details(interval = BackupInterval(count = 3, unit = IntervalUnit.Days)),
+        )
 
         // Without this the test would pass on a use case that escrowed successfully, which is
         // the one case where the wipe is not what kept the ARK from staying resident.
-        assertEquals("device locked", outcome.exceptionOrNull()?.message)
+        val failure = assertIs<Result.Failure<Unit, FinishExportWizardError>>(result)
+        assertEquals(FinishExportWizardError.CryptoFailed, failure.error)
         assertContentEquals(ByteArray(32), recording.onlyExported())
     }
 

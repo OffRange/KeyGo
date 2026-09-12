@@ -3,6 +3,7 @@ package de.davis.keygo.feature.auth.presentation
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.identity.domain.model.UnlockError
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockWithPasswordUseCase
@@ -93,6 +94,21 @@ internal class AuthViewModel(
     private var migrationJob: Job? = null
     private var authJob: Job? = null
 
+    fun onBiometricUnlockFailed(error: UnlockError) {
+        if (error != UnlockError.BiometricEnrollmentReset) return
+
+        _uiState.update { state ->
+            when (state) {
+                is AuthState.Login -> state.copy(
+                    biometricAuthenticationAvailable = false,
+                    showBiometricResetNotice = true,
+                )
+
+                else -> state
+            }
+        }
+    }
+
     fun onEvent(event: AuthUIEvent) {
         when (event) {
             is AuthUIEvent.RequestBiometricAuthentication -> if (uiState.value is AuthState.Login) requestBiometricLogin()
@@ -128,6 +144,11 @@ internal class AuthViewModel(
                         }
                     }
                 }
+            }
+
+            AuthUIEvent.DismissBiometricResetNotice -> _uiState.update {
+                if (it !is AuthState.Login) return@update it
+                it.copy(showBiometricResetNotice = false)
             }
 
             AuthUIEvent.CloseMigrationDialog -> {

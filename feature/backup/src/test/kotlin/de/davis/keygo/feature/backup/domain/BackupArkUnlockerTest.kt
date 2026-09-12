@@ -10,6 +10,7 @@ import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
 import de.davis.keygo.core.security.domain.useArk
 import de.davis.keygo.core.util.assertFailure
 import de.davis.keygo.core.util.assertSuccess
@@ -47,7 +48,11 @@ class BackupArkUnlockerTest {
     private fun throwaway(): FakeSession = sessionFactory.created.single()
 
     private suspend fun provision(ark: ByteArray = ByteArray(32) { (it + 1).toByte() }) {
-        val cipher = keyStore.getOrCreateCipherFor(KeyId.BackupArkKey, CryptographicMode.Encrypt)
+        val cipher = assertNotNull(
+            keyStore
+                .getOrCreateCipherFor(KeyId.BackupArkKey, CryptographicMode.Encrypt)
+                .getOrNull(),
+        )
         arkStore.save(CryptographicData(cipher.doFinal(ark), cipher.iv))
     }
 
@@ -124,6 +129,22 @@ class BackupArkUnlockerTest {
 
         val result = unlocker(locked()).withSession { }.assertFailure()
         assertEquals(ExportError.DeviceLocked, result)
+    }
+
+    /**
+     * The escrow key is gone for good, so a retry can only fail the same way. Reporting it as
+     * [ExportError.DeviceLocked] would be read as "try again later" and spend every attempt the
+     * worker has while holding the escrow open; only a terminal error lets the job be cleaned up.
+     */
+    @Test
+    fun `locked provisioned but key permanently invalidated fails terminally`() = runTest {
+        provision()
+        keyStore.failure = KeyStoreManagerError.KeyInvalidated
+
+        val result = unlocker(locked()).withSession { }.assertFailure()
+
+        assertEquals(ExportError.CryptoFailed, result)
+        assertFalse(result.retryable)
     }
 
     @Test

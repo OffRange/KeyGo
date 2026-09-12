@@ -101,7 +101,7 @@ class FinishExportWizardUseCase(
         val cipher = keyStoreManager.getOrCreateCipherFor(
             keyId = KeyId.BackupPassphraseKey,
             cryptographicMode = CryptographicMode.Encrypt,
-        )
+        ).bind { FinishExportWizardError.CryptoFailed }
 
         CryptographicData(
             data = cipher.suspendDoFinal(passphrase.encodeToByteArray())
@@ -115,7 +115,7 @@ class FinishExportWizardUseCase(
             val cipher = keyStoreManager.getOrCreateCipherFor(
                 keyId = KeyId.BackupArkKey,
                 cryptographicMode = CryptographicMode.Encrypt,
-            )
+            ).bind { FinishExportWizardError.CryptoFailed }
 
             cipher.suspendDoFinal(ark)
                 .mapSuccess { CryptographicData(it, cipher.iv) }

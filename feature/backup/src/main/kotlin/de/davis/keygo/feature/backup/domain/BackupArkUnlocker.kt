@@ -10,6 +10,7 @@ import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.backup.domain.model.ExportError
+import de.davis.keygo.feature.backup.domain.model.exportError
 import de.davis.keygo.feature.backup.domain.repository.BackupArkKeyStore
 import org.koin.core.annotation.Single
 
@@ -65,13 +66,11 @@ internal class BackupArkUnlocker(
         val wrapped = arkKeyStore.load()
             .asResult(ExportError.NotProvisioned).bind()
 
-        val cipher = runCatching {
-            keyStoreManager.getOrCreateCipherFor(
-                keyId = KeyId.BackupArkKey,
-                cryptographicMode = CryptographicMode.Decrypt,
-                iv = wrapped.iv,
-            )
-        }.getOrNull().asResult(ExportError.DeviceLocked).bind()
+        val cipher = keyStoreManager.getOrCreateCipherFor(
+            keyId = KeyId.BackupArkKey,
+            cryptographicMode = CryptographicMode.Decrypt,
+            iv = wrapped.iv,
+        ).bind { it.exportError }
 
         cipher.suspendDoFinal(wrapped.data).bind { ExportError.DeviceLocked }
     }

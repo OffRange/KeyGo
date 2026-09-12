@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import de.davis.keygo.core.identity.domain.model.BiometricEnrollmentError
 import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
+import de.davis.keygo.core.security.domain.KeyStoreManager
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.CryptographicMode
@@ -22,6 +23,7 @@ import javax.crypto.spec.SecretKeySpec
 internal class BiometricEnrollmentAdapterImpl(
     private val accountRepository: AccountRepository,
     private val session: Session,
+    private val keyStoreManager: KeyStoreManager,
 ) : BiometricEnrollmentAdapter {
 
     override suspend fun BiometricCryptoController.requestEnableBiometric(
@@ -29,6 +31,8 @@ internal class BiometricEnrollmentAdapterImpl(
     ): Result<Unit, BiometricEnrollmentError> = resultBinding {
         val account = accountRepository.getOrNull()
             .asResult(BiometricEnrollmentError.NoActiveAccount).bind()
+
+        if (account.biometricWrappedArk == null) keyStoreManager.deleteKey(KeyId.BiometricVaultKek)
 
         val cipher = requestCipher(KeyId.BiometricVaultKek, CryptographicMode.Wrap, policy)
             .bind { BiometricEnrollmentError.BiometricFailed(it) }
@@ -49,6 +53,8 @@ internal class BiometricEnrollmentAdapterImpl(
 
             accountRepository.set(account.copy(biometricWrappedArk = null))
                 .bind { BiometricEnrollmentError.PersistenceFailed }
+
+            keyStoreManager.deleteKey(KeyId.BiometricVaultKek)
         }
 
     private fun wrapArk(ark: ByteArray, cipher: Cipher): BiometricWrappedArk? = runCatching {

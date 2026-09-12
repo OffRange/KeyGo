@@ -3,12 +3,16 @@ package de.davis.keygo.feature.auth.presentation
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.model.Account
+import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
+import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
+import de.davis.keygo.core.identity.domain.model.UnlockError
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockWithPasswordUseCase
 import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
+import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.feature.auth.presentation.model.AuthState
 import de.davis.keygo.feature.auth.presentation.model.AuthUIEvent
@@ -34,6 +38,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.util.UUID
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import kotlin.test.AfterTest
@@ -123,6 +128,75 @@ class AuthViewModelTest {
     private suspend fun AuthViewModel.awaitIdle() {
         uiState.first { it is AuthState.Migrating && !it.loading }
     }
+
+    /** An account whose vault can be opened by the biometric key, so the button is offered. */
+    private fun seedEnrolledAccount() {
+        biometricAvailability.isAvailable = true
+        accountRepository.seed(
+            Account(
+                id = UUID.randomUUID(),
+                displayName = "Test",
+                passwordWrappedArk = PasswordWrappedArk(
+                    key = byteArrayOf(1),
+                    keyIV = byteArrayOf(2),
+                    salt = byteArrayOf(3),
+                ),
+                biometricWrappedArk = BiometricWrappedArk(
+                    key = byteArrayOf(4),
+                    keyIV = byteArrayOf(5),
+                ),
+            )
+        )
+    }
+
+    /**
+     * The unlock adapter deletes the stored enrollment on its own when the key behind it is gone.
+     * Hiding the button is all the screen would otherwise do about it, which reads as a security
+     * setting vanishing for no reason, so the drop is said out loud.
+     */
+    @Test
+    fun `a reset enrollment is announced rather than quietly disappearing`() = runTest(dispatcher) {
+        seedEnrolledAccount()
+        val vm = viewModel()
+        assertEquals(
+            true,
+            assertIs<AuthState.Login>(vm.uiState.value).biometricAuthenticationAvailable,
+        )
+
+        vm.onBiometricUnlockFailed(UnlockError.BiometricEnrollmentReset)
+
+        val login = assertIs<AuthState.Login>(vm.uiState.value)
+        assertEquals(false, login.biometricAuthenticationAvailable)
+        assertEquals(true, login.showBiometricResetNotice)
+    }
+
+    @Test
+    fun `dismissing the notice leaves the enrollment gone`() = runTest(dispatcher) {
+        seedEnrolledAccount()
+        val vm = viewModel()
+        vm.onBiometricUnlockFailed(UnlockError.BiometricEnrollmentReset)
+
+        vm.onEvent(AuthUIEvent.DismissBiometricResetNotice)
+
+        val login = assertIs<AuthState.Login>(vm.uiState.value)
+        assertEquals(false, login.showBiometricResetNotice)
+        assertEquals(false, login.biometricAuthenticationAvailable)
+    }
+
+    @Test
+    fun `a retryable biometric failure announces nothing and keeps the button`() =
+        runTest(dispatcher) {
+            seedEnrolledAccount()
+            val vm = viewModel()
+
+            vm.onBiometricUnlockFailed(
+                UnlockError.BiometricFailed(BiometricAuthError.CryptoFailed),
+            )
+
+            val login = assertIs<AuthState.Login>(vm.uiState.value)
+            assertEquals(false, login.showBiometricResetNotice)
+            assertEquals(true, login.biometricAuthenticationAvailable)
+        }
 
     @Test
     fun `failed biometric wrapping leaves the v1 password intact so migration can be retried`() =
