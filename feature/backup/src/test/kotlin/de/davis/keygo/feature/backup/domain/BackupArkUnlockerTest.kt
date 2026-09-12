@@ -84,10 +84,6 @@ class BackupArkUnlockerTest {
             }.assertSuccess()
         }
 
-    /**
-     * The escrowed ARK is readable with no user present. In the app-wide session it would open the
-     * app, and every feature reading that session, for as long as the backup ran.
-     */
     @Test
     fun `the app-wide session stays locked while a backup runs on the escrowed ark`() = runTest {
         provision()
@@ -101,7 +97,6 @@ class BackupArkUnlockerTest {
         assertFalse(session.isActive.value)
     }
 
-    /** A backup that started while locked can still be running when the user unlocks the app. */
     @Test
     fun `a user unlocking during a backup keeps their session when it finishes`() = runTest {
         provision()
@@ -131,10 +126,6 @@ class BackupArkUnlockerTest {
         assertEquals(ExportError.DeviceLocked, result)
     }
 
-    /**
-     * Nothing else can lock a session this fresh, so a rejection is the escrowed bytes themselves.
-     * Reporting it as retryable would only rerun the same failure and hold the escrow open longer.
-     */
     @Test
     fun `an escrowed ark the session rejects fails as CryptoFailed, not a retry`() = runTest {
         provision(ByteArray(16) { (it + 1).toByte() })
@@ -174,11 +165,6 @@ class BackupArkUnlockerTest {
         assertFalse(throwaway().isActive.value)
     }
 
-    /**
-     * The recovered ARK is in hand before `unlockWithArk` runs, so everything from that point on
-     * has to sit inside the wipe guard. This is the observable half: the session keeps the array
-     * it was handed, then fails, and the array still comes back zeroed.
-     */
     @Test
     fun `the recovered ark is zeroed when unlocking the session fails`() = runTest {
         provision()

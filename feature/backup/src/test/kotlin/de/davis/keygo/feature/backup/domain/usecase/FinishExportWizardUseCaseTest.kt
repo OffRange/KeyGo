@@ -146,11 +146,6 @@ class FinishExportWizardUseCaseTest {
         assertContentEquals(session.exportArk().getOrNull(), recovered)
     }
 
-    /**
-     * Escrowing the ARK is the one place this use case pulls key bytes into the JVM, and the
-     * `finally` that zeroes them is all that keeps them from staying there. [FakeSession] hands
-     * out the array itself rather than a copy, so the wipe is observable.
-     */
     @Test
     fun `wipes the exported ARK after escrowing it`() = runTest {
         val recording = FakeSession(startUnlocked = true)

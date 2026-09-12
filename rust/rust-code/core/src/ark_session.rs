@@ -20,8 +20,6 @@ pub enum ArkSessionError {
     KeyWrap(#[from] CryptoError),
 }
 
-/// The wrapped output of a freshly generated account. The ARK and the default vault key stay in
-/// the session; only these blobs are for the caller to persist.
 pub struct NewAccount {
     pub user_id: UserId,
     pub salt: Vec<u8>,
@@ -30,7 +28,6 @@ pub struct NewAccount {
     pub wrapped_vault_key: AeadWrappedKey<VaultKey, AccountRootKey>,
 }
 
-/// An ARK wrapped under a password-derived KEK, with the salt that KEK was derived over.
 pub struct PasswordWrapped {
     pub salt: Vec<u8>,
     pub wrapped: AeadWrappedKey<AccountRootKey, RootKEK>,
@@ -101,13 +98,6 @@ impl ArkSession {
         Ok(ark.wrap_key(&vault_key, &aad)?)
     }
 
-    /// Generate an account and its default vault, wrap both, and leave the session unlocked.
-    /// The caller receives blobs to persist and no key material.
-    ///
-    /// Replaces any ARK already in the session. That is deliberate and safe: the
-    /// displaced [`AccountRootKey`] is `ZeroizeOnDrop`, so it is wiped on assignment.
-    /// The only risk is logical, a caller silently swapping the session's identity, and
-    /// both callers are gated by the flow they belong to.
     pub fn create_account(&self, password: &str) -> ArkSessionResult<NewAccount> {
         let user_id = UserId::new_v4();
         let vault_id = VaultId::new_v4();
@@ -131,8 +121,6 @@ impl ArkSession {
         })
     }
 
-    /// Preserves `KeyWrap` rather than collapsing it, unlike `verify_password`, so the caller can
-    /// tell a wrong password apart from a corrupt blob.
     pub fn unlock_with_password(
         &self,
         password: &str,
@@ -144,15 +132,6 @@ impl ArkSession {
         self.unlock(kek, wrapped, user_id)
     }
 
-    /// Take custody of an ARK recovered outside Rust. The only door that takes custody of one
-    /// from the JVM (`verify_ark` also accepts ARK bytes, but only to compare them): the biometric
-    /// unlock and the backup escrow both hold their copy under an Android Keystore key, which
-    /// only exists on the JVM side.
-    ///
-    /// Replaces any ARK already in the session. That is deliberate and safe: the
-    /// displaced [`AccountRootKey`] is `ZeroizeOnDrop`, so it is wiped on assignment.
-    /// The only risk is logical, a caller silently swapping the session's identity, and
-    /// both callers are gated by the flow they belong to.
     pub fn unlock_with_ark(&self, ark: &[u8]) -> ArkSessionResult<()> {
         let ark = AccountRootKey::try_from_bytes(ark)?;
         *self.lock() = Some(ark);
@@ -205,19 +184,6 @@ impl ArkSession {
         Ok(PasswordWrapped { salt, wrapped })
     }
 
-    /// Borrow the ARK for the length of `f`. Lets callers inside Rust use the ARK without it
-    /// ever being copied out of Rust.
-    ///
-    /// `f` runs on a private clone, taken while the lock is held and released before `f` starts.
-    /// Holding the lock across `f` would be simpler, but `f` is an arbitrary caller-supplied
-    /// closure: sealing a backup runs a full serialization and one AEAD pass over an entire vault
-    /// under it. Every other session operation takes the same lock, `end()` among them, and
-    /// `end()` is called from the lock observer on the Android main thread. A long `f` would
-    /// block auto-lock there for as long as it ran.
-    ///
-    /// The clone is an [`AccountRootKey`], so it is zeroized when it drops at the end of this
-    /// call, and it never leaves Rust. Cloning also makes `f` reentrant: it may call back into
-    /// this session, which under a held lock would have deadlocked.
     pub fn with_ark<R>(&self, f: impl FnOnce(&AccountRootKey) -> R) -> ArkSessionResult<R> {
         let ark = {
             let guard = self.lock();

@@ -40,7 +40,6 @@ class CryptographicScopeImplTest {
 
     private val label = "password"
 
-    /** Wraps a fresh vault key under the live session, the way the app's own vaults are wrapped. */
     private suspend fun wrappedVaultKeyInformation(
         vaultId: UUID = UUID.randomUUID(),
     ): WrappedVaultKeyInformation {

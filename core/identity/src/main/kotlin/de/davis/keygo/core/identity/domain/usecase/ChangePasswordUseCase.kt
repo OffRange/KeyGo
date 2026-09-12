@@ -11,11 +11,6 @@ import de.davis.keygo.core.util.resultBinding
 import de.davisalessandro.keygo.rust.WrappedKeyBlob
 import org.koin.core.annotation.Single
 
-/**
- * Changes the account password by re-wrapping the ARK the session already holds. It therefore
- * needs an active session, which the change-password screen guarantees: it is only reachable from
- * inside an unlocked app, and it clears itself the moment the session ends.
- */
 @Single
 class ChangePasswordUseCase(
     private val accountRepository: AccountRepository,
@@ -50,9 +45,6 @@ class ChangePasswordUseCase(
                 ),
                 userId = account.id,
             ).bind {
-                // verify_password proves the password opens the ARK the session holds, not merely
-                // the stored blob. The rewrap below wraps that live ARK, so a blob holding any
-                // other key must not pass as a correct password.
                 when (it) {
                     is SessionError.Derivation -> ChangePasswordError.KeyDerivationFailed
                     SessionError.Locked -> ChangePasswordError.ActiveAccountNotFound
@@ -63,17 +55,12 @@ class ChangePasswordUseCase(
             is Reauthentication.Biometric -> {
                 account.biometricWrappedArk
                     ?: return Result.Failure(ChangePasswordError.BiometricNotEnrolled)
-                // Locked is the only failure: there is no live ARK to compare with. Reported like
-                // the password path's, not as a wrong credential, since none was wrong.
                 val matches = session.verifyArk(reauthentication.recoveredArk)
                     .bind { ChangePasswordError.ActiveAccountNotFound }
                 if (!matches) return Result.Failure(ChangePasswordError.IncorrectPassword)
             }
         }
 
-        // The narrowing this refactor introduces: rewrapping reads the live ARK, so changing a
-        // password now needs an active session. The screen is only reachable while unlocked, so
-        // Locked here is a defensive path rather than one a user can walk into.
         val rewrapped = session.rewrapForNewPassword(newPassword, account.id).bind {
             when (it) {
                 is SessionError.Derivation -> ChangePasswordError.KeyDerivationFailed

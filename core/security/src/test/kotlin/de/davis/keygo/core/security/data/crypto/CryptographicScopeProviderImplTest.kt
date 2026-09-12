@@ -77,10 +77,6 @@ class CryptographicScopeProviderImplTest {
             assertIs<CryptoScopeError.NoActiveSession>(failure.error)
         }
 
-    /**
-     * Rust's own error has to survive the trip through the session. Replacing it with a generic
-     * unwrap failure would make a truncated blob look the same as a wrong key.
-     */
     @Test
     fun `itemScope keeps the key-wrap cause the session reported`() = runTest {
         val vaultId = newVaultId()

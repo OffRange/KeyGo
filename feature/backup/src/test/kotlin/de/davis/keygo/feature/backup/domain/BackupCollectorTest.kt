@@ -256,11 +256,6 @@ class BackupCollectorTest {
         assertEquals(ExportError.CryptoFailed, result.error)
     }
 
-    /**
-     * Auto-lock fires from the lock observer, so a live session can end between two items. That is
-     * the same recoverable lock serialization reports: recording it as a failed backup would
-     * release the escrow the retry needs.
-     */
     @Test
     fun `a session ending during collection surfaces the retryable SessionLocked`() = runTest {
         val vault = testVault(name = "V")

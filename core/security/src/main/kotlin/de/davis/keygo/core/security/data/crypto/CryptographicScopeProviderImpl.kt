@@ -119,11 +119,6 @@ internal class CryptographicScopeProviderImpl(
         ).mapFailure { it.toCryptoScopeError() }
 }
 
-/**
- * A locked session is its own error, and a key-wrap failure keeps Rust's cause, so a truncated
- * blob stays distinguishable from a wrong key or AAD. Unwrapping a vault key neither derives a KEK
- * nor checks a password, so the other two cannot happen here; they fold into an unwrap failure.
- */
 private fun SessionError.toCryptoScopeError(): CryptoScopeError = when (this) {
     SessionError.Locked -> CryptoScopeError.NoActiveSession
     is SessionError.KeyWrap -> CryptoScopeError.KeyWrapError(cause)

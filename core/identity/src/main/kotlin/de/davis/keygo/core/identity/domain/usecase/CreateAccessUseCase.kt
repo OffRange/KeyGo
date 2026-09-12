@@ -13,6 +13,7 @@ import de.davis.keygo.core.security.domain.SessionError
 import de.davis.keygo.core.security.domain.useArk
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
+import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.resultBinding
 import org.koin.core.annotation.Single
 import javax.crypto.Cipher
@@ -44,15 +45,10 @@ class CreateAccessUseCase(
         vaultName: String = "Default Vault",
         accountDisplayName: String = "Default Account",
     ): Result<Unit, CreateAccessError> {
-        // createAccount takes custody of the ARK before anything is written, so a failure anywhere
-        // after it leaves a key in memory with nothing persisted to unwrap. Hand it back rather
-        // than let it sit resident until the next lock; a retry mints a fresh account anyway.
-        // The guard is a `finally` rather than a check on the returned value because a repository
-        // that throws strands the ARK exactly as a Failure does, and reaches the caller the same way.
         var handBack = true
         try {
             val result = create(password, biometricCipher, vaultName, accountDisplayName)
-            handBack = result is Result.Failure
+            handBack = result.isFailure()
             return result
         } finally {
             if (handBack) session.endSession()
