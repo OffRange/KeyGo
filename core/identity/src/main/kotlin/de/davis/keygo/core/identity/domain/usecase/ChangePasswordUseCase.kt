@@ -4,21 +4,17 @@ import de.davis.keygo.core.identity.domain.model.ChangePasswordError
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.model.Reauthentication
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
+import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.SessionError
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.resultBinding
-import de.davis.keygo.rust.derive.KeyDeriver
-import de.davis.keygo.rust.derive.deriveRootKekFromPasswordWithResult
-import de.davis.keygo.rust.wrap.KeyWrapper
-import de.davis.keygo.rust.wrap.unwrapAccountRootKeyWithResult
-import de.davis.keygo.rust.wrap.wrapAccountRootKeyWithResult
 import de.davisalessandro.keygo.rust.WrappedKeyBlob
 import org.koin.core.annotation.Single
 
 @Single
 class ChangePasswordUseCase(
     private val accountRepository: AccountRepository,
-    private val keyDeriver: KeyDeriver,
-    private val keyWrapper: KeyWrapper,
+    private val session: Session,
 ) {
 
     suspend operator fun invoke(
@@ -39,63 +35,48 @@ class ChangePasswordUseCase(
         val account = accountRepository.getOrNull()
             ?: return Result.Failure(ChangePasswordError.ActiveAccountNotFound)
 
-        val ark = when (reauthentication) {
-            is Reauthentication.Password -> {
-                val kek = keyDeriver.deriveRootKekFromPasswordWithResult(
-                    password = reauthentication.currentPassword,
-                    salt = account.passwordWrappedArk.salt,
-                ).bind { ChangePasswordError.KeyDerivationFailed }
-
-                try {
-                    keyWrapper.unwrapAccountRootKeyWithResult(
-                        kek = kek,
-                        wrapped = WrappedKeyBlob(
-                            ciphertext = account.passwordWrappedArk.key,
-                            nonce = account.passwordWrappedArk.keyIV,
-                        ),
-                        userId = account.id,
-                    ).bind { ChangePasswordError.IncorrectPassword }
-                } finally {
-                    kek.fill(0)
+        when (reauthentication) {
+            is Reauthentication.Password -> session.verifyPassword(
+                password = reauthentication.currentPassword,
+                salt = account.passwordWrappedArk.salt,
+                wrapped = WrappedKeyBlob(
+                    ciphertext = account.passwordWrappedArk.key,
+                    nonce = account.passwordWrappedArk.keyIV,
+                ),
+                userId = account.id,
+            ).bind {
+                when (it) {
+                    is SessionError.Derivation -> ChangePasswordError.KeyDerivationFailed
+                    SessionError.Locked -> ChangePasswordError.ActiveAccountNotFound
+                    else -> ChangePasswordError.IncorrectPassword
                 }
             }
 
             is Reauthentication.Biometric -> {
                 account.biometricWrappedArk
                     ?: return Result.Failure(ChangePasswordError.BiometricNotEnrolled)
-                reauthentication.recoveredArk
+                val matches = session.verifyArk(reauthentication.recoveredArk)
+                    .bind { ChangePasswordError.ActiveAccountNotFound }
+                if (!matches) return Result.Failure(ChangePasswordError.IncorrectPassword)
             }
         }
 
-        try {
-            val newSalt = keyDeriver.generateSalt()
-            val newKek = keyDeriver.deriveRootKekFromPasswordWithResult(
-                password = newPassword,
-                salt = newSalt,
-            ).bind { ChangePasswordError.KeyDerivationFailed }
-
-            val rewrapped = try {
-                keyWrapper.wrapAccountRootKeyWithResult(
-                    kek = newKek,
-                    ark = ark,
-                    userId = account.id,
-                ).bind { ChangePasswordError.WrappingFailed }
-            } finally {
-                newKek.fill(0)
+        val rewrapped = session.rewrapForNewPassword(newPassword, account.id).bind {
+            when (it) {
+                is SessionError.Derivation -> ChangePasswordError.KeyDerivationFailed
+                SessionError.Locked -> ChangePasswordError.ActiveAccountNotFound
+                else -> ChangePasswordError.WrappingFailed
             }
+        }
 
-            accountRepository.set(
-                account.copy(
-                    passwordWrappedArk = PasswordWrappedArk(
-                        key = rewrapped.ciphertext,
-                        keyIV = rewrapped.nonce,
-                        salt = newSalt,
-                    ),
+        accountRepository.set(
+            account.copy(
+                passwordWrappedArk = PasswordWrappedArk(
+                    key = rewrapped.wrapped.ciphertext,
+                    keyIV = rewrapped.wrapped.nonce,
+                    salt = rewrapped.salt,
                 ),
-            ).bind { ChangePasswordError.PersistenceFailed }
-        } finally {
-            // Scrub the in-memory ARK on success *and* on every failure path after unwrap.
-            ark.fill(0)
-        }
+            ),
+        ).bind { ChangePasswordError.PersistenceFailed }
     }
 }

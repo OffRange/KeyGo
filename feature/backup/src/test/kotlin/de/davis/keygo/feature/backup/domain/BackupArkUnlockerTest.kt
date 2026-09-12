@@ -1,19 +1,21 @@
+@file:OptIn(ExportArk::class)
+
 package de.davis.keygo.feature.backup.domain
 
-import de.davis.keygo.core.item.FakeItemRepository
-import de.davis.keygo.core.item.FakeVaultRepository
-import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
-import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProviderFactory
+import de.davis.keygo.core.security.FakeSession
+import de.davis.keygo.core.security.FakeSessionFactory
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
-import de.davis.keygo.core.security.crypto.FakeSession
+import de.davis.keygo.core.security.domain.ExportArk
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
-import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.security.domain.useArk
+import de.davis.keygo.core.util.assertFailure
+import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
-import de.davis.keygo.feature.backup.data.BackupSession
 import de.davis.keygo.feature.backup.domain.model.ExportError
 import de.davis.keygo.feature.backup.domain.model.retryable
 import kotlinx.coroutines.test.runTest
@@ -21,28 +23,31 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertIs
 import kotlin.test.assertNotNull
+import kotlin.test.assertNotSame
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class BackupArkUnlockerTest {
 
-    private val vaultRepo = FakeVaultRepository()
     private val keyStore = FakeKeyStoreManager()
     private val arkStore = FakeBackupArkKeyStore()
-    private val factory = FakeCryptographicScopeProviderFactory(
-        FakeCryptographicScopeProvider(FakeItemRepository()),
-    )
+    private val sessionFactory = FakeSessionFactory()
 
-    private fun unlocker(session: FakeSession) = BackupArkUnlocker(
+    private fun unlocker(session: Session) = BackupArkUnlocker(
         session = session,
+        sessionFactory = sessionFactory,
         keyStoreManager = keyStore,
         arkKeyStore = arkStore,
-        scopeProviderFactory = factory,
-        vaultRepository = vaultRepo,
     )
 
-    private suspend fun provision(ark: ByteArray) {
+    private fun unlocked() = FakeSession(startUnlocked = true)
+
+    private fun locked() = FakeSession()
+
+    private fun throwaway(): FakeSession = sessionFactory.created.single()
+
+    private suspend fun provision(ark: ByteArray = ByteArray(32) { (it + 1).toByte() }) {
         val cipher = assertNotNull(
             keyStore
                 .getOrCreateCipherFor(KeyId.BackupArkKey, CryptographicMode.Encrypt)
@@ -52,41 +57,78 @@ class BackupArkUnlockerTest {
     }
 
     @Test
-    fun `unlocked session builds a scope on the live session`() = runTest {
-        val session = FakeSession(startOnConstruct = true)
-        val result = unlocker(session).withScope { }
-        assertIs<Result.Success<*, *>>(result)
-        assertEquals(session, factory.lastSession)
+    fun `withSession hands over the live session itself`() = runTest {
+        val session = unlocked()
+
+        unlocker(session).withSession { assertSame(session, it) }.assertSuccess()
+
+        assertTrue(sessionFactory.created.isEmpty())
     }
 
     @Test
-    fun `locked and unprovisioned fails with NotProvisioned`() = runTest {
-        val result = unlocker(FakeSession(startOnConstruct = false)).withScope { }
-        assertEquals(Result.Failure(ExportError.NotProvisioned), result)
+    fun `a live session is left holding its own ark`() = runTest {
+        // Ending the live session, or wiping its ARK, would be wiping the app's own session key.
+        val session = unlocked()
+        val before = assertNotNull(session.exportArk().getOrNull())
+
+        unlocker(session).withSession { }.assertSuccess()
+
+        assertTrue(session.isActive.value)
+        assertContentEquals(before, session.exportArk().getOrNull())
     }
 
     @Test
-    fun `locked but provisioned recovers the ARK into a BackupSession`() = runTest {
-        val ark = ByteArray(32) { (it + 1).toByte() }
-        provision(ark)
+    fun `withSession recovers the provisioned ark into a throwaway session when locked`() =
+        runTest {
+            val ark = ByteArray(32) { (it + 1).toByte() }
+            provision(ark)
 
-        // The recovered ARK is zeroed once the block returns, so assert on it from inside.
-        val result = unlocker(FakeSession(startOnConstruct = false)).withScope {
-            val used = factory.lastSession
-            assertIs<BackupSession>(used)
-            used.withArk { assertContentEquals(ark, it) }
+            unlocker(locked()).withSession {
+                assertSame(throwaway(), it)
+                it.useArk { sessionArk -> assertContentEquals(ark, sessionArk) }.assertSuccess()
+            }.assertSuccess()
         }
 
-        assertIs<Result.Success<*, *>>(result)
+    @Test
+    fun `the app-wide session stays locked while a backup runs on the escrowed ark`() = runTest {
+        provision()
+        val session = locked()
+
+        unlocker(session).withSession {
+            assertNotSame(session, it)
+            assertFalse(session.isActive.value)
+        }.assertSuccess()
+
+        assertFalse(session.isActive.value)
+    }
+
+    @Test
+    fun `a user unlocking during a backup keeps their session when it finishes`() = runTest {
+        provision()
+        val session = locked()
+        val userArk = ByteArray(32) { (it + 50).toByte() }
+
+        unlocker(session).withSession {
+            session.unlockWithArk(userArk.copyOf()).assertSuccess()
+        }.assertSuccess()
+
+        assertTrue(session.isActive.value)
+        assertContentEquals(userArk, session.exportArk().getOrNull())
+    }
+
+    @Test
+    fun `withSession fails with NotProvisioned when locked and no ark copy exists`() = runTest {
+        val result = unlocker(locked()).withSession { }.assertFailure()
+        assertEquals(ExportError.NotProvisioned, result)
     }
 
     @Test
     fun `locked provisioned but device locked fails with DeviceLocked`() = runTest {
-        provision(ByteArray(32) { it.toByte() })
+        provision()
         keyStore.deviceLocked = true
 
-        val result = unlocker(FakeSession(startOnConstruct = false)).withScope { }
-        assertEquals(Result.Failure(ExportError.DeviceLocked), result)
+        val result = unlocker(locked()).withSession { }.assertFailure()
+        assertEquals(ExportError.DeviceLocked, result)
     }
 
     /**
@@ -96,84 +138,61 @@ class BackupArkUnlockerTest {
      */
     @Test
     fun `locked provisioned but key permanently invalidated fails terminally`() = runTest {
-        provision(ByteArray(32) { it.toByte() })
+        provision()
         keyStore.failure = KeyStoreManagerError.KeyInvalidated
 
-        val result = unlocker(FakeSession(startOnConstruct = false)).withScope { }
+        val result = unlocker(locked()).withSession { }.assertFailure()
 
-        assertEquals(Result.Failure(ExportError.CryptoFailed), result)
-        assertFalse(ExportError.CryptoFailed.retryable)
+        assertEquals(ExportError.CryptoFailed, result)
+        assertFalse(result.retryable)
     }
 
     @Test
-    fun `withArk hands over the live session ark`() = runTest {
-        val session = FakeSession(startOnConstruct = true)
-        val expected = assertNotNull(session.currentArk)
+    fun `an escrowed ark the session rejects fails as CryptoFailed, not a retry`() = runTest {
+        provision(ByteArray(16) { (it + 1).toByte() })
 
-        val result = unlocker(session).withArk { assertContentEquals(expected, it) }
+        val result = unlocker(locked()).withSession { }.assertFailure()
 
-        assertIs<Result.Success<*, *>>(result)
+        assertEquals(ExportError.CryptoFailed, result)
+        assertFalse(result.retryable)
     }
 
     @Test
-    fun `withArk recovers the provisioned ark when locked`() = runTest {
-        val ark = ByteArray(32) { (it + 1).toByte() }
-        provision(ark)
+    fun `the recovered ark is zeroed after use`() = runTest {
+        provision()
 
-        val result = unlocker(FakeSession(startOnConstruct = false)).withArk {
-            assertContentEquals(ark, it)
+        unlocker(locked()).withSession {
+            assertTrue(assertNotNull(throwaway().handedOver).any { byte -> byte != 0.toByte() })
         }
 
-        assertIs<Result.Success<*, *>>(result)
+        assertTrue(assertNotNull(throwaway().handedOver).all { it == 0.toByte() })
     }
 
     @Test
-    fun `withArk fails with NotProvisioned when locked and no ark copy exists`() = runTest {
-        val result = unlocker(FakeSession(startOnConstruct = false)).withArk { }
+    fun `the throwaway session is ended after use`() = runTest {
+        provision()
 
-        val failure = assertIs<Result.Failure<Unit, ExportError>>(result)
-        assertEquals(ExportError.NotProvisioned, failure.error)
+        unlocker(locked()).withSession { }.assertSuccess()
+
+        assertFalse(throwaway().isActive.value)
     }
 
     @Test
-    fun `a recovered ark is zeroed after use`() = runTest {
-        provision(ByteArray(32) { (it + 1).toByte() })
+    fun `the throwaway session is ended when the block throws`() = runTest {
+        provision()
 
-        var seen: ByteArray? = null
-        unlocker(FakeSession(startOnConstruct = false)).withArk { ark ->
-            seen = ark
-            assertTrue(ark.any { it != 0.toByte() })
-        }
+        runCatching { unlocker(locked()).withSession { error("boom") } }
 
-        assertTrue(assertNotNull(seen).all { it == 0.toByte() })
+        assertFalse(throwaway().isActive.value)
     }
 
     @Test
-    fun `a recovered ark is zeroed after use in withScope`() = runTest {
-        val ark = ByteArray(32) { (it + 1).toByte() }
-        provision(ark)
+    fun `the recovered ark is zeroed when unlocking the session fails`() = runTest {
+        provision()
+        sessionFactory.failUnlock = true
 
-        val result = unlocker(FakeSession(startOnConstruct = false)).withScope {
-            val used = factory.lastSession
-            assertIs<BackupSession>(used)
-            used.withArk { assertContentEquals(ark, it) }
-        }
+        unlocker(locked()).withSession { }.assertFailure()
 
-        assertIs<Result.Success<*, *>>(result)
-
-        val used = factory.lastSession
-        assertIs<BackupSession>(used)
-        used.withArk { recovered -> assertTrue(recovered.all { it == 0.toByte() }) }
-    }
-
-    @Test
-    fun `a live session ark is left intact`() = runTest {
-        // FakeSession seeds ByteArray(32) { it.toByte() } - zeroing it would be zeroing the app's
-        // own session key.
-        val session = FakeSession(startOnConstruct = true)
-
-        unlocker(session).withArk { }
-
-        assertTrue(assertNotNull(session.currentArk).any { it != 0.toByte() })
+        assertTrue(assertNotNull(throwaway().handedOver).all { it == 0.toByte() })
     }
 }

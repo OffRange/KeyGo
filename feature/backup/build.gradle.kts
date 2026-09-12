@@ -30,6 +30,7 @@ dependencies {
     implementation(projects.feature.item.core)
     implementation(projects.feature.vault)
 
+    testImplementation(testFixtures(projects.core.util))
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.security))
     testImplementation(testFixtures(projects.rust))

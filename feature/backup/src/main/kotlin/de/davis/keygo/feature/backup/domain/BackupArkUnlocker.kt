@@ -1,66 +1,61 @@
 package de.davis.keygo.feature.backup.domain
 
-import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.KeyStoreManager
 import de.davis.keygo.core.security.domain.Session
-import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProviderFactory
+import de.davis.keygo.core.security.domain.SessionFactory
 import de.davis.keygo.core.security.domain.crypto.suspendDoFinal
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
-import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.resultBinding
-import de.davis.keygo.feature.backup.data.BackupSession
 import de.davis.keygo.feature.backup.domain.model.ExportError
 import de.davis.keygo.feature.backup.domain.model.exportError
 import de.davis.keygo.feature.backup.domain.repository.BackupArkKeyStore
 import org.koin.core.annotation.Single
 
 /**
- * Resolves the crypto scope for a backup. Prefers the live [Session]; when locked, silently recovers
- * the ARK copy via the non-auth [KeyId.BackupArkKey] and binds the scope to a throwaway
- * [BackupSession]. The global session is never touched.
+ * Resolves the session a backup runs under. Prefers the live [Session]; when locked, silently
+ * recovers the ARK copy via the non-auth [KeyId.BackupArkKey] and hands it to a throwaway session
+ * from [SessionFactory].
+ *
+ * The app-wide session is never touched. The escrowed ARK is readable with no user present, so
+ * unlocking the app-wide session with it would open the whole app, and every feature reading that
+ * session, for as long as the backup ran. Ending it afterwards would also end a session the user
+ * unlocked in the meantime.
  */
 @Single
 internal class BackupArkUnlocker(
     private val session: Session,
+    private val sessionFactory: SessionFactory,
     private val keyStoreManager: KeyStoreManager,
     private val arkKeyStore: BackupArkKeyStore,
-    private val scopeProviderFactory: CryptographicScopeProviderFactory,
-    private val vaultRepository: VaultRepository,
 ) {
 
     /**
-     * Runs [block] with the ARK for this backup. A recovered ARK is zeroed afterwards; a live
-     * session's ARK is the app's own key, left for the session to wipe.
+     * Runs [block] with a session holding the ARK for this backup: the live one when unlocked,
+     * otherwise a throwaway holding a copy recovered from escrow. The throwaway is ended and the
+     * recovered bytes are zeroed afterwards; a live session is left alone, since its ARK is the
+     * app's own key.
      */
-    suspend fun <R> withArk(block: suspend (ByteArray) -> R): Result<R, ExportError> {
-        session.withArk { ark -> Result.Success<R, ExportError>(block(ark)) }?.let { return it }
+    suspend fun <R> withSession(block: suspend (Session) -> R): Result<R, ExportError> {
+        if (session.isActive.value) return Result.Success(block(session))
 
         return resultBinding {
             val ark = recoverArk().bind()
             try {
-                block(ark)
-            } finally {
-                ark.fill(0)
-            }
-        }
-    }
-
-    /** Runs [block] with a crypto scope bound to the live session, or to a throwaway
-     * [BackupSession] holding a recovered ARK that is zeroed afterwards. */
-    suspend fun <R> withScope(
-        block: suspend (ItemWithCryptoScopeUseCase) -> R,
-    ): Result<R, ExportError> {
-        // The ark itself goes unused: this is the liveness check that prefers the live session.
-        session.withArk { Result.Success<R, ExportError>(block(scopeFor(session))) }
-            ?.let { return it }
-
-        return resultBinding {
-            val ark = recoverArk().bind()
-            try {
-                block(scopeFor(BackupSession(ark)))
+                // Creating the session sits inside the wipe guard: it can throw, and the recovered
+                // ARK is already in hand by then. Ending it has its own guard, so a session is
+                // never left holding a key because the block below failed.
+                val recovered = sessionFactory.create()
+                try {
+                    // Nothing else can lock a session this fresh, so a rejection is the escrowed
+                    // bytes themselves. No retry can fix that; it would only hold the escrow open.
+                    recovered.unlockWithArk(ark).bind { ExportError.CryptoFailed }
+                    block(recovered)
+                } finally {
+                    recovered.endSession()
+                }
             } finally {
                 ark.fill(0)
             }
@@ -79,7 +74,4 @@ internal class BackupArkUnlocker(
 
         cipher.suspendDoFinal(wrapped.data).bind { ExportError.DeviceLocked }
     }
-
-    private fun scopeFor(session: Session): ItemWithCryptoScopeUseCase =
-        ItemWithCryptoScopeUseCase(vaultRepository, scopeProviderFactory.forSession(session))
 }

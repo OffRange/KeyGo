@@ -1,7 +1,11 @@
+@file:OptIn(ExportArk::class)
+
 package de.davis.keygo.feature.backup.domain.usecase
 
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
-import de.davis.keygo.core.security.crypto.FakeSession
+import de.davis.keygo.core.security.domain.ExportArk
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.util.Result
@@ -33,12 +37,15 @@ class FinishExportWizardUseCaseTest {
 
     private val scheduler = FakeBackupScheduler()
     private val persistable = FakePersistableUriManager()
-    private val session = FakeSession(startOnConstruct = true)
+    private val session = FakeSession(startUnlocked = true)
     private val keyStoreManager = FakeKeyStoreManager()
     private val arkKeyStore = FakeBackupArkKeyStore()
     private val destinationResolver = FakeBackupDestinationResolver()
 
-    private fun useCase() = FinishExportWizardUseCase(
+    private fun useCase() = useCaseOver(session)
+
+    /** The wipe tests need their own recording session in place of the shared one. */
+    private fun useCaseOver(session: Session) = FinishExportWizardUseCase(
         backupScheduler = scheduler,
         destinationResolver = destinationResolver,
         keyStoreManager = keyStoreManager,
@@ -139,7 +146,35 @@ class FinishExportWizardUseCaseTest {
                 .getOrNull(),
         )
         val recovered = cipher.doFinal(wrapped.data)
-        assertContentEquals(session.currentArk, recovered)
+        assertContentEquals(session.exportArk().getOrNull(), recovered)
+    }
+
+    @Test
+    fun `wipes the exported ARK after escrowing it`() = runTest {
+        val recording = FakeSession(startUnlocked = true)
+
+        useCaseOver(recording)(
+            details(interval = BackupInterval(count = 3, unit = IntervalUnit.Days)),
+        )
+
+        assertContentEquals(ByteArray(32), recording.onlyExported())
+    }
+
+    @Test
+    fun `wipes the exported ARK even when escrowing fails`() = runTest {
+        val recording = FakeSession(startUnlocked = true)
+        // A locked device fails the Keystore cipher, which is the step right after the export.
+        keyStoreManager.deviceLocked = true
+
+        val result = useCaseOver(recording)(
+            details(interval = BackupInterval(count = 3, unit = IntervalUnit.Days)),
+        )
+
+        // Without this the test would pass on a use case that escrowed successfully, which is
+        // the one case where the wipe is not what kept the ARK from staying resident.
+        val failure = assertIs<Result.Failure<Unit, FinishExportWizardError>>(result)
+        assertEquals(FinishExportWizardError.CryptoFailed, failure.error)
+        assertContentEquals(ByteArray(32), recording.onlyExported())
     }
 
     @Test

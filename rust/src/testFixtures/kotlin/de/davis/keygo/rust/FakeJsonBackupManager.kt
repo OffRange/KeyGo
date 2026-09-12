@@ -41,11 +41,12 @@ class FakeJsonBackupManager : JsonBackupManagerInterface {
         return importResult
     }
 
-    // Callers zero secret key material as soon as the call returns (a recovered ARK, a decrypted
-    // passphrase), so record the bytes we were called with rather than a live reference to them.
+    // Callers zero secret key material as soon as the call returns (a decrypted passphrase), so
+    // record the bytes we were called with rather than a live reference to them. An ark
+    // credential holds no byte array of its own to protect, so its reference is recorded as is.
     private fun BackupCredential.snapshot(): BackupCredential = when (this) {
-        is BackupCredential.Ark -> BackupCredential.Ark(key.copyOf())
         is BackupCredential.Passphrase -> BackupCredential.Passphrase(bytes.copyOf())
+        is BackupCredential.Ark -> this
     }
 
     override fun inspect(data: String): JsonEncryption {

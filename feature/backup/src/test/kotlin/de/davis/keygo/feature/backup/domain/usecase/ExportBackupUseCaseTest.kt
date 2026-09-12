@@ -1,3 +1,5 @@
+@file:OptIn(ExportArk::class)
+
 package de.davis.keygo.feature.backup.domain.usecase
 
 import de.davis.keygo.core.item.FakeCreditCardRepository
@@ -5,10 +7,14 @@ import de.davis.keygo.core.item.FakeItemRepository
 import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.FakePasskeyRepository
 import de.davis.keygo.core.item.FakeVaultRepository
+import de.davis.keygo.core.security.FakeArkCredential
+import de.davis.keygo.core.security.FakeSession
+import de.davis.keygo.core.security.FakeSessionFactory
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProviderFactory
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
-import de.davis.keygo.core.security.crypto.FakeSession
+import de.davis.keygo.core.security.domain.ExportArk
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
@@ -26,6 +32,8 @@ import de.davis.keygo.feature.backup.domain.model.EncryptionMethod
 import de.davis.keygo.feature.backup.domain.model.ExportError
 import de.davis.keygo.feature.backup.domain.model.ExportProgress
 import de.davis.keygo.feature.backup.domain.model.FileFormat
+import de.davis.keygo.feature.backup.domain.model.failureReason
+import de.davis.keygo.feature.backup.domain.model.retryable
 import de.davis.keygo.feature.backup.testLogin
 import de.davis.keygo.feature.backup.testVault
 import de.davis.keygo.rust.FakeCsvBackupManager
@@ -36,10 +44,12 @@ import de.davisalessandro.keygo.rust.ExportPreset
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class ExportBackupUseCaseTest {
@@ -52,21 +62,27 @@ class ExportBackupUseCaseTest {
     private val keyStore = FakeKeyStoreManager()
     private val arkStore = FakeBackupArkKeyStore()
     private val factory = FakeCryptographicScopeProviderFactory(scope)
+    private val sessionFactory = FakeSessionFactory()
     private val fileStore = FakeBackupFileStore()
     private val json = FakeJsonBackupManager()
     private val csv = FakeCsvBackupManager()
 
     private val folder = BackupDestinationUri("content://tree")
 
-    private fun useCase(session: FakeSession): ExportBackupUseCase {
-        val arkUnlocker = BackupArkUnlocker(session, keyStore, arkStore, factory, vaultRepo)
+    private fun useCase(session: Session): ExportBackupUseCase {
+        val arkUnlocker = BackupArkUnlocker(
+            session = session,
+            sessionFactory = sessionFactory,
+            keyStoreManager = keyStore,
+            arkKeyStore = arkStore,
+        )
         return ExportBackupUseCase(
             collector = BackupCollector(
                 vaultRepository = vaultRepo,
                 loginRepository = loginRepo,
                 creditCardRepository = cardRepo,
                 passkeyRepository = passkeyRepo,
-                arkUnlocker = arkUnlocker,
+                scopeProviderFactory = factory,
             ),
             fileStore = fileStore,
             jsonBackupManager = json,
@@ -76,13 +92,13 @@ class ExportBackupUseCaseTest {
         )
     }
 
-    private suspend fun provision(session: FakeSession) {
+    private suspend fun provision(session: Session) {
         val cipher = assertNotNull(
             keyStore
                 .getOrCreateCipherFor(KeyId.BackupArkKey, CryptographicMode.Encrypt)
                 .getOrNull(),
         )
-        val ark = assertNotNull(session.currentArk)
+        val ark = assertNotNull(session.exportArk().getOrNull())
         arkStore.save(CryptographicData(cipher.doFinal(ark), cipher.iv))
     }
 
@@ -92,7 +108,7 @@ class ExportBackupUseCaseTest {
         format = FileFormat.CSV,
     )
 
-    private fun unlocked() = FakeSession(startOnConstruct = true)
+    private fun unlocked() = FakeSession(startUnlocked = true)
 
     private fun seedSingleLogin() {
         val vault = testVault(name = "V")
@@ -107,8 +123,9 @@ class ExportBackupUseCaseTest {
     @Test
     fun `locked and unprovisioned session fails with NotProvisioned`() = runTest {
         seedSingleLogin()
-        val emissions = useCase(FakeSession(startOnConstruct = false))(csvJob).toList()
-        assertEquals(ExportProgress.Failed(ExportError.NotProvisioned), emissions.last())
+        val emissions = useCase(FakeSession())(csvJob).toList()
+        // Fails before any item is counted or reported.
+        assertEquals(listOf(ExportProgress.Failed(ExportError.NotProvisioned)), emissions)
     }
 
     @Test
@@ -116,7 +133,7 @@ class ExportBackupUseCaseTest {
         seedSingleLogin()
         csv.exportResult = "data"
         provision(unlocked())
-        val emissions = useCase(FakeSession(startOnConstruct = false))(csvJob).toList()
+        val emissions = useCase(FakeSession())(csvJob).toList()
         assertIs<ExportProgress.Succeeded>(emissions.last())
     }
 
@@ -231,8 +248,7 @@ class ExportBackupUseCaseTest {
         val emissions = useCase(session)(jsonJob).toList()
 
         assertIs<ExportProgress.Succeeded>(emissions.last())
-        val credential = assertIs<BackupCredential.Ark>(json.exportCalls.single().credential)
-        assertContentEquals(session.currentArk, credential.key)
+        assertIs<BackupCredential.Ark>(json.exportCalls.single().credential)
     }
 
     @Test
@@ -248,11 +264,18 @@ class ExportBackupUseCaseTest {
             encryption = EncryptionMethod.Ark,
         )
 
-        val emissions = useCase(FakeSession(startOnConstruct = false))(jsonJob).toList()
+        val locked = FakeSession()
+
+        val emissions = useCase(locked)(jsonJob).toList()
 
         assertIs<ExportProgress.Succeeded>(emissions.last())
+        // One throwaway session holds the recovered ARK for the whole run: it decrypts the items
+        // and seals the file. The app-wide session is never unlocked with the escrowed key.
+        val throwaway = sessionFactory.created.single()
+        assertSame(throwaway, factory.lastSession)
         val credential = assertIs<BackupCredential.Ark>(json.exportCalls.single().credential)
-        assertContentEquals(unlockedSession.currentArk, credential.key)
+        assertSame(throwaway, assertIs<FakeArkCredential>(credential.credential).session)
+        assertFalse(locked.isActive.value)
     }
 
     @Test
@@ -273,6 +296,51 @@ class ExportBackupUseCaseTest {
         useCase(unlocked())(csvJob).toList()
 
         assertEquals(ExportPreset.BROWSER, csv.exportCalls.single().preset)
+    }
+
+    /**
+     * The session can lock at any point after [BackupArkUnlocker] hands back the live session,
+     * because auto-lock fires from the lock observer and not from this flow. Folding that into
+     * [ExportError.SerializationFailed] would record the job as terminally failed and release the
+     * escrowed credentials its retry needs, so the distinction is what keeps the retry possible.
+     */
+    @Test
+    fun `a session locked mid-export is retryable rather than a serialization failure`() = runTest {
+        seedSingleLogin()
+        val session = unlocked()
+        json.exportException = BackupException.Locked()
+        val jsonJob = BackupJob(
+            uri = folder,
+            wrappedPassphrase = null,
+            format = FileFormat.JSON,
+            encryption = EncryptionMethod.Ark,
+        )
+
+        val emissions = useCase(session)(jsonJob).toList()
+
+        val failed = assertIs<ExportProgress.Failed>(emissions.last())
+        assertEquals(ExportError.SessionLocked, failed.error)
+        assertTrue(failed.error.retryable)
+        assertNull(failed.error.failureReason)
+    }
+
+    @Test
+    fun `a non-lock export exception is still a terminal serialization failure`() = runTest {
+        seedSingleLogin()
+        val session = unlocked()
+        json.exportException = BackupException.Crypto("boom")
+        val jsonJob = BackupJob(
+            uri = folder,
+            wrappedPassphrase = null,
+            format = FileFormat.JSON,
+            encryption = EncryptionMethod.Ark,
+        )
+
+        val emissions = useCase(session)(jsonJob).toList()
+
+        val failed = assertIs<ExportProgress.Failed>(emissions.last())
+        assertIs<ExportError.SerializationFailed>(failed.error)
+        assertFalse(failed.error.retryable)
     }
 
     @Test

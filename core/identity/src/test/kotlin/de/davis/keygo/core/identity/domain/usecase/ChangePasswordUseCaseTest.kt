@@ -1,3 +1,5 @@
+@file:OptIn(ExportArk::class)
+
 package de.davis.keygo.core.identity.domain.usecase
 
 import de.davis.keygo.core.identity.FakeAccountRepository
@@ -6,14 +8,14 @@ import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.ChangePasswordError
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.model.Reauthentication
+import de.davis.keygo.core.security.FakeSession
+import de.davis.keygo.core.security.domain.ExportArk
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
-import de.davis.keygo.rust.FakeKeyDeriver
-import de.davis.keygo.rust.FakeKeyWrapper
+import de.davisalessandro.keygo.rust.NewAccount
 import de.davisalessandro.keygo.rust.WrappedKeyBlob
 import kotlinx.coroutines.test.runTest
-import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -22,53 +24,67 @@ import kotlin.test.assertTrue
 
 class ChangePasswordUseCaseTest {
 
+    private val session = FakeSession()
     private val accountRepository = FakeAccountRepository()
-    private val keyDeriver = FakeKeyDeriver()
-    private val keyWrapper = FakeKeyWrapper()
 
     private val useCase = ChangePasswordUseCase(
         accountRepository = accountRepository,
-        keyDeriver = keyDeriver,
-        keyWrapper = keyWrapper,
+        session = session,
     )
 
-    private val accountId = UUID.randomUUID()
-    private val ark = ByteArray(32) { (it + 1).toByte() }
+    /** What the session minted for the seeded account, for round-trip assertions. */
+    private lateinit var created: NewAccount
 
-    private fun seedAccount(
+    /**
+     * Mints an account through the session and persists it. The session stays unlocked, which is
+     * what the change-password screen guarantees.
+     */
+    private suspend fun seedAccount(
         password: String,
         withBiometric: Boolean = false,
     ): Account {
-        val salt = keyDeriver.generateSalt()
-        val kek = keyDeriver.deriveRootKekFromPassword(password, salt)
-        val wrapped = keyWrapper.wrapAccountRootKey(kek, ark, accountId)
+        created = checkNotNull(session.createAccount(password).getOrNull())
+
         val account = Account(
-            id = accountId,
+            id = created.userId,
             displayName = "Test",
             passwordWrappedArk = PasswordWrappedArk(
-                key = wrapped.ciphertext,
-                keyIV = wrapped.nonce,
-                salt = salt,
+                key = created.passwordWrappedArk.ciphertext,
+                keyIV = created.passwordWrappedArk.nonce,
+                salt = created.salt,
             ),
             biometricWrappedArk = if (withBiometric) {
-                BiometricWrappedArk(key = ByteArray(48) { it.toByte() }, keyIV = ByteArray(12) { it.toByte() })
+                BiometricWrappedArk(
+                    key = ByteArray(48) { it.toByte() },
+                    keyIV = ByteArray(12) { it.toByte() },
+                )
             } else null,
         )
         accountRepository.seed(account)
         return account
     }
 
-    /** Unwraps the stored password-wrapped ARK with [password]; returns null if it doesn't unwrap. */
-    private suspend fun unwrapStoredArkWith(password: String): ByteArray? {
+    /** The live ARK, which the biometric path has to hand back to prove reauthentication. */
+    private fun liveArk(): ByteArray = checkNotNull(session.exportArk().getOrNull())
+
+    /**
+     * Whether the stored password-wrapped ARK opens under [password], in a session that shares no
+     * state with the one under test. It is the same ARK, not merely a well-formed one, when the
+     * default vault key minted alongside the account still unwraps in that fresh session.
+     */
+    private suspend fun unlocksWith(password: String): Boolean {
         val stored = accountRepository.getOrNull()!!.passwordWrappedArk
-        val kek = keyDeriver.deriveRootKekFromPassword(password, stored.salt)
-        return runCatching {
-            keyWrapper.unwrapAccountRootKey(
-                kek = kek,
-                wrapped = WrappedKeyBlob(ciphertext = stored.key, nonce = stored.keyIV),
-                userId = accountId,
-            )
-        }.getOrNull()
+        val probe = FakeSession()
+
+        val unlocked = probe.unlockWithPassword(
+            password = password,
+            salt = stored.salt,
+            wrapped = WrappedKeyBlob(ciphertext = stored.key, nonce = stored.keyIV),
+            userId = created.userId,
+        )
+        if (unlocked.isFailure()) return false
+
+        return probe.unwrapVaultKey(created.wrappedVaultKey, created.vaultId).isSuccess()
     }
 
     @Test
@@ -89,6 +105,24 @@ class ChangePasswordUseCaseTest {
         assertEquals(ChangePasswordError.IncorrectPassword, result.error)
     }
 
+    /**
+     * The stored blob opens under the right password, but around a different key than the session
+     * holds. Rewrapping would put the new password around the session's key, which the stored
+     * account never had, so the next password unlock would open nothing.
+     */
+    @Test
+    fun `returns IncorrectPassword when the stored ARK is not the one the session holds`() =
+        runTest {
+            seedAccount("old")
+            session.unlockWithArk(ByteArray(32) { (it + 7).toByte() })
+
+            val result = useCase(Reauthentication.Password("old"), "new")
+
+            assertTrue(result.isFailure())
+            assertEquals(ChangePasswordError.IncorrectPassword, result.error)
+            assertTrue(unlocksWith("old"))
+        }
+
     @Test
     fun `password path re-wraps ARK so new password unwraps and old fails`() = runTest {
         seedAccount("old")
@@ -96,8 +130,8 @@ class ChangePasswordUseCaseTest {
         val result = useCase(Reauthentication.Password("old"), "new")
 
         assertTrue(result.isSuccess())
-        assertContentEquals(ark, unwrapStoredArkWith("new"))
-        assertEquals(null, unwrapStoredArkWith("old"))
+        assertTrue(unlocksWith("new"))
+        assertFalse(unlocksWith("old"))
     }
 
     @Test
@@ -122,20 +156,43 @@ class ChangePasswordUseCaseTest {
     }
 
     @Test
-    fun `biometric path re-wraps the supplied ARK under the new password`() = runTest {
+    fun `biometric path re-wraps the live ARK under the new password`() = runTest {
         seedAccount("old", withBiometric = true)
 
-        val result = useCase(Reauthentication.Biometric(ark.copyOf()), "new")
+        val result = useCase(Reauthentication.Biometric(liveArk()), "new")
 
         assertTrue(result.isSuccess())
-        assertContentEquals(ark, unwrapStoredArkWith("new"))
+        assertTrue(unlocksWith("new"))
     }
+
+    @Test
+    fun `returns IncorrectPassword when the biometric ARK is not the live one`() = runTest {
+        seedAccount("old", withBiometric = true)
+
+        val result = useCase(Reauthentication.Biometric(ByteArray(32) { it.toByte() }), "new")
+
+        assertTrue(result.isFailure())
+        assertEquals(ChangePasswordError.IncorrectPassword, result.error)
+    }
+
+    @Test
+    fun `biometric path on a locked session fails as ActiveAccountNotFound, not IncorrectPassword`() =
+        runTest {
+            seedAccount("old", withBiometric = true)
+            val recovered = liveArk()
+            session.endSession()
+
+            val result = useCase(Reauthentication.Biometric(recovered), "new")
+
+            assertTrue(result.isFailure())
+            assertEquals(ChangePasswordError.ActiveAccountNotFound, result.error)
+        }
 
     @Test
     fun `returns BiometricNotEnrolled when biometric proof given but none enrolled`() = runTest {
         seedAccount("old", withBiometric = false)
 
-        val result = useCase(Reauthentication.Biometric(ark.copyOf()), "new")
+        val result = useCase(Reauthentication.Biometric(liveArk()), "new")
 
         assertTrue(result.isFailure())
         assertEquals(ChangePasswordError.BiometricNotEnrolled, result.error)
@@ -144,7 +201,7 @@ class ChangePasswordUseCaseTest {
     @Test
     fun `returns KeyDerivationFailed when derivation fails`() = runTest {
         seedAccount("old")
-        keyDeriver.failDerivation = true
+        session.failDerivation = true
 
         val result = useCase(Reauthentication.Password("old"), "new")
 
@@ -163,10 +220,26 @@ class ChangePasswordUseCaseTest {
         assertEquals(ChangePasswordError.PersistenceFailed, result.error)
     }
 
+    /**
+     * Changing a password needs the live ARK, and proving the current password compares against
+     * it, so a locked session fails at reauthentication. It is reported as the missing session it
+     * is, not as a wrong password.
+     */
+    @Test
+    fun `change password fails as ActiveAccountNotFound when the session is locked`() = runTest {
+        seedAccount("old")
+        session.endSession()
+
+        val result = useCase(Reauthentication.Password("old"), "new")
+
+        assertTrue(result.isFailure())
+        assertEquals(ChangePasswordError.ActiveAccountNotFound, result.error)
+    }
+
     @Test
     fun `scrubs the supplied biometric ARK after a successful change`() = runTest {
         seedAccount("old", withBiometric = true)
-        val recovered = ark.copyOf()
+        val recovered = liveArk()
 
         useCase(Reauthentication.Biometric(recovered), "new")
 
@@ -176,8 +249,8 @@ class ChangePasswordUseCaseTest {
     @Test
     fun `scrubs the supplied biometric ARK when persistence fails`() = runTest {
         seedAccount("old", withBiometric = true)
+        val recovered = liveArk()
         accountRepository.setFails = true
-        val recovered = ark.copyOf()
 
         useCase(Reauthentication.Biometric(recovered), "new")
 
@@ -187,7 +260,7 @@ class ChangePasswordUseCaseTest {
     @Test
     fun `scrubs the supplied biometric ARK when biometric reauth is not enrolled`() = runTest {
         seedAccount("old", withBiometric = false)
-        val recovered = ark.copyOf()
+        val recovered = liveArk()
 
         useCase(Reauthentication.Biometric(recovered), "new")
 

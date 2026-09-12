@@ -4,12 +4,12 @@ import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.model.CreateAccessError
 import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
-import de.davis.keygo.core.security.crypto.FakeSession
+import de.davis.keygo.core.item.domain.alias.VaultId
+import de.davis.keygo.core.item.domain.repository.VaultContextRepository
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
-import de.davis.keygo.rust.FakeAccountManager
-import de.davis.keygo.rust.FakeKeyDeriver
-import de.davis.keygo.rust.FakeKeyWrapper
+import de.davisalessandro.keygo.rust.WrappedKeyBlob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import javax.crypto.Cipher
@@ -17,6 +17,8 @@ import javax.crypto.KeyGenerator
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -26,14 +28,8 @@ class CreateAccessUseCaseTest {
     private val accountRepository = FakeAccountRepository()
     private val vaultRepository = FakeVaultRepository()
     private val vaultContextRepository = FakeVaultContextRepository()
-    private val keyDeriver = FakeKeyDeriver()
-    private val keyWrapper = FakeKeyWrapper()
-    private val accountManager = FakeAccountManager()
 
     private val useCase = CreateAccessUseCase(
-        keyDeriver = keyDeriver,
-        keyWrapper = keyWrapper,
-        accountManager = accountManager,
         accountRepository = accountRepository,
         vaultRepository = vaultRepository,
         vaultContextRepository = vaultContextRepository,
@@ -42,7 +38,7 @@ class CreateAccessUseCaseTest {
 
     @Test
     fun `returns KeyDerivationFailed when derivation fails`() = runTest {
-        keyDeriver.failDerivation = true
+        session.failDerivation = true
 
         val result = useCase("password")
 
@@ -86,12 +82,22 @@ class CreateAccessUseCaseTest {
         }
 
     @Test
-    fun `returns Success and starts session without biometric cipher`() = runTest {
+    fun `returns Success and leaves the session unlocked without biometric cipher`() = runTest {
         val result = useCase("password", biometricCipher = null)
 
         assertTrue(result.isSuccess())
-        assertTrue(session.startSessionCalled)
-        assertContentEquals(accountManager.createAccount.account.ark, session.currentArk)
+        assertTrue(session.isActive.value)
+        // The vault the use case persisted has to unwrap under the ARK the session now holds.
+        val vault = vaultRepository.observeVaults().first().single()
+        assertTrue(
+            session.unwrapVaultKey(
+                wrapped = WrappedKeyBlob(
+                    ciphertext = vault.keyInformation.wrappedKey,
+                    nonce = vault.keyInformation.keyNonce,
+                ),
+                vaultId = vault.id,
+            ).isSuccess()
+        )
     }
 
     @Test
@@ -142,6 +148,75 @@ class CreateAccessUseCaseTest {
         assertEquals("Work", accountRepository.getOrNull()?.displayName)
     }
 
+    /**
+     * The ARK reaches the JVM here only so a Keystore cipher can wrap it, and the `finally` that
+     * zeroes it afterwards is the only thing keeping it from staying resident. [FakeSession] hands
+     * out the array itself rather than a copy, so the wipe is observable.
+     */
+    @Test
+    fun `wipes the exported ARK after wrapping it for biometrics`() = runTest {
+        val recording = FakeSession(startUnlocked = true)
+        val biometricKek = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
+        val biometricCipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
+            init(Cipher.WRAP_MODE, biometricKek)
+        }
+
+        useCaseOver(recording)("password", biometricCipher = biometricCipher)
+
+        assertContentEquals(ByteArray(32), recording.onlyExported())
+    }
+
+    @Test
+    fun `wipes the exported ARK even when wrapping fails`() = runTest {
+        val recording = FakeSession(startUnlocked = true)
+        // A cipher in the wrong mode makes Cipher.wrap throw, so the wrap fails after the export.
+        val kek = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
+        val wrongMode = Cipher.getInstance("AES/GCM/NoPadding").apply {
+            init(Cipher.ENCRYPT_MODE, kek)
+        }
+
+        val result = useCaseOver(recording)("password", biometricCipher = wrongMode)
+
+        assertTrue(result.isFailure())
+        assertEquals(CreateAccessError.WrappingFailed, result.error)
+        assertContentEquals(ByteArray(32), recording.onlyExported())
+    }
+
+    @Test
+    fun `ends the session when account persistence fails`() = runTest {
+        accountRepository.setFails = true
+
+        useCase("password")
+
+        // Nothing was persisted, so a retained ARK would be a key with nothing left to unwrap.
+        assertFalse(session.isActive.value)
+    }
+
+    @Test
+    fun `ends the session when vault persistence fails`() = runTest {
+        vaultRepository.createError = RuntimeException("disk full")
+
+        useCase("password")
+
+        assertFalse(session.isActive.value)
+    }
+
+    @Test
+    fun `ends the session when the last write throws`() = runTest {
+        val throwing = CreateAccessUseCase(
+            accountRepository = accountRepository,
+            vaultRepository = vaultRepository,
+            vaultContextRepository = ThrowingVaultContextRepository(),
+            session = session,
+        )
+
+        assertFailsWith<RuntimeException> { throwing("password") }
+
+        // The throw leaves `create` without a return value, so only a `finally` can hand back
+        // the ARK. A guard on the result would let this path keep the key resident.
+        assertFalse(session.isActive.value)
+    }
+
     @Test
     fun `generates different salts for different invocations`() = runTest {
         useCase("password")
@@ -152,4 +227,24 @@ class CreateAccessUseCaseTest {
 
         assertTrue(!salt1.contentEquals(salt2))
     }
+
+    private fun useCaseOver(session: FakeSession) = CreateAccessUseCase(
+        accountRepository = accountRepository,
+        vaultRepository = vaultRepository,
+        vaultContextRepository = vaultContextRepository,
+        session = session,
+    )
+}
+
+/**
+ * Throws on the last write the use case makes, which is the only step reached after both persists
+ * have succeeded. None of the fakes throw, so the exception path out of `create` needs its own
+ * stand-in to be observable at all.
+ */
+private class ThrowingVaultContextRepository(
+    private val delegate: FakeVaultContextRepository = FakeVaultContextRepository(),
+) : VaultContextRepository by delegate {
+
+    override suspend fun setContextAndLastInteracted(vaultId: VaultId): Unit =
+        throw RuntimeException("datastore gone")
 }

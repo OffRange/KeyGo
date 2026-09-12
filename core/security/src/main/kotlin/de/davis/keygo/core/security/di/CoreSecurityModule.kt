@@ -2,9 +2,13 @@ package de.davis.keygo.core.security.di
 
 import android.content.Context
 import androidx.datastore.dataStore
+import de.davis.keygo.core.security.data.SessionImpl
 import de.davis.keygo.core.security.data.local.model.ProtoLockInfo
 import de.davis.keygo.core.security.di.annotation.LockInfoQualifier
+import de.davis.keygo.core.security.domain.SessionFactory
 import de.davis.keygo.core.util.data.serializer.DefaultProtoSerializer
+import de.davisalessandro.keygo.rust.ArkSession
+import de.davisalessandro.keygo.rust.ArkSessionInterface
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Module
@@ -27,4 +31,15 @@ object CoreSecurityModule {
     @LockInfoQualifier
     internal fun provideLockInfoDataStore(context: Context) =
         context.protoLockInfoDataStore
+
+    @Single
+    internal fun provideArkSession(): ArkSessionInterface = ArkSession()
+
+    /**
+     * Sessions that are not the app-wide one, each over its own Rust session. Backup opens its
+     * escrowed ARK in one of these, so that key never reaches the session the rest of the app reads.
+     */
+    @Single
+    internal fun provideSessionFactory(): SessionFactory =
+        SessionFactory { SessionImpl(ArkSession()) }
 }

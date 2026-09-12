@@ -5,27 +5,36 @@ import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.identity.domain.model.BiometricEnrollmentError
 import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeBiometricCryptoController
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
-import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
-import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
 import kotlinx.coroutines.test.runTest
 import java.util.UUID
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+/**
+ * Enrolment is one of only three places the ARK crosses into the JVM, because the Keystore cipher
+ * that seals the biometric copy only runs on this side of the FFI. The `finally` that zeroes the
+ * exported array is the sole thing keeping that copy from staying resident, so it is asserted
+ * directly here through [FakeSession], which hands out its array rather than a copy.
+ */
 class BiometricEnrollmentAdapterImplTest {
 
-    private val session = FakeSession()
+    private val session = FakeSession(startUnlocked = true)
     private val accountRepository = FakeAccountRepository()
     private val keyStoreManager = FakeKeyStoreManager()
     private val controller = FakeBiometricCryptoController()
@@ -36,38 +45,112 @@ class BiometricEnrollmentAdapterImplTest {
         keyStoreManager = keyStoreManager,
     )
 
-    private fun seedUnenrolledAccount() {
+    private fun seedAccount(biometricWrappedArk: BiometricWrappedArk? = null) =
         accountRepository.seed(
             Account(
                 id = UUID.randomUUID(),
                 displayName = "Test",
                 passwordWrappedArk = PasswordWrappedArk(
-                    key = byteArrayOf(1),
-                    keyIV = byteArrayOf(2),
-                    salt = byteArrayOf(3),
+                    key = ByteArray(48) { 1 },
+                    keyIV = ByteArray(12) { 2 },
+                    salt = ByteArray(16) { 3 },
                 ),
-                biometricWrappedArk = null,
-            )
+                biometricWrappedArk = biometricWrappedArk,
+            ),
         )
-    }
 
     private fun seedEnrolledAccount() {
         keyStoreManager.getOrCreateCipherFor(KeyId.BiometricVaultKek, CryptographicMode.Wrap)
-        accountRepository.seed(
-            Account(
-                id = UUID.randomUUID(),
-                displayName = "Test",
-                passwordWrappedArk = PasswordWrappedArk(
-                    key = byteArrayOf(1),
-                    keyIV = byteArrayOf(2),
-                    salt = byteArrayOf(3),
-                ),
-                biometricWrappedArk = BiometricWrappedArk(
-                    key = byteArrayOf(4),
-                    keyIV = byteArrayOf(5),
-                ),
-            )
+        seedAccount(
+            biometricWrappedArk = BiometricWrappedArk(
+                key = byteArrayOf(4),
+                keyIV = byteArrayOf(5),
+            ),
         )
+    }
+
+    private fun wrappingCipher() = Cipher.getInstance("AES/GCM/NoPadding").apply {
+        init(Cipher.WRAP_MODE, KeyGenerator.getInstance("AES").apply { init(256) }.generateKey())
+    }
+
+    private suspend fun enroll() = with(adapter) { controller.requestEnableBiometric() }
+
+    @Test
+    fun `enrolling persists a biometric-wrapped ARK`() = runTest {
+        seedAccount()
+        controller.cipherResult = Result.Success(wrappingCipher())
+
+        val result = enroll()
+
+        assertTrue(result.isSuccess())
+        val wrapped = assertNotNull(accountRepository.getOrNull()?.biometricWrappedArk)
+        assertTrue(wrapped.key.isNotEmpty())
+        assertTrue(wrapped.keyIV.isNotEmpty())
+    }
+
+    @Test
+    fun `wipes the exported ARK once it has been wrapped`() = runTest {
+        seedAccount()
+        controller.cipherResult = Result.Success(wrappingCipher())
+
+        enroll()
+
+        assertContentEquals(ByteArray(32), session.onlyExported())
+    }
+
+    @Test
+    fun `wipes the exported ARK even when wrapping fails`() = runTest {
+        seedAccount()
+        // A cipher in the wrong mode makes Cipher.wrap throw, after the ARK has been exported.
+        val wrongMode = Cipher.getInstance("AES/GCM/NoPadding").apply {
+            init(Cipher.ENCRYPT_MODE, KeyGenerator.getInstance("AES").apply { init(256) }.generateKey())
+        }
+        controller.cipherResult = Result.Success(wrongMode)
+
+        val result = enroll()
+
+        assertTrue(result.isFailure())
+        assertEquals(BiometricEnrollmentError.WrappingFailed, result.error)
+        assertContentEquals(ByteArray(32), session.onlyExported())
+    }
+
+    @Test
+    fun `a locked session reports NoActiveSession and never persists`() = runTest {
+        seedAccount()
+        controller.cipherResult = Result.Success(wrappingCipher())
+        session.endSession()
+
+        val result = enroll()
+
+        assertTrue(result.isFailure())
+        assertEquals(BiometricEnrollmentError.NoActiveSession, result.error)
+        assertNull(accountRepository.getOrNull()?.biometricWrappedArk)
+    }
+
+    @Test
+    fun `no account reports NoActiveAccount without touching the session`() = runTest {
+        controller.cipherResult = Result.Success(wrappingCipher())
+
+        val result = enroll()
+
+        assertTrue(result.isFailure())
+        assertEquals(BiometricEnrollmentError.NoActiveAccount, result.error)
+        assertTrue(session.exported.isEmpty())
+    }
+
+    @Test
+    fun `a biometric failure is reported without exporting the ARK`() = runTest {
+        seedAccount()
+        controller.cipherResult = Result.Failure(BiometricAuthError.NoCipher)
+
+        val result = enroll()
+
+        assertTrue(result.isFailure())
+        assertEquals(
+            BiometricEnrollmentError.BiometricFailed(BiometricAuthError.NoCipher),
+            result.error,
+        )
+        assertTrue(session.exported.isEmpty())
     }
 
     @Test
@@ -110,7 +193,7 @@ class BiometricEnrollmentAdapterImplTest {
     fun `a failed enrollment leaves the stored enrollment intact`() = runTest {
         seedEnrolledAccount()
 
-        val result = with(adapter) { controller.requestEnableBiometric(BiometricPolicy.Default) }
+        val result = enroll()
 
         assertTrue(result.isFailure())
         assertEquals(
@@ -128,12 +211,12 @@ class BiometricEnrollmentAdapterImplTest {
      */
     @Test
     fun `enrolling from an unenrolled account drops the key left behind`() = runTest {
-        seedUnenrolledAccount()
+        seedAccount()
         keyStoreManager.getOrCreateCipherFor(KeyId.BiometricVaultKek, CryptographicMode.Wrap)
 
         // The prompt fails afterwards, so what is left on the keystore is what enrollment decided
         // to start from: nothing.
-        with(adapter) { controller.requestEnableBiometric(BiometricPolicy.Default) }
+        enroll()
 
         assertFalse(KeyId.BiometricVaultKek in keyStoreManager.keys)
     }
@@ -145,7 +228,7 @@ class BiometricEnrollmentAdapterImplTest {
 
         // The prompt fails, as a user declining it would. The stored ARK is still wrapped under
         // this key, so taking it down here would strand an enrollment that works.
-        with(adapter) { controller.requestEnableBiometric(BiometricPolicy.Default) }
+        enroll()
 
         assertEquals(inUse, keyStoreManager.keys[KeyId.BiometricVaultKek])
         assertNotNull(accountRepository.getOrNull()?.biometricWrappedArk)
@@ -155,7 +238,7 @@ class BiometricEnrollmentAdapterImplTest {
     fun `enrolling without an account touches nothing`() = runTest {
         keyStoreManager.getOrCreateCipherFor(KeyId.BiometricVaultKek, CryptographicMode.Wrap)
 
-        val result = with(adapter) { controller.requestEnableBiometric(BiometricPolicy.Default) }
+        val result = enroll()
 
         assertTrue(result.isFailure())
         assertEquals(BiometricEnrollmentError.NoActiveAccount, result.error)

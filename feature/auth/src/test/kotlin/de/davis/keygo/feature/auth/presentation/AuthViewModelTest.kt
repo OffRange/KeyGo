@@ -10,8 +10,8 @@ import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockWithPasswordUseCase
 import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
-import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.feature.auth.presentation.model.AuthState
@@ -25,9 +25,6 @@ import de.davis.keygo.legacy_migration.domain.usecase.RunPendingMigrationUseCase
 import de.davis.keygo.legacy_migration.hasMainPasswordUseCase
 import de.davis.keygo.legacy_migration.runPendingMigrationUseCase
 import de.davis.keygo.legacy_migration.validateMainPasswordUseCase
-import de.davis.keygo.rust.FakeAccountManager
-import de.davis.keygo.rust.FakeKeyDeriver
-import de.davis.keygo.rust.FakeKeyWrapper
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -71,16 +68,10 @@ class AuthViewModelTest {
     private val vaultRepository = FakeVaultRepository()
     private val vaultContextRepository = FakeVaultContextRepository()
     private val session = FakeSession()
-    private val keyDeriver = FakeKeyDeriver()
-    private val keyWrapper = FakeKeyWrapper()
-    private val accountManager = FakeAccountManager()
     private val biometricAvailability = FakeBiometricAvailabilityRepository()
     private val mainPasswordRepository = FakeMainPasswordRepository()
 
     private val createAllAccesses = CreateAccessUseCase(
-        keyDeriver = keyDeriver,
-        keyWrapper = keyWrapper,
-        accountManager = accountManager,
         accountRepository = accountRepository,
         vaultRepository = vaultRepository,
         vaultContextRepository = vaultContextRepository,
@@ -90,8 +81,6 @@ class AuthViewModelTest {
     private val unlockWithPassword = UnlockWithPasswordUseCase(
         session = session,
         accountRepository = accountRepository,
-        keyDeriver = keyDeriver,
-        keyWrapper = keyWrapper,
     )
 
     // Real use cases, wired to mainPasswordRepository via factories - HasMainPasswordUseCase and

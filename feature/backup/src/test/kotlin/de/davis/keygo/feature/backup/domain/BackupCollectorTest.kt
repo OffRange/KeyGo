@@ -5,32 +5,37 @@ import de.davis.keygo.core.item.FakeItemRepository
 import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.FakePasskeyRepository
 import de.davis.keygo.core.item.FakeVaultRepository
+import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newItemId
+import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Vault
+import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.item.passkeyRef
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProviderFactory
-import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
-import de.davis.keygo.core.security.crypto.FakeSession
+import de.davis.keygo.core.security.domain.model.CryptoScopeError
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.getOrNull
-import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
 import de.davis.keygo.feature.backup.domain.model.CollectedBackup
 import de.davis.keygo.feature.backup.domain.model.ExportError
+import de.davis.keygo.feature.backup.domain.model.retryable
 import de.davis.keygo.feature.backup.testCard
 import de.davis.keygo.feature.backup.testLogin
 import de.davis.keygo.feature.backup.testPasskey
 import de.davis.keygo.feature.backup.testVault
+import de.davisalessandro.keygo.rust.KeyWrapException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import java.time.YearMonth
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.runTest
 
 class BackupCollectorTest {
 
@@ -38,30 +43,21 @@ class BackupCollectorTest {
     private val loginRepo = FakeLoginRepository()
     private val cardRepo = FakeCreditCardRepository()
     private val passkeyRepo = FakePasskeyRepository()
-    private val factory = FakeCryptographicScopeProviderFactory(
-        FakeCryptographicScopeProvider(FakeItemRepository()),
-    )
+    private val scopeProvider = FakeCryptographicScopeProvider(FakeItemRepository())
+    private val factory = FakeCryptographicScopeProviderFactory(scopeProvider)
+    private val session = FakeSession(startUnlocked = true)
 
-    private fun collector(
-        session: FakeSession = FakeSession(startOnConstruct = true),
-        unlockerVaultRepo: FakeVaultRepository = vaultRepo,
-    ) = BackupCollector(
-        vaultRepository = vaultRepo,
+    private fun collector(vaultRepository: VaultRepository = vaultRepo) = BackupCollector(
+        vaultRepository = vaultRepository,
         loginRepository = loginRepo,
         creditCardRepository = cardRepo,
         passkeyRepository = passkeyRepo,
-        arkUnlocker = BackupArkUnlocker(
-            session = session,
-            keyStoreManager = FakeKeyStoreManager(),
-            arkKeyStore = FakeBackupArkKeyStore(),
-            scopeProviderFactory = factory,
-            vaultRepository = unlockerVaultRepo,
-        ),
+        scopeProviderFactory = factory,
     )
 
     @Test
     fun `empty database fails with NothingToExport`() = runTest {
-        val result = collector().collect { _, _ -> }
+        val result = collector().collect(session) { _, _ -> }
         assertIs<Result.Failure<*, ExportError>>(result)
         assertEquals(ExportError.NothingToExport, result.error)
     }
@@ -83,7 +79,7 @@ class BackupCollectorTest {
             )
         )
 
-        val result = collector().collect { _, _ -> }
+        val result = collector().collect(session) { _, _ -> }
         val collected: CollectedBackup = assertNotNull(result.getOrNull())
         val login = collected.backup.vaults.single().logins.single()
         assertEquals("Email", login.title)
@@ -108,7 +104,7 @@ class BackupCollectorTest {
             )
         )
 
-        val result = collector().collect { _, _ -> }
+        val result = collector().collect(session) { _, _ -> }
         val login = assertNotNull(result.getOrNull()).backup.vaults.single().logins.single()
 
         assertEquals(
@@ -133,7 +129,7 @@ class BackupCollectorTest {
             )
         )
 
-        val result = collector().collect { _, _ -> }
+        val result = collector().collect(session) { _, _ -> }
         val collected: CollectedBackup = assertNotNull(result.getOrNull())
         val card = collected.backup.vaults.single().cards.single()
         assertEquals("Visa", card.title)
@@ -154,7 +150,7 @@ class BackupCollectorTest {
         cardRepo.seed(testCard(vaultId = b.id, name = "InB", number = "4111111111111111"))
 
         val collected: CollectedBackup =
-            assertNotNull(collector().collect { _, _ -> }.getOrNull())
+            assertNotNull(collector().collect(session) { _, _ -> }.getOrNull())
         val byName = collected.backup.vaults.associateBy { it.name }
 
         assertEquals(listOf("InA"), byName.getValue("A").logins.map { it.title })
@@ -171,7 +167,7 @@ class BackupCollectorTest {
         loginRepo.seed(testLogin(vaultId = personal.id, name = "InPersonal"))
 
         val collected: CollectedBackup =
-            assertNotNull(collector().collect { _, _ -> }.getOrNull())
+            assertNotNull(collector().collect(session) { _, _ -> }.getOrNull())
 
         assertEquals(
             mapOf("Work" to "Business", "Personal" to "Home"),
@@ -189,7 +185,7 @@ class BackupCollectorTest {
         )
 
         val seen = mutableListOf<Pair<Int, Int>>()
-        val result = collector().collect { processed, total -> seen += processed to total }
+        val result = collector().collect(session) { processed, total -> seen += processed to total }
 
         assertIs<Result.Success<*, *>>(result)
         assertEquals(listOf(1 to 2, 2 to 2), seen)
@@ -213,7 +209,7 @@ class BackupCollectorTest {
             repeat(1000) {
                 val seen = CopyOnWriteArrayList<Int>()
 
-                val result = collector().collect { processed, _ -> seen += processed }
+                val result = collector().collect(session) { processed, _ -> seen += processed }
 
                 assertIs<Result.Success<*, *>>(result)
                 assertEquals((1..total).toList(), seen.toList())
@@ -221,33 +217,58 @@ class BackupCollectorTest {
         }
 
     @Test
-    fun `crypto scope failure surfaces CryptoFailed`() = runTest {
+    fun `items are decrypted under the session the caller hands in`() = runTest {
         val vault = testVault(name = "V")
         vaultRepo.seed(vault)
         loginRepo.seed(testLogin(vaultId = vault.id, name = "Email"))
 
-        // The crypto-scope use case is given an empty vault repo, so it cannot find the
-        // vault key and fails to build a scope - the collector maps any such failure to CryptoFailed.
-        val result = collector(unlockerVaultRepo = FakeVaultRepository()).collect { _, _ -> }
+        collector().collect(session) { _, _ -> }
+
+        assertSame(session, factory.lastSession)
+    }
+
+    @Test
+    fun `a crypto scope failure surfaces CryptoFailed`() = runTest {
+        val vault = testVault(name = "V")
+        vaultRepo.seed(vault)
+        loginRepo.seed(testLogin(vaultId = vault.id, name = "Email"))
+        scopeProvider.itemScopeFailure =
+            CryptoScopeError.KeyWrapError(KeyWrapException.UnwrapFailed())
+
+        val result = collector().collect(session) { _, _ -> }
 
         assertIs<Result.Failure<*, ExportError>>(result)
         assertEquals(ExportError.CryptoFailed, result.error)
     }
 
     @Test
-    fun `locked and unprovisioned session fails with NotProvisioned before reporting progress`() =
-        runTest {
-            val vault = testVault(name = "V")
-            vaultRepo.seed(vault)
-            loginRepo.seed(testLogin(vaultId = vault.id, name = "Email"))
-
-            val seen = mutableListOf<Pair<Int, Int>>()
-            val result = collector(session = FakeSession(startOnConstruct = false))
-                .collect { processed, total -> seen += processed to total }
-
-            assertEquals(Result.Failure(ExportError.NotProvisioned), result)
-            assertTrue(seen.isEmpty())
+    fun `a vault whose key cannot be found surfaces CryptoFailed`() = runTest {
+        val vault = testVault(name = "V")
+        vaultRepo.seed(vault)
+        loginRepo.seed(testLogin(vaultId = vault.id, name = "Email"))
+        val keyless = object : VaultRepository by vaultRepo {
+            override suspend fun getKeyInformation(vaultId: VaultId): KeyInformation? = null
         }
+
+        val result = collector(vaultRepository = keyless).collect(session) { _, _ -> }
+
+        assertIs<Result.Failure<*, ExportError>>(result)
+        assertEquals(ExportError.CryptoFailed, result.error)
+    }
+
+    @Test
+    fun `a session ending during collection surfaces the retryable SessionLocked`() = runTest {
+        val vault = testVault(name = "V")
+        vaultRepo.seed(vault)
+        loginRepo.seed(testLogin(vaultId = vault.id, name = "Email"))
+        scopeProvider.itemScopeFailure = CryptoScopeError.NoActiveSession
+
+        val result = collector().collect(session) { _, _ -> }
+
+        assertIs<Result.Failure<*, ExportError>>(result)
+        assertEquals(ExportError.SessionLocked, result.error)
+        assertTrue(result.error.retryable)
+    }
 
     @Test
     fun `a login's passkeys are collected and decrypted`() = runTest {
@@ -267,7 +288,7 @@ class BackupCollectorTest {
             testPasskey(loginId = loginId, rp = "example.org", privateKey = "pk-two"),
         )
 
-        val result = collector().collect { _, _ -> }
+        val result = collector().collect(session) { _, _ -> }
         val login = assertNotNull(result.getOrNull()).backup.vaults.single().logins.single()
 
         assertEquals(listOf("example.com", "example.org"), login.passkeys.map { it.rp })
@@ -281,7 +302,7 @@ class BackupCollectorTest {
         vaultRepo.seed(vault)
         loginRepo.seed(testLogin(vaultId = vault.id, name = "Email", password = "s3cr3t"))
 
-        val result = collector().collect { _, _ -> }
+        val result = collector().collect(session) { _, _ -> }
         val login = assertNotNull(result.getOrNull()).backup.vaults.single().logins.single()
 
         assertTrue(login.passkeys.isEmpty())
@@ -296,7 +317,7 @@ class BackupCollectorTest {
         loginRepo.seed(testLogin(vaultId = vault.id, id = loginId, name = "Email"))
         passkeyRepo.seed(testPasskey(loginId = loginId, rp = "example.com", privateKey = "pk-one"))
 
-        val result = collector().collect { _, _ -> }
+        val result = collector().collect(session) { _, _ -> }
         val login = assertNotNull(result.getOrNull()).backup.vaults.single().logins.single()
 
         assertEquals(listOf("example.com"), login.passkeys.map { it.rp })

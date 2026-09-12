@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.backup.domain.usecase
 
 import de.davis.keygo.core.security.domain.KeyStoreManager
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.suspendDoFinal
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
@@ -13,6 +14,7 @@ import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.backup.domain.BackupArkUnlocker
 import de.davis.keygo.feature.backup.domain.BackupCollector
 import de.davis.keygo.feature.backup.domain.BackupFileStore
+import de.davis.keygo.feature.backup.domain.mapper.toExportError
 import de.davis.keygo.feature.backup.domain.mapper.toRust
 import de.davis.keygo.feature.backup.domain.model.BACKUP_BASE_NAME
 import de.davis.keygo.feature.backup.domain.model.BackupEntry
@@ -46,18 +48,25 @@ internal class ExportBackupUseCase(
 
     operator fun invoke(job: BackupJob): Flow<ExportProgress> = channelFlow {
         resultBinding {
-            val collected = collector.collect { p, t -> send(ExportProgress.Running(p, t)) }.bind()
+            // Collecting and sealing share one session: on a locked device, one escrow recovery and
+            // one throwaway session per run rather than one for each step. It ends before the
+            // write, which needs no key.
+            val (itemCount, serialized) = arkUnlocker.withSession { session ->
+                val collected = collector
+                    .collect(session) { p, t -> send(ExportProgress.Running(p, t)) }
+                    .bind()
 
-            send(ExportProgress.Writing)
+                send(ExportProgress.Writing)
 
-            val serialized = serialize(job, collected.backup).bind()
+                collected.itemCount to serialize(job, collected.backup, session).bind()
+            }.bind()
 
             val fileName = job.format.backupFileName(System.currentTimeMillis())
 
             fileStore.writeNewDocument(job.uri, fileName, job.format.mimeType, serialized)
                 .bind { ExportError.WriteFailed }
 
-            collected.itemCount
+            itemCount
         }.onSuccess { count ->
             prune(job)
             send(ExportProgress.Succeeded(count))
@@ -89,14 +98,17 @@ internal class ExportBackupUseCase(
             ?.removeSuffix(".${format.extension}")
             ?.toLongOrNull()
 
-    private suspend fun serialize(job: BackupJob, backup: Backup): Result<String, ExportError> =
+    private suspend fun serialize(
+        job: BackupJob,
+        backup: Backup,
+        session: Session,
+    ): Result<String, ExportError> =
         resultBinding {
             when (job.format) {
                 FileFormat.JSON -> when (job.encryption) {
-                    EncryptionMethod.Ark -> arkUnlocker.withArk { ark ->
-                        jsonBackupManager.exportWithResult(backup, BackupCredential.Ark(ark))
-                            .bindToSerializationFailed()
-                    }.bind()
+                    EncryptionMethod.Ark -> jsonBackupManager
+                        .exportWithResult(backup, BackupCredential.Ark(session.arkCredential()))
+                        .bindToSerializationFailed()
 
                     // null on a persisted pre-field job means passphrase (see mapper).
                     EncryptionMethod.Passphrase, null -> {
@@ -120,7 +132,7 @@ internal class ExportBackupUseCase(
 
     context(binder: ResultBinding<ExportError>)
     private fun Result<String, BackupException>.bindToSerializationFailed(): String =
-        with(binder) { bind { ExportError.SerializationFailed(it) } }
+        with(binder) { bind { it.toExportError() } }
 
     private suspend fun decryptPassphrase(job: BackupJob): Result<ByteArray, ExportError> =
         resultBinding {

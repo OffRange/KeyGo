@@ -4,6 +4,8 @@ import de.davis.keygo.feature.backup.domain.model.ImportError
 import de.davisalessandro.keygo.rust.BackupException
 
 internal fun BackupException.toImportError(): ImportError = when (this) {
+    is BackupException.Locked -> ImportError.SessionLocked
+
     is BackupException.Crypto,
     is BackupException.CredentialMismatch -> ImportError.WrongCredential
 

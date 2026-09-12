@@ -4,12 +4,12 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.SessionError
 import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformation
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.model.CryptoScopeError
-import de.davis.keygo.core.security.domain.withArkOr
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.mapFailure
 import de.davis.keygo.core.util.mapSuccess
@@ -17,9 +17,9 @@ import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.rust.item.ItemManager
 import de.davis.keygo.rust.wrap.KeyWrapper
 import de.davis.keygo.rust.wrap.unwrapItemKeyWithResult
-import de.davis.keygo.rust.wrap.unwrapVaultKeyWithResult
 import de.davis.keygo.rust.wrap.wrapItemKeyWithResult
 import de.davisalessandro.keygo.rust.ItemAad
+import de.davisalessandro.keygo.rust.KeyWrapException
 import de.davisalessandro.keygo.rust.WrappedKeyBlob
 import org.koin.core.annotation.Single
 
@@ -113,13 +113,17 @@ internal class CryptographicScopeProviderImpl(
     }
 
     private suspend fun unwrapVaultKeyWithResult(info: WrappedVaultKeyInformation) =
-        session.withArkOr(CryptoScopeError.NoActiveSession) { ark ->
-            keyWrapper.unwrapVaultKeyWithResult(
-                ark = ark,
-                wrapped = info.wrappedVaultKey.toWrappedKeyBlob(),
-                vaultId = info.vaultId,
-            ).mapFailure(CryptoScopeError::KeyWrapError)
-        }
+        session.unwrapVaultKey(
+            wrapped = info.wrappedVaultKey.toWrappedKeyBlob(),
+            vaultId = info.vaultId,
+        ).mapFailure { it.toCryptoScopeError() }
+}
+
+private fun SessionError.toCryptoScopeError(): CryptoScopeError = when (this) {
+    SessionError.Locked -> CryptoScopeError.NoActiveSession
+    is SessionError.KeyWrap -> CryptoScopeError.KeyWrapError(cause)
+    SessionError.WrongPassword, is SessionError.Derivation ->
+        CryptoScopeError.KeyWrapError(KeyWrapException.UnwrapFailed())
 }
 
 private fun KeyInformation.toWrappedKeyBlob() = WrappedKeyBlob(

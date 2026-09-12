@@ -1,7 +1,6 @@
 package de.davis.keygo.feature.backup.domain.usecase
 
 import de.davis.keygo.core.security.domain.Session
-import de.davis.keygo.core.security.domain.withArkOr
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.mapFailure
@@ -85,9 +84,11 @@ internal class ImportBackupUseCase(
                         }
                     }
 
-                    JsonEncryption.ARK -> session.withArkOr(ImportError.SessionLocked) { ark ->
-                        importJson(text, BackupCredential.Ark(ark))
-                    }.bind()
+                    JsonEncryption.ARK -> {
+                        if (!session.isActive.value)
+                            Result.Failure<Nothing, ImportError>(ImportError.SessionLocked).bind()
+                        importJson(text, BackupCredential.Ark(session.arkCredential())).bind()
+                    }
                 }
 
                 FileFormat.CSV -> {

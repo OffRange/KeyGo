@@ -9,43 +9,32 @@ import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.security.domain.SessionError
+import de.davis.keygo.core.security.domain.useArk
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
-import de.davis.keygo.core.util.getOrNull
+import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.resultBinding
-import de.davis.keygo.rust.account.AccountManager
-import de.davis.keygo.rust.derive.KeyDeriver
-import de.davis.keygo.rust.derive.deriveRootKekFromPasswordWithResult
-import de.davis.keygo.rust.wrap.KeyWrapper
-import de.davis.keygo.rust.wrap.wrapAccountRootKeyWithResult
-import de.davis.keygo.rust.wrap.wrapVaultKeyWithResult
-import de.davisalessandro.keygo.rust.AccountRootKey
-import de.davisalessandro.keygo.rust.RootKek
 import org.koin.core.annotation.Single
 import javax.crypto.Cipher
 import javax.crypto.spec.SecretKeySpec
-import de.davisalessandro.keygo.rust.Account as RustAccount
-
 
 @Single
 class CreateAccessUseCase(
-    private val keyDeriver: KeyDeriver,
-    private val keyWrapper: KeyWrapper,
-    private val accountManager: AccountManager,
     private val accountRepository: AccountRepository,
     private val vaultRepository: VaultRepository,
     private val vaultContextRepository: VaultContextRepository,
-    private val session: Session
+    private val session: Session,
 ) {
 
     /**
-     * Use case to create access by generating a new account and vault, which are then wrapped
-     * with a Key Encryption Key (KEK) derived from the user's password. Optionally, the ARK
-     * (AccountRootKey) can also be wrapped with a KEK derived from biometric data.
+     * Use case to create access by generating a new account and vault. The session mints the ARK
+     * in Rust, wraps it under a KEK derived from the user's password, and keeps custody of it, so
+     * the caller is left unlocked without the key ever reaching the JVM heap. Optionally, a second
+     * copy of the ARK is wrapped with a biometric-backed Keystore cipher.
      *
-     * The generated ARK is stored in the session for immediate use. The password-wrapped ARK and,
-     * if applicable, the biometric-wrapped ARK are stored in the [AccountRepository] for future
-     * retrieval.
+     * The password-wrapped ARK and, if applicable, the biometric-wrapped ARK are stored in the
+     * [AccountRepository] for future retrieval.
      *
      * @param password The user's password used to derive the KEK for wrapping the ARK.
      * @param biometricCipher An optional [Cipher] initialized for wrapping the ARK with biometric data.
@@ -55,23 +44,33 @@ class CreateAccessUseCase(
         biometricCipher: Cipher? = null,
         vaultName: String = "Default Vault",
         accountDisplayName: String = "Default Account",
+    ): Result<Unit, CreateAccessError> {
+        var handBack = true
+        try {
+            val result = create(password, biometricCipher, vaultName, accountDisplayName)
+            handBack = result.isFailure()
+            return result
+        } finally {
+            if (handBack) session.endSession()
+        }
+    }
+
+    private suspend fun create(
+        password: String,
+        biometricCipher: Cipher?,
+        vaultName: String,
+        accountDisplayName: String,
     ): Result<Unit, CreateAccessError> = resultBinding {
-        val salt = keyDeriver.generateSalt()
-        val derivedKek = keyDeriver.deriveRootKekFromPasswordWithResult(
-            password = password,
-            salt = salt,
-        ).getOrNull() ?: return Result.Failure(CreateAccessError.KeyDerivationFailed)
+        val created = session.createAccount(password)
+            .bind {
+                if (it is SessionError.Derivation) CreateAccessError.KeyDerivationFailed
+                else CreateAccessError.WrappingFailed
+            }
 
-        val accountHolder = accountManager.createAccount()
-
-        val passwordWrappedArk =
-            getPasswordWrappedArk(accountHolder.account, derivedKek, salt).bind()
-
-        val wrappedVaultKey = accountHolder.defaultVault.wrap(accountHolder.account.ark)
-            .bind { CreateAccessError.WrappingFailed }
-
-        val biometricWrappedArk = biometricCipher?.let {
-            getBiometricWrappedArk(accountHolder.account, it).bind()
+        val biometricWrappedArk = biometricCipher?.let { cipher ->
+            session.useArk { ark ->
+                wrapArk(ark, cipher).asResult(CreateAccessError.WrappingFailed).bind()
+            }.bind { CreateAccessError.WrappingFailed }
         }
 
         // Persist the account before the vault: the vault is encrypted under the account's
@@ -79,9 +78,13 @@ class CreateAccessUseCase(
         // write fails after this, the half-state is recoverable on retry, since `set` overwrites.
         accountRepository.set(
             Account(
-                id = accountHolder.account.id,
+                id = created.userId,
                 displayName = accountDisplayName,
-                passwordWrappedArk = passwordWrappedArk,
+                passwordWrappedArk = PasswordWrappedArk(
+                    key = created.passwordWrappedArk.ciphertext,
+                    keyIV = created.passwordWrappedArk.nonce,
+                    salt = created.salt,
+                ),
                 biometricWrappedArk = biometricWrappedArk,
             )
         ).bind { CreateAccessError.AccountPersistenceFailed }
@@ -90,52 +93,22 @@ class CreateAccessUseCase(
         runCatching {
             vaultRepository.createVault(
                 Vault(
-                    id = accountHolder.defaultVault.id,
+                    id = created.vaultId,
                     name = vaultName,
-                    wrappedVaultKey = wrappedVaultKey.ciphertext,
-                    vaultKeyNonce = wrappedVaultKey.nonce,
+                    wrappedVaultKey = created.wrappedVaultKey.ciphertext,
+                    vaultKeyNonce = created.wrappedVaultKey.nonce,
                     icon = Vault.Icon.Default,
                 )
             )
         }.onFailure { return Result.Failure(CreateAccessError.VaultPersistenceFailed(it)) }
 
-        vaultContextRepository.setContextAndLastInteracted(accountHolder.defaultVault.id)
-
-        session.startSession(accountHolder.account.ark)
+        vaultContextRepository.setContextAndLastInteracted(created.vaultId)
     }
 
-    private fun getPasswordWrappedArk(
-        account: RustAccount,
-        derivedKek: RootKek,
-        salt: ByteArray
-    ) = account.wrap(derivedKek)
-        .getOrNull()
-        ?.let { wrappedKey ->
-            PasswordWrappedArk(
-                key = wrappedKey.ciphertext,
-                keyIV = wrappedKey.nonce,
-                salt = salt
-            )
-        }.asResult(CreateAccessError.WrappingFailed)
-
-    private fun getBiometricWrappedArk(
-        account: RustAccount,
-        biometricCipher: Cipher
-    ) = account.wrapUsingCipher(biometricCipher)
-        ?.let { (wrappedKey, iv) ->
-            BiometricWrappedArk(
-                key = wrappedKey,
-                keyIV = iv
-            )
-        }.asResult(CreateAccessError.WrappingFailed)
-
-    private fun de.davisalessandro.keygo.rust.Vault.wrap(ark: AccountRootKey) =
-        keyWrapper.wrapVaultKeyWithResult(ark, vaultKey, id)
-
-    private fun RustAccount.wrap(kek: RootKek) =
-        keyWrapper.wrapAccountRootKeyWithResult(kek, ark, id)
-
-    private fun RustAccount.wrapUsingCipher(cipher: Cipher) = runCatching {
-        cipher.wrap(SecretKeySpec(ark, 0, ark.size, "AES")) to cipher.iv
+    private fun wrapArk(ark: ByteArray, cipher: Cipher): BiometricWrappedArk? = runCatching {
+        BiometricWrappedArk(
+            key = cipher.wrap(SecretKeySpec(ark, 0, ark.size, "AES")),
+            keyIV = cipher.iv,
+        )
     }.getOrNull()
 }

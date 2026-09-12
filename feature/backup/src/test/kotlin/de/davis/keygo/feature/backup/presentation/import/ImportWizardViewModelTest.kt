@@ -4,7 +4,8 @@ import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultContext
-import de.davis.keygo.core.security.crypto.FakeSession
+import de.davis.keygo.core.security.FakeSession
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.backup.FakeBackupFileStore
 import de.davis.keygo.feature.backup.RestorerTestEnv
@@ -97,7 +98,7 @@ class ImportWizardViewModelTest {
      */
     private fun TestScope.viewModel(
         resolver: FakeBackupDestinationResolver = FakeBackupDestinationResolver(),
-        session: FakeSession = FakeSession(startOnConstruct = true),
+        session: Session = FakeSession(startUnlocked = true),
         contextRepo: FakeVaultContextRepository = FakeVaultContextRepository(),
     ) = ImportWizardViewModel(
         resolver,

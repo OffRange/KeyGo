@@ -6,6 +6,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import de.davis.keygo.core.security.FakeLockInfoRepository
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.data.time.SessionClockImpl
 import de.davis.keygo.core.security.domain.model.LockInfo
 import de.davis.keygo.core.security.domain.repository.LockInfoRepository
@@ -13,6 +14,7 @@ import de.davis.keygo.core.security.time.FakeElapsedTimeProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.runner.RunWith
@@ -28,7 +30,7 @@ import kotlin.test.assertEquals
 internal class SessionLockObserverTest {
 
     private val context = RuntimeEnvironment.getApplication()
-    private val session = SessionImpl().apply { startSession(ByteArray(32) { it.toByte() }) }
+    private val session = FakeSession(startUnlocked = true)
     private val time = FakeElapsedTimeProvider()
     private val handoff = SystemHandoffImpl()
     private val clock = SessionClockImpl(time)
@@ -274,7 +276,7 @@ internal class SessionLockObserverTest {
         time.advanceBy(fiveMinutes * 2)
         observer.onStart(owner)
 
-        session.startSession(ByteArray(32) { it.toByte() })
+        runBlocking { session.unlockWithArk(ByteArray(32) { it.toByte() }) }
         observer.onStart(owner)
 
         assertEquals(true, session.isActive.value)

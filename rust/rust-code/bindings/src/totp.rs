@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use lib::totp::{
+use keygo_core::totp::{
     TotpInfo as CoreTotpInfo, get_totp as core_get_totp,
     get_totp_info_from_uri as core_get_totp_info_from_uri, get_totp_url as core_get_totp_url,
 };
@@ -13,28 +13,28 @@ pub enum Algorithm {
     Sha512,
 }
 
-impl From<Algorithm> for lib::totp::Algorithm {
+impl From<Algorithm> for keygo_core::totp::Algorithm {
     fn from(value: Algorithm) -> Self {
         match value {
-            Algorithm::Sha1 => lib::totp::Algorithm::SHA1,
-            Algorithm::Sha256 => lib::totp::Algorithm::SHA256,
-            Algorithm::Sha512 => lib::totp::Algorithm::SHA512,
+            Algorithm::Sha1 => keygo_core::totp::Algorithm::SHA1,
+            Algorithm::Sha256 => keygo_core::totp::Algorithm::SHA256,
+            Algorithm::Sha512 => keygo_core::totp::Algorithm::SHA512,
         }
     }
 }
 
-impl TryFrom<lib::totp::Algorithm> for Algorithm {
+impl TryFrom<keygo_core::totp::Algorithm> for Algorithm {
     type Error = TotpError;
 
     /// `totp_rs::Algorithm` is `#[non_exhaustive]`, so a variant this binding
     /// does not expose stays representable no matter what we match on. Reaching
     /// one means the input named an algorithm we cannot hand to Kotlin, which
     /// is an error to report, not a reason to unwind across the FFI boundary.
-    fn try_from(value: lib::totp::Algorithm) -> Result<Self, Self::Error> {
+    fn try_from(value: keygo_core::totp::Algorithm) -> Result<Self, Self::Error> {
         match value {
-            lib::totp::Algorithm::SHA1 => Ok(Algorithm::Sha1),
-            lib::totp::Algorithm::SHA256 => Ok(Algorithm::Sha256),
-            lib::totp::Algorithm::SHA512 => Ok(Algorithm::Sha512),
+            keygo_core::totp::Algorithm::SHA1 => Ok(Algorithm::Sha1),
+            keygo_core::totp::Algorithm::SHA256 => Ok(Algorithm::Sha256),
+            keygo_core::totp::Algorithm::SHA512 => Ok(Algorithm::Sha512),
             _ => Err(TotpError::InvalidInput),
         }
     }
@@ -74,8 +74,8 @@ pub enum TotpError {
     InvalidInput,
 }
 
-impl From<lib::totp::TotpError> for TotpError {
-    fn from(err: lib::totp::TotpError) -> Self {
+impl From<keygo_core::totp::TotpError> for TotpError {
+    fn from(err: keygo_core::totp::TotpError) -> Self {
         Self::Generic(err.to_string())
     }
 }

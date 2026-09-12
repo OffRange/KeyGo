@@ -1,19 +1,9 @@
-use lib::crypto::error::CryptoError;
-use lib::crypto::item_key::{ItemAad, ItemKey};
-use lib::crypto::key::KeyMaterial;
-use lib::crypto::keys::{AccountRootKey, RootKEK, VaultKey};
-use lib::crypto::primitive::wrap_key::{KeyWrapper as KeyWrapperTrait, WrappedKey};
-use lib::crypto::types::{UserId, VaultId};
+use keygo_core::crypto::KeyMaterial;
+use keygo_core::crypto::VaultKey;
+use keygo_core::crypto::error::CryptoError;
+use keygo_core::crypto::primitive::wrap_key::{KeyWrapper as KeyWrapperTrait, WrappedKey};
+use keygo_core::crypto::{ItemAad, ItemKey};
 use std::sync::Arc;
-
-uniffi::custom_type!(RootKEK, Vec<u8>, {
-    remote,
-    try_lift: |bytes| {
-        RootKEK::try_from_bytes(&bytes)
-            .map_err(|e| uniffi::deps::anyhow::anyhow!("{e:?}"))
-    },
-    lower: |key| key.as_bytes().to_vec(),
-});
 
 #[derive(uniffi::Record)]
 pub struct WrappedKeyBlob {
@@ -50,7 +40,7 @@ impl From<CryptoError> for KeyWrapError {
     }
 }
 
-fn wrap<Wrapper, Target>(
+pub(crate) fn wrap<Wrapper, Target>(
     wrapper: &Wrapper,
     target: &Target,
     aad: &Wrapper::Aad,
@@ -66,7 +56,7 @@ where
     })
 }
 
-fn unwrap<Wrapper, Target>(
+pub(crate) fn unwrap<Wrapper, Target>(
     wrapper: &Wrapper,
     blob: &WrappedKeyBlob,
     aad: &Wrapper::Aad,
@@ -87,42 +77,6 @@ impl KeyWrapper {
     #[uniffi::constructor]
     pub fn new() -> Arc<Self> {
         Arc::new(Self)
-    }
-
-    pub fn wrap_account_root_key(
-        &self,
-        kek: RootKEK,
-        ark: AccountRootKey,
-        user_id: UserId,
-    ) -> Result<WrappedKeyBlob, KeyWrapError> {
-        wrap::<RootKEK, AccountRootKey>(&kek, &ark, &user_id)
-    }
-
-    pub fn unwrap_account_root_key(
-        &self,
-        kek: RootKEK,
-        wrapped: WrappedKeyBlob,
-        user_id: UserId,
-    ) -> Result<AccountRootKey, KeyWrapError> {
-        unwrap::<RootKEK, AccountRootKey>(&kek, &wrapped, &user_id)
-    }
-
-    pub fn wrap_vault_key(
-        &self,
-        ark: AccountRootKey,
-        vault_key: VaultKey,
-        vault_id: VaultId,
-    ) -> Result<WrappedKeyBlob, KeyWrapError> {
-        wrap::<AccountRootKey, VaultKey>(&ark, &vault_key, &vault_id)
-    }
-
-    pub fn unwrap_vault_key(
-        &self,
-        ark: AccountRootKey,
-        wrapped: WrappedKeyBlob,
-        vault_id: VaultId,
-    ) -> Result<VaultKey, KeyWrapError> {
-        unwrap::<AccountRootKey, VaultKey>(&ark, &wrapped, &vault_id)
     }
 
     pub fn wrap_item_key(

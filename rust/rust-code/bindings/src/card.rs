@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use lib::card::{Card, format_expiration_after_edit as core_format_expiration_after_edit};
+use keygo_core::card::{Card, format_expiration_after_edit as core_format_expiration_after_edit};
 
 #[derive(uniffi::Object)]
 pub struct CardFormatter;

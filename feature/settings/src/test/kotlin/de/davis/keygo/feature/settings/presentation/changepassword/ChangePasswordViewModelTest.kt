@@ -1,3 +1,5 @@
+@file:OptIn(ExportArk::class)
+
 package de.davis.keygo.feature.settings.presentation.changepassword
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -9,17 +11,18 @@ import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.usecase.ChangePasswordUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
-import de.davis.keygo.core.security.crypto.FakeSession
+import de.davis.keygo.core.security.domain.ExportArk
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.util.Result
-import de.davis.keygo.rust.FakeKeyDeriver
-import de.davis.keygo.rust.FakeKeyWrapper
+import de.davis.keygo.core.util.getOrNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -27,7 +30,6 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import java.security.Key
-import java.util.UUID
 import javax.crypto.spec.SecretKeySpec
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -43,28 +45,31 @@ class ChangePasswordViewModelTest {
 
     private val accountRepository = FakeAccountRepository()
     private val biometricAvailability = FakeBiometricAvailabilityRepository()
-    private val session = FakeSession(startOnConstruct = true)
-    private val keyDeriver = FakeKeyDeriver()
-    private val keyWrapper = FakeKeyWrapper()
+    private val session = FakeSession()
+
+    // The screen starts out on an unlocked session, so the account has to exist up front.
+    private val created = checkNotNull(runBlocking { session.createAccount("old") }.getOrNull())
+
     private val estimator = object : PasswordStrengthEstimator {
         override suspend fun estimate(password: String): PasswordScore = PasswordScore.None
     }
-    private val changePassword = ChangePasswordUseCase(accountRepository, keyDeriver, keyWrapper)
+    private val changePassword = ChangePasswordUseCase(accountRepository, session)
 
-    private val accountId = UUID.randomUUID()
-    private val ark = ByteArray(32) { (it + 1).toByte() }
+    /** The live ARK, which is what a successful biometric prompt hands back to the screen. */
+    private val ark: ByteArray get() = checkNotNull(session.exportArk().getOrNull())
 
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-        val salt = keyDeriver.generateSalt()
-        val kek = keyDeriver.deriveRootKekFromPassword("old", salt)
-        val wrapped = keyWrapper.wrapAccountRootKey(kek, ark, accountId)
         accountRepository.seed(
             Account(
-                id = accountId,
+                id = created.userId,
                 displayName = "Test",
-                passwordWrappedArk = PasswordWrappedArk(wrapped.ciphertext, wrapped.nonce, salt),
+                passwordWrappedArk = PasswordWrappedArk(
+                    key = created.passwordWrappedArk.ciphertext,
+                    keyIV = created.passwordWrappedArk.nonce,
+                    salt = created.salt,
+                ),
                 biometricWrappedArk = null,
             )
         )

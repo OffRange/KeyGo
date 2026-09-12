@@ -1,7 +1,7 @@
 package de.davis.keygo.feature.backup.domain.usecase
 
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
-import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
@@ -39,7 +39,7 @@ class BackupProvisioningSerializationTest {
         FakeBackupArkKeyStore(CryptographicData(byteArrayOf(7), byteArrayOf(8)))
     private val keyStoreManager = FakeKeyStoreManager()
     private val uriManager = FakePersistableUriManager()
-    private val session = FakeSession(startOnConstruct = true)
+    private val session = FakeSession(startUnlocked = true)
     private val lock = BackupProvisioningLock()
     private val scheduler = FakeBackupScheduler(jobRepository)
 

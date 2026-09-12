@@ -5,9 +5,9 @@ import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.model.UnlockError
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeBiometricCryptoController
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
-import de.davis.keygo.core.security.crypto.FakeSession
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.domain.model.CryptographicMode
@@ -19,6 +19,7 @@ import kotlinx.coroutines.test.runTest
 import java.util.UUID
 import javax.crypto.spec.SecretKeySpec
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
@@ -39,6 +40,12 @@ class BiometricUnlockAdapterImplTest {
     )
 
     private val adapter = BiometricUnlockAdapterImpl(
+        session = session,
+        accountRepository = accountRepository,
+        biometricEnrollmentAdapter = enrollmentAdapter,
+    )
+
+    private fun adapterOver(session: FakeSession) = BiometricUnlockAdapterImpl(
         session = session,
         accountRepository = accountRepository,
         biometricEnrollmentAdapter = enrollmentAdapter,
@@ -157,6 +164,55 @@ class BiometricUnlockAdapterImplTest {
         val result = with(adapter) { controller.requestUnlockVault(BiometricPolicy.Default) }
 
         assertTrue(result.isSuccess())
-        assertTrue(session.startSessionCalled)
+        assertTrue(session.isActive.value)
     }
+
+    /**
+     * Unlocking is the inbound half of the two Keystore doors: the biometric cipher runs JVM-side,
+     * so the ARK exists here as a plain array before Rust takes custody of it. [FakeSession] keeps
+     * the array it was handed rather than copying, which is what makes the wipe observable.
+     *
+     * Note this covers only the copy this code owns. `SecretKeySpec.getEncoded` hands back a fresh
+     * copy each call, so JCA still holds one that no `fill(0)` here can reach.
+     */
+    @Test
+    fun `wipes the recovered ARK once the session has taken it`() = runTest {
+        val recording = FakeSession()
+        seedAccountWithBiometric()
+        controller.unwrapResult = Result.Success(SecretKeySpec(ByteArray(32) { 1 }, "AES"))
+
+        val result = with(adapterOver(recording)) {
+            controller.requestUnlockVault(BiometricPolicy.Default)
+        }
+
+        assertTrue(result.isSuccess())
+        assertContentEquals(ByteArray(32), recording.handedOver)
+    }
+
+    @Test
+    fun `wipes the recovered ARK even when the session rejects it`() = runTest {
+        val recording = FakeSession().apply { failUnlock = true }
+        seedAccountWithBiometric()
+        controller.unwrapResult = Result.Success(SecretKeySpec(ByteArray(32) { 1 }, "AES"))
+
+        val result = with(adapterOver(recording)) {
+            controller.requestUnlockVault(BiometricPolicy.Default)
+        }
+
+        assertTrue(result.isFailure())
+        assertContentEquals(ByteArray(32), recording.handedOver)
+    }
+
+    @Test
+    fun `returns UnwrappingFailed and stays locked when the recovered key is not an ARK`() =
+        runTest {
+            seedAccountWithBiometric()
+            controller.unwrapResult = Result.Success(SecretKeySpec(ByteArray(16) { 1 }, "AES"))
+
+            val result = with(adapter) { controller.requestUnlockVault(BiometricPolicy.Default) }
+
+            assertTrue(result.isFailure())
+            assertEquals(UnlockError.UnwrappingFailed, result.error)
+            assertFalse(session.isActive.value)
+        }
 }

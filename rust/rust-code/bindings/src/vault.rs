@@ -1,4 +1,4 @@
-use lib::crypto::VaultKey;
+use keygo_core::crypto::VaultKey;
 use std::sync::Arc;
 
 #[derive(uniffi::Object)]

@@ -11,6 +11,7 @@ import de.davis.keygo.core.security.domain.model.CiphertextData
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.security.presentation.BiometricCryptoController
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.mapFailure
 import org.koin.compose.koinInject
 import org.koin.core.annotation.Single
 
@@ -51,8 +52,12 @@ internal class BiometricUnlockAdapterImpl(
             }
 
             is Result.Success -> {
-                session.startSession(unwrapResult.success.encoded)
-                Result.Success(Unit)
+                val ark = unwrapResult.success.encoded
+                try {
+                    session.unlockWithArk(ark).mapFailure { UnlockError.UnwrappingFailed }
+                } finally {
+                    ark.fill(0)
+                }
             }
         }
     }

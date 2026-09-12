@@ -1,11 +1,9 @@
 package de.davis.keygo.rust
 
-import de.davisalessandro.keygo.rust.AccountRootKey
 import de.davisalessandro.keygo.rust.ItemAad
 import de.davisalessandro.keygo.rust.ItemKey
 import de.davisalessandro.keygo.rust.KeyWrapException
 import de.davisalessandro.keygo.rust.KeyWrapperInterface
-import de.davisalessandro.keygo.rust.RootKek
 import de.davisalessandro.keygo.rust.VaultKey
 import de.davisalessandro.keygo.rust.WrappedKeyBlob
 import java.security.SecureRandom
@@ -16,9 +14,10 @@ import java.util.UUID
  *
  * Wrapping XORs the plaintext key with a stream derived from (outer key, id, nonce) so that
  * wrap/unwrap round-trips correctly when the same outer key and id are supplied. Unwrapping
- * with a different outer key or id yields garbage; every `unwrap*` call throws
+ * with a different outer key or id yields garbage; [unwrapItemKey] throws
  * [KeyWrapException.UnwrapFailed] when the result does not match a recorded ciphertext, which
- * is sufficient to exercise the wrong-password / wrong-key paths in use case tests.
+ * is sufficient to exercise the wrong-key path in use case tests. The wrong-password path lives
+ * in `core:security`'s `FakeSession` instead: this class no longer does any KEK-level unwrapping.
  *
  * Set [failUnwrapItemForId] to force [unwrapItemKey] to throw the supplied exception whenever
  * it is called for an item whose id matches the recorded id.
@@ -28,30 +27,6 @@ class FakeKeyWrapper : KeyWrapperInterface {
     var failUnwrapItemForId: Pair<UUID, KeyWrapException>? = null
 
     private val wrapRecord = mutableMapOf<Triple<List<Byte>, List<Byte>, UUID>, ByteArray>()
-
-    override fun wrapAccountRootKey(
-        kek: RootKek,
-        ark: AccountRootKey,
-        userId: UUID,
-    ): WrappedKeyBlob = wrap(outerKey = kek, innerKey = ark, id = userId)
-
-    override fun unwrapAccountRootKey(
-        kek: RootKek,
-        wrapped: WrappedKeyBlob,
-        userId: UUID,
-    ): AccountRootKey = unwrap(outerKey = kek, wrapped = wrapped, id = userId)
-
-    override fun wrapVaultKey(
-        ark: AccountRootKey,
-        vaultKey: VaultKey,
-        vaultId: UUID,
-    ): WrappedKeyBlob = wrap(outerKey = ark, innerKey = vaultKey, id = vaultId)
-
-    override fun unwrapVaultKey(
-        ark: AccountRootKey,
-        wrapped: WrappedKeyBlob,
-        vaultId: UUID,
-    ): VaultKey = unwrap(outerKey = ark, wrapped = wrapped, id = vaultId)
 
     override fun wrapItemKey(
         vaultKey: VaultKey,
