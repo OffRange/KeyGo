@@ -4,10 +4,11 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.identity.domain.model.UnlockError
-import de.davis.keygo.core.identity.domain.repository.AccountRepository
+import de.davis.keygo.core.identity.domain.model.UnlockableByBiometricsResult
+import de.davis.keygo.core.identity.domain.model.hasHardware
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockWithPasswordUseCase
-import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
+import de.davis.keygo.core.identity.domain.usecase.UnlockableByBiometricsUseCase
 import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
@@ -34,8 +35,7 @@ import javax.crypto.Cipher
 @KoinViewModel
 internal class AuthViewModel(
     @InjectedParam private val authRoute: AuthRoute,
-    biometricAvailabilityRepository: BiometricAvailabilityRepository,
-    accountRepository: AccountRepository,
+    unlockableByBiometrics: UnlockableByBiometricsUseCase,
 
     // ---- Migration ----
     private val hasV1MainPassword: HasMainPasswordUseCase,
@@ -58,15 +58,13 @@ internal class AuthViewModel(
 
     init {
         viewModelScope.launch {
-            val activeAccount = accountRepository.getOrNull()
-            val hasAccess = activeAccount != null
-            val shouldMigrate = if (!hasAccess) hasV1MainPassword() else false
+            val unlockableByBiometrics = unlockableByBiometrics()
+            val shouldMigrate =
+                if (unlockableByBiometrics == UnlockableByBiometricsResult.NoAccount)
+                    hasV1MainPassword()
+                else false
 
-            val isBiometricHardwareAvailable = biometricAvailabilityRepository.availability()
-            val isBiometricCryptoSetupAvailable =
-                hasAccess && activeAccount.biometricWrappedArk != null
-
-            val biometricsUsable = isBiometricHardwareAvailable && isBiometricCryptoSetupAvailable
+            val biometricsUsable = unlockableByBiometrics == UnlockableByBiometricsResult.Available
             if (biometricsUsable && authRoute.showBiometricPromptIfPossible) requestBiometricLogin()
 
 
@@ -75,7 +73,7 @@ internal class AuthViewModel(
                     shouldMigrate -> {
                         AuthState.Migrating(
                             passwordTextFieldState = passwordTextFieldState,
-                            biometricsAvailable = isBiometricHardwareAvailable,
+                            biometricsAvailable = unlockableByBiometrics.hasHardware(),
                         )
                     }
 

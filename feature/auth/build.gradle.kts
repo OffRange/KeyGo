@@ -8,6 +8,7 @@ android {
 }
 
 dependencies {
+    implementation(projects.core.biometrics)
     implementation(projects.core.identity)
     implementation(projects.core.item)
     implementation(projects.core.ui)
