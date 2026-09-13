@@ -1,7 +1,7 @@
 package de.davis.keygo.feature.credentials.presentation.auth
 
+import de.davis.keygo.core.biometrics.domain.model.BiometricAuthError
 import de.davis.keygo.core.identity.domain.model.UnlockError
-import de.davis.keygo.core.security.domain.model.BiometricAuthError
 
 internal sealed interface SessionAuthState {
     data object TryBiometric : SessionAuthState
@@ -13,6 +13,7 @@ internal enum class UnlockOutcome { Abort, NeedsPassword }
 
 internal fun mapUnlockError(error: UnlockError): UnlockOutcome = when (error) {
     is UnlockError.BiometricFailed -> when (error.error) {
+        BiometricAuthError.NoPromptHost,
         BiometricAuthError.Canceled,
         BiometricAuthError.NoCipher -> UnlockOutcome.Abort
 
@@ -20,8 +21,9 @@ internal fun mapUnlockError(error: UnlockError): UnlockOutcome = when (error) {
         BiometricAuthError.LockedOut,
         BiometricAuthError.CryptoFailed,
         BiometricAuthError.KeyInvalidated,
+        BiometricAuthError.BiometricsNotAvailable,
         is BiometricAuthError.Unknown,
-        is BiometricAuthError.CanNotAuthenticate -> UnlockOutcome.NeedsPassword
+            -> UnlockOutcome.NeedsPassword
     }
 
     UnlockError.BiometricEnrollmentReset,
