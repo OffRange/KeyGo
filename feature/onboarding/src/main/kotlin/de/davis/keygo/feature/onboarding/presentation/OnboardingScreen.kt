@@ -55,12 +55,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import de.davis.keygo.core.security.domain.model.CryptographicMode
-import de.davis.keygo.core.security.domain.model.KeyId
-import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
 import de.davis.keygo.core.security.presentation.rememberHandoffLauncher
 import de.davis.keygo.core.util.onFailure
-import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.backup.presentation.import.ImportWizardScreen
 import de.davis.keygo.feature.backup.presentation.import.rememberImportFilePicker
@@ -85,19 +81,6 @@ fun OnboardingScreen(route: OnboardingRoute, onSuccess: () -> Unit) {
 
     BackHandler(enabled = stepProgress.canGoBack) {
         viewModel.onPreviousStep()
-    }
-
-    val biometricCryptoController = rememberBiometricCryptoController()
-    ObserveAsEvents(viewModel.biometricFlow) {
-        biometricCryptoController.requestCipher(
-            keyId = KeyId.BiometricVaultKek,
-            mode = CryptographicMode.Wrap
-        ).onSuccess {
-            viewModel.performCreateAccess(it)
-        }.onFailure {
-            Log.e("OnboardingScreen", "Failed to create cipher for biometric access: $it")
-            viewModel.performCreateAccess() //TODO: maybe show error msg to user
-        }
     }
 
     ObserveAsEvents(viewModel.finishedFlow) {

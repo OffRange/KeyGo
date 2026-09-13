@@ -18,7 +18,6 @@ import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.resultBinding
 import org.koin.core.annotation.Single
-import javax.crypto.Cipher
 
 @Single
 class CreateAccessUseCase(
@@ -28,28 +27,6 @@ class CreateAccessUseCase(
     private val biometricCrypto: BiometricCrypto,
     private val session: Session,
 ) {
-
-    /**
-     * Use case to create access by generating a new account and vault. The session mints the ARK
-     * in Rust, wraps it under a KEK derived from the user's password, and keeps custody of it, so
-     * the caller is left unlocked without the key ever reaching the JVM heap. Optionally, a second
-     * copy of the ARK is wrapped with a biometric-backed Keystore cipher.
-     *
-     * The password-wrapped ARK and, if applicable, the biometric-wrapped ARK are stored in the
-     * [AccountRepository] for future retrieval.
-     *
-     * @param password The user's password used to derive the KEK for wrapping the ARK.
-     * @param biometricCipher An optional [Cipher] initialized for wrapping the ARK with biometric data.
-     */
-    @Deprecated("Use the overload with `withBiometrics` instead.")
-    suspend operator fun invoke(
-        password: String,
-        biometricCipher: Cipher? = null,
-        vaultName: String = "Default Vault",
-        accountDisplayName: String = "Default Account",
-        policy: BiometricPolicy = BiometricPolicy.Default,
-    ): Result<Unit, CreateAccessError> =
-        invoke(password, biometricCipher != null, vaultName, accountDisplayName, policy)
 
     suspend operator fun invoke(
         password: String,
