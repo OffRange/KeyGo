@@ -415,7 +415,7 @@ class AuthViewModelTest {
         runCurrent()
         assertEquals(true, assertIs<AuthState.Login>(vm.uiState.value).loading)
 
-        vm.onSessionEstablished()
+        vm.performMigrationIfNeeded()
         runCurrent()
         assertIs<AuthState.MigrationFailed>(vm.uiState.value)
 
