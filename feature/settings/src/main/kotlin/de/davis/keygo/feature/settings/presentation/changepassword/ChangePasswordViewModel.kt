@@ -13,9 +13,7 @@ import de.davis.keygo.core.identity.domain.usecase.UnlockableByBiometricsUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.security.domain.Session
-import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.ui.model.UiFieldError
-import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,7 +32,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
-import java.security.Key
 import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
@@ -85,74 +82,12 @@ internal class ChangePasswordViewModel(
         }
     }
 
-    /**
-     * Primary "Change password" action. Validates the new passwords first so we never fire a
-     * biometric prompt for an invalid form, then routes to biometric (if available) or the
-     * typed-password path.
-     */
-    fun onSubmit() {
-        if (_state.value.canUseBiometric) {
-            if (!validateNewPasswords()) return
-            _event.trySend(ChangePasswordEvent.LaunchBiometricPrompt)
-            return
-        }
-        submitWithPassword()
+    fun onSubmit(forcePasswordPath: Boolean = false) {
+        change(withPassword = forcePasswordPath || !_state.value.biometricAvailable)
     }
 
-    /** Verify with the typed current password, then change. */
-    fun submitWithPassword() {
-        val state = _state.value
-        val current = state.currentPassword.text.toString()
-        if (!validateNewPasswords()) return
-        if (current.isBlank()) {
-            _state.update { it.copy(currentPasswordError = UiFieldError.Empty) }
-            return
-        }
-        change(Reauthentication.Password(current))
-    }
-
-    /** Dismiss the fallback dialog and clear any stale current-password error. */
     fun dismissReauthDialog() {
         _state.update { it.copy(showReauthDialog = false, currentPasswordError = null) }
-    }
-
-    /** Verify with biometric: [recoveredArk] was unwrapped by the screen via requestUnwrap. */
-    private fun submitWithBiometric(recoveredArk: ByteArray) {
-        if (!validateNewPasswords()) {
-            recoveredArk.fill(0)
-            return
-        }
-        change(Reauthentication.Biometric(recoveredArk))
-    }
-
-    /**
-     * Route the outcome of the screen's biometric prompt. The screen owns the prompt (it needs an
-     * Activity), but interpreting the result is ours: a recovered key changes the password, while a
-     * declined / locked-out / failed prompt falls back to the master-password dialog.
-     */
-    fun onBiometricResult(result: Result<Key, BiometricAuthError>) {
-        when (result) {
-            is Result.Success -> {
-                // requestUnwrap returns a software SecretKeySpec (AES), so raw bytes always exist.
-                val recoveredArk = checkNotNull(result.success.encoded)
-                submitWithBiometric(recoveredArk)
-            }
-
-            is Result.Failure -> when (result.error) {
-                BiometricAuthError.Declined,
-                BiometricAuthError.LockedOut,
-                BiometricAuthError.NoCipher,
-                BiometricAuthError.CryptoFailed,
-                BiometricAuthError.KeyInvalidated,
-                is BiometricAuthError.CanNotAuthenticate,
-                    -> _state.update { it.copy(showReauthDialog = true) }
-
-                // Transient dismissal (back press, system cancel, timeout): leave the form as-is.
-                BiometricAuthError.Canceled,
-                is BiometricAuthError.Unknown,
-                    -> Unit
-            }
-        }
     }
 
     private fun validateNewPasswords(): Boolean {
@@ -176,10 +111,21 @@ internal class ChangePasswordViewModel(
         return true
     }
 
-    private fun change(reauth: Reauthentication) {
+    private fun change(withPassword: Boolean = false) {
+        if (!validateNewPasswords()) return
+
+        val current = _state.value.currentPassword.text.toString()
+        if (withPassword && current.isBlank()) {
+            _state.update { it.copy(currentPasswordError = UiFieldError.Empty) }
+            return
+        }
+
+        val reauthentication = if (withPassword) Reauthentication.Password(current)
+        else Reauthentication.Biometric
+
         _state.update { it.copy(loading = true) }
         viewModelScope.launch {
-            changePassword(reauth, _state.value.newPassword.text.toString())
+            changePassword(reauthentication, _state.value.newPassword.text.toString())
                 .onSuccess { _event.trySend(ChangePasswordEvent.Success) }
                 .onFailure(::handleFailure)
             _state.update { it.copy(loading = false) }
@@ -190,6 +136,11 @@ internal class ChangePasswordViewModel(
         when (error) {
             ChangePasswordError.IncorrectPassword ->
                 _state.update { it.copy(currentPasswordError = UiFieldError.Incorrect) }
+
+            ChangePasswordError.BiometricDeclined ->
+                _state.update { it.copy(showReauthDialog = true) }
+
+            ChangePasswordError.BiometricCanceled -> Unit
 
             else -> _event.trySend(ChangePasswordEvent.GenericError)
         }

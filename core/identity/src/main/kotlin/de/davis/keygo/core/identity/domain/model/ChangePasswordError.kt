@@ -4,6 +4,9 @@ sealed interface ChangePasswordError {
 
     data object ActiveAccountNotFound : ChangePasswordError
     data object IncorrectPassword : ChangePasswordError
+    data object BiometricAuthFailed : ChangePasswordError
+    data object BiometricDeclined : ChangePasswordError
+    data object BiometricCanceled : ChangePasswordError
     data object BiometricNotEnrolled : ChangePasswordError
     data object KeyDerivationFailed : ChangePasswordError
     data object WrappingFailed : ChangePasswordError

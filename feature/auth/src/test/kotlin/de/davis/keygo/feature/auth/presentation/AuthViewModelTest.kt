@@ -12,7 +12,6 @@ import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
-import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.feature.auth.presentation.model.AuthState
 import de.davis.keygo.feature.auth.presentation.model.AuthUIEvent

@@ -14,7 +14,6 @@ import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
 import de.davis.keygo.core.security.domain.ExportArk
-import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.getOrNull
@@ -383,13 +382,14 @@ class ChangePasswordViewModelTest {
     }
 
     @Test
-    fun `ordinary use does not clear the fields while the session stays active`() = runTest(dispatcher) {
-        val vm = viewModel()
-        vm.state.value.currentPassword.edit { append("old-pw") }
-        advanceUntilIdle()
+    fun `ordinary use does not clear the fields while the session stays active`() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            vm.state.value.currentPassword.edit { append("old-pw") }
+            advanceUntilIdle()
 
-        assertEquals("old-pw", vm.state.value.currentPassword.text.toString())
-    }
+            assertEquals("old-pw", vm.state.value.currentPassword.text.toString())
+        }
 
     @Test
     fun `the strength meter still tracks the new password after a clear`() = runTest(dispatcher) {
@@ -406,6 +406,7 @@ class ChangePasswordViewModelTest {
             changePassword = changePassword,
             session = session,
         ).also { it.state.launchIn(backgroundScope) }
+
         // No Recomposer drives the frame clock here, so snapshotFlow is told about writes by hand.
         // The first advance is what lets the session-ended collector do its write in the first
         // place; the notification has to come after it, and the debounce after that.
