@@ -5,7 +5,11 @@ import androidx.core.util.PatternsCompat
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.biometrics.domain.model.BiometricAuthError
+import de.davis.keygo.core.biometrics.domain.model.BiometricPolicy
+import de.davis.keygo.core.biometrics.domain.model.BiometricString
 import de.davis.keygo.core.identity.domain.model.UnlockError
+import de.davis.keygo.core.identity.domain.usecase.UnlockWithBiometricsUseCase
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.repository.ItemRepository
@@ -16,7 +20,6 @@ import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.crypto.wrappedItemKeyInformation
-import de.davis.keygo.core.security.domain.model.BiometricAuthError
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
@@ -26,7 +29,6 @@ import de.davis.keygo.feature.autofill.domain.usecase.DoesItemHaveDomainReferenc
 import de.davis.keygo.feature.autofill.domain.usecase.IsAppLinkedToWebsiteUseCase
 import de.davis.keygo.feature.autofill.presentation.AutofillDatasetProvider
 import de.davis.keygo.feature.autofill.presentation.activity.model.AssociationDialogVisibility
-import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillBiometricRequest
 import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillEvent
 import de.davis.keygo.feature.autofill.presentation.activity.model.AutofillUiEvent
 import de.davis.keygo.feature.autofill.presentation.activity.model.LinkCheckDialogVisibility
@@ -69,14 +71,12 @@ internal class AutofillViewModel(
     private val doesItemHaveDomainReferences: DoesItemHaveDomainReferencesUseCase,
     private val addRegistrableDomainToLogin: AddRegistrableDomainsToLoginUseCase,
     private val isAppLinkedToWebsite: IsAppLinkedToWebsiteUseCase,
+    private val unlockWithBiometrics: UnlockWithBiometricsUseCase,
     private val totpGenerator: TotpGenerator,
 ) : ViewModel() {
 
     private val requestData = savedStateHandle.get<RequestData>(KEY_AUTOFILL_INFORMATION)
         ?: throw IllegalArgumentException("Extraction must not be null")
-
-    private val biometricChannel = Channel<AutofillBiometricRequest>()
-    val biometricFlow = biometricChannel.receiveAsFlow()
 
     private val eventChannel = Channel<AutofillEvent>()
     val events = eventChannel.receiveAsFlow()
@@ -194,7 +194,16 @@ internal class AutofillViewModel(
         val itemName = itemRepository.getItemName(suggestionInfo.vaultId)
             ?: throw IllegalArgumentException("Name for vaultId=${suggestionInfo.vaultId} not found")
 
-        biometricChannel.send(AutofillBiometricRequest.UnlockItem(itemName))
+        unlockWithBiometrics(
+            policy = BiometricPolicy(
+                title = BiometricString.Title.UnlockItem(itemName),
+                negativeButton = BiometricString.NegativeButton.Password
+            )
+        ).onSuccess {
+            sendFillEvent(suggestionInfo.vaultId)
+        }.onFailure {
+            onBiometricLoginFailed(it)
+        }
     }
 
     private suspend fun handleSmsOtpRequest(smsOtpInfo: FillRequestData.SmsOtp) {
@@ -272,27 +281,16 @@ internal class AutofillViewModel(
         )
     }
 
-    fun onBiometricLoginFailed(error: UnlockError) {
-        viewModelScope.launch {
-            when (error) {
-                is UnlockError.BiometricFailed -> {
-                    when (error.error) {
-                        BiometricAuthError.Canceled -> eventChannel.send(AutofillEvent.Abort)
-                        else -> _uiState.update { it.copy(request = Request.JustAuthenticateWithPwd) }
-                    }
+    private suspend fun onBiometricLoginFailed(error: UnlockError) {
+        when (error) {
+            is UnlockError.BiometricFailed -> {
+                when (error.error) {
+                    BiometricAuthError.Canceled -> eventChannel.send(AutofillEvent.Abort)
+                    else -> _uiState.update { it.copy(request = Request.JustAuthenticateWithPwd) }
                 }
-
-                else -> _uiState.update { it.copy(request = Request.JustAuthenticateWithPwd) }
             }
-        }
-    }
 
-    fun onBiometricLoginSucceeded() {
-        viewModelScope.launch {
-            if (requestData is FillRequestData.Suggestion) {
-                sendFillEvent(requestData.vaultId)
-                return@launch
-            }
+            else -> _uiState.update { it.copy(request = Request.JustAuthenticateWithPwd) }
         }
     }
 
