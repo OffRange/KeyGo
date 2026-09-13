@@ -1,6 +1,7 @@
 package de.davis.keygo.core.identity.domain.usecase
 
 import de.davis.keygo.core.biometrics.domain.BiometricCrypto
+import de.davis.keygo.core.biometrics.domain.model.BiometricPolicy
 import de.davis.keygo.core.identity.domain.mapper.toBiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.identity.domain.model.CreateAccessError
@@ -46,18 +47,20 @@ class CreateAccessUseCase(
         biometricCipher: Cipher? = null,
         vaultName: String = "Default Vault",
         accountDisplayName: String = "Default Account",
+        policy: BiometricPolicy = BiometricPolicy.Default,
     ): Result<Unit, CreateAccessError> =
-        invoke(password, biometricCipher != null, vaultName, accountDisplayName)
+        invoke(password, biometricCipher != null, vaultName, accountDisplayName, policy)
 
     suspend operator fun invoke(
         password: String,
         withBiometrics: Boolean = false,
         vaultName: String = "Default Vault",
         accountDisplayName: String = "Default Account",
+        policy: BiometricPolicy = BiometricPolicy.Default,
     ): Result<Unit, CreateAccessError> {
         var handBack = true
         try {
-            val result = create(password, withBiometrics, vaultName, accountDisplayName)
+            val result = create(password, withBiometrics, vaultName, accountDisplayName, policy)
             handBack = result.isFailure()
             return result
         } finally {
@@ -70,6 +73,7 @@ class CreateAccessUseCase(
         withBiometrics: Boolean,
         vaultName: String,
         accountDisplayName: String,
+        policy: BiometricPolicy = BiometricPolicy.Default,
     ): Result<Unit, CreateAccessError> = resultBinding {
         val created = session.createAccount(password)
             .bind {
@@ -82,6 +86,7 @@ class CreateAccessUseCase(
                 biometricCrypto.requestWrap(
                     keyId = KeyId.BiometricVaultKek,
                     key = ark,
+                    policy = policy,
                 ).bind { CreateAccessError.WrappingFailed }
             }.bind { CreateAccessError.WrappingFailed }
 
