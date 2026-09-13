@@ -15,6 +15,7 @@ import de.davis.keygo.core.util.mapFailure
 import org.koin.compose.koinInject
 import org.koin.core.annotation.Single
 
+@Deprecated("Use :core:biometrics instead")
 @Single
 internal class BiometricUnlockAdapterImpl(
     private val session: Session,
@@ -63,6 +64,7 @@ internal class BiometricUnlockAdapterImpl(
     }
 }
 
+@Deprecated("Use :core:biometrics instead")
 @Composable
 fun rememberBiometricUnlockAdapter(): BiometricUnlockAdapter {
     val session = koinInject<Session>()

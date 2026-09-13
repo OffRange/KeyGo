@@ -2,13 +2,21 @@ package de.davis.keygo.feature.settings.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.biometrics.domain.model.isUserDismissal
 import de.davis.keygo.core.biometrics.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
+import de.davis.keygo.core.identity.domain.usecase.DisableBiometricsUseCase
+import de.davis.keygo.core.identity.domain.usecase.EnableBiometricsUseCase
 import de.davis.keygo.core.security.domain.repository.LockInfoRepository
 import de.davis.keygo.core.util.combine
+import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
+import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
+import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.feature.autofill.domain.repository.AutofillServiceRepository
 import de.davis.keygo.feature.autofill.domain.repository.ChromeAutofillRepository
 import de.davis.keygo.feature.backup.domain.usecase.ObserveLastBackupUseCase
+import de.davis.keygo.feature.settings.R
 import de.davis.keygo.feature.settings.domain.repository.AppVersionRepository
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +33,9 @@ internal class SettingsViewModel(
     private val autofillServiceRepository: AutofillServiceRepository,
     private val chromeAutofillRepository: ChromeAutofillRepository,
     private val lockInfoRepository: LockInfoRepository,
+    private val enableBiometrics: EnableBiometricsUseCase,
+    private val disableBiometrics: DisableBiometricsUseCase,
+    private val snackbarManager: SnackbarManager,
     accountRepository: AccountRepository,
     appVersionRepository: AppVersionRepository,
     observeLastBackup: ObserveLastBackupUseCase,
@@ -80,7 +91,20 @@ internal class SettingsViewModel(
 
     fun onEvent(event: SettingsUiEvent) {
         when (event) {
-            is SettingsUiEvent.SetBiometrics -> _event.trySend(SettingsEvent.EnableBiometric(event.enabled))
+            is SettingsUiEvent.SetBiometrics -> {
+                viewModelScope.launch {
+                    when {
+                        event.enabled -> enableBiometrics()
+                        else -> disableBiometrics()
+                    }.onFailure { error ->
+                        if (error.isUserDismissal()) return@onFailure
+
+                        snackbarManager.sendMessage(
+                            SnackbarMessage(message = ResourceString(R.string.settings_biometric_update_failed))
+                        )
+                    }
+                }
+            }
 
             is SettingsUiEvent.SetAutoLockTimeout -> viewModelScope.launch {
                 lockInfoRepository.setAutoLockTimeout(event.timeout)

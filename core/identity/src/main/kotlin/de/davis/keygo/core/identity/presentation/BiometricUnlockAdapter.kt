@@ -5,6 +5,7 @@ import de.davis.keygo.core.security.domain.model.BiometricPolicy
 import de.davis.keygo.core.security.presentation.BiometricCryptoController
 import de.davis.keygo.core.util.Result
 
+@Deprecated("Use :core:biometrics instead")
 interface BiometricUnlockAdapter {
 
     suspend fun BiometricCryptoController.requestUnlockVault(
@@ -12,6 +13,7 @@ interface BiometricUnlockAdapter {
     ): Result<Unit, UnlockError>
 }
 
+@Deprecated("Use :core:biometrics instead")
 inline fun BiometricUnlockAdapter.useAdapter(
     block: BiometricUnlockAdapter.() -> Result<Unit, UnlockError>
 ): Result<Unit, UnlockError> = with(this) {

@@ -1,52 +1,22 @@
 package de.davis.keygo.core.identity.presentation
 
 import androidx.compose.runtime.Composable
-import de.davis.keygo.core.biometrics.domain.model.BiometricAuthError
 import de.davis.keygo.core.identity.domain.model.BiometricEnrollmentError
-import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.KeyStoreManager
-import de.davis.keygo.core.security.domain.Session
-import de.davis.keygo.core.security.domain.model.BiometricPolicy
-import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
-import de.davis.keygo.core.security.domain.useArk
-import de.davis.keygo.core.security.presentation.BiometricCryptoController
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.resultBinding
 import org.koin.compose.koinInject
 import org.koin.core.annotation.Single
-import javax.crypto.Cipher
-import javax.crypto.spec.SecretKeySpec
 
+@Deprecated("Use EnableBiometricsUseCase and DisableBiometricsUseCase instead")
 @Single
 internal class BiometricEnrollmentAdapterImpl(
     private val accountRepository: AccountRepository,
-    private val session: Session,
     private val keyStoreManager: KeyStoreManager,
 ) : BiometricEnrollmentAdapter {
-
-    @Deprecated("Use EnableBiometricsUseCase instead")
-    override suspend fun BiometricCryptoController.requestEnableBiometric(
-        policy: BiometricPolicy
-    ): Result<Unit, BiometricEnrollmentError> = resultBinding {
-        val account = accountRepository.getOrNull()
-            .asResult(BiometricEnrollmentError.NoActiveAccount).bind()
-
-        if (account.biometricWrappedArk == null) keyStoreManager.deleteKey(KeyId.BiometricVaultKek)
-
-        val cipher = requestCipher(KeyId.BiometricVaultKek, CryptographicMode.Wrap, policy)
-            .bind { BiometricEnrollmentError.BiometricFailed(BiometricAuthError.CryptoFailed) }
-
-        val wrapped = session.useArk { ark ->
-            wrapArk(ark, cipher).asResult(BiometricEnrollmentError.WrappingFailed).bind()
-        }.bind { BiometricEnrollmentError.NoActiveSession }
-
-        accountRepository.set(account.copy(biometricWrappedArk = wrapped)).bind {
-            BiometricEnrollmentError.PersistenceFailed
-        }
-    }
 
     @Deprecated("Use DisableBiometricsUseCase instead")
     override suspend fun disableBiometric(): Result<Unit, BiometricEnrollmentError> =
@@ -59,13 +29,6 @@ internal class BiometricEnrollmentAdapterImpl(
 
             keyStoreManager.deleteKey(KeyId.BiometricVaultKek)
         }
-
-    private fun wrapArk(ark: ByteArray, cipher: Cipher): BiometricWrappedArk? = runCatching {
-        BiometricWrappedArk(
-            key = cipher.wrap(SecretKeySpec(ark, 0, ark.size, "AES")),
-            keyIV = cipher.iv,
-        )
-    }.getOrNull()
 }
 
 @Composable

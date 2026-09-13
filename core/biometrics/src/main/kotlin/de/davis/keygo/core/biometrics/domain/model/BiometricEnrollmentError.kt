@@ -7,3 +7,7 @@ sealed interface BiometricEnrollmentError {
     data object PersistenceFailed : BiometricEnrollmentError
     data class BiometricFailed(val error: BiometricAuthError) : BiometricEnrollmentError
 }
+
+fun BiometricEnrollmentError.isUserDismissal(): Boolean =
+    this is BiometricEnrollmentError.BiometricFailed &&
+            (error == BiometricAuthError.Declined || error == BiometricAuthError.Canceled)

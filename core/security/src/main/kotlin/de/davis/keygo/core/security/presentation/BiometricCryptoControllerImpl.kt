@@ -184,6 +184,7 @@ internal fun biometricAuthErrorFrom(
     else -> BiometricAuthError.Unknown(errorCode, errString.toString())
 }
 
+@Deprecated("Use :core:biometrics instead")
 @Composable
 fun rememberBiometricCryptoController(): BiometricCryptoController {
     val activity = LocalActivity.current as? FragmentActivity
