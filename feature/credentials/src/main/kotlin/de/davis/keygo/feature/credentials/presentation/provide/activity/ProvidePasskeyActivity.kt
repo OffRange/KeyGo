@@ -15,15 +15,8 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
-import de.davis.keygo.core.identity.presentation.rememberBiometricUnlockAdapter
-import de.davis.keygo.core.identity.presentation.useAdapter
-import de.davis.keygo.core.security.domain.model.BiometricPolicy
-import de.davis.keygo.core.security.domain.model.BiometricString
-import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
 import de.davis.keygo.core.ui.navigation.KeyGoNavDisplay
 import de.davis.keygo.core.ui.theme.KeyGoTheme
-import de.davis.keygo.core.util.onFailure
-import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.auth.presentation.authEntries
@@ -57,24 +50,6 @@ internal class ProvidePasskeyActivity : FragmentActivity() {
                     when (it) {
                         is ProvidePasskeyEvent.Abort -> cancel("Operation aborted")
                         is ProvidePasskeyEvent.Finish -> finishWithSuccess(it.responseJson)
-                    }
-                }
-
-                val biometricCryptoController = rememberBiometricCryptoController()
-                val biometricUnlockAdapter = rememberBiometricUnlockAdapter()
-
-                ObserveAsEvents(viewModel.biometricFlow) {
-                    biometricUnlockAdapter.useAdapter {
-                        biometricCryptoController.requestUnlockVault(
-                            policy = BiometricPolicy(
-                                title = BiometricString.Title.Authenticate,
-                                negativeButton = BiometricString.NegativeButton.Password,
-                            )
-                        )
-                    }.onSuccess {
-                        viewModel.onUnlocked()
-                    }.onFailure {
-                        viewModel.onUnlockFailed(it)
                     }
                 }
 

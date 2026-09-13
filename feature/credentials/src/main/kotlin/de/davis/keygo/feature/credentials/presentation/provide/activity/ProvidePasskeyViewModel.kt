@@ -4,8 +4,10 @@ import android.util.Log
 import androidx.credentials.GetPublicKeyCredentialOption
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import de.davis.keygo.core.identity.domain.model.UnlockError
+import de.davis.keygo.core.biometrics.domain.model.BiometricPolicy
+import de.davis.keygo.core.biometrics.domain.model.BiometricString
 import de.davis.keygo.core.identity.domain.model.UnlockableByBiometricsResult
+import de.davis.keygo.core.identity.domain.usecase.UnlockWithBiometricsUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockableByBiometricsUseCase
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
@@ -22,6 +24,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
 
@@ -31,6 +34,7 @@ internal class ProvidePasskeyViewModel(
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passkeyManager: PasskeyManager,
     private val unlockableByBiometrics: UnlockableByBiometricsUseCase,
+    private val unlockWithBiometrics: UnlockWithBiometricsUseCase,
 ) : ViewModel() {
 
     private val _event = Channel<ProvidePasskeyEvent>(Channel.BUFFERED)
@@ -38,9 +42,6 @@ internal class ProvidePasskeyViewModel(
 
     private val _authState = MutableStateFlow<SessionAuthState>(SessionAuthState.TryBiometric)
     val authState = _authState.asStateFlow()
-
-    private val biometricChannel = Channel<Unit>(Channel.BUFFERED)
-    val biometricFlow = biometricChannel.receiveAsFlow()
 
     private data class PendingRequest(
         val option: GetPublicKeyCredentialOption,
@@ -52,12 +53,22 @@ internal class ProvidePasskeyViewModel(
     init {
         viewModelScope.launch {
             val biometricUsable = unlockableByBiometrics() == UnlockableByBiometricsResult.Available
+            if (!biometricUsable) return@launch _authState.update { SessionAuthState.NeedsPassword }
 
-            if (biometricUsable) {
-                _authState.value = SessionAuthState.TryBiometric
-                biometricChannel.send(Unit)
-            } else
-                _authState.value = SessionAuthState.NeedsPassword
+            _authState.update { SessionAuthState.TryBiometric }
+            unlockWithBiometrics(
+                policy = BiometricPolicy(
+                    title = BiometricString.Title.Authenticate,
+                    negativeButton = BiometricString.NegativeButton.Password,
+                )
+            ).onSuccess {
+                onUnlocked()
+            }.onFailure {
+                when (mapUnlockError(it)) {
+                    UnlockOutcome.Abort -> viewModelScope.launch { abort("biometric: $it") }
+                    UnlockOutcome.NeedsPassword -> _authState.update { SessionAuthState.NeedsPassword }
+                }
+            }
         }
     }
 
@@ -66,15 +77,8 @@ internal class ProvidePasskeyViewModel(
     }
 
     fun onUnlocked() {
-        _authState.value = SessionAuthState.Authenticated
+        _authState.update { SessionAuthState.Authenticated }
         runOperation(pendingRequest)
-    }
-
-    fun onUnlockFailed(error: UnlockError) {
-        when (mapUnlockError(error)) {
-            UnlockOutcome.Abort -> viewModelScope.launch { abort() }
-            UnlockOutcome.NeedsPassword -> _authState.value = SessionAuthState.NeedsPassword
-        }
     }
 
     private fun runOperation(req: PendingRequest) {

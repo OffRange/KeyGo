@@ -3,8 +3,10 @@ package de.davis.keygo.feature.credentials.presentation.create.activity
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import de.davis.keygo.core.identity.domain.model.UnlockError
+import de.davis.keygo.core.biometrics.domain.model.BiometricPolicy
+import de.davis.keygo.core.biometrics.domain.model.BiometricString
 import de.davis.keygo.core.identity.domain.model.UnlockableByBiometricsResult
+import de.davis.keygo.core.identity.domain.usecase.UnlockWithBiometricsUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockableByBiometricsUseCase
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Passkey
@@ -15,6 +17,8 @@ import de.davis.keygo.core.security.domain.crypto.encrypt
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
+import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.credentials.presentation.auth.SessionAuthState
 import de.davis.keygo.feature.credentials.presentation.auth.UnlockOutcome
 import de.davis.keygo.feature.credentials.presentation.auth.mapUnlockError
@@ -37,6 +41,7 @@ internal class CreatePasskeyViewModel(
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passkeyManager: PasskeyManager,
     private val unlockableByBiometrics: UnlockableByBiometricsUseCase,
+    private val unlockWithBiometrics: UnlockWithBiometricsUseCase,
 ) : ViewModel() {
 
     private val _event = Channel<CreatePasskeyEvent>(Channel.BUFFERED)
@@ -47,9 +52,6 @@ internal class CreatePasskeyViewModel(
 
     private val _excluded = MutableStateFlow(false)
     val excluded = _excluded.asStateFlow()
-
-    private val biometricChannel = Channel<Unit>(Channel.BUFFERED)
-    val biometricFlow = biometricChannel.receiveAsFlow()
 
     /**
      * The request's own `rp.id`, which the relying party may leave empty, until registration
@@ -113,11 +115,22 @@ internal class CreatePasskeyViewModel(
 
     private suspend fun requestUnlock() {
         val biometricUsable = unlockableByBiometrics() == UnlockableByBiometricsResult.Available
+        if (!biometricUsable) return _authState.update { SessionAuthState.NeedsPassword }
+        _authState.update { SessionAuthState.TryBiometric }
 
-        if (biometricUsable) {
-            _authState.update { SessionAuthState.TryBiometric }
-            biometricChannel.send(Unit)
-        } else _authState.update { SessionAuthState.NeedsPassword }
+        unlockWithBiometrics(
+            policy = BiometricPolicy(
+                title = BiometricString.Title.Authenticate,
+                negativeButton = BiometricString.NegativeButton.Password,
+            )
+        ).onSuccess {
+            onUnlocked()
+        }.onFailure {
+            when (mapUnlockError(it)) {
+                UnlockOutcome.Abort -> viewModelScope.launch { abort("biometric $it") }
+                UnlockOutcome.NeedsPassword -> _authState.update { SessionAuthState.NeedsPassword }
+            }
+        }
     }
 
     private suspend fun storeAndFinish(response: RegistrationResponse, itemId: ItemId) {
@@ -142,13 +155,6 @@ internal class CreatePasskeyViewModel(
 
     fun onUnlocked() {
         unlocked.complete(Unit)
-    }
-
-    fun onUnlockFailed(error: UnlockError) {
-        when (mapUnlockError(error)) {
-            UnlockOutcome.Abort -> viewModelScope.launch { abort("biometric $error") }
-            UnlockOutcome.NeedsPassword -> _authState.update { SessionAuthState.NeedsPassword }
-        }
     }
 
     /**
