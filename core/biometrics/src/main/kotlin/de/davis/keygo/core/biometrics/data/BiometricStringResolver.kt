@@ -1,10 +1,9 @@
-package de.davis.keygo.core.security.data
+package de.davis.keygo.core.biometrics.data
 
 import android.content.Context
-import de.davis.keygo.core.security.R
-import de.davis.keygo.core.security.domain.model.BiometricString
+import de.davis.keygo.core.biometrics.R
+import de.davis.keygo.core.biometrics.domain.model.BiometricString
 
-@Deprecated("Use :core:biometrics instead")
 fun BiometricString.resolve(context: Context) = when (this) {
     is BiometricString.Title.Authenticate -> context.getString(
         R.string.authenticate

@@ -1,5 +1,6 @@
 package de.davis.keygo.core.security.domain.model
 
+@Deprecated("Use :core:biometrics instead")
 
 sealed interface BiometricAuthError {
     /** User canceled the prompt by pressing the negative button. */

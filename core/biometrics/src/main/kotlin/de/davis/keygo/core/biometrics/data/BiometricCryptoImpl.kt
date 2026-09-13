@@ -10,15 +10,14 @@ import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.FragmentActivity
 import de.davis.keygo.core.biometrics.domain.BiometricCrypto
 import de.davis.keygo.core.biometrics.domain.model.BiometricAuthError
+import de.davis.keygo.core.biometrics.domain.model.BiometricPolicy
+import de.davis.keygo.core.biometrics.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.security.data.keyStoreManagerErrorFrom
-import de.davis.keygo.core.security.data.resolve
 import de.davis.keygo.core.security.domain.KeyStoreManager
-import de.davis.keygo.core.security.domain.model.BiometricPolicy
-import de.davis.keygo.core.security.domain.model.CiphertextData
+import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
-import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.getOrNull
@@ -74,27 +73,27 @@ internal class BiometricCryptoImpl(
         keyId: KeyId,
         key: ByteArray,
         policy: BiometricPolicy
-    ): Result<CiphertextData, BiometricAuthError> = request(
+    ): Result<CryptographicData, BiometricAuthError> = request(
         keyId = keyId,
         policy = policy,
         mode = CryptographicMode.Wrap
     ) {
-        CiphertextData(
-            bytes = it.wrap(SecretKeySpec(key, 0, key.size, "AES")),
+        CryptographicData(
+            data = it.wrap(SecretKeySpec(key, 0, key.size, "AES")),
             iv = it.iv
         )
     }
 
     override suspend fun requestUnwrap(
         keyId: KeyId,
-        ciphertextData: CiphertextData,
+        cryptographicData: CryptographicData,
         policy: BiometricPolicy
     ): Result<Key, BiometricAuthError> = request(
         keyId = keyId,
         policy = policy,
         mode = CryptographicMode.Unwrap,
-        iv = ciphertextData.iv
-    ) { it.unwrap(ciphertextData.bytes, "AES", Cipher.SECRET_KEY) }
+        iv = cryptographicData.iv
+    ) { it.unwrap(cryptographicData.data, "AES", Cipher.SECRET_KEY) }
 
     private suspend fun <T> request(
         keyId: KeyId,

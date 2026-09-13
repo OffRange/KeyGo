@@ -1,5 +1,6 @@
 package de.davis.keygo.core.security.domain.model
 
+@Deprecated("Use CryptographicData instead", ReplaceWith("CryptographicData"))
 data class CiphertextData(
     val bytes: ByteArray,
     val iv: ByteArray

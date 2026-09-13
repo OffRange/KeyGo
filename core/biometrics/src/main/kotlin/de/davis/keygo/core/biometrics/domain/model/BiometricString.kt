@@ -1,6 +1,5 @@
-package de.davis.keygo.core.security.domain.model
+package de.davis.keygo.core.biometrics.domain.model
 
-@Deprecated("Use :core:biometrics instead")
 sealed interface BiometricString {
 
     sealed interface Title : BiometricString {
