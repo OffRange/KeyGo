@@ -1,7 +1,8 @@
 package de.davis.keygo.core.identity.domain.usecase
 
+import de.davis.keygo.core.biometrics.domain.BiometricCrypto
+import de.davis.keygo.core.identity.domain.mapper.toBiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.Account
-import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.CreateAccessError
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
@@ -10,20 +11,20 @@ import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.SessionError
+import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.security.domain.useArk
 import de.davis.keygo.core.util.Result
-import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.resultBinding
 import org.koin.core.annotation.Single
 import javax.crypto.Cipher
-import javax.crypto.spec.SecretKeySpec
 
 @Single
 class CreateAccessUseCase(
     private val accountRepository: AccountRepository,
     private val vaultRepository: VaultRepository,
     private val vaultContextRepository: VaultContextRepository,
+    private val biometricCrypto: BiometricCrypto,
     private val session: Session,
 ) {
 
@@ -39,15 +40,24 @@ class CreateAccessUseCase(
      * @param password The user's password used to derive the KEK for wrapping the ARK.
      * @param biometricCipher An optional [Cipher] initialized for wrapping the ARK with biometric data.
      */
+    @Deprecated("Use the overload with `withBiometrics` instead.")
     suspend operator fun invoke(
         password: String,
         biometricCipher: Cipher? = null,
         vaultName: String = "Default Vault",
         accountDisplayName: String = "Default Account",
+    ): Result<Unit, CreateAccessError> =
+        invoke(password, biometricCipher != null, vaultName, accountDisplayName)
+
+    suspend operator fun invoke(
+        password: String,
+        withBiometrics: Boolean = false,
+        vaultName: String = "Default Vault",
+        accountDisplayName: String = "Default Account",
     ): Result<Unit, CreateAccessError> {
         var handBack = true
         try {
-            val result = create(password, biometricCipher, vaultName, accountDisplayName)
+            val result = create(password, withBiometrics, vaultName, accountDisplayName)
             handBack = result.isFailure()
             return result
         } finally {
@@ -57,7 +67,7 @@ class CreateAccessUseCase(
 
     private suspend fun create(
         password: String,
-        biometricCipher: Cipher?,
+        withBiometrics: Boolean,
         vaultName: String,
         accountDisplayName: String,
     ): Result<Unit, CreateAccessError> = resultBinding {
@@ -67,10 +77,15 @@ class CreateAccessUseCase(
                 else CreateAccessError.WrappingFailed
             }
 
-        val biometricWrappedArk = biometricCipher?.let { cipher ->
-            session.useArk { ark ->
-                wrapArk(ark, cipher).asResult(CreateAccessError.WrappingFailed).bind()
+        val biometricWrappedArk = when {
+            withBiometrics -> session.useArk { ark ->
+                biometricCrypto.requestWrap(
+                    keyId = KeyId.BiometricVaultKek,
+                    key = ark,
+                ).bind { CreateAccessError.WrappingFailed }
             }.bind { CreateAccessError.WrappingFailed }
+
+            else -> null
         }
 
         // Persist the account before the vault: the vault is encrypted under the account's
@@ -85,7 +100,7 @@ class CreateAccessUseCase(
                     keyIV = created.passwordWrappedArk.nonce,
                     salt = created.salt,
                 ),
-                biometricWrappedArk = biometricWrappedArk,
+                biometricWrappedArk = biometricWrappedArk?.toBiometricWrappedArk(),
             )
         ).bind { CreateAccessError.AccountPersistenceFailed }
 
@@ -104,11 +119,4 @@ class CreateAccessUseCase(
 
         vaultContextRepository.setContextAndLastInteracted(created.vaultId)
     }
-
-    private fun wrapArk(ark: ByteArray, cipher: Cipher): BiometricWrappedArk? = runCatching {
-        BiometricWrappedArk(
-            key = cipher.wrap(SecretKeySpec(ark, 0, ark.size, "AES")),
-            keyIV = cipher.iv,
-        )
-    }.getOrNull()
 }
