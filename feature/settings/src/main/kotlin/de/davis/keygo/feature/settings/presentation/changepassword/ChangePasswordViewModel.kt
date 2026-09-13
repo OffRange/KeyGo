@@ -7,14 +7,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.identity.domain.model.ChangePasswordError
 import de.davis.keygo.core.identity.domain.model.Reauthentication
-import de.davis.keygo.core.identity.domain.repository.AccountRepository
+import de.davis.keygo.core.identity.domain.model.UnlockableByBiometricsResult
 import de.davis.keygo.core.identity.domain.usecase.ChangePasswordUseCase
+import de.davis.keygo.core.identity.domain.usecase.UnlockableByBiometricsUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.model.BiometricAuthError
-import de.davis.keygo.core.security.domain.model.CiphertextData
-import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.onFailure
@@ -40,8 +39,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
 internal class ChangePasswordViewModel(
-    private val accountRepository: AccountRepository,
-    private val biometricAvailabilityRepository: BiometricAvailabilityRepository,
+    private val unlockableByBiometrics: UnlockableByBiometricsUseCase,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val changePassword: ChangePasswordUseCase,
     private val session: Session,
@@ -82,17 +80,8 @@ internal class ChangePasswordViewModel(
 
     private fun resolveBiometricAvailability() {
         viewModelScope.launch {
-            val wrapped = accountRepository.getOrNull()?.biometricWrappedArk
-            val available = biometricAvailabilityRepository.availability()
-            if (wrapped == null || !available) return@launch
-            _state.update {
-                it.copy(
-                    biometricCiphertext = CiphertextData(
-                        bytes = wrapped.key,
-                        iv = wrapped.keyIV
-                    )
-                )
-            }
+            val available = unlockableByBiometrics() == UnlockableByBiometricsResult.Available
+            _state.update { it.copy(biometricAvailable = available) }
         }
     }
 

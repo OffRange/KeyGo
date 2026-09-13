@@ -4,9 +4,9 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.biometrics.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
-import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.autofill.domain.repository.AutofillServiceRepository

@@ -4,14 +4,14 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.identity.domain.model.UnlockError
-import de.davis.keygo.core.identity.domain.repository.AccountRepository
+import de.davis.keygo.core.identity.domain.model.UnlockableByBiometricsResult
+import de.davis.keygo.core.identity.domain.usecase.UnlockableByBiometricsUseCase
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasskeyUser
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.encrypt
-import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
@@ -36,8 +36,7 @@ internal class CreatePasskeyViewModel(
     private val passkeyRepository: PasskeyRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passkeyManager: PasskeyManager,
-    private val accountRepository: AccountRepository,
-    private val biometricAvailabilityRepository: BiometricAvailabilityRepository,
+    private val unlockableByBiometrics: UnlockableByBiometricsUseCase,
 ) : ViewModel() {
 
     private val _event = Channel<CreatePasskeyEvent>(Channel.BUFFERED)
@@ -113,8 +112,7 @@ internal class CreatePasskeyViewModel(
     }
 
     private suspend fun requestUnlock() {
-        val biometricUsable = biometricAvailabilityRepository.availability()
-                && accountRepository.getOrNull()?.biometricWrappedArk != null
+        val biometricUsable = unlockableByBiometrics() == UnlockableByBiometricsResult.Available
 
         if (biometricUsable) {
             _authState.update { SessionAuthState.TryBiometric }

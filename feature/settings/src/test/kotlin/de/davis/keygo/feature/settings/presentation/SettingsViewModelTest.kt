@@ -1,11 +1,11 @@
 package de.davis.keygo.feature.settings.presentation
 
+import de.davis.keygo.core.biometrics.FakeBiometricAvailabilityRepository
 import de.davis.keygo.core.feature.autofill.FakeAutofillServiceRepository
 import de.davis.keygo.core.feature.autofill.FakeChromeAutofillRepository
 import de.davis.keygo.core.feature.settings.FakeAppVersionRepository
 import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.security.FakeLockInfoRepository
-import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
 import de.davis.keygo.core.security.domain.model.LockInfo
 import de.davis.keygo.feature.backup.FakeBackupJobRepository
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri

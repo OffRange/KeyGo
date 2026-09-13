@@ -2,8 +2,8 @@ package de.davis.keygo.feature.settings.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.biometrics.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
-import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.security.domain.repository.LockInfoRepository
 import de.davis.keygo.core.util.combine
 import de.davis.keygo.feature.autofill.domain.repository.AutofillServiceRepository

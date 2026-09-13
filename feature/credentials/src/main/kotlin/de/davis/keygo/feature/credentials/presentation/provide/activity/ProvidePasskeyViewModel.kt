@@ -5,11 +5,11 @@ import androidx.credentials.GetPublicKeyCredentialOption
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.identity.domain.model.UnlockError
-import de.davis.keygo.core.identity.domain.repository.AccountRepository
+import de.davis.keygo.core.identity.domain.model.UnlockableByBiometricsResult
+import de.davis.keygo.core.identity.domain.usecase.UnlockableByBiometricsUseCase
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.decrypt
-import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
@@ -30,8 +30,7 @@ internal class ProvidePasskeyViewModel(
     private val passkeyRepository: PasskeyRepository,
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val passkeyManager: PasskeyManager,
-    private val accountRepository: AccountRepository,
-    private val biometricAvailabilityRepository: BiometricAvailabilityRepository,
+    private val unlockableByBiometrics: UnlockableByBiometricsUseCase,
 ) : ViewModel() {
 
     private val _event = Channel<ProvidePasskeyEvent>(Channel.BUFFERED)
@@ -52,9 +51,7 @@ internal class ProvidePasskeyViewModel(
 
     init {
         viewModelScope.launch {
-            val account = accountRepository.getOrNull()
-            val biometricUsable = biometricAvailabilityRepository.availability()
-                    && account?.biometricWrappedArk != null
+            val biometricUsable = unlockableByBiometrics() == UnlockableByBiometricsResult.Available
 
             if (biometricUsable) {
                 _authState.value = SessionAuthState.TryBiometric

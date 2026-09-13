@@ -22,6 +22,7 @@ dependencies {
     implementation(projects.feature.autofill)
     implementation(projects.feature.backup)
 
+    testImplementation(testFixtures(projects.core.biometrics))
     testImplementation(testFixtures(projects.core.identity))
     testImplementation(testFixtures(projects.core.security))
     testImplementation(testFixtures(projects.rust))

@@ -15,6 +15,8 @@ internal data class ChangePasswordState(
     val currentPasswordError: UiFieldError? = null,
     val newPasswordError: UiFieldError? = null,
     val confirmPasswordError: UiFieldError? = null,
+    val biometricAvailable: Boolean = false,
+    //TODO: migrate. It was set in the viewmodel via resolveBiometricAvailability and the account repo.
     /** Non-null when biometric verification is offered; carries the wrapped biometric ARK. */
     val biometricCiphertext: CiphertextData? = null,
     /** True while the master-password fallback dialog is shown (biometric users). */

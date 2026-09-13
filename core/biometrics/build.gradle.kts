@@ -4,6 +4,10 @@ plugins {
 
 android {
     namespace = "de.davis.keygo.core.biometrics"
+
+    testFixtures {
+        enable = true
+    }
 }
 
 dependencies {

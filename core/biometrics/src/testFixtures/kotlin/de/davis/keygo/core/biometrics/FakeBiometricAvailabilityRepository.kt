@@ -1,6 +1,6 @@
-package de.davis.keygo.core.security.crypto
+package de.davis.keygo.core.biometrics
 
-import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
+import de.davis.keygo.core.biometrics.domain.repository.BiometricAvailabilityRepository
 
 class FakeBiometricAvailabilityRepository : BiometricAvailabilityRepository {
 
