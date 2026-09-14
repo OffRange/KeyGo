@@ -34,13 +34,13 @@ class FakeBiometricCrypto(
 
     val unwrapped: MutableList<ByteArray> = mutableListOf()
 
-    override suspend fun requestWrap(
+    override suspend fun <T> requestWrap(
         keyId: KeyId,
-        key: ByteArray,
         policy: BiometricPolicy,
-    ): Result<CryptographicData, BiometricAuthError> =
+        wrap: (seal: (key: ByteArray) -> CryptographicData) -> T,
+    ): Result<T, BiometricAuthError> =
         prompt(keyId, CryptographicMode.Wrap, policy, iv = null) { cipher ->
-            CryptographicData(data = cipher.doFinal(key), iv = cipher.iv)
+            wrap { key -> CryptographicData(data = cipher.doFinal(key), iv = cipher.iv) }
         }
 
     override suspend fun requestUnwrap(

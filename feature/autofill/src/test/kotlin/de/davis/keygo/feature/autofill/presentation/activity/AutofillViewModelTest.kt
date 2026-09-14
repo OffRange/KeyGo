@@ -222,7 +222,9 @@ internal class AutofillViewModelTest {
                     salt = byteArrayOf(3),
                 ),
                 biometricWrappedArk = biometricCrypto
-                    .requestWrap(KeyId.BiometricVaultKek, ByteArray(32) { it.toByte() })
+                    .requestWrap(KeyId.BiometricVaultKek) { seal ->
+                        seal(ByteArray(32) { it.toByte() })
+                    }
                     .assertSuccess()
                     .toBiometricWrappedArk(),
             ),

@@ -2,8 +2,8 @@ package de.davis.keygo.feature.settings.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import de.davis.keygo.core.biometrics.domain.model.isUserDismissal
 import de.davis.keygo.core.biometrics.domain.repository.BiometricAvailabilityRepository
+import de.davis.keygo.core.identity.domain.model.isUserDismissal
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.identity.domain.usecase.DisableBiometricsUseCase
 import de.davis.keygo.core.identity.domain.usecase.EnableBiometricsUseCase
@@ -13,8 +13,10 @@ import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
+import de.davis.keygo.feature.autofill.domain.model.AutofillActivationStatus
 import de.davis.keygo.feature.autofill.domain.repository.AutofillServiceRepository
 import de.davis.keygo.feature.autofill.domain.repository.ChromeAutofillRepository
+import de.davis.keygo.feature.autofill.domain.usecase.AutofillActivationStatusUseCase
 import de.davis.keygo.feature.backup.domain.usecase.ObserveLastBackupUseCase
 import de.davis.keygo.feature.settings.R
 import de.davis.keygo.feature.settings.domain.repository.AppVersionRepository
@@ -32,6 +34,7 @@ internal class SettingsViewModel(
     private val biometricAvailabilityRepository: BiometricAvailabilityRepository,
     private val autofillServiceRepository: AutofillServiceRepository,
     private val chromeAutofillRepository: ChromeAutofillRepository,
+    private val autofillActivationStatus: AutofillActivationStatusUseCase,
     private val lockInfoRepository: LockInfoRepository,
     private val enableBiometrics: EnableBiometricsUseCase,
     private val disableBiometrics: DisableBiometricsUseCase,
@@ -43,9 +46,6 @@ internal class SettingsViewModel(
 
     private val versionName = appVersionRepository.versionName
 
-    // Buffered (not rendezvous): the screen handles events in a suspend collector (e.g. while the
-    // biometric enrollment prompt is open), and a rendezvous trySend would silently drop any tap
-    // made in the meantime.
     private val _event = Channel<SettingsEvent>(Channel.BUFFERED)
     val event = _event.receiveAsFlow()
 
@@ -53,22 +53,24 @@ internal class SettingsViewModel(
     // resume via refreshSystemState(). Autofill also gets an optimistic write on in-app disable
     // (see onEvent), since that action doesn't trigger a resume.
     private val biometricsAvailable = MutableStateFlow(false)
-    private val autofillEnabled = MutableStateFlow(false)
-    private val chromeAutofillEnabled = MutableStateFlow(false)
+    private val autofillStatus = MutableStateFlow(AutofillActivationStatus())
+
+    private val biometricsUpdating = MutableStateFlow(false)
 
     val state = combine(
         accountRepository.observe(),
         lockInfoRepository.observeLockInfo(),
-        autofillEnabled,
-        chromeAutofillEnabled,
+        autofillStatus,
         biometricsAvailable,
+        biometricsUpdating,
         observeLastBackup(),
-    ) { account, lockInfo, autofill, chromeAutofill, biometrics, lastBackup ->
+    ) { account, lockInfo, autofill, biometrics, updatingBiometrics, lastBackup ->
         SettingsUiState(
-            autofillEnabled = autofill,
-            chromeAutofillEnabled = chromeAutofill,
+            autofillEnabled = autofill.systemAutofillEnabled,
+            chromeAutofillEnabled = autofill.chromeAutofillEnabled,
             biometricsAvailable = biometrics,
             biometricsEnabled = biometrics && account?.biometricWrappedArk != null,
+            biometricsUpdating = updatingBiometrics,
             version = versionName,
             lastBackupAt = lastBackup?.finishedAt,
             lockTimeout = lockInfo.autoLockTimeout,
@@ -83,26 +85,24 @@ internal class SettingsViewModel(
         biometricsAvailable.update { biometricAvailabilityRepository.availability() }
         // Re-read on resume: the autofill selection changes in the system picker/settings, which
         // run in a separate activity, so this is where we learn KeyGo was enabled or disabled.
-        autofillEnabled.update { autofillServiceRepository.isEnabled() }
         viewModelScope.launch {
-            chromeAutofillEnabled.update { chromeAutofillRepository.isAutofillEnabled() }
+            val status = autofillActivationStatus()
+            autofillStatus.update { status }
         }
     }
 
     fun onEvent(event: SettingsUiEvent) {
         when (event) {
-            is SettingsUiEvent.SetBiometrics -> {
-                viewModelScope.launch {
-                    when {
-                        event.enabled -> enableBiometrics()
-                        else -> disableBiometrics()
-                    }.onFailure { error ->
-                        if (error.isUserDismissal()) return@onFailure
+            is SettingsUiEvent.SetBiometrics -> updatingBiometrics {
+                when {
+                    event.enabled -> enableBiometrics()
+                    else -> disableBiometrics()
+                }.onFailure { error ->
+                    if (error.isUserDismissal()) return@onFailure
 
-                        snackbarManager.sendMessage(
-                            SnackbarMessage(message = ResourceString(R.string.settings_biometric_update_failed))
-                        )
-                    }
+                    snackbarManager.sendMessage(
+                        SnackbarMessage(message = ResourceString(R.string.settings_biometric_update_failed))
+                    )
                 }
             }
 
@@ -117,7 +117,7 @@ internal class SettingsViewModel(
                     // disable() propagates through the system server asynchronously and this action
                     // doesn't trigger a resume, so reflect the intent immediately; the next resume
                     // re-read confirms it.
-                    autofillEnabled.update { false }
+                    autofillStatus.update { it.copy(systemAutofillEnabled = false) }
                 }
             }
 
@@ -129,6 +129,20 @@ internal class SettingsViewModel(
 
             SettingsUiEvent.LibrariesClicked -> _event.trySend(SettingsEvent.NavigateToLibraries)
             SettingsUiEvent.ReportIssue -> _event.trySend(SettingsEvent.ReportIssue)
+        }
+    }
+
+    private fun updatingBiometrics(block: suspend () -> Unit) {
+        // One update at a time: a toggle that lands while the prompt is still open would otherwise
+        // run against an account the first update has not written yet.
+        if (!biometricsUpdating.compareAndSet(expect = false, update = true)) return
+
+        viewModelScope.launch {
+            try {
+                block()
+            } finally {
+                biometricsUpdating.update { false }
+            }
         }
     }
 }

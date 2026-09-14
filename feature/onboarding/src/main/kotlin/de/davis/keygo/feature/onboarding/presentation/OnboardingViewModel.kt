@@ -35,7 +35,6 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
@@ -75,10 +74,14 @@ internal class OnboardingViewModel(
         viewModelScope.launch { fetchAndUpdateAutofillState() }
     }
 
-    private suspend fun fetchAndUpdateAutofillState(): OnboardingUiState.EnableAutofill =
-        _enableAutofillState.updateAndGet {
+    private suspend fun fetchAndUpdateAutofillState(): OnboardingUiState.EnableAutofill {
+        // Read before the update, not inside it: update retries its lambda whenever another write
+        // lands first, which would repeat the cross-process reads.
+        val autofill =
             OnboardingUiState.EnableAutofill(activationStatus = autofillActivationStatus())
-        }
+        _enableAutofillState.update { autofill }
+        return autofill
+    }
 
     private val passwordTextFieldState = TextFieldState()
     private val confirmPasswordTextFieldState = TextFieldState()
@@ -256,18 +259,14 @@ internal class OnboardingViewModel(
      */
     fun onImportFinished() = internalSkip()
 
-    private fun performCreateAccess(withBiometrics: Boolean = false) {
-        viewModelScope.launch {
-            loading {
-                createAccess(
-                    password = passwordTextFieldState.text.toString(),
-                    withBiometrics = withBiometrics,
-                ).onSuccess {
-                    internalSkip()
-                }.onFailure {
-                    Log.e(TAG, "Failed to create access: $it")
-                }
-            }
+    private fun performCreateAccess(withBiometrics: Boolean = false) = loading {
+        createAccess(
+            password = passwordTextFieldState.text.toString(),
+            withBiometrics = withBiometrics,
+        ).onSuccess {
+            internalSkip()
+        }.onFailure {
+            Log.e(TAG, "Failed to create access: $it")
         }
     }
 
@@ -280,12 +279,18 @@ internal class OnboardingViewModel(
         finishedChannel.trySend(Unit)
     }
 
-    private suspend fun <R> loading(block: suspend () -> R): R {
-        _loading.update { true }
-        try {
-            return block()
-        } finally {
-            _loading.update { false }
+    private fun loading(block: suspend () -> Unit) {
+        // One run at a time: a second tap that lands while one is still going finds the flag set
+        // and is dropped. Two account creations would mint two accounts and the second would
+        // overwrite the first.
+        if (!_loading.compareAndSet(expect = false, update = true)) return
+
+        viewModelScope.launch {
+            try {
+                block()
+            } finally {
+                _loading.update { false }
+            }
         }
     }
 

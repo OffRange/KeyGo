@@ -21,6 +21,7 @@ internal sealed interface SettingsEntry {
         override val supporting: UIText? = null,
         override val colors: ListItemColors,
         val checked: Boolean,
+        val enabled: Boolean = true,
         val onCheckedChange: (Boolean) -> Unit,
     ) : SettingsEntry
 

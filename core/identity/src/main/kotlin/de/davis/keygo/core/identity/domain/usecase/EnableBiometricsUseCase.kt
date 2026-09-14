@@ -1,9 +1,9 @@
 package de.davis.keygo.core.identity.domain.usecase
 
 import de.davis.keygo.core.biometrics.domain.BiometricCrypto
-import de.davis.keygo.core.biometrics.domain.model.BiometricEnrollmentError
 import de.davis.keygo.core.biometrics.domain.model.BiometricPolicy
 import de.davis.keygo.core.identity.domain.mapper.toBiometricWrappedArk
+import de.davis.keygo.core.identity.domain.model.BiometricEnrollmentError
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.KeyStoreManager
 import de.davis.keygo.core.security.domain.Session
@@ -26,15 +26,16 @@ class EnableBiometricsUseCase(
             .asResult(BiometricEnrollmentError.NoActiveAccount)
             .bind()
 
+        session.isActive.value.asResult(BiometricEnrollmentError.NoActiveSession).bind()
+
         if (account.biometricWrappedArk == null) keyStoreManager.deleteKey(KeyId.BiometricVaultKek)
 
-        val wrapped = session.useArk { ark ->
-            biometricCrypto.requestWrap(
-                keyId = KeyId.BiometricVaultKek,
-                key = ark,
-                policy = policy,
-            ).bind { BiometricEnrollmentError.BiometricFailed(it) }
-        }.bind { BiometricEnrollmentError.NoActiveSession }
+        val wrapped = biometricCrypto.requestWrap(
+            keyId = KeyId.BiometricVaultKek,
+            policy = policy,
+        ) { seal -> session.useArk(seal) }
+            .bind { BiometricEnrollmentError.BiometricFailed(it) }
+            .bind { BiometricEnrollmentError.NoActiveSession }
 
         accountRepository.set(account.copy(biometricWrappedArk = wrapped.toBiometricWrappedArk()))
             .bind { BiometricEnrollmentError.PersistenceFailed }

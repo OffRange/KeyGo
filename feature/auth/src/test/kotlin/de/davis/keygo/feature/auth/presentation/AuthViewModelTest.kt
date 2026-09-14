@@ -8,6 +8,7 @@ import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.identity.domain.usecase.DisableBiometricsUseCase
+import de.davis.keygo.core.identity.domain.usecase.EnableBiometricsUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockWithBiometricsUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockWithPasswordUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockableByBiometricsUseCase
@@ -56,7 +57,7 @@ import kotlin.test.assertTrue
 /**
  * Regression tests for the v1-password retry lockout fixed in `97b15f3c`.
  *
- * [AuthViewModel.executeCreateAccess] used to clear the v1 migration password as soon as the
+ * `AuthViewModel.executeCreateAccess` used to clear the v1 migration password as soon as the
  * password was validated, before the account was actually created. If account creation then
  * failed for any reason - most notably a failed/declined biometric prompt - the v1 password was
  * already gone, so `HasMainPasswordUseCase` reported no pending migration and the user had no way
@@ -86,7 +87,12 @@ class AuthViewModelTest {
         accountRepository = accountRepository,
         vaultRepository = vaultRepository,
         vaultContextRepository = vaultContextRepository,
-        biometricCrypto = biometricCrypto,
+        enableBiometrics = EnableBiometricsUseCase(
+            accountRepository = accountRepository,
+            session = session,
+            keyStoreManager = keyStoreManager,
+            biometricCrypto = biometricCrypto,
+        ),
         session = session,
     )
 
@@ -337,18 +343,23 @@ class AuthViewModelTest {
             assertEquals(false, migrating.biometricsAvailable)
         }
 
+    /**
+     * Biometrics are optional on top of the v1 password the user just confirmed. A declined prompt
+     * used to throw the freshly derived account away without a word, so the migration is expected
+     * to carry on with a password-only account instead.
+     */
     @Test
-    fun `failed biometric wrapping leaves the v1 password intact so migration can be retried`() =
+    fun `a declined biometric prompt still creates the account and runs the migration`() =
         runTest(dispatcher) {
             mainPasswordRepository.hash = V1_HASH
             biometricCrypto.promptFailure = BiometricAuthError.Declined
             val vm = viewModel()
 
             vm.submitMigration(useBiometrics = true)
-            vm.awaitIdle()
+            vm.navigationEvent.first()
 
-            assertEquals(V1_HASH, mainPasswordRepository.hash)
-            assertNull(accountRepository.getOrNull())
+            assertNull(assertNotNull(accountRepository.getOrNull()).biometricWrappedArk)
+            assertEquals("", mainPasswordRepository.hash)
         }
 
     @Test
@@ -519,8 +530,8 @@ class AuthViewModelTest {
      * The write that ends a loading run puts back a snapshot taken before `block()` suspended, so
      * it has to be guarded the same way the one that starts the run is.
      *
-     * `onSessionEstablished` is reachable from outside `loading`: AuthScreen calls it straight from
-     * the BiometricRequest.Login success handler and nothing gates it on `authJob`. So the user
+     * `performMigrationIfNeeded` is reachable from outside `loading`: a biometric unlock started from
+     * the button calls it on success and nothing gates it on `authJob`. So the user
      * submits the password form, the biometric prompt they already triggered comes back, the import
      * starts, and an unguarded write here would drop the live login form back on top of it - a form
      * they can submit again while the import runs behind it.

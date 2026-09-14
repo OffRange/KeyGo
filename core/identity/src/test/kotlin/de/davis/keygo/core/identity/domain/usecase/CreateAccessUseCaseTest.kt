@@ -39,13 +39,7 @@ class CreateAccessUseCaseTest {
     private val vaultContextRepository = FakeVaultContextRepository()
     private val biometricCrypto = FakeBiometricCrypto()
 
-    private val useCase = CreateAccessUseCase(
-        accountRepository = accountRepository,
-        vaultRepository = vaultRepository,
-        vaultContextRepository = vaultContextRepository,
-        biometricCrypto = biometricCrypto,
-        session = session,
-    )
+    private val useCase = useCaseOver(session)
 
     @Test
     fun `returns KeyDerivationFailed when derivation fails`() = runTest {
@@ -166,17 +160,21 @@ class CreateAccessUseCaseTest {
             assertTrue(biometricCrypto.prompts.isEmpty())
         }
 
+    /**
+     * Biometrics are an optional extra on top of the password the user just set. Failing the whole
+     * creation over them threw away a finished key derivation and left the user on the step with
+     * nothing to show for it.
+     */
     @Test
-    fun `a failed biometric prompt reports WrappingFailed and persists nothing`() = runTest {
+    fun `a failed biometric prompt still creates a password-only account`() = runTest {
         biometricCrypto.promptFailure = BiometricAuthError.Declined
 
         val result = useCase("password", withBiometrics = true)
 
-        assertTrue(result.isFailure())
-        assertEquals(CreateAccessError.WrappingFailed, result.error)
-        assertNull(accountRepository.getOrNull())
-        assertTrue(vaultRepository.observeVaults().first().isEmpty())
-        assertFalse(session.isActive.value)
+        assertTrue(result.isSuccess())
+        assertNull(assertNotNull(accountRepository.getOrNull()).biometricWrappedArk)
+        assertEquals(1, vaultRepository.observeVaults().first().size)
+        assertTrue(session.isActive.value)
     }
 
     @Test
@@ -209,7 +207,7 @@ class CreateAccessUseCaseTest {
     }
 
     @Test
-    fun `wipes the exported ARK even when wrapping fails`() = runTest {
+    fun `a biometric step the keystore refuses never exports the ARK`() = runTest {
         val recording = FakeSession(startUnlocked = true)
         val refusing = FakeBiometricCrypto(
             keyStoreManager = FakeKeyStoreManager(failure = KeyStoreManagerError.Unknown),
@@ -217,9 +215,8 @@ class CreateAccessUseCaseTest {
 
         val result = useCaseOver(recording, refusing)("password", withBiometrics = true)
 
-        assertTrue(result.isFailure())
-        assertEquals(CreateAccessError.WrappingFailed, result.error)
-        assertContentEquals(ByteArray(32), recording.onlyExported())
+        assertTrue(result.isSuccess())
+        assertTrue(recording.exported.isEmpty())
     }
 
     @Test
@@ -243,12 +240,9 @@ class CreateAccessUseCaseTest {
 
     @Test
     fun `ends the session when the last write throws`() = runTest {
-        val throwing = CreateAccessUseCase(
-            accountRepository = accountRepository,
-            vaultRepository = vaultRepository,
-            vaultContextRepository = ThrowingVaultContextRepository(),
-            biometricCrypto = biometricCrypto,
+        val throwing = useCaseOver(
             session = session,
+            vaultContextRepository = ThrowingVaultContextRepository(),
         )
 
         assertFailsWith<RuntimeException> { throwing("password") }
@@ -272,11 +266,17 @@ class CreateAccessUseCaseTest {
     private fun useCaseOver(
         session: FakeSession,
         biometricCrypto: FakeBiometricCrypto = this.biometricCrypto,
+        vaultContextRepository: VaultContextRepository = this.vaultContextRepository,
     ) = CreateAccessUseCase(
         accountRepository = accountRepository,
         vaultRepository = vaultRepository,
         vaultContextRepository = vaultContextRepository,
-        biometricCrypto = biometricCrypto,
+        enableBiometrics = EnableBiometricsUseCase(
+            accountRepository = accountRepository,
+            session = session,
+            keyStoreManager = biometricCrypto.keyStoreManager,
+            biometricCrypto = biometricCrypto,
+        ),
         session = session,
     )
 }

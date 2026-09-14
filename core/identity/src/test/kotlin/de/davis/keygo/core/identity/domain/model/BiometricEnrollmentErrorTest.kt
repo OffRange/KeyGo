@@ -1,5 +1,6 @@
-package de.davis.keygo.core.biometrics.domain.model
+package de.davis.keygo.core.identity.domain.model
 
+import de.davis.keygo.core.biometrics.domain.model.BiometricAuthError
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -40,7 +41,6 @@ class BiometricEnrollmentErrorTest {
         listOf(
             BiometricEnrollmentError.NoActiveAccount,
             BiometricEnrollmentError.NoActiveSession,
-            BiometricEnrollmentError.WrappingFailed,
             BiometricEnrollmentError.PersistenceFailed,
         ).forEach {
             assertFalse(it.isUserDismissal(), "$it")

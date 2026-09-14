@@ -191,11 +191,13 @@ internal class AuthViewModel(
     }
 
 
-    private suspend fun requestBiometricLogin() {
-        unlockWithBiometrics().onFailure {
-            onBiometricUnlockFailed(it)
-        }.onSuccess {
-            performMigrationIfNeeded()
+    private fun requestBiometricLogin() {
+        viewModelScope.launch {
+            unlockWithBiometrics().onFailure {
+                onBiometricUnlockFailed(it)
+            }.onSuccess {
+                performMigrationIfNeeded()
+            }
         }
     }
 

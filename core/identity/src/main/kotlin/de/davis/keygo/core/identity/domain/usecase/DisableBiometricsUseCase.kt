@@ -1,6 +1,6 @@
 package de.davis.keygo.core.identity.domain.usecase
 
-import de.davis.keygo.core.biometrics.domain.model.BiometricEnrollmentError
+import de.davis.keygo.core.identity.domain.model.BiometricEnrollmentError
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.KeyStoreManager
 import de.davis.keygo.core.security.domain.model.KeyId

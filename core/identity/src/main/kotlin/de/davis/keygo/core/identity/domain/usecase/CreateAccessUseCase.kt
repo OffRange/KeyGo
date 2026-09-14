@@ -1,8 +1,6 @@
 package de.davis.keygo.core.identity.domain.usecase
 
-import de.davis.keygo.core.biometrics.domain.BiometricCrypto
 import de.davis.keygo.core.biometrics.domain.model.BiometricPolicy
-import de.davis.keygo.core.identity.domain.mapper.toBiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.identity.domain.model.CreateAccessError
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
@@ -12,10 +10,9 @@ import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.SessionError
-import de.davis.keygo.core.security.domain.model.KeyId
-import de.davis.keygo.core.security.domain.useArk
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.isFailure
+import de.davis.keygo.core.util.isSuccess
 import de.davis.keygo.core.util.resultBinding
 import org.koin.core.annotation.Single
 
@@ -24,7 +21,7 @@ class CreateAccessUseCase(
     private val accountRepository: AccountRepository,
     private val vaultRepository: VaultRepository,
     private val vaultContextRepository: VaultContextRepository,
-    private val biometricCrypto: BiometricCrypto,
+    private val enableBiometrics: EnableBiometricsUseCase,
     private val session: Session,
 ) {
 
@@ -37,8 +34,9 @@ class CreateAccessUseCase(
     ): Result<Unit, CreateAccessError> {
         var handBack = true
         try {
-            val result = create(password, withBiometrics, vaultName, accountDisplayName, policy)
+            val result = create(password, vaultName, accountDisplayName)
             handBack = result.isFailure()
+            if (result.isSuccess() && withBiometrics) enableBiometrics(policy)
             return result
         } finally {
             if (handBack) session.endSession()
@@ -47,28 +45,14 @@ class CreateAccessUseCase(
 
     private suspend fun create(
         password: String,
-        withBiometrics: Boolean,
         vaultName: String,
         accountDisplayName: String,
-        policy: BiometricPolicy = BiometricPolicy.Default,
     ): Result<Unit, CreateAccessError> = resultBinding {
         val created = session.createAccount(password)
             .bind {
                 if (it is SessionError.Derivation) CreateAccessError.KeyDerivationFailed
                 else CreateAccessError.WrappingFailed
             }
-
-        val biometricWrappedArk = when {
-            withBiometrics -> session.useArk { ark ->
-                biometricCrypto.requestWrap(
-                    keyId = KeyId.BiometricVaultKek,
-                    key = ark,
-                    policy = policy,
-                ).bind { CreateAccessError.WrappingFailed }
-            }.bind { CreateAccessError.WrappingFailed }
-
-            else -> null
-        }
 
         // Persist the account before the vault: the vault is encrypted under the account's
         // ARK, so a vault row without a recoverable account is dead weight. If the vault
@@ -82,7 +66,7 @@ class CreateAccessUseCase(
                     keyIV = created.passwordWrappedArk.nonce,
                     salt = created.salt,
                 ),
-                biometricWrappedArk = biometricWrappedArk?.toBiometricWrappedArk(),
+                biometricWrappedArk = null,
             )
         ).bind { CreateAccessError.AccountPersistenceFailed }
 

@@ -60,7 +60,8 @@ class UnlockWithBiometricsUseCaseTest {
     }
 
     private suspend fun seedEnrollment(wrappedKey: ByteArray) {
-        val wrapped = biometricCrypto.requestWrap(KeyId.BiometricVaultKek, wrappedKey)
+        val wrapped = biometricCrypto
+            .requestWrap(KeyId.BiometricVaultKek) { seal -> seal(wrappedKey) }
             .assertSuccess()
             .toBiometricWrappedArk()
         accountRepository.seed(accountRepository.getOrNull()!!.copy(biometricWrappedArk = wrapped))

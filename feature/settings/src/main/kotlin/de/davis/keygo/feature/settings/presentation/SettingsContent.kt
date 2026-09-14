@@ -72,6 +72,7 @@ internal fun SettingsContent(
                     supporting = ResourceString(R.string.settings_use_biometrics_description),
                     colors = defaultColors,
                     checked = state.biometricsEnabled,
+                    enabled = !state.biometricsUpdating,
                     onCheckedChange = { onEvent(SettingsUiEvent.SetBiometrics(it)) },
                 )
 

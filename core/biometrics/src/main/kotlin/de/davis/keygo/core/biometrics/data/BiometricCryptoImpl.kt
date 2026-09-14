@@ -20,8 +20,6 @@ import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
-import de.davis.keygo.core.util.getOrNull
-import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.resultBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
@@ -30,6 +28,8 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import org.koin.core.annotation.Single
 import java.security.Key
@@ -47,6 +47,8 @@ internal class BiometricCryptoImpl(
 
     private val host = MutableStateFlow<FragmentActivity?>(null)
 
+    private val promptLock = Mutex()
+
     init {
         (context.applicationContext as Application).registerActivityLifecycleCallbacks(this)
     }
@@ -55,33 +57,35 @@ internal class BiometricCryptoImpl(
         if (activity is FragmentActivity) host.update { activity }
     }
 
-    override fun onActivityDestroyed(activity: Activity) {
-        if (activity is FragmentActivity) host.update { null }
+    override fun onActivityPaused(activity: Activity) {
+        host.update { if (it === activity) null else it }
     }
 
     override fun onActivityCreated(p0: Activity, p1: Bundle?) = Unit
-    override fun onActivityPaused(p0: Activity) = Unit
+    override fun onActivityDestroyed(p0: Activity) = Unit
     override fun onActivitySaveInstanceState(p0: Activity, p1: Bundle) = Unit
     override fun onActivityStarted(p0: Activity) = Unit
     override fun onActivityStopped(p0: Activity) = Unit
 
     private suspend fun awaitHost(): FragmentActivity? = withTimeoutOrNull(250.milliseconds) {
-        host.filterNotNull().first { !it.isDestroyed && !it.isFinishing }
+        host.filterNotNull().first { !it.isFinishing }
     }
 
-    override suspend fun requestWrap(
+    override suspend fun <T> requestWrap(
         keyId: KeyId,
-        key: ByteArray,
-    ): Result<CryptographicData, BiometricAuthError> = request(
         policy: BiometricPolicy,
+        wrap: (seal: (key: ByteArray) -> CryptographicData) -> T,
+    ): Result<T, BiometricAuthError> = request(
         keyId = keyId,
         policy = policy,
-    ) {
-        CryptographicData(
-            data = it.wrap(SecretKeySpec(key, 0, key.size, "AES")),
-            iv = it.iv
-        )
         mode = CryptographicMode.Wrap,
+    ) { cipher ->
+        wrap { key ->
+            CryptographicData(
+                data = cipher.wrap(SecretKeySpec(key, 0, key.size, "AES")),
+                iv = cipher.iv,
+            )
+        }
     }
 
     override suspend fun requestUnwrap(
@@ -101,68 +105,74 @@ internal class BiometricCryptoImpl(
         mode: CryptographicMode,
         iv: ByteArray? = null,
         onSuccess: (Cipher) -> T,
-    ): Result<T, BiometricAuthError> = resultBinding {
-        val activity = awaitHost().asResult(BiometricAuthError.NoPromptHost).bind()
+    ): Result<T, BiometricAuthError> = promptLock.withLock {
+        resultBinding {
+            biometricAvailabilityRepository.availability()
+                .asResult(BiometricAuthError.BiometricsNotAvailable)
+                .bind()
 
-        biometricAvailabilityRepository.availability()
-            .asResult(BiometricAuthError.BiometricsNotAvailable)
-            .bind()
+            val activity = awaitHost()
+                .asResult(BiometricAuthError.NoPromptHost)
+                .bind()
 
-        return suspendCancellableCoroutine { c ->
-            val prompt = BiometricPrompt(
-                activity,
-                Dispatchers.Main.asExecutor(),
-                object : BiometricPrompt.AuthenticationCallback() {
-                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                        val cipher = result.cryptoObject?.cipher ?: return c.resume(
-                            Result.Failure(BiometricAuthError.NoCipher)
-                        )
+            val cipher = keyStoreManager.getOrCreateCipherFor(keyId, mode, iv)
+                .bind { it.toBiometricAuthError() }
 
-                        runCatching { onSuccess(cipher) }.fold(
-                            onSuccess = { c.resume(Result.Success(it)) },
-                            onFailure = {
-                                Log.e(
-                                    TAG,
-                                    "Cipher operation failed after authentication succeeded",
-                                    it
-                                )
-                                c.resume(Result.Failure(cipherFailureToBiometricAuthError(it)))
-                            },
-                        )
-                    }
-
-                    override fun onAuthenticationError(
-                        errorCode: Int,
-                        errString: CharSequence
-                    ) {
-                        c.resume(Result.Failure(biometricAuthErrorFrom(errorCode, errString)))
-                    }
-
-                    override fun onAuthenticationFailed() {
-                        // We do not resume, as this causes the coroutine to be finished and we cannot
-                        // handle further attempts. The Android framework may still send further events,
-                        // which we could handle.
-                    }
-                }
-            )
-
-            val promptInfo = BiometricPrompt.PromptInfo.Builder()
-                .setTitle(policy.title.resolve(activity))
-                .setNegativeButtonText(policy.negativeButton.resolve(activity))
-                .setAllowedAuthenticators(AUTHENTICATORS)
-                .build()
-
-            val cipher = keyStoreManager.getOrCreateCipherFor(keyId, mode, iv).onFailure {
-                c.resume(Result.Failure(it.toBiometricAuthError()))
-            }.getOrNull() ?: return@suspendCancellableCoroutine
-
-            val cryptoObj = BiometricPrompt.CryptoObject(cipher)
-            prompt.authenticate(promptInfo, cryptoObj)
-
-            c.invokeOnCancellation {
-                prompt.cancelAuthentication()
-            }
+            activity.authenticate(policy, cipher, onSuccess).bind()
         }
+    }
+
+    private suspend fun <T> FragmentActivity.authenticate(
+        policy: BiometricPolicy,
+        cipher: Cipher,
+        onSuccess: (Cipher) -> T,
+    ): Result<T, BiometricAuthError> = suspendCancellableCoroutine { c ->
+        // The prompt that ran before this one removes its fragment in a transaction that has not
+        // run yet. A new prompt would reuse that fragment, which shows nothing and never calls back.
+        supportFragmentManager.executePendingTransactions()
+
+        val prompt = BiometricPrompt(
+            this,
+            Dispatchers.Main.asExecutor(),
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    val authenticated = result.cryptoObject?.cipher ?: return c.resume(
+                        Result.Failure(BiometricAuthError.NoCipher)
+                    )
+
+                    runCatching { onSuccess(authenticated) }.fold(
+                        onSuccess = { c.resume(Result.Success(it)) },
+                        onFailure = {
+                            Log.e(
+                                TAG,
+                                "Cipher operation failed after authentication succeeded",
+                                it,
+                            )
+                            c.resume(Result.Failure(cipherFailureToBiometricAuthError(it)))
+                        },
+                    )
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    c.resume(Result.Failure(biometricAuthErrorFrom(errorCode, errString)))
+                }
+
+                override fun onAuthenticationFailed() {
+                    // Not an outcome. A rejected attempt leaves the prompt open for another one,
+                    // and how it ends still arrives through the callbacks above.
+                }
+            },
+        )
+
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle(policy.title.resolve(this))
+            .setNegativeButtonText(policy.negativeButton.resolve(this))
+            .setAllowedAuthenticators(AUTHENTICATORS)
+            .build()
+
+        prompt.authenticate(promptInfo, BiometricPrompt.CryptoObject(cipher))
+
+        c.invokeOnCancellation { prompt.cancelAuthentication() }
     }
 
     companion object {

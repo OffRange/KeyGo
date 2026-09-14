@@ -8,6 +8,7 @@ import de.davis.keygo.core.feature.autofill.FakeAutofillServiceRepository
 import de.davis.keygo.core.feature.autofill.FakeChromeAutofillRepository
 import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
+import de.davis.keygo.core.identity.domain.usecase.EnableBiometricsUseCase
 import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
@@ -79,7 +80,12 @@ class OnboardingViewModelTest {
             accountRepository = accountRepository,
             vaultRepository = FakeVaultRepository(),
             vaultContextRepository = FakeVaultContextRepository(),
-            biometricCrypto = biometricCrypto,
+            enableBiometrics = EnableBiometricsUseCase(
+                accountRepository = accountRepository,
+                session = session,
+                keyStoreManager = biometricCrypto.keyStoreManager,
+                biometricCrypto = biometricCrypto,
+            ),
             session = session,
         ),
     ).also {
@@ -135,19 +141,36 @@ class OnboardingViewModelTest {
             assertTrue(biometricCrypto.prompts.isEmpty())
         }
 
+    /**
+     * Biometrics are optional on top of the password the user just chose. Before, a cancelled prompt
+     * threw the finished key derivation away and left the user on this step with no feedback.
+     */
     @Test
-    fun `a failed prompt keeps the user on the biometrics step`() = runTest(dispatcher) {
-        biometricCrypto.promptFailure = BiometricAuthError.Declined
+    fun `a failed prompt still creates a password-only account and moves on`() =
+        runTest(dispatcher) {
+            biometricCrypto.promptFailure = BiometricAuthError.Declined
+            val vm = viewModel()
+            reachBiometricsStep(vm)
+
+            vm.onNextStep()
+            advanceUntilIdle()
+
+            assertIs<OnboardingUiState.ImportData>(vm.state.value)
+            assertNull(assertNotNull(accountRepository.getOrNull()).biometricWrappedArk)
+            assertFalse(vm.loading.value)
+            assertTrue(session.isActive.value)
+        }
+
+    @Test
+    fun `a second tap while the account is being created is dropped`() = runTest(dispatcher) {
         val vm = viewModel()
         reachBiometricsStep(vm)
 
-        vm.onNextStep()
+        vm.onSkip()
+        vm.onSkip()
         advanceUntilIdle()
 
-        assertEquals(OnboardingUiState.EnableBiometrics, vm.state.value)
-        assertNull(accountRepository.getOrNull())
-        assertFalse(vm.loading.value)
-        assertFalse(session.isActive.value)
+        assertEquals(1, accountRepository.setCount)
     }
 
     @Test

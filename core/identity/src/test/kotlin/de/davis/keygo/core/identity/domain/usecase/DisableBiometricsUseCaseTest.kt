@@ -2,10 +2,10 @@ package de.davis.keygo.core.identity.domain.usecase
 
 import de.davis.keygo.core.biometrics.FakeBiometricCrypto
 import de.davis.keygo.core.biometrics.domain.model.BiometricAuthError
-import de.davis.keygo.core.biometrics.domain.model.BiometricEnrollmentError
 import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.mapper.toBiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.Account
+import de.davis.keygo.core.identity.domain.model.BiometricEnrollmentError
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
@@ -44,7 +44,7 @@ class DisableBiometricsUseCaseTest {
                     salt = ByteArray(16) { 3 },
                 ),
                 biometricWrappedArk = biometricCrypto
-                    .requestWrap(KeyId.BiometricVaultKek, ByteArray(32) { 4 })
+                    .requestWrap(KeyId.BiometricVaultKek) { seal -> seal(ByteArray(32) { 4 }) }
                     .assertSuccess()
                     .toBiometricWrappedArk(),
             ),

@@ -13,10 +13,10 @@ internal enum class UnlockOutcome { Abort, NeedsPassword }
 
 internal fun mapUnlockError(error: UnlockError): UnlockOutcome = when (error) {
     is UnlockError.BiometricFailed -> when (error.error) {
-        BiometricAuthError.NoPromptHost,
         BiometricAuthError.Canceled,
         BiometricAuthError.NoCipher -> UnlockOutcome.Abort
 
+        BiometricAuthError.NoPromptHost,
         BiometricAuthError.Declined,
         BiometricAuthError.LockedOut,
         BiometricAuthError.CryptoFailed,

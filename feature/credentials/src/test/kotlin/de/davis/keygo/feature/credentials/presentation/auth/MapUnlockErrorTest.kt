@@ -16,9 +16,13 @@ class MapUnlockErrorTest {
     }
 
     @Test
-    fun `a prompt that could not be shown gives the request back`() {
-        assertEquals(UnlockOutcome.Abort, biometric(BiometricAuthError.NoPromptHost))
+    fun `a prompt that authenticated without a cipher gives the request back`() {
         assertEquals(UnlockOutcome.Abort, biometric(BiometricAuthError.NoCipher))
+    }
+
+    @Test
+    fun `a prompt with nothing to show on offers the password form`() {
+        assertEquals(UnlockOutcome.NeedsPassword, biometric(BiometricAuthError.NoPromptHost))
     }
 
     @Test

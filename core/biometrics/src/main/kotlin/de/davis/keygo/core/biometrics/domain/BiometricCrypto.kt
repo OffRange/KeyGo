@@ -9,11 +9,11 @@ import java.security.Key
 
 interface BiometricCrypto {
 
-    suspend fun requestWrap(
+    suspend fun <T> requestWrap(
         keyId: KeyId,
-        key: ByteArray,
-    ): Result<CryptographicData, BiometricAuthError>
         policy: BiometricPolicy = BiometricPolicy.Default,
+        wrap: (seal: (key: ByteArray) -> CryptographicData) -> T,
+    ): Result<T, BiometricAuthError>
 
     suspend fun requestUnwrap(
         keyId: KeyId,

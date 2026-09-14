@@ -38,7 +38,8 @@ Android password manager using Clean Architecture per module:
 | Module                   | Purpose                                                                  |
 |--------------------------|--------------------------------------------------------------------------|
 | `:app`                   | Navigation, app-level DI, dashboard                                      |
-| `:core:security`         | Crypto, biometrics, Android Keystore                                     |
+| `:core:security`         | Crypto, Android Keystore                                                 |
+| `:core:biometrics`       | Biometric prompt (`BiometricCrypto`), biometric availability             |
 | `:core:identity`         | Key wrapping, auth data, proto schemas (`core/identity/src/main/proto/`) |
 | `:core:item`             | Room database, login/item entities                                       |
 | `:core:ui`               | Shared composables and UI utilities                                      |
@@ -70,7 +71,7 @@ Composition root: `app/di/Koin.kt`. Wire dependencies in the most local owning m
 
 ## Security
 
-`KeyStoreManager`, `BiometricCryptoController`, `Session` (active DEK). Wrapped keys in proto
+`KeyStoreManager`, `BiometricCrypto`, `Session` (active DEK). Wrapped keys in proto
 DataStore: `biometric_key_data.pb`, `password_key_data.pb`. Do not change key lifecycle, wrapping,
 prompt flow, or persistence semantics without explicit instruction.
 

@@ -124,6 +124,7 @@ private fun SettingsEntryRow(
         is SettingsEntry.Toggle -> SegmentedListItem(
             onClick = { entry.onCheckedChange(!entry.checked) },
             shapes = shapes,
+            enabled = entry.enabled,
             colors = colors,
             leadingContent = leadingContent,
             supportingContent = supportingContent,
@@ -132,6 +133,7 @@ private fun SettingsEntryRow(
                 Switch(
                     checked = entry.checked,
                     onCheckedChange = null,
+                    enabled = entry.enabled,
                     thumbContent = {
                         Icon(
                             imageVector = when {

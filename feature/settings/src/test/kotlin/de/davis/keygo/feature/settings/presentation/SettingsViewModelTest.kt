@@ -25,6 +25,7 @@ import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.presentation.UIText
+import de.davis.keygo.feature.autofill.domain.usecase.AutofillActivationStatusUseCase
 import de.davis.keygo.feature.backup.FakeBackupJobRepository
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
 import de.davis.keygo.feature.backup.domain.model.BackupJob
@@ -32,6 +33,7 @@ import de.davis.keygo.feature.backup.domain.model.BackupResult
 import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.domain.usecase.ObserveLastBackupUseCase
 import de.davis.keygo.feature.settings.R
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -78,6 +80,10 @@ class SettingsViewModelTest {
         biometricAvailabilityRepository = biometricAvailability,
         autofillServiceRepository = autofillServiceRepository,
         chromeAutofillRepository = chromeAutofillRepository,
+        autofillActivationStatus = AutofillActivationStatusUseCase(
+            autofillServiceRepository = autofillServiceRepository,
+            chromeAutofillRepository = chromeAutofillRepository,
+        ),
         lockInfoRepository = lockInfoRepository,
         enableBiometrics = EnableBiometricsUseCase(
             accountRepository = accountRepository,
@@ -108,7 +114,7 @@ class SettingsViewModelTest {
                     salt = ByteArray(16) { 3 },
                 ),
                 biometricWrappedArk = if (enrolled) {
-                    biometricCrypto.requestWrap(KeyId.BiometricVaultKek, ark)
+                    biometricCrypto.requestWrap(KeyId.BiometricVaultKek) { seal -> seal(ark) }
                         .assertSuccess()
                         .toBiometricWrappedArk()
                 } else null,
@@ -188,6 +194,34 @@ class SettingsViewModelTest {
         assertTrue(biometricCrypto.prompts.isEmpty())
         assertTrue(snackbarManager.messages.isEmpty())
     }
+
+    /**
+     * The switch only moves once the stored enrollment does, so a second tap while the prompt is
+     * open reads as the opposite request. Run alongside the enable, a disable deletes the key the
+     * prompt is bound to.
+     */
+    @Test
+    fun `a biometrics toggle made while an enrollment is running is dropped`() =
+        runTest(dispatcher) {
+            seedAccount(enrolled = false)
+            val prompt = CompletableDeferred<Unit>()
+            biometricCrypto.pendingPrompt = prompt
+            val vm = viewModel()
+            vm.state.launchIn(backgroundScope)
+
+            vm.onEvent(SettingsUiEvent.SetBiometrics(enabled = true))
+            advanceUntilIdle()
+            assertTrue(vm.state.value.biometricsUpdating)
+
+            vm.onEvent(SettingsUiEvent.SetBiometrics(enabled = false))
+            advanceUntilIdle()
+            prompt.complete(Unit)
+            advanceUntilIdle()
+
+            assertEquals(1, accountRepository.setCount)
+            assertNotNull(accountRepository.getOrNull()?.biometricWrappedArk)
+            assertFalse(vm.state.value.biometricsUpdating)
+        }
 
     @Test
     fun `backing out of the enrollment prompt is not reported`() = runTest(dispatcher) {

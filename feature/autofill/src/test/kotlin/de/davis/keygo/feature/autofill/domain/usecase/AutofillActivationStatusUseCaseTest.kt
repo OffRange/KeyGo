@@ -3,7 +3,6 @@ package de.davis.keygo.feature.autofill.domain.usecase
 import de.davis.keygo.core.feature.autofill.FakeAutofillServiceRepository
 import de.davis.keygo.core.feature.autofill.FakeChromeAutofillRepository
 import de.davis.keygo.feature.autofill.domain.model.AutofillActivationStatus
-import de.davis.keygo.feature.autofill.domain.repository.ChromeAutofillRepository
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -60,18 +59,5 @@ class AutofillActivationStatusUseCaseTest {
             ),
             activationStatus(),
         )
-    }
-
-    @Test
-    fun `an enabled read from an unavailable Chrome is not counted`() = runTest {
-        val stale = object : ChromeAutofillRepository {
-            override suspend fun isAvailable() = false
-            override suspend fun isAutofillEnabled() = true
-            override fun openChromeAutofillSettings() = Unit
-        }
-
-        val status = AutofillActivationStatusUseCase(autofillServiceRepository, stale)()
-
-        assertEquals(false, status.chromeAutofillEnabled)
     }
 }

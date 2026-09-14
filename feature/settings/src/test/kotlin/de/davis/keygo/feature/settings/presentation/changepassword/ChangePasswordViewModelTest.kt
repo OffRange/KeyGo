@@ -90,7 +90,8 @@ class ChangePasswordViewModelTest {
         val current = accountRepository.getOrNull()!!
         accountRepository.seed(
             current.copy(
-                biometricWrappedArk = biometricCrypto.requestWrap(KeyId.BiometricVaultKek, ark)
+                biometricWrappedArk = biometricCrypto
+                    .requestWrap(KeyId.BiometricVaultKek) { seal -> seal(ark) }
                     .assertSuccess()
                     .toBiometricWrappedArk()
             )

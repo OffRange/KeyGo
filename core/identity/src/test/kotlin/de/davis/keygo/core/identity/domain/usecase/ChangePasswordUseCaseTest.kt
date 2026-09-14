@@ -63,7 +63,8 @@ class ChangePasswordUseCaseTest {
                 salt = created.salt,
             ),
             biometricWrappedArk = if (withBiometric) {
-                biometricCrypto.requestWrap(KeyId.BiometricVaultKek, biometricArk())
+                biometricCrypto
+                    .requestWrap(KeyId.BiometricVaultKek) { seal -> seal(biometricArk()) }
                     .assertSuccess()
                     .toBiometricWrappedArk()
             } else null,

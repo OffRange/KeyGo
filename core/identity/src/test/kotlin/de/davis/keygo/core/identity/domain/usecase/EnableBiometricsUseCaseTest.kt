@@ -1,15 +1,15 @@
-@file:OptIn(ExportArk::class)
+@file:OptIn(ExportArk::class, ExperimentalCoroutinesApi::class)
 
 package de.davis.keygo.core.identity.domain.usecase
 
 import de.davis.keygo.core.biometrics.FakeBiometricCrypto
 import de.davis.keygo.core.biometrics.domain.model.BiometricAuthError
-import de.davis.keygo.core.biometrics.domain.model.BiometricEnrollmentError
 import de.davis.keygo.core.biometrics.domain.model.BiometricPolicy
 import de.davis.keygo.core.biometrics.domain.model.BiometricString
 import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.mapper.toBiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.Account
+import de.davis.keygo.core.identity.domain.model.BiometricEnrollmentError
 import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.security.FakeSession
@@ -21,6 +21,10 @@ import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.util.assertFailure
 import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.core.util.getOrNull
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import java.util.UUID
 import kotlin.test.Test
@@ -70,7 +74,8 @@ class EnableBiometricsUseCaseTest {
     private suspend fun seedEnrolledAccount() {
         val ark = checkNotNull(session.exportArk().getOrNull())
         seedAccount(
-            biometricWrappedArk = biometricCrypto.requestWrap(KeyId.BiometricVaultKek, ark)
+            biometricWrappedArk = biometricCrypto
+                .requestWrap(KeyId.BiometricVaultKek) { seal -> seal(ark) }
                 .assertSuccess()
                 .toBiometricWrappedArk(),
         )
@@ -119,13 +124,49 @@ class EnableBiometricsUseCaseTest {
     }
 
     @Test
-    fun `wipes the exported ARK even when the prompt fails`() = runTest {
+    fun `a failed prompt never exports the ARK`() = runTest {
         seedAccount()
         biometricCrypto.promptFailure = BiometricAuthError.LockedOut
 
         enableBiometrics().assertFailure()
 
+        assertTrue(session.exported.isEmpty())
+    }
+
+    /**
+     * A prompt can stay open for as long as the user leaves it. Exporting the ARK before showing it
+     * kept a plaintext copy on the heap for all of that time instead of the moment the wrap takes.
+     */
+    @Test
+    fun `the ARK is not exported while the prompt is open`() = runTest {
+        seedAccount()
+        val prompt = CompletableDeferred<Unit>()
+        biometricCrypto.pendingPrompt = prompt
+
+        val enrollment = async { enableBiometrics() }
+        runCurrent()
+        assertEquals(1, biometricCrypto.prompts.size)
+        assertTrue(session.exported.isEmpty())
+
+        prompt.complete(Unit)
+        enrollment.await().assertSuccess()
+
         assertContentEquals(ByteArray(32), session.onlyExported())
+    }
+
+    @Test
+    fun `a session that locks while the prompt is open reports NoActiveSession`() = runTest {
+        seedAccount()
+        val prompt = CompletableDeferred<Unit>()
+        biometricCrypto.pendingPrompt = prompt
+
+        val enrollment = async { enableBiometrics() }
+        runCurrent()
+        session.endSession()
+        prompt.complete(Unit)
+
+        assertEquals(BiometricEnrollmentError.NoActiveSession, enrollment.await().assertFailure())
+        assertNull(accountRepository.getOrNull()?.biometricWrappedArk)
     }
 
     @Test
