@@ -1,6 +1,5 @@
 package de.davis.keygo.feature.auth.presentation
 
-import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,16 +17,19 @@ import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedSecureTextField
+import androidx.compose.material3.SplitButtonDefaults
+import androidx.compose.material3.SplitButtonShapes
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -48,6 +50,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.ui.components.VisibilityButton
 import de.davis.keygo.core.ui.model.error
@@ -252,31 +256,49 @@ private fun InteractableAuthContent(
                             }
                     }
 
+                    val showBiometricButton =
+                        state is AuthState.Login && state.biometricAuthenticationAvailable
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
                     ) {
                         FilledTonalButton(
                             onClick = { onEvent(AuthUIEvent.Submit) },
+                            shapes = ButtonDefaults.shapes(
+                                shape = when {
+                                    showBiometricButton -> ButtonGroupDefaults.connectedLeadingButtonShape
+                                    else -> null
+                                },
+                                pressedShape = when {
+                                    showBiometricButton -> ButtonGroupDefaults.connectedLeadingButtonPressShape
+                                    else -> null
+                                },
+                            ),
                             modifier = Modifier.weight(1f),
                             enabled = !state.loading
                         ) {
                             Text(text = state.buttonText)
                         }
 
-                        if (state is AuthState.Login && state.biometricAuthenticationAvailable) {
-                            FilledTonalIconButton(
+                        if (showBiometricButton)
+                            SplitButtonDefaults.TrailingButton(
                                 onClick = {
                                     onEvent(AuthUIEvent.RequestBiometricAuthentication)
                                 },
-                                enabled = !state.loading
+                                enabled = !state.loading,
+                                shapes = SplitButtonShapes(
+                                    shape = ButtonGroupDefaults.connectedTrailingButtonShape,
+                                    pressedShape = ButtonGroupDefaults.connectedTrailingButtonPressShape,
+                                    checkedShape = null,
+                                ),
+                                colors = ButtonDefaults.filledTonalButtonColors(),
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Fingerprint,
                                     contentDescription = stringResource(R.string.request_biometric_authentication_content_description)
                                 )
                             }
-                        }
                     }
                 }
             }
@@ -377,18 +399,38 @@ private val AuthState.Interactable.buttonText: String
         is AuthState.Migrating -> stringResource(R.string.migrate)
     }
 
+
+private class AuthStateProvider : PreviewParameterProvider<AuthState> {
+    override val values = sequenceOf(
+        AuthState.Migrating(
+            passwordTextFieldState = TextFieldState(),
+            biometricsAvailable = true
+        ),
+        AuthState.MigrationSummary(
+            skippedItems = 5
+        ),
+        AuthState.ImportingLegacyData,
+        AuthState.MigrationFailed,
+        AuthState.Loading,
+        AuthState.Login(
+            passwordTextFieldState = TextFieldState(),
+            biometricAuthenticationAvailable = true
+        ),
+        AuthState.Login(
+            passwordTextFieldState = TextFieldState(),
+            biometricAuthenticationAvailable = false
+        ),
+    )
+
+    override fun getDisplayName(index: Int): String? = values.elementAt(index).javaClass.simpleName
+}
+
 @Composable
 @Preview
-@Preview(
-    uiMode = Configuration.UI_MODE_NIGHT_YES
-)
-private fun AuthContentPreview() {
+private fun AuthContentPreview(@PreviewParameter(AuthStateProvider::class) state: AuthState) {
     KeyGoTheme {
         AuthContent(
-            state = AuthState.Migrating(
-                passwordTextFieldState = TextFieldState(),
-                biometricsAvailable = true
-            ),
+            state = state,
             onEvent = {}
         )
     }
