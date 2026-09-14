@@ -1,5 +1,9 @@
 package de.davis.keygo.core.identity.domain.usecase
 
+import de.davis.keygo.core.biometrics.FakeBiometricCrypto
+import de.davis.keygo.core.biometrics.domain.model.BiometricAuthError
+import de.davis.keygo.core.biometrics.domain.model.BiometricPolicy
+import de.davis.keygo.core.biometrics.domain.model.BiometricString
 import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.model.CreateAccessError
 import de.davis.keygo.core.item.FakeVaultContextRepository
@@ -7,19 +11,24 @@ import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.repository.VaultContextRepository
 import de.davis.keygo.core.security.FakeSession
+import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
+import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
+import de.davis.keygo.core.security.domain.model.CryptographicMode
+import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
+import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
 import de.davisalessandro.keygo.rust.WrappedKeyBlob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
-import javax.crypto.Cipher
-import javax.crypto.KeyGenerator
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CreateAccessUseCaseTest {
@@ -28,11 +37,13 @@ class CreateAccessUseCaseTest {
     private val accountRepository = FakeAccountRepository()
     private val vaultRepository = FakeVaultRepository()
     private val vaultContextRepository = FakeVaultContextRepository()
+    private val biometricCrypto = FakeBiometricCrypto()
 
     private val useCase = CreateAccessUseCase(
         accountRepository = accountRepository,
         vaultRepository = vaultRepository,
         vaultContextRepository = vaultContextRepository,
+        biometricCrypto = biometricCrypto,
         session = session,
     )
 
@@ -82,8 +93,8 @@ class CreateAccessUseCaseTest {
         }
 
     @Test
-    fun `returns Success and leaves the session unlocked without biometric cipher`() = runTest {
-        val result = useCase("password", biometricCipher = null)
+    fun `returns Success and leaves the session unlocked without biometrics`() = runTest {
+        val result = useCase("password", withBiometrics = false)
 
         assertTrue(result.isSuccess())
         assertTrue(session.isActive.value)
@@ -111,13 +122,8 @@ class CreateAccessUseCaseTest {
     }
 
     @Test
-    fun `persists biometric-wrapped ARK when cipher is provided`() = runTest {
-        val biometricKek = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
-        val biometricCipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
-            init(Cipher.WRAP_MODE, biometricKek)
-        }
-
-        val result = useCase("password", biometricCipher = biometricCipher)
+    fun `persists biometric-wrapped ARK when biometrics are requested`() = runTest {
+        val result = useCase("password", withBiometrics = true)
 
         assertTrue(result.isSuccess())
         val stored = accountRepository.getOrNull()!!
@@ -127,10 +133,50 @@ class CreateAccessUseCaseTest {
     }
 
     @Test
-    fun `does not persist biometric-wrapped ARK when no cipher provided`() = runTest {
-        useCase("password", biometricCipher = null)
+    fun `the biometric-wrapped ARK opens back to the ARK the session holds`() = runTest {
+        useCase("password", withBiometrics = true)
 
-        assertEquals(null, accountRepository.getOrNull()?.biometricWrappedArk)
+        val bio = accountRepository.getOrNull()!!.biometricWrappedArk!!
+        val recovered = biometricCrypto.requestUnwrap(
+            keyId = KeyId.BiometricVaultKek,
+            cryptographicData = CryptographicData(data = bio.key, iv = bio.keyIV),
+        ).assertSuccess().encoded
+
+        assertEquals(true, session.verifyArk(recovered).assertSuccess())
+    }
+
+    @Test
+    fun `wraps under the biometric key with the policy it was given`() = runTest {
+        val policy = BiometricPolicy(negativeButton = BiometricString.NegativeButton.Password)
+
+        useCase("password", withBiometrics = true, policy = policy)
+
+        val prompt = biometricCrypto.prompts.single()
+        assertEquals(KeyId.BiometricVaultKek, prompt.keyId)
+        assertEquals(CryptographicMode.Wrap, prompt.mode)
+        assertEquals(policy, prompt.policy)
+    }
+
+    @Test
+    fun `does not persist biometric-wrapped ARK or prompt when biometrics are not requested`() =
+        runTest {
+            useCase("password", withBiometrics = false)
+
+            assertNull(accountRepository.getOrNull()?.biometricWrappedArk)
+            assertTrue(biometricCrypto.prompts.isEmpty())
+        }
+
+    @Test
+    fun `a failed biometric prompt reports WrappingFailed and persists nothing`() = runTest {
+        biometricCrypto.promptFailure = BiometricAuthError.Declined
+
+        val result = useCase("password", withBiometrics = true)
+
+        assertTrue(result.isFailure())
+        assertEquals(CreateAccessError.WrappingFailed, result.error)
+        assertNull(accountRepository.getOrNull())
+        assertTrue(vaultRepository.observeVaults().first().isEmpty())
+        assertFalse(session.isActive.value)
     }
 
     @Test
@@ -156,12 +202,8 @@ class CreateAccessUseCaseTest {
     @Test
     fun `wipes the exported ARK after wrapping it for biometrics`() = runTest {
         val recording = FakeSession(startUnlocked = true)
-        val biometricKek = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
-        val biometricCipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
-            init(Cipher.WRAP_MODE, biometricKek)
-        }
 
-        useCaseOver(recording)("password", biometricCipher = biometricCipher)
+        useCaseOver(recording)("password", withBiometrics = true)
 
         assertContentEquals(ByteArray(32), recording.onlyExported())
     }
@@ -169,13 +211,11 @@ class CreateAccessUseCaseTest {
     @Test
     fun `wipes the exported ARK even when wrapping fails`() = runTest {
         val recording = FakeSession(startUnlocked = true)
-        // A cipher in the wrong mode makes Cipher.wrap throw, so the wrap fails after the export.
-        val kek = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
-        val wrongMode = Cipher.getInstance("AES/GCM/NoPadding").apply {
-            init(Cipher.ENCRYPT_MODE, kek)
-        }
+        val refusing = FakeBiometricCrypto(
+            keyStoreManager = FakeKeyStoreManager(failure = KeyStoreManagerError.Unknown),
+        )
 
-        val result = useCaseOver(recording)("password", biometricCipher = wrongMode)
+        val result = useCaseOver(recording, refusing)("password", withBiometrics = true)
 
         assertTrue(result.isFailure())
         assertEquals(CreateAccessError.WrappingFailed, result.error)
@@ -207,6 +247,7 @@ class CreateAccessUseCaseTest {
             accountRepository = accountRepository,
             vaultRepository = vaultRepository,
             vaultContextRepository = ThrowingVaultContextRepository(),
+            biometricCrypto = biometricCrypto,
             session = session,
         )
 
@@ -228,10 +269,14 @@ class CreateAccessUseCaseTest {
         assertTrue(!salt1.contentEquals(salt2))
     }
 
-    private fun useCaseOver(session: FakeSession) = CreateAccessUseCase(
+    private fun useCaseOver(
+        session: FakeSession,
+        biometricCrypto: FakeBiometricCrypto = this.biometricCrypto,
+    ) = CreateAccessUseCase(
         accountRepository = accountRepository,
         vaultRepository = vaultRepository,
         vaultContextRepository = vaultContextRepository,
+        biometricCrypto = biometricCrypto,
         session = session,
     )
 }

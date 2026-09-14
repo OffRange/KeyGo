@@ -17,8 +17,8 @@ import de.davis.keygo.feature.backup.domain.model.ExportDetails
 import de.davis.keygo.feature.backup.domain.model.FileFormat
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -46,12 +46,14 @@ class BackupProvisioningSerializationTest {
     // Provisioning parks here after saving B's escrow but before B's record is written.
     private val gate = CompletableDeferred<Unit>()
 
+    private val provisioningScheduler = FakeBackupScheduler(
+        jobRepository = jobRepository,
+        gate = gate,
+        oneTimeWorkId = "B",
+    )
+
     private val finish = FinishExportWizardUseCase(
-        backupScheduler = FakeBackupScheduler(
-            jobRepository = jobRepository,
-            gate = gate,
-            oneTimeWorkId = "B",
-        ),
+        backupScheduler = provisioningScheduler,
         destinationResolver = FakeBackupDestinationResolver(),
         keyStoreManager = keyStoreManager,
         persistableUriManager = uriManager,
@@ -94,7 +96,10 @@ class BackupProvisioningSerializationTest {
                 ),
             )
         }
-        runCurrent()
+        // Not runCurrent: wrapping the passphrase and escrowing the ARK encrypt on
+        // Dispatchers.Default, which the test scheduler does not drive, so only the gate itself
+        // can say provisioning got this far.
+        provisioningScheduler.parkedAtGate.await()
 
         // Concurrent cleanup of the already-finished A. With the lock held it must block and tear
         // nothing down: B's escrow and both shared aliases must still be intact.
@@ -108,10 +113,8 @@ class BackupProvisioningSerializationTest {
         // Release provisioning: it writes B's live record and drops the lock, then cleanup runs and,
         // seeing B live, spares the escrow and both aliases.
         gate.complete(Unit)
-        advanceUntilIdle()
+        joinAll(provisioning, cleaning)
 
-        assertTrue(provisioning.isCompleted)
-        assertTrue(cleaning.isCompleted)
         assertNotNull(arkKeyStore.load())
         assertTrue(KeyId.BackupArkKey in keyStoreManager.keys)
         assertTrue(KeyId.BackupPassphraseKey in keyStoreManager.keys)

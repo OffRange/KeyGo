@@ -16,6 +16,7 @@ dependencies {
 
     testImplementation(projects.rust)
     testImplementation(libs.robolectric)
+    testImplementation(testFixtures(projects.core.biometrics))
     testImplementation(testFixtures(projects.core.identity))
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.security))

@@ -4,6 +4,9 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.content.IntentSender
 import androidx.lifecycle.SavedStateHandle
+import de.davis.keygo.core.biometrics.FakeBiometricCrypto
+import de.davis.keygo.core.biometrics.domain.model.BiometricAuthError
+import de.davis.keygo.core.biometrics.domain.model.BiometricString
 import de.davis.keygo.core.feature.autofill.FakeAutofillDatasetProvider
 import de.davis.keygo.core.feature.autofill.FakeDigitalAssetLinkRepository
 import de.davis.keygo.core.feature.autofill.FakeSignatureInfoProvider
@@ -11,6 +14,12 @@ import de.davis.keygo.core.feature.autofill.FakeSmsCodeRepository
 import de.davis.keygo.core.feature.autofill.FakeTotpGenerator
 import de.davis.keygo.core.feature.autofill.FakeTotpRepository
 import de.davis.keygo.core.feature.autofill.autofillId
+import de.davis.keygo.core.identity.FakeAccountRepository
+import de.davis.keygo.core.identity.domain.mapper.toBiometricWrappedArk
+import de.davis.keygo.core.identity.domain.model.Account
+import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
+import de.davis.keygo.core.identity.domain.usecase.DisableBiometricsUseCase
+import de.davis.keygo.core.identity.domain.usecase.UnlockWithBiometricsUseCase
 import de.davis.keygo.core.item.FakeItemRepository
 import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.FakeVaultRepository
@@ -23,9 +32,13 @@ import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.model.Totp
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
+import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
+import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.util.FakeRegistrableDomainResolver
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.feature.autofill.domain.usecase.AddRegistrableDomainsToLoginUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.DoesItemHaveDomainReferencesUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.IsAppLinkedToWebsiteUseCase
@@ -63,6 +76,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -84,6 +98,10 @@ internal class AutofillViewModelTest {
     private lateinit var dalRepo: FakeDigitalAssetLinkRepository
     private lateinit var totpGenerator: FakeTotpGenerator
     private lateinit var smsCodeRepo: FakeSmsCodeRepository
+    private lateinit var session: FakeSession
+    private lateinit var accountRepo: FakeAccountRepository
+    private lateinit var keyStoreManager: FakeKeyStoreManager
+    private lateinit var biometricCrypto: FakeBiometricCrypto
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Before
@@ -110,6 +128,10 @@ internal class AutofillViewModelTest {
         dalRepo = FakeDigitalAssetLinkRepository()
         totpGenerator = FakeTotpGenerator()
         smsCodeRepo = FakeSmsCodeRepository()
+        session = FakeSession()
+        accountRepo = FakeAccountRepository()
+        keyStoreManager = FakeKeyStoreManager()
+        biometricCrypto = FakeBiometricCrypto(keyStoreManager)
     }
 
     private fun buildVm(requestData: RequestData): AutofillViewModel {
@@ -127,6 +149,12 @@ internal class AutofillViewModelTest {
             doesItemHaveDomainReferences = DoesItemHaveDomainReferencesUseCase(loginRepo, resolver),
             addRegistrableDomainToLogin = AddRegistrableDomainsToLoginUseCase(loginRepo, resolver),
             isAppLinkedToWebsite = IsAppLinkedToWebsiteUseCase(dalRepo, signatureProvider),
+            unlockWithBiometrics = UnlockWithBiometricsUseCase(
+                session = session,
+                accountRepository = accountRepo,
+                biometricCrypto = biometricCrypto,
+                disableBiometrics = DisableBiometricsUseCase(accountRepo, keyStoreManager),
+            ),
             totpGenerator = totpGenerator,
         )
     }
@@ -181,6 +209,35 @@ internal class AutofillViewModelTest {
     private fun minimalTotp(loginId: ItemId) = Totp(
         loginId = loginId,
         secret = Totp.Secret(EncryptedPayload.EMPTY),
+    )
+
+    private suspend fun seedBiometricAccount() {
+        accountRepo.seed(
+            Account(
+                id = UUID.randomUUID(),
+                displayName = "Test",
+                passwordWrappedArk = PasswordWrappedArk(
+                    key = byteArrayOf(1),
+                    keyIV = byteArrayOf(2),
+                    salt = byteArrayOf(3),
+                ),
+                biometricWrappedArk = biometricCrypto
+                    .requestWrap(KeyId.BiometricVaultKek, ByteArray(32) { it.toByte() })
+                    .assertSuccess()
+                    .toBiometricWrappedArk(),
+            ),
+        )
+        biometricCrypto.prompts.clear()
+    }
+
+    private fun suggestionFor(login: Login) = FillRequestData.Suggestion(
+        form(
+            fields = listOf(credField(FieldType.Credentials.Username, viewId = 1)),
+            url = "https://example.com",
+            isSuspicious = false,
+        ),
+        vaultId = login.id,
+        index = 0,
     )
 
     private fun matchingDomainInfo(loginId: ItemId? = null) = DomainInfo(
@@ -510,17 +567,104 @@ internal class AutofillViewModelTest {
         val theForm = form(fields = fields, url = "https://example.com", isSuspicious = false)
         val requestData = FillRequestData.Suggestion(theForm, vaultId = login.id, index = 0)
         val vm = buildVm(requestData)
-
-        val biometricDeferred = async { vm.biometricFlow.first() }
         vm.start()
+        assertEquals(Request.JustAuthenticateWithPwd, vm.uiState.value.request)
 
         val eventDeferred = async { vm.events.first() }
         vm.onEvent(AutofillUiEvent.OnAuthenticated)
         val event = eventDeferred.await()
 
         assertIs<AutofillEvent.Fill>(event)
-        biometricDeferred.cancel()
     }
+
+    @Test
+    fun `a suggestion unlocks with biometrics and fills without asking for the password`() =
+        runTest {
+            seedBiometricAccount()
+            val login = testLogin(username = "carol", name = "Carol's mail")
+            loginRepo.seed(login)
+            val vm = buildVm(suggestionFor(login))
+
+            val eventDeferred = async { vm.events.first() }
+            vm.start()
+            val event = eventDeferred.await()
+
+            assertIs<AutofillEvent.Fill>(event)
+            assertTrue(datasetProvider.getFillingDatasetCalls.last().any { it.value == "carol" })
+            assertTrue(session.isActive.value)
+            assertEquals(Request.None, vm.uiState.value.request)
+        }
+
+    @Test
+    fun `the suggestion prompt names the item and offers the password as the way out`() =
+        runTest {
+            seedBiometricAccount()
+            biometricCrypto.promptFailure = BiometricAuthError.Declined
+            val login = testLogin(username = "carol", name = "Carol's mail")
+            loginRepo.seed(login)
+            val vm = buildVm(suggestionFor(login))
+
+            vm.start()
+
+            val policy = biometricCrypto.prompts.single().policy
+            assertEquals(BiometricString.Title.UnlockItem("Carol's mail"), policy.title)
+            assertEquals(BiometricString.NegativeButton.Password, policy.negativeButton)
+        }
+
+    @Test
+    fun `declining the suggestion prompt asks for the password instead`() = runTest {
+        seedBiometricAccount()
+        biometricCrypto.promptFailure = BiometricAuthError.Declined
+        val login = testLogin(username = "carol")
+        loginRepo.seed(login)
+        val vm = buildVm(suggestionFor(login))
+
+        vm.start()
+
+        assertEquals(Request.JustAuthenticateWithPwd, vm.uiState.value.request)
+        assertFalse(session.isActive.value)
+    }
+
+    @Test
+    fun `a prompt that fails on its own asks for the password instead`() = runTest {
+        seedBiometricAccount()
+        biometricCrypto.promptFailure = BiometricAuthError.LockedOut
+        val login = testLogin(username = "carol")
+        loginRepo.seed(login)
+        val vm = buildVm(suggestionFor(login))
+
+        vm.start()
+
+        assertEquals(Request.JustAuthenticateWithPwd, vm.uiState.value.request)
+    }
+
+    @Test
+    fun `canceling the suggestion prompt aborts the fill`() = runTest {
+        seedBiometricAccount()
+        biometricCrypto.promptFailure = BiometricAuthError.Canceled
+        val login = testLogin(username = "carol")
+        loginRepo.seed(login)
+        val vm = buildVm(suggestionFor(login))
+
+        val eventDeferred = async { vm.events.first() }
+        vm.start()
+
+        assertEquals(AutofillEvent.Abort, eventDeferred.await())
+        assertEquals(Request.None, vm.uiState.value.request)
+    }
+
+    @Test
+    fun `a suggestion for an account without biometrics asks for the password without prompting`() =
+        runTest {
+            val login = testLogin(username = "carol")
+            loginRepo.seed(login)
+            val vm = buildVm(suggestionFor(login))
+
+            vm.start()
+
+            assertEquals(Request.JustAuthenticateWithPwd, vm.uiState.value.request)
+            assertTrue(biometricCrypto.prompts.isEmpty())
+        }
 
     @Test
     fun `authenticating without suggestion sends Abort`() = runTest {

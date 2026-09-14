@@ -19,6 +19,7 @@ dependencies {
     testImplementation(libs.okhttp.jvm)
 
     testFixturesImplementation(libs.kotlin.test)
+    testFixturesImplementation(libs.kotlinx.coroutines.core)
     testFixturesImplementation(project.dependencies.platform(libs.androidx.compose.bom))
     testFixturesImplementation(libs.androidx.compose.runtime) {
         because("https://issuetracker.google.com/issues/259523353#comment32")

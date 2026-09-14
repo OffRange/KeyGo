@@ -13,7 +13,8 @@ import kotlinx.coroutines.CompletableDeferred
  * record - mirroring [de.davis.keygo.feature.backup.data.BackupSchedulerImpl] which calls
  * `backupJobRepository.putJob(...)` before enqueueing - so a cleanup reading the same repository
  * can observe the job as "live". Pass [gate] to park inside scheduling *before* that record is
- * written, reproducing the TOCTOU window between escrow provisioning and the record write.
+ * written, reproducing the TOCTOU window between escrow provisioning and the record write. Await
+ * [parkedAtGate] to know a call has actually reached it.
  */
 class FakeBackupScheduler(
     private val jobRepository: FakeBackupJobRepository? = null,
@@ -29,6 +30,13 @@ class FakeBackupScheduler(
 
     private val scheduled = mutableSetOf<WorkId>()
     private val abandoned = mutableSetOf<WorkId>()
+
+    /**
+     * Completes once a scheduling call is parked at [gate]. The work leading up to it may hop to a
+     * real dispatcher (cipher work runs on `Dispatchers.Default`), so `runCurrent` alone cannot
+     * promise the call got this far.
+     */
+    val parkedAtGate = CompletableDeferred<Unit>()
 
     /** When set, [outstandingWorkIds] throws - the "scheduler unreadable" case. */
     var outstandingFailure: Throwable? = null
@@ -69,7 +77,10 @@ class FakeBackupScheduler(
     // Mirror BackupSchedulerImpl: on success the record is written (putJob), on failure it is not,
     // so a failed schedule leaves no record - exactly the case the URI-grant release compensates.
     private suspend fun persist(workId: WorkId, job: BackupJob): Result<Unit, Unit> {
-        gate?.await()
+        if (gate != null) {
+            parkedAtGate.complete(Unit)
+            gate.await()
+        }
         if (result is Result.Failure) return result
         jobRepository?.putJob(workId, job)
         scheduled += workId

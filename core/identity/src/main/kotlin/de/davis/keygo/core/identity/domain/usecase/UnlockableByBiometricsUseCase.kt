@@ -12,9 +12,11 @@ class UnlockableByBiometricsUseCase(
 ) {
 
     suspend operator fun invoke(): UnlockableByBiometricsResult {
-        if (!biometricAvailabilityRepository.availability()) return UnlockableByBiometricsResult.NoHardware
+        val hardwareAvailable = biometricAvailabilityRepository.availability()
 
-        val account = accountRepository.getOrNull() ?: return UnlockableByBiometricsResult.NoAccount
+        val account = accountRepository.getOrNull()
+            ?: return UnlockableByBiometricsResult.NoAccount(hardwareAvailable)
+        if (!hardwareAvailable) return UnlockableByBiometricsResult.NoHardware
         if (account.biometricWrappedArk == null) return UnlockableByBiometricsResult.NotEnrolled
 
         return UnlockableByBiometricsResult.Available

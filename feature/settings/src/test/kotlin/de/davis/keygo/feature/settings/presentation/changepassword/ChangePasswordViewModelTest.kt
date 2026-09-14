@@ -4,23 +4,30 @@ package de.davis.keygo.feature.settings.presentation.changepassword
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.runtime.snapshots.Snapshot
+import de.davis.keygo.core.biometrics.FakeBiometricAvailabilityRepository
+import de.davis.keygo.core.biometrics.FakeBiometricCrypto
+import de.davis.keygo.core.biometrics.domain.model.BiometricAuthError
+import de.davis.keygo.core.biometrics.domain.model.BiometricString
 import de.davis.keygo.core.identity.FakeAccountRepository
+import de.davis.keygo.core.identity.domain.mapper.toBiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.Account
-import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.usecase.ChangePasswordUseCase
+import de.davis.keygo.core.identity.domain.usecase.UnlockableByBiometricsUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.security.FakeSession
-import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
 import de.davis.keygo.core.security.domain.ExportArk
+import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.ui.model.UiFieldError
-import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.core.util.getOrNull
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -28,14 +35,13 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import java.security.Key
-import javax.crypto.spec.SecretKeySpec
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChangePasswordViewModelTest {
@@ -44,6 +50,7 @@ class ChangePasswordViewModelTest {
 
     private val accountRepository = FakeAccountRepository()
     private val biometricAvailability = FakeBiometricAvailabilityRepository()
+    private val biometricCrypto = FakeBiometricCrypto()
     private val session = FakeSession()
 
     // The screen starts out on an unlocked session, so the account has to exist up front.
@@ -52,10 +59,9 @@ class ChangePasswordViewModelTest {
     private val estimator = object : PasswordStrengthEstimator {
         override suspend fun estimate(password: String): PasswordScore = PasswordScore.None
     }
-    private val changePassword = ChangePasswordUseCase(accountRepository, session)
-
-    /** The live ARK, which is what a successful biometric prompt hands back to the screen. */
-    private val ark: ByteArray get() = checkNotNull(session.exportArk().getOrNull())
+    private val changePassword = ChangePasswordUseCase(biometricCrypto, accountRepository, session)
+    private val unlockableByBiometrics =
+        UnlockableByBiometricsUseCase(accountRepository, biometricAvailability)
 
     @BeforeTest
     fun setUp() {
@@ -80,15 +86,16 @@ class ChangePasswordViewModelTest {
     /** Re-seed the account with a biometric-wrapped ARK and mark hardware available. */
     private suspend fun enableBiometric() {
         biometricAvailability.isAvailable = true
+        val ark = checkNotNull(session.exportArk().getOrNull())
         val current = accountRepository.getOrNull()!!
         accountRepository.seed(
             current.copy(
-                biometricWrappedArk = BiometricWrappedArk(
-                    key = ByteArray(48) { it.toByte() },
-                    keyIV = ByteArray(12) { it.toByte() },
-                )
+                biometricWrappedArk = biometricCrypto.requestWrap(KeyId.BiometricVaultKek, ark)
+                    .assertSuccess()
+                    .toBiometricWrappedArk()
             )
         )
+        biometricCrypto.prompts.clear()
     }
 
     /**
@@ -96,19 +103,28 @@ class ChangePasswordViewModelTest {
      * test reads `vm.state.value`, so the subscription belongs here rather than in each test.
      */
     private fun TestScope.viewModel() = ChangePasswordViewModel(
-        accountRepository = accountRepository,
-        biometricAvailabilityRepository = biometricAvailability,
+        unlockableByBiometrics = unlockableByBiometrics,
         passwordStrengthEstimator = estimator,
         changePassword = changePassword,
         session = session,
     ).also { it.state.launchIn(backgroundScope) }
+
+    private fun TestScope.eventsOf(vm: ChangePasswordViewModel): List<ChangePasswordEvent> =
+        mutableListOf<ChangePasswordEvent>().also { events ->
+            vm.event.onEach { events += it }.launchIn(backgroundScope)
+        }
+
+    private fun ChangePasswordViewModel.fillNewPassword(new: String = "brand-new") {
+        state.value.newPassword.edit { append(new) }
+        state.value.confirmPassword.edit { append(new) }
+    }
 
     @Test
     fun `blank new password sets Empty error and does not change password`() = runTest(dispatcher) {
         val vm = viewModel()
         vm.state.value.currentPassword.edit { append("old") }
 
-        vm.submitWithPassword()
+        vm.onSubmit(forcePasswordPath = true)
         advanceUntilIdle()
 
         assertEquals(UiFieldError.Empty, vm.state.value.newPasswordError)
@@ -121,20 +137,30 @@ class ChangePasswordViewModelTest {
         vm.state.value.newPassword.edit { append("brand-new") }
         vm.state.value.confirmPassword.edit { append("different") }
 
-        vm.submitWithPassword()
+        vm.onSubmit(forcePasswordPath = true)
         advanceUntilIdle()
 
         assertEquals(UiFieldError.Mismatch, vm.state.value.confirmPasswordError)
     }
 
     @Test
+    fun `blank current password on the password path sets Empty error`() = runTest(dispatcher) {
+        val vm = viewModel()
+        vm.fillNewPassword()
+
+        vm.onSubmit(forcePasswordPath = true)
+        advanceUntilIdle()
+
+        assertEquals(UiFieldError.Empty, vm.state.value.currentPasswordError)
+    }
+
+    @Test
     fun `wrong current password sets Incorrect error`() = runTest(dispatcher) {
         val vm = viewModel()
         vm.state.value.currentPassword.edit { append("wrong") }
-        vm.state.value.newPassword.edit { append("brand-new") }
-        vm.state.value.confirmPassword.edit { append("brand-new") }
+        vm.fillNewPassword()
 
-        vm.submitWithPassword()
+        vm.onSubmit(forcePasswordPath = true)
 
         // Await rather than advanceUntilIdle: key derivation hops to Dispatchers.Default,
         // which the test scheduler cannot see.
@@ -146,28 +172,49 @@ class ChangePasswordViewModelTest {
     fun `valid password change emits Success`() = runTest(dispatcher) {
         val vm = viewModel()
         vm.state.value.currentPassword.edit { append("old") }
-        vm.state.value.newPassword.edit { append("brand-new") }
-        vm.state.value.confirmPassword.edit { append("brand-new") }
+        vm.fillNewPassword()
 
-        vm.submitWithPassword()
+        vm.onSubmit(forcePasswordPath = true)
         advanceUntilIdle()
 
         assertEquals(ChangePasswordEvent.Success, vm.event.first())
     }
 
     @Test
-    fun `onSubmit with biometric available and valid passwords emits LaunchBiometricPrompt`() =
+    fun `biometric verification is offered only to an enrolled account on a usable sensor`() =
+        runTest(dispatcher) {
+            biometricAvailability.isAvailable = true
+            val unenrolled = viewModel()
+            advanceUntilIdle()
+            assertFalse(unenrolled.state.value.biometricAvailable)
+
+            enableBiometric()
+            val enrolled = viewModel()
+            advanceUntilIdle()
+            assertTrue(enrolled.state.value.biometricAvailable)
+
+            biometricAvailability.isAvailable = false
+            val noSensor = viewModel()
+            advanceUntilIdle()
+            assertFalse(noSensor.state.value.biometricAvailable)
+        }
+
+    @Test
+    fun `onSubmit with biometric available verifies through the prompt and emits Success`() =
         runTest(dispatcher) {
             enableBiometric()
             val vm = viewModel()
             advanceUntilIdle() // let resolveBiometricAvailability() populate biometricCiphertext
-            vm.state.value.newPassword.edit { append("brand-new") }
-            vm.state.value.confirmPassword.edit { append("brand-new") }
+            vm.fillNewPassword()
 
             vm.onSubmit()
             advanceUntilIdle()
 
-            assertEquals(ChangePasswordEvent.LaunchBiometricPrompt, vm.event.first())
+            assertEquals(ChangePasswordEvent.Success, vm.event.first())
+            assertEquals(
+                BiometricString.NegativeButton.Password,
+                biometricCrypto.prompts.single().policy.negativeButton,
+            )
         }
 
     @Test
@@ -181,20 +228,21 @@ class ChangePasswordViewModelTest {
             advanceUntilIdle()
 
             assertEquals(UiFieldError.Empty, vm.state.value.newPasswordError)
+            assertTrue(biometricCrypto.prompts.isEmpty())
         }
 
     @Test
     fun `onSubmit without biometric and valid passwords emits Success`() = runTest(dispatcher) {
-        val vm =
-            viewModel() // setUp seeds an account with no biometric ARK; availability defaults false
+        // setUp seeds an account with no biometric ARK; availability defaults false
+        val vm = viewModel()
         vm.state.value.currentPassword.edit { append("old") }
-        vm.state.value.newPassword.edit { append("brand-new") }
-        vm.state.value.confirmPassword.edit { append("brand-new") }
+        vm.fillNewPassword()
 
         vm.onSubmit()
         advanceUntilIdle()
 
         assertEquals(ChangePasswordEvent.Success, vm.event.first())
+        assertTrue(biometricCrypto.prompts.isEmpty())
     }
 
     @Test
@@ -210,19 +258,21 @@ class ChangePasswordViewModelTest {
             advanceUntilIdle()
 
             assertEquals(UiFieldError.Mismatch, vm.state.value.confirmPasswordError)
+            assertTrue(biometricCrypto.prompts.isEmpty())
         }
 
     @Test
     fun `dismissReauthDialog hides dialog and clears current password error`() =
         runTest(dispatcher) {
             enableBiometric()
+            biometricCrypto.promptFailure = BiometricAuthError.Declined
             val vm = viewModel()
             advanceUntilIdle()
-            vm.onBiometricResult(Result.Failure(BiometricAuthError.Declined)) // opens the dialog
-            vm.state.value.newPassword.edit { append("brand-new") }
-            vm.state.value.confirmPassword.edit { append("brand-new") }
+            vm.fillNewPassword()
+            vm.onSubmit() // opens the dialog
+            advanceUntilIdle()
             vm.state.value.currentPassword.edit { append("wrong") }
-            vm.submitWithPassword()
+            vm.onSubmit(forcePasswordPath = true)
             // Await rather than advanceUntilIdle: key derivation hops to Dispatchers.Default,
             // which the test scheduler cannot see. The Incorrect error below is load-bearing.
             vm.state.first { it.currentPasswordError == UiFieldError.Incorrect }
@@ -238,14 +288,15 @@ class ChangePasswordViewModelTest {
     fun `dialog confirm with wrong current password keeps dialog open with Incorrect error`() =
         runTest(dispatcher) {
             enableBiometric()
+            biometricCrypto.promptFailure = BiometricAuthError.Declined
             val vm = viewModel()
             advanceUntilIdle()
-            vm.onBiometricResult(Result.Failure(BiometricAuthError.Declined)) // opens the dialog
-            vm.state.value.newPassword.edit { append("brand-new") }
-            vm.state.value.confirmPassword.edit { append("brand-new") }
+            vm.fillNewPassword()
+            vm.onSubmit() // opens the dialog
+            advanceUntilIdle()
             vm.state.value.currentPassword.edit { append("wrong") }
 
-            vm.submitWithPassword() // dialog Confirm action
+            vm.onSubmit(forcePasswordPath = true) // dialog Confirm action
 
             // Await rather than advanceUntilIdle: key derivation hops to Dispatchers.Default,
             // which the test scheduler cannot see.
@@ -257,86 +308,102 @@ class ChangePasswordViewModelTest {
     @Test
     fun `dialog confirm with correct current password emits Success`() = runTest(dispatcher) {
         enableBiometric()
+        biometricCrypto.promptFailure = BiometricAuthError.Declined
         val vm = viewModel()
         advanceUntilIdle()
-        vm.onBiometricResult(Result.Failure(BiometricAuthError.Declined)) // opens the dialog
-        vm.state.value.newPassword.edit { append("brand-new") }
-        vm.state.value.confirmPassword.edit { append("brand-new") }
+        vm.fillNewPassword()
+        vm.onSubmit() // opens the dialog
+        advanceUntilIdle()
         vm.state.value.currentPassword.edit { append("old") }
 
-        vm.submitWithPassword() // dialog Confirm action
+        vm.onSubmit(forcePasswordPath = true) // dialog Confirm action
         advanceUntilIdle()
 
         assertEquals(ChangePasswordEvent.Success, vm.event.first())
+        assertEquals(1, biometricCrypto.prompts.size)
     }
 
     @Test
-    fun `onBiometricResult with a recovered key changes password and emits Success`() =
+    fun `a failed prompt opens the reauth dialog`() = runTest(dispatcher) {
+        enableBiometric()
+        biometricCrypto.promptFailure = BiometricAuthError.NoCipher
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.fillNewPassword()
+
+        vm.onSubmit()
+        advanceUntilIdle()
+
+        assertEquals(true, vm.state.value.showReauthDialog)
+    }
+
+    @Test
+    fun `a CryptoFailed prompt opens the reauth dialog`() = runTest(dispatcher) {
+        enableBiometric()
+        biometricCrypto.promptFailure = BiometricAuthError.CryptoFailed
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.fillNewPassword()
+
+        vm.onSubmit()
+        advanceUntilIdle()
+
+        assertEquals(true, vm.state.value.showReauthDialog)
+    }
+
+    @Test
+    fun `a declined prompt opens the reauth dialog without reporting an error`() =
         runTest(dispatcher) {
             enableBiometric()
+            biometricCrypto.promptFailure = BiometricAuthError.Declined
             val vm = viewModel()
+            val events = eventsOf(vm)
             advanceUntilIdle()
-            vm.state.value.newPassword.edit { append("brand-new") }
-            vm.state.value.confirmPassword.edit { append("brand-new") }
-            val recovered: Result<Key, BiometricAuthError> =
-                Result.Success(SecretKeySpec(ark.copyOf(), "AES"))
+            vm.fillNewPassword()
 
-            vm.onBiometricResult(recovered)
+            vm.onSubmit()
             advanceUntilIdle()
 
-            assertEquals(ChangePasswordEvent.Success, vm.event.first())
+            assertEquals(true, vm.state.value.showReauthDialog)
+            assertEquals(false, vm.state.value.loading)
+            assertTrue(events.isEmpty())
         }
 
     @Test
-    fun `onBiometricResult failure opens the reauth dialog`() = runTest(dispatcher) {
+    fun `a canceled prompt leaves the form untouched`() = runTest(dispatcher) {
         enableBiometric()
+        biometricCrypto.promptFailure = BiometricAuthError.Canceled
         val vm = viewModel()
+        val events = eventsOf(vm)
         advanceUntilIdle()
-        val failure: Result<Key, BiometricAuthError> = Result.Failure(BiometricAuthError.NoCipher)
+        vm.fillNewPassword()
 
-        vm.onBiometricResult(failure)
+        vm.onSubmit()
         advanceUntilIdle()
-
-        assertEquals(true, vm.state.value.showReauthDialog)
-    }
-
-    @Test
-    fun `onBiometricResult CryptoFailed opens the reauth dialog`() = runTest(dispatcher) {
-        enableBiometric()
-        val vm = viewModel()
-        advanceUntilIdle()
-        val failure: Result<Key, BiometricAuthError> =
-            Result.Failure(BiometricAuthError.CryptoFailed)
-
-        vm.onBiometricResult(failure)
-        advanceUntilIdle()
-
-        assertEquals(true, vm.state.value.showReauthDialog)
-    }
-
-    @Test
-    fun `onBiometricResult Declined opens the reauth dialog`() = runTest(dispatcher) {
-        enableBiometric()
-        val vm = viewModel()
-        advanceUntilIdle()
-        val failure: Result<Key, BiometricAuthError> = Result.Failure(BiometricAuthError.Declined)
-
-        vm.onBiometricResult(failure)
-        advanceUntilIdle()
-
-        assertEquals(true, vm.state.value.showReauthDialog)
-    }
-
-    @Test
-    fun `onBiometricResult Canceled leaves the form untouched`() = runTest(dispatcher) {
-        enableBiometric()
-        val vm = viewModel()
-        advanceUntilIdle()
-        val failure: Result<Key, BiometricAuthError> = Result.Failure(BiometricAuthError.Canceled)
-
-        vm.onBiometricResult(failure)
 
         assertEquals(false, vm.state.value.showReauthDialog)
+        assertEquals(false, vm.state.value.loading)
+        assertTrue(events.isEmpty())
+    }
+
+    @Test
+    fun `the form reads as loading while the prompt is open`() = runTest(dispatcher) {
+        enableBiometric()
+        val prompt = CompletableDeferred<Unit>()
+        biometricCrypto.pendingPrompt = prompt
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.fillNewPassword()
+
+        vm.onSubmit()
+        advanceUntilIdle()
+        assertEquals(true, vm.state.value.loading)
+
+        prompt.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(false, vm.state.value.loading)
+        assertEquals(ChangePasswordEvent.Success, vm.event.first())
     }
 
     @OptIn(ExperimentalFoundationApi::class)
@@ -364,13 +431,18 @@ class ChangePasswordViewModelTest {
         // The errors and the dialog all describe input the clear just removed. Left standing, the
         // user comes back from the unlock to a re-auth dialog over three emptied fields, or to
         // "this field is empty" on a form they did fill in.
+        enableBiometric()
+        biometricCrypto.promptFailure = BiometricAuthError.Declined
         val vm = viewModel()
-        vm.onBiometricResult(Result.Failure(BiometricAuthError.Declined))
-        vm.submitWithPassword()
+        advanceUntilIdle()
+        vm.fillNewPassword()
+        vm.onSubmit()
+        advanceUntilIdle()
+        vm.onSubmit(forcePasswordPath = true)
         advanceUntilIdle()
 
         assertEquals(true, vm.state.value.showReauthDialog)
-        assertEquals(UiFieldError.Empty, vm.state.value.newPasswordError)
+        assertEquals(UiFieldError.Empty, vm.state.value.currentPasswordError)
 
         session.endSession()
         advanceUntilIdle()
@@ -397,8 +469,7 @@ class ChangePasswordViewModelTest {
         // swapping in fresh instances would leave it watching an abandoned one that is never
         // mutated again - freezing the score for the rest of the ViewModel's life.
         val vm = ChangePasswordViewModel(
-            accountRepository = accountRepository,
-            biometricAvailabilityRepository = biometricAvailability,
+            unlockableByBiometrics = unlockableByBiometrics,
             passwordStrengthEstimator = object : PasswordStrengthEstimator {
                 override suspend fun estimate(password: String) =
                     PasswordScore(password.length.coerceAtMost(5))

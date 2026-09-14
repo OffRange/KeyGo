@@ -1,18 +1,24 @@
 package de.davis.keygo.feature.auth.presentation
 
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import de.davis.keygo.core.biometrics.FakeBiometricAvailabilityRepository
+import de.davis.keygo.core.biometrics.FakeBiometricCrypto
+import de.davis.keygo.core.biometrics.domain.model.BiometricAuthError
 import de.davis.keygo.core.identity.FakeAccountRepository
 import de.davis.keygo.core.identity.domain.model.Account
-import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
-import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
-import de.davis.keygo.core.identity.domain.model.UnlockError
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
+import de.davis.keygo.core.identity.domain.usecase.DisableBiometricsUseCase
+import de.davis.keygo.core.identity.domain.usecase.UnlockWithBiometricsUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockWithPasswordUseCase
+import de.davis.keygo.core.identity.domain.usecase.UnlockableByBiometricsUseCase
 import de.davis.keygo.core.item.FakeVaultContextRepository
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.security.FakeSession
-import de.davis.keygo.core.security.crypto.FakeBiometricAvailabilityRepository
+import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
+import de.davis.keygo.core.security.domain.model.CryptographicMode
+import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.ui.model.UiFieldError
+import de.davis.keygo.core.util.isSuccess
 import de.davis.keygo.feature.auth.presentation.model.AuthState
 import de.davis.keygo.feature.auth.presentation.model.AuthUIEvent
 import de.davis.keygo.legacy_migration.FakeMainPasswordRepository
@@ -37,14 +43,15 @@ import kotlinx.coroutines.test.setMain
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.util.UUID
-import javax.crypto.Cipher
-import javax.crypto.KeyGenerator
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * Regression tests for the v1-password retry lockout fixed in `97b15f3c`.
@@ -67,19 +74,37 @@ class AuthViewModelTest {
     private val vaultRepository = FakeVaultRepository()
     private val vaultContextRepository = FakeVaultContextRepository()
     private val session = FakeSession()
-    private val biometricAvailability = FakeBiometricAvailabilityRepository()
+    private val keyStoreManager = FakeKeyStoreManager()
+    private val biometricCrypto = FakeBiometricCrypto(keyStoreManager)
     private val mainPasswordRepository = FakeMainPasswordRepository()
+
+    private val biometricAvailability = FakeBiometricAvailabilityRepository().apply {
+        isAvailable = true
+    }
 
     private val createAllAccesses = CreateAccessUseCase(
         accountRepository = accountRepository,
         vaultRepository = vaultRepository,
         vaultContextRepository = vaultContextRepository,
+        biometricCrypto = biometricCrypto,
         session = session,
     )
 
     private val unlockWithPassword = UnlockWithPasswordUseCase(
         session = session,
         accountRepository = accountRepository,
+    )
+
+    private val unlockWithBiometrics = UnlockWithBiometricsUseCase(
+        session = session,
+        accountRepository = accountRepository,
+        biometricCrypto = biometricCrypto,
+        disableBiometrics = DisableBiometricsUseCase(accountRepository, keyStoreManager),
+    )
+
+    private val unlockableByBiometrics = UnlockableByBiometricsUseCase(
+        accountRepository = accountRepository,
+        biometricAvailabilityRepository = biometricAvailability,
     )
 
     // Real use cases, wired to mainPasswordRepository via factories - HasMainPasswordUseCase and
@@ -102,22 +127,31 @@ class AuthViewModelTest {
      * resolve into `AuthState.Migrating`.
      */
     private fun TestScope.viewModel(
+        authRoute: AuthRoute = AuthRoute(),
         runPendingMigration: RunPendingMigrationUseCase =
             runPendingMigrationUseCase(backgroundScope, mainPasswordRepository),
     ): AuthViewModel {
         val vm = AuthViewModel(
-            authRoute = AuthRoute(),
-            biometricAvailabilityRepository = biometricAvailability,
-            accountRepository = accountRepository,
+            authRoute = authRoute,
+            unlockableByBiometrics = unlockableByBiometrics,
             hasV1MainPassword = hasV1MainPassword,
             validateMainPassword = validateMainPassword,
             runPendingMigration = runPendingMigration,
+            unlockWithBiometrics = unlockWithBiometrics,
             unlockWithPassword = unlockWithPassword,
             createAllAccesses = createAllAccesses,
         )
         runCurrent()
         return vm
     }
+
+    private fun TestScope.loginViewModel(
+        runPendingMigration: RunPendingMigrationUseCase =
+            runPendingMigrationUseCase(backgroundScope, mainPasswordRepository),
+    ) = viewModel(
+        authRoute = AuthRoute(showBiometricPromptIfPossible = false),
+        runPendingMigration = runPendingMigration,
+    )
 
     /**
      * Key derivation inside [CreateAccessUseCase] hops to `Dispatchers.Default`, which the test
@@ -128,24 +162,103 @@ class AuthViewModelTest {
         uiState.first { it is AuthState.Migrating && !it.loading }
     }
 
+    private fun AuthViewModel.submitMigration(
+        password: String = V1_PASSWORD,
+        useBiometrics: Boolean = false,
+    ) {
+        onEvent(AuthUIEvent.ToggleUseBiometrics(checked = useBiometrics))
+        assertIs<AuthState.Migrating>(uiState.value)
+            .passwordTextFieldState
+            .setTextAndPlaceCursorAtEnd(password)
+        onEvent(AuthUIEvent.Submit)
+    }
+
     /** An account whose vault can be opened by the biometric key, so the button is offered. */
-    private fun seedEnrolledAccount() {
-        biometricAvailability.isAvailable = true
-        accountRepository.seed(
-            Account(
-                id = UUID.randomUUID(),
-                displayName = "Test",
-                passwordWrappedArk = PasswordWrappedArk(
-                    key = byteArrayOf(1),
-                    keyIV = byteArrayOf(2),
-                    salt = byteArrayOf(3),
-                ),
-                biometricWrappedArk = BiometricWrappedArk(
-                    key = byteArrayOf(4),
-                    keyIV = byteArrayOf(5),
-                ),
-            )
+    private suspend fun seedEnrolledAccount(withBiometrics: Boolean = true) {
+        assertTrue(createAllAccesses(ACCOUNT_PASSWORD, withBiometrics = withBiometrics).isSuccess())
+        session.endSession()
+        biometricCrypto.prompts.clear()
+    }
+
+    @Test
+    fun `an enrolled account opens the prompt on arrival and continues once unlocked`() =
+        runTest(dispatcher) {
+            seedEnrolledAccount()
+
+            val vm = viewModel()
+            vm.navigationEvent.first()
+
+            assertTrue(session.isActive.value)
+            assertEquals(CryptographicMode.Unwrap, biometricCrypto.prompts.single().mode)
+        }
+
+    @Test
+    fun `the prompt waits for the user when the route asks it to`() = runTest(dispatcher) {
+        seedEnrolledAccount()
+
+        val vm = loginViewModel()
+
+        assertEquals(
+            true,
+            assertIs<AuthState.Login>(vm.uiState.value).biometricAuthenticationAvailable,
         )
+        assertTrue(biometricCrypto.prompts.isEmpty())
+        assertFalse(session.isActive.value)
+    }
+
+    @Test
+    fun `asking for biometrics unlocks and continues`() = runTest(dispatcher) {
+        seedEnrolledAccount()
+        val vm = loginViewModel()
+
+        vm.onEvent(AuthUIEvent.RequestBiometricAuthentication)
+        vm.navigationEvent.first()
+
+        assertTrue(session.isActive.value)
+    }
+
+    @Test
+    fun `biometrics are neither offered nor prompted without a usable sensor`() =
+        runTest(dispatcher) {
+            seedEnrolledAccount()
+            biometricAvailability.isAvailable = false
+
+            val vm = viewModel()
+
+            assertEquals(
+                false,
+                assertIs<AuthState.Login>(vm.uiState.value).biometricAuthenticationAvailable,
+            )
+            assertTrue(biometricCrypto.prompts.isEmpty())
+        }
+
+    @Test
+    fun `biometrics are neither offered nor prompted for an account that never enrolled`() =
+        runTest(dispatcher) {
+            seedEnrolledAccount(withBiometrics = false)
+
+            val vm = viewModel()
+
+            assertEquals(
+                false,
+                assertIs<AuthState.Login>(vm.uiState.value).biometricAuthenticationAvailable,
+            )
+            assertTrue(biometricCrypto.prompts.isEmpty())
+        }
+
+    @Test
+    fun `a declined prompt leaves the login form as it was`() = runTest(dispatcher) {
+        seedEnrolledAccount()
+        biometricCrypto.promptFailure = BiometricAuthError.Declined
+        val vm = loginViewModel()
+
+        vm.onEvent(AuthUIEvent.RequestBiometricAuthentication)
+        runCurrent()
+
+        val login = assertIs<AuthState.Login>(vm.uiState.value)
+        assertEquals(true, login.biometricAuthenticationAvailable)
+        assertEquals(false, login.showBiometricResetNotice)
+        assertFalse(session.isActive.value)
     }
 
     /**
@@ -156,24 +269,29 @@ class AuthViewModelTest {
     @Test
     fun `a reset enrollment is announced rather than quietly disappearing`() = runTest(dispatcher) {
         seedEnrolledAccount()
-        val vm = viewModel()
+        keyStoreManager.deleteKey(KeyId.BiometricVaultKek)
+        val vm = loginViewModel()
         assertEquals(
             true,
             assertIs<AuthState.Login>(vm.uiState.value).biometricAuthenticationAvailable,
         )
 
-        vm.onBiometricUnlockFailed(UnlockError.BiometricEnrollmentReset)
+        vm.onEvent(AuthUIEvent.RequestBiometricAuthentication)
+        runCurrent()
 
         val login = assertIs<AuthState.Login>(vm.uiState.value)
         assertEquals(false, login.biometricAuthenticationAvailable)
         assertEquals(true, login.showBiometricResetNotice)
+        assertNull(accountRepository.getOrNull()?.biometricWrappedArk)
     }
 
     @Test
     fun `dismissing the notice leaves the enrollment gone`() = runTest(dispatcher) {
         seedEnrolledAccount()
-        val vm = viewModel()
-        vm.onBiometricUnlockFailed(UnlockError.BiometricEnrollmentReset)
+        keyStoreManager.deleteKey(KeyId.BiometricVaultKek)
+        val vm = loginViewModel()
+        vm.onEvent(AuthUIEvent.RequestBiometricAuthentication)
+        runCurrent()
 
         vm.onEvent(AuthUIEvent.DismissBiometricResetNotice)
 
@@ -186,67 +304,99 @@ class AuthViewModelTest {
     fun `a retryable biometric failure announces nothing and keeps the button`() =
         runTest(dispatcher) {
             seedEnrolledAccount()
-            val vm = viewModel()
+            biometricCrypto.promptFailure = BiometricAuthError.CryptoFailed
+            val vm = loginViewModel()
 
-            vm.onBiometricUnlockFailed(
-                UnlockError.BiometricFailed(BiometricAuthError.CryptoFailed),
-            )
+            vm.onEvent(AuthUIEvent.RequestBiometricAuthentication)
+            runCurrent()
 
             val login = assertIs<AuthState.Login>(vm.uiState.value)
             assertEquals(false, login.showBiometricResetNotice)
             assertEquals(true, login.biometricAuthenticationAvailable)
+            assertNotNull(accountRepository.getOrNull()?.biometricWrappedArk)
+        }
+
+    @Test
+    fun `a pending migration offers biometrics when the sensor is usable`() = runTest(dispatcher) {
+        mainPasswordRepository.hash = V1_HASH
+
+        val vm = viewModel()
+
+        assertEquals(true, assertIs<AuthState.Migrating>(vm.uiState.value).biometricsAvailable)
+    }
+
+    @Test
+    fun `a pending migration is offered on a device without usable biometrics`() =
+        runTest(dispatcher) {
+            biometricAvailability.isAvailable = false
+            mainPasswordRepository.hash = V1_HASH
+
+            val vm = viewModel()
+
+            val migrating = assertIs<AuthState.Migrating>(vm.uiState.value)
+            assertEquals(false, migrating.biometricsAvailable)
         }
 
     @Test
     fun `failed biometric wrapping leaves the v1 password intact so migration can be retried`() =
         runTest(dispatcher) {
-            mainPasswordRepository.hash = "original-v1-hash"
+            mainPasswordRepository.hash = V1_HASH
+            biometricCrypto.promptFailure = BiometricAuthError.Declined
             val vm = viewModel()
-            // An uninitialized cipher throws IllegalStateException on wrap(), mirroring a failed
-            // biometric crypto operation surfacing as CreateAccessError.WrappingFailed - the exact
-            // failure mode described in the bug report.
-            val failingCipher = Cipher.getInstance("AES/GCM/NoPadding")
 
-            vm.executeCreateAccess(password = "correct-password", cipher = failingCipher)
+            vm.submitMigration(useBiometrics = true)
             vm.awaitIdle()
 
-            assertEquals("original-v1-hash", mainPasswordRepository.hash)
+            assertEquals(V1_HASH, mainPasswordRepository.hash)
+            assertNull(accountRepository.getOrNull())
         }
 
     @Test
-    fun `successful biometric account creation clears the v1 password`() = runTest(dispatcher) {
-        mainPasswordRepository.hash = "original-v1-hash"
-        val vm = viewModel()
-        val biometricKek = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
-            init(Cipher.WRAP_MODE, biometricKek)
+    fun `successful biometric account creation enrolls and clears the v1 password`() =
+        runTest(dispatcher) {
+            mainPasswordRepository.hash = V1_HASH
+            val vm = viewModel()
+
+            vm.submitMigration(useBiometrics = true)
+            vm.navigationEvent.first()
+
+            assertEquals("", mainPasswordRepository.hash)
+            assertNotNull(accountRepository.getOrNull()?.biometricWrappedArk)
+            assertEquals(CryptographicMode.Wrap, biometricCrypto.prompts.single().mode)
         }
 
-        vm.executeCreateAccess(password = "correct-password", cipher = cipher)
-        vm.navigationEvent.first()
+    @Test
+    fun `migrating with biometrics switched off creates a password-only account`() =
+        runTest(dispatcher) {
+            mainPasswordRepository.hash = V1_HASH
+            val vm = viewModel()
 
-        assertEquals("", mainPasswordRepository.hash)
-    }
+            vm.submitMigration(useBiometrics = false)
+            vm.navigationEvent.first()
+
+            assertNull(accountRepository.getOrNull()?.biometricWrappedArk)
+            assertTrue(biometricCrypto.prompts.isEmpty())
+        }
 
     @Test
     fun `account persistence failure on the password-only path leaves the v1 password intact`() =
         runTest(dispatcher) {
-            mainPasswordRepository.hash = "original-v1-hash"
+            mainPasswordRepository.hash = V1_HASH
             accountRepository.setFails = true
             val vm = viewModel()
 
-            vm.executeCreateAccess(password = "correct-password")
+            vm.submitMigration()
             vm.awaitIdle()
 
-            assertEquals("original-v1-hash", mainPasswordRepository.hash)
+            assertEquals(V1_HASH, mainPasswordRepository.hash)
         }
 
     @Test
     fun `successful password-only account creation clears the v1 password`() = runTest(dispatcher) {
-        mainPasswordRepository.hash = "original-v1-hash"
+        mainPasswordRepository.hash = V1_HASH
         val vm = viewModel()
 
-        vm.executeCreateAccess(password = "correct-password")
+        vm.submitMigration()
         vm.navigationEvent.first()
 
         assertEquals("", mainPasswordRepository.hash)
@@ -254,16 +404,10 @@ class AuthViewModelTest {
 
     @Test
     fun `the migrate submit stays loading until the account exists`() = runTest(dispatcher) {
-        // Hex of a real bcrypt 2a hash of "password". The use case hex-decodes before verifying.
-        mainPasswordRepository.hash = "2432612431302471776e45776767315a6c5176435a58336450614a7a2e" +
-                "31494351504a334e6d4a64566b4251686577564655745363646665366d4847"
+        mainPasswordRepository.hash = V1_HASH
         val vm = viewModel()
-        vm.onEvent(AuthUIEvent.ToggleUseBiometrics(checked = false))
 
-        val migrating = assertIs<AuthState.Migrating>(vm.uiState.value)
-        migrating.passwordTextFieldState.setTextAndPlaceCursorAtEnd("password")
-
-        vm.onEvent(AuthUIEvent.Submit)
+        vm.submitMigration()
         runCurrent()
 
         // Key derivation is still running on a dispatcher the scheduler cannot see. The screen must
@@ -286,14 +430,14 @@ class AuthViewModelTest {
     @Test
     fun `a second account creation started while one is in flight is dropped`() =
         runTest(dispatcher) {
-            mainPasswordRepository.hash = "original-v1-hash"
+            mainPasswordRepository.hash = V1_HASH
             val vm = viewModel()
 
-            vm.executeCreateAccess(password = "correct-password")
+            vm.submitMigration()
             // Leaves the first run suspended inside key derivation, which hops to a dispatcher the
             // scheduler cannot see, so it cannot complete until something pumps the test one.
             runCurrent()
-            vm.executeCreateAccess(password = "correct-password")
+            vm.onEvent(AuthUIEvent.Submit)
 
             vm.navigationEvent.first()
 
@@ -302,28 +446,23 @@ class AuthViewModelTest {
 
     @Test
     fun `a rejected v1 main password leaves an error on the field`() = runTest(dispatcher) {
-        // Hex of a real bcrypt 2a hash of "password". The use case hex-decodes the stored hash
-        // before handing it to bcrypt, so a non-hex placeholder throws instead of returning false.
-        mainPasswordRepository.hash = "243261243130244e39716f38754c4f69636b6778325a4d525a6f4d7965" +
-                "496a5a416763666c377039326c644778616436384c4a5a644c31376c685779"
+        mainPasswordRepository.hash = V1_HASH
         val vm = viewModel()
 
-        val migrating = assertIs<AuthState.Migrating>(vm.uiState.value)
-        migrating.passwordTextFieldState.setTextAndPlaceCursorAtEnd("the-wrong-password")
-
-        vm.onEvent(AuthUIEvent.Submit)
+        vm.submitMigration(password = "the-wrong-password")
         // Bcrypt runs on Dispatchers.Default, which the scheduler cannot see, so wait on the
         // loading flag for the same reason awaitIdle does.
         vm.awaitIdle()
 
         val after = assertIs<AuthState.Migrating>(vm.uiState.value)
         assertEquals(UiFieldError.Incorrect, after.passwordError)
+        assertNull(accountRepository.getOrNull())
     }
 
     @Test
     fun `a failed import leaves the v1 password in place and offers a retry`() =
         runTest(dispatcher) {
-            mainPasswordRepository.hash = "original-v1-hash"
+            mainPasswordRepository.hash = V1_HASH
             val vm = viewModel(
                 runPendingMigration = runPendingMigrationUseCase(
                     scope = backgroundScope,
@@ -332,15 +471,15 @@ class AuthViewModelTest {
                 ),
             )
 
-            vm.executeCreateAccess(password = "correct-password")
+            vm.submitMigration()
             vm.uiState.first { it is AuthState.MigrationFailed }
 
-            assertEquals("original-v1-hash", mainPasswordRepository.hash)
+            assertEquals(V1_HASH, mainPasswordRepository.hash)
         }
 
     @Test
     fun `retrying a failed import runs it again`() = runTest(dispatcher) {
-        mainPasswordRepository.hash = "original-v1-hash"
+        mainPasswordRepository.hash = V1_HASH
         var runs = 0
         var stateDuringImport: AuthState? = null
         // Sampled from inside the import because uiState is conflated: ImportingLegacyData is
@@ -359,7 +498,7 @@ class AuthViewModelTest {
         )
         underTest = vm
 
-        vm.executeCreateAccess(password = "correct-password")
+        vm.submitMigration()
         vm.uiState.first { it is AuthState.MigrationFailed }
         assertEquals(1, runs)
         assertEquals(AuthState.ImportingLegacyData, stateDuringImport)
@@ -373,7 +512,7 @@ class AuthViewModelTest {
 
         assertEquals(2, runs)
         assertIs<AuthState.MigrationFailed>(vm.uiState.value)
-        assertEquals("original-v1-hash", mainPasswordRepository.hash)
+        assertEquals(V1_HASH, mainPasswordRepository.hash)
     }
 
     /**
@@ -391,12 +530,10 @@ class AuthViewModelTest {
         // An account plus a marker still on disk: what the user is left with the moment they tap
         // Continue on MigrationFailed. Every unlock after that is a login form over a migration
         // that is still pending.
-        val first = viewModel()
-        first.executeCreateAccess(password = "correct-password")
-        first.navigationEvent.first()
-        mainPasswordRepository.hash = "original-v1-hash"
+        seedEnrolledAccount()
+        mainPasswordRepository.hash = V1_HASH
 
-        val vm = viewModel(
+        val vm = loginViewModel(
             runPendingMigration = runPendingMigrationUseCase(
                 scope = backgroundScope,
                 repository = mainPasswordRepository,
@@ -404,7 +541,12 @@ class AuthViewModelTest {
             ),
         )
         val login = assertIs<AuthState.Login>(vm.uiState.value)
-        login.passwordTextFieldState.setTextAndPlaceCursorAtEnd("correct-password")
+        login.passwordTextFieldState.setTextAndPlaceCursorAtEnd(ACCOUNT_PASSWORD)
+
+        val prompt = CompletableDeferred<Unit>()
+        biometricCrypto.pendingPrompt = prompt
+        vm.onEvent(AuthUIEvent.RequestBiometricAuthentication)
+        runCurrent()
 
         // Holds the unlock at its account read, which is the last point before it hops to a
         // dispatcher the scheduler cannot see.
@@ -414,7 +556,7 @@ class AuthViewModelTest {
         runCurrent()
         assertEquals(true, assertIs<AuthState.Login>(vm.uiState.value).loading)
 
-        vm.performMigrationIfNeeded()
+        prompt.complete(Unit)
         runCurrent()
         assertIs<AuthState.MigrationFailed>(vm.uiState.value)
 
@@ -428,7 +570,7 @@ class AuthViewModelTest {
 
     @Test
     fun `an import that skipped rows reports them before navigating`() = runTest(dispatcher) {
-        mainPasswordRepository.hash = "original-v1-hash"
+        mainPasswordRepository.hash = V1_HASH
         val vm = viewModel(
             runPendingMigration = runPendingMigrationUseCase(
                 scope = backgroundScope,
@@ -445,10 +587,20 @@ class AuthViewModelTest {
             ),
         )
 
-        vm.executeCreateAccess(password = "correct-password")
+        vm.submitMigration()
         val state = vm.uiState.first { it is AuthState.MigrationSummary }
 
         assertEquals(2, (state as AuthState.MigrationSummary).skippedItems)
         assertEquals("", mainPasswordRepository.hash)
+    }
+
+    private companion object {
+        const val ACCOUNT_PASSWORD = "correct-password"
+
+        const val V1_PASSWORD = "password"
+
+        // Hex of a real bcrypt 2a hash of "password". The use case hex-decodes before verifying.
+        const val V1_HASH = "2432612431302471776e45776767315a6c5176435a58336450614a7a2e" +
+                "31494351504a334e6d4a64566b4251686577564655745363646665366d4847"
     }
 }

@@ -172,16 +172,16 @@ internal class BiometricCryptoImpl(
     }
 }
 
-private fun cipherFailureToBiometricAuthError(throwable: Throwable): BiometricAuthError =
+internal fun cipherFailureToBiometricAuthError(throwable: Throwable): BiometricAuthError =
     keyStoreManagerErrorFrom(throwable).toBiometricAuthError()
 
-private fun KeyStoreManagerError.toBiometricAuthError(): BiometricAuthError = when (this) {
+internal fun KeyStoreManagerError.toBiometricAuthError(): BiometricAuthError = when (this) {
     KeyStoreManagerError.KeyInvalidated -> BiometricAuthError.KeyInvalidated
     KeyStoreManagerError.AuthenticationRequired -> BiometricAuthError.CryptoFailed
     KeyStoreManagerError.Unknown -> BiometricAuthError.CryptoFailed
 }
 
-private fun biometricAuthErrorFrom(
+internal fun biometricAuthErrorFrom(
     errorCode: Int,
     errString: CharSequence,
 ): BiometricAuthError = when (errorCode) {

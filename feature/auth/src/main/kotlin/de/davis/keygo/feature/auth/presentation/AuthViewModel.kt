@@ -56,7 +56,7 @@ internal class AuthViewModel(
         viewModelScope.launch {
             val unlockableByBiometrics = unlockableByBiometrics()
             val shouldMigrate =
-                if (unlockableByBiometrics == UnlockableByBiometricsResult.NoAccount)
+                if (unlockableByBiometrics is UnlockableByBiometricsResult.NoAccount)
                     hasV1MainPassword()
                 else false
 

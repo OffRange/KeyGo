@@ -137,8 +137,10 @@ internal class ChangePasswordViewModel(
             ChangePasswordError.IncorrectPassword ->
                 _state.update { it.copy(currentPasswordError = UiFieldError.Incorrect) }
 
-            ChangePasswordError.BiometricDeclined ->
-                _state.update { it.copy(showReauthDialog = true) }
+            // Any prompt that did not hand back the live ARK falls back to the master password.
+            ChangePasswordError.BiometricDeclined,
+            ChangePasswordError.BiometricAuthFailed,
+                -> _state.update { it.copy(showReauthDialog = true) }
 
             ChangePasswordError.BiometricCanceled -> Unit
 

@@ -21,8 +21,10 @@ dependencies {
     implementation(libs.androidx.datastore)
 
     testImplementation(libs.io.mockk)
+    testImplementation(testFixtures(projects.core.biometrics))
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.security))
+    testImplementation(testFixtures(projects.core.util))
     testImplementation(testFixtures(projects.rust))
 
     testFixturesApi(projects.core.util)

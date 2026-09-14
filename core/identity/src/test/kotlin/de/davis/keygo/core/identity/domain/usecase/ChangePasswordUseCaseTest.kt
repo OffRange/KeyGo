@@ -2,14 +2,20 @@
 
 package de.davis.keygo.core.identity.domain.usecase
 
+import de.davis.keygo.core.biometrics.FakeBiometricCrypto
+import de.davis.keygo.core.biometrics.domain.model.BiometricAuthError
+import de.davis.keygo.core.biometrics.domain.model.BiometricString
 import de.davis.keygo.core.identity.FakeAccountRepository
+import de.davis.keygo.core.identity.domain.mapper.toBiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.Account
-import de.davis.keygo.core.identity.domain.model.BiometricWrappedArk
 import de.davis.keygo.core.identity.domain.model.ChangePasswordError
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.model.Reauthentication
 import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.domain.ExportArk
+import de.davis.keygo.core.security.domain.model.CryptographicMode
+import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
@@ -26,8 +32,10 @@ class ChangePasswordUseCaseTest {
 
     private val session = FakeSession()
     private val accountRepository = FakeAccountRepository()
+    private val biometricCrypto = FakeBiometricCrypto()
 
     private val useCase = ChangePasswordUseCase(
+        biometricCrypto = biometricCrypto,
         accountRepository = accountRepository,
         session = session,
     )
@@ -42,6 +50,7 @@ class ChangePasswordUseCaseTest {
     private suspend fun seedAccount(
         password: String,
         withBiometric: Boolean = false,
+        biometricArk: () -> ByteArray = ::liveArk,
     ): Account {
         created = checkNotNull(session.createAccount(password).getOrNull())
 
@@ -54,13 +63,13 @@ class ChangePasswordUseCaseTest {
                 salt = created.salt,
             ),
             biometricWrappedArk = if (withBiometric) {
-                BiometricWrappedArk(
-                    key = ByteArray(48) { it.toByte() },
-                    keyIV = ByteArray(12) { it.toByte() },
-                )
+                biometricCrypto.requestWrap(KeyId.BiometricVaultKek, biometricArk())
+                    .assertSuccess()
+                    .toBiometricWrappedArk()
             } else null,
         )
         accountRepository.seed(account)
+        biometricCrypto.prompts.clear()
         return account
     }
 
@@ -156,46 +165,115 @@ class ChangePasswordUseCaseTest {
     }
 
     @Test
+    fun `password path never shows a biometric prompt`() = runTest {
+        seedAccount("old", withBiometric = true)
+
+        useCase(Reauthentication.Password("old"), "new")
+
+        assertTrue(biometricCrypto.prompts.isEmpty())
+    }
+
+    @Test
     fun `biometric path re-wraps the live ARK under the new password`() = runTest {
         seedAccount("old", withBiometric = true)
 
-        val result = useCase(Reauthentication.Biometric(liveArk()), "new")
+        val result = useCase(Reauthentication.Biometric, "new")
 
         assertTrue(result.isSuccess())
         assertTrue(unlocksWith("new"))
+        assertFalse(unlocksWith("old"))
     }
 
     @Test
-    fun `returns IncorrectPassword when the biometric ARK is not the live one`() = runTest {
-        seedAccount("old", withBiometric = true)
-
-        val result = useCase(Reauthentication.Biometric(ByteArray(32) { it.toByte() }), "new")
-
-        assertTrue(result.isFailure())
-        assertEquals(ChangePasswordError.IncorrectPassword, result.error)
-    }
-
-    @Test
-    fun `biometric path on a locked session fails as ActiveAccountNotFound, not IncorrectPassword`() =
+    fun `biometric path unwraps with the biometric key and offers the password as the way out`() =
         runTest {
             seedAccount("old", withBiometric = true)
-            val recovered = liveArk()
-            session.endSession()
 
-            val result = useCase(Reauthentication.Biometric(recovered), "new")
+            useCase(Reauthentication.Biometric, "new")
 
-            assertTrue(result.isFailure())
-            assertEquals(ChangePasswordError.ActiveAccountNotFound, result.error)
+            val prompt = biometricCrypto.prompts.single()
+            assertEquals(KeyId.BiometricVaultKek, prompt.keyId)
+            assertEquals(CryptographicMode.Unwrap, prompt.mode)
+            assertEquals(BiometricString.NegativeButton.Password, prompt.policy.negativeButton)
         }
 
     @Test
-    fun `returns BiometricNotEnrolled when biometric proof given but none enrolled`() = runTest {
+    fun `returns BiometricAuthFailed when the biometric ARK is not the live one`() = runTest {
+        seedAccount("old", withBiometric = true) { ByteArray(32) { it.toByte() } }
+
+        val result = useCase(Reauthentication.Biometric, "new")
+
+        assertTrue(result.isFailure())
+        assertEquals(ChangePasswordError.BiometricAuthFailed, result.error)
+        assertTrue(unlocksWith("old"))
+    }
+
+    @Test
+    fun `biometric path on a locked session fails as ActiveAccountNotFound`() = runTest {
+        seedAccount("old", withBiometric = true)
+        session.endSession()
+
+        val result = useCase(Reauthentication.Biometric, "new")
+
+        assertTrue(result.isFailure())
+        assertEquals(ChangePasswordError.ActiveAccountNotFound, result.error)
+    }
+
+    @Test
+    fun `returns BiometricNotEnrolled without prompting when none is enrolled`() = runTest {
         seedAccount("old", withBiometric = false)
 
-        val result = useCase(Reauthentication.Biometric(liveArk()), "new")
+        val result = useCase(Reauthentication.Biometric, "new")
 
         assertTrue(result.isFailure())
         assertEquals(ChangePasswordError.BiometricNotEnrolled, result.error)
+        assertTrue(biometricCrypto.prompts.isEmpty())
+    }
+
+    @Test
+    fun `a declined prompt is reported apart so the screen can ask for the password`() = runTest {
+        seedAccount("old", withBiometric = true)
+        biometricCrypto.promptFailure = BiometricAuthError.Declined
+
+        val result = useCase(Reauthentication.Biometric, "new")
+
+        assertTrue(result.isFailure())
+        assertEquals(ChangePasswordError.BiometricDeclined, result.error)
+        assertTrue(unlocksWith("old"))
+    }
+
+    @Test
+    fun `a canceled prompt is reported apart so the screen can stay quiet`() = runTest {
+        seedAccount("old", withBiometric = true)
+        biometricCrypto.promptFailure = BiometricAuthError.Canceled
+
+        val result = useCase(Reauthentication.Biometric, "new")
+
+        assertTrue(result.isFailure())
+        assertEquals(ChangePasswordError.BiometricCanceled, result.error)
+    }
+
+    @Test
+    fun `a prompt that fails on its own is BiometricAuthFailed`() = runTest {
+        seedAccount("old", withBiometric = true)
+        biometricCrypto.promptFailure = BiometricAuthError.LockedOut
+
+        val result = useCase(Reauthentication.Biometric, "new")
+
+        assertTrue(result.isFailure())
+        assertEquals(ChangePasswordError.BiometricAuthFailed, result.error)
+        assertTrue(unlocksWith("old"))
+    }
+
+    @Test
+    fun `an invalidated biometric key is BiometricAuthFailed`() = runTest {
+        seedAccount("old", withBiometric = true)
+        biometricCrypto.keyStoreManager.deleteKey(KeyId.BiometricVaultKek)
+
+        val result = useCase(Reauthentication.Biometric, "new")
+
+        assertTrue(result.isFailure())
+        assertEquals(ChangePasswordError.BiometricAuthFailed, result.error)
     }
 
     @Test
@@ -237,33 +315,40 @@ class ChangePasswordUseCaseTest {
     }
 
     @Test
-    fun `scrubs the supplied biometric ARK after a successful change`() = runTest {
+    fun `scrubs the unwrapped biometric ARK after a successful change`() = runTest {
         seedAccount("old", withBiometric = true)
-        val recovered = liveArk()
 
-        useCase(Reauthentication.Biometric(recovered), "new")
+        useCase(Reauthentication.Biometric, "new")
 
-        assertContentEquals(ByteArray(recovered.size), recovered)
+        assertContentEquals(ByteArray(32), biometricCrypto.unwrapped.single())
     }
 
     @Test
-    fun `scrubs the supplied biometric ARK when persistence fails`() = runTest {
+    fun `scrubs the unwrapped biometric ARK when persistence fails`() = runTest {
         seedAccount("old", withBiometric = true)
-        val recovered = liveArk()
         accountRepository.setFails = true
 
-        useCase(Reauthentication.Biometric(recovered), "new")
+        useCase(Reauthentication.Biometric, "new")
 
-        assertContentEquals(ByteArray(recovered.size), recovered)
+        assertContentEquals(ByteArray(32), biometricCrypto.unwrapped.single())
     }
 
     @Test
-    fun `scrubs the supplied biometric ARK when biometric reauth is not enrolled`() = runTest {
-        seedAccount("old", withBiometric = false)
-        val recovered = liveArk()
+    fun `scrubs the unwrapped biometric ARK when it is not the live one`() = runTest {
+        seedAccount("old", withBiometric = true) { ByteArray(32) { it.toByte() } }
 
-        useCase(Reauthentication.Biometric(recovered), "new")
+        useCase(Reauthentication.Biometric, "new")
 
-        assertContentEquals(ByteArray(recovered.size), recovered)
+        assertContentEquals(ByteArray(32), biometricCrypto.unwrapped.single())
+    }
+
+    @Test
+    fun `scrubs the unwrapped biometric ARK when the session is locked`() = runTest {
+        seedAccount("old", withBiometric = true)
+        session.endSession()
+
+        useCase(Reauthentication.Biometric, "new")
+
+        assertContentEquals(ByteArray(32), biometricCrypto.unwrapped.single())
     }
 }

@@ -11,7 +11,6 @@ import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.fold
-import de.davis.keygo.core.util.mapFailure
 import de.davis.keygo.core.util.resultBinding
 import org.koin.core.annotation.Single
 
@@ -56,7 +55,7 @@ class UnlockWithBiometricsUseCase(
 
         val ark = key.encoded
         try {
-            session.unlockWithArk(ark).mapFailure { UnlockError.UnwrappingFailed }
+            session.unlockWithArk(ark).bind { UnlockError.UnwrappingFailed }
         } finally {
             ark.fill(0)
         }
