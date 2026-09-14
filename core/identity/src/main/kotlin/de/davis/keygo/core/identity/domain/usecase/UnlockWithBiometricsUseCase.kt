@@ -23,7 +23,7 @@ class UnlockWithBiometricsUseCase(
 ) {
 
     suspend operator fun invoke(
-        policy: BiometricPolicy = BiometricPolicy.Default
+        policy: BiometricPolicy = BiometricPolicy.Default,
     ): Result<Unit, UnlockError> = resultBinding {
         val account = accountRepository.getOrNull()
             .asResult(UnlockError.ActiveAccountNotFound)

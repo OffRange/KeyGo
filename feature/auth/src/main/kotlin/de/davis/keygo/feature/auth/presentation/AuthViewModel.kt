@@ -90,9 +90,8 @@ internal class AuthViewModel(
 
     fun onEvent(event: AuthUIEvent) {
         when (event) {
-            is AuthUIEvent.RequestBiometricAuthentication -> viewModelScope.launch {
+            is AuthUIEvent.RequestBiometricAuthentication ->
                 if (uiState.value is AuthState.Login) requestBiometricLogin()
-            }
 
             AuthUIEvent.Submit -> {
                 val state = _uiState.value as? AuthState.Interactable ?: return

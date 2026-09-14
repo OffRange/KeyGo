@@ -72,27 +72,27 @@ internal class BiometricCryptoImpl(
     override suspend fun requestWrap(
         keyId: KeyId,
         key: ByteArray,
-        policy: BiometricPolicy
     ): Result<CryptographicData, BiometricAuthError> = request(
+        policy: BiometricPolicy,
         keyId = keyId,
         policy = policy,
-        mode = CryptographicMode.Wrap
     ) {
         CryptographicData(
             data = it.wrap(SecretKeySpec(key, 0, key.size, "AES")),
             iv = it.iv
         )
+        mode = CryptographicMode.Wrap,
     }
 
     override suspend fun requestUnwrap(
         keyId: KeyId,
         cryptographicData: CryptographicData,
-        policy: BiometricPolicy
+        policy: BiometricPolicy,
     ): Result<Key, BiometricAuthError> = request(
         keyId = keyId,
         policy = policy,
         mode = CryptographicMode.Unwrap,
-        iv = cryptographicData.iv
+        iv = cryptographicData.iv,
     ) { it.unwrap(cryptographicData.data, "AES", Cipher.SECRET_KEY) }
 
     private suspend fun <T> request(
@@ -100,7 +100,7 @@ internal class BiometricCryptoImpl(
         policy: BiometricPolicy,
         mode: CryptographicMode,
         iv: ByteArray? = null,
-        onSuccess: (Cipher) -> T
+        onSuccess: (Cipher) -> T,
     ): Result<T, BiometricAuthError> = resultBinding {
         val activity = awaitHost().asResult(BiometricAuthError.NoPromptHost).bind()
 

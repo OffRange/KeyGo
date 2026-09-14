@@ -60,7 +60,7 @@ class ChangePasswordUseCase(
 
     private suspend fun ResultBinding<ChangePasswordError>.passwordAuthenticationPath(
         reauthentication: Reauthentication.Password,
-        account: Account
+        account: Account,
     ) {
         session.verifyPassword(
             password = reauthentication.currentPassword,
@@ -80,7 +80,7 @@ class ChangePasswordUseCase(
     }
 
     private suspend fun ResultBinding<ChangePasswordError>.biometricAuthenticationPath(
-        account: Account
+        account: Account,
     ) {
         val wrappedKey = account.biometricWrappedArk
             .asResult(ChangePasswordError.BiometricNotEnrolled)

@@ -12,12 +12,12 @@ interface BiometricCrypto {
     suspend fun requestWrap(
         keyId: KeyId,
         key: ByteArray,
-        policy: BiometricPolicy = BiometricPolicy.Default
     ): Result<CryptographicData, BiometricAuthError>
+        policy: BiometricPolicy = BiometricPolicy.Default,
 
     suspend fun requestUnwrap(
         keyId: KeyId,
         cryptographicData: CryptographicData,
-        policy: BiometricPolicy = BiometricPolicy.Default
+        policy: BiometricPolicy = BiometricPolicy.Default,
     ): Result<Key, BiometricAuthError>
 }
