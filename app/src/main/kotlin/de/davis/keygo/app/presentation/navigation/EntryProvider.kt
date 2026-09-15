@@ -29,6 +29,7 @@ import de.davis.keygo.feature.item.create.presentation.totp.AssignTotpRoute
 import de.davis.keygo.feature.item.create.presentation.totp.assignTotpEntries
 import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
 import de.davis.keygo.feature.onboarding.presentation.onboardingEntries
+import de.davis.keygo.feature.password_health.presentation.passwordHealthEntries
 import de.davis.keygo.feature.settings.presentation.ChangePasswordRoute
 import de.davis.keygo.feature.settings.presentation.settingsEntries
 import de.davis.keygo.feature.totp.presentation.SelectItemForTotpRoute
@@ -129,6 +130,10 @@ fun keyGoEntryProvider(navigator: AppNavigator, hasAccess: Boolean): (NavKey) ->
                 )
             }
         }
+
+        passwordHealthEntries(
+            metadata = NavigationOnly,
+        )
     }
 }
 

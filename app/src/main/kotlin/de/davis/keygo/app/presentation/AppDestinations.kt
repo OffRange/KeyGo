@@ -3,12 +3,14 @@ package de.davis.keygo.app.presentation
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cast
+import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation3.runtime.NavKey
 import de.davis.keygo.R
 import de.davis.keygo.core.presentation.model.RouteDestination
+import de.davis.keygo.feature.password_health.presentation.PasswordHealthRoute
 import de.davis.keygo.feature.settings.presentation.SettingsRoute
 
 /** The navigation bar's destinations. */
@@ -19,6 +21,12 @@ enum class AppDestinations(
     @StringRes val contentDescription: Int
 ) {
     HOME(RouteDestination.Home, R.string.home, Icons.Default.Home, R.string.home),
+    PASSWORD_HEALTH(
+        PasswordHealthRoute,
+        R.string.password_health,
+        Icons.Default.HealthAndSafety,
+        R.string.password_health
+    ),
     CONNECTIVITY(
         RouteDestination.Connectivity,
         R.string.connectivity,
