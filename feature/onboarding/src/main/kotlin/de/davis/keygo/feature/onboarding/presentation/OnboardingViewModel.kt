@@ -1,16 +1,18 @@
 package de.davis.keygo.feature.onboarding.presentation
 
+import android.util.Log
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.biometrics.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.identity.domain.usecase.CreateAccessUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
-import de.davis.keygo.core.security.domain.repository.BiometricAvailabilityRepository
 import de.davis.keygo.core.ui.model.UiFieldError
+import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
-import de.davis.keygo.feature.autofill.domain.repository.AutofillServiceRepository
 import de.davis.keygo.feature.autofill.domain.repository.ChromeAutofillRepository
+import de.davis.keygo.feature.autofill.domain.usecase.AutofillActivationStatusUseCase
 import de.davis.keygo.feature.backup.domain.model.BackupDestinationUri
 import de.davis.keygo.feature.onboarding.presentation.model.AutofillSetupAction
 import de.davis.keygo.feature.onboarding.presentation.model.OnboardingStep
@@ -36,15 +38,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
-import javax.crypto.Cipher
 import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
 internal class OnboardingViewModel(
     @InjectedParam private val onboardingRoute: OnboardingRoute,
     private val biometricAvailabilityRepository: BiometricAvailabilityRepository,
-    private val autofillServiceRepository: AutofillServiceRepository,
     private val chromeAutofillRepository: ChromeAutofillRepository,
+    private val autofillActivationStatus: AutofillActivationStatusUseCase,
 
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val createAccess: CreateAccessUseCase,
@@ -56,8 +57,7 @@ internal class OnboardingViewModel(
 
     private fun calculateStepsToSkip() {
         viewModelScope.launch {
-            val autofill = readAutofillState()
-            _enableAutofillState.update { autofill }
+            val autofill = fetchAndUpdateAutofillState()
 
             val skipSteps = buildSet {
                 if (!biometricAvailabilityRepository.availability()) add(OnboardingStep.EnableBiometrics)
@@ -70,20 +70,17 @@ internal class OnboardingViewModel(
         }
     }
 
-    private suspend fun readAutofillState(): OnboardingUiState.EnableAutofill {
-        val chromeAvailable = chromeAutofillRepository.isAvailable()
-        return OnboardingUiState.EnableAutofill(
-            systemAutofillEnabled = autofillServiceRepository.isEnabled(),
-            chromeAvailable = chromeAvailable,
-            chromeAutofillEnabled = chromeAvailable && chromeAutofillRepository.isAutofillEnabled(),
-        )
+    fun refreshAutofillState() {
+        viewModelScope.launch { fetchAndUpdateAutofillState() }
     }
 
-    fun refreshAutofillState() {
-        viewModelScope.launch {
-            val autofill = readAutofillState()
-            _enableAutofillState.update { autofill }
-        }
+    private suspend fun fetchAndUpdateAutofillState(): OnboardingUiState.EnableAutofill {
+        // Read before the update, not inside it: update retries its lambda whenever another write
+        // lands first, which would repeat the cross-process reads.
+        val autofill =
+            OnboardingUiState.EnableAutofill(activationStatus = autofillActivationStatus())
+        _enableAutofillState.update { autofill }
+        return autofill
     }
 
     private val passwordTextFieldState = TextFieldState()
@@ -108,9 +105,6 @@ internal class OnboardingViewModel(
     init {
         calculateStepsToSkip()
     }
-
-    private val biometricChannel = Channel<Unit>(Channel.BUFFERED)
-    val biometricFlow = biometricChannel.receiveAsFlow()
 
     private val autofillPickerChannel = Channel<Unit>(Channel.BUFFERED)
     val autofillPickerFlow = autofillPickerChannel.receiveAsFlow()
@@ -219,8 +213,8 @@ internal class OnboardingViewModel(
             }
 
             OnboardingStep.EnableBiometrics -> {
-                biometricChannel.trySend(Unit)
-                return // wait for biometric result before proceeding to next step
+                // return because performCreateAccess already skips internally on success
+                return performCreateAccess(withBiometrics = true)
             }
 
             OnboardingStep.EnableAutofillService -> when (_enableAutofillState.value.nextAction) {
@@ -244,19 +238,6 @@ internal class OnboardingViewModel(
         internalSkip()
     }
 
-    fun performCreateAccess(cipher: Cipher? = null) {
-        viewModelScope.launch {
-            loading {
-                createAccess(
-                    password = passwordTextFieldState.text.toString(),
-                    biometricCipher = cipher
-                ).onSuccess {
-                    internalSkip()
-                }
-            }
-        }
-    }
-
     fun onSkip() {
         if (_step.value == OnboardingStep.EnableBiometrics) return performCreateAccess()
 
@@ -278,6 +259,17 @@ internal class OnboardingViewModel(
      */
     fun onImportFinished() = internalSkip()
 
+    private fun performCreateAccess(withBiometrics: Boolean = false) = loading {
+        createAccess(
+            password = passwordTextFieldState.text.toString(),
+            withBiometrics = withBiometrics,
+        ).onSuccess {
+            internalSkip()
+        }.onFailure {
+            Log.e(TAG, "Failed to create access: $it")
+        }
+    }
+
     private fun internalSkip() {
         val nextStep = _step.value.nextStep(stepsToSkip.value) ?: return finishUp()
         _step.update { nextStep }
@@ -287,12 +279,22 @@ internal class OnboardingViewModel(
         finishedChannel.trySend(Unit)
     }
 
-    private suspend fun <R> loading(block: suspend () -> R): R {
-        _loading.update { true }
-        try {
-            return block()
-        } finally {
-            _loading.update { false }
+    private fun loading(block: suspend () -> Unit) {
+        // One run at a time: a second tap that lands while one is still going finds the flag set
+        // and is dropped. Two account creations would mint two accounts and the second would
+        // overwrite the first.
+        if (!_loading.compareAndSet(expect = false, update = true)) return
+
+        viewModelScope.launch {
+            try {
+                block()
+            } finally {
+                _loading.update { false }
+            }
         }
+    }
+
+    companion object {
+        private const val TAG = "OnboardingViewModel"
     }
 }

@@ -27,9 +27,9 @@ internal enum class AutofillSetupStatus {
  */
 internal fun OnboardingUiState.EnableAutofill.setupSteps(): List<Pair<AutofillSetupStep, AutofillSetupStatus>> {
     val steps = listOfNotNull(
-        AutofillSetupStep.OpenSystemSettings to systemAutofillEnabled,
-        AutofillSetupStep.ChooseKeyGo to systemAutofillEnabled,
-        (AutofillSetupStep.EnableInChrome to chromeAutofillEnabled).takeIf { chromeAvailable },
+        AutofillSetupStep.OpenSystemSettings to activationStatus.systemAutofillEnabled,
+        AutofillSetupStep.ChooseKeyGo to activationStatus.systemAutofillEnabled,
+        (AutofillSetupStep.EnableInChrome to activationStatus.chromeAutofillEnabled).takeIf { activationStatus.chromeAvailable },
     )
 
     val currentIndex = steps.indexOfFirst { (_, done) -> !done }

@@ -200,6 +200,8 @@ def test_one_liner_compose():
         check("sets namespace",
               'namespace = "de.davis.keygo.feature.payments"' in build, build)
         check("no protobuf by default", "protobuf" not in build, build)
+        check("consumer-rules.pro created for Android module",
+              os.path.isfile(os.path.join(mod, "consumer-rules.pro")))
         pkg = os.path.join(mod, "src", "main", "kotlin", "de", "davis", "keygo",
                            "feature", "payments")
         di = read_file(pkg, "di", "FeaturePaymentsModule.kt")
@@ -240,6 +242,8 @@ def test_one_liner_jvm():
               "alias(libs.plugins.koin.compiler)" in build, build)
         check("jvm module adds koin deps",
               "platform(libs.koin.bom)" in build and "libs.koin.core" in build, build)
+        check("no consumer-rules.pro for jvm module",
+              not os.path.isfile(os.path.join(mod, "consumer-rules.pro")))
         pkg = os.path.join(mod, "src", "main", "kotlin", "de", "davis", "keygo",
                            "core", "toolkit")
         check("di module generated",
@@ -265,6 +269,8 @@ def test_one_liner_protobuf_and_naming():
               "alias(libs.plugins.keygo.android.protobuf)" in build, build)
         check("dash -> underscore in namespace",
               'namespace = "de.davis.keygo.core.proto_store"' in build, build)
+        check("consumer-rules.pro created for Android module",
+              os.path.isfile(os.path.join(mod, "consumer-rules.pro")))
         pkg = os.path.join(mod, "src", "main", "kotlin", "de", "davis", "keygo",
                            "core", "proto_store")
         check("PascalCase DI class from dashed name",

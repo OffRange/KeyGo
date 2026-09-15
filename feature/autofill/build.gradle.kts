@@ -42,6 +42,8 @@ dependencies {
     implementation(projects.feature.auth)
     implementation(projects.feature.listScreen)
 
+    testImplementation(testFixtures(projects.core.biometrics))
+    testImplementation(testFixtures(projects.core.identity))
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.util))
     testImplementation(testFixtures(projects.core.security))

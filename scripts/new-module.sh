@@ -14,6 +14,7 @@ set -euo pipefail
 #
 # Generates:
 #   <location>/<name>/build.gradle.kts                       convention plugin applied
+#   <location>/<name>/consumer-rules.pro                      Android modules only
 #   <location>/<name>/src/main/kotlin/<pkg>/di/<X>Module.kt  Koin DI module
 #   <location>/<name>/src/main/kotlin/<pkg>/{domain,data,presentation}/
 #   include(":<location>:<name>") in settings.gradle.kts
@@ -448,6 +449,10 @@ android {
 dependencies {
 }
 GRADLE
+    # AndroidLibraryConventionPlugin sets consumerProguardFiles("consumer-rules.pro")
+    # unconditionally; every Android module needs the file to exist or the build
+    # (and CodeQL's autobuild) fails on mergeConsumerProguardFiles.
+    touch "$MODULE_DIR/consumer-rules.pro"
 else
     # keygo.kotlin.jvm doesn't wire Koin - add what the DI module needs.
     cat > "$MODULE_DIR/build.gradle.kts" <<GRADLE

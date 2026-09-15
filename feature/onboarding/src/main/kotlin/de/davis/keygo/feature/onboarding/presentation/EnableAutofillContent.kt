@@ -27,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.feature.autofill.domain.model.AutofillActivationStatus
 import de.davis.keygo.feature.onboarding.R
 import de.davis.keygo.feature.onboarding.presentation.component.OnboardingScaffold
 import de.davis.keygo.feature.onboarding.presentation.component.SmallIconContainer
@@ -134,7 +135,9 @@ private fun EnableAutofillContentPreview() {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             EnableAutofillContent(
-                state = OnboardingUiState.EnableAutofill(chromeAvailable = true)
+                state = OnboardingUiState.EnableAutofill(
+                    activationStatus = AutofillActivationStatus(chromeAvailable = true),
+                )
             )
         }
     }
@@ -147,8 +150,10 @@ private fun EnableAutofillContentChromePendingPreview() {
         Surface(modifier = Modifier.fillMaxSize()) {
             EnableAutofillContent(
                 state = OnboardingUiState.EnableAutofill(
-                    systemAutofillEnabled = true,
-                    chromeAvailable = true,
+                    activationStatus = AutofillActivationStatus(
+                        systemAutofillEnabled = true,
+                        chromeAvailable = true,
+                    ),
                 )
             )
         }

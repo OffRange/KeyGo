@@ -9,6 +9,7 @@ import android.util.Log
 import de.davis.keygo.core.security.domain.SystemHandoff
 import de.davis.keygo.core.security.domain.forRoundTrip
 import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.feature.autofill.domain.model.ChromeAutofillState
 import de.davis.keygo.feature.autofill.domain.repository.ChromeAutofillRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -45,15 +46,14 @@ internal class ChromeAutofillRepositoryImpl(
             }
         }
 
-    override suspend fun isAvailable(): Boolean = useQueryThirdPartyMode { true } == true
-
-    override suspend fun isAutofillEnabled(): Boolean = useQueryThirdPartyMode { cursor ->
-        if (!cursor.moveToFirst()) return@useQueryThirdPartyMode false
+    override suspend fun autofillState(): ChromeAutofillState = useQueryThirdPartyMode { cursor ->
+        if (!cursor.moveToFirst()) return@useQueryThirdPartyMode ChromeAutofillState.Disabled
 
         val thirdPartyModeState =
             cursor.getInt(cursor.getColumnIndexOrThrow(THIRD_PARTY_MODE_COLUMN))
-        thirdPartyModeState == 1 // 1 means third-party autofill is enabled.
-    } == true
+        // 1 means third-party autofill is enabled.
+        if (thirdPartyModeState == 1) ChromeAutofillState.Enabled else ChromeAutofillState.Disabled
+    } ?: ChromeAutofillState.Unavailable
 
     override fun openChromeAutofillSettings() {
         val intent = Intent(Intent.ACTION_APPLICATION_PREFERENCES).apply {

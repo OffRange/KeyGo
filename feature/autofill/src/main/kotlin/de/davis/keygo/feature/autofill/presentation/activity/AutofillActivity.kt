@@ -18,15 +18,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.rememberNavBackStack
-import de.davis.keygo.core.identity.presentation.rememberBiometricUnlockAdapter
-import de.davis.keygo.core.identity.presentation.useAdapter
-import de.davis.keygo.core.security.domain.model.BiometricPolicy
-import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
 import de.davis.keygo.core.security.presentation.rememberHandoffLauncher
 import de.davis.keygo.core.ui.clipboard.setText
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.onFailure
-import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.autofill.presentation.activity.component.AssociationDialog
@@ -71,9 +66,6 @@ internal class AutofillActivity : FragmentActivity() {
                 val suspicionDialogVisibility = uiState.suspicionDialogVisibility
                 val linkCheckDialogVisibility = uiState.linkCheckDialogVisibility
 
-                val biometricCryptoController = rememberBiometricCryptoController()
-                val biometricUnlockAdapter = rememberBiometricUnlockAdapter()
-
                 val clipboard = LocalClipboard.current
                 val context = LocalContext.current
                 val passwordLabel = stringResource(CoreItemR.string.password)
@@ -110,21 +102,6 @@ internal class AutofillActivity : FragmentActivity() {
                             ).onFailure {
                                 Log.w(TAG, "Failed to launch the SMS consent prompt", it)
                             }
-                    }
-                }
-
-                ObserveAsEvents(viewModel.biometricFlow) { request ->
-                    biometricUnlockAdapter.useAdapter {
-                        biometricCryptoController.requestUnlockVault(
-                            policy = BiometricPolicy(
-                                title = request.title,
-                                negativeButton = request.negativeButton
-                            )
-                        )
-                    }.onSuccess {
-                        viewModel.onBiometricLoginSucceeded()
-                    }.onFailure {
-                        viewModel.onBiometricLoginFailed(it)
                     }
                 }
 

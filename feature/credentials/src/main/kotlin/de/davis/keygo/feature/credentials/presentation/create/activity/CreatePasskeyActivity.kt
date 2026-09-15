@@ -35,17 +35,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
-import de.davis.keygo.core.identity.presentation.rememberBiometricUnlockAdapter
-import de.davis.keygo.core.identity.presentation.useAdapter
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.security.domain.model.BiometricPolicy
-import de.davis.keygo.core.security.domain.model.BiometricString
-import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
 import de.davis.keygo.core.ui.navigation.KeyGoNavDisplay
 import de.davis.keygo.core.ui.text.htmlStringResource
 import de.davis.keygo.core.ui.theme.KeyGoTheme
-import de.davis.keygo.core.util.onFailure
-import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.auth.presentation.authEntries
@@ -160,24 +153,6 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                         },
                         modifier = Modifier.fillMaxWidth(),
                     )
-                }
-
-                val biometricCryptoController = rememberBiometricCryptoController()
-                val biometricUnlockAdapter = rememberBiometricUnlockAdapter()
-
-                ObserveAsEvents(viewModel.biometricFlow) {
-                    biometricUnlockAdapter.useAdapter {
-                        biometricCryptoController.requestUnlockVault(
-                            policy = BiometricPolicy(
-                                title = BiometricString.Title.Authenticate,
-                                negativeButton = BiometricString.NegativeButton.Password,
-                            )
-                        )
-                    }.onSuccess {
-                        viewModel.onUnlocked()
-                    }.onFailure {
-                        viewModel.onUnlockFailed(it)
-                    }
                 }
 
                 val authState by viewModel.authState.collectAsStateWithLifecycle()

@@ -31,7 +31,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -44,11 +43,6 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.item.presentation.StrengthIndicator
-import de.davis.keygo.core.security.domain.model.BiometricPolicy
-import de.davis.keygo.core.security.domain.model.BiometricString
-import de.davis.keygo.core.security.domain.model.CiphertextData
-import de.davis.keygo.core.security.domain.model.KeyId
-import de.davis.keygo.core.security.presentation.rememberBiometricCryptoController
 import de.davis.keygo.core.ui.components.VisibilityButton
 import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.ui.model.error
@@ -57,7 +51,6 @@ import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.core.util.presentation.snackbar.LocalSnackbarManager
 import de.davis.keygo.feature.settings.R
-import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -65,8 +58,6 @@ internal fun ChangePasswordScreen(onUp: () -> Unit) {
     val viewModel = koinViewModel<ChangePasswordViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    val controller = rememberBiometricCryptoController()
-    val scope = rememberCoroutineScope()
     val snackbarManager = LocalSnackbarManager.current
 
     ObserveAsEvents(viewModel.event) { event ->
@@ -75,20 +66,6 @@ internal fun ChangePasswordScreen(onUp: () -> Unit) {
             ChangePasswordEvent.GenericError -> snackbarManager.sendMessage(
                 SnackbarMessage(message = ResourceString(R.string.change_password_failed)),
             )
-
-            ChangePasswordEvent.LaunchBiometricPrompt -> {
-                val ciphertext = state.biometricCiphertext ?: return@ObserveAsEvents
-                scope.launch {
-                    val result = controller.requestUnwrap(
-                        keyId = KeyId.BiometricVaultKek,
-                        ciphertextData = ciphertext,
-                        policy = BiometricPolicy(
-                            negativeButton = BiometricString.NegativeButton.Password,
-                        ),
-                    )
-                    viewModel.onBiometricResult(result)
-                }
-            }
         }
     }
 
@@ -96,7 +73,7 @@ internal fun ChangePasswordScreen(onUp: () -> Unit) {
         state = state,
         onUp = onUp,
         onSubmit = viewModel::onSubmit,
-        onSubmitWithPassword = viewModel::submitWithPassword,
+        onSubmitWithPassword = { viewModel.onSubmit(forcePasswordPath = true) },
         onDismissReauthDialog = viewModel::dismissReauthDialog,
     )
 }
@@ -141,7 +118,7 @@ internal fun ChangePasswordContent(
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (!state.canUseBiometric) CurrentPasswordField(
+            if (!state.biometricAvailable) CurrentPasswordField(
                 state = state.currentPassword,
                 error = state.currentPasswordError,
             )
@@ -201,14 +178,14 @@ internal fun ChangePasswordContent(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !state.loading,
             ) {
-                if (state.canUseBiometric) {
+                if (state.biometricAvailable) {
                     Icon(Icons.Default.Fingerprint, contentDescription = null)
                     Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                 }
                 Text(stringResource(R.string.change_password_action))
             }
 
-            if (state.canUseBiometric) Text(
+            if (state.biometricAvailable) Text(
                 text = stringResource(R.string.biometric_confirm_helper),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -275,11 +252,9 @@ private fun CurrentPasswordField(
 private class ChangePasswordStateProvider : PreviewParameterProvider<ChangePasswordState> {
 
 
-    private val previewBiometricCiphertext = CiphertextData(bytes = ByteArray(0), iv = ByteArray(0))
-
     override val values = sequenceOf(
         ChangePasswordState(),
-        ChangePasswordState(biometricCiphertext = previewBiometricCiphertext),
+        ChangePasswordState(biometricAvailable = true),
         ChangePasswordState(
             currentPasswordError = UiFieldError.Incorrect,
             newPasswordError = UiFieldError.Empty,
@@ -287,11 +262,11 @@ private class ChangePasswordStateProvider : PreviewParameterProvider<ChangePassw
         ),
         ChangePasswordState(loading = true),
         ChangePasswordState(
-            biometricCiphertext = previewBiometricCiphertext,
+            biometricAvailable = true,
             showReauthDialog = true,
         ),
         ChangePasswordState(
-            biometricCiphertext = previewBiometricCiphertext,
+            biometricAvailable = true,
             showReauthDialog = true,
             loading = true,
         ),

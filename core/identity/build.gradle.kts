@@ -1,5 +1,5 @@
 plugins {
-    alias(libs.plugins.keygo.android.compose)
+    alias(libs.plugins.keygo.android.library)
     alias(libs.plugins.keygo.android.protobuf)
 }
 
@@ -12,6 +12,7 @@ android {
 }
 
 dependencies {
+    api(projects.core.biometrics)
     api(projects.core.security)
     implementation(projects.core.item)
     implementation(projects.rust)
@@ -20,14 +21,12 @@ dependencies {
     implementation(libs.androidx.datastore)
 
     testImplementation(libs.io.mockk)
+    testImplementation(testFixtures(projects.core.biometrics))
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.security))
+    testImplementation(testFixtures(projects.core.util))
     testImplementation(testFixtures(projects.rust))
 
     testFixturesApi(projects.core.util)
     testFixturesImplementation(projects.rust)
-    testFixturesImplementation(project.dependencies.platform(libs.androidx.compose.bom))
-    testFixturesImplementation(libs.androidx.compose.runtime) {
-        because("https://issuetracker.google.com/issues/259523353#comment32")
-    }
 }

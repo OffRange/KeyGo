@@ -12,7 +12,6 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.biometric)
     implementation(libs.androidx.lifecycle.process)
 
     implementation(projects.core.item)

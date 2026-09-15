@@ -30,6 +30,7 @@ internal class SectionScope {
         colors: ListItemColors,
         icon: ImageVector? = null,
         supporting: UIText? = null,
+        enabled: Boolean = true,
     ) {
         entries += SettingsEntry.Toggle(
             title = title,
@@ -37,6 +38,7 @@ internal class SectionScope {
             supporting = supporting,
             colors = colors,
             checked = checked,
+            enabled = enabled,
             onCheckedChange = onCheckedChange,
         )
     }

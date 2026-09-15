@@ -129,7 +129,7 @@ internal class KeyStoreManagerImpl : KeyStoreManager {
     }
 }
 
-internal fun keyStoreManagerErrorFrom(throwable: Throwable): KeyStoreManagerError {
+fun keyStoreManagerErrorFrom(throwable: Throwable): KeyStoreManagerError {
     val causes = generateSequence(throwable) { current -> current.cause?.takeIf { it !== current } }
         .take(MAX_CAUSE_DEPTH)
         .toList()
