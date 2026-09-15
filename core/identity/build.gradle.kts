@@ -1,5 +1,5 @@
 plugins {
-    alias(libs.plugins.keygo.android.compose)
+    alias(libs.plugins.keygo.android.library)
     alias(libs.plugins.keygo.android.protobuf)
 }
 
@@ -29,8 +29,4 @@ dependencies {
 
     testFixturesApi(projects.core.util)
     testFixturesImplementation(projects.rust)
-    testFixturesImplementation(project.dependencies.platform(libs.androidx.compose.bom))
-    testFixturesImplementation(libs.androidx.compose.runtime) {
-        because("https://issuetracker.google.com/issues/259523353#comment32")
-    }
 }
