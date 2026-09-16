@@ -1,0 +1,1 @@
+Password manager using AES to securely store information locally on the device
