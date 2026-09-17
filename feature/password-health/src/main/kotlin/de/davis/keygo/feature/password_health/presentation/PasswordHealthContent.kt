@@ -1,41 +1,110 @@
 package de.davis.keygo.feature.password_health.presentation
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ListItemDefaults
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.item.domain.alias.newItemId
+import de.davis.keygo.feature.item.create.presentation.password.GeneratePasswordModalBottomSheet
+import de.davis.keygo.feature.password_health.R
+import de.davis.keygo.feature.password_health.presentation.component.BreachCheck
+import de.davis.keygo.feature.password_health.presentation.component.PasswordHealthStatus
+import de.davis.keygo.feature.password_health.presentation.component.needsAttentionSection
+import de.davis.keygo.feature.password_health.presentation.model.AttentionEntry
+import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthStatus
+import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiEvent
+import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiState
+import de.davis.keygo.feature.password_health.presentation.model.PasswordIssueType
+import de.davis.keygo.feature.password_health.presentation.model.verdict
 
 @Composable
-internal fun PasswordHealthContent() {
+internal fun PasswordHealthContent(
+    state: PasswordHealthUiState,
+    onEvent: (PasswordHealthUiEvent) -> Unit,
+) {
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            MediumFlexibleTopAppBar(
+                title = {
+                    Text(text = stringResource(R.string.password_health_title))
+                },
+                subtitle = {
+                    Text(text = state.verdict(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                },
+                scrollBehavior = scrollBehavior,
+            )
+        }
     ) { innerPadding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .consumeWindowInsets(innerPadding),
-            verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+                .consumeWindowInsets(innerPadding)
+                .nestedScroll(scrollBehavior.nestedScrollConnection),
+            contentPadding = PaddingValues(horizontal = 8.dp),
         ) {
+            item(key = "status") {
+                PasswordHealthStatus(state = state, modifier = Modifier.animateItem())
+            }
 
+            if (state.status == PasswordHealthStatus.NEEDS_ATTENTION) needsAttentionSection(state = state)
+
+            item(key = "breach_check") {
+                Spacer(modifier = Modifier.height(28.dp))
+                BreachCheck(
+                    state = state,
+                    onChange = { onEvent(PasswordHealthUiEvent.OnBreachCheckChanged(it)) },
+                    modifier = Modifier.animateItem()
+                )
+            }
         }
     }
+
+    if (state.generatePassword) GeneratePasswordModalBottomSheet(
+        onGenerated = { onEvent(PasswordHealthUiEvent.PasswordGenerated(it)) },
+        onDismiss = { onEvent(PasswordHealthUiEvent.DismissGeneratePassword) },
+    )
 }
 
 @Preview
 @Composable
 private fun PasswordHealthContentPreview() {
     MaterialTheme {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            PasswordHealthContent()
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            PasswordHealthContent(
+                state = PasswordHealthUiState(
+                    totalPasswordCount = 12,
+                    attentionEntries = listOf(
+                        AttentionEntry(
+                            id = newItemId(),
+                            title = "Weak password",
+                            username = "user@mail.com",
+                            issueType = PasswordIssueType.Weak,
+                        ),
+                    )
+                ),
+                onEvent = {},
+            )
         }
     }
 }

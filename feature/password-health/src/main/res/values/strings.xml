@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="password_health_title">Password Health</string>
+
+    <string name="password_health_overview_label">Overview</string>
+    <string name="password_health_no_data">Add some passwords to see how they\'re doing</string>
+    <string name="password_health_all_good">All your passwords look great</string>
+    <plurals name="password_health_needs_attention">
+        <item quantity="one">%1$d password needs attention</item>
+        <item quantity="other">%1$d passwords need attention</item>
+    </plurals>
+    <string name="checking_passwords">Checking your passwords…</string>
+
+    <plurals name="detail_line_checked">
+        <item quantity="one">%1$d password checked</item>
+        <item quantity="other">%1$d passwords checked</item>
+    </plurals>
+    <string name="detail_line_checked_short">%1$d checked</string>
+    <string name="detail_line_breached">%1$d breached</string>
+    <string name="detail_line_weak">%1$d weak</string>
+    <string name="detail_line_reused">%1$d reused</string>
+
+    <string name="needs_attention_title">Needs attention</string>
+    <string name="needs_attention_weak">Weak</string>
+    <string name="needs_attention_reused">Reused</string>
+    <string name="needs_attention_breached">Breached</string>
+
+    <plurals name="needs_attention_found_in_breach">
+        <item quantity="one">Found in %1$d breach</item>
+        <item quantity="other">Found in %1$d breaches</item>
+    </plurals>
+
+    <string name="breach_check_enable">Check for breaches</string>
+    <string name="breach_check_opt_in_description">Only the first 5 characters of each password\'s hash ever leave your device</string>
+</resources>
