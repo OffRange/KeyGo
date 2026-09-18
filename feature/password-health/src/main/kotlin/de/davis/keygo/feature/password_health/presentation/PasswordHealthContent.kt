@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.password_health.presentation
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
@@ -21,16 +23,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.newItemId
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.feature.item.create.presentation.password.GeneratePasswordModalBottomSheet
 import de.davis.keygo.feature.password_health.R
+import de.davis.keygo.feature.password_health.domain.model.FindingSeverity
+import de.davis.keygo.feature.password_health.domain.model.ItemHealth
+import de.davis.keygo.feature.password_health.domain.model.ItemIssue
 import de.davis.keygo.feature.password_health.presentation.component.BreachCheck
 import de.davis.keygo.feature.password_health.presentation.component.PasswordHealthStatus
 import de.davis.keygo.feature.password_health.presentation.component.needsAttentionSection
-import de.davis.keygo.feature.password_health.presentation.model.AttentionEntry
+import de.davis.keygo.feature.password_health.presentation.model.HealthSection
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthStatus
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiEvent
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiState
-import de.davis.keygo.feature.password_health.presentation.model.PasswordIssueType
 import de.davis.keygo.feature.password_health.presentation.model.verdict
 
 @Composable
@@ -59,13 +64,15 @@ internal fun PasswordHealthContent(
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
-            contentPadding = PaddingValues(horizontal = 8.dp),
+            contentPadding = PaddingValues(8.dp),
+            verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
         ) {
             item(key = "status") {
                 PasswordHealthStatus(state = state, modifier = Modifier.animateItem())
             }
 
-            if (state.status == PasswordHealthStatus.NEEDS_ATTENTION) needsAttentionSection(state = state)
+            if (state.status == PasswordHealthStatus.NEEDS_ATTENTION)
+                needsAttentionSection(sections = state.healthSections)
 
             item(key = "breach_check") {
                 Spacer(modifier = Modifier.height(28.dp))
@@ -94,14 +101,22 @@ private fun PasswordHealthContentPreview() {
             PasswordHealthContent(
                 state = PasswordHealthUiState(
                     totalPasswordCount = 12,
-                    attentionEntries = listOf(
-                        AttentionEntry(
-                            id = newItemId(),
-                            title = "Weak password",
-                            username = "user@mail.com",
-                            issueType = PasswordIssueType.Weak,
-                        ),
-                    )
+                    healthSections = listOf(
+                        HealthSection(
+                            severity = FindingSeverity.Medium,
+                            groups = emptyList(),
+                            standalone = listOf(
+                                ItemHealth(
+                                    itemId = newItemId(),
+                                    title = "Weak password",
+                                    username = null,
+                                    issues = listOf(
+                                        ItemIssue.Weak(score = PasswordScore.Weak)
+                                    )
+                                )
+                            )
+                        )
+                    ),
                 ),
                 onEvent = {},
             )

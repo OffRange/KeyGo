@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.password_health.presentation.model
 
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GppBad
 import androidx.compose.material.icons.filled.GppGood
@@ -11,23 +12,12 @@ import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.feature.password_health.R
-
-@Stable
-internal sealed interface PasswordIssueType {
-    data object Weak : PasswordIssueType
-    data object Reused : PasswordIssueType
-    data class Breached(val count: Int) : PasswordIssueType
-}
-
-@Stable
-internal data class AttentionEntry(
-    val id: ItemId,
-    val title: String,
-    val username: String?,
-    val issueType: PasswordIssueType
-)
+import de.davis.keygo.feature.password_health.domain.model.FindingSeverity
+import de.davis.keygo.feature.password_health.domain.model.ItemHealth
+import de.davis.keygo.feature.password_health.domain.model.ItemIssue
+import de.davis.keygo.feature.password_health.domain.model.RelatedGroup
+import de.davis.keygo.feature.password_health.domain.model.RelationType
 
 internal enum class PasswordHealthStatus {
     NO_DATA,
@@ -35,21 +25,63 @@ internal enum class PasswordHealthStatus {
     NEEDS_ATTENTION
 }
 
+data class HealthSummary(
+    val needsAttention: Int,
+    val weak: Int,
+    val breached: Int,
+    val reused: Int,
+    val similar: Int,
+)
+
+internal fun List<HealthSection>.summary(): HealthSummary {
+    val groups = fold(mutableListOf<RelatedGroup>()) { acc, section ->
+        acc.addAll(section.groups)
+        acc
+    }
+    val standalone = fold(mutableListOf<ItemHealth>()) { acc, section ->
+        acc.addAll(section.standalone)
+        acc
+    }
+
+
+    val flagged = groups.flatMap { it.members } + standalone
+
+    fun countWith(predicate: (ItemIssue) -> Boolean) =
+        flagged.count { item -> item.issues.any(predicate) }
+
+    fun countRelated(type: RelationType) = groups
+        .flatMap { group -> group.relations.filter { it.type == type } }
+        .flatMapTo(mutableSetOf()) { it.relatedItemIds }
+        .size
+
+    return HealthSummary(
+        needsAttention = flagged.size,
+        weak = countWith { it is ItemIssue.Weak },
+        breached = countWith { it is ItemIssue.Breached },
+        reused = countRelated(RelationType.Reused),
+        similar = countRelated(RelationType.Similar),
+    )
+}
+
+internal data class HealthSection(
+    val severity: FindingSeverity,
+    val groups: List<RelatedGroup>,
+    val standalone: List<ItemHealth>
+)
+
 @Stable
 internal data class PasswordHealthUiState(
     val isLoading: Boolean = false,
     val breachCheckEnabled: Boolean = false,
     val totalPasswordCount: Int = 0,
-    val attentionEntries: List<AttentionEntry> = emptyList(),
+    val healthSections: List<HealthSection> = emptyList(),
     val generatePassword: Boolean = false,
 ) {
-    val breachedCount = attentionEntries.count { it.issueType is PasswordIssueType.Breached }
-    val weakCount = attentionEntries.count { it.issueType == PasswordIssueType.Weak }
-    val reusedCount = attentionEntries.count { it.issueType == PasswordIssueType.Reused }
+    val summary by lazy { healthSections.summary() }
 
     val status = when {
         totalPasswordCount == 0 -> PasswordHealthStatus.NO_DATA
-        attentionEntries.isNotEmpty() -> PasswordHealthStatus.NEEDS_ATTENTION
+        healthSections.isNotEmpty() -> PasswordHealthStatus.NEEDS_ATTENTION
         else -> PasswordHealthStatus.ALL_GOOD
     }
 }
@@ -82,8 +114,8 @@ internal fun PasswordHealthUiState.verdict(): String {
         PasswordHealthStatus.ALL_GOOD -> stringResource(R.string.password_health_all_good)
         PasswordHealthStatus.NEEDS_ATTENTION -> pluralStringResource(
             R.plurals.password_health_needs_attention,
-            attentionEntries.size,
-            attentionEntries.size
+            summary.needsAttention,
+            summary.needsAttention
         )
     }
 }
@@ -102,18 +134,17 @@ internal fun PasswordHealthUiState.detailLine(): String? {
         )
 
         PasswordHealthStatus.NEEDS_ATTENTION -> {
-            val checked = stringResource(R.string.detail_line_checked_short, totalPasswordCount)
-            val breached =
-                if (breachedCount > 0) stringResource(R.string.detail_line_breached, breachedCount)
-                else null
-            val weak =
-                if (weakCount > 0) stringResource(R.string.detail_line_weak, weakCount)
-                else null
-            val reused =
-                if (reusedCount > 0) stringResource(R.string.detail_line_reused, reusedCount)
-                else null
-
-            listOfNotNull(checked, breached, weak, reused).joinToString(" \u2022 ")
+            listOfNotNull(
+                countLabel(R.string.detail_line_checked_short, totalPasswordCount),
+                countLabel(R.string.detail_line_breached, summary.breached),
+                countLabel(R.string.detail_line_weak, summary.weak),
+                countLabel(R.string.detail_line_reused, summary.reused),
+            ).joinToString(" \u2022 ")
         }
     }
 }
+
+@Composable
+@ReadOnlyComposable
+private fun countLabel(@StringRes id: Int, count: Int): String? =
+    if (count > 0) stringResource(id, count, count) else null

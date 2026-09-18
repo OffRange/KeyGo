@@ -25,6 +25,19 @@
     <string name="needs_attention_reused">Reused</string>
     <string name="needs_attention_breached">Breached</string>
 
+    <string name="needs_attention_severity_critical">Critical</string>
+    <string name="needs_attention_severity_high">High</string>
+    <string name="needs_attention_severity_medium">Needs review</string>
+
+    <plurals name="needs_attention_group_reused">
+        <item quantity="one">Reused across %1$d login</item>
+        <item quantity="other">Reused across %1$d logins</item>
+    </plurals>
+    <plurals name="needs_attention_group_similar">
+        <item quantity="one">Similar password across %1$d login</item>
+        <item quantity="other">Similar passwords across %1$d logins</item>
+    </plurals>
+
     <plurals name="needs_attention_found_in_breach">
         <item quantity="one">Found in %1$d breach</item>
         <item quantity="other">Found in %1$d breaches</item>

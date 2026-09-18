@@ -25,13 +25,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.feature.password_health.R
-import de.davis.keygo.feature.password_health.presentation.model.AttentionEntry
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiState
-import de.davis.keygo.feature.password_health.presentation.model.PasswordIssueType
 import de.davis.keygo.feature.password_health.presentation.model.detailLine
 import de.davis.keygo.feature.password_health.presentation.model.icon
 import de.davis.keygo.feature.password_health.presentation.model.toneColor
@@ -122,32 +119,6 @@ private fun AllGoodPreview() {
                 PasswordHealthStatus(
                     state = PasswordHealthUiState(
                         totalPasswordCount = 12,
-                        attentionEntries = listOf(
-                            AttentionEntry(
-                                id = newItemId(),
-                                title = "Password #1",
-                                username = null,
-                                issueType = PasswordIssueType.Reused
-                            ),
-                            AttentionEntry(
-                                id = newItemId(),
-                                title = "Password #2",
-                                username = null,
-                                issueType = PasswordIssueType.Breached(count = 1)
-                            ),
-                            AttentionEntry(
-                                id = newItemId(),
-                                title = "Password #3",
-                                username = null,
-                                issueType = PasswordIssueType.Breached(count = 5)
-                            ),
-                            AttentionEntry(
-                                id = newItemId(),
-                                title = "Password #4",
-                                username = null,
-                                issueType = PasswordIssueType.Weak
-                            ),
-                        ),
                     ),
                 )
             }
