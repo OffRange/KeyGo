@@ -44,4 +44,5 @@ data class PasswordHealthReport(
     val groups: List<RelatedGroup>,
     val standalone: List<ItemHealth>,
     val totalPasswordsScanned: Int,
+    val gaps: Map<CheckKind, CheckGap> = emptyMap(),
 )

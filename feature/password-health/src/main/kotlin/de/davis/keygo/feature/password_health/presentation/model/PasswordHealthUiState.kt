@@ -13,6 +13,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import de.davis.keygo.feature.password_health.R
+import de.davis.keygo.feature.password_health.domain.model.CheckGap
+import de.davis.keygo.feature.password_health.domain.model.CheckKind
 import de.davis.keygo.feature.password_health.domain.model.FindingSeverity
 import de.davis.keygo.feature.password_health.domain.model.ItemHealth
 import de.davis.keygo.feature.password_health.domain.model.ItemIssue
@@ -75,9 +77,12 @@ internal data class PasswordHealthUiState(
     val breachCheckEnabled: Boolean = false,
     val totalPasswordCount: Int = 0,
     val healthSections: List<HealthSection> = emptyList(),
+    val checkGaps: Map<CheckKind, CheckGap> = emptyMap(),
     val generatePassword: Boolean = false,
 ) {
     val summary by lazy { healthSections.summary() }
+
+    val breachGap: CheckGap? = checkGaps[CheckKind.Breach]
 
     val status = when {
         totalPasswordCount == 0 -> PasswordHealthStatus.NO_DATA
@@ -111,7 +116,11 @@ internal fun PasswordHealthUiState.verdict(): String {
     if (isLoading) return stringResource(R.string.checking_passwords)
     return when (status) {
         PasswordHealthStatus.NO_DATA -> stringResource(R.string.password_health_no_data)
-        PasswordHealthStatus.ALL_GOOD -> stringResource(R.string.password_health_all_good)
+
+        PasswordHealthStatus.ALL_GOOD ->
+            if (checkGaps.isEmpty()) stringResource(R.string.password_health_all_good)
+            else stringResource(R.string.password_health_checked_all_good)
+
         PasswordHealthStatus.NEEDS_ATTENTION -> pluralStringResource(
             R.plurals.password_health_needs_attention,
             summary.needsAttention,

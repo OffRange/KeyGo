@@ -9,6 +9,9 @@ import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.password_health.domain.checker.PasswordHealthChecker
+import de.davis.keygo.feature.password_health.domain.model.CheckError
+import de.davis.keygo.feature.password_health.domain.model.CheckGap
+import de.davis.keygo.feature.password_health.domain.model.CheckOutcome
 import de.davis.keygo.feature.password_health.domain.model.HealthFinding
 import de.davis.keygo.feature.password_health.domain.model.ItemHealth
 import de.davis.keygo.feature.password_health.domain.model.PasswordCandidate
@@ -50,13 +53,20 @@ class PasswordHealthReportUseCase(
                 .asResult(PasswordHealthReportError.NoPasswords)
                 .bind()
 
-            val findings = try {
+            val outcomes = try {
                 coroutineScope {
-                    checker.map { async { it.check(candidates) } }.awaitAll().flatten()
+                    checker.map { async { it.type to it.check(candidates) } }.awaitAll()
                 }
             } finally {
                 candidates.forEach { it.password.fill('\u0000') }
             }
+
+            val findings = outcomes.flatMap { (_, outcome) ->
+                outcome.getOrNull()?.findings.orEmpty()
+            }
+            val gaps = outcomes.mapNotNull { (kind, outcome) ->
+                outcome.gap(candidates)?.let { kind to it }
+            }.toMap()
 
             val issuesById = findings.filterIsInstance<HealthFinding.Item>()
                 .groupBy(keySelector = { it.id }, valueTransform = { it.issue })
@@ -99,10 +109,21 @@ class PasswordHealthReportUseCase(
             PasswordHealthReport(
                 groups = group,
                 standalone = standalone,
-                totalPasswordsScanned = candidates.size
+                totalPasswordsScanned = candidates.size,
+                gaps = gaps,
             )
         }
 }
+
+private fun Result<CheckOutcome, CheckError>.gap(candidates: List<PasswordCandidate>): CheckGap? =
+    when (this) {
+        is Result.Failure -> CheckGap(
+            error = error,
+            unchecked = candidates.mapTo(mutableSetOf()) { it.id },
+        )
+
+        is Result.Success -> success.gap
+    }
 
 private class UnionFind<T> {
     private val parent = HashMap<T, T>()

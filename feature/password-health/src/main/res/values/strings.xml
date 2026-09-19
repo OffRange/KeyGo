@@ -5,6 +5,7 @@
     <string name="password_health_overview_label">Overview</string>
     <string name="password_health_no_data">Add some passwords to see how they\'re doing</string>
     <string name="password_health_all_good">All your passwords look great</string>
+    <string name="password_health_checked_all_good">Every password that could be checked looks great</string>
     <plurals name="password_health_needs_attention">
         <item quantity="one">%1$d password needs attention</item>
         <item quantity="other">%1$d passwords need attention</item>
@@ -46,4 +47,12 @@
 
     <string name="breach_check_enable">Check for breaches</string>
     <string name="breach_check_opt_in_description">Only the first 5 characters of each password\'s hash ever leave your device</string>
+    <plurals name="breach_check_unreachable">
+        <item quantity="one">%1$d password went unchecked: couldn\'t reach the breach service</item>
+        <item quantity="other">%1$d passwords went unchecked: couldn\'t reach the breach service</item>
+    </plurals>
+    <plurals name="breach_check_failed">
+        <item quantity="one">%1$d password went unchecked: the breach service didn\'t answer</item>
+        <item quantity="other">%1$d passwords went unchecked: the breach service didn\'t answer</item>
+    </plurals>
 </resources>

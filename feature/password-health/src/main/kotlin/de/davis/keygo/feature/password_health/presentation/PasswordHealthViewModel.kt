@@ -34,6 +34,7 @@ internal class PasswordHealthViewModel(
                         it.copy(
                             isLoading = false,
                             healthSections = report?.toSections().orEmpty(),
+                            checkGaps = report?.gaps.orEmpty(),
                             totalPasswordCount = report?.totalPasswordsScanned ?: 0
                         )
                     }
