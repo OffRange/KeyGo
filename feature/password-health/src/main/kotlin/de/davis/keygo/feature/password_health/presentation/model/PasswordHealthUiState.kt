@@ -139,6 +139,7 @@ internal fun PasswordHealthUiState.detailLine(): String? {
                 countLabel(R.string.detail_line_breached, summary.breached),
                 countLabel(R.string.detail_line_weak, summary.weak),
                 countLabel(R.string.detail_line_reused, summary.reused),
+                countLabel(R.string.detail_line_similar, summary.similar),
             ).joinToString(" \u2022 ")
         }
     }

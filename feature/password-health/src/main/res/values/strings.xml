@@ -19,6 +19,7 @@
     <string name="detail_line_breached">%1$d breached</string>
     <string name="detail_line_weak">%1$d weak</string>
     <string name="detail_line_reused">%1$d reused</string>
+    <string name="detail_line_similar">%1$d similar</string>
 
     <string name="needs_attention_title">Needs attention</string>
     <string name="needs_attention_weak">Weak</string>
