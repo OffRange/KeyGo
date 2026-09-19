@@ -22,7 +22,21 @@ data class RelatedGroup(
     val maxSeverity =
         (members.mapNotNull { it.maxSeverity } + relations.map { it.type.severity }).max()
 
-    val dominantRelation: RelationType = relations.maxBy { it.type.severity }.type
+    /**
+     * What the group is mostly about, which is what its label says.
+     *
+     * A group is one connected component over every relation edge, so a couple of exact
+     * copies can sit inside a much wider similarity chain.
+     */
+    val dominantRelation: RelationType = relations
+        .groupBy { it.type }
+        .entries
+        .maxWith(
+            compareBy<Map.Entry<RelationType, List<HealthFinding.Relation>>> { (_, sharing) ->
+                sharing.flatMapTo(mutableSetOf()) { it.relatedItemIds }.size
+            }.thenBy { (type, _) -> type.severity },
+        )
+        .key
     val orderedMembers: List<ItemHealth> = members.sortedByDescending { it.maxSeverity }
 }
 
