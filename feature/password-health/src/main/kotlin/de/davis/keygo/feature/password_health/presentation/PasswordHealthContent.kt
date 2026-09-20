@@ -60,8 +60,8 @@ internal fun PasswordHealthContent(
         }
     ) { innerPadding ->
         PullToRefreshBox(
-            isRefreshing = state.isLoading,
-            onRefresh = { onEvent(PasswordHealthUiEvent.RunHealthCheck) },
+            isRefreshing = state.isRefreshing,
+            onRefresh = { onEvent(PasswordHealthUiEvent.RefreshHealthCheck) },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)

@@ -31,6 +31,7 @@ import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.feature.password_health.R
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReportError
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiState
+import de.davis.keygo.feature.password_health.presentation.model.RunPhase
 import de.davis.keygo.feature.password_health.presentation.model.coverageNote
 import de.davis.keygo.feature.password_health.presentation.model.detailLine
 import de.davis.keygo.feature.password_health.presentation.model.icon
@@ -64,7 +65,7 @@ internal fun PasswordHealthStatus(
             contentColor = contentColor
         ),
         leadingItem = {
-            AnimatedContent(state.isLoading) {
+            AnimatedContent(state.isFirstLoad) {
                 when (it) {
                     true -> CircularWavyProgressIndicator(
                         modifier = Modifier.size(40.dp)
@@ -115,7 +116,7 @@ private fun AllGoodPreview() {
                 PasswordHealthStatus(state = PasswordHealthUiState())
                 PasswordHealthStatus(
                     state = PasswordHealthUiState(
-                        isLoading = true
+                        phase = RunPhase.FirstLoad
                     )
                 )
                 PasswordHealthStatus(

@@ -10,6 +10,7 @@ import de.davis.keygo.feature.password_health.domain.usecase.PasswordHealthRepor
 import de.davis.keygo.feature.password_health.presentation.model.HealthSection
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiEvent
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiState
+import de.davis.keygo.feature.password_health.presentation.model.RunPhase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,14 +23,15 @@ internal class PasswordHealthViewModel(
     private val passwordHealth: PasswordHealthReportUseCase
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(PasswordHealthUiState(isLoading = true))
+    private val _uiState = MutableStateFlow(PasswordHealthUiState(phase = RunPhase.FirstLoad))
     val uiState = _uiState.asStateFlow()
 
     private var run: Job? = null
 
     fun onEvent(event: PasswordHealthUiEvent) {
         when (event) {
-            PasswordHealthUiEvent.RunHealthCheck -> runHealthCheck()
+            PasswordHealthUiEvent.RunHealthCheck -> runHealthCheck(RunPhase.FirstLoad)
+            PasswordHealthUiEvent.RefreshHealthCheck -> runHealthCheck(RunPhase.Refresh)
 
             PasswordHealthUiEvent.DismissGeneratePassword -> {}
             is PasswordHealthUiEvent.OnBreachCheckChanged -> {}
@@ -37,11 +39,11 @@ internal class PasswordHealthViewModel(
         }
     }
 
-    private fun runHealthCheck() {
+    private fun runHealthCheck(phase: RunPhase) {
         if (run?.isActive == true) return
 
         run = viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(phase = phase) }
 
             val report = passwordHealth()
             _uiState.update { state ->
@@ -55,7 +57,7 @@ internal class PasswordHealthViewModel(
 }
 
 private fun PasswordHealthUiState.withReport(report: PasswordHealthReport) = copy(
-    isLoading = false,
+    phase = RunPhase.Idle,
     error = null,
     totalPasswordCount = report.totalPasswordsScanned,
     healthSections = report.toSections(),
@@ -64,7 +66,7 @@ private fun PasswordHealthUiState.withReport(report: PasswordHealthReport) = cop
 )
 
 private fun PasswordHealthUiState.withError(error: PasswordHealthReportError) = copy(
-    isLoading = false,
+    phase = RunPhase.Idle,
     error = error,
     totalPasswordCount = 0,
     healthSections = emptyList(),

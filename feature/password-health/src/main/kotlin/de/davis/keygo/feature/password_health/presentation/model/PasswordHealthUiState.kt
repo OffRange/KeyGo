@@ -24,6 +24,12 @@ import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReportE
 import de.davis.keygo.feature.password_health.domain.model.RelatedGroup
 import de.davis.keygo.feature.password_health.domain.model.RelationType
 
+internal enum class RunPhase {
+    Idle,
+    FirstLoad,
+    Refresh,
+}
+
 internal enum class PasswordHealthStatus {
     NO_DATA,
     ALL_GOOD,
@@ -77,7 +83,7 @@ internal data class HealthSection(
 
 @Stable
 internal data class PasswordHealthUiState(
-    val isLoading: Boolean = false,
+    val phase: RunPhase = RunPhase.Idle,
     val breachCheckEnabled: Boolean = false,
     val totalPasswordCount: Int = 0,
     val healthSections: List<HealthSection> = emptyList(),
@@ -86,6 +92,9 @@ internal data class PasswordHealthUiState(
     val error: PasswordHealthReportError? = null,
     val generatePassword: Boolean = false,
 ) {
+    val isFirstLoad = phase == RunPhase.FirstLoad
+    val isRefreshing = phase == RunPhase.Refresh
+
     val summary by lazy { healthSections.summary() }
 
     val breachGap: CheckGap? = checkGaps[CheckKind.Breach]
@@ -103,7 +112,7 @@ internal data class PasswordHealthUiState(
 @Composable
 @ReadOnlyComposable
 internal fun PasswordHealthUiState.toneColor(): Color {
-    if (isLoading) return MaterialTheme.colorScheme.surfaceContainerHigh
+    if (isFirstLoad) return MaterialTheme.colorScheme.surfaceContainerHigh
     return when (status) {
         PasswordHealthStatus.NO_DATA -> MaterialTheme.colorScheme.surfaceContainerHigh
         PasswordHealthStatus.ALL_GOOD -> MaterialTheme.colorScheme.secondaryContainer
@@ -124,7 +133,7 @@ internal fun PasswordHealthStatus.icon() = when (this) {
 @Composable
 @ReadOnlyComposable
 internal fun PasswordHealthUiState.verdict(): String {
-    if (isLoading) return stringResource(R.string.checking_passwords)
+    if (isFirstLoad) return stringResource(R.string.checking_passwords)
     return when (status) {
         PasswordHealthStatus.NO_DATA -> stringResource(R.string.password_health_no_data)
 
@@ -146,7 +155,7 @@ internal fun PasswordHealthUiState.verdict(): String {
 @Composable
 @ReadOnlyComposable
 internal fun PasswordHealthUiState.detailLine(): String? {
-    if (isLoading) return null
+    if (isFirstLoad) return null
 
     return when (status) {
         PasswordHealthStatus.NO_DATA -> null
@@ -172,7 +181,7 @@ internal fun PasswordHealthUiState.detailLine(): String? {
 @Composable
 @ReadOnlyComposable
 internal fun PasswordHealthUiState.coverageNote(): String? {
-    if (isLoading || unreadable.isEmpty()) return null
+    if (isFirstLoad || unreadable.isEmpty()) return null
 
     return pluralStringResource(
         R.plurals.password_health_unreadable_count,
