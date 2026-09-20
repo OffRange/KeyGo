@@ -11,6 +11,13 @@
         <item quantity="other">%1$d passwords need attention</item>
     </plurals>
     <string name="checking_passwords">Checking your passwords…</string>
+    <string name="password_health_check_failed">Couldn\'t check your passwords</string>
+    <string name="password_health_unreadable">None of your passwords could be opened for checking</string>
+    <string name="password_health_retry_hint">Pull down to try again</string>
+    <plurals name="password_health_unreadable_count">
+        <item quantity="one">%1$d password couldn\'t be opened and went unchecked</item>
+        <item quantity="other">%1$d passwords couldn\'t be opened and went unchecked</item>
+    </plurals>
 
     <plurals name="detail_line_checked">
         <item quantity="one">%1$d password checked</item>

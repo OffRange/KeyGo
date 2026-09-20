@@ -25,10 +25,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.feature.password_health.R
+import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReportError
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiState
+import de.davis.keygo.feature.password_health.presentation.model.coverageNote
 import de.davis.keygo.feature.password_health.presentation.model.detailLine
 import de.davis.keygo.feature.password_health.presentation.model.icon
 import de.davis.keygo.feature.password_health.presentation.model.toneColor
@@ -77,20 +80,24 @@ internal fun PasswordHealthStatus(
     ) {
         Text(text = state.verdict())
 
-        val detail = state.detailLine()
+        SupportingLine(text = state.detailLine(), label = "detailLineVisibility")
+        SupportingLine(text = state.coverageNote(), label = "coverageNoteVisibility")
+    }
+}
 
-        AnimatedVisibility(
-            visible = detail != null,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-            label = "detailLineVisibility"
-        ) {
-            if (detail != null) {
-                Text(
-                    text = detail,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
+@Composable
+private fun SupportingLine(text: String?, label: String) {
+    AnimatedVisibility(
+        visible = text != null,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically(),
+        label = label
+    ) {
+        if (text != null) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
 }
@@ -119,6 +126,32 @@ private fun AllGoodPreview() {
                 PasswordHealthStatus(
                     state = PasswordHealthUiState(
                         totalPasswordCount = 12,
+                    ),
+                )
+            }
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun UnavailablePreview() {
+    MaterialTheme {
+        Surface(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                PasswordHealthStatus(
+                    state = PasswordHealthUiState(
+                        error = PasswordHealthReportError.Unreadable,
+                    ),
+                )
+                PasswordHealthStatus(
+                    state = PasswordHealthUiState(
+                        totalPasswordCount = 9,
+                        unreadable = setOf(newItemId(), newItemId(), newItemId()),
                     ),
                 )
             }

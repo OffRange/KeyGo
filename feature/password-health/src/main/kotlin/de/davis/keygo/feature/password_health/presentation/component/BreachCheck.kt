@@ -13,9 +13,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.ui.components.KeyGoSwitch
 import de.davis.keygo.feature.password_health.R
-import de.davis.keygo.feature.password_health.domain.model.CheckError
 import de.davis.keygo.feature.password_health.domain.model.CheckGap
 import de.davis.keygo.feature.password_health.domain.model.CheckKind
+import de.davis.keygo.feature.password_health.domain.model.GapReason
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiState
 import de.davis.keygo.feature.password_health.presentation.segmentContainerColor
 
@@ -25,15 +25,16 @@ internal fun BreachCheck(
     onChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val gap = state.breachGap
+    val message = state.breachGap?.message()
 
     KeyGoSwitch(
         checked = state.breachCheckEnabled,
         onCheckedChange = onChange,
         modifier = modifier,
         supportingContent = {
-            if (gap == null) Text(text = stringResource(R.string.breach_check_opt_in_description))
-            else Text(text = gap.message(), color = MaterialTheme.colorScheme.error)
+            if (message == null)
+                Text(text = stringResource(R.string.breach_check_opt_in_description))
+            else Text(text = message, color = MaterialTheme.colorScheme.error)
         },
         verticalAlignment = Alignment.CenterVertically,
         colors = ListItemDefaults.segmentedColors(containerColor = segmentContainerColor),
@@ -45,14 +46,17 @@ internal fun BreachCheck(
 
 @Composable
 @ReadOnlyComposable
-private fun CheckGap.message(): String = pluralStringResource(
-    when (error) {
-        CheckError.Unreachable -> R.plurals.breach_check_unreachable
-        CheckError.Failed -> R.plurals.breach_check_failed
-    },
-    unchecked.size,
-    unchecked.size,
-)
+private fun CheckGap.message(): String? {
+    val plural = when (reason) {
+        // An off switch is the whole explanation, so there is nothing to warn about.
+        GapReason.Disabled -> return null
+
+        GapReason.Unreachable -> R.plurals.breach_check_unreachable
+        GapReason.Failed -> R.plurals.breach_check_failed
+    }
+
+    return pluralStringResource(plural, unchecked.size, unchecked.size)
+}
 
 @Preview
 @Composable
@@ -73,7 +77,7 @@ private fun BreachCheckUnavailablePreview() {
             state = PasswordHealthUiState(
                 checkGaps = mapOf(
                     CheckKind.Breach to CheckGap(
-                        error = CheckError.Unreachable,
+                        reason = GapReason.Unreachable,
                         unchecked = setOf(newItemId(), newItemId(), newItemId()),
                     ),
                 ),

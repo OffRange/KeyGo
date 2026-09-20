@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GppBad
 import androidx.compose.material.icons.filled.GppGood
+import androidx.compose.material.icons.filled.GppMaybe
 import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -12,19 +13,22 @@ import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.feature.password_health.R
 import de.davis.keygo.feature.password_health.domain.model.CheckGap
 import de.davis.keygo.feature.password_health.domain.model.CheckKind
 import de.davis.keygo.feature.password_health.domain.model.FindingSeverity
 import de.davis.keygo.feature.password_health.domain.model.ItemHealth
 import de.davis.keygo.feature.password_health.domain.model.ItemIssue
+import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReportError
 import de.davis.keygo.feature.password_health.domain.model.RelatedGroup
 import de.davis.keygo.feature.password_health.domain.model.RelationType
 
 internal enum class PasswordHealthStatus {
     NO_DATA,
     ALL_GOOD,
-    NEEDS_ATTENTION
+    NEEDS_ATTENTION,
+    FAILED
 }
 
 data class HealthSummary(
@@ -78,6 +82,8 @@ internal data class PasswordHealthUiState(
     val totalPasswordCount: Int = 0,
     val healthSections: List<HealthSection> = emptyList(),
     val checkGaps: Map<CheckKind, CheckGap> = emptyMap(),
+    val unreadable: Set<ItemId> = emptySet(),
+    val error: PasswordHealthReportError? = null,
     val generatePassword: Boolean = false,
 ) {
     val summary by lazy { healthSections.summary() }
@@ -85,6 +91,9 @@ internal data class PasswordHealthUiState(
     val breachGap: CheckGap? = checkGaps[CheckKind.Breach]
 
     val status = when {
+        // An empty vault is not a failure, it just has nothing to say yet.
+        error == PasswordHealthReportError.NoPasswords -> PasswordHealthStatus.NO_DATA
+        error != null -> PasswordHealthStatus.FAILED
         totalPasswordCount == 0 -> PasswordHealthStatus.NO_DATA
         healthSections.isNotEmpty() -> PasswordHealthStatus.NEEDS_ATTENTION
         else -> PasswordHealthStatus.ALL_GOOD
@@ -98,7 +107,8 @@ internal fun PasswordHealthUiState.toneColor(): Color {
     return when (status) {
         PasswordHealthStatus.NO_DATA -> MaterialTheme.colorScheme.surfaceContainerHigh
         PasswordHealthStatus.ALL_GOOD -> MaterialTheme.colorScheme.secondaryContainer
-        PasswordHealthStatus.NEEDS_ATTENTION -> MaterialTheme.colorScheme.errorContainer
+        PasswordHealthStatus.NEEDS_ATTENTION,
+        PasswordHealthStatus.FAILED -> MaterialTheme.colorScheme.errorContainer
     }
 }
 
@@ -108,6 +118,7 @@ internal fun PasswordHealthStatus.icon() = when (this) {
     PasswordHealthStatus.NO_DATA -> Icons.Default.HealthAndSafety
     PasswordHealthStatus.ALL_GOOD -> Icons.Default.GppGood
     PasswordHealthStatus.NEEDS_ATTENTION -> Icons.Default.GppBad
+    PasswordHealthStatus.FAILED -> Icons.Default.GppMaybe
 }
 
 @Composable
@@ -118,7 +129,8 @@ internal fun PasswordHealthUiState.verdict(): String {
         PasswordHealthStatus.NO_DATA -> stringResource(R.string.password_health_no_data)
 
         PasswordHealthStatus.ALL_GOOD ->
-            if (checkGaps.isEmpty()) stringResource(R.string.password_health_all_good)
+            if (checkGaps.isEmpty() && unreadable.isEmpty())
+                stringResource(R.string.password_health_all_good)
             else stringResource(R.string.password_health_checked_all_good)
 
         PasswordHealthStatus.NEEDS_ATTENTION -> pluralStringResource(
@@ -126,6 +138,8 @@ internal fun PasswordHealthUiState.verdict(): String {
             summary.needsAttention,
             summary.needsAttention
         )
+
+        PasswordHealthStatus.FAILED -> error.failureMessage()
     }
 }
 
@@ -136,6 +150,7 @@ internal fun PasswordHealthUiState.detailLine(): String? {
 
     return when (status) {
         PasswordHealthStatus.NO_DATA -> null
+        PasswordHealthStatus.FAILED -> stringResource(R.string.password_health_retry_hint)
         PasswordHealthStatus.ALL_GOOD -> pluralStringResource(
             R.plurals.detail_line_checked,
             totalPasswordCount,
@@ -152,6 +167,26 @@ internal fun PasswordHealthUiState.detailLine(): String? {
             ).joinToString(" \u2022 ")
         }
     }
+}
+
+@Composable
+@ReadOnlyComposable
+internal fun PasswordHealthUiState.coverageNote(): String? {
+    if (isLoading || unreadable.isEmpty()) return null
+
+    return pluralStringResource(
+        R.plurals.password_health_unreadable_count,
+        unreadable.size,
+        unreadable.size,
+    )
+}
+
+@Composable
+@ReadOnlyComposable
+private fun PasswordHealthReportError?.failureMessage(): String = when (this) {
+    PasswordHealthReportError.Unreadable -> stringResource(R.string.password_health_unreadable)
+    PasswordHealthReportError.NoPasswords, null ->
+        stringResource(R.string.password_health_check_failed)
 }
 
 @Composable

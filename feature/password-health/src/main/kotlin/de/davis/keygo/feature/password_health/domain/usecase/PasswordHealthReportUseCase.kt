@@ -1,17 +1,18 @@
 package de.davis.keygo.feature.password_health.domain.usecase
 
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.decrypt
+import de.davis.keygo.core.security.domain.model.CryptoScopeError
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.getOrNull
+import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.password_health.domain.checker.PasswordHealthChecker
-import de.davis.keygo.feature.password_health.domain.model.CheckError
-import de.davis.keygo.feature.password_health.domain.model.CheckGap
-import de.davis.keygo.feature.password_health.domain.model.CheckOutcome
 import de.davis.keygo.feature.password_health.domain.model.HealthFinding
 import de.davis.keygo.feature.password_health.domain.model.ItemHealth
 import de.davis.keygo.feature.password_health.domain.model.PasswordCandidate
@@ -33,25 +34,23 @@ class PasswordHealthReportUseCase(
 
     suspend operator fun invoke(): Result<PasswordHealthReport, PasswordHealthReportError> =
         resultBinding {
-            val candidates = loginRepository.observeLogins()
+            val withPassword = loginRepository.observeLogins()
                 .firstOrNull()
-                ?.mapNotNull {
-                    it.passwordCredential?.let { credential ->
-                        cryptographicScopeProvider.itemScope(
-                            itemId = it.id,
-                        ) {
-                            PasswordCandidate(
-                                id = it.id,
-                                title = it.name,
-                                username = it.username,
-                                score = credential.score,
-                                password = credential.secret.decrypt().toCharArray(),
-                            )
-                        }.getOrNull() // TODO
-                    }
-                }
-                .asResult(PasswordHealthReportError.NoPasswords)
-                .bind()
+                .orEmpty()
+                .mapNotNull { login -> login.passwordCredential?.let { login to it } }
+
+            withPassword.isNotEmpty().asResult(PasswordHealthReportError.NoPasswords).bind()
+
+            // A password that will not decrypt is checked by nobody, so it is reported instead
+            // of quietly dropping out of the count.
+            val unreadable = mutableSetOf<ItemId>()
+            val candidates = withPassword.mapNotNull { (login, credential) ->
+                candidate(login, credential)
+                    .onFailure { unreadable += login.id }
+                    .getOrNull()
+            }
+
+            candidates.isNotEmpty().asResult(PasswordHealthReportError.Unreadable).bind()
 
             val outcomes = try {
                 coroutineScope {
@@ -61,11 +60,9 @@ class PasswordHealthReportUseCase(
                 candidates.forEach { it.password.fill('\u0000') }
             }
 
-            val findings = outcomes.flatMap { (_, outcome) ->
-                outcome.getOrNull()?.findings.orEmpty()
-            }
+            val findings = outcomes.flatMap { (_, outcome) -> outcome.findings }
             val gaps = outcomes.mapNotNull { (kind, outcome) ->
-                outcome.gap(candidates)?.let { kind to it }
+                outcome.gap?.let { kind to it }
             }.toMap()
 
             val issuesById = findings.filterIsInstance<HealthFinding.Item>()
@@ -111,19 +108,25 @@ class PasswordHealthReportUseCase(
                 standalone = standalone,
                 totalPasswordsScanned = candidates.size,
                 gaps = gaps,
+                unreadable = unreadable,
             )
         }
-}
 
-private fun Result<CheckOutcome, CheckError>.gap(candidates: List<PasswordCandidate>): CheckGap? =
-    when (this) {
-        is Result.Failure -> CheckGap(
-            error = error,
-            unchecked = candidates.mapTo(mutableSetOf()) { it.id },
+    private suspend fun candidate(
+        login: Login,
+        credential: PasswordCredential,
+    ): Result<PasswordCandidate, CryptoScopeError> = cryptographicScopeProvider.itemScope(
+        itemId = login.id,
+    ) {
+        PasswordCandidate(
+            id = login.id,
+            title = login.name,
+            username = login.username,
+            score = credential.score,
+            password = credential.secret.decrypt().toCharArray(),
         )
-
-        is Result.Success -> success.gap
     }
+}
 
 private class UnionFind<T> {
     private val parent = HashMap<T, T>()

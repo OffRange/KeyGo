@@ -4,13 +4,14 @@ import android.util.Log
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.feature.password_health.domain.model.BreachedError
-import de.davis.keygo.feature.password_health.domain.model.CheckError
 import de.davis.keygo.feature.password_health.domain.model.CheckGap
 import de.davis.keygo.feature.password_health.domain.model.CheckKind
 import de.davis.keygo.feature.password_health.domain.model.CheckOutcome
+import de.davis.keygo.feature.password_health.domain.model.GapReason
 import de.davis.keygo.feature.password_health.domain.model.HealthFinding
 import de.davis.keygo.feature.password_health.domain.model.ItemIssue
 import de.davis.keygo.feature.password_health.domain.model.PasswordCandidate
+import de.davis.keygo.feature.password_health.domain.repository.BreachCheckStateRepository
 import de.davis.keygo.feature.password_health.domain.repository.BreachedRepository
 import de.davis.keygo.feature.password_health.domain.repository.BreachedRepository.Companion.PREFIX_LENGTH
 import kotlinx.coroutines.Dispatchers
@@ -25,14 +26,16 @@ import java.security.MessageDigest
 @Single
 internal class BreachedPasswordCheck(
     private val breachedRepository: BreachedRepository,
+    private val breachCheckStateRepository: BreachCheckStateRepository,
 ) : PasswordHealthChecker {
 
     override val type = CheckKind.Breach
 
-    override suspend fun check(
-        candidates: List<PasswordCandidate>,
-    ): Result<CheckOutcome, CheckError> {
-        if (candidates.isEmpty()) return Result.Success(CheckOutcome(findings = emptyList()))
+    override suspend fun check(candidates: List<PasswordCandidate>): CheckOutcome {
+        if (candidates.isEmpty()) return CheckOutcome()
+
+        if (!breachCheckStateRepository.getBreachCheckState().enabled)
+            return CheckOutcome.skipped(GapReason.Disabled, candidates)
 
         val ranges = candidates.byRange()
 
@@ -44,7 +47,7 @@ internal class BreachedPasswordCheck(
 
         val findings = mutableListOf<HealthFinding>()
         val unchecked = mutableSetOf<ItemId>()
-        val errors = mutableSetOf<CheckError>()
+        val reasons = mutableSetOf<GapReason>()
 
         answers.forEach { (bySuffix, answer) ->
             when (answer) {
@@ -52,7 +55,7 @@ internal class BreachedPasswordCheck(
 
                 is Result.Failure -> {
                     bySuffix.values.forEach { sharing -> sharing.mapTo(unchecked) { it.id } }
-                    errors += answer.error.asCheckError()
+                    reasons += answer.error.asGapReason()
                 }
             }
         }
@@ -61,22 +64,18 @@ internal class BreachedPasswordCheck(
             unchecked.isEmpty() -> null
 
             // A connection that is down explains the run better than one range answering oddly.
-            CheckError.Unreachable in errors ->
-                CheckGap(error = CheckError.Unreachable, unchecked = unchecked)
+            GapReason.Unreachable in reasons ->
+                CheckGap(reason = GapReason.Unreachable, unchecked = unchecked)
 
-            else -> CheckGap(error = CheckError.Failed, unchecked = unchecked)
+            else -> CheckGap(reason = GapReason.Failed, unchecked = unchecked)
         }
-
-        // Not a single range came back, so there is no partly covered run to report.
-        if (gap != null && answers.all { (_, answer) -> answer is Result.Failure })
-            return Result.Failure(gap.error)
 
         if (gap != null) Log.w(
             TAG,
-            "${unchecked.size} of ${candidates.size} passwords went unchecked: ${gap.error}",
+            "${unchecked.size} of ${candidates.size} passwords went unchecked: ${gap.reason}",
         )
 
-        return Result.Success(CheckOutcome(findings = findings, gap = gap))
+        return CheckOutcome(findings = findings, gap = gap)
     }
 
     private fun Map<String, Int>.findings(
@@ -90,9 +89,9 @@ internal class BreachedPasswordCheck(
         }
     }
 
-    private fun BreachedError.asCheckError() = when (this) {
-        BreachedError.Unreachable -> CheckError.Unreachable
-        BreachedError.ApiFailed, BreachedError.InvalidPrefix -> CheckError.Failed
+    private fun BreachedError.asGapReason() = when (this) {
+        BreachedError.Unreachable -> GapReason.Unreachable
+        BreachedError.ApiFailed, BreachedError.InvalidPrefix -> GapReason.Failed
     }
 
     private suspend fun List<PasswordCandidate>.byRange(): Map<String, Map<String, List<PasswordCandidate>>> {
