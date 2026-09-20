@@ -17,4 +17,6 @@ dependencies {
     implementation(projects.core.util)
     implementation(projects.core.security)
     implementation(projects.feature.item.create)
+
+    implementation(libs.okhttp)
 }
