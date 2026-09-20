@@ -6,7 +6,9 @@ import de.davis.keygo.feature.password_health.data.mapper.toDomain
 import de.davis.keygo.feature.password_health.di.annotation.BreachedQualifier
 import de.davis.keygo.feature.password_health.domain.model.BreachCheckState
 import de.davis.keygo.feature.password_health.domain.repository.BreachCheckStateRepository
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import org.koin.core.annotation.Single
 
 @Single
@@ -14,6 +16,9 @@ internal class BreachCheckStateRepositoryImpl(
     @BreachedQualifier
     private val dataStore: DataStore<ProtoBreachCheckState>,
 ) : BreachCheckStateRepository {
+
+    override fun observeBreachCheckState(): Flow<BreachCheckState> = dataStore.data
+        .map(ProtoBreachCheckState::toDomain)
 
     override suspend fun getBreachCheckState(): BreachCheckState =
         dataStore.data.first().toDomain()
