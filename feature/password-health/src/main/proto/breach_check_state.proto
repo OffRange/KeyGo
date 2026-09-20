@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package de.davis.keygo.feature.backup.data.local.model;
+option java_multiple_files = true;
+
+message ProtoBreachCheckState {
+  bool enabled = 1;
+}

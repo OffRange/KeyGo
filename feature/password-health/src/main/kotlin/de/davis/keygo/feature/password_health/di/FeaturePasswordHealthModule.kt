@@ -1,6 +1,9 @@
 package de.davis.keygo.feature.password_health.di
 
 import android.content.Context
+import androidx.datastore.dataStore
+import de.davis.keygo.core.util.data.serializer.DefaultProtoSerializer
+import de.davis.keygo.feature.backup.data.local.model.ProtoBreachCheckState
 import de.davis.keygo.feature.password_health.di.annotation.BreachedQualifier
 import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
@@ -34,6 +37,19 @@ object FeaturePasswordHealthModule {
             }
             .build()
     }
+
+    private val Context.breachCheckStateDataStore by dataStore(
+        "breach_check_state.pb",
+        DefaultProtoSerializer(
+            defaultInstance = ProtoBreachCheckState.getDefaultInstance(),
+            parser = ProtoBreachCheckState.parser()
+        )
+    )
+
+    @Single
+    @BreachedQualifier
+    internal fun provideBreachCheckStateDataStore(context: Context) =
+        context.breachCheckStateDataStore
 
     private fun Context.versionName(): String =
         packageManager.getPackageInfo(packageName, 0).versionName.orEmpty()

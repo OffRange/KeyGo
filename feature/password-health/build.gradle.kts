@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.keygo.android.compose)
+    alias(libs.plugins.keygo.android.protobuf)
     alias(libs.plugins.kotlin.serialization)
 }
 
@@ -19,4 +20,6 @@ dependencies {
     implementation(projects.feature.item.create)
 
     implementation(libs.okhttp)
+
+    implementation(libs.androidx.datastore)
 }
