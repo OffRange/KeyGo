@@ -15,6 +15,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -58,29 +59,36 @@ internal fun PasswordHealthContent(
             )
         }
     ) { innerPadding ->
-        LazyColumn(
+        PullToRefreshBox(
+            isRefreshing = state.isLoading,
+            onRefresh = { onEvent(PasswordHealthUiEvent.RunHealthCheck) },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
-            contentPadding = PaddingValues(8.dp),
-            verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
         ) {
-            item(key = "status") {
-                PasswordHealthStatus(state = state, modifier = Modifier.animateItem())
-            }
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+                contentPadding = PaddingValues(8.dp),
+                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+            ) {
+                item(key = "status") {
+                    PasswordHealthStatus(state = state, modifier = Modifier.animateItem())
+                }
 
-            if (state.status == PasswordHealthStatus.NEEDS_ATTENTION)
-                needsAttentionSection(sections = state.healthSections)
+                if (state.status == PasswordHealthStatus.NEEDS_ATTENTION)
+                    needsAttentionSection(sections = state.healthSections)
 
-            item(key = "breach_check") {
-                Spacer(modifier = Modifier.height(28.dp))
-                BreachCheck(
-                    state = state,
-                    onChange = { onEvent(PasswordHealthUiEvent.OnBreachCheckChanged(it)) },
-                    modifier = Modifier.animateItem()
-                )
+                item(key = "breach_check") {
+                    Spacer(modifier = Modifier.height(28.dp))
+                    BreachCheck(
+                        state = state,
+                        onChange = { onEvent(PasswordHealthUiEvent.OnBreachCheckChanged(it)) },
+                        modifier = Modifier.animateItem()
+                    )
+                }
             }
         }
     }
