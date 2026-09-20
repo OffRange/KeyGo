@@ -6,7 +6,8 @@ data class ItemHealth(
     val itemId: ItemId,
     val title: String,
     val username: String?,
-    val issues: List<ItemIssue>
+    val issues: List<ItemIssue>,
+    val urls: List<String> = emptyList(),
 ) {
     val maxSeverity: FindingSeverity? = issues.maxOfOrNull { it.severity }
 

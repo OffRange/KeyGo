@@ -81,6 +81,7 @@ class PasswordHealthReportUseCase(
                 title = item.title,
                 username = item.username,
                 issues = issuesById[item.id].orEmpty().sortedByDescending { it.severity },
+                urls = item.urls,
             )
 
             val (related, unrelated) = candidates.partition { uf.contains(it.id) }
@@ -124,6 +125,7 @@ class PasswordHealthReportUseCase(
             username = login.username,
             score = credential.score,
             password = credential.secret.decrypt().toCharArray(),
+            urls = login.domainInfos.map { it.value },
         )
     }
 }

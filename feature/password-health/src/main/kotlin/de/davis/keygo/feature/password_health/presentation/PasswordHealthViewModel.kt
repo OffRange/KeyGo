@@ -3,11 +3,18 @@ package de.davis.keygo.feature.password_health.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.util.fold
+import de.davis.keygo.feature.item.core.domain.model.ItemUpsertError
+import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
+import de.davis.keygo.feature.item.core.domain.model.set
+import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
+import de.davis.keygo.feature.item.view.domain.WebsiteHandler
 import de.davis.keygo.feature.password_health.domain.model.FindingSeverity
+import de.davis.keygo.feature.password_health.domain.model.PasswordFixError
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReport
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReportError
 import de.davis.keygo.feature.password_health.domain.repository.BreachCheckStateRepository
 import de.davis.keygo.feature.password_health.domain.usecase.PasswordHealthReportUseCase
+import de.davis.keygo.feature.password_health.presentation.model.FixFlow
 import de.davis.keygo.feature.password_health.presentation.model.HealthSection
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiEvent
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiState
@@ -24,7 +31,9 @@ import org.koin.core.annotation.KoinViewModel
 @KoinViewModel
 internal class PasswordHealthViewModel(
     private val passwordHealth: PasswordHealthReportUseCase,
+    private val createNewOrUpdateLogin: CreateNewOrUpdateLoginUseCase,
     private val breachCheckStateRepository: BreachCheckStateRepository,
+    private val websiteHandler: WebsiteHandler,
 ) : ViewModel() {
 
     private val _base = MutableStateFlow(PasswordHealthUiState(phase = RunPhase.FirstLoad))
@@ -51,13 +60,67 @@ internal class PasswordHealthViewModel(
                 if (event.enabled) runHealthCheck(RunPhase.FirstLoad)
             }
 
-            PasswordHealthUiEvent.DismissGeneratePassword -> {}
-            is PasswordHealthUiEvent.PasswordGenerated -> {}
+            is PasswordHealthUiEvent.FixClicked ->
+                _base.update { it.copy(fixFlow = FixFlow.Generating(event.itemId)) }
+
+            is PasswordHealthUiEvent.PasswordGenerated -> _base.update { state ->
+                val target = state.fixFlow ?: return@update state
+                state.copy(
+                    fixFlow = FixFlow.Pending(itemId = target.itemId, password = event.password),
+                )
+            }
+
+            PasswordHealthUiEvent.DismissGeneratePassword -> _base.update {
+                if (it.fixFlow is FixFlow.Generating) it.copy(fixFlow = null) else it
+            }
+
+            is PasswordHealthUiEvent.OpenSite -> websiteHandler.openWebsite(event.url)
+
+            PasswordHealthUiEvent.DiscardFix -> _base.update { it.copy(fixFlow = null) }
+
+            PasswordHealthUiEvent.ConfirmPasswordChanged -> applyPendingFix()
         }
     }
 
-    private fun runHealthCheck(phase: RunPhase) {
-        if (run?.isActive == true) return
+    private fun applyPendingFix() {
+        val pending = _base.value.pendingFix ?: return
+        if (pending.applying) return
+
+        viewModelScope.launch {
+            _base.update {
+                it.copy(
+                    fixFlow = pending.copy(applying = true, error = null),
+                    optimisticallyFixed = it.optimisticallyFixed + pending.itemId,
+                )
+            }
+
+            createNewOrUpdateLogin(
+                UpsertLogin.update(itemId = pending.itemId, password = set(pending.password)),
+            ).fold(
+                onSuccess = {
+                    _base.update { it.copy(fixFlow = null) }
+                    runHealthCheck(RunPhase.Refresh, restartInFlight = true)
+                },
+                onFailure = { errors ->
+                    val error =
+                        if (errors.any { it is ItemUpsertError.CryptoError }) PasswordFixError.Locked
+                        else PasswordFixError.Save
+                    _base.update {
+                        it.copy(
+                            fixFlow = pending.copy(applying = false, error = error),
+                            optimisticallyFixed = it.optimisticallyFixed - pending.itemId,
+                        )
+                    }
+                },
+            )
+        }
+    }
+
+    private fun runHealthCheck(phase: RunPhase, restartInFlight: Boolean = false) {
+        if (run?.isActive == true) {
+            if (!restartInFlight) return
+            run?.cancel()
+        }
 
         run = viewModelScope.launch {
             _base.update { it.copy(phase = phase) }
@@ -77,18 +140,20 @@ private fun PasswordHealthUiState.withReport(report: PasswordHealthReport) = cop
     phase = RunPhase.Idle,
     error = null,
     totalPasswordCount = report.totalPasswordsScanned,
-    healthSections = report.toSections(),
+    reportedSections = report.toSections(),
     checkGaps = report.gaps,
     unreadable = report.unreadable,
+    optimisticallyFixed = emptySet(),
 )
 
 private fun PasswordHealthUiState.withError(error: PasswordHealthReportError) = copy(
     phase = RunPhase.Idle,
     error = error,
     totalPasswordCount = 0,
-    healthSections = emptyList(),
+    reportedSections = emptyList(),
     checkGaps = emptyMap(),
     unreadable = emptySet(),
+    optimisticallyFixed = emptySet(),
 )
 
 private fun PasswordHealthReport.toSections(): List<HealthSection> {

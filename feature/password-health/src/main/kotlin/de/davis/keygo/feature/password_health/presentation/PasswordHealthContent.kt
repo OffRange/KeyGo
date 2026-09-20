@@ -17,14 +17,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.ui.clipboard.setText
 import de.davis.keygo.feature.item.create.presentation.password.GeneratePasswordModalBottomSheet
 import de.davis.keygo.feature.password_health.R
 import de.davis.keygo.feature.password_health.domain.model.FindingSeverity
@@ -38,6 +41,7 @@ import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthS
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiEvent
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiState
 import de.davis.keygo.feature.password_health.presentation.model.verdict
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun PasswordHealthContent(
@@ -45,6 +49,9 @@ internal fun PasswordHealthContent(
     onEvent: (PasswordHealthUiEvent) -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    val copiedLabel = stringResource(R.string.fix_copied_label)
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -78,8 +85,11 @@ internal fun PasswordHealthContent(
                     PasswordHealthStatus(state = state, modifier = Modifier.animateItem())
                 }
 
-                if (state.status == PasswordHealthStatus.NEEDS_ATTENTION)
-                    needsAttentionSection(sections = state.healthSections)
+                if (state.status == PasswordHealthStatus.NEEDS_ATTENTION) needsAttentionSection(
+                    sections = state.healthSections,
+                    pendingFix = state.pendingFix,
+                    onEvent = onEvent,
+                )
 
                 item(key = "breach_check") {
                     Spacer(modifier = Modifier.height(28.dp))
@@ -93,8 +103,13 @@ internal fun PasswordHealthContent(
         }
     }
 
-    if (state.generatePassword) GeneratePasswordModalBottomSheet(
-        onGenerated = { onEvent(PasswordHealthUiEvent.PasswordGenerated(it)) },
+    if (state.generatingFix != null) GeneratePasswordModalBottomSheet(
+        onGenerated = { password ->
+            scope.launch {
+                clipboard.setText(label = copiedLabel, text = password, sensitive = true)
+            }
+            onEvent(PasswordHealthUiEvent.PasswordGenerated(password))
+        },
         onDismiss = { onEvent(PasswordHealthUiEvent.DismissGeneratePassword) },
     )
 }
@@ -109,7 +124,7 @@ private fun PasswordHealthContentPreview() {
             PasswordHealthContent(
                 state = PasswordHealthUiState(
                     totalPasswordCount = 12,
-                    healthSections = listOf(
+                    reportedSections = listOf(
                         HealthSection(
                             severity = FindingSeverity.Medium,
                             groups = emptyList(),

@@ -81,19 +81,48 @@ internal data class HealthSection(
     val standalone: List<ItemHealth>
 )
 
+internal fun List<HealthSection>.withoutFixed(fixed: Set<ItemId>): List<HealthSection> {
+    if (fixed.isEmpty()) return this
+
+    return mapNotNull { section ->
+        val groups = mutableListOf<RelatedGroup>()
+        val unrelated = mutableListOf<ItemHealth>()
+
+        section.groups.forEach { group ->
+            val members = group.members.filterNot { it.itemId in fixed }
+            if (members.size >= MinimumGroupSize) groups += group.copy(members = members.toSet())
+            else unrelated += members.filter { it.issues.isNotEmpty() }
+        }
+
+        val standalone = (section.standalone.filterNot { it.itemId in fixed } + unrelated)
+            .sortedByDescending { it.maxSeverity }
+
+        if (groups.isEmpty() && standalone.isEmpty()) null
+        else section.copy(groups = groups, standalone = standalone)
+    }
+}
+
+private const val MinimumGroupSize = 2
+
 @Stable
 internal data class PasswordHealthUiState(
     val phase: RunPhase = RunPhase.Idle,
     val breachCheckEnabled: Boolean = false,
     val totalPasswordCount: Int = 0,
-    val healthSections: List<HealthSection> = emptyList(),
+    val reportedSections: List<HealthSection> = emptyList(),
     val checkGaps: Map<CheckKind, CheckGap> = emptyMap(),
     val unreadable: Set<ItemId> = emptySet(),
     val error: PasswordHealthReportError? = null,
-    val generatePassword: Boolean = false,
+    val fixFlow: FixFlow? = null,
+    val optimisticallyFixed: Set<ItemId> = emptySet(),
 ) {
     val isFirstLoad = phase == RunPhase.FirstLoad
     val isRefreshing = phase == RunPhase.Refresh
+
+    val generatingFix = fixFlow as? FixFlow.Generating
+    val pendingFix = fixFlow as? FixFlow.Pending
+
+    val healthSections = reportedSections.withoutFixed(optimisticallyFixed)
 
     val summary by lazy { healthSections.summary() }
 

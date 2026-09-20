@@ -2,10 +2,8 @@ package de.davis.keygo.feature.password_health.presentation.component
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,20 +12,16 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.PasswordScore
-import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.feature.password_health.R
 import de.davis.keygo.feature.password_health.domain.model.FindingSeverity
 import de.davis.keygo.feature.password_health.domain.model.HealthFinding
@@ -35,11 +29,14 @@ import de.davis.keygo.feature.password_health.domain.model.ItemHealth
 import de.davis.keygo.feature.password_health.domain.model.ItemIssue
 import de.davis.keygo.feature.password_health.domain.model.RelatedGroup
 import de.davis.keygo.feature.password_health.domain.model.RelationType
+import de.davis.keygo.feature.password_health.presentation.model.FixFlow
 import de.davis.keygo.feature.password_health.presentation.model.HealthSection
-import de.davis.keygo.feature.password_health.presentation.segmentContainerColor
+import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiEvent
 
 internal fun LazyListScope.needsAttentionSection(
     sections: List<HealthSection>,
+    pendingFix: FixFlow.Pending?,
+    onEvent: (PasswordHealthUiEvent) -> Unit,
 ) {
     item(key = "needs-attention-title", contentType = ContentType.Title) {
         Spacer(modifier = Modifier.height(28.dp))
@@ -69,14 +66,18 @@ internal fun LazyListScope.needsAttentionSection(
                 GroupLabel(group = group, modifier = Modifier.animateItem())
             }
 
-            segmentedRows(group.orderedMembers)
+            segmentedRows(group.orderedMembers, pendingFix, onEvent)
         }
 
-        segmentedRows(section.standalone)
+        segmentedRows(section.standalone, pendingFix, onEvent)
     }
 }
 
-private fun LazyListScope.segmentedRows(items: List<ItemHealth>) {
+private fun LazyListScope.segmentedRows(
+    items: List<ItemHealth>,
+    pendingFix: FixFlow.Pending?,
+    onEvent: (PasswordHealthUiEvent) -> Unit,
+) {
     itemsIndexed(
         items = items,
         key = { _, item -> item.itemId },
@@ -85,6 +86,8 @@ private fun LazyListScope.segmentedRows(items: List<ItemHealth>) {
         ItemHealthRow(
             itemHealth = item,
             shapes = segmentedShapesFor(index = index, count = items.size),
+            pendingFix = pendingFix?.takeIf { it.itemId == item.itemId },
+            onEvent = onEvent,
             modifier = Modifier.animateItem(),
         )
     }
@@ -107,51 +110,6 @@ private fun GroupLabel(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier.padding(start = 16.dp, top = 8.dp, bottom = 2.dp),
     )
-}
-
-@Composable
-private fun ItemHealthRow(
-    itemHealth: ItemHealth,
-    shapes: ListItemShapes,
-    modifier: Modifier = Modifier,
-) {
-    val breach = itemHealth.breach
-    val weak = itemHealth.weak
-    val username = itemHealth.username
-
-    SegmentedListItem(
-        shapes = shapes,
-        modifier = modifier.fillMaxWidth(),
-        colors = ListItemDefaults.segmentedColors(containerColor = segmentContainerColor),
-        overlineContent = breach?.let { breached ->
-            {
-                Text(
-                    text = pluralStringResource(
-                        R.plurals.needs_attention_found_in_breach,
-                        breached.occurrences,
-                        breached.occurrences,
-                    ),
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-        },
-        supportingContent = if (username != null || weak != null) {
-            {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (username != null) Text(
-                        text = username,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-
-                    if (weak != null) StrengthIndicator(passwordScore = weak.score)
-                }
-            }
-        } else null,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(text = itemHealth.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
 }
 
 @Composable
@@ -195,6 +153,8 @@ private fun NeedsAttentionSectionPreview() {
                 verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
             ) {
                 needsAttentionSection(
+                    pendingFix = null,
+                    onEvent = {},
                     sections = listOf(
                         HealthSection(
                             severity = FindingSeverity.Critical,

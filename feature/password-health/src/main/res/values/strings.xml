@@ -62,4 +62,12 @@
         <item quantity="one">%1$d password went unchecked: the breach service didn\'t answer</item>
         <item quantity="other">%1$d passwords went unchecked: the breach service didn\'t answer</item>
     </plurals>
+
+    <string name="fix_copied_label">Generated password</string>
+    <string name="fix_pending_instruction">New password copied. Change it where this login is used, then confirm here.</string>
+    <string name="fix_open_site">Open site</string>
+    <string name="fix_confirm_changed">I changed it</string>
+    <string name="fix_cancel">Cancel</string>
+    <string name="fix_failed_locked">Your session ended before it could be saved. Try again.</string>
+    <string name="fix_failed_save">Couldn\'t save the new password. Try again.</string>
 </resources>

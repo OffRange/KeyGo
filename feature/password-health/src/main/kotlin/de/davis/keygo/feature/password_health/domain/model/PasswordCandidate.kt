@@ -9,4 +9,5 @@ class PasswordCandidate(
     val username: String?,
     val score: PasswordScore,
     val password: CharArray,
+    val urls: List<String>,
 )
