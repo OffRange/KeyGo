@@ -22,6 +22,7 @@ dependencies {
     implementation(projects.feature.item.view)
 
     implementation(libs.okhttp)
+    implementation(libs.gosimple.nbvcxz)
 
     implementation(libs.androidx.datastore)
 }
