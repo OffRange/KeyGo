@@ -70,4 +70,6 @@
     <string name="fix_cancel">Cancel</string>
     <string name="fix_failed_locked">Your session ended before it could be saved. Try again.</string>
     <string name="fix_failed_save">Couldn\'t save the new password. Try again.</string>
+
+    <string name="password_health_detail_placeholder">Pick an item to see it here</string>
 </resources>

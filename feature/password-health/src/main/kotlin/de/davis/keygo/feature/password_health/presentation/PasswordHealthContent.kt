@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.ui.clipboard.setText
@@ -46,6 +47,7 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun PasswordHealthContent(
     state: PasswordHealthUiState,
+    openItemId: ItemId?,
     onEvent: (PasswordHealthUiEvent) -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -88,6 +90,7 @@ internal fun PasswordHealthContent(
                 if (state.status == PasswordHealthStatus.NEEDS_ATTENTION) needsAttentionSection(
                     sections = state.healthSections,
                     pendingFix = state.pendingFix,
+                    openItemId = openItemId,
                     onEvent = onEvent,
                 )
 
@@ -141,6 +144,7 @@ private fun PasswordHealthContentPreview() {
                         )
                     ),
                 ),
+                openItemId = null,
                 onEvent = {},
             )
         }

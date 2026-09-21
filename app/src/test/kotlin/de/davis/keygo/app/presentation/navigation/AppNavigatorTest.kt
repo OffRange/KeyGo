@@ -8,6 +8,7 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
+import de.davis.keygo.feature.password_health.presentation.PasswordHealthRoute
 import de.davis.keygo.feature.settings.presentation.ChangePasswordRoute
 import de.davis.keygo.feature.settings.presentation.SettingsRoute
 import de.davis.keygo.feature.totp.presentation.SelectItemForTotpRoute
@@ -206,6 +207,27 @@ class AppNavigatorTest {
             listOf(RouteDestination.Home, RouteDestination.ViewItem(second)),
             navigator.shown,
         )
+    }
+
+    @Test
+    fun `an item opened from the health report lands beside it, not on the home stack`() {
+        val navigator = unlocked()
+        val itemId = newItemId()
+        navigator.navigate(PasswordHealthRoute)
+
+        navigator.showDetail(RouteDestination.ViewItem(itemId))
+
+        assertEquals(
+            listOf(PasswordHealthRoute, RouteDestination.ViewItem(itemId)),
+            navigator.shown,
+        )
+        assertEquals(
+            listOf(RouteDestination.Home),
+            navigator.state.backStacks.getValue(RouteDestination.Home).toList(),
+        )
+
+        navigator.goBack()
+        assertEquals(listOf(PasswordHealthRoute), navigator.shown)
     }
 
     @Test
@@ -571,6 +593,7 @@ class AppNavigatorTest {
     private companion object {
         val TOP_LEVEL_ROUTES: Set<NavKey> = linkedSetOf(
             RouteDestination.Home,
+            PasswordHealthRoute,
             RouteDestination.Connectivity,
             SettingsRoute,
         )

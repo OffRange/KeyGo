@@ -16,13 +16,16 @@ import de.davis.keygo.feature.password_health.domain.repository.BreachCheckState
 import de.davis.keygo.feature.password_health.domain.usecase.PasswordHealthReportUseCase
 import de.davis.keygo.feature.password_health.presentation.model.FixFlow
 import de.davis.keygo.feature.password_health.presentation.model.HealthSection
+import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthEvent
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiEvent
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiState
 import de.davis.keygo.feature.password_health.presentation.model.RunPhase
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -35,6 +38,9 @@ internal class PasswordHealthViewModel(
     private val breachCheckStateRepository: BreachCheckStateRepository,
     private val websiteHandler: WebsiteHandler,
 ) : ViewModel() {
+
+    private val _eventChannel = Channel<PasswordHealthEvent>(Channel.BUFFERED)
+    val events = _eventChannel.receiveAsFlow()
 
     private val _base = MutableStateFlow(PasswordHealthUiState(phase = RunPhase.FirstLoad))
     val uiState = combine(
@@ -54,6 +60,10 @@ internal class PasswordHealthViewModel(
         when (event) {
             PasswordHealthUiEvent.RunHealthCheck -> runHealthCheck(RunPhase.FirstLoad)
             PasswordHealthUiEvent.RefreshHealthCheck -> runHealthCheck(RunPhase.Refresh)
+
+            is PasswordHealthUiEvent.ItemClicked -> _eventChannel.trySend(
+                PasswordHealthEvent.OpenItem(event.itemId)
+            )
 
             is PasswordHealthUiEvent.OnBreachCheckChanged -> viewModelScope.launch {
                 breachCheckStateRepository.setBreachEnabled(event.enabled)

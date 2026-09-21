@@ -8,3 +8,6 @@ import androidx.compose.ui.graphics.Color
 
 internal val segmentContainerColor: Color
     @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.surfaceContainerHigh
+
+internal val openedSegmentContainerColor: Color
+    @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.primaryContainer

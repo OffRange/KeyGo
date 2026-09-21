@@ -20,6 +20,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.feature.password_health.R
@@ -36,6 +37,7 @@ import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthU
 internal fun LazyListScope.needsAttentionSection(
     sections: List<HealthSection>,
     pendingFix: FixFlow.Pending?,
+    openItemId: ItemId?,
     onEvent: (PasswordHealthUiEvent) -> Unit,
 ) {
     item(key = "needs-attention-title", contentType = ContentType.Title) {
@@ -66,16 +68,17 @@ internal fun LazyListScope.needsAttentionSection(
                 GroupLabel(group = group, modifier = Modifier.animateItem())
             }
 
-            segmentedRows(group.orderedMembers, pendingFix, onEvent)
+            segmentedRows(group.orderedMembers, pendingFix, openItemId, onEvent)
         }
 
-        segmentedRows(section.standalone, pendingFix, onEvent)
+        segmentedRows(section.standalone, pendingFix, openItemId, onEvent)
     }
 }
 
 private fun LazyListScope.segmentedRows(
     items: List<ItemHealth>,
     pendingFix: FixFlow.Pending?,
+    openItemId: ItemId?,
     onEvent: (PasswordHealthUiEvent) -> Unit,
 ) {
     itemsIndexed(
@@ -87,6 +90,7 @@ private fun LazyListScope.segmentedRows(
             itemHealth = item,
             shapes = segmentedShapesFor(index = index, count = items.size),
             pendingFix = pendingFix?.takeIf { it.itemId == item.itemId },
+            isOpen = item.itemId == openItemId,
             onEvent = onEvent,
             modifier = Modifier.animateItem(),
         )
@@ -154,6 +158,7 @@ private fun NeedsAttentionSectionPreview() {
             ) {
                 needsAttentionSection(
                     pendingFix = null,
+                    openItemId = null,
                     onEvent = {},
                     sections = listOf(
                         HealthSection(

@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -29,6 +31,7 @@ import de.davis.keygo.feature.item.create.presentation.totp.AssignTotpRoute
 import de.davis.keygo.feature.item.create.presentation.totp.assignTotpEntries
 import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
 import de.davis.keygo.feature.onboarding.presentation.onboardingEntries
+import de.davis.keygo.feature.password_health.presentation.component.PasswordHealthDetailPlaceholder
 import de.davis.keygo.feature.password_health.presentation.passwordHealthEntries
 import de.davis.keygo.feature.settings.presentation.ChangePasswordRoute
 import de.davis.keygo.feature.settings.presentation.settingsEntries
@@ -39,6 +42,7 @@ import de.davis.keygo.item.dialog.SelectItemContent
 
 private const val TAG = "KeyGoEntryProvider"
 
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun keyGoEntryProvider(navigator: AppNavigator, hasAccess: Boolean): (NavKey) -> NavEntry<NavKey> {
     val activity = LocalActivity.current
@@ -132,7 +136,11 @@ fun keyGoEntryProvider(navigator: AppNavigator, hasAccess: Boolean): (NavKey) ->
         }
 
         passwordHealthEntries(
-            metadata = NavigationOnly,
+            metadata = ListDetailSceneStrategy.listPane(
+                detailPlaceholder = { PasswordHealthDetailPlaceholder() },
+            ) + NavigationOnly,
+            openItemId = (navigator.state.openDetail as? RouteDestination.ViewItem)?.id,
+            openItem = { itemId -> navigator.showDetail(RouteDestination.ViewItem(itemId)) },
         )
     }
 }

@@ -70,6 +70,7 @@ import de.davis.keygo.feature.password_health.domain.model.ItemIssue
 import de.davis.keygo.feature.password_health.domain.model.PasswordFixError
 import de.davis.keygo.feature.password_health.presentation.model.FixFlow
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiEvent
+import de.davis.keygo.feature.password_health.presentation.openedSegmentContainerColor
 import de.davis.keygo.feature.password_health.presentation.segmentContainerColor
 
 @Composable
@@ -77,6 +78,7 @@ internal fun ItemHealthRow(
     itemHealth: ItemHealth,
     shapes: ListItemShapes,
     pendingFix: FixFlow.Pending?,
+    isOpen: Boolean,
     onEvent: (PasswordHealthUiEvent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -85,9 +87,12 @@ internal fun ItemHealthRow(
     val username = itemHealth.username
 
     SegmentedListItem(
+        onClick = { onEvent(PasswordHealthUiEvent.ItemClicked(itemHealth.itemId)) },
         shapes = shapes,
         modifier = modifier.fillMaxWidth(),
-        colors = ListItemDefaults.segmentedColors(containerColor = segmentContainerColor),
+        colors = ListItemDefaults.segmentedColors(
+            containerColor = if (isOpen) openedSegmentContainerColor else segmentContainerColor,
+        ),
         supportingContent = if (pendingFix != null || username != null || weak != null) {
             {
                 AnimatedContent(
@@ -387,6 +392,7 @@ private fun ItemHealthRowPreview() {
                     ),
                     shapes = ListItemDefaults.shapes(MaterialTheme.shapes.large),
                     pendingFix = null,
+                    isOpen = false,
                     onEvent = {},
                 )
 
@@ -403,6 +409,7 @@ private fun ItemHealthRowPreview() {
                         itemId = itemId,
                         password = "correct-horse-battery-staple",
                     ),
+                    isOpen = true,
                     onEvent = {},
                 )
             }

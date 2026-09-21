@@ -6,6 +6,8 @@ internal sealed interface PasswordHealthUiEvent {
     data object RunHealthCheck : PasswordHealthUiEvent
     data object RefreshHealthCheck : PasswordHealthUiEvent
 
+    data class ItemClicked(val itemId: ItemId) : PasswordHealthUiEvent
+
     data class OnBreachCheckChanged(val enabled: Boolean) : PasswordHealthUiEvent
 
     data class FixClicked(val itemId: ItemId) : PasswordHealthUiEvent
