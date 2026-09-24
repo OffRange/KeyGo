@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.datastore.dataStore
 import de.davis.keygo.core.util.data.serializer.DefaultProtoSerializer
 import de.davis.keygo.feature.password_health.data.local.model.ProtoBreachCheckState
+import de.davis.keygo.feature.password_health.data.local.model.ProtoHealthReportStore
 import de.davis.keygo.feature.password_health.di.annotation.BreachedQualifier
+import de.davis.keygo.feature.password_health.di.annotation.HealthReportStore
 import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import org.koin.core.annotation.ComponentScan
@@ -46,10 +48,23 @@ object FeaturePasswordHealthModule {
         )
     )
 
+    private val Context.healthReportStoreDataStore by dataStore(
+        "password_health_report_store.pb",
+        DefaultProtoSerializer(
+            defaultInstance = ProtoHealthReportStore.getDefaultInstance(),
+            parser = ProtoHealthReportStore.parser()
+        )
+    )
+
     @Single
     @BreachedQualifier
     internal fun provideBreachCheckStateDataStore(context: Context) =
         context.breachCheckStateDataStore
+
+    @Single
+    @HealthReportStore
+    internal fun provideHealthReportStoreDataStore(context: Context) =
+        context.healthReportStoreDataStore
 
     private fun Context.versionName(): String =
         packageManager.getPackageInfo(packageName, 0).versionName.orEmpty()
