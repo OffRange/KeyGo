@@ -1,7 +1,7 @@
 package de.davis.keygo.feature.password_health.data.repository
 
 import androidx.datastore.core.DataStore
-import de.davis.keygo.feature.backup.data.local.model.ProtoBreachCheckState
+import de.davis.keygo.feature.password_health.data.local.model.ProtoBreachCheckState
 import de.davis.keygo.feature.password_health.data.mapper.toDomain
 import de.davis.keygo.feature.password_health.di.annotation.BreachedQualifier
 import de.davis.keygo.feature.password_health.domain.model.BreachCheckState
