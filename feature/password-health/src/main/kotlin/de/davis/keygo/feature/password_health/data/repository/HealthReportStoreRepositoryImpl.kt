@@ -79,6 +79,8 @@ internal class HealthReportStoreRepositoryImpl(
     )
 
     companion object {
+        // On-disk identity: the AAD domain separator for every stored report. Never change it;
+        // doing so makes every previously stored report permanently undecryptable.
         private val REPORT_NAMESPACE: UUID = UUID.fromString("39050172-ce6d-4f4d-8787-6e12ab44eb0e")
 
         private const val REPORT_LABEL = "password_health_report"
