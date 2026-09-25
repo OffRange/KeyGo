@@ -57,5 +57,33 @@ class StoredHealthReportTest {
         assertFalse(report.isFreshFor(fingerprints, false, generatedAt))
     }
 
+    @Test
+    fun isStaleWhenACheckCouldNotReachItsService() {
+        val incomplete = report.copy(
+            gaps = mapOf(CheckKind.Breach to CheckGap(GapReason.Unreachable, setOf(ids[0]))),
+        )
+
+        assertFalse(incomplete.isFreshFor(fingerprints, true, generatedAt))
+    }
+
+    @Test
+    fun isStaleWhenACheckFailed() {
+        val incomplete = report.copy(
+            gaps = mapOf(CheckKind.Breach to CheckGap(GapReason.Failed, setOf(ids[0]))),
+        )
+
+        assertFalse(incomplete.isFreshFor(fingerprints, true, generatedAt))
+    }
+
+    @Test
+    fun staysFreshWhenACheckWasTurnedOff() {
+        val disabled = report.copy(
+            gaps = mapOf(CheckKind.Breach to CheckGap(GapReason.Disabled, ids.toSet())),
+            breachCheckEnabled = false,
+        )
+
+        assertTrue(disabled.isFreshFor(fingerprints, false, generatedAt))
+    }
+
     private fun fingerprint(id: ItemId) = HealthFingerprint(id.toString().encodeToByteArray())
 }

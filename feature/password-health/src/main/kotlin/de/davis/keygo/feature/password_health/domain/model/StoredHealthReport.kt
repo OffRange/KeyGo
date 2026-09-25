@@ -20,8 +20,12 @@ data class StoredHealthReport(
         breachCheckEnabled: Boolean,
         now: Instant,
     ): Boolean = this.breachCheckEnabled == breachCheckEnabled
+            && !hasRetryableGap
             && now - generatedAt < TTL
             && items.associate { it.id to it.fingerprint } == fingerprints
+
+    private val hasRetryableGap: Boolean
+        get() = gaps.values.any { it.reason != GapReason.Disabled }
 
     companion object {
         const val ALGORITHM_VERSION = 1
