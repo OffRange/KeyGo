@@ -1,9 +1,11 @@
 package de.davis.keygo.feature.password_health.domain.usecase
 
+import android.util.Log
 import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.getOrNull
+import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.password_health.domain.LoginFingerprinter
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReport
@@ -66,10 +68,15 @@ class PasswordHealthReportUseCase(
                 now = now,
             ).bind()
 
-            val stored = async { healthReportStoreRepository.storeReport(report) }
-            val assembled = assembler.assemble(report, logins)
-            stored.await().bind { PasswordHealthReportError.StoreFailed }
-            assembled
+            // The store is only a cache, so failing to write it must not cost the user the report.
+            healthReportStoreRepository.storeReport(report).onFailure {
+                Log.w(TAG, "Failed to store password health report: $it")
+            }
+            assembler.assemble(report, logins)
         }
+    }
+
+    companion object {
+        private const val TAG = "PasswordHealthReportUseCase"
     }
 }
