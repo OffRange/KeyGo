@@ -25,4 +25,7 @@ dependencies {
     implementation(libs.gosimple.nbvcxz)
 
     implementation(libs.androidx.datastore)
+
+    testImplementation(testFixtures(projects.core.item))
+    testImplementation(testFixtures(projects.core.security))
 }

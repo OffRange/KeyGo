@@ -2,6 +2,7 @@ package de.davis.keygo.feature.password_health.domain.model
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 
 data class StoredHealthReport(
@@ -14,8 +15,17 @@ data class StoredHealthReport(
 
     val totalPasswordsScanned = items.size
 
+    fun isFreshFor(
+        fingerprints: Map<ItemId, HealthFingerprint>,
+        breachCheckEnabled: Boolean,
+        now: Instant,
+    ): Boolean = this.breachCheckEnabled == breachCheckEnabled
+            && now - generatedAt < TTL
+            && items.associate { it.id to it.fingerprint } == fingerprints
+
     companion object {
         const val ALGORITHM_VERSION = 1
+        val TTL = 1.days
     }
 }
 
