@@ -139,11 +139,8 @@ internal class Corpus(val entries: List<CorpusEntry>) {
     fun candidates(): List<PasswordCandidate> = entries.map {
         PasswordCandidate(
             id = it.id,
-            title = it.archetype,
-            username = null,
             score = PasswordScore.Moderate,
             password = it.password.toCharArray(),
-            urls = emptyList(),
         )
     }
 }

@@ -10,11 +10,8 @@ internal fun candidates(passwords: List<String>): List<PasswordCandidate> =
     passwords.mapIndexed { index, password ->
         PasswordCandidate(
             id = UUID(0L, index.toLong()),
-            title = "item $index",
-            username = null,
             score = PasswordScore.Moderate,
             password = password.toCharArray(),
-            urls = emptyList(),
         )
     }
 
