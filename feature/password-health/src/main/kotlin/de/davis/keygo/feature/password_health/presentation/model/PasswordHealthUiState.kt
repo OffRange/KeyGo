@@ -223,6 +223,7 @@ internal fun PasswordHealthUiState.coverageNote(): String? {
 @ReadOnlyComposable
 private fun PasswordHealthReportError?.failureMessage(): String = when (this) {
     PasswordHealthReportError.Unreadable -> stringResource(R.string.password_health_unreadable)
+    PasswordHealthReportError.StoreFailed,
     PasswordHealthReportError.NoPasswords, null ->
         stringResource(R.string.password_health_check_failed)
 }

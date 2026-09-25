@@ -5,9 +5,6 @@ import de.davis.keygo.core.item.domain.model.PasswordScore
 
 class PasswordCandidate(
     val id: ItemId,
-    val title: String,
-    val username: String?,
     val score: PasswordScore,
     val password: CharArray,
-    val urls: List<String>,
 )
