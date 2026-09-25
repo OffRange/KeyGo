@@ -13,6 +13,7 @@ import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.rust.FakeItemManager
 import de.davis.keygo.rust.FakeKeyWrapper
+import de.davis.keygo.rust.FakeVaultManager
 import de.davisalessandro.keygo.rust.ItemAad
 import de.davisalessandro.keygo.rust.KeyWrapException
 import kotlinx.coroutines.test.runTest
@@ -29,6 +30,7 @@ class CryptographicScopeProviderImplTest {
         itemRepository = FakeItemRepository(),
         itemManager = FakeItemManager(),
         keyWrapper = FakeKeyWrapper(),
+        vaultManager = FakeVaultManager(),
     )
 
     private fun wrappedVaultKeyInformation(vaultId: java.util.UUID) = WrappedVaultKeyInformation(
