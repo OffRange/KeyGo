@@ -24,8 +24,8 @@ import de.davis.keygo.feature.password_health.domain.model.StoredHealthItem
 import de.davis.keygo.feature.password_health.domain.model.StoredHealthReport
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
-import java.util.zip.ZipInputStream
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
@@ -37,7 +37,7 @@ internal fun StoredHealthReport.toCompressedByteArray(): ByteArray =
     }.toByteArray()
 
 internal fun ByteArray.toStoredHealthReport(): StoredHealthReport? =
-    ProtoStoredHealthReport.parseFrom(ZipInputStream(ByteArrayInputStream(this)).use { it.readBytes() })
+    ProtoStoredHealthReport.parseFrom(GZIPInputStream(ByteArrayInputStream(this)).use { it.readBytes() })
         .toDomain()
 
 private fun ProtoStoredHealthReport.toDomain(): StoredHealthReport? {

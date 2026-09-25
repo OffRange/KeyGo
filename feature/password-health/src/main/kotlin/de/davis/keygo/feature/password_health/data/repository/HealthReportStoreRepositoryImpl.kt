@@ -29,14 +29,14 @@ internal class HealthReportStoreRepositoryImpl(
 
     override suspend fun storeReport(report: StoredHealthReport): Result<Unit, HealthReportStoreError> =
         resultBinding {
-            val wrappedKey = dataStore.data.first()
+            val stored = dataStore.data.first()
                 .takeIf { it.wrappedKey.isNotEmpty() }
 
             val compressedReport = report.toCompressedByteArray()
 
             val (sealedReport, key) = cryptographicScopeProvider.accountScope(
                 namespace = REPORT_NAMESPACE,
-                wrapped = wrappedKey?.toWrappedKey(),
+                wrapped = stored?.toWrappedKey(),
             ) {
                 compressedReport.encrypt(REPORT_LABEL) to wrapCurrentItemKey()
             }.bind { HealthReportStoreError.CryptoFailed }
