@@ -109,6 +109,8 @@ class PasswordHealthReportUseCase(
         }
 
         val findings = outcomes.flatMap { (_, outcome) -> outcome.findings }
+        val gaps = outcomes.mapNotNull { (type, outcome) -> outcome.gap?.let { type to it } }
+            .toMap()
 
         val relations = findings.filterIsInstance<HealthFinding.Relation>()
         val issuesById = findings.filterIsInstance<HealthFinding.Item>()
@@ -117,7 +119,7 @@ class PasswordHealthReportUseCase(
         val report = StoredHealthReport(
             items = mapToStoredHealthItems(issuesById, fingerprints, unreadable),
             relationalFindings = relations,
-            gaps = emptyMap(),
+            gaps = gaps,
             generatedAt = Clock.System.now(),
             breachCheckEnabled = breachCheckEnabled
         )
