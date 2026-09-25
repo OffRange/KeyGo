@@ -34,6 +34,7 @@ import de.davis.keygo.feature.vault.domain.model.MoveItemsError
 import de.davis.keygo.feature.vault.domain.model.MoveItemsProgress
 import de.davis.keygo.rust.FakeItemManager
 import de.davis.keygo.rust.FakeKeyWrapper
+import de.davis.keygo.rust.FakeVaultManager
 import de.davisalessandro.keygo.rust.ItemAad
 import de.davisalessandro.keygo.rust.KeyWrapException
 import kotlinx.coroutines.runBlocking
@@ -54,8 +55,15 @@ class MoveItemsToVaultUseCaseTest {
     private val itemRepository = FakeItemRepository(loginRepository)
     private val itemManager = FakeItemManager()
     private val keyWrapper = FakeKeyWrapper()
+    private val vaultManager = FakeVaultManager()
     private val cryptographicScopeProvider: CryptographicScopeProvider =
-        BindingCryptographicScopeProvider(session, itemRepository, itemManager, keyWrapper)
+        BindingCryptographicScopeProvider(
+            session,
+            itemRepository,
+            itemManager,
+            keyWrapper,
+            vaultManager
+        )
 
     private val vaultRepository = FakeVaultRepository()
 

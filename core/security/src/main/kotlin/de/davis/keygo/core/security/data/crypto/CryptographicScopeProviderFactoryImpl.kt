@@ -5,6 +5,7 @@ import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProviderFactory
 import de.davis.keygo.rust.item.ItemManager
+import de.davis.keygo.rust.vault.VaultManager
 import de.davis.keygo.rust.wrap.KeyWrapper
 import org.koin.core.annotation.Single
 
@@ -13,8 +14,15 @@ internal class CryptographicScopeProviderFactoryImpl(
     private val itemRepository: ItemRepository,
     private val itemManager: ItemManager,
     private val keyWrapper: KeyWrapper,
+    private val vaultManager: VaultManager,
 ) : CryptographicScopeProviderFactory {
 
     override fun forSession(session: Session): CryptographicScopeProvider =
-        CryptographicScopeProviderImpl(session, itemRepository, itemManager, keyWrapper)
+        CryptographicScopeProviderImpl(
+            session,
+            itemRepository,
+            itemManager,
+            keyWrapper,
+            vaultManager
+        )
 }
