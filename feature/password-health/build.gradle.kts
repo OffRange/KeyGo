@@ -26,6 +26,9 @@ dependencies {
 
     implementation(libs.androidx.datastore)
 
+    testImplementation(testFixtures(projects.core.util))
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.security))
+    testImplementation(testFixtures(projects.rust))
+    testImplementation(libs.robolectric)
 }

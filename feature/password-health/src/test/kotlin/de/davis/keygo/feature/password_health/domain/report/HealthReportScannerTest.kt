@@ -195,9 +195,237 @@ class HealthReportScannerTest {
 
     @Test
     fun nothingToCheckIsNoPasswords() = runTest {
-        val result = scan(listOf(login(id(0))), RecordingChecker(CheckKind.Strength))
+        val result = scan(
+            listOf(login(id(0)).copy(passwordCredential = null)),
+            RecordingChecker(CheckKind.Strength),
+        )
 
         assertEquals(Result.Failure(PasswordHealthReportError.NoPasswords), result)
+    }
+
+    @Test
+    fun aVaultWhosePasswordsAllFailToDecryptIsUnreadable() = runTest {
+        val result = scan(listOf(login(id(0)), login(id(1))), RecordingChecker(CheckKind.Strength))
+
+        assertEquals(Result.Failure(PasswordHealthReportError.Unreadable), result)
+    }
+
+    @Test
+    fun anEmptyVaultIsNoPasswords() = runTest {
+        val result = scan(emptyList(), RecordingChecker(CheckKind.Strength))
+
+        assertEquals(Result.Failure(PasswordHealthReportError.NoPasswords), result)
+    }
+
+    @Test
+    fun aLoginWithoutAPasswordIsNeitherCheckedNorUnreadable() = runTest {
+        val checker = RecordingChecker(CheckKind.Strength)
+        val logins = readable(0) + login(id(1)).copy(passwordCredential = null)
+
+        val report = scan(logins, checker).success()
+
+        assertEquals(setOf(id(0)), checker.seen.keys)
+        assertEquals(listOf(false, false), report.items.map { it.unreadable })
+    }
+
+    @Test
+    fun aLoginWithoutAFingerprintIsLeftOutOfTheReport() = runTest {
+        val logins = readable(0, 1)
+
+        val report = HealthReportScanner(scopeProvider, listOf(RecordingChecker(CheckKind.Strength)))
+            .scan(
+                logins = logins,
+                fingerprints = mapOf(id(0) to fingerprint(id(0))),
+                previous = null,
+                breachCheckEnabled = true,
+                now = NOW,
+            ).success()
+
+        assertEquals(listOf(id(0)), report.items.map { it.id })
+    }
+
+    @Test
+    fun theReportRemembersWhetherTheBreachCheckWasOn() = runTest {
+        val on = scan(readable(0), RecordingChecker(CheckKind.Strength)).success()
+        val off = scan(
+            readable(0),
+            RecordingChecker(CheckKind.Strength),
+            breachCheckEnabled = false,
+        ).success()
+
+        assertEquals(true, on.breachCheckEnabled)
+        assertEquals(false, off.breachCheckEnabled)
+    }
+
+    @Test
+    fun withoutABreachCheckerNoPasswordGetsABreachResult() = runTest {
+        val report = scan(readable(0, 1), RecordingChecker(CheckKind.Strength)).success()
+
+        assertEquals(listOf(null, null), report.items.map { it.breach })
+    }
+
+    @Test
+    fun everyCheckerSeesEveryPasswordOnAFreshScan() = runTest {
+        val checkers = listOf(
+            RecordingChecker(CheckKind.Strength),
+            RecordingChecker(CheckKind.Reuse),
+            RecordingChecker(CheckKind.Similarity),
+            RecordingChecker(CheckKind.Breach),
+        )
+
+        scan(readable(0, 1, 2), *checkers.toTypedArray())
+
+        checkers.forEach { assertEquals(setOf(id(0), id(1), id(2)), it.seen.keys, "${it.type}") }
+    }
+
+    @Test
+    fun gapsOfSeveralChecksAreAllKept() = runTest {
+        val breachGap = CheckGap(GapReason.Unreachable, setOf(id(0)))
+        val similarityGap = CheckGap(GapReason.Failed, setOf(id(0), id(1)))
+
+        val report = scan(
+            readable(0, 1),
+            RecordingChecker(CheckKind.Breach, CheckOutcome(gap = breachGap)),
+            RecordingChecker(CheckKind.Similarity, CheckOutcome(gap = similarityGap)),
+        ).success()
+
+        assertEquals(
+            mapOf(CheckKind.Breach to breachGap, CheckKind.Similarity to similarityGap),
+            report.gaps,
+        )
+    }
+
+    @Test
+    fun aFullyCurrentReportIsRefreshedWithoutDecryptingAnything() = runTest {
+        val strength = RecordingChecker(CheckKind.Strength)
+        val breachCheck = RecordingChecker(CheckKind.Breach)
+        val previous = report(
+            storedItem(id(0), breach = breach(0, NOW)),
+            storedItem(id(1), breach = breach(2, NOW)),
+        )
+
+        val report = scan(readable(0, 1), strength, breachCheck, previous = previous).success()
+
+        assertTrue(strength.candidates.isEmpty())
+        assertTrue(breachCheck.seen.isEmpty())
+        assertEquals(previous, report)
+    }
+
+    @Test
+    fun aRefreshReplacesTheOldBreachGapAndKeepsTheRest() = runTest {
+        val disabledSimilarity = CheckGap(GapReason.Disabled, setOf(id(0)))
+        val newGap = CheckGap(GapReason.Failed, setOf(id(0)))
+        val previous = report(storedItem(id(0))).copy(
+            gaps = mapOf(
+                CheckKind.Breach to CheckGap(GapReason.Unreachable, setOf(id(0))),
+                CheckKind.Similarity to disabledSimilarity,
+            ),
+        )
+
+        val report = scan(
+            readable(0),
+            RecordingChecker(CheckKind.Breach, CheckOutcome(gap = newGap)),
+            previous = previous,
+        ).success()
+
+        assertEquals(
+            mapOf(CheckKind.Breach to newGap, CheckKind.Similarity to disabledSimilarity),
+            report.gaps,
+        )
+        assertEquals(listOf(null), report.items.map { it.breach })
+    }
+
+    @Test
+    fun aRefreshThatReachesTheServiceClearsTheOldBreachGap() = runTest {
+        val previous = report(storedItem(id(0))).copy(
+            gaps = mapOf(CheckKind.Breach to CheckGap(GapReason.Unreachable, setOf(id(0)))),
+        )
+
+        val report = scan(
+            readable(0),
+            RecordingChecker(CheckKind.Breach),
+            previous = previous,
+        ).success()
+
+        assertEquals(emptyMap(), report.gaps)
+        assertEquals(listOf(breach(0, NOW)), report.items.map { it.breach })
+    }
+
+    @Test
+    fun aPasswordThatStopsDecryptingDuringARefreshIsMarkedUnreadable() = runTest {
+        val previous = report(
+            storedItem(id(0), breach = breach(0, NOW)),
+            storedItem(id(1), breach = breach(0, NOW - BreachResult.TTL)),
+        )
+        val logins = readable(0) + login(id(1))
+
+        val report = scan(
+            logins,
+            RecordingChecker(CheckKind.Breach),
+            previous = previous,
+        ).success()
+
+        assertEquals(listOf(false, true), report.items.map { it.unreadable })
+        assertEquals(listOf(breach(0, NOW), null), report.items.map { it.breach })
+    }
+
+    @Test
+    fun aPreviouslyUnreadablePasswordForcesAFullScan() = runTest {
+        val strength = RecordingChecker(CheckKind.Strength)
+        val previous = report(storedItem(id(0), unreadable = true, breach = breach(0, NOW)))
+
+        val report = scan(readable(0), strength, previous = previous).success()
+
+        assertEquals(setOf(id(0)), strength.seen.keys)
+        assertEquals(listOf(false), report.items.map { it.unreadable })
+    }
+
+    @Test
+    fun aFailedLocalCheckForcesAFullScan() = runTest {
+        val similarity = RecordingChecker(CheckKind.Similarity)
+        val previous = report(storedItem(id(0), breach = breach(0, NOW))).copy(
+            gaps = mapOf(CheckKind.Similarity to CheckGap(GapReason.Failed, setOf(id(0)))),
+        )
+
+        val report = scan(readable(0), similarity, previous = previous).success()
+
+        assertEquals(setOf(id(0)), similarity.seen.keys)
+        assertEquals(emptyMap(), report.gaps)
+    }
+
+    @Test
+    fun keptBreachLookupsAreNotRepeatedOnAFullScan() = runTest {
+        val breachCheck = RecordingChecker(
+            CheckKind.Breach,
+            CheckOutcome(findings = listOf(HealthFinding.Item(id(0), ItemIssue.Breached(99)))),
+        )
+        val previous = report(storedItem(id(0), breach = breach(5, NOW)))
+
+        val report = scan(
+            readable(0, 1),
+            breachCheck,
+            previous = previous,
+        ).success()
+
+        assertEquals(setOf(id(1)), breachCheck.seen.keys)
+        assertEquals(listOf(breach(5, NOW), breach(0, NOW)), report.items.map { it.breach })
+    }
+
+    @Test
+    fun passwordsAreWipedEvenWhenACheckerFails() = runTest {
+        val failing = object : PasswordHealthChecker {
+            override val type = CheckKind.Similarity
+            var seen: List<PasswordCandidate> = emptyList()
+
+            override suspend fun check(candidates: List<PasswordCandidate>): CheckOutcome {
+                seen = candidates
+                error("boom")
+            }
+        }
+
+        runCatching { scan(readable(0), failing) }
+
+        assertTrue(failing.seen.single().password.all { it == '\u0000' })
     }
 
     private suspend fun scan(

@@ -61,7 +61,10 @@ class HealthReportScanner(
         now: Instant,
     ): Result<StoredHealthReport, PasswordHealthReportError> = resultBinding {
         val decrypted = decrypt(logins)
-        decrypted.candidates.isNotEmpty().asResult(PasswordHealthReportError.NoPasswords).bind()
+        decrypted.candidates.isNotEmpty().asResult(
+            if (decrypted.unreadable.isEmpty()) PasswordHealthReportError.NoPasswords
+            else PasswordHealthReportError.Unreadable,
+        ).bind()
 
         val outcomes = check(checkers, decrypted.candidates, keptBreaches)
         val findings = outcomes.values.flatMap { it.findings }
