@@ -11,7 +11,6 @@ import de.davis.keygo.feature.password_health.domain.model.StoredHealthItem
 import de.davis.keygo.feature.password_health.domain.model.StoredHealthReport
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.time.Instant
 
 class HealthReportAssemblerTest {
 
@@ -43,7 +42,7 @@ class HealthReportAssemblerTest {
             items = listOf(
                 storedItem(id(0), score = PasswordScore.Weak),
                 storedItem(id(1)),
-                storedItem(id(2), breachOccurrences = 3),
+                storedItem(id(2), breach = breach(3)),
             ),
         )
 
@@ -87,8 +86,8 @@ class HealthReportAssemblerTest {
     fun aDeletedLoginLeavesNoTrace() {
         val report = report(
             items = listOf(
-                storedItem(id(0), breachOccurrences = 1, unreadable = true),
-                storedItem(id(1), breachOccurrences = 1, unreadable = true),
+                storedItem(id(0), breach = breach(1), unreadable = true),
+                storedItem(id(1), breach = breach(1), unreadable = true),
             ),
             gaps = mapOf(
                 CheckKind.Breach to CheckGap(GapReason.Unreachable, setOf(id(0))),
@@ -123,7 +122,6 @@ class HealthReportAssemblerTest {
         items = items,
         relationalFindings = relations,
         gaps = gaps,
-        generatedAt = Instant.fromEpochSeconds(0),
         breachCheckEnabled = true,
     )
 }

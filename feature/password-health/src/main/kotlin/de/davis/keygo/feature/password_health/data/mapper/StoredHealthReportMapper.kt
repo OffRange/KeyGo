@@ -14,6 +14,7 @@ import de.davis.keygo.feature.password_health.data.local.model.protoCheckGap
 import de.davis.keygo.feature.password_health.data.local.model.protoRelationFinding
 import de.davis.keygo.feature.password_health.data.local.model.protoStoredHealthReport
 import de.davis.keygo.feature.password_health.data.local.model.protoStoredItem
+import de.davis.keygo.feature.password_health.domain.model.BreachResult
 import de.davis.keygo.feature.password_health.domain.model.CheckGap
 import de.davis.keygo.feature.password_health.domain.model.CheckKind
 import de.davis.keygo.feature.password_health.domain.model.GapReason
@@ -69,7 +70,6 @@ private fun ProtoStoredHealthReport.toDomain(): StoredHealthReport? {
         items = items,
         relationalFindings = relationFindingList.mapNotNull { it.toDomain(it.itemRefsList.toItemIds()) },
         gaps = gaps,
-        generatedAt = Instant.fromEpochMilliseconds(generatedAtEpochMillis),
         breachCheckEnabled = breachCheckEnabled,
     )
 }
@@ -87,7 +87,6 @@ private fun StoredHealthReport.toProto(): ProtoStoredHealthReport {
         items += this@toProto.items.map(StoredHealthItem::toProto)
         relationFinding += this@toProto.relationalFindings.map { it.toProto(it.relatedItemIds.toRefs()) }
         gaps += this@toProto.gaps.toProto { it.unchecked.toRefs() }
-        generatedAtEpochMillis = generatedAt.toEpochMilliseconds()
         breachCheckEnabled = this@toProto.breachCheckEnabled
         algorithmVersion = StoredHealthReport.ALGORITHM_VERSION
     }
@@ -98,8 +97,10 @@ private fun StoredHealthItem.toProto() = protoStoredItem {
     fingerprint = this@toProto.fingerprint.value.toByteString()
     score = this@toProto.score.toProto()
 
-    if (this@toProto.breachOccurrences > 0)
-        breachOccurrences = this@toProto.breachOccurrences
+    breach?.let { breach ->
+        if (breach.occurrences > 0) breachOccurrences = breach.occurrences
+        breachCheckedAtEpochMillis = breach.checkedAt.toEpochMilliseconds()
+    }
 
     unreadable = this@toProto.unreadable
 }
@@ -108,7 +109,10 @@ private fun ProtoStoredItem.toDomain(): StoredHealthItem = StoredHealthItem(
     id = Uuid.fromByteArray(id.toByteArray()).toJavaUuid(),
     fingerprint = HealthFingerprint(fingerprint.toByteArray()),
     score = score.toDomain(),
-    breachOccurrences = breachOccurrences,
+    breach = if (hasBreachCheckedAtEpochMillis()) BreachResult(
+        occurrences = breachOccurrences,
+        checkedAt = Instant.fromEpochMilliseconds(breachCheckedAtEpochMillis),
+    ) else null,
     unreadable = unreadable,
 )
 

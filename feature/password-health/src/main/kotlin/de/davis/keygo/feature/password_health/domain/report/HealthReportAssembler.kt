@@ -80,6 +80,9 @@ class HealthReportAssembler {
                 it.breachOccurrences > 0
     }
 
+    private val StoredHealthItem.breachOccurrences
+        get() = breach?.occurrences ?: 0
+
     private fun StoredHealthItem.issues() = buildList {
         score?.takeIf { !it.isNone }?.let { add(ItemIssue.Weak(it)) }
         if (breachOccurrences > 0) add(ItemIssue.Breached(breachOccurrences))

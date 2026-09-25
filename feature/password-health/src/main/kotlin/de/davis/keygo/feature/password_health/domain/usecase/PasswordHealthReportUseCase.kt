@@ -54,11 +54,17 @@ class PasswordHealthReportUseCase(
                 .toMap()
 
             val now = Clock.System.now()
-            storedReport.await()
-                ?.takeIf { it.isFreshFor(fingerprints, breachCheckEnabled.await(), now) }
+            val previous = storedReport.await()
+            previous?.takeIf { it.isFreshFor(fingerprints, breachCheckEnabled.await(), now) }
                 ?.let { return@withContext assembler.assemble(it, logins) }
 
-            val report = scanner.scan(logins, fingerprints, breachCheckEnabled.await(), now).bind()
+            val report = scanner.scan(
+                logins = logins,
+                fingerprints = fingerprints,
+                previous = previous,
+                breachCheckEnabled = breachCheckEnabled.await(),
+                now = now,
+            ).bind()
 
             val stored = async { healthReportStoreRepository.storeReport(report) }
             val assembled = assembler.assemble(report, logins)

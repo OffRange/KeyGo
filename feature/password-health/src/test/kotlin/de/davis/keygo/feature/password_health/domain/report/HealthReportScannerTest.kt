@@ -9,15 +9,18 @@ import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.feature.password_health.domain.checker.PasswordHealthChecker
+import de.davis.keygo.feature.password_health.domain.model.BreachResult
 import de.davis.keygo.feature.password_health.domain.model.CheckGap
 import de.davis.keygo.feature.password_health.domain.model.CheckKind
 import de.davis.keygo.feature.password_health.domain.model.CheckOutcome
 import de.davis.keygo.feature.password_health.domain.model.GapReason
 import de.davis.keygo.feature.password_health.domain.model.HealthFinding
+import de.davis.keygo.feature.password_health.domain.model.HealthFingerprint
 import de.davis.keygo.feature.password_health.domain.model.ItemIssue
 import de.davis.keygo.feature.password_health.domain.model.PasswordCandidate
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReportError
 import de.davis.keygo.feature.password_health.domain.model.RelationType
+import de.davis.keygo.feature.password_health.domain.model.StoredHealthItem
 import de.davis.keygo.feature.password_health.domain.model.StoredHealthReport
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -55,23 +58,26 @@ class HealthReportScannerTest {
 
     @Test
     fun findingsLandOnTheItemsTheyAreAbout() = runTest {
-        val checker = RecordingChecker(
+        val strength = RecordingChecker(
             CheckKind.Strength,
             CheckOutcome(
                 findings = listOf(
                     HealthFinding.Item(id(0), ItemIssue.Weak(PasswordScore.Weak)),
-                    HealthFinding.Item(id(1), ItemIssue.Breached(4)),
                     HealthFinding.Relation(setOf(id(0), id(1)), RelationType.Reused),
                 ),
             ),
         )
+        val breachCheck = RecordingChecker(
+            CheckKind.Breach,
+            CheckOutcome(findings = listOf(HealthFinding.Item(id(1), ItemIssue.Breached(4)))),
+        )
 
-        val report = scan(readable(0, 1), checker).success()
+        val report = scan(readable(0, 1), strength, breachCheck).success()
 
         assertEquals(
             listOf(
-                storedItem(id(0), score = PasswordScore.Weak),
-                storedItem(id(1), breachOccurrences = 4),
+                storedItem(id(0), score = PasswordScore.Weak, breach = breach(0, NOW)),
+                storedItem(id(1), breach = breach(4, NOW)),
             ),
             report.items,
         )
@@ -84,10 +90,10 @@ class HealthReportScannerTest {
     @Test
     fun aSkippedCheckIsKeptAsAGapUnderItsKind() = runTest {
         val gap = CheckGap(GapReason.Unreachable, setOf(id(0)))
-        val breach = RecordingChecker(CheckKind.Breach, CheckOutcome(gap = gap))
+        val breachCheck = RecordingChecker(CheckKind.Breach, CheckOutcome(gap = gap))
         val strength = RecordingChecker(CheckKind.Strength)
 
-        val report = scan(readable(0), breach, strength).success()
+        val report = scan(readable(0), breachCheck, strength).success()
 
         assertEquals(mapOf<CheckKind, CheckGap>(CheckKind.Breach to gap), report.gaps)
     }
@@ -104,19 +110,117 @@ class HealthReportScannerTest {
     }
 
     @Test
+    fun anUnreachableLookupLeavesItsItemsWithoutABreachResult() = runTest {
+        val breachCheck = RecordingChecker(
+            CheckKind.Breach,
+            CheckOutcome(gap = CheckGap(GapReason.Unreachable, setOf(id(0)))),
+        )
+
+        val report = scan(readable(0, 1), breachCheck).success()
+
+        assertEquals(listOf(null, breach(0, NOW)), report.items.map { it.breach })
+    }
+
+    @Test
+    fun anUnchangedVaultOnlyRepeatsTheBreachLookupsThatRanOut() = runTest {
+        val strength = RecordingChecker(CheckKind.Strength)
+        val breachCheck = RecordingChecker(CheckKind.Breach)
+        val relation = HealthFinding.Relation(setOf(id(0), id(1)), RelationType.Similar)
+        val previous = report(
+            storedItem(id(0), score = PasswordScore.Weak, breach = breach(1, NOW)),
+            storedItem(id(1), breach = breach(0, NOW - BreachResult.TTL)),
+            relations = listOf(relation),
+        )
+
+        val report = scan(readable(0, 1), strength, breachCheck, previous = previous).success()
+
+        assertTrue(strength.candidates.isEmpty())
+        assertEquals(setOf(id(1)), breachCheck.seen.keys)
+        assertEquals(
+            listOf(
+                storedItem(id(0), score = PasswordScore.Weak, breach = breach(1, NOW)),
+                storedItem(id(1), breach = breach(0, NOW)),
+            ),
+            report.items,
+        )
+        assertEquals(listOf(relation), report.relationalFindings)
+    }
+
+    @Test
+    fun aChangedPasswordRerunsTheLocalChecksButOnlyItsOwnBreachLookup() = runTest {
+        val strength = RecordingChecker(CheckKind.Strength)
+        val breachCheck = RecordingChecker(CheckKind.Breach)
+        val previous = report(
+            storedItem(id(0), score = PasswordScore.Weak, breach = breach(1, NOW)),
+            storedItem(id(1), breach = breach(0, NOW)).copy(
+                fingerprint = HealthFingerprint(
+                    byteArrayOf(1)
+                )
+            ),
+            relations = listOf(HealthFinding.Relation(setOf(id(0), id(1)), RelationType.Similar)),
+        )
+
+        val report = scan(readable(0, 1), strength, breachCheck, previous = previous).success()
+
+        assertEquals(setOf(id(0), id(1)), strength.seen.keys)
+        assertEquals(setOf(id(1)), breachCheck.seen.keys)
+        assertEquals(
+            listOf(
+                storedItem(id(0), breach = breach(1, NOW)),
+                storedItem(id(1), breach = breach(0, NOW)),
+            ),
+            report.items,
+        )
+        assertTrue(report.relationalFindings.isEmpty())
+    }
+
+    @Test
+    fun turningTheBreachCheckOffDropsTheKeptLookups() = runTest {
+        val breachCheck = RecordingChecker(
+            CheckKind.Breach,
+            CheckOutcome(gap = CheckGap(GapReason.Disabled, setOf(id(0)))),
+        )
+        val previous = report(storedItem(id(0), breach = breach(3, NOW)))
+
+        val report = scan(
+            readable(0),
+            breachCheck,
+            previous = previous,
+            breachCheckEnabled = false,
+        ).success()
+
+        assertEquals(setOf(id(0)), breachCheck.seen.keys)
+        assertEquals(listOf(storedItem(id(0))), report.items)
+    }
+
+    @Test
     fun nothingToCheckIsNoPasswords() = runTest {
         val result = scan(listOf(login(id(0))), RecordingChecker(CheckKind.Strength))
 
         assertEquals(Result.Failure(PasswordHealthReportError.NoPasswords), result)
     }
 
-    private suspend fun scan(logins: List<Login>, vararg checkers: PasswordHealthChecker) =
-        HealthReportScanner(scopeProvider, checkers.toList()).scan(
-            logins = logins,
-            fingerprints = logins.associate { it.id to fingerprint(it.id) },
-            breachCheckEnabled = true,
-            generatedAt = Instant.fromEpochSeconds(0),
-        )
+    private suspend fun scan(
+        logins: List<Login>,
+        vararg checkers: PasswordHealthChecker,
+        previous: StoredHealthReport? = null,
+        breachCheckEnabled: Boolean = true,
+    ) = HealthReportScanner(scopeProvider, checkers.toList()).scan(
+        logins = logins,
+        fingerprints = logins.associate { it.id to fingerprint(it.id) },
+        previous = previous,
+        breachCheckEnabled = breachCheckEnabled,
+        now = NOW,
+    )
+
+    private fun report(
+        vararg items: StoredHealthItem,
+        relations: List<HealthFinding.Relation> = emptyList(),
+    ) = StoredHealthReport(
+        items = items.toList(),
+        relationalFindings = relations,
+        breachCheckEnabled = true,
+    )
 
     /** Logins whose item key the fake provider can find, so their passwords decrypt. */
     private fun readable(vararg ns: Int) = ns.map { n ->
@@ -146,5 +250,9 @@ class HealthReportScannerTest {
             seen = candidates.associate { it.id to it.password.concatToString() }
             return outcome
         }
+    }
+
+    private companion object {
+        val NOW = Instant.fromEpochSeconds(1_000_000)
     }
 }

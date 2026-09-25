@@ -9,9 +9,11 @@ import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
+import de.davis.keygo.feature.password_health.domain.model.BreachResult
 import de.davis.keygo.feature.password_health.domain.model.HealthFingerprint
 import de.davis.keygo.feature.password_health.domain.model.StoredHealthItem
 import java.util.UUID
+import kotlin.time.Instant
 
 internal val VAULT_ID: UUID = UUID(1L, 0L)
 
@@ -52,12 +54,15 @@ internal fun fingerprint(id: ItemId) = HealthFingerprint(id.toString().encodeToB
 internal fun storedItem(
     id: ItemId,
     score: PasswordScore? = null,
-    breachOccurrences: Int = 0,
+    breach: BreachResult? = null,
     unreadable: Boolean = false,
 ) = StoredHealthItem(
     id = id,
     fingerprint = fingerprint(id),
     score = score,
-    breachOccurrences = breachOccurrences,
+    breach = breach,
     unreadable = unreadable,
 )
+
+internal fun breach(occurrences: Int, checkedAt: Instant = Instant.fromEpochSeconds(0)) =
+    BreachResult(occurrences = occurrences, checkedAt = checkedAt)
