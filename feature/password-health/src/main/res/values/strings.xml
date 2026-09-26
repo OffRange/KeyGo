@@ -72,4 +72,7 @@
     <string name="fix_failed_save">Couldn\'t save the new password. Try again.</string>
 
     <string name="password_health_detail_placeholder">Pick an item to see it here</string>
+
+    <string name="password_health_notification_channel_name">Password health</string>
+    <string name="password_health_notification_channel_description">Reminders when some of your passwords need attention</string>
 </resources>
