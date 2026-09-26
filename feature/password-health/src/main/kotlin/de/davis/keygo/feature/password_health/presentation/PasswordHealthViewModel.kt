@@ -59,7 +59,10 @@ internal class PasswordHealthViewModel(
     fun onEvent(event: PasswordHealthUiEvent) {
         when (event) {
             PasswordHealthUiEvent.RunHealthCheck -> runHealthCheck(RunPhase.FirstLoad)
-            PasswordHealthUiEvent.RefreshHealthCheck -> runHealthCheck(RunPhase.Refresh)
+            PasswordHealthUiEvent.RefreshHealthCheck -> runHealthCheck(
+                RunPhase.Refresh,
+                force = true
+            )
 
             is PasswordHealthUiEvent.ItemClicked -> _eventChannel.trySend(
                 PasswordHealthEvent.OpenItem(event.itemId)
@@ -126,7 +129,11 @@ internal class PasswordHealthViewModel(
         }
     }
 
-    private fun runHealthCheck(phase: RunPhase, restartInFlight: Boolean = false) {
+    private fun runHealthCheck(
+        phase: RunPhase,
+        force: Boolean = false,
+        restartInFlight: Boolean = false,
+    ) {
         if (run?.isActive == true) {
             if (!restartInFlight) return
             run?.cancel()
@@ -135,7 +142,7 @@ internal class PasswordHealthViewModel(
         run = viewModelScope.launch {
             _base.update { it.copy(phase = phase) }
 
-            val report = passwordHealth()
+            val report = passwordHealth(force = force)
             _base.update { state ->
                 report.fold(
                     onSuccess = { state.withReport(it) },

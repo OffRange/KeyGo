@@ -65,6 +65,7 @@ class PasswordHealthViewModelTest {
     private val scopeProvider = FakeCryptographicScopeProvider(itemRepository)
     private val vaultRepository = FakeVaultRepository()
     private val breachState = FakeBreachCheckStateRepository(enabled = false)
+    private val breached = FakeBreachedRepository()
     private val websiteHandler = RecordingWebsiteHandler()
 
     @BeforeTest
@@ -94,7 +95,7 @@ class PasswordHealthViewModelTest {
                 listOf(
                     WeakPasswordChecker(),
                     ReusePasswordCheck(),
-                    BreachedPasswordCheck(FakeBreachedRepository(), breachState),
+                    BreachedPasswordCheck(breached, breachState),
                 ),
             ),
             assembler = HealthReportAssembler(),
@@ -177,6 +178,33 @@ class PasswordHealthViewModelTest {
         val state = vm.awaitIdle { it.totalPasswordCount == 2 }
 
         assertEquals(PasswordHealthStatus.NEEDS_ATTENTION, state.status)
+    }
+
+    @Test
+    fun aRefreshLooksUpEveryPasswordInBreachesAgain() = runTest {
+        seed(0)
+        seed(1)
+        breachState.setBreachEnabled(true)
+        val vm = viewModel().also { subscribe(it) }
+        runAndAwait(vm)
+        assertEquals(2, breachLookups())
+
+        vm.onEvent(PasswordHealthUiEvent.RefreshHealthCheck)
+        vm.awaitIdle { breachLookups() == 4 }
+    }
+
+    @Test
+    fun theRefreshAfterAFixOnlyLooksUpTheChangedPassword() = runTest {
+        seed(0, score = PasswordScore.Weak)
+        seed(1)
+        breachState.setBreachEnabled(true)
+        val vm = viewModel().also { subscribe(it) }
+        runAndAwait(vm)
+
+        vm.fix(0, "n3w-Pa55word!")
+        vm.awaitIdle { it.fixFlow == null && it.optimisticallyFixed.isEmpty() }
+
+        assertEquals(3, breachLookups())
     }
 
     @Test
@@ -399,6 +427,8 @@ class PasswordHealthViewModelTest {
     private suspend fun PasswordHealthViewModel.awaitIdle(
         predicate: (PasswordHealthUiState) -> Boolean,
     ) = uiState.first { it.phase == RunPhase.Idle && predicate(it) }
+
+    private fun breachLookups() = breached.calls.sumOf { it.suffixes.size }
 
     private fun seed(
         n: Int,

@@ -34,13 +34,16 @@ class PasswordHealthReportUseCase(
 ) {
 
     suspend operator fun invoke(
+        force: Boolean,
         coroutineContext: CoroutineContext = Dispatchers.Default,
     ): Result<PasswordHealthReport, PasswordHealthReportError> = resultBinding {
         withContext(coroutineContext) {
             val breachCheckEnabled = async {
                 breachCheckStateRepository.getBreachCheckState().enabled
             }
-            val storedReport = async { healthReportStoreRepository.load().getOrNull() }
+            val storedReport = async {
+                if (force) null else healthReportStoreRepository.load().getOrNull()
+            }
 
             val logins = loginRepository.observeLogins()
                 .firstOrNull()

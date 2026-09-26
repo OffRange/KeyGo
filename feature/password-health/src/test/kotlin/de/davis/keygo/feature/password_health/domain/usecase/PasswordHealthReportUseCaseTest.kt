@@ -151,6 +151,18 @@ class PasswordHealthReportUseCaseTest {
     }
 
     @Test
+    fun aForcedRunScansEverythingAgain() = runTest {
+        seed(0, 1)
+        run().assertSuccess()
+
+        run(force = true).assertSuccess()
+
+        assertEquals(2, strength.calls.size)
+        assertEquals(listOf(setOf(id(0), id(1)), setOf(id(0), id(1))), breach.calls)
+        assertEquals(2, store.writes)
+    }
+
+    @Test
     fun anEditedPasswordTriggersAFreshScan() = runTest {
         seed(0, 1)
         run().assertSuccess()
@@ -282,7 +294,7 @@ class PasswordHealthReportUseCaseTest {
         assertEquals(2, strength.calls.size)
     }
 
-    private suspend fun run() = useCase(EmptyCoroutineContext)
+    private suspend fun run(force: Boolean = false) = useCase(force, EmptyCoroutineContext)
 
     /** Seeds logins whose passwords the fake provider can decrypt. */
     private fun seed(
