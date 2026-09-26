@@ -1,8 +1,9 @@
 package de.davis.keygo.feature.password_health.data.mapper
 
-import de.davis.keygo.feature.password_health.data.local.model.ProtoBreachCheckState
-import de.davis.keygo.feature.password_health.domain.model.BreachCheckState
+import de.davis.keygo.feature.password_health.data.local.model.ProtoHealthSettings
+import de.davis.keygo.feature.password_health.domain.model.HealthSettings
 
-internal fun ProtoBreachCheckState.toDomain() = BreachCheckState(
-    enabled = enabled
+internal fun ProtoHealthSettings.toDomain() = HealthSettings(
+    breachesEnabled = breachesEnabled,
+    notificationsEnabled = notificationsEnabled
 )

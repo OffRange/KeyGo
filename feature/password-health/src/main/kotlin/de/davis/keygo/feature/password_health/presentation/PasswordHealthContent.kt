@@ -34,7 +34,7 @@ import de.davis.keygo.feature.password_health.R
 import de.davis.keygo.feature.password_health.domain.model.FindingSeverity
 import de.davis.keygo.feature.password_health.domain.model.ItemHealth
 import de.davis.keygo.feature.password_health.domain.model.ItemIssue
-import de.davis.keygo.feature.password_health.presentation.component.BreachCheck
+import de.davis.keygo.feature.password_health.presentation.component.HealthSettings
 import de.davis.keygo.feature.password_health.presentation.component.PasswordHealthStatus
 import de.davis.keygo.feature.password_health.presentation.component.needsAttentionSection
 import de.davis.keygo.feature.password_health.presentation.model.HealthSection
@@ -94,11 +94,11 @@ internal fun PasswordHealthContent(
                     onEvent = onEvent,
                 )
 
-                item(key = "breach_check") {
+                item(key = "settings") {
                     Spacer(modifier = Modifier.height(28.dp))
-                    BreachCheck(
+                    HealthSettings(
                         state = state,
-                        onChange = { onEvent(PasswordHealthUiEvent.OnBreachCheckChanged(it)) },
+                        onEvent = onEvent,
                         modifier = Modifier.animateItem()
                     )
                 }

@@ -1,6 +1,9 @@
 package de.davis.keygo.feature.password_health.presentation.component
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,21 +19,63 @@ import de.davis.keygo.feature.password_health.R
 import de.davis.keygo.feature.password_health.domain.model.CheckGap
 import de.davis.keygo.feature.password_health.domain.model.CheckKind
 import de.davis.keygo.feature.password_health.domain.model.GapReason
+import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiEvent
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiState
 import de.davis.keygo.feature.password_health.presentation.segmentContainerColor
 
 @Composable
-internal fun BreachCheck(
+internal fun HealthSettings(
+    state: PasswordHealthUiState,
+    onEvent: (PasswordHealthUiEvent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+    ) {
+        BreachCheck(
+            state = state,
+            onChange = { onEvent(PasswordHealthUiEvent.OnBreachCheckChanged(it)) },
+            shapes = ListItemDefaults.segmentedShapes(0, 2),
+        )
+
+        NotificationSwitch(
+            onChange = { onEvent(PasswordHealthUiEvent.OnNotificationChanged(it)) },
+            shapes = ListItemDefaults.segmentedShapes(1, 2),
+        )
+    }
+}
+
+@Composable
+private fun NotificationSwitch(
+    onChange: (Boolean) -> Unit,
+    shapes: ListItemShapes,
+) {
+    KeyGoSwitch(
+        checked = false,
+        onCheckedChange = onChange,
+        supportingContent = {
+            Text(text = "KeyGo will remind you of any security issues with your passwords.")
+        },
+        verticalAlignment = Alignment.CenterVertically,
+        colors = ListItemDefaults.segmentedColors(containerColor = segmentContainerColor),
+        shapes = shapes,
+    ) {
+        Text(text = "Enable Notifications")
+    }
+}
+
+@Composable
+private fun BreachCheck(
     state: PasswordHealthUiState,
     onChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
+    shapes: ListItemShapes,
 ) {
     val message = state.breachGap?.message()
 
     KeyGoSwitch(
         checked = state.breachCheckEnabled,
         onCheckedChange = onChange,
-        modifier = modifier,
         supportingContent = {
             if (message == null)
                 Text(text = stringResource(R.string.breach_check_opt_in_description))
@@ -38,7 +83,7 @@ internal fun BreachCheck(
         },
         verticalAlignment = Alignment.CenterVertically,
         colors = ListItemDefaults.segmentedColors(containerColor = segmentContainerColor),
-        shapes = ListItemDefaults.shapes(shape = MaterialTheme.shapes.large)
+        shapes = shapes,
     ) {
         Text(text = stringResource(R.string.breach_check_enable))
     }
@@ -62,9 +107,9 @@ private fun CheckGap.message(): String? {
 @Composable
 private fun BreachCheckPreview() {
     MaterialTheme {
-        BreachCheck(
+        HealthSettings(
             state = PasswordHealthUiState(),
-            onChange = {}
+            onEvent = {},
         )
     }
 }
@@ -73,7 +118,7 @@ private fun BreachCheckPreview() {
 @Composable
 private fun BreachCheckUnavailablePreview() {
     MaterialTheme {
-        BreachCheck(
+        HealthSettings(
             state = PasswordHealthUiState(
                 checkGaps = mapOf(
                     CheckKind.Breach to CheckGap(
@@ -82,7 +127,7 @@ private fun BreachCheckUnavailablePreview() {
                     ),
                 ),
             ),
-            onChange = {}
+            onEvent = {}
         )
     }
 }

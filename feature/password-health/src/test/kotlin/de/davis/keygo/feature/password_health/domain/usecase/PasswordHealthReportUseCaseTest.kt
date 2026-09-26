@@ -12,9 +12,9 @@ import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.assertFailure
 import de.davis.keygo.core.util.assertSuccess
-import de.davis.keygo.feature.password_health.FakeBreachCheckStateRepository
 import de.davis.keygo.feature.password_health.FakeBreachedRepository
 import de.davis.keygo.feature.password_health.FakeConnectivityRepository
+import de.davis.keygo.feature.password_health.FakeHealthSettingsRepository
 import de.davis.keygo.feature.password_health.data.LoginFingerprinterImpl
 import de.davis.keygo.feature.password_health.domain.PasswordHealthAttention
 import de.davis.keygo.feature.password_health.domain.checker.BreachedPasswordCheck
@@ -69,7 +69,7 @@ class PasswordHealthReportUseCaseTest {
     private val scopeProvider = FakeCryptographicScopeProvider(itemRepository)
     private val fingerprinter = LoginFingerprinterImpl()
     private val store = FakeHealthReportStore()
-    private val breachState = FakeBreachCheckStateRepository(enabled = true)
+    private val breachState = FakeHealthSettingsRepository(breachesEnabled = true)
     private val breached = FakeBreachedRepository()
     private val attention = PasswordHealthAttention(
         session = FakeSession(startUnlocked = true),
@@ -86,7 +86,7 @@ class PasswordHealthReportUseCaseTest {
         loginRepository = loginRepository,
         loginFingerprinter = fingerprinter,
         healthReportStoreRepository = store,
-        breachCheckStateRepository = breachState,
+        healthSettingsRepository = breachState,
         scanner = HealthReportScanner(scopeProvider, listOf(strength, reuse, breach)),
         assembler = HealthReportAssembler(),
         attention = attention,

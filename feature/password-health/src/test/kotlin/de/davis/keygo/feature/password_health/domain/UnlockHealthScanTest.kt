@@ -8,7 +8,7 @@ import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.util.Result
-import de.davis.keygo.feature.password_health.FakeBreachCheckStateRepository
+import de.davis.keygo.feature.password_health.FakeHealthSettingsRepository
 import de.davis.keygo.feature.password_health.data.LoginFingerprinterImpl
 import de.davis.keygo.feature.password_health.domain.checker.PasswordHealthChecker
 import de.davis.keygo.feature.password_health.domain.checker.WeakPasswordChecker
@@ -45,7 +45,7 @@ class UnlockHealthScanTest {
     private val session = FakeSession()
     private val loginRepository = FakeLoginRepository()
     private val itemRepository = FakeItemRepository(loginRepository)
-    private val breachState = FakeBreachCheckStateRepository(enabled = false)
+    private val breachState = FakeHealthSettingsRepository(breachesEnabled = false)
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val attention = PasswordHealthAttention(session, appScope)
 
@@ -110,7 +110,7 @@ class UnlockHealthScanTest {
             loginRepository = loginRepository,
             loginFingerprinter = LoginFingerprinterImpl(),
             healthReportStoreRepository = InMemoryStore(),
-            breachCheckStateRepository = breachState,
+            healthSettingsRepository = breachState,
             scanner = HealthReportScanner(FakeCryptographicScopeProvider(itemRepository), checkers),
             assembler = HealthReportAssembler(),
             attention = attention,

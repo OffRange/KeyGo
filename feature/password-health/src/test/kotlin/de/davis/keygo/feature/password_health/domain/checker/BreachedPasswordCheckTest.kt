@@ -1,8 +1,8 @@
 package de.davis.keygo.feature.password_health.domain.checker
 
-import de.davis.keygo.feature.password_health.FakeBreachCheckStateRepository
 import de.davis.keygo.feature.password_health.FakeBreachedRepository
 import de.davis.keygo.feature.password_health.FakeConnectivityRepository
+import de.davis.keygo.feature.password_health.FakeHealthSettingsRepository
 import de.davis.keygo.feature.password_health.domain.model.BreachedError
 import de.davis.keygo.feature.password_health.domain.model.CheckGap
 import de.davis.keygo.feature.password_health.domain.model.CheckKind
@@ -25,7 +25,7 @@ import kotlin.test.assertTrue
 class BreachedPasswordCheckTest {
 
     private val breached = FakeBreachedRepository()
-    private val state = FakeBreachCheckStateRepository(enabled = true)
+    private val state = FakeHealthSettingsRepository(breachesEnabled = true)
     private val connectivity = FakeConnectivityRepository(online = true)
     private val checker = BreachedPasswordCheck(breached, state, connectivity)
 
@@ -39,7 +39,12 @@ class BreachedPasswordCheckTest {
         checker.check(candidates("password"))
 
         assertEquals(
-            listOf(FakeBreachedRepository.Call("5BAA6", setOf("1E4C9B93F3F0682250B6CF8331B7EE68FD8"))),
+            listOf(
+                FakeBreachedRepository.Call(
+                    "5BAA6",
+                    setOf("1E4C9B93F3F0682250B6CF8331B7EE68FD8")
+                )
+            ),
             breached.calls,
         )
     }

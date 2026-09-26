@@ -11,10 +11,10 @@ import de.davis.keygo.feature.password_health.domain.model.GapReason
 import de.davis.keygo.feature.password_health.domain.model.HealthFinding
 import de.davis.keygo.feature.password_health.domain.model.ItemIssue
 import de.davis.keygo.feature.password_health.domain.model.PasswordCandidate
-import de.davis.keygo.feature.password_health.domain.repository.BreachCheckStateRepository
 import de.davis.keygo.feature.password_health.domain.repository.BreachedRepository
 import de.davis.keygo.feature.password_health.domain.repository.BreachedRepository.Companion.PREFIX_LENGTH
 import de.davis.keygo.feature.password_health.domain.repository.ConnectivityRepository
+import de.davis.keygo.feature.password_health.domain.repository.HealthSettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -27,7 +27,7 @@ import java.security.MessageDigest
 @Single
 internal class BreachedPasswordCheck(
     private val breachedRepository: BreachedRepository,
-    private val breachCheckStateRepository: BreachCheckStateRepository,
+    private val healthSettingsRepository: HealthSettingsRepository,
     private val connectivityRepository: ConnectivityRepository,
 ) : PasswordHealthChecker {
 
@@ -36,7 +36,7 @@ internal class BreachedPasswordCheck(
     override suspend fun check(candidates: List<PasswordCandidate>): CheckOutcome {
         if (candidates.isEmpty()) return CheckOutcome()
 
-        if (!breachCheckStateRepository.getBreachCheckState().enabled)
+        if (!healthSettingsRepository.getBreachCheckState().breachesEnabled)
             return CheckOutcome.skipped(GapReason.Disabled, candidates)
 
         if (!connectivityRepository.hasInternet())

@@ -16,9 +16,9 @@ import de.davis.keygo.core.security.domain.model.CryptoScopeError
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
 import de.davis.keygo.feature.item.view.domain.WebsiteHandler
-import de.davis.keygo.feature.password_health.FakeBreachCheckStateRepository
 import de.davis.keygo.feature.password_health.FakeBreachedRepository
 import de.davis.keygo.feature.password_health.FakeConnectivityRepository
+import de.davis.keygo.feature.password_health.FakeHealthSettingsRepository
 import de.davis.keygo.feature.password_health.data.LoginFingerprinterImpl
 import de.davis.keygo.feature.password_health.domain.PasswordHealthAttention
 import de.davis.keygo.feature.password_health.domain.checker.BreachedPasswordCheck
@@ -68,7 +68,7 @@ class PasswordHealthViewModelTest {
     private val itemRepository = FakeItemRepository(loginRepository)
     private val scopeProvider = FakeCryptographicScopeProvider(itemRepository)
     private val vaultRepository = FakeVaultRepository()
-    private val breachState = FakeBreachCheckStateRepository(enabled = false)
+    private val breachState = FakeHealthSettingsRepository(breachesEnabled = false)
     private val breached = FakeBreachedRepository()
     private val websiteHandler = RecordingWebsiteHandler()
 
@@ -93,7 +93,7 @@ class PasswordHealthViewModelTest {
             loginRepository = loginRepository,
             loginFingerprinter = LoginFingerprinterImpl(),
             healthReportStoreRepository = InMemoryStore(),
-            breachCheckStateRepository = breachState,
+            healthSettingsRepository = breachState,
             scanner = HealthReportScanner(
                 scopeProvider,
                 listOf(
@@ -116,7 +116,7 @@ class PasswordHealthViewModelTest {
             passwordStrengthEstimator = FakePasswordStrengthEstimator(PasswordScore.Strong),
             totpService = FakeTotpService(),
         ),
-        breachCheckStateRepository = breachState,
+        healthSettingsRepository = breachState,
         websiteHandler = websiteHandler,
     )
 
@@ -232,7 +232,7 @@ class PasswordHealthViewModelTest {
         vm.onEvent(PasswordHealthUiEvent.OnBreachCheckChanged(true))
         val state = vm.awaitIdle { it.totalPasswordCount == 1 }
 
-        assertEquals(true, breachState.state.value.enabled)
+        assertEquals(true, breachState.state.value.breachesEnabled)
         assertEquals(true, state.breachCheckEnabled)
     }
 
@@ -244,7 +244,7 @@ class PasswordHealthViewModelTest {
 
         vm.onEvent(PasswordHealthUiEvent.OnBreachCheckChanged(false))
 
-        assertEquals(false, breachState.state.value.enabled)
+        assertEquals(false, breachState.state.value.breachesEnabled)
         assertEquals(RunPhase.FirstLoad, vm.uiState.value.phase)
         assertEquals(0, vm.uiState.value.totalPasswordCount)
     }

@@ -108,6 +108,7 @@ private const val MinimumGroupSize = 2
 internal data class PasswordHealthUiState(
     val phase: RunPhase = RunPhase.Idle,
     val breachCheckEnabled: Boolean = false,
+    val notificationEnabled: Boolean = false,
     val totalPasswordCount: Int = 0,
     val reportedSections: List<HealthSection> = emptyList(),
     val checkGaps: Map<CheckKind, CheckGap> = emptyMap(),

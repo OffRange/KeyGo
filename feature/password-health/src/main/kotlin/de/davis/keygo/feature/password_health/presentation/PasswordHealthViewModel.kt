@@ -12,7 +12,7 @@ import de.davis.keygo.feature.password_health.domain.model.FindingSeverity
 import de.davis.keygo.feature.password_health.domain.model.PasswordFixError
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReport
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReportError
-import de.davis.keygo.feature.password_health.domain.repository.BreachCheckStateRepository
+import de.davis.keygo.feature.password_health.domain.repository.HealthSettingsRepository
 import de.davis.keygo.feature.password_health.domain.usecase.PasswordHealthReportUseCase
 import de.davis.keygo.feature.password_health.presentation.model.FixFlow
 import de.davis.keygo.feature.password_health.presentation.model.HealthSection
@@ -35,7 +35,7 @@ import org.koin.core.annotation.KoinViewModel
 internal class PasswordHealthViewModel(
     private val passwordHealth: PasswordHealthReportUseCase,
     private val createNewOrUpdateLogin: CreateNewOrUpdateLoginUseCase,
-    private val breachCheckStateRepository: BreachCheckStateRepository,
+    private val healthSettingsRepository: HealthSettingsRepository,
     private val websiteHandler: WebsiteHandler,
 ) : ViewModel() {
 
@@ -45,9 +45,12 @@ internal class PasswordHealthViewModel(
     private val _base = MutableStateFlow(PasswordHealthUiState(phase = RunPhase.FirstLoad))
     val uiState = combine(
         _base,
-        breachCheckStateRepository.observeBreachCheckState(),
+        healthSettingsRepository.observeBreachCheckState(),
     ) { base, breachCheckState ->
-        base.copy(breachCheckEnabled = breachCheckState.enabled)
+        base.copy(
+            breachCheckEnabled = breachCheckState.breachesEnabled,
+            notificationEnabled = breachCheckState.notificationsEnabled,
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -69,8 +72,12 @@ internal class PasswordHealthViewModel(
             )
 
             is PasswordHealthUiEvent.OnBreachCheckChanged -> viewModelScope.launch {
-                breachCheckStateRepository.setBreachEnabled(event.enabled)
+                healthSettingsRepository.setBreachEnabled(event.enabled)
                 if (event.enabled) runHealthCheck(RunPhase.FirstLoad)
+            }
+
+            is PasswordHealthUiEvent.OnNotificationChanged -> viewModelScope.launch {
+                healthSettingsRepository.setNotificationEnabled(event.enabled)
             }
 
             is PasswordHealthUiEvent.FixClicked ->

@@ -14,8 +14,8 @@ import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReport
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReportError
 import de.davis.keygo.feature.password_health.domain.report.HealthReportAssembler
 import de.davis.keygo.feature.password_health.domain.report.HealthReportScanner
-import de.davis.keygo.feature.password_health.domain.repository.BreachCheckStateRepository
 import de.davis.keygo.feature.password_health.domain.repository.HealthReportStoreRepository
+import de.davis.keygo.feature.password_health.domain.repository.HealthSettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -32,7 +32,7 @@ class PasswordHealthReportUseCase(
     private val loginRepository: LoginRepository,
     private val loginFingerprinter: LoginFingerprinter,
     private val healthReportStoreRepository: HealthReportStoreRepository,
-    private val breachCheckStateRepository: BreachCheckStateRepository,
+    private val healthSettingsRepository: HealthSettingsRepository,
     private val scanner: HealthReportScanner,
     private val assembler: HealthReportAssembler,
     private val attention: PasswordHealthAttention,
@@ -55,7 +55,7 @@ class PasswordHealthReportUseCase(
     ): Result<PasswordHealthReport, PasswordHealthReportError> = resultBinding {
         withContext(coroutineContext) {
             val breachCheckEnabled = async {
-                breachCheckStateRepository.getBreachCheckState().enabled
+                healthSettingsRepository.getBreachCheckState().breachesEnabled
             }
             val storedReport = async {
                 if (force) null else healthReportStoreRepository.load().getOrNull()
