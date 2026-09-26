@@ -14,6 +14,7 @@ import de.davis.keygo.core.util.assertFailure
 import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.feature.password_health.FakeBreachCheckStateRepository
 import de.davis.keygo.feature.password_health.FakeBreachedRepository
+import de.davis.keygo.feature.password_health.FakeConnectivityRepository
 import de.davis.keygo.feature.password_health.data.LoginFingerprinterImpl
 import de.davis.keygo.feature.password_health.domain.PasswordHealthAttention
 import de.davis.keygo.feature.password_health.domain.checker.BreachedPasswordCheck
@@ -77,7 +78,9 @@ class PasswordHealthReportUseCaseTest {
 
     private val strength = Counting(WeakPasswordChecker())
     private val reuse = Counting(ReusePasswordCheck())
-    private val breach = Counting(BreachedPasswordCheck(breached, breachState))
+    private val breach = Counting(
+        BreachedPasswordCheck(breached, breachState, FakeConnectivityRepository()),
+    )
 
     private val useCase = PasswordHealthReportUseCase(
         loginRepository = loginRepository,

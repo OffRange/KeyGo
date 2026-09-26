@@ -2,6 +2,7 @@ package de.davis.keygo.feature.password_health.domain.checker
 
 import de.davis.keygo.feature.password_health.FakeBreachCheckStateRepository
 import de.davis.keygo.feature.password_health.FakeBreachedRepository
+import de.davis.keygo.feature.password_health.FakeConnectivityRepository
 import de.davis.keygo.feature.password_health.domain.model.BreachedError
 import de.davis.keygo.feature.password_health.domain.model.CheckGap
 import de.davis.keygo.feature.password_health.domain.model.CheckKind
@@ -25,7 +26,8 @@ class BreachedPasswordCheckTest {
 
     private val breached = FakeBreachedRepository()
     private val state = FakeBreachCheckStateRepository(enabled = true)
-    private val checker = BreachedPasswordCheck(breached, state)
+    private val connectivity = FakeConnectivityRepository(online = true)
+    private val checker = BreachedPasswordCheck(breached, state, connectivity)
 
     @Test
     fun reportsAsTheBreachCheck() {
@@ -121,6 +123,16 @@ class BreachedPasswordCheckTest {
         assertTrue(breached.calls.isEmpty())
         assertTrue(outcome.findings.isEmpty())
         assertEquals(CheckGap(GapReason.Disabled, setOf(id(0), id(1))), outcome.gap)
+    }
+
+    @Test
+    fun noInternetSkipsEveryPasswordWithoutAsking() = runTest {
+        connectivity.online = false
+
+        val outcome = checker.check(candidates("password", "hunter2"))
+
+        assertTrue(breached.calls.isEmpty())
+        assertEquals(CheckGap(GapReason.Unreachable, setOf(id(0), id(1))), outcome.gap)
     }
 
     @Test

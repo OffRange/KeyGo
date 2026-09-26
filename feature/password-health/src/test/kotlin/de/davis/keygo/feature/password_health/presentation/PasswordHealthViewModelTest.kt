@@ -18,6 +18,7 @@ import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUse
 import de.davis.keygo.feature.item.view.domain.WebsiteHandler
 import de.davis.keygo.feature.password_health.FakeBreachCheckStateRepository
 import de.davis.keygo.feature.password_health.FakeBreachedRepository
+import de.davis.keygo.feature.password_health.FakeConnectivityRepository
 import de.davis.keygo.feature.password_health.data.LoginFingerprinterImpl
 import de.davis.keygo.feature.password_health.domain.PasswordHealthAttention
 import de.davis.keygo.feature.password_health.domain.checker.BreachedPasswordCheck
@@ -98,7 +99,7 @@ class PasswordHealthViewModelTest {
                 listOf(
                     WeakPasswordChecker(),
                     ReusePasswordCheck(),
-                    BreachedPasswordCheck(breached, breachState),
+                    BreachedPasswordCheck(breached, breachState, FakeConnectivityRepository()),
                 ),
             ),
             assembler = HealthReportAssembler(),

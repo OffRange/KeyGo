@@ -14,6 +14,7 @@ import de.davis.keygo.feature.password_health.domain.model.PasswordCandidate
 import de.davis.keygo.feature.password_health.domain.repository.BreachCheckStateRepository
 import de.davis.keygo.feature.password_health.domain.repository.BreachedRepository
 import de.davis.keygo.feature.password_health.domain.repository.BreachedRepository.Companion.PREFIX_LENGTH
+import de.davis.keygo.feature.password_health.domain.repository.ConnectivityRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -27,6 +28,7 @@ import java.security.MessageDigest
 internal class BreachedPasswordCheck(
     private val breachedRepository: BreachedRepository,
     private val breachCheckStateRepository: BreachCheckStateRepository,
+    private val connectivityRepository: ConnectivityRepository,
 ) : PasswordHealthChecker {
 
     override val type = CheckKind.Breach
@@ -36,6 +38,9 @@ internal class BreachedPasswordCheck(
 
         if (!breachCheckStateRepository.getBreachCheckState().enabled)
             return CheckOutcome.skipped(GapReason.Disabled, candidates)
+
+        if (!connectivityRepository.hasInternet())
+            return CheckOutcome.skipped(GapReason.Unreachable, candidates)
 
         val ranges = candidates.byRange()
 
