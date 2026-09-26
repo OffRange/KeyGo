@@ -10,6 +10,7 @@ import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.domain.model.CryptoScopeError
 import de.davis.keygo.core.util.Result
@@ -18,6 +19,7 @@ import de.davis.keygo.feature.item.view.domain.WebsiteHandler
 import de.davis.keygo.feature.password_health.FakeBreachCheckStateRepository
 import de.davis.keygo.feature.password_health.FakeBreachedRepository
 import de.davis.keygo.feature.password_health.data.LoginFingerprinterImpl
+import de.davis.keygo.feature.password_health.domain.PasswordHealthAttention
 import de.davis.keygo.feature.password_health.domain.checker.BreachedPasswordCheck
 import de.davis.keygo.feature.password_health.domain.checker.ReusePasswordCheck
 import de.davis.keygo.feature.password_health.domain.checker.WeakPasswordChecker
@@ -40,6 +42,7 @@ import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthU
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiState
 import de.davis.keygo.feature.password_health.presentation.model.RunPhase
 import de.davis.keygo.rust.FakeTotpService
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -99,6 +102,10 @@ class PasswordHealthViewModelTest {
                 ),
             ),
             assembler = HealthReportAssembler(),
+            attention = PasswordHealthAttention(
+                FakeSession(),
+                CoroutineScope(Dispatchers.Unconfined)
+            ),
         ),
         createNewOrUpdateLogin = CreateNewOrUpdateLoginUseCase(
             cryptographicScopeProvider = scopeProvider,
@@ -470,6 +477,7 @@ class PasswordHealthViewModelTest {
         }
 
         override suspend fun load(): Result<StoredHealthReport, HealthReportStoreError> =
-            stored?.let { Result.Success(it) } ?: Result.Failure(HealthReportStoreError.NoReportStored)
+            stored?.let { Result.Success(it) }
+                ?: Result.Failure(HealthReportStoreError.NoReportStored)
     }
 }

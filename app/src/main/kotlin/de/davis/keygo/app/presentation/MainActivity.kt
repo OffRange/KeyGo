@@ -61,6 +61,7 @@ class MainActivity : FragmentActivity() {
             // Null until the account has been looked up, which the splash screen waits out.
             val hasAccess = viewModel.isReturningUser.collectAsState().value ?: return@setContent
             val isSessionActive by viewModel.isSessionActive.collectAsState()
+            val needsAttentionCount by viewModel.needsAttentionCount.collectAsState()
 
             KeyGoTheme {
                 val snackbarManager = koinInject<SnackbarManager>()
@@ -71,6 +72,7 @@ class MainActivity : FragmentActivity() {
                         hasAccess = hasAccess,
                         launchRoute = launchRoute(hasAccess),
                         isSessionActive = isSessionActive,
+                        needsAttentionCount = needsAttentionCount,
                     )
                 }
             }
@@ -93,6 +95,7 @@ private fun App(
     hasAccess: Boolean,
     launchRoute: NavKey,
     isSessionActive: Boolean,
+    needsAttentionCount: Int,
 ) {
     val navigationState = rememberAppNavigationState(
         launchRoute = launchRoute,
@@ -130,6 +133,7 @@ private fun App(
             onItemSelected = { type -> navigator.showDetail(RouteDestination.CreateItem(type)) },
             showChrome = shell.showNavigation,
             showPrimaryActionButton = shell.showCreateButton,
+            needsAttentionCount = needsAttentionCount,
             snackbarHost = {
                 SnackbarHost(hostState = snackbarHostState)
             },

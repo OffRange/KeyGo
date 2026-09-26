@@ -7,6 +7,7 @@ import de.davis.keygo.core.item.domain.model.ItemKeyEnvelope
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.assertFailure
@@ -14,6 +15,7 @@ import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.feature.password_health.FakeBreachCheckStateRepository
 import de.davis.keygo.feature.password_health.FakeBreachedRepository
 import de.davis.keygo.feature.password_health.data.LoginFingerprinterImpl
+import de.davis.keygo.feature.password_health.domain.PasswordHealthAttention
 import de.davis.keygo.feature.password_health.domain.checker.BreachedPasswordCheck
 import de.davis.keygo.feature.password_health.domain.checker.PasswordHealthChecker
 import de.davis.keygo.feature.password_health.domain.checker.ReusePasswordCheck
@@ -37,6 +39,11 @@ import de.davis.keygo.feature.password_health.domain.report.VAULT_ID
 import de.davis.keygo.feature.password_health.domain.report.id
 import de.davis.keygo.feature.password_health.domain.report.login
 import de.davis.keygo.feature.password_health.domain.repository.HealthReportStoreRepository
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -63,6 +70,10 @@ class PasswordHealthReportUseCaseTest {
     private val store = FakeHealthReportStore()
     private val breachState = FakeBreachCheckStateRepository(enabled = true)
     private val breached = FakeBreachedRepository()
+    private val attention = PasswordHealthAttention(
+        session = FakeSession(startUnlocked = true),
+        appScope = CoroutineScope(Dispatchers.Unconfined),
+    )
 
     private val strength = Counting(WeakPasswordChecker())
     private val reuse = Counting(ReusePasswordCheck())
@@ -75,6 +86,7 @@ class PasswordHealthReportUseCaseTest {
         breachCheckStateRepository = breachState,
         scanner = HealthReportScanner(scopeProvider, listOf(strength, reuse, breach)),
         assembler = HealthReportAssembler(),
+        attention = attention,
     )
 
     @Test
@@ -125,6 +137,47 @@ class PasswordHealthReportUseCaseTest {
 
         assertEquals(RelationType.Reused, group.dominantRelation)
         assertEquals(setOf(id(0), id(1)), group.members.mapTo(mutableSetOf()) { it.itemId })
+    }
+
+    @Test
+    fun onlyTheItemsThatNeedAttentionAreCounted() = runTest {
+        seed(0, 1, score = PasswordScore.Weak)
+        seed(2)
+
+        run().assertSuccess()
+
+        assertEquals(2, attention.needsAttention.value)
+    }
+
+    @Test
+    fun everyMemberOfAGroupIsCountedNotTheGroup() = runTest {
+        seed(0, 1, password = "same")
+        seed(2, score = PasswordScore.Weak)
+
+        run().assertSuccess()
+
+        assertEquals(3, attention.needsAttention.value)
+    }
+
+    @Test
+    fun aReportServedFromTheStoreIsCountedToo() = runTest {
+        seed(0, 1, score = PasswordScore.Weak)
+        run().assertSuccess()
+        attention.clear()
+
+        run().assertSuccess()
+
+        assertEquals(1, store.writes)
+        assertEquals(2, attention.needsAttention.value)
+    }
+
+    @Test
+    fun aVaultThatBecameEmptyClearsTheCount() = runTest {
+        attention.update(3)
+
+        assertEquals(PasswordHealthReportError.NoPasswords, run().assertFailure())
+
+        assertEquals(0, attention.needsAttention.value)
     }
 
     @Test
@@ -294,6 +347,32 @@ class PasswordHealthReportUseCaseTest {
         assertEquals(2, strength.calls.size)
     }
 
+    @Test
+    fun aScanThatFailsLeavesTheCountAlone() = runTest {
+        attention.update(3)
+        loginRepository.seed(login(id(0)))
+
+        assertEquals(PasswordHealthReportError.Unreadable, run().assertFailure())
+
+        assertEquals(3, attention.needsAttention.value)
+    }
+
+    @Test
+    fun callersThatOverlapShareOneScan() = runTest {
+        seed(0)
+        val gate = CompletableDeferred<Unit>()
+        strength.gate = gate
+
+        val first = async { run() }
+        val second = async { run() }
+        runCurrent()
+        gate.complete(Unit)
+
+        first.await().assertSuccess()
+        second.await().assertSuccess()
+        assertEquals(1, strength.calls.size)
+    }
+
     private suspend fun run(force: Boolean = false) = useCase(force, EmptyCoroutineContext)
 
     /** Seeds logins whose passwords the fake provider can decrypt. */
@@ -334,8 +413,11 @@ class PasswordHealthReportUseCaseTest {
 
         val calls: MutableList<Set<ItemId>> = Collections.synchronizedList(mutableListOf())
 
+        var gate: CompletableDeferred<Unit>? = null
+
         override suspend fun check(candidates: List<PasswordCandidate>): CheckOutcome {
             calls += candidates.mapTo(mutableSetOf()) { it.id }
+            gate?.await()
             return delegate.check(candidates)
         }
     }

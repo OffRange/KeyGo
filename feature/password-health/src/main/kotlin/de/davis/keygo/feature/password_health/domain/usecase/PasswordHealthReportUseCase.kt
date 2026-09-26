@@ -6,8 +6,10 @@ import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.password_health.domain.LoginFingerprinter
+import de.davis.keygo.feature.password_health.domain.PasswordHealthAttention
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReport
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReportError
 import de.davis.keygo.feature.password_health.domain.report.HealthReportAssembler
@@ -18,6 +20,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.koin.core.annotation.Single
 import kotlin.coroutines.CoroutineContext
@@ -31,11 +35,23 @@ class PasswordHealthReportUseCase(
     private val breachCheckStateRepository: BreachCheckStateRepository,
     private val scanner: HealthReportScanner,
     private val assembler: HealthReportAssembler,
+    private val attention: PasswordHealthAttention,
 ) {
+
+    private val mutex = Mutex()
 
     suspend operator fun invoke(
         force: Boolean,
         coroutineContext: CoroutineContext = Dispatchers.Default,
+    ): Result<PasswordHealthReport, PasswordHealthReportError> = mutex.withLock {
+        report(force, coroutineContext)
+            .onSuccess { attention.update(it.needsAttentionCount) }
+            .onFailure { if (it == PasswordHealthReportError.NoPasswords) attention.clear() }
+    }
+
+    private suspend fun report(
+        force: Boolean,
+        coroutineContext: CoroutineContext,
     ): Result<PasswordHealthReport, PasswordHealthReportError> = resultBinding {
         withContext(coroutineContext) {
             val breachCheckEnabled = async {

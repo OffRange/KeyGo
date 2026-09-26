@@ -47,4 +47,6 @@ data class PasswordHealthReport(
     val totalPasswordsScanned: Int,
     val gaps: Map<CheckKind, CheckGap> = emptyMap(),
     val unreadable: Set<ItemId> = emptySet(),
-)
+) {
+    val needsAttentionCount: Int = groups.sumOf { it.members.size } + standalone.size
+}

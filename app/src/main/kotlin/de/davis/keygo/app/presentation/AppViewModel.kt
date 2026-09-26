@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.feature.password_health.domain.PasswordHealthAttention
 import de.davis.keygo.legacy_migration.domain.usecase.HasMainPasswordUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +18,7 @@ internal class AppViewModel(
     private val accountRepository: AccountRepository,
     private val hasV1Password: HasMainPasswordUseCase,
     session: Session,
+    passwordHealthAttention: PasswordHealthAttention,
 ) : ViewModel() {
 
     private val _isReturningUser = MutableStateFlow<Boolean?>(null)
@@ -27,6 +29,8 @@ internal class AppViewModel(
      * authenticate again, whether the session just ended or a restored process never had one.
      */
     val isSessionActive: StateFlow<Boolean> = session.isActive
+
+    val needsAttentionCount: StateFlow<Int> = passwordHealthAttention.needsAttention
 
     init {
         viewModelScope.launch {

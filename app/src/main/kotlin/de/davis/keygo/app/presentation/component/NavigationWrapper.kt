@@ -21,6 +21,8 @@ import androidx.compose.material.icons.automirrored.filled.MenuOpen
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DrawerDefaults
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -87,7 +89,9 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.style.TextAlign
@@ -102,6 +106,7 @@ import de.davis.keygo.core.item.generated.presentation.presentation
 import kotlinx.coroutines.launch
 import kotlin.math.sign
 import de.davis.keygo.core.ui.R as CoreUiR
+import de.davis.keygo.feature.password_health.R as PasswordHealthR
 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -113,6 +118,7 @@ fun KeyGoNavigationWrapper(
     onItemSelected: (VaultItemType) -> Unit,
     showChrome: Boolean = true,
     showPrimaryActionButton: Boolean = true,
+    needsAttentionCount: Int = 0,
     containerColor: Color = NavigationSuiteScaffoldDefaults.containerColor,
     contentColor: Color = NavigationSuiteScaffoldDefaults.contentColor,
     buttonContainerColor: Color = MaterialTheme.colorScheme.tertiaryContainer,
@@ -189,6 +195,7 @@ fun KeyGoNavigationWrapper(
                             drawerState.close()
                         }
                     },
+                    needsAttentionCount = needsAttentionCount,
                     buttonContainerColor = buttonContainerColor,
                     buttonContentColor = buttonContentColor
                 )
@@ -210,6 +217,7 @@ fun KeyGoNavigationWrapper(
                                 drawerState.open()
                             }
                         },
+                        needsAttentionCount = needsAttentionCount,
                         buttonContainerColor = buttonContainerColor,
                         buttonContentColor = buttonContentColor,
                     )
@@ -351,6 +359,7 @@ fun KeyGoNavigationSuite(
     navigateToTopLvlDestination: (NavKey) -> Unit,
     onButtonClicked: () -> Unit,
     onOpenDrawer: () -> Unit,
+    needsAttentionCount: Int = 0,
     buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
     buttonContentColor: Color = contentColorFor(buttonContainerColor),
 ) {
@@ -359,6 +368,7 @@ fun KeyGoNavigationSuite(
             KeyGoNavigationBar(
                 selectedRoute = selectedRoute,
                 navigateToTopLvlDestination = navigateToTopLvlDestination,
+                needsAttentionCount = needsAttentionCount,
             )
         }
 
@@ -368,6 +378,7 @@ fun KeyGoNavigationSuite(
                 navigateToTopLvlDestination = navigateToTopLvlDestination,
                 onButtonClicked = onButtonClicked,
                 onOpenDrawer = onOpenDrawer,
+                needsAttentionCount = needsAttentionCount,
                 buttonContainerColor = buttonContainerColor,
                 buttonContentColor = buttonContentColor
             )
@@ -378,6 +389,7 @@ fun KeyGoNavigationSuite(
                 selectedRoute = selectedRoute,
                 onButtonClicked = onButtonClicked,
                 navigateToTopLvlDestination = navigateToTopLvlDestination,
+                needsAttentionCount = needsAttentionCount,
                 buttonContainerColor = buttonContainerColor,
                 buttonContentColor = buttonContentColor
             )
@@ -391,18 +403,14 @@ fun KeyGoNavigationSuite(
 fun KeyGoNavigationBar(
     selectedRoute: NavKey?,
     navigateToTopLvlDestination: (NavKey) -> Unit,
+    needsAttentionCount: Int = 0,
 ) {
     NavigationBar {
         AppDestinations.entries.forEach { destination ->
             NavigationBarItem(
                 selected = destination.route == selectedRoute,
                 onClick = { navigateToTopLvlDestination(destination.route) },
-                icon = {
-                    Icon(
-                        imageVector = destination.icon,
-                        contentDescription = stringResource(destination.contentDescription)
-                    )
-                },
+                icon = { DestinationIcon(destination, destination.badge(needsAttentionCount)) },
                 label = { Text(text = stringResource(destination.label)) },
                 alwaysShowLabel = false
             )
@@ -416,6 +424,7 @@ fun KeyGoNavigationRail(
     navigateToTopLvlDestination: (NavKey) -> Unit,
     onButtonClicked: () -> Unit,
     onOpenDrawer: () -> Unit,
+    needsAttentionCount: Int = 0,
     buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
     buttonContentColor: Color = contentColorFor(buttonContainerColor)
 ) {
@@ -454,12 +463,7 @@ fun KeyGoNavigationRail(
                 NavigationRailItem(
                     selected = destination.route == selectedRoute,
                     onClick = { navigateToTopLvlDestination(destination.route) },
-                    icon = {
-                        Icon(
-                            imageVector = destination.icon,
-                            contentDescription = stringResource(destination.contentDescription)
-                        )
-                    },
+                    icon = { DestinationIcon(destination, destination.badge(needsAttentionCount)) },
                     label = { Text(text = stringResource(destination.label)) },
                     alwaysShowLabel = false
                 )
@@ -473,6 +477,7 @@ fun KeyGoNavigationDrawer(
     selectedRoute: NavKey?,
     navigateToTopLvlDestination: (NavKey) -> Unit,
     onButtonClicked: () -> Unit,
+    needsAttentionCount: Int = 0,
     buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
     buttonContentColor: Color = contentColorFor(buttonContainerColor)
 ) {
@@ -483,6 +488,7 @@ fun KeyGoNavigationDrawer(
             selectedRoute = selectedRoute,
             navigateToTopLvlDestination = navigateToTopLvlDestination,
             onButtonClicked = onButtonClicked,
+            needsAttentionCount = needsAttentionCount,
             buttonContainerColor = buttonContainerColor,
             buttonContentColor = buttonContentColor
         )
@@ -495,6 +501,7 @@ fun DrawerContent(
     navigateToTopLvlDestination: (NavKey) -> Unit,
     onButtonClicked: () -> Unit,
     onCloseDrawer: (() -> Unit)? = null,
+    needsAttentionCount: Int = 0,
     buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
     buttonContentColor: Color = contentColorFor(buttonContainerColor)
 ) {
@@ -565,11 +572,43 @@ fun DrawerContent(
                     },
                     selected = destination.route == selectedRoute,
                     onClick = { navigateToTopLvlDestination(destination.route) },
+                    badge = destination.badge(needsAttentionCount),
                 )
             }
         }
     }
 }
+
+private fun AppDestinations.badge(needsAttentionCount: Int): (@Composable () -> Unit)? =
+    if (this != AppDestinations.PASSWORD_HEALTH || needsAttentionCount <= 0) null
+    else ({ AttentionBadge(needsAttentionCount) })
+
+@Composable
+private fun AttentionBadge(count: Int) {
+    val description = pluralStringResource(
+        PasswordHealthR.plurals.password_health_needs_attention,
+        count,
+        count,
+    )
+    Badge(modifier = Modifier.semantics { contentDescription = description }) {
+        Text(text = if (count > MaxBadgeCount) "$MaxBadgeCount+" else count.toString())
+    }
+}
+
+@Composable
+private fun DestinationIcon(destination: AppDestinations, badge: (@Composable () -> Unit)?) {
+    val icon = @Composable {
+        Icon(
+            imageVector = destination.icon,
+            contentDescription = stringResource(destination.contentDescription),
+        )
+    }
+
+    if (badge != null) BadgedBox(badge = { badge.invoke() }) { icon() }
+    else icon()
+}
+
+private const val MaxBadgeCount = 99
 
 @Composable
 private fun navigationInsets(
