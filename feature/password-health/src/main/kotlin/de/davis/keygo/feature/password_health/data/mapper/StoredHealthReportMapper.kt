@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.password_health.data.mapper
 
+import android.util.Log
 import com.google.protobuf.kotlin.toByteString
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.PasswordScore
@@ -38,17 +39,23 @@ internal fun StoredHealthReport.toCompressedByteArray(): ByteArray =
     }.toByteArray()
 
 internal fun ByteArray.toStoredHealthReport(): StoredHealthReport? =
-    ProtoStoredHealthReport.parseFrom(GZIPInputStream(ByteArrayInputStream(this)).use { it.readBytes() })
-        .toDomain()
+    runCatching {
+        ProtoStoredHealthReport.parseFrom(GZIPInputStream(ByteArrayInputStream(this)).use { it.readBytes() })
+            .toDomain()
+    }.getOrNull()
 
 private fun ProtoStoredHealthReport.toDomain(): StoredHealthReport? {
     if (algorithmVersion != StoredHealthReport.ALGORITHM_VERSION) return null
 
     val items = itemsList.map(ProtoStoredItem::toDomain)
 
-    fun List<Int>.toItemIds(): Set<ItemId> = mapTo(HashSet(size)) { ref ->
-        items.getOrNull(ref)?.id
-            ?: throw IllegalStateException("Ref $ref out of range (${items.size} items)")
+    fun List<Int>.toItemIds(): Set<ItemId>? {
+        return mapTo(HashSet(size)) { ref ->
+            items.getOrNull(ref)?.id ?: run {
+                Log.w("StoredHealthReportMapper", "Ref $ref out of range (${items.size} items)")
+                return null
+            }
+        }
     }
 
     val gaps = HashMap<CheckKind, CheckGap>(gapsCount)
@@ -59,16 +66,21 @@ private fun ProtoStoredHealthReport.toDomain(): StoredHealthReport? {
 
         val gapValue = CheckGap(
             reason = reason,
-            unchecked = gap.uncheckedItemRefsList.toItemIds(),
+            unchecked = gap.uncheckedItemRefsList.toItemIds() ?: return null,
         )
         if (gaps.put(kind, gapValue) != null) {
-            throw IllegalStateException("Duplicate gap for $kind")
+            Log.w("StoredHealthReportMapper", "Duplicate gap for $kind")
+            return null
         }
     }
 
     return StoredHealthReport(
         items = items,
-        relationalFindings = relationFindingList.mapNotNull { it.toDomain(it.itemRefsList.toItemIds()) },
+        relationalFindings = relationFindingList.mapNotNull {
+            it.toDomain(
+                it.itemRefsList.toItemIds() ?: return null
+            )
+        },
         gaps = gaps,
         breachCheckEnabled = breachCheckEnabled,
     )

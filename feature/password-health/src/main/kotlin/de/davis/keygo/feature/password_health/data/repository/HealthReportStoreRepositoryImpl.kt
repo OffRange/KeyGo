@@ -16,6 +16,7 @@ import de.davis.keygo.feature.password_health.di.annotation.HealthReportStore
 import de.davis.keygo.feature.password_health.domain.model.HealthReportStoreError
 import de.davis.keygo.feature.password_health.domain.model.StoredHealthReport
 import de.davis.keygo.feature.password_health.domain.repository.HealthReportStoreRepository
+import de.davisalessandro.keygo.rust.ItemCryptoException
 import kotlinx.coroutines.flow.first
 import org.koin.core.annotation.Single
 import java.util.UUID
@@ -62,13 +63,17 @@ internal class HealthReportStoreRepositoryImpl(
                 namespace = REPORT_NAMESPACE,
                 wrapped = stored.toWrappedKey(),
             ) {
-                CryptographicData(
-                    data = stored.ciphertext.toByteArray(),
-                    iv = stored.iv.toByteArray(),
-                ).decrypt(REPORT_LABEL)
+                try {
+                    CryptographicData(
+                        data = stored.ciphertext.toByteArray(),
+                        iv = stored.iv.toByteArray(),
+                    ).decrypt(REPORT_LABEL)
+                } catch (_: ItemCryptoException) {
+                    null
+                }
             }.bind { HealthReportStoreError.CryptoFailed }
 
-            compressedReport.toStoredHealthReport()
+            compressedReport?.toStoredHealthReport()
                 .asResult(HealthReportStoreError.CorruptedReport)
                 .bind()
         }

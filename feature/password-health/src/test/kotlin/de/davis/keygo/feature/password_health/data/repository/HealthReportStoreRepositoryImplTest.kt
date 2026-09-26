@@ -12,6 +12,7 @@ import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.assertFailure
 import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.feature.password_health.data.local.model.ProtoHealthReportStore
+import de.davis.keygo.feature.password_health.data.local.model.protoRelationFinding
 import de.davis.keygo.feature.password_health.data.local.model.protoStoredHealthReport
 import de.davis.keygo.feature.password_health.data.mapper.toCompressedByteArray
 import de.davis.keygo.feature.password_health.data.mapper.toStoredHealthReport
@@ -194,6 +195,66 @@ class HealthReportStoreRepositoryImplTest {
         ) { }
 
         assertTrue(opened is Result.Failure)
+    }
+
+    @Test
+    fun aTamperedCiphertextIsCorrupted() = runTest {
+        repository.storeReport(report).assertSuccess()
+        val stored = dataStore.state.value
+        val tampered = stored.ciphertext.toByteArray().also { it[0] = (it[0] + 1).toByte() }
+        dataStore.state.value = stored.toBuilder().setCiphertext(tampered.toByteString()).build()
+
+        assertEquals(HealthReportStoreError.CorruptedReport, repository.load().assertFailure())
+    }
+
+    @Test
+    fun aSwappedIvIsCorrupted() = runTest {
+        repository.storeReport(report).assertSuccess()
+        val stored = dataStore.state.value
+        dataStore.state.value = stored.toBuilder()
+            .setIv(ByteArray(stored.iv.size()).toByteString())
+            .build()
+
+        assertEquals(HealthReportStoreError.CorruptedReport, repository.load().assertFailure())
+    }
+
+    @Test
+    fun aReportThatIsNotGzipIsCorrupted() = runTest {
+        repository.storeReport(report).assertSuccess()
+        seal(byteArrayOf(1, 2, 3))
+
+        assertEquals(HealthReportStoreError.CorruptedReport, repository.load().assertFailure())
+    }
+
+    @Test
+    fun aReportThatIsNotAProtoIsCorrupted() = runTest {
+        repository.storeReport(report).assertSuccess()
+        seal(byteArrayOf(0x0a, 0x7f, 0x01).gzip())
+
+        assertEquals(HealthReportStoreError.CorruptedReport, repository.load().assertFailure())
+    }
+
+    @Test
+    fun aReportPointingPastItsItemsIsCorrupted() = runTest {
+        repository.storeReport(report).assertSuccess()
+        seal(
+            protoStoredHealthReport {
+                algorithmVersion = StoredHealthReport.ALGORITHM_VERSION
+                relationFinding += protoRelationFinding { itemRefs += listOf(0, 1) }
+            }.toByteArray().gzip(),
+        )
+
+        assertEquals(HealthReportStoreError.CorruptedReport, repository.load().assertFailure())
+    }
+
+    @Test
+    fun aCorruptedReportCanBeOverwritten() = runTest {
+        repository.storeReport(report).assertSuccess()
+        seal(byteArrayOf(1, 2, 3))
+
+        repository.storeReport(report).assertSuccess()
+
+        assertEquals(report, repository.load().assertSuccess())
     }
 
     /** Replaces the stored report with [plaintext], sealed the way the repository seals one. */

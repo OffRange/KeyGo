@@ -18,9 +18,11 @@ import de.davis.keygo.feature.password_health.domain.model.StoredHealthReport
 import de.davis.keygo.feature.password_health.domain.report.breach
 import de.davis.keygo.feature.password_health.domain.report.id
 import de.davis.keygo.feature.password_health.domain.report.storedItem
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
-import java.io.IOException
 import java.util.UUID
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
@@ -31,6 +33,9 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.time.Instant
 
+// Robolectric only so a rejected report can reach android.util.Log.
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class StoredHealthReportMapperTest {
 
     private val checkedAt = Instant.fromEpochMilliseconds(1_700_000_000_123)
@@ -224,7 +229,7 @@ class StoredHealthReportMapperTest {
             relationFinding += protoRelationFinding { itemRefs += listOf(0, 5) }
         }
 
-        assertFailsWith<IllegalStateException> { bytes.toStoredHealthReport() }
+        assertNull(bytes.toStoredHealthReport())
     }
 
     @Test
@@ -234,7 +239,7 @@ class StoredHealthReportMapperTest {
             gaps += protoCheckGap { uncheckedItemRefs += 1 }
         }
 
-        assertFailsWith<IllegalStateException> { bytes.toStoredHealthReport() }
+        assertNull(bytes.toStoredHealthReport())
     }
 
     @Test
@@ -245,7 +250,7 @@ class StoredHealthReportMapperTest {
             gaps += protoCheckGap { uncheckedItemRefs += 0 }
         }
 
-        assertFailsWith<IllegalStateException> { bytes.toStoredHealthReport() }
+        assertNull(bytes.toStoredHealthReport())
     }
 
     @Test
@@ -277,7 +282,21 @@ class StoredHealthReportMapperTest {
 
     @Test
     fun bytesThatAreNotGzipAreRejected() {
-        assertFailsWith<IOException> { byteArrayOf(1, 2, 3).toStoredHealthReport() }
+        assertNull(byteArrayOf(1, 2, 3).toStoredHealthReport())
+    }
+
+    @Test
+    fun aTruncatedProtoIsRejected() {
+        val bytes = ByteArrayOutputStream().also { bos ->
+            GZIPOutputStream(bos).use { it.write(byteArrayOf(0x0a, 0x7f, 0x01)) }
+        }.toByteArray()
+
+        assertNull(bytes.toStoredHealthReport())
+    }
+
+    @Test
+    fun emptyBytesAreRejected() {
+        assertNull(byteArrayOf().toStoredHealthReport())
     }
 
     private fun StoredHealthReport.roundTrip() =
