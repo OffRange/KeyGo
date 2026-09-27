@@ -26,7 +26,7 @@ data class StoredHealthReport(
         breachCheckEnabled: Boolean,
     ): Boolean = this.breachCheckEnabled == breachCheckEnabled
             && items.none { it.unreadable } // if any item was unreadable, we want a new report
-            && !hasRetryableGap
+            && !hasGapNeedingFullScan
             && items.associate { it.id to it.fingerprint } == fingerprints
 
     fun breachResultsAt(
@@ -37,10 +37,13 @@ data class StoredHealthReport(
         .mapNotNull { item -> item.breach?.takeIf { it.isCurrentAt(now) }?.let { item.id to it } }
         .toMap()
 
-    // TODO: maybe make this even readable, as this kinda suggests that the scanner actually does the re-checking
-    // A breach gap leaves its items without a result, so they are retried through breachResultsAt.
-    private val hasRetryableGap: Boolean
-        get() = gaps.any { (kind, gap) -> kind != CheckKind.Breach && gap.reason != GapReason.Disabled }
+    // Breach gaps are left out: their items have no BreachResult, so the scanner looks up just
+    // those again in refreshBreaches instead of rescanning everything.
+    private val hasGapNeedingFullScan: Boolean
+        get() = gaps
+            .filterKeys { it != CheckKind.Breach }
+            .values
+            .any { it.reason != GapReason.Disabled }
 
     companion object {
         const val ALGORITHM_VERSION = 1
