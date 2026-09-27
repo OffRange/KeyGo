@@ -11,6 +11,7 @@ import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.crypto.FakeSession
+import de.davis.keygo.core.util.FakeRegistrableDomainResolver
 import de.davis.keygo.feature.backup.domain.BackupRestorer
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateCreditCardUseCase
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
@@ -36,6 +37,7 @@ internal class RestorerTestEnv {
         upsertVaultItem = upsert,
         passwordStrengthEstimator = FakePasswordStrengthEstimator(),
         totpService = FakeTotpService(),
+        registrableDomainResolver = FakeRegistrableDomainResolver(),
     )
     private val createCard = CreateNewOrUpdateCreditCardUseCase(
         creditCardRepository = cardRepo,

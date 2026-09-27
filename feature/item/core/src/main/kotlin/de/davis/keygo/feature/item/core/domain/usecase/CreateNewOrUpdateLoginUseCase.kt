@@ -3,6 +3,7 @@ package de.davis.keygo.feature.item.core.domain.usecase
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
+import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.Passkey
@@ -17,6 +18,7 @@ import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.encrypt
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.item.core.domain.model.FieldUpdate
@@ -42,6 +44,7 @@ class CreateNewOrUpdateLoginUseCase(
     upsertVaultItem: UpsertVaultItemUseCase,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
     private val totpService: TotpService,
+    private val registrableDomainResolver: RegistrableDomainResolver,
 ) : CreateOrUpdateItemUseCase<UpsertLogin, Login>(
     cryptographicScopeProvider = cryptographicScopeProvider,
     vaultRepository = vaultRepository,
@@ -111,7 +114,7 @@ class CreateNewOrUpdateLoginUseCase(
             id = itemId,
             name = upsert.name.getValue()!!,
             username = upsert.username.getValue(),
-            domainInfos = upsert.domains.getValue().orEmpty(),
+            domainInfos = upsert.addedDomains.toDomainInfos(itemId),
             tags = upsert.tags.getValue().orEmpty(),
             passwordCredential = newPasswordCredential,
             totp = totp?.await(),
@@ -144,7 +147,9 @@ class CreateNewOrUpdateLoginUseCase(
         existing.copy(
             name = upsert.name.withoutClearingOn(existing.name),
             username = upsert.username.on(existing.username),
-            domainInfos = upsert.domains.on(existing.domainInfos).orEmpty(),
+            domainInfos = existing.domainInfos
+                .filterNotTo(mutableSetOf()) { it.value in upsert.removedDomains || it.value in upsert.addedDomains }
+                    + upsert.addedDomains.toDomainInfos(existing.id),
             tags = upsert.tags.on(existing.tags).orEmpty(),
             passwordCredential = newPasswordCredential,
             totp = upsert.totpUriOrSecret.on(existing.totp, totp),
@@ -154,6 +159,15 @@ class CreateNewOrUpdateLoginUseCase(
             note = upsert.note.on(existing.note),
         )
     }
+
+    private fun Set<String>.toDomainInfos(loginId: ItemId): Set<DomainInfo> =
+        mapTo(mutableSetOf()) { domain ->
+            DomainInfo(
+                loginId = loginId,
+                value = domain,
+                eTLD1 = registrableDomainResolver.resolve(domain),
+            )
+        }
 
     context(scope: CryptographicScope)
     private suspend fun NewPasskey.seal(loginId: ItemId) = with(scope) {

@@ -17,7 +17,6 @@ import de.davis.keygo.core.item.data.mapper.toPasswordEntity
 import de.davis.keygo.core.item.data.mapper.toTagEntities
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
-import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Item
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.Passkey
@@ -69,20 +68,6 @@ internal class LoginRepositoryImpl(
             }
         }.fold(
             onSuccess = { Result.Success(it) },
-            onFailure = { Result.Failure(it) },
-        )
-
-    override suspend fun updateDomainInfos(
-        itemId: ItemId,
-        domainInfos: Set<DomainInfo>,
-    ): Result<Unit, Throwable> =
-        runCatching {
-            transactionRunner.runInTransaction {
-                val dataDomains = domainInfos.map { it.toData(itemId) }.toSet()
-                domainInfoDao.upsertAll(dataDomains)
-            }
-        }.fold(
-            onSuccess = { Result.Success(Unit) },
             onFailure = { Result.Failure(it) },
         )
 

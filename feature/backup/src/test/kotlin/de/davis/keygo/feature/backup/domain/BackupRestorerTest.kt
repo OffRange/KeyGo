@@ -98,6 +98,24 @@ class BackupRestorerTest {
     }
 
     @Test
+    fun `an imported website stores its registrable domain`() = runTest {
+        val env = RestorerTestEnv()
+
+        env.restorer.restore(
+            backup(
+                vault(
+                    "Imported",
+                    listOf(login("Email", websites = listOf("https://mail.example.org"))),
+                ),
+            ),
+        ) { _, _ -> }
+
+        val vaultId = env.vaultRepo.observeAllVaultMetadata().first().single().vaultId
+        val imported = env.loginRepo.getLoginsByVault(vaultId).single()
+        assertEquals("example.org", imported.domainInfos.single().eTLD1)
+    }
+
+    @Test
     fun `a login's passkeys are restored with it`() = runTest {
         val env = RestorerTestEnv()
 

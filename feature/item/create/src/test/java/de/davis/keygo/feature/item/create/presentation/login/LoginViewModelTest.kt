@@ -131,7 +131,7 @@ class LoginViewModelTest {
         val base = viewModel.readyBase()
         assertEquals(DEEP_LINK_URI, base.totpTextFieldState.text.toString())
         assertEquals("me@github.com", base.usernameTextFieldState.text.toString())
-        assertEquals(setOf("github.com"), base.domains.mapTo(mutableSetOf()) { it.value })
+        assertEquals(setOf("github.com"), base.domains)
     }
 
     @Test
@@ -216,6 +216,28 @@ class LoginViewModelTest {
         val row = loginRepository.passkeys.single()
         assertEquals(loginId, row.loginId)
         assertEquals("example.com", row.rp)
+    }
+
+    @Test
+    fun `saving drops a deleted domain but keeps one linked after the form loaded`() = runVmTest {
+        val id = seedLogin(name = "GitHub", domain = "github.com", username = "alice")
+        val viewModel = buildViewModel()
+        backgroundScope.launch(mainDispatcher) { viewModel.state.collect { } }
+        viewModel.init(DetailPaneInformation.Init.Existing(itemType = VaultItemType.Login, id = id))
+        advanceUntilIdle()
+
+        val loaded = loginRepository.getLoginById(id)!!
+        loginRepository.seed(
+            loaded.copy(domainInfos = loaded.domainInfos + DomainInfo(id, "linked.org", "linked.org")),
+        )
+        viewModel.onEvent(LoginUiEvent.OnDeleteDomain("github.com"))
+        viewModel.onEvent(LoginUiEvent.ItemUi(ItemUiEvent.OnSubmit))
+        advanceUntilIdle()
+
+        assertEquals(
+            setOf("linked.org"),
+            loginRepository.getLoginById(id)!!.domainInfos.mapTo(mutableSetOf()) { it.value },
+        )
     }
 
     // Helpers
@@ -326,10 +348,10 @@ class LoginViewModelTest {
             ),
             passwordStrengthEstimator = FakePasswordStrengthEstimator(),
             totpService = totpService,
+            registrableDomainResolver = domainResolver,
         ),
         snackbarManager = TestSnackbarManager(),
         totpService = totpService,
-        registrableDomainResolver = domainResolver,
         vaultContextRepository = vaultContextRepository,
         itemRepository = itemRepository,
         observeAllTags = ObserveAllTagsSortedUseCase(itemRepository, SortUseCase()),

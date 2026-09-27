@@ -2,7 +2,6 @@ package de.davis.keygo.feature.item.create.presentation.login.model
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Stable
-import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.PasskeyRef
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.feature.item.core.presentation.model.InputFieldError
@@ -30,9 +29,10 @@ internal data class LoginBaseState(
     val passwordTextFieldState: TextFieldState = TextFieldState(),
     val totpTextFieldState: TextFieldState = TextFieldState(),
     val usernameTextFieldState: TextFieldState = TextFieldState(),
-    val domains: Set<DomainInfo> = emptySet(),
+    val domains: Set<String> = emptySet(),
     val passkeys: Set<LoginPasskeyInfo> = emptySet(),
     val deletedPasskeys: Set<PasskeyRef> = emptySet(),
+    val deletedDomains: Set<String> = emptySet(),
     val strengthScore: PasswordScore = PasswordScore.None,
     val generatePasswordBottomSheetVisible: Boolean = false,
     val dialogState: DialogState = DialogState.None,

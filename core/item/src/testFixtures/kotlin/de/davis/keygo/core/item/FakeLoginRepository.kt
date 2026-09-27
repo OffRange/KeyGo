@@ -2,7 +2,6 @@ package de.davis.keygo.core.item
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
-import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasswordScore
@@ -62,16 +61,6 @@ class FakeLoginRepository : LoginRepository {
             row.loginId == login.id && login.passkeys.none { it.credentialId.contentEquals(row.credentialId) }
         }
         return Result.Success(login.id)
-    }
-
-    override suspend fun updateDomainInfos(
-        itemId: ItemId,
-        domainInfos: Set<DomainInfo>,
-    ): Result<Unit, Throwable> {
-        val existing = store.value[itemId]
-            ?: return Result.Failure(NoSuchElementException("No login with id $itemId"))
-        store.update { it + (itemId to existing.copy(domainInfos = domainInfos)) }
-        return Result.Success(Unit)
     }
 
     override suspend fun getLoginsByTLD(

@@ -3,7 +3,6 @@ package de.davis.keygo.feature.item.view.login
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.LoginRepository
@@ -12,7 +11,6 @@ import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
-import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
@@ -71,7 +69,6 @@ internal class ViewLoginViewModel(
     private val sort: SortUseCase,
     private val websiteHandler: WebsiteHandler,
     private val totpGenerator: TotpGenerator,
-    private val registrableDomainResolver: RegistrableDomainResolver,
     private val totpService: TotpService,
     private val observeLoginWithCryptoScope: ItemWithCryptoScopeUseCase,
     private val loginRepository: LoginRepository,
@@ -113,7 +110,7 @@ internal class ViewLoginViewModel(
                     password = obfuscated,
                     passwordStrengthScore = login.passwordCredential?.score,
                     username = login.username.orEmpty(),
-                    domains = login.domainInfos,
+                    domains = login.domainInfos.mapTo(mutableSetOf()) { it.value },
                     tags = sort(login.tags) { it.display }.toSet(),
                     note = login.note.orEmpty(),
                     totpState = TotpState.NoTotp,
@@ -299,16 +296,9 @@ internal class ViewLoginViewModel(
                                 )
 
                                 FieldType.Domain -> newText.onSet {
-                                    val eTLD1 = registrableDomainResolver.resolve(it)
-                                    val updatedDomains = state.value.domains + DomainInfo(
-                                        id,
-                                        it,
-                                        eTLD1,
-                                    )
-
                                     UpsertLogin.update(
                                         itemId = id,
-                                        domains = set(updatedDomains),
+                                        addedDomains = setOf(it),
                                     )
                                 } ?: return@launch
 

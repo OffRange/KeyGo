@@ -8,6 +8,7 @@ import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
+import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
@@ -25,6 +26,7 @@ import de.davis.keygo.core.item.passkeyRef
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.model.CryptoScopeError
+import de.davis.keygo.core.util.FakeRegistrableDomainResolver
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.isFailure
@@ -64,6 +66,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
     private val loginRepository = FakeLoginRepository()
     private val cryptoProvider =
         FakeCryptographicScopeProvider(FakeItemRepository(loginRepository))
+    private val domainResolver = FakeRegistrableDomainResolver()
     private val useCase = makeUseCase(loginRepository, vaultRepository)
 
     @BeforeTest
@@ -480,6 +483,107 @@ class CreateNewOrUpdateLoginUseCaseTest {
         assertEquals(null, stored?.username)
         assertEquals(null, stored?.note)
         assertEquals(null, stored?.totp)
+    }
+
+    // Domains
+
+    @Test
+    fun `create stores the registrable domain of every domain`() = runTest {
+        val result = useCase(
+            UpsertLogin.create(
+                vaultId = defaultVault.id,
+                name = "My site",
+                password = "s3cr3t",
+                domains = setOf("https://login.example.com", "other.org"),
+            )
+        )
+
+        val stored = storedById(result.getOrNull())
+        assertNotNull(stored)
+        assertEquals(
+            setOf(
+                DomainInfo(stored.id, "https://login.example.com", "example.com"),
+                DomainInfo(stored.id, "other.org", "other.org"),
+            ),
+            stored.domainInfos,
+        )
+    }
+
+    @Test
+    fun `update adding a domain resolves it next to the ones the login holds`() = runTest {
+        val base = testLogin()
+        val kept = DomainInfo(base.id, "https://login.example.com", "example.com")
+        loginRepository.seed(base.copy(domainInfos = setOf(kept)))
+
+        useCase(UpsertLogin.update(itemId = base.id, addedDomains = setOf("shop.example.org")))
+
+        assertEquals(
+            setOf(kept, DomainInfo(base.id, "shop.example.org", "example.org")),
+            loginRepository.getLoginById(base.id)?.domainInfos,
+        )
+    }
+
+    @Test
+    fun `update adding a stored domain again replaces its row`() = runTest {
+        val base = testLogin()
+        loginRepository.seed(
+            base.copy(domainInfos = setOf(DomainInfo(base.id, "https://login.example.com", null))),
+        )
+
+        useCase(
+            UpsertLogin.update(itemId = base.id, addedDomains = setOf("https://login.example.com")),
+        )
+
+        assertEquals(
+            setOf(DomainInfo(base.id, "https://login.example.com", "example.com")),
+            loginRepository.getLoginById(base.id)?.domainInfos,
+        )
+    }
+
+    @Test
+    fun `update removing a domain drops only that one`() = runTest {
+        val base = testLogin()
+        val kept = DomainInfo(base.id, "kept.org", "kept.org")
+        loginRepository.seed(
+            base.copy(domainInfos = setOf(kept, DomainInfo(base.id, "gone.org", "gone.org"))),
+        )
+
+        useCase(UpsertLogin.update(itemId = base.id, removedDomains = setOf("gone.org")))
+
+        assertEquals(setOf(kept), loginRepository.getLoginById(base.id)?.domainInfos)
+    }
+
+    @Test
+    fun `a domain linked after the form loaded survives an unrelated removal`() = runTest {
+        val base = testLogin()
+        val linkedLater = DomainInfo(base.id, "linked.org", "linked.org")
+        loginRepository.seed(
+            base.copy(domainInfos = setOf(linkedLater, DomainInfo(base.id, "gone.org", "gone.org"))),
+        )
+
+        useCase(
+            UpsertLogin.update(
+                itemId = base.id,
+                removedDomains = setOf("gone.org"),
+                addedDomains = setOf("typed.org"),
+            )
+        )
+
+        assertEquals(
+            setOf(linkedLater, DomainInfo(base.id, "typed.org", "typed.org")),
+            loginRepository.getLoginById(base.id)?.domainInfos,
+        )
+    }
+
+    @Test
+    fun `update without domain changes leaves the stored ones untouched`() = runTest {
+        val base = testLogin()
+        val stale = DomainInfo(base.id, "https://login.example.com", null)
+        loginRepository.seed(base.copy(domainInfos = setOf(stale)))
+
+        useCase(UpsertLogin.update(itemId = base.id, name = set("Renamed")))
+
+        assertEquals(setOf(stale), loginRepository.getLoginById(base.id)?.domainInfos)
     }
 
     @Test
@@ -1019,6 +1123,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
         upsertVaultItem = UpsertVaultItemUseCase(loginRepository, FakeCreditCardRepository()),
         passwordStrengthEstimator = estimator,
         totpService = totpService,
+        registrableDomainResolver = domainResolver,
     )
 
     private fun newPasskey(rp: String, privateKey: String = "key") = NewPasskey(
