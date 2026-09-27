@@ -157,24 +157,30 @@ private fun ItemHealthTitle(
     inlineBreach: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    // The lookahead pass only pays off when there is a badge to move; skip it for every other row.
+    if (breach == null) return Text(
+        text = title,
+        modifier = modifier,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+
     Box(modifier = modifier) {
         LookaheadScope {
             val badge = remember(breach) {
-                breach?.let { breached ->
-                    movableContentOf {
-                        Text(
-                            text = pluralStringResource(
-                                R.plurals.needs_attention_found_in_breach,
-                                breached.occurrences,
-                                breached.occurrences,
-                            ),
-                            modifier = Modifier.animateBounds(this@LookaheadScope),
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.labelSmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                movableContentOf {
+                    Text(
+                        text = pluralStringResource(
+                            R.plurals.needs_attention_found_in_breach,
+                            breach.occurrences,
+                            breach.occurrences,
+                        ),
+                        modifier = Modifier.animateBounds(this@LookaheadScope),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
 
@@ -182,7 +188,7 @@ private fun ItemHealthTitle(
                 modifier = Modifier.animateBounds(this@LookaheadScope),
                 verticalArrangement = Arrangement.spacedBy(TitleLineSpacing),
             ) {
-                if (badge != null && !inlineBreach) badge()
+                if (!inlineBreach) badge()
 
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(TitleBadgeSpacing),
@@ -197,7 +203,7 @@ private fun ItemHealthTitle(
                         overflow = TextOverflow.Ellipsis,
                     )
 
-                    if (badge != null && inlineBreach) badge()
+                    if (inlineBreach) badge()
                 }
             }
         }
