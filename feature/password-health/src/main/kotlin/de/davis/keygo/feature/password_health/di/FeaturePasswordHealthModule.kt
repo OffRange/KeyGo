@@ -3,9 +3,11 @@ package de.davis.keygo.feature.password_health.di
 import android.content.Context
 import androidx.datastore.dataStore
 import de.davis.keygo.core.util.data.serializer.DefaultProtoSerializer
+import de.davis.keygo.feature.password_health.data.local.model.ProtoHealthNotificationState
 import de.davis.keygo.feature.password_health.data.local.model.ProtoHealthReportStore
 import de.davis.keygo.feature.password_health.data.local.model.ProtoHealthSettings
 import de.davis.keygo.feature.password_health.di.annotation.BreachedQualifier
+import de.davis.keygo.feature.password_health.di.annotation.HealthNotificationStateQualifier
 import de.davis.keygo.feature.password_health.di.annotation.HealthReportStore
 import de.davis.keygo.feature.password_health.di.annotation.HealthSettingsQualifier
 import okhttp3.Dispatcher
@@ -57,6 +59,14 @@ object FeaturePasswordHealthModule {
         )
     )
 
+    private val Context.healthNotificationStateDataStore by dataStore(
+        "health_notification_state.pb",
+        DefaultProtoSerializer(
+            defaultInstance = ProtoHealthNotificationState.getDefaultInstance(),
+            parser = ProtoHealthNotificationState.parser()
+        )
+    )
+
     @Single
     @HealthSettingsQualifier
     internal fun provideHealthSettingsDataStore(context: Context) =
@@ -66,6 +76,11 @@ object FeaturePasswordHealthModule {
     @HealthReportStore
     internal fun provideHealthReportStoreDataStore(context: Context) =
         context.healthReportStoreDataStore
+
+    @Single
+    @HealthNotificationStateQualifier
+    internal fun provideHealthNotificationStateDataStore(context: Context) =
+        context.healthNotificationStateDataStore
 
     private fun Context.versionName(): String =
         packageManager.getPackageInfo(packageName, 0).versionName.orEmpty()

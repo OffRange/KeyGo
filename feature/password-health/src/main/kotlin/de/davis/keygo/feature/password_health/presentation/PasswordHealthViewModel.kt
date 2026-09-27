@@ -14,6 +14,7 @@ import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReport
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReportError
 import de.davis.keygo.feature.password_health.domain.repository.HealthSettingsRepository
 import de.davis.keygo.feature.password_health.domain.usecase.PasswordHealthReportUseCase
+import de.davis.keygo.feature.password_health.domain.usecase.SetHealthNotificationsUseCase
 import de.davis.keygo.feature.password_health.presentation.model.FixFlow
 import de.davis.keygo.feature.password_health.presentation.model.HealthSection
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthEvent
@@ -36,6 +37,7 @@ internal class PasswordHealthViewModel(
     private val passwordHealth: PasswordHealthReportUseCase,
     private val createNewOrUpdateLogin: CreateNewOrUpdateLoginUseCase,
     private val healthSettingsRepository: HealthSettingsRepository,
+    private val setHealthNotifications: SetHealthNotificationsUseCase,
     private val websiteHandler: WebsiteHandler,
 ) : ViewModel() {
 
@@ -77,7 +79,9 @@ internal class PasswordHealthViewModel(
             }
 
             is PasswordHealthUiEvent.OnNotificationChanged -> viewModelScope.launch {
-                healthSettingsRepository.setNotificationEnabled(event.enabled)
+                setHealthNotifications(event.enabled)
+                // Takes the first snapshot for the reminder worker; the report is usually cached.
+                if (event.enabled) passwordHealth(force = false)
             }
 
             is PasswordHealthUiEvent.FixClicked ->

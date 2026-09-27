@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package de.davis.keygo.feature.password_health.data.local.model;
+option java_multiple_files = true;
+
+// Deliberately unencrypted: the reminder worker runs without a session. Only counts and a digest
+// over password ciphertexts, never which items are affected.
+message ProtoHealthNotificationState {
+  ProtoHealthSnapshot snapshot = 1;
+  ProtoHealthReminder reminder = 2;
+}
+
+message ProtoHealthSnapshot {
+  int32 attention_count = 1;
+  int32 breached_count = 2;
+  bytes vault_fingerprint = 3;
+}
+
+message ProtoHealthReminder {
+  int32 attention_count = 1;
+  int32 breached_count = 2;
+  int64 sent_at_epoch_millis = 3;
+  int32 repeats = 4;
+}

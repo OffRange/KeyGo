@@ -40,28 +40,10 @@ internal fun HealthSettings(
         )
 
         NotificationSwitch(
+            checked = state.notificationEnabled,
             onChange = { onEvent(PasswordHealthUiEvent.OnNotificationChanged(it)) },
             shapes = ListItemDefaults.segmentedShapes(1, 2),
         )
-    }
-}
-
-@Composable
-private fun NotificationSwitch(
-    onChange: (Boolean) -> Unit,
-    shapes: ListItemShapes,
-) {
-    KeyGoSwitch(
-        checked = false,
-        onCheckedChange = onChange,
-        supportingContent = {
-            Text(text = "KeyGo will remind you of any security issues with your passwords.")
-        },
-        verticalAlignment = Alignment.CenterVertically,
-        colors = ListItemDefaults.segmentedColors(containerColor = segmentContainerColor),
-        shapes = shapes,
-    ) {
-        Text(text = "Enable Notifications")
     }
 }
 

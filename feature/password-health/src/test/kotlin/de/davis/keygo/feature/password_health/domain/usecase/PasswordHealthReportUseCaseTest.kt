@@ -14,6 +14,8 @@ import de.davis.keygo.core.util.assertFailure
 import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.feature.password_health.FakeBreachedRepository
 import de.davis.keygo.feature.password_health.FakeConnectivityRepository
+import de.davis.keygo.feature.password_health.FakeHealthCheckNotifierScheduler
+import de.davis.keygo.feature.password_health.FakeHealthNotificationStateRepository
 import de.davis.keygo.feature.password_health.FakeHealthSettingsRepository
 import de.davis.keygo.feature.password_health.data.LoginFingerprinterImpl
 import de.davis.keygo.feature.password_health.domain.PasswordHealthAttention
@@ -28,12 +30,14 @@ import de.davis.keygo.feature.password_health.domain.model.CheckKind
 import de.davis.keygo.feature.password_health.domain.model.CheckOutcome
 import de.davis.keygo.feature.password_health.domain.model.GapReason
 import de.davis.keygo.feature.password_health.domain.model.HealthReportStoreError
+import de.davis.keygo.feature.password_health.domain.model.HealthSnapshot
 import de.davis.keygo.feature.password_health.domain.model.ItemIssue
 import de.davis.keygo.feature.password_health.domain.model.PasswordCandidate
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReportError
 import de.davis.keygo.feature.password_health.domain.model.RelationType
 import de.davis.keygo.feature.password_health.domain.model.StoredHealthItem
 import de.davis.keygo.feature.password_health.domain.model.StoredHealthReport
+import de.davis.keygo.feature.password_health.domain.model.VaultFingerprint
 import de.davis.keygo.feature.password_health.domain.report.HealthReportAssembler
 import de.davis.keygo.feature.password_health.domain.report.HealthReportScanner
 import de.davis.keygo.feature.password_health.domain.report.VAULT_ID
@@ -44,6 +48,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.runner.RunWith
@@ -54,6 +59,7 @@ import java.util.Collections
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -71,6 +77,8 @@ class PasswordHealthReportUseCaseTest {
     private val store = FakeHealthReportStore()
     private val breachState = FakeHealthSettingsRepository(breachesEnabled = true)
     private val breached = FakeBreachedRepository()
+    private val notificationState = FakeHealthNotificationStateRepository()
+    private val scheduler = FakeHealthCheckNotifierScheduler()
     private val attention = PasswordHealthAttention(
         session = FakeSession(startUnlocked = true),
         appScope = CoroutineScope(Dispatchers.Unconfined),
@@ -90,6 +98,8 @@ class PasswordHealthReportUseCaseTest {
         scanner = HealthReportScanner(scopeProvider, listOf(strength, reuse, breach)),
         assembler = HealthReportAssembler(),
         attention = attention,
+        healthNotificationStateRepository = notificationState,
+        healthCheckNotifierScheduler = scheduler,
     )
 
     @Test
@@ -191,6 +201,54 @@ class PasswordHealthReportUseCaseTest {
         val item = run().assertSuccess().standalone.single()
 
         assertEquals(listOf(ItemIssue.Breached(3)), item.issues)
+    }
+
+    @Test
+    fun aSnapshotIsRecordedForTheReminderWhenItIsOn() = runTest {
+        breachState.setNotificationEnabled(true)
+        seed(0, password = "password")
+        seed(1, score = PasswordScore.Weak)
+        breached.breaches = mapOf("5BAA61E4C9B93F3F0682250B6CF8331B7EE68FD8" to 3)
+
+        run().assertSuccess()
+
+        val snapshot = assertNotNull(notificationState.state.snapshot)
+        assertEquals(2, snapshot.attentionCount)
+        assertEquals(1, snapshot.breachedCount)
+        assertEquals(currentVault(), snapshot.vault)
+        assertTrue(scheduler.scheduled)
+    }
+
+    @Test
+    fun aCachedReportAlsoRecordsASnapshot() = runTest {
+        seed(0, score = PasswordScore.Weak)
+        run().assertSuccess()
+        breachState.setNotificationEnabled(true)
+
+        run().assertSuccess()
+
+        assertEquals(1, assertNotNull(notificationState.state.snapshot).attentionCount)
+        assertEquals(1, store.writes)
+    }
+
+    @Test
+    fun noSnapshotIsRecordedWhileTheReminderIsOff() = runTest {
+        seed(0, score = PasswordScore.Weak)
+
+        run().assertSuccess()
+
+        assertNull(notificationState.state.snapshot)
+        assertFalse(scheduler.scheduled)
+    }
+
+    @Test
+    fun anEmptyVaultClearsTheSnapshot() = runTest {
+        breachState.setNotificationEnabled(true)
+        notificationState.setSnapshot(HealthSnapshot(3, 0, VaultFingerprint(byteArrayOf(1))))
+
+        run().assertFailure()
+
+        assertNull(notificationState.state.snapshot)
     }
 
     @Test
@@ -377,6 +435,10 @@ class PasswordHealthReportUseCaseTest {
     }
 
     private suspend fun run(force: Boolean = false) = useCase(force, EmptyCoroutineContext)
+
+    private suspend fun currentVault() = VaultFingerprint.of(
+        loginRepository.observeLogins().first().mapNotNull { fingerprinter.fingerprint(it) },
+    )
 
     /** Seeds logins whose passwords the fake provider can decrypt. */
     private fun seed(

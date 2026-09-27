@@ -73,6 +73,15 @@
 
     <string name="password_health_detail_placeholder">Pick an item to see it here</string>
 
+    <string name="health_notifications_enable">Enable notifications</string>
+    <string name="health_notifications_description">KeyGo will remind you of any security issues with your passwords.</string>
+    <string name="notification_permission_title">Notification permission</string>
+    <string name="notification_permission_rationale">KeyGo needs permission to send notifications to remind you about passwords that need attention.</string>
+    <string name="notification_permission_denied_permanently">Notifications are turned off for KeyGo. To get password reminders, allow them in your app settings.</string>
+    <string name="notification_permission_grant">Grant</string>
+    <string name="notification_permission_open_settings">Open settings</string>
+    <string name="notification_permission_cancel">Cancel</string>
+
     <string name="password_health_notification_channel_name">Password health</string>
     <string name="password_health_notification_channel_description">Reminders when some of your passwords need attention</string>
 </resources>

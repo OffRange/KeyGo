@@ -2,7 +2,6 @@ package de.davis.keygo.feature.backup.di
 
 import android.content.Context
 import androidx.datastore.dataStore
-import androidx.work.WorkManager
 import de.davis.keygo.core.util.data.serializer.DefaultProtoSerializer
 import de.davis.keygo.feature.backup.data.local.model.ProtoBackupArkData
 import de.davis.keygo.feature.backup.data.local.model.ProtoBackupJobs
@@ -43,8 +42,4 @@ object FeatureBackupModule {
     @BackupArkQualifier
     internal fun provideBackupArkDataStore(context: Context) =
         context.backupArkDataStore
-
-    @Single
-    internal fun provideWorkManager(context: Context): WorkManager =
-        WorkManager.getInstance(context)
 }

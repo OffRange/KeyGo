@@ -18,7 +18,10 @@ import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUse
 import de.davis.keygo.feature.item.view.domain.WebsiteHandler
 import de.davis.keygo.feature.password_health.FakeBreachedRepository
 import de.davis.keygo.feature.password_health.FakeConnectivityRepository
+import de.davis.keygo.feature.password_health.FakeHealthCheckNotifierScheduler
+import de.davis.keygo.feature.password_health.FakeHealthNotificationStateRepository
 import de.davis.keygo.feature.password_health.FakeHealthSettingsRepository
+import de.davis.keygo.feature.password_health.FakeNotifier
 import de.davis.keygo.feature.password_health.data.LoginFingerprinterImpl
 import de.davis.keygo.feature.password_health.domain.PasswordHealthAttention
 import de.davis.keygo.feature.password_health.domain.checker.BreachedPasswordCheck
@@ -36,6 +39,7 @@ import de.davis.keygo.feature.password_health.domain.report.id
 import de.davis.keygo.feature.password_health.domain.report.login
 import de.davis.keygo.feature.password_health.domain.repository.HealthReportStoreRepository
 import de.davis.keygo.feature.password_health.domain.usecase.PasswordHealthReportUseCase
+import de.davis.keygo.feature.password_health.domain.usecase.SetHealthNotificationsUseCase
 import de.davis.keygo.feature.password_health.presentation.model.FixFlow
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthEvent
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthStatus
@@ -71,6 +75,8 @@ class PasswordHealthViewModelTest {
     private val breachState = FakeHealthSettingsRepository(breachesEnabled = false)
     private val breached = FakeBreachedRepository()
     private val websiteHandler = RecordingWebsiteHandler()
+    private val notificationState = FakeHealthNotificationStateRepository()
+    private val scheduler = FakeHealthCheckNotifierScheduler()
 
     @BeforeTest
     fun setUp() {
@@ -107,6 +113,8 @@ class PasswordHealthViewModelTest {
                 FakeSession(),
                 CoroutineScope(Dispatchers.Unconfined)
             ),
+            healthNotificationStateRepository = notificationState,
+            healthCheckNotifierScheduler = scheduler,
         ),
         createNewOrUpdateLogin = CreateNewOrUpdateLoginUseCase(
             cryptographicScopeProvider = scopeProvider,
@@ -117,6 +125,12 @@ class PasswordHealthViewModelTest {
             totpService = FakeTotpService(),
         ),
         healthSettingsRepository = breachState,
+        setHealthNotifications = SetHealthNotificationsUseCase(
+            healthSettingsRepository = breachState,
+            healthNotificationStateRepository = notificationState,
+            scheduler = scheduler,
+            notifier = FakeNotifier(),
+        ),
         websiteHandler = websiteHandler,
     )
 

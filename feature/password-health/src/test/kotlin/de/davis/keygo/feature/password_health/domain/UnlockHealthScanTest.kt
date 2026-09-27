@@ -8,6 +8,8 @@ import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.feature.password_health.FakeHealthCheckNotifierScheduler
+import de.davis.keygo.feature.password_health.FakeHealthNotificationStateRepository
 import de.davis.keygo.feature.password_health.FakeHealthSettingsRepository
 import de.davis.keygo.feature.password_health.data.LoginFingerprinterImpl
 import de.davis.keygo.feature.password_health.domain.checker.PasswordHealthChecker
@@ -114,6 +116,8 @@ class UnlockHealthScanTest {
             scanner = HealthReportScanner(FakeCryptographicScopeProvider(itemRepository), checkers),
             assembler = HealthReportAssembler(),
             attention = attention,
+            healthNotificationStateRepository = FakeHealthNotificationStateRepository(),
+            healthCheckNotifierScheduler = FakeHealthCheckNotifierScheduler(),
         ),
         attention = attention,
         appScope = appScope,

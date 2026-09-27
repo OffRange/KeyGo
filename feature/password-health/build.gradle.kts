@@ -25,6 +25,9 @@ dependencies {
     implementation(libs.gosimple.nbvcxz)
 
     implementation(libs.androidx.datastore)
+    implementation(libs.androidx.work)
+    implementation(libs.koin.androidx.workmanager)
+    implementation(libs.com.google.accompanist.permissions)
 
     testImplementation(testFixtures(projects.core.util))
     testImplementation(testFixtures(projects.core.item))

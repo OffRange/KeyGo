@@ -6,4 +6,5 @@ interface Notifier {
 
     fun canNotify(): Boolean
     fun sendNotification(notification: KeyGoNotification)
+    fun cancel(kind: KeyGoNotification.Kind)
 }

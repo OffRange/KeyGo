@@ -14,7 +14,6 @@ import androidx.core.content.ContextCompat
 import de.davis.keygo.feature.password_health.R
 import de.davis.keygo.feature.password_health.domain.Notifier
 import de.davis.keygo.feature.password_health.domain.model.KeyGoNotification
-import de.davis.keygo.feature.password_health.domain.model.isEmpty
 import org.koin.core.annotation.Single
 import de.davis.keygo.core.ui.R as CoreUiR
 
@@ -38,14 +37,14 @@ internal class NotifierImpl(
 
     @Suppress("MissingPermission")
     override fun sendNotification(notification: KeyGoNotification) {
-        if (notification.isEmpty) {
-            notificationManagerCompat.cancel(notification.id)
-            return
-        }
         if (!canNotify()) return
 
         createChannels()
-        notificationManagerCompat.notify(notification.id, notification.buildNotification())
+        notificationManagerCompat.notify(notification.kind.id, notification.buildNotification())
+    }
+
+    override fun cancel(kind: KeyGoNotification.Kind) {
+        notificationManagerCompat.cancel(kind.id)
     }
 
     private fun createChannels() {
@@ -94,13 +93,13 @@ internal class NotifierImpl(
     }
 
     private val KeyGoNotification.channel: Channel
-        get() = when (this) {
-            is KeyGoNotification.NeedsAttention -> Channel.PasswordHealth
+        get() = when (kind) {
+            KeyGoNotification.Kind.NeedsAttention -> Channel.PasswordHealth
         }
 
-    private val KeyGoNotification.id: Int
+    private val KeyGoNotification.Kind.id: Int
         get() = when (this) {
-            is KeyGoNotification.NeedsAttention -> 1001
+            KeyGoNotification.Kind.NeedsAttention -> 1001
         }
 
     private enum class Channel(
