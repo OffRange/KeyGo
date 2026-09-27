@@ -77,7 +77,7 @@ internal class NotifierImpl(
 
     private fun KeyGoNotification.baseNotification() =
         NotificationCompat.Builder(context, channel.id)
-            .setSmallIcon(CoreUiR.drawable.ic_launcher_monochrome)
+            .setSmallIcon(CoreUiR.drawable.ic_app)
             .setContentTitle(context.getString(R.string.password_health_title))
 
     // TODO: send user to correct screen
