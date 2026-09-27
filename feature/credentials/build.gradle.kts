@@ -21,6 +21,7 @@ dependencies {
     implementation(projects.core.identity)
     implementation(projects.core.item)
     implementation(projects.core.ui)
+    implementation(projects.feature.item.core)
     implementation(projects.feature.item.create)
     implementation(projects.feature.listScreen)
     implementation(projects.feature.auth)

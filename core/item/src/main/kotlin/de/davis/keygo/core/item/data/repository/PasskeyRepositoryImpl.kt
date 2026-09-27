@@ -3,7 +3,6 @@ package de.davis.keygo.core.item.data.repository
 import de.davis.keygo.core.item.data.local.dao.PasskeyDao
 import de.davis.keygo.core.item.data.local.entity.credential.PasskeyEntity
 import de.davis.keygo.core.item.data.local.pojo.PasskeyMetadataPojo
-import de.davis.keygo.core.item.data.mapper.toData
 import de.davis.keygo.core.item.data.mapper.toDomain
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.Passkey
@@ -15,9 +14,6 @@ import org.koin.core.annotation.Single
 internal class PasskeyRepositoryImpl(
     private val passkeyDao: PasskeyDao
 ) : PasskeyRepository {
-
-    override suspend fun createPasskey(passkey: Passkey) =
-        passkeyDao.insertPasskey(passkey.toData())
 
     override suspend fun doCredentialIdsExist(credentialIds: Set<ByteArray>): Boolean =
         passkeyDao.doesCredentialIdsExist(credentialIds)

@@ -24,6 +24,7 @@ import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.feature.item.core.domain.model.ItemUpsertError
+import de.davis.keygo.feature.item.core.domain.model.NewPasskey
 import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.fieldUpdate
 import de.davis.keygo.feature.item.core.domain.model.set
@@ -108,18 +109,14 @@ internal class LoginViewModel(
         base.copy(strengthScore = score)
     }
 
-    /**
-     * Shows a passkey for [rp] as pending until the item is saved.
-     *
-     * A blank id is dropped along with a null one. `rp.id` is optional per WebAuthn, so a request
-     * that leaves it out reaches us as an empty string, which would otherwise show up as a blank
-     * chip, make a name-only login look saveable, and leave the confirmation dialog asking about
-     * nothing.
-     */
-    fun setPendingPasskeyCount(rp: String?) {
-        if (rp.isNullOrBlank()) return
+    private var pendingPasskey: NewPasskey? = null
+
+    /** Shows [passkey] as pending and saves it with the login. */
+    fun setPendingPasskey(passkey: NewPasskey?) {
+        if (passkey == null || passkey == pendingPasskey) return
+        pendingPasskey = passkey
         _base.update {
-            it.copy(passkeys = it.passkeys + LoginPasskeyInfo(rpId = rp, ref = null))
+            it.copy(passkeys = it.passkeys + LoginPasskeyInfo(rpId = passkey.rp, ref = null))
         }
     }
 
@@ -241,8 +238,7 @@ internal class LoginViewModel(
         val base = ready.base
         val assignedTags = ready.shared.itemAssignedTags
         val selectedVaultId = ready.shared.vaultsState.selectedVaultId
-        // Independent: a save can both register a passkey and drop another one.
-        val pendingPasskey = base.passkeys.any { it.pending }
+        val addedPasskeys = setOfNotNull(pendingPasskey)
 
         // A scan is rejected while it is still a scan, so only what was typed or pasted can be
         // unusable by the time it reaches here.
@@ -267,7 +263,7 @@ internal class LoginViewModel(
                     totpUriOrSecret = fieldUpdate(totpInput),
                     note = fieldUpdate(notesTextFieldState.text.toString()),
                     removedPasskeys = base.deletedPasskeys,
-                    pendingPasskey = pendingPasskey,
+                    addedPasskeys = addedPasskeys,
                 )
             } ?: UpsertLogin.create(
                 vaultId = selectedVaultId,
@@ -278,7 +274,7 @@ internal class LoginViewModel(
                 password = base.passwordTextFieldState.text.toString(),
                 totpUriOrSecret = totpInput,
                 note = notesTextFieldState.text.toString(),
-                pendingPasskey = pendingPasskey,
+                addedPasskeys = addedPasskeys,
             )
 
             createNewOrUpdateLogin(

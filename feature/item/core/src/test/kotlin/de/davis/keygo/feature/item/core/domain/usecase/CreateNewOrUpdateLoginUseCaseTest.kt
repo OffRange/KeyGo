@@ -11,7 +11,9 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasskeyRef
+import de.davis.keygo.core.item.domain.model.PasskeyUser
 import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
@@ -22,11 +24,13 @@ import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.item.passkeyRef
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
+import de.davis.keygo.core.security.domain.model.CryptoScopeError
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
 import de.davis.keygo.feature.item.core.domain.model.ItemUpsertError
+import de.davis.keygo.feature.item.core.domain.model.NewPasskey
 import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.clear
 import de.davis.keygo.feature.item.core.domain.model.set
@@ -34,6 +38,7 @@ import de.davis.keygo.rust.FakeTotpService
 import de.davis.keygo.rust.totp.TotpService
 import de.davisalessandro.keygo.rust.Algorithm
 import de.davisalessandro.keygo.rust.TotpInfo
+import kotlinx.coroutines.test.runTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -45,7 +50,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Clock
-import kotlinx.coroutines.test.runTest
 
 class CreateNewOrUpdateLoginUseCaseTest {
 
@@ -107,23 +111,35 @@ class CreateNewOrUpdateLoginUseCaseTest {
     }
 
     @Test
-    fun `create with a pending passkey and nothing else returns Success`() = runTest {
+    fun `create with only an added passkey stores it sealed under the new login`() = runTest {
+        val passkey = newPasskey("example.com", privateKey = "private")
+
         val result = useCase(
             UpsertLogin.create(
                 vaultId = defaultVault.id,
                 name = "My site",
-                password = null,
-                username = null,
-                totpUriOrSecret = null,
-                pendingPasskey = true,
+                addedPasskeys = setOf(passkey),
             )
         )
 
         assertTrue(result.isSuccess())
+        val loginId = result.success
+        assertEquals(setOf(passkey.ref), storedById(loginId)?.passkeys)
+
+        val row = loginRepository.passkeys.single()
+        assertEquals(loginId, row.loginId)
+        assertEquals("example.com", row.rp)
+        assertEquals(passkey.user, row.user)
+        assertContentEquals(passkey.credentialId, row.credentialId)
+        assertContentEquals(
+            FakeCryptographicScopeProvider.transform("private".encodeToByteArray()),
+            row.privateKey.payload.ciphertext,
+        )
+        assertContains(cryptoProvider.encryptCalls.map { it.label }, Passkey.PrivateKey.label)
     }
 
     @Test
-    fun `update clearing the only credential while a passkey is pending returns Success`() =
+    fun `update clearing the only credential while adding a passkey returns Success`() =
         runTest {
             val existing = testLogin(username = null, totp = null)
             loginRepository.seed(existing)
@@ -132,16 +148,45 @@ class CreateNewOrUpdateLoginUseCaseTest {
                 UpsertLogin.update(
                     itemId = existing.id,
                     password = clear(),
-                    pendingPasskey = true,
+                    addedPasskeys = setOf(newPasskey("example.com")),
                 )
             )
 
             assertTrue(result.isSuccess())
         }
 
-    // The use case does not touch the passkey table: it resolves the login's effective credentials,
-    // and LoginRepository drops the rows that fall outside that set as part of the same write.
-    // These assert the resolved set; LoginRepositoryImplTest covers the deletion itself.
+    @Test
+    fun `update adding a passkey attaches it next to the ones the login holds`() = runTest {
+        val held = passkeyRef("held.example")
+        val existing = testLogin(passkeys = setOf(held))
+        loginRepository.seed(existing)
+        val added = newPasskey("added.example")
+
+        val result = useCase(UpsertLogin.update(itemId = existing.id, addedPasskeys = setOf(added)))
+
+        assertTrue(result.isSuccess())
+        assertEquals(setOf(held, added.ref), storedById(existing.id)?.passkeys)
+        assertEquals(existing.id, loginRepository.passkeys.single().loginId)
+    }
+
+    @Test
+    fun `a crypto failure writes neither the login nor the added passkey`() = runTest {
+        val existing = testLogin()
+        loginRepository.seed(existing)
+        cryptoProvider.itemScopeFailure = CryptoScopeError.IdNotFound
+
+        val result = useCase(
+            UpsertLogin.update(itemId = existing.id, addedPasskeys = setOf(newPasskey("a.example")))
+        )
+
+        assertTrue(result.isFailure())
+        assertTrue(loginRepository.passkeys.isEmpty())
+        assertEquals(existing, storedById(existing.id))
+    }
+
+    // The use case resolves the login's effective credentials, and LoginRepository drops the rows
+    // that fall outside that set as part of the same write. These assert the resolved set;
+    // LoginRepositoryImplTest covers the deletion itself.
 
     @Test
     fun `update deleting a passkey drops it from the saved login`() = runTest {
@@ -266,22 +311,20 @@ class CreateNewOrUpdateLoginUseCaseTest {
 
     @Test
     fun `a save can register one passkey and remove another at the same time`() = runTest {
-        // Not reachable from the UI today: the passkey activity only opens the editor on a new
-        // login, which holds no passkeys to remove. A guard against the two ever being treated as
-        // alternatives again if that flow gains an "edit existing" entry point.
         val existing = testLogin(passkeys = setOf(passkeyRef("old.example")))
         loginRepository.seed(existing)
+        val added = newPasskey("new.example")
 
         val result = useCase(
             UpsertLogin.update(
                 itemId = existing.id,
                 removedPasskeys = setOf(passkeyRef("old.example")),
-                pendingPasskey = true,
+                addedPasskeys = setOf(added),
             )
         )
 
         assertTrue(result.isSuccess())
-        assertTrue(loginRepository.getLoginById(existing.id)?.passkeys.orEmpty().isEmpty())
+        assertEquals(setOf(added.ref), loginRepository.getLoginById(existing.id)?.passkeys)
     }
 
     @Test
@@ -976,6 +1019,13 @@ class CreateNewOrUpdateLoginUseCaseTest {
         upsertVaultItem = UpsertVaultItemUseCase(loginRepository, FakeCreditCardRepository()),
         passwordStrengthEstimator = estimator,
         totpService = totpService,
+    )
+
+    private fun newPasskey(rp: String, privateKey: String = "key") = NewPasskey(
+        credentialId = "$rp/".toByteArray(),
+        rp = rp,
+        user = PasskeyUser(name = "alice", displayName = "Alice"),
+        privateKey = privateKey.encodeToByteArray(),
     )
 
     private fun testLogin(

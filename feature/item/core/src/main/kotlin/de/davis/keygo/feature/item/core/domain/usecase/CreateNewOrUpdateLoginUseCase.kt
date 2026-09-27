@@ -5,6 +5,7 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Timestamp
@@ -15,9 +16,12 @@ import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.encrypt
+import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.fold
+import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.feature.item.core.domain.model.FieldUpdate
 import de.davis.keygo.feature.item.core.domain.model.ItemUpsertError
+import de.davis.keygo.feature.item.core.domain.model.NewPasskey
 import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.UpsertType
 import de.davis.keygo.feature.item.core.domain.model.getValue
@@ -63,15 +67,25 @@ class CreateNewOrUpdateLoginUseCase(
 
     override suspend fun fetchExisting(id: ItemId): Login? = loginRepository.getLoginById(id)
 
-    // buildCreate/buildUpdate already resolve the login's effective passkeys, so this only has to
-    // account for the one that is not on the item yet.
-    override fun isEmpty(item: Login, upsert: UpsertLogin): Boolean =
-        !upsert.pendingPasskey && !item.hasAnyContent
+    override fun isEmpty(item: Login, upsert: UpsertLogin): Boolean = !item.hasAnyContent
 
     override fun relocate(item: Login, vaultId: VaultId, keyInformation: KeyInformation): Login =
         item.copy(vaultId = vaultId, keyInformation = keyInformation)
 
     override fun touch(item: Login, timestamp: Timestamp): Login = item.copy(timestamp = timestamp)
+
+    // Sealed here rather than in buildCreate/buildUpdate because the sealed rows have to reach the
+    // repository next to the login, and a Login only carries passkey refs.
+    override suspend fun persist(
+        item: Login,
+        upsert: UpsertLogin,
+    ): Result<ItemId, ItemUpsertError> = resultBinding {
+        val sealed =
+            if (upsert.addedPasskeys.isEmpty()) emptyList()
+            else itemScope(item) { upsert.addedPasskeys.map { it.seal(item.id) } }.bind()
+
+        loginRepository.createOrUpdateLogin(item, sealed).bind(ItemUpsertError::DatabaseError)
+    }
 
     override suspend fun CryptographicScope.buildCreate(
         upsert: UpsertLogin,
@@ -101,8 +115,7 @@ class CreateNewOrUpdateLoginUseCase(
             tags = upsert.tags.getValue().orEmpty(),
             passwordCredential = newPasswordCredential,
             totp = totp?.await(),
-            // A pending passkey is written by its own flow once this id exists.
-            passkeys = emptySet(),
+            passkeys = upsert.addedPasskeys.mapTo(mutableSetOf()) { it.ref },
             note = upsert.note.getValue(),
             pinned = false,
             keyInformation = keyInformation,
@@ -137,8 +150,19 @@ class CreateNewOrUpdateLoginUseCase(
             totp = upsert.totpUriOrSecret.on(existing.totp, totp),
             // Resolved against what the table holds now, not against what the caller last saw, so
             // a passkey attached from elsewhere since then survives this save.
-            passkeys = existing.passkeys - upsert.removedPasskeys,
+            passkeys = existing.passkeys - upsert.removedPasskeys + upsert.addedPasskeys.map { it.ref },
             note = upsert.note.on(existing.note),
+        )
+    }
+
+    context(scope: CryptographicScope)
+    private suspend fun NewPasskey.seal(loginId: ItemId) = with(scope) {
+        Passkey(
+            credentialId = credentialId,
+            rp = rp,
+            privateKey = Passkey.PrivateKey.encrypt(privateKey),
+            loginId = loginId,
+            user = user,
         )
     }
 

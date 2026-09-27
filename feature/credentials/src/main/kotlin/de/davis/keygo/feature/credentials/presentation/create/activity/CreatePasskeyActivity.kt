@@ -180,6 +180,7 @@ internal class CreatePasskeyActivity : FragmentActivity() {
                 }
 
                 val authState by viewModel.authState.collectAsStateWithLifecycle()
+                val pendingPasskey by viewModel.pendingPasskey.collectAsStateWithLifecycle()
                 when (authState) {
                     SessionAuthState.TryBiometric -> {
                         // render nothing: activity stays transparent while system biometric prompt is shown
@@ -222,10 +223,8 @@ internal class CreatePasskeyActivity : FragmentActivity() {
 
                                 composable<CreateItem> {
                                     LoginScreen(
-                                        pendingPasskeyRP = rp,
-                                        loginCreated = {
-                                            viewModel.associatePasskeyAndFinish(it)
-                                        },
+                                        pendingPasskey = pendingPasskey,
+                                        loginCreated = { viewModel.onLoginCreated() },
                                         navigateBack = { cancel("User cancelled passkey creation") },
                                     )
                                 }

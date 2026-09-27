@@ -17,7 +17,7 @@ data class UpsertLogin private constructor(
     override val tags: FieldUpdate<Set<Tag>>,
     override val note: FieldUpdate<String>,
     val removedPasskeys: Set<PasskeyRef>,
-    val pendingPasskey: Boolean,
+    val addedPasskeys: Set<NewPasskey>,
 ) : UpsertItem {
     companion object {
         fun create(
@@ -29,7 +29,7 @@ data class UpsertLogin private constructor(
             domains: Set<DomainInfo> = emptySet(),
             tags: Set<Tag> = emptySet(),
             note: String? = null,
-            pendingPasskey: Boolean = false,
+            addedPasskeys: Set<NewPasskey> = emptySet(),
         ) = UpsertLogin(
             upsertType = UpsertType.Create(vaultId),
             name = FieldUpdate.Set(name),
@@ -41,7 +41,7 @@ data class UpsertLogin private constructor(
             tags = if (tags.isNotEmpty()) FieldUpdate.Set(tags) else FieldUpdate.Clear,
             // A brand-new login holds no passkeys, so there is nothing to remove.
             removedPasskeys = emptySet(),
-            pendingPasskey = pendingPasskey,
+            addedPasskeys = addedPasskeys,
         )
 
         fun update(
@@ -55,7 +55,7 @@ data class UpsertLogin private constructor(
             tags: FieldUpdate<Set<Tag>> = keep(),
             note: FieldUpdate<String> = keep(),
             removedPasskeys: Set<PasskeyRef> = emptySet(),
-            pendingPasskey: Boolean = false,
+            addedPasskeys: Set<NewPasskey> = emptySet(),
         ) = UpsertLogin(
             upsertType = UpsertType.Update(itemId, vaultId),
             name = name,
@@ -66,7 +66,7 @@ data class UpsertLogin private constructor(
             username = username,
             domains = domains,
             removedPasskeys = removedPasskeys,
-            pendingPasskey = pendingPasskey,
+            addedPasskeys = addedPasskeys,
         )
     }
 }

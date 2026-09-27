@@ -1,15 +1,18 @@
 package de.davis.keygo.feature.backup.domain
 
 import de.davis.keygo.core.item.FakeLoginRepository
+import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.feature.backup.RestorerTestEnv
 import de.davis.keygo.feature.backup.backupVault
 import de.davis.keygo.feature.backup.domain.model.ImportTarget
 import de.davis.keygo.feature.backup.testLogin
+import de.davis.keygo.feature.backup.testPasskey
 import de.davis.keygo.feature.backup.testVault
 import de.davisalessandro.keygo.rust.Backup
 import de.davisalessandro.keygo.rust.BackupLogin
+import de.davisalessandro.keygo.rust.BackupPasskey
 import de.davisalessandro.keygo.rust.BackupVault
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -23,6 +26,7 @@ class BackupRestorerTest {
         title: String,
         username: String? = null,
         websites: List<String> = emptyList(),
+        passkeys: List<BackupPasskey> = emptyList(),
     ) = BackupLogin(
         title = title,
         notes = null,
@@ -32,7 +36,15 @@ class BackupRestorerTest {
         password = "pw",
         totpSecret = null,
         websites = websites,
-        passkeys = emptyList(),
+        passkeys = passkeys,
+    )
+
+    private fun passkey(rp: String, credentialId: String = rp) = BackupPasskey(
+        userName = "alice",
+        userDisplayName = "Alice",
+        credentialId = credentialId.encodeToByteArray(),
+        privateKey = "key-$rp".encodeToByteArray(),
+        rp = rp,
     )
 
     private fun backup(vararg vaults: BackupVault) = Backup(vaults.toList())
@@ -83,6 +95,71 @@ class BackupRestorerTest {
             setOf("https://mail.example", "https://mail.example.org"),
             imported.domainInfos.map { it.value }.toSet(),
         )
+    }
+
+    @Test
+    fun `a login's passkeys are restored with it`() = runTest {
+        val env = RestorerTestEnv()
+
+        env.restorer.restore(
+            backup(
+                vault(
+                    "Imported",
+                    listOf(login("Email", passkeys = listOf(passkey("mail.example"))))
+                )
+            ),
+        ) { _, _ -> }
+
+        val stored = env.loginRepo.observeLogins().first().single()
+        val row = env.loginRepo.passkeys.single()
+        assertEquals(stored.id, row.loginId)
+        assertEquals("mail.example", row.rp)
+        assertEquals(setOf("mail.example"), stored.passkeys.map { it.rp }.toSet())
+    }
+
+    @Test
+    fun `a passkey whose credential is already stored is skipped, its login is not`() = runTest {
+        val env = RestorerTestEnv()
+        env.passkeyRepo.seed(
+            testPasskey(loginId = newItemId(), rp = "mail.example", privateKey = "existing"),
+        )
+
+        val result = env.restorer.restore(
+            backup(
+                vault(
+                    "Imported",
+                    listOf(
+                        login(
+                            "Email",
+                            passkeys = listOf(passkey("mail.example"), passkey("other.example")),
+                        ),
+                    ),
+                ),
+            ),
+        ) { _, _ -> }
+
+        assertEquals(1, (result as Result.Success).success.imported)
+        assertEquals(listOf("other.example"), env.loginRepo.passkeys.map { it.rp })
+    }
+
+    @Test
+    fun `a credential repeated within the backup is kept only by the first login`() = runTest {
+        val env = RestorerTestEnv()
+
+        val result = env.restorer.restore(
+            backup(
+                vault(
+                    "Imported",
+                    listOf(
+                        login("Email", "alice", passkeys = listOf(passkey("mail.example"))),
+                        login("Email", "bob", passkeys = listOf(passkey("mail.example"))),
+                    ),
+                ),
+            ),
+        ) { _, _ -> }
+
+        assertEquals(2, (result as Result.Success).success.imported)
+        assertEquals(1, env.loginRepo.passkeys.size)
     }
 
     @Test
