@@ -8,6 +8,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 object PasswordHealthRoute : NavKey
 
+const val ACTION_OPEN_PASSWORD_HEALTH = "de.davis.keygo.action.OPEN_PASSWORD_HEALTH"
+
 fun EntryProviderScope<NavKey>.passwordHealthEntries(
     metadata: Map<String, Any> = emptyMap(),
     openItemId: ItemId?,

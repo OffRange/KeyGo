@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.annotation.StringRes
@@ -14,6 +15,7 @@ import androidx.core.content.ContextCompat
 import de.davis.keygo.feature.password_health.R
 import de.davis.keygo.feature.password_health.domain.Notifier
 import de.davis.keygo.feature.password_health.domain.model.KeyGoNotification
+import de.davis.keygo.feature.password_health.presentation.ACTION_OPEN_PASSWORD_HEALTH
 import org.koin.core.annotation.Single
 import de.davis.keygo.core.ui.R as CoreUiR
 
@@ -71,7 +73,7 @@ internal class NotifierImpl(
             .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
             .setOnlyAlertOnce(true)
             .setAutoCancel(true)
-            .setContentIntent(openAppIntent())
+            .setContentIntent(openPasswordHealthIntent())
             .build()
     }
 
@@ -80,10 +82,14 @@ internal class NotifierImpl(
             .setSmallIcon(CoreUiR.drawable.ic_app)
             .setContentTitle(context.getString(R.string.password_health_title))
 
-    // TODO: send user to correct screen
-    private fun openAppIntent(): PendingIntent? {
-        val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-            ?: return null
+    private fun openPasswordHealthIntent(): PendingIntent? {
+        val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+            action = ACTION_OPEN_PASSWORD_HEALTH
+
+            // Without these a running task gets a second MainActivity instead of onNewIntent.
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        } ?: return null
+        
         return PendingIntent.getActivity(
             context,
             0,

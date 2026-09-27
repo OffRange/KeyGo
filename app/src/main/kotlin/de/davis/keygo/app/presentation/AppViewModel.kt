@@ -2,6 +2,7 @@ package de.davis.keygo.app.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation3.runtime.NavKey
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.feature.password_health.domain.PasswordHealthAttention
@@ -32,9 +33,21 @@ internal class AppViewModel(
 
     val needsAttentionCount: StateFlow<Int> = passwordHealthAttention.needsAttention
 
+    private val _requestedTopLevelRoute = MutableStateFlow<NavKey?>(null)
+    val requestedTopLevelRoute = _requestedTopLevelRoute.asStateFlow()
+
     init {
         viewModelScope.launch {
             _isReturningUser.update { accountRepository.getOrNull() != null || hasV1Password() }
         }
+    }
+
+    fun onIntentAction(action: String?) {
+        AppDestinations.fromIntentAction(action)
+            ?.let { dest -> _requestedTopLevelRoute.update { dest.route } }
+    }
+
+    fun onTopLevelRouteRequestHandled() {
+        _requestedTopLevelRoute.value = null
     }
 }

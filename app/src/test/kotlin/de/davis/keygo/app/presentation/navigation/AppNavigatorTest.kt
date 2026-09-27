@@ -417,6 +417,40 @@ class AppNavigatorTest {
     }
 
     @Test
+    fun `a tab selected from outside the app waits behind the gate until the unlock`() {
+        val navigator = navigator()
+
+        navigator.selectBehindOverlay(PasswordHealthRoute)
+
+        assertEquals(listOf(AuthRoute()), navigator.shown)
+
+        navigator.unlock()
+
+        assertEquals(listOf(PasswordHealthRoute), navigator.shown)
+    }
+
+    @Test
+    fun `a tab selected from outside the app keeps the history that tab had`() {
+        val navigator = unlocked()
+        navigator.navigate(SettingsRoute)
+        navigator.navigate(ChangePasswordRoute)
+        navigator.navigate(RouteDestination.Home)
+
+        navigator.selectBehindOverlay(SettingsRoute)
+
+        assertEquals(listOf(SettingsRoute, ChangePasswordRoute), navigator.shown)
+    }
+
+    @Test
+    fun `a route that is not a tab is not selected from outside the app`() {
+        val navigator = unlocked()
+
+        navigator.selectBehindOverlay(ChangePasswordRoute)
+
+        assertEquals(RouteDestination.Home, navigator.state.topLevelRoute)
+    }
+
+    @Test
     fun `the chrome still standing behind the gate cannot navigate anywhere`() {
         // The navigation bar animates out rather than disappearing, so it stays clickable for a
         // moment after the gate goes up. A tap landing then must not push over the gate.

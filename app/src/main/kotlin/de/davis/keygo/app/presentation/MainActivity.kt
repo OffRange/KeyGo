@@ -52,6 +52,9 @@ class MainActivity : FragmentActivity() {
 
         super.onCreate(savedInstanceState)
 
+        // A recreated Activity already restored the tab the request selected.
+        if (savedInstanceState == null) viewModel.onIntentAction(intent.action)
+
         splashScreen.setKeepOnScreenCondition {
             viewModel.isReturningUser.value == null
         }
@@ -62,6 +65,7 @@ class MainActivity : FragmentActivity() {
             val hasAccess = viewModel.isReturningUser.collectAsState().value ?: return@setContent
             val isSessionActive by viewModel.isSessionActive.collectAsState()
             val needsAttentionCount by viewModel.needsAttentionCount.collectAsState()
+            val requestedTopLevelRoute by viewModel.requestedTopLevelRoute.collectAsState()
 
             KeyGoTheme {
                 val snackbarManager = koinInject<SnackbarManager>()
@@ -73,10 +77,17 @@ class MainActivity : FragmentActivity() {
                         launchRoute = launchRoute(hasAccess),
                         isSessionActive = isSessionActive,
                         needsAttentionCount = needsAttentionCount,
+                        requestedTopLevelRoute = requestedTopLevelRoute,
+                        onTopLevelRouteRequestHandled = viewModel::onTopLevelRouteRequestHandled,
                     )
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        viewModel.onIntentAction(intent.action)
     }
 
     private fun launchRoute(hasAccess: Boolean): NavKey =
@@ -96,6 +107,8 @@ private fun App(
     launchRoute: NavKey,
     isSessionActive: Boolean,
     needsAttentionCount: Int,
+    requestedTopLevelRoute: NavKey?,
+    onTopLevelRouteRequestHandled: () -> Unit,
 ) {
     val navigationState = rememberAppNavigationState(
         launchRoute = launchRoute,
@@ -105,6 +118,12 @@ private fun App(
     val navigator = remember(navigationState) { AppNavigator(navigationState) }
 
     LockAppWhenSessionEnds(isSessionActive, navigator)
+
+    LaunchedEffect(requestedTopLevelRoute) {
+        if (requestedTopLevelRoute == null) return@LaunchedEffect
+        navigator.selectBehindOverlay(requestedTopLevelRoute)
+        onTopLevelRouteRequestHandled()
+    }
 
     val windowAdaptiveInfo = currentWindowAdaptiveInfoV2()
     val directive = remember(windowAdaptiveInfo) {
