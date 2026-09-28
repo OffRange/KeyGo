@@ -64,12 +64,12 @@
     <string name="breach_check_enable">Check for breaches</string>
     <string name="breach_check_opt_in_description">Only the first 5 characters of each password\'s hash ever leave your device</string>
     <plurals name="breach_check_unreachable">
-        <item quantity="one">%1$d password went unchecked: couldn\'t reach the breach service</item>
-        <item quantity="other">%1$d passwords went unchecked: couldn\'t reach the breach service</item>
+        <item quantity="one">Breach check failed for %1$d password: no connection to the breach service</item>
+        <item quantity="other">Breach check failed for %1$d passwords: no connection to the breach service</item>
     </plurals>
     <plurals name="breach_check_failed">
-        <item quantity="one">%1$d password went unchecked: the breach service didn\'t answer</item>
-        <item quantity="other">%1$d passwords went unchecked: the breach service didn\'t answer</item>
+        <item quantity="one">Breach check failed for %1$d password: the breach service didn\'t respond</item>
+        <item quantity="other">Breach check failed for %1$d passwords: the breach service didn\'t respond</item>
     </plurals>
 
     <string name="fix_copied_label">Generated password</string>
