@@ -2,8 +2,8 @@ package de.davis.keygo.core.item.domain.repository
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
-import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.lite.LiteLogin
 import de.davis.keygo.core.util.Result
@@ -11,12 +11,14 @@ import kotlinx.coroutines.flow.Flow
 
 interface LoginRepository {
 
-    suspend fun createOrUpdateLogin(login: Login): Result<ItemId, Throwable>
-
-    suspend fun updateDomainInfos(
-        itemId: ItemId,
-        domainInfos: Set<DomainInfo>,
-    ): Result<Unit, Throwable>
+    /**
+     * Writes [login] and inserts [addedPasskeys] in one transaction. Each added passkey has to be
+     * listed in [Login.passkeys] too, or the same write deletes it again.
+     */
+    suspend fun createOrUpdateLogin(
+        login: Login,
+        addedPasskeys: List<Passkey> = emptyList(),
+    ): Result<ItemId, Throwable>
 
     suspend fun getLoginsByTLD(
         etld1: String,

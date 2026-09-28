@@ -6,7 +6,6 @@ import de.davis.keygo.core.item.domain.model.PasskeyMetadata
 
 interface PasskeyRepository {
 
-    suspend fun createPasskey(passkey: Passkey)
     suspend fun doCredentialIdsExist(credentialIds: Set<ByteArray>): Boolean
 
     suspend fun getPasskeysForRP(rpId: String): List<PasskeyMetadata>

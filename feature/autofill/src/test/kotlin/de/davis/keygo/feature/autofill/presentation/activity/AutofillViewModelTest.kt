@@ -11,8 +11,10 @@ import de.davis.keygo.core.feature.autofill.FakeSmsCodeRepository
 import de.davis.keygo.core.feature.autofill.FakeTotpGenerator
 import de.davis.keygo.core.feature.autofill.FakeTotpRepository
 import de.davis.keygo.core.feature.autofill.autofillId
+import de.davis.keygo.core.item.FakeCreditCardRepository
 import de.davis.keygo.core.item.FakeItemRepository
 import de.davis.keygo.core.item.FakeLoginRepository
+import de.davis.keygo.core.item.FakePasswordStrengthEstimator
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
@@ -23,10 +25,11 @@ import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.model.Totp
+import de.davis.keygo.core.item.domain.model.Vault
+import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.util.FakeRegistrableDomainResolver
 import de.davis.keygo.core.util.Result
-import de.davis.keygo.feature.autofill.domain.usecase.AddRegistrableDomainsToLoginUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.DoesItemHaveDomainReferencesUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.IsAppLinkedToWebsiteUseCase
 import de.davis.keygo.feature.autofill.presentation.activity.model.AssociationDialogVisibility
@@ -44,8 +47,10 @@ import de.davis.keygo.feature.autofill.presentation.model.Request
 import de.davis.keygo.feature.autofill.presentation.model.RequestData
 import de.davis.keygo.feature.autofill.presentation.model.SaveRequestData
 import de.davis.keygo.feature.autofill.presentation.sms.SmsCodeFailure
+import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
 import de.davis.keygo.feature.totp.domain.model.TotpError
 import de.davis.keygo.feature.totp.domain.model.TotpValue
+import de.davis.keygo.rust.FakeTotpService
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -125,7 +130,15 @@ internal class AutofillViewModelTest {
             cryptographicScopeProvider = cryptoProvider,
             autofillDatasetProvider = datasetProvider,
             doesItemHaveDomainReferences = DoesItemHaveDomainReferencesUseCase(loginRepo, resolver),
-            addRegistrableDomainToLogin = AddRegistrableDomainsToLoginUseCase(loginRepo, resolver),
+            createNewOrUpdateLogin = CreateNewOrUpdateLoginUseCase(
+                cryptographicScopeProvider = cryptoProvider,
+                loginRepository = loginRepo,
+                vaultRepository = vaultRepo,
+                upsertVaultItem = UpsertVaultItemUseCase(loginRepo, FakeCreditCardRepository()),
+                passwordStrengthEstimator = FakePasswordStrengthEstimator(),
+                totpService = FakeTotpService(),
+                registrableDomainResolver = resolver,
+            ),
             isAppLinkedToWebsite = IsAppLinkedToWebsiteUseCase(dalRepo, signatureProvider),
             totpGenerator = totpGenerator,
         )
@@ -478,6 +491,14 @@ internal class AutofillViewModelTest {
         resolver.resolutions = mapOf("https://example.com" to "example.com")
         val login = testLogin(username = "bob", name = "bob", domainInfos = emptySet())
         loginRepo.seed(login)
+        vaultRepo.seed(
+            Vault(
+                id = login.vaultId,
+                name = "Vault",
+                keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),
+                icon = Vault.Icon.Default,
+            ),
+        )
 
         val fields = listOf(credField(FieldType.Credentials.Username, viewId = 1))
         val requestData = FillRequestData.App(
@@ -494,7 +515,10 @@ internal class AutofillViewModelTest {
         val event = eventDeferred.await()
 
         assertIs<AutofillEvent.Fill>(event)
-        assertTrue(loginRepo.getLoginById(login.id)!!.domainInfos.isNotEmpty())
+        assertEquals(
+            setOf(DomainInfo(login.id, "https://example.com", "example.com")),
+            loginRepo.getLoginById(login.id)?.domainInfos,
+        )
     }
 
     @Test

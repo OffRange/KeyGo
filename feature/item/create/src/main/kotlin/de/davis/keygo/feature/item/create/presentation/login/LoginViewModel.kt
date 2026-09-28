@@ -7,7 +7,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
-import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.LoginRepository
@@ -17,13 +16,13 @@ import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
-import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.feature.item.core.domain.model.ItemUpsertError
+import de.davis.keygo.feature.item.core.domain.model.NewPasskey
 import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.fieldUpdate
 import de.davis.keygo.feature.item.core.domain.model.set
@@ -72,7 +71,6 @@ internal class LoginViewModel(
     private val validateTotpInput: ValidateTotpInputUseCase,
     private val snackbarManager: SnackbarManager,
     private val totpService: TotpService,
-    private val registrableDomainResolver: RegistrableDomainResolver,
     vaultContextRepository: VaultContextRepository,
     itemRepository: ItemRepository,
     observeAllTags: ObserveAllTagsSortedUseCase,
@@ -108,18 +106,14 @@ internal class LoginViewModel(
         base.copy(strengthScore = score)
     }
 
-    /**
-     * Shows a passkey for [rp] as pending until the item is saved.
-     *
-     * A blank id is dropped along with a null one. `rp.id` is optional per WebAuthn, so a request
-     * that leaves it out reaches us as an empty string, which would otherwise show up as a blank
-     * chip, make a name-only login look saveable, and leave the confirmation dialog asking about
-     * nothing.
-     */
-    fun setPendingPasskeyCount(rp: String?) {
-        if (rp.isNullOrBlank()) return
+    private var pendingPasskey: NewPasskey? = null
+
+    /** Shows [passkey] as pending and saves it with the login. */
+    fun setPendingPasskey(passkey: NewPasskey?) {
+        if (passkey == null || passkey == pendingPasskey) return
+        pendingPasskey = passkey
         _base.update {
-            it.copy(passkeys = it.passkeys + LoginPasskeyInfo(rpId = rp, ref = null))
+            it.copy(passkeys = it.passkeys + LoginPasskeyInfo(rpId = passkey.rp, ref = null))
         }
     }
 
@@ -142,19 +136,11 @@ internal class LoginViewModel(
 
         when (createRaw) {
             is DetailPaneInformation.CreateRaw.Login -> {
-                val domainInfo = createRaw.url?.let {
-                    val eTLD1 = registrableDomainResolver.resolve(it)
-                    DomainInfo(
-                        value = it,
-                        eTLD1 = eTLD1,
-                    )
-                }
-
                 passwordTextFieldState.setTextAndPlaceCursorAtEnd(createRaw.password)
                 _base.update {
                     it.copy(
                         usernameTextFieldState = TextFieldState(createRaw.username),
-                        domains = setOfNotNull(domainInfo),
+                        domains = setOfNotNull(createRaw.url),
                         updating = false,
                     )
                 }
@@ -206,7 +192,7 @@ internal class LoginViewModel(
                 it.copy(
                     totpTextFieldState = TextFieldState(decrypted.second ?: ""),
                     usernameTextFieldState = TextFieldState(login.username ?: ""),
-                    domains = login.domainInfos,
+                    domains = login.domainInfos.mapTo(mutableSetOf()) { info -> info.value },
                     passkeys = login.passkeys.mapTo(mutableSetOf()) { passkey ->
                         LoginPasskeyInfo(
                             rpId = passkey.rp,
@@ -214,6 +200,7 @@ internal class LoginViewModel(
                         )
                     },
                     deletedPasskeys = emptySet(),
+                    deletedDomains = emptySet(),
                     dialogState = DialogState.None,
                     updating = true,
                 )
@@ -241,8 +228,7 @@ internal class LoginViewModel(
         val base = ready.base
         val assignedTags = ready.shared.itemAssignedTags
         val selectedVaultId = ready.shared.vaultsState.selectedVaultId
-        // Independent: a save can both register a passkey and drop another one.
-        val pendingPasskey = base.passkeys.any { it.pending }
+        val addedPasskeys = setOfNotNull(pendingPasskey)
 
         // A scan is rejected while it is still a scan, so only what was typed or pasted can be
         // unusable by the time it reaches here.
@@ -261,13 +247,14 @@ internal class LoginViewModel(
                     vaultId = selectedVaultId,
                     name = fieldUpdate(nameTextFieldState.text.toString()),
                     username = fieldUpdate(base.usernameTextFieldState.text.toString()),
-                    domains = set(base.domains),
                     tags = set(assignedTags),
                     password = fieldUpdate(base.passwordTextFieldState.text.toString()),
                     totpUriOrSecret = fieldUpdate(totpInput),
                     note = fieldUpdate(notesTextFieldState.text.toString()),
                     removedPasskeys = base.deletedPasskeys,
-                    pendingPasskey = pendingPasskey,
+                    addedPasskeys = addedPasskeys,
+                    removedDomains = base.deletedDomains,
+                    addedDomains = base.domains,
                 )
             } ?: UpsertLogin.create(
                 vaultId = selectedVaultId,
@@ -278,7 +265,7 @@ internal class LoginViewModel(
                 password = base.passwordTextFieldState.text.toString(),
                 totpUriOrSecret = totpInput,
                 note = notesTextFieldState.text.toString(),
-                pendingPasskey = pendingPasskey,
+                addedPasskeys = addedPasskeys,
             )
 
             createNewOrUpdateLogin(
@@ -421,27 +408,18 @@ internal class LoginViewModel(
                 }
             }
 
-            is LoginUiEvent.OnAddDomains -> {
-                event.domains.forEach { domain ->
-                    val registrableDomain = registrableDomainResolver.resolve(domain)
-                    val info = DomainInfo(
-                        loginId = itemId,
-                        value = domain,
-                        eTLD1 = registrableDomain,
-                    )
-                    _base.update {
-                        it.copy(domains = it.domains + info)
-                    }
-                }
+            is LoginUiEvent.OnAddDomains -> _base.update {
+                it.copy(
+                    domains = it.domains + event.domains,
+                    deletedDomains = it.deletedDomains - event.domains,
+                )
             }
 
-            is LoginUiEvent.OnDeleteDomain -> {
-                _base.update {
-                    it.copy(
-                        domains = it.domains.filterNot { info -> info.value == event.value }
-                            .toSet(),
-                    )
-                }
+            is LoginUiEvent.OnDeleteDomain -> _base.update {
+                it.copy(
+                    domains = it.domains - event.value,
+                    deletedDomains = it.deletedDomains + event.value,
+                )
             }
 
             is LoginUiEvent.OnPasswordGenerated -> {
@@ -489,7 +467,7 @@ internal class LoginViewModel(
 
         val isOverridingTotpSecret = isCurrentSecretSet && !isCurrentTotpSecretSame
         val isAddingNewIssuer = newDomain != null && currentIssuers
-            .none { it.value.contains(newDomain, ignoreCase = true) }
+            .none { it.contains(newDomain, ignoreCase = true) }
         val isOverridingAccountName = isCurrentAccountNameSet && !isCurrentAccountNameSame
 
         if (isOverridingTotpSecret) {

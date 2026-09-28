@@ -21,7 +21,6 @@ import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.autofill.domain.model.WebsiteLinkStatus
-import de.davis.keygo.feature.autofill.domain.usecase.AddRegistrableDomainsToLoginUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.DoesItemHaveDomainReferencesUseCase
 import de.davis.keygo.feature.autofill.domain.usecase.IsAppLinkedToWebsiteUseCase
 import de.davis.keygo.feature.autofill.presentation.AutofillDatasetProvider
@@ -43,6 +42,8 @@ import de.davis.keygo.feature.autofill.presentation.model.RequestData
 import de.davis.keygo.feature.autofill.presentation.model.SaveRequestData
 import de.davis.keygo.feature.autofill.presentation.sms.SmsCodeFailure
 import de.davis.keygo.feature.autofill.presentation.sms.SmsCodeRepository
+import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
+import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import de.davis.keygo.feature.totp.domain.repository.TotpGenerator
 import kotlinx.coroutines.Job
@@ -67,7 +68,7 @@ internal class AutofillViewModel(
     private val cryptographicScopeProvider: CryptographicScopeProvider,
     private val autofillDatasetProvider: AutofillDatasetProvider,
     private val doesItemHaveDomainReferences: DoesItemHaveDomainReferencesUseCase,
-    private val addRegistrableDomainToLogin: AddRegistrableDomainsToLoginUseCase,
+    private val createNewOrUpdateLogin: CreateNewOrUpdateLoginUseCase,
     private val isAppLinkedToWebsite: IsAppLinkedToWebsiteUseCase,
     private val totpGenerator: TotpGenerator,
 ) : ViewModel() {
@@ -368,10 +369,7 @@ internal class AutofillViewModel(
         uiState.value.itemId?.let { itemId ->
             requestData.form.url?.let {
                 viewModelScope.launch {
-                    addRegistrableDomainToLogin(
-                        loginId = itemId,
-                        domain = it,
-                    )
+                    createNewOrUpdateLogin(UpsertLogin.update(itemId = itemId, addedDomains = setOf(it)))
                 }
             }
         }

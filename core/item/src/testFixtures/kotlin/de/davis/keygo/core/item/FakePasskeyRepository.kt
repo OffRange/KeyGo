@@ -13,10 +13,6 @@ class FakePasskeyRepository : PasskeyRepository {
         store += passkeys
     }
 
-    override suspend fun createPasskey(passkey: Passkey) {
-        store += passkey
-    }
-
     override suspend fun doCredentialIdsExist(credentialIds: Set<ByteArray>): Boolean =
         store.any { p -> credentialIds.any { it.contentEquals(p.credentialId) } }
 
