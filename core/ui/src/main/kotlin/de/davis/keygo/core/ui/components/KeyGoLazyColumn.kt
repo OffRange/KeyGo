@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -81,8 +82,8 @@ fun <ID : Any> KeyGoColumn(
     contentPadding: PaddingValues = PaddingValues(horizontal = 8.dp),
     openedItemId: ID? = null,
     selectedItemIds: Set<ID> = emptySet(),
+    listState: LazyListState = rememberLazyListState(),
 ) {
-    val listState = rememberLazyListState()
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
     val headerStart = HeaderStartPadding + contentPadding.calculateStartPadding(layoutDirection)
