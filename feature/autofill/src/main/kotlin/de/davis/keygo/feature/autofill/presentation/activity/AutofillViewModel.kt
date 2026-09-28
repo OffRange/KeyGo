@@ -365,21 +365,18 @@ internal class AutofillViewModel(
         }
     }
 
-    private fun associateItem() {
-        uiState.value.itemId?.let { itemId ->
-            requestData.form.url?.let {
-                viewModelScope.launch {
-                    createNewOrUpdateLogin(UpsertLogin.update(itemId = itemId, addedDomains = setOf(it)))
-                }
-            }
+    private fun associateItem() = hideAssociationDialog { itemId ->
+        requestData.form.url?.let {
+            createNewOrUpdateLogin(UpsertLogin.update(itemId = itemId, addedDomains = setOf(it)))
         }
-        hideAssociationDialog()
     }
 
-    private fun hideAssociationDialog() {
+    private fun hideAssociationDialog(beforeFill: suspend (ItemId) -> Unit = {}) {
         _uiState.update { it.copy(associationDialogVisibility = AssociationDialogVisibility.Hidden) }
         _uiState.value.itemId?.let { itemId ->
+            // The fill closes the activity and cancels this scope, so anything to save must finish first.
             viewModelScope.launch {
+                beforeFill(itemId)
                 sendFillEvent(itemId)
             }
         }
