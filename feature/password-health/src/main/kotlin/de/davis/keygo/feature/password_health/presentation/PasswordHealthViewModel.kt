@@ -9,9 +9,11 @@ import de.davis.keygo.feature.item.core.domain.model.set
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
 import de.davis.keygo.feature.item.view.domain.WebsiteHandler
 import de.davis.keygo.feature.password_health.domain.model.FindingSeverity
+import de.davis.keygo.feature.password_health.domain.model.GapReason
 import de.davis.keygo.feature.password_health.domain.model.PasswordFixError
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReport
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReportError
+import de.davis.keygo.feature.password_health.domain.repository.ConnectivityRepository
 import de.davis.keygo.feature.password_health.domain.repository.HealthSettingsRepository
 import de.davis.keygo.feature.password_health.domain.usecase.PasswordHealthReportUseCase
 import de.davis.keygo.feature.password_health.domain.usecase.SetHealthNotificationsUseCase
@@ -21,16 +23,27 @@ import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthE
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiEvent
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiState
 import de.davis.keygo.feature.password_health.presentation.model.RunPhase
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.dropWhile
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
+import kotlin.time.Duration.Companion.seconds
 
 @KoinViewModel
 internal class PasswordHealthViewModel(
@@ -39,12 +52,14 @@ internal class PasswordHealthViewModel(
     private val healthSettingsRepository: HealthSettingsRepository,
     private val setHealthNotifications: SetHealthNotificationsUseCase,
     private val websiteHandler: WebsiteHandler,
+    connectivityRepository: ConnectivityRepository,
 ) : ViewModel() {
 
     private val _eventChannel = Channel<PasswordHealthEvent>(Channel.BUFFERED)
     val events = _eventChannel.receiveAsFlow()
 
     private val _base = MutableStateFlow(PasswordHealthUiState(phase = RunPhase.FirstLoad))
+
     val uiState = combine(
         _base,
         healthSettingsRepository.observeBreachCheckState(),
@@ -60,6 +75,20 @@ internal class PasswordHealthViewModel(
     )
 
     private var run: Job? = null
+
+    init {
+        @OptIn(ExperimentalCoroutinesApi::class)
+        _base
+            .map { it.phase == RunPhase.Idle && it.breachGap?.reason == GapReason.Unreachable }
+            .distinctUntilChanged()
+            .mapLatest { stranded ->
+                if (!stranded) return@mapLatest
+
+                connectivityRepository.observeInternet().awaitReconnect()
+                runHealthCheck(RunPhase.Refresh)
+            }
+            .launchIn(viewModelScope)
+    }
 
     fun onEvent(event: PasswordHealthUiEvent) {
         when (event) {
@@ -162,6 +191,18 @@ internal class PasswordHealthViewModel(
             }
         }
     }
+}
+
+private val RECONNECT_SETTLE = 1.seconds
+
+// Handovers flap the validated state, so a reconnect has to hold before it counts. A lookup can
+// time out while the network still reports validated, so the connection has to drop and come back
+// first, or the retry would loop.
+@OptIn(FlowPreview::class)
+private suspend fun Flow<Boolean>.awaitReconnect() {
+    dropWhile { it }
+        .debounce(RECONNECT_SETTLE)
+        .first { it }
 }
 
 private fun PasswordHealthUiState.withReport(report: PasswordHealthReport) = copy(

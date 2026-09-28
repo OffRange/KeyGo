@@ -28,6 +28,7 @@ import de.davis.keygo.feature.password_health.domain.checker.BreachedPasswordChe
 import de.davis.keygo.feature.password_health.domain.checker.ReusePasswordCheck
 import de.davis.keygo.feature.password_health.domain.checker.WeakPasswordChecker
 import de.davis.keygo.feature.password_health.domain.model.FindingSeverity
+import de.davis.keygo.feature.password_health.domain.model.GapReason
 import de.davis.keygo.feature.password_health.domain.model.HealthReportStoreError
 import de.davis.keygo.feature.password_health.domain.model.PasswordFixError
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReportError
@@ -54,6 +55,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -64,6 +67,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PasswordHealthViewModelTest {
@@ -77,6 +81,7 @@ class PasswordHealthViewModelTest {
     private val websiteHandler = RecordingWebsiteHandler()
     private val notificationState = FakeHealthNotificationStateRepository()
     private val scheduler = FakeHealthCheckNotifierScheduler()
+    private val connectivity = FakeConnectivityRepository()
 
     @BeforeTest
     fun setUp() {
@@ -105,7 +110,7 @@ class PasswordHealthViewModelTest {
                 listOf(
                     WeakPasswordChecker(),
                     ReusePasswordCheck(),
-                    BreachedPasswordCheck(breached, breachState, FakeConnectivityRepository()),
+                    BreachedPasswordCheck(breached, breachState, connectivity),
                 ),
             ),
             assembler = HealthReportAssembler(),
@@ -132,6 +137,7 @@ class PasswordHealthViewModelTest {
             notifier = FakeNotifier(),
         ),
         websiteHandler = websiteHandler,
+        connectivityRepository = connectivity,
     )
 
     @Test
@@ -261,6 +267,67 @@ class PasswordHealthViewModelTest {
         assertEquals(false, breachState.state.value.breachesEnabled)
         assertEquals(RunPhase.FirstLoad, vm.uiState.value.phase)
         assertEquals(0, vm.uiState.value.totalPasswordCount)
+    }
+
+    @Test
+    fun reconnectingRetriesOnlyTheUnreachableBreachLookups() = runTest {
+        seed(0)
+        seed(1)
+        breachState.setBreachEnabled(true)
+        connectivity.online = false
+        val vm = viewModel().also { subscribe(it) }
+        assertEquals(GapReason.Unreachable, runAndAwait(vm).breachGap?.reason)
+
+        connectivity.online = true
+        val state = vm.awaitIdle { it.breachGap == null }
+
+        assertEquals(2, breachLookups())
+        assertEquals(2, state.totalPasswordCount)
+    }
+
+    @Test
+    fun aConnectionThatDropsBeforeSettlingIsNotRetried() = runTest {
+        seed(0)
+        breachState.setBreachEnabled(true)
+        connectivity.online = false
+        val vm = viewModel().also { subscribe(it) }
+        runAndAwait(vm)
+
+        connectivity.online = true
+        advanceTimeBy(500.milliseconds)
+        connectivity.online = false
+        advanceUntilIdle()
+
+        assertEquals(0, breachLookups())
+        assertEquals(GapReason.Unreachable, vm.uiState.value.breachGap?.reason)
+    }
+
+    @Test
+    fun reconnectingWithoutAnUnreachableGapDoesNotRun() = runTest {
+        seed(0)
+        connectivity.online = false
+        val vm = viewModel().also { subscribe(it) }
+        runAndAwait(vm)
+
+        connectivity.online = true
+        advanceUntilIdle()
+
+        assertEquals(RunPhase.Idle, vm.uiState.value.phase)
+        assertEquals(0, breachLookups())
+    }
+
+    @Test
+    fun comingOnlineRightAfterOpeningStillRetries() = runTest {
+        seed(0)
+        breachState.setBreachEnabled(true)
+        connectivity.online = false
+        val vm = viewModel().also { subscribe(it) }
+        assertEquals(GapReason.Unreachable, runAndAwait(vm).breachGap?.reason)
+
+        connectivity.online = true
+        vm.awaitIdle { it.breachGap == null }
+
+        assertEquals(1, breachLookups())
     }
 
     @Test

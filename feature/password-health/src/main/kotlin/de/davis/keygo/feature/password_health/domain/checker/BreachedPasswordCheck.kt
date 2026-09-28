@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import org.koin.core.annotation.Single
 import java.nio.CharBuffer
@@ -39,7 +40,7 @@ internal class BreachedPasswordCheck(
         if (!healthSettingsRepository.getBreachCheckState().breachesEnabled)
             return CheckOutcome.skipped(GapReason.Disabled, candidates)
 
-        if (!connectivityRepository.hasInternet())
+        if (!connectivityRepository.observeInternet().first())
             return CheckOutcome.skipped(GapReason.Unreachable, candidates)
 
         val ranges = candidates.byRange()
