@@ -23,7 +23,7 @@ import kotlin.time.Duration.Companion.seconds
 @ComponentScan("de.davis.keygo.feature.password_health")
 object FeaturePasswordHealthModule {
 
-    private val LOOKUP_TIMEOUT = 15.seconds
+    private val LOOKUP_TIMEOUT = 3.seconds
     private const val MAX_PARALLEL_LOOKUPS = 8
 
     @Single
