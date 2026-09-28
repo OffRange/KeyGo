@@ -28,8 +28,6 @@ import androidx.compose.material.icons.automirrored.filled.MenuOpen
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Menu
-import androidx.compose.material3.BottomAppBarDefaults
-import androidx.compose.material3.BottomAppBarScrollBehavior
 import androidx.compose.material3.DrawerDefaults
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -68,6 +66,7 @@ import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -81,8 +80,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -100,8 +97,9 @@ import de.davis.keygo.app.presentation.AppDestinations
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
 import de.davis.keygo.core.ui.RouteDestination
+import de.davis.keygo.core.ui.composition.LocalNavigationBarCollapseState
+import de.davis.keygo.core.ui.composition.NavigationBarCollapseState
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 import de.davis.keygo.core.ui.R as CoreUiR
 
 
@@ -143,7 +141,8 @@ fun KeyGoNavigationWrapper(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    val scrollBehavior = BottomAppBarDefaults.exitAlwaysScrollBehavior()
+    val collapseState = remember { NavigationBarCollapseState() }
+    val isCollapsed = layoutType == NavigationSuiteType.NavigationBar && collapseState.isCollapsed
 
     ModalNavigationDrawer(
         drawerContent = {
@@ -172,7 +171,7 @@ fun KeyGoNavigationWrapper(
                 navigationSuite = {
                     Box {
                         AnimatedVisibility(
-                            visible = showChrome,
+                            visible = showChrome && !isCollapsed,
                             enter = when (layoutType) {
                                 NavigationSuiteType.NavigationBar -> expandVertically()
                                 else -> expandHorizontally()
@@ -194,7 +193,6 @@ fun KeyGoNavigationWrapper(
                                 },
                                 buttonContainerColor = buttonContainerColor,
                                 buttonContentColor = buttonContentColor,
-                                scrollBehavior = scrollBehavior
                             )
                         }
                     }
@@ -288,9 +286,11 @@ fun KeyGoNavigationWrapper(
                                     else -> WindowInsets(0, 0, 0, 0)
                                 }
                             )
-                            .nestedScroll(scrollBehavior.nestedScrollConnection)
                     ) {
-                        content()
+                        CompositionLocalProvider(
+                            LocalNavigationBarCollapseState provides collapseState,
+                            content = content,
+                        )
                     }
                 }
             )
@@ -298,7 +298,6 @@ fun KeyGoNavigationWrapper(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KeyGoNavigationSuite(
     currentDestination: NavDestination?,
@@ -308,14 +307,12 @@ fun KeyGoNavigationSuite(
     onOpenDrawer: () -> Unit,
     buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
     buttonContentColor: Color = contentColorFor(buttonContainerColor),
-    scrollBehavior: BottomAppBarScrollBehavior? = null,
 ) {
     when (layoutType) {
         NavigationSuiteType.NavigationBar -> {
             KeyGoNavigationBar(
                 currentDestination = currentDestination,
                 navigateToTopLvlDestination = navigateToTopLvlDestination,
-                scrollBehavior = scrollBehavior
             )
         }
 
@@ -344,26 +341,12 @@ fun KeyGoNavigationSuite(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KeyGoNavigationBar(
     currentDestination: NavDestination?,
     navigateToTopLvlDestination: (RouteDestination) -> Unit,
-    scrollBehavior: BottomAppBarScrollBehavior? = null
 ) {
-    NavigationBar(
-        modifier = Modifier.layout { measurable, constraints ->
-            val placeable = measurable.measure(constraints)
-
-            // Sets the app bar's height offset to collapse the entire bar's height when
-            // content is scrolled.
-            scrollBehavior?.state?.heightOffsetLimit = -placeable.height.toFloat()
-
-            val height = (placeable.height + (scrollBehavior?.state?.heightOffset ?: 0f))
-                .coerceAtLeast(0f)
-            layout(placeable.width, height.roundToInt()) { placeable.place(0, 0) }
-        } // TODO decide to add appBarDragModifier
-    ) {
+    NavigationBar {
         AppDestinations.entries.forEach { destination ->
             NavigationBarItem(
                 selected = currentDestination?.hierarchy?.any { it.hasRoute(destination.route.graphDest) } == true,

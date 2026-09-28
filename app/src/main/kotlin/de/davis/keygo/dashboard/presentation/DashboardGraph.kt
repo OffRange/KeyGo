@@ -101,6 +101,7 @@ fun NavGraphBuilder.dashboardGraph(
                             dockedSearchResults = !LocalIsInSinglePaneMode.current,
                             enableDeletion = true,
                             enableSelection = true,
+                            collapsesNavigationBar = true,
                         )
                     }
                 },

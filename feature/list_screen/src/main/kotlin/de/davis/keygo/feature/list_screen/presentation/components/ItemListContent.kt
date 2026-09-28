@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AppBarWithSearch
@@ -24,12 +25,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -47,6 +50,8 @@ import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.core.ui.components.KeyGoColumn
 import de.davis.keygo.core.ui.components.KeyGoColumnItem
+import de.davis.keygo.core.ui.composition.collapsesNavigationBar
+import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.feature.list_screen.domain.model.SortDirection
 import de.davis.keygo.feature.list_screen.presentation.NoItemStrategy
 import de.davis.keygo.feature.list_screen.presentation.model.FilterAction
@@ -85,7 +90,8 @@ internal fun ItemListContent(
     onVaultSelectorClick: () -> Unit,
     onDismissVaultFlow: () -> Unit,
     scrollBehavior: SearchBarScrollBehavior,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    collapsesNavigationBar: Boolean = false,
 ) {
     var showFilterSheet by rememberSaveable { mutableStateOf(false) }
 
@@ -177,6 +183,11 @@ internal fun ItemListContent(
                 .padding(innerPadding)
                 .padding(top = 4.dp)
         ) { isEmpty ->
+            // Nothing here scrolls, so a hidden search bar could never be dragged back.
+            LaunchedEffect(isEmpty) {
+                if (isEmpty) scrollBehavior.scrollState.scrollOffset = 0f
+            }
+
             when (isEmpty) {
                 true -> {
                     Box(
@@ -233,6 +244,13 @@ internal fun ItemListContent(
                         }
                     }
 
+                    val listState = rememberLazyListState()
+                    // A list back at its top shows the search bar even when it got there without a
+                    // scroll, like after a delete.
+                    ObserveAsEvents(snapshotFlow { listState.canScrollBackward }, listState) {
+                        if (!it) scrollBehavior.scrollState.scrollOffset = 0f
+                    }
+
                     KeyGoColumn(
                         items = items,
                         onItemClick = { onItemClick(it, false) },
@@ -243,7 +261,12 @@ internal fun ItemListContent(
                             bottom = 96.dp,
                         ),
                         openedItemId = if (autoSelectFirst) uiState.highlightedId else null,
-                        selectedItemIds = uiState.selectedItemIds
+                        selectedItemIds = uiState.selectedItemIds,
+                        modifier = Modifier.collapsesNavigationBar(
+                            state = listState,
+                            enabled = collapsesNavigationBar,
+                        ),
+                        listState = listState,
                     )
                 }
             }
