@@ -79,6 +79,24 @@ internal data class HealthSection(
     val severity: FindingSeverity,
     val groups: List<RelatedGroup>,
     val standalone: List<ItemHealth>
+) {
+    val standaloneClusters: List<StandaloneCluster> = standalone
+        .groupBy { if (it.breach != null) StandaloneIssue.Breached else StandaloneIssue.Weak }
+        .let { byIssue ->
+            StandaloneIssue.entries.mapNotNull { issue ->
+                byIssue[issue]?.let { StandaloneCluster(issue, it) }
+            }
+        }
+}
+
+internal enum class StandaloneIssue {
+    Breached,
+    Weak,
+}
+
+internal data class StandaloneCluster(
+    val issue: StandaloneIssue,
+    val items: List<ItemHealth>,
 )
 
 internal fun List<HealthSection>.withoutFixed(fixed: Set<ItemId>): List<HealthSection> {

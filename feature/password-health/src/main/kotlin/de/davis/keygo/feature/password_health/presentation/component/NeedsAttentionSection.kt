@@ -18,6 +18,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.ItemId
@@ -33,6 +35,8 @@ import de.davis.keygo.feature.password_health.domain.model.RelationType
 import de.davis.keygo.feature.password_health.presentation.model.FixFlow
 import de.davis.keygo.feature.password_health.presentation.model.HealthSection
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiEvent
+import de.davis.keygo.feature.password_health.presentation.model.StandaloneCluster
+import de.davis.keygo.feature.password_health.presentation.model.StandaloneIssue
 
 internal fun LazyListScope.needsAttentionSection(
     sections: List<HealthSection>,
@@ -59,19 +63,29 @@ internal fun LazyListScope.needsAttentionSection(
                 style = MaterialTheme.typography.labelMedium,
                 modifier = Modifier
                     .animateItem()
+                    .semantics { heading() }
                     .padding(top = 12.dp, bottom = 4.dp),
             )
         }
 
         section.groups.forEach { group ->
-            item(key = "group-${group.id}", contentType = ContentType.GroupLabel) {
+            item(key = "group-${group.id}", contentType = ContentType.ClusterLabel) {
                 GroupLabel(group = group, modifier = Modifier.animateItem())
             }
 
             segmentedRows(group.orderedMembers, pendingFix, openItemId, onEvent)
         }
 
-        segmentedRows(section.standalone, pendingFix, openItemId, onEvent)
+        section.standaloneClusters.forEach { cluster ->
+            item(
+                key = "standalone-${section.severity}-${cluster.issue}",
+                contentType = ContentType.ClusterLabel,
+            ) {
+                StandaloneLabel(cluster = cluster, modifier = Modifier.animateItem())
+            }
+
+            segmentedRows(cluster.items, pendingFix, openItemId, onEvent)
+        }
     }
 }
 
@@ -108,11 +122,35 @@ private fun GroupLabel(
         RelationType.Similar -> R.plurals.needs_attention_group_similar
     }
 
+    ClusterLabel(text = pluralStringResource(label, count, count), modifier = modifier)
+}
+
+@Composable
+private fun StandaloneLabel(
+    cluster: StandaloneCluster,
+    modifier: Modifier = Modifier,
+) {
+    val count = cluster.items.size
+    val label = when (cluster.issue) {
+        StandaloneIssue.Breached -> R.plurals.needs_attention_standalone_breached
+        StandaloneIssue.Weak -> R.plurals.needs_attention_standalone_weak
+    }
+
+    ClusterLabel(text = pluralStringResource(label, count, count), modifier = modifier)
+}
+
+@Composable
+private fun ClusterLabel(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
     Text(
-        text = pluralStringResource(label, count, count),
+        text = text,
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.padding(start = 16.dp, top = 8.dp, bottom = 2.dp),
+        modifier = modifier
+            .semantics { heading() }
+            .padding(start = 16.dp, top = 12.dp, bottom = 2.dp),
     )
 }
 
@@ -132,7 +170,7 @@ private val FindingSeverity.labelRes: Int
 private enum class ContentType {
     Title,
     SeverityHeader,
-    GroupLabel,
+    ClusterLabel,
     Row,
 }
 
@@ -187,7 +225,14 @@ private fun NeedsAttentionSectionPreview() {
                                     ),
                                 ),
                             ),
-                            standalone = emptyList(),
+                            standalone = listOf(
+                                ItemHealth(
+                                    itemId = newItemId(),
+                                    title = "Bank",
+                                    username = "user@example.com",
+                                    issues = listOf(ItemIssue.Weak(score = PasswordScore.Weak)),
+                                ),
+                            ),
                         ),
                         HealthSection(
                             severity = FindingSeverity.Medium,

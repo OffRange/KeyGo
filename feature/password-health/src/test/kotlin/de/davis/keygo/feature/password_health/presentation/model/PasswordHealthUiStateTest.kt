@@ -49,14 +49,22 @@ class PasswordHealthUiStateTest {
 
     @Test
     fun checkedPasswordsWithoutFindingsAreAllGood() {
-        assertEquals(PasswordHealthStatus.ALL_GOOD, PasswordHealthUiState(totalPasswordCount = 3).status)
+        assertEquals(
+            PasswordHealthStatus.ALL_GOOD,
+            PasswordHealthUiState(totalPasswordCount = 3).status
+        )
     }
 
     @Test
     fun anyFindingNeedsAttention() {
         val state = PasswordHealthUiState(
             totalPasswordCount = 3,
-            reportedSections = listOf(section(FindingSeverity.Medium, standalone = listOf(item(0, weak)))),
+            reportedSections = listOf(
+                section(
+                    FindingSeverity.Medium,
+                    standalone = listOf(item(0, weak))
+                )
+            ),
         )
 
         assertEquals(PasswordHealthStatus.NEEDS_ATTENTION, state.status)
@@ -66,7 +74,12 @@ class PasswordHealthUiStateTest {
     fun fixingEveryFindingIsAllGood() {
         val state = PasswordHealthUiState(
             totalPasswordCount = 3,
-            reportedSections = listOf(section(FindingSeverity.Medium, standalone = listOf(item(0, weak)))),
+            reportedSections = listOf(
+                section(
+                    FindingSeverity.Medium,
+                    standalone = listOf(item(0, weak))
+                )
+            ),
             optimisticallyFixed = setOf(id(0)),
         )
 
@@ -156,7 +169,10 @@ class PasswordHealthUiStateTest {
     @Test
     fun aGroupLeftWithOneCleanMemberDisappears() {
         val sections = listOf(
-            section(FindingSeverity.High, groups = listOf(group(RelationType.Reused, item(0), item(1)))),
+            section(
+                FindingSeverity.High,
+                groups = listOf(group(RelationType.Reused, item(0), item(1)))
+            ),
         )
 
         assertTrue(sections.withoutFixed(setOf(id(0))).isEmpty())
@@ -176,6 +192,32 @@ class PasswordHealthUiStateTest {
 
         assertTrue(remaining.groups.isEmpty())
         assertEquals(listOf(id(1), id(2)), remaining.standalone.map { it.itemId })
+    }
+
+    @Test
+    fun standaloneItemsAreClusteredByTheirWorstIssueBreachedFirst() {
+        val section = section(
+            FindingSeverity.Critical,
+            standalone = listOf(item(0, weak), item(1, breached, weak), item(2, breached)),
+        )
+
+        assertEquals(
+            listOf(
+                StandaloneIssue.Breached to listOf(id(1), id(2)),
+                StandaloneIssue.Weak to listOf(id(0)),
+            ),
+            section.standaloneClusters.map { cluster -> cluster.issue to cluster.items.map { it.itemId } },
+        )
+    }
+
+    @Test
+    fun noStandaloneItemsMeansNoClusters() {
+        val section = section(
+            FindingSeverity.High,
+            groups = listOf(group(RelationType.Reused, item(0), item(1)))
+        )
+
+        assertTrue(section.standaloneClusters.isEmpty())
     }
 
     @Test
@@ -244,7 +286,12 @@ class PasswordHealthUiStateTest {
     private fun group(type: RelationType, vararg members: ItemHealth) = RelatedGroup(
         id = members.first().itemId,
         members = members.toSet(),
-        relations = setOf(HealthFinding.Relation(members.mapTo(mutableSetOf()) { it.itemId }, type)),
+        relations = setOf(
+            HealthFinding.Relation(
+                members.mapTo(mutableSetOf()) { it.itemId },
+                type
+            )
+        ),
     )
 
     private fun section(
