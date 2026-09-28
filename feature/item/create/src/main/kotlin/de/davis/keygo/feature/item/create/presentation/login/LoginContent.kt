@@ -36,9 +36,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
-import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.PasskeyRef
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
@@ -258,20 +256,18 @@ private fun LoginReadyContent(
                 ChipFormGroup(
                     title = stringResource(R.string.domain_information),
                     items = state.domains,
-                    textOf = { it.value },
+                    textOf = { it },
                     state = domainTextFieldState,
                     onEdit = { old, newDomains ->
-                        onEvent(LoginUiEvent.OnDeleteDomain(old.value))
+                        onEvent(LoginUiEvent.OnDeleteDomain(old))
                         onEvent(LoginUiEvent.OnAddDomains(newDomains))
                     },
-                    containsForInput = {
-                        state.domains.any { domain -> domain.value == it }
-                    },
+                    containsForInput = { it in state.domains },
                     onSubmit = {
                         onEvent(LoginUiEvent.OnAddDomains(it))
                     },
                     onDelete = {
-                        onEvent(LoginUiEvent.OnDeleteDomain(it.value))
+                        onEvent(LoginUiEvent.OnDeleteDomain(it))
                     },
                     label = {
                         Text(text = stringResource(R.string.add_domains))
@@ -363,13 +359,7 @@ private fun LoginContentPreview() {
             state = ItemUiState.Ready(
                 base = LoginBaseState(
                     strengthScore = PasswordScore.Weak,
-                    domains = setOf(
-                        DomainInfo(
-                            loginId = newItemId(),
-                            value = "example.com",
-                            eTLD1 = "example.com",
-                        ),
-                    ),
+                    domains = setOf("example.com"),
                     passkeys = setOf(
                         LoginPasskeyInfo(
                             rpId = "example.com",

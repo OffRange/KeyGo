@@ -72,8 +72,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import de.davis.keygo.core.item.domain.alias.newItemId
-import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.core.item.presentation.toImageVector
@@ -320,12 +318,12 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         state.domains.forEach {
-                            key(it.value) {
+                            key(it) {
                                 AssistChip(
                                     onClick = {
-                                        onEvent(ViewLoginUiEvent.OpenWebsite(it.value))
+                                        onEvent(ViewLoginUiEvent.OpenWebsite(it))
                                     },
-                                    label = { Text(text = it.value) },
+                                    label = { Text(text = it) },
                                 )
                             }
                         }
@@ -569,13 +567,7 @@ private fun ViewLoginContentPreview() {
                         )
                     ),
                     username = "Username 1",
-                    domains = setOf(
-                        DomainInfo(
-                            loginId = newItemId(),
-                            value = "login.example.com",
-                            eTLD1 = "example.com",
-                        ),
-                    ),
+                    domains = setOf("login.example.com"),
                     note = "Note about the login or any additional information that might be useful.",
                 ),
                 onEvent = {},
@@ -597,13 +589,7 @@ private fun ViewLoginContentModificationDialogPreview() {
                     password = ObfuscatedString("Password"),
                     passwordStrengthScore = PasswordScore.Ridiculous,
                     username = "Username 1",
-                    domains = setOf(
-                        DomainInfo(
-                            loginId = newItemId(),
-                            value = "login.example.com",
-                            eTLD1 = "example.com",
-                        ),
-                    ),
+                    domains = setOf("login.example.com"),
                     modificationDialog = ModificationDialog(
                         fieldType = FieldType.Name,
                         initialValue = "Login",
