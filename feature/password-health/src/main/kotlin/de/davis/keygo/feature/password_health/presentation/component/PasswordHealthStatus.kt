@@ -20,8 +20,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -29,6 +31,8 @@ import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.feature.password_health.R
+import de.davis.keygo.feature.password_health.domain.model.CheckGap
+import de.davis.keygo.feature.password_health.domain.model.GapReason
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReportError
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiState
 import de.davis.keygo.feature.password_health.presentation.model.RunPhase
@@ -83,7 +87,22 @@ internal fun PasswordHealthStatus(
 
         SupportingLine(text = state.detailLine(), label = "detailLineVisibility")
         SupportingLine(text = state.coverageNote(), label = "coverageNoteVisibility")
+        SupportingLine(text = state.breachGap?.message(), label = "breachGapVisibility")
     }
+}
+
+@Composable
+@ReadOnlyComposable
+private fun CheckGap.message(): String? {
+    val plural = when (reason) {
+        // The check was disabled by the user, so there is nothing to warn about.
+        GapReason.Disabled -> return null
+
+        GapReason.Unreachable -> R.plurals.breach_check_unreachable
+        GapReason.Failed -> R.plurals.breach_check_failed
+    }
+
+    return pluralStringResource(plural, unchecked.size, unchecked.size)
 }
 
 @Composable

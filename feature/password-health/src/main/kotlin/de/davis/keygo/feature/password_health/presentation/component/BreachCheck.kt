@@ -7,10 +7,8 @@ import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import de.davis.keygo.core.item.domain.alias.newItemId
@@ -53,15 +51,11 @@ private fun BreachCheck(
     onChange: (Boolean) -> Unit,
     shapes: ListItemShapes,
 ) {
-    val message = state.breachGap?.message()
-
     KeyGoSwitch(
         checked = state.breachCheckEnabled,
         onCheckedChange = onChange,
         supportingContent = {
-            if (message == null)
-                Text(text = stringResource(R.string.breach_check_opt_in_description))
-            else Text(text = message, color = MaterialTheme.colorScheme.error)
+            Text(text = stringResource(R.string.breach_check_opt_in_description))
         },
         verticalAlignment = Alignment.CenterVertically,
         colors = ListItemDefaults.segmentedColors(containerColor = segmentContainerColor),
@@ -69,20 +63,6 @@ private fun BreachCheck(
     ) {
         Text(text = stringResource(R.string.breach_check_enable))
     }
-}
-
-@Composable
-@ReadOnlyComposable
-private fun CheckGap.message(): String? {
-    val plural = when (reason) {
-        // An off switch is the whole explanation, so there is nothing to warn about.
-        GapReason.Disabled -> return null
-
-        GapReason.Unreachable -> R.plurals.breach_check_unreachable
-        GapReason.Failed -> R.plurals.breach_check_failed
-    }
-
-    return pluralStringResource(plural, unchecked.size, unchecked.size)
 }
 
 @Preview
