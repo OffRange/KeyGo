@@ -7,8 +7,6 @@ value class FacetSelections private constructor(
 
     val facets: Set<FilterFacet<*>> get() = byFacet.keys
 
-    val isEmpty: Boolean get() = byFacet.isEmpty()
-
     // Every write goes through with(), which stores a facet's values only under that facet.
     @Suppress("UNCHECKED_CAST")
     operator fun <T : Any> get(facet: FilterFacet<T>): Set<T> =

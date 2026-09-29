@@ -9,29 +9,24 @@ import de.davis.keygo.feature.list_screen.domain.model.FilterFacet
 
 @Immutable
 internal data class AvailableFilterOptions(
-    val itemTypes: FacetOptions<VaultItemType> =
-        FacetOptions(FilterFacet.ItemTypes, VaultItemType.entries),
-    val tags: FacetOptions<Tag> = FacetOptions(FilterFacet.Tags, emptyList()),
-    val passwordScores: FacetOptions<PasswordScore> =
-        FacetOptions(FilterFacet.PasswordScores, PasswordScore.entries.reversed()),
-    val pinned: FacetOptions<Boolean> = FacetOptions(FilterFacet.Pinned, listOf(true)),
+    val itemTypes: FacetOptions<VaultItemType>,
+    val tags: FacetOptions<Tag>,
+    val passwordScores: FacetOptions<PasswordScore>,
+    val pinned: FacetOptions<Boolean>,
 )
 
 @Immutable
 internal data class FacetOptions<T : Any>(
     val facet: FilterFacet<T>,
     val order: List<T>,
-    val available: Set<T> = emptySet(),
+    val available: Set<T>,
 ) {
 
-    fun chips(
-        selections: FacetSelections,
-        retained: FacetSelections = FacetSelections.None,
-    ): List<FilterChipState<T>> {
+    fun chips(selections: FacetSelections, retained: FacetSelections): List<FilterChipState<T>> {
         val selected = selections[facet]
         val shown = available + selected + retained[facet]
         return (order + shown).distinct()
-            .filter { it in shown }
+            .filter { it in shown } // drops the ordered values that shouldn't be shown
             .map { FilterChipState(value = it, selected = it in selected) }
     }
 }

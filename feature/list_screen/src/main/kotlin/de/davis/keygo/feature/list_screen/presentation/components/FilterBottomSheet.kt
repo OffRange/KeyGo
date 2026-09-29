@@ -191,8 +191,10 @@ private fun ItemSection(
                     facet = FilterFacet.ItemTypes,
                     chips = state.itemTypeChips,
                     onAction = onAction,
-                    label = { it.presentation.first },
-                    icon = { it.presentation.second },
+                    label = { Text(text = it.presentation.first) },
+                    leadingIcon = {
+                        Icon(imageVector = it.presentation.second, contentDescription = null)
+                    },
                 )
             }
         }
@@ -208,7 +210,7 @@ private fun ItemSection(
                     facet = FilterFacet.Tags,
                     chips = state.tagChips,
                     onAction = onAction,
-                    label = { it.display },
+                    label = { Text(text = it.display) },
                 )
             }
         }
@@ -283,7 +285,7 @@ private fun PasswordSection(
                 facet = FilterFacet.PasswordScores,
                 chips = state.passwordScoreChips,
                 onAction = onAction,
-                label = { it.label() },
+                label = { Text(text = it.label()) },
             )
         }
     }
@@ -294,18 +296,16 @@ private fun <T : Any> FacetChips(
     facet: FilterFacet<T>,
     chips: List<FilterChipState<T>>,
     onAction: (FilterAction) -> Unit,
-    label: @Composable (T) -> String,
-    icon: (@Composable (T) -> ImageVector)? = null,
+    label: @Composable (T) -> Unit,
+    leadingIcon: (@Composable (T) -> Unit)? = null,
 ) {
     FlowRow(horizontalArrangement = DefaultHorizontalArrangement) {
         chips.forEach { chip ->
             FilterChip(
                 selected = chip.selected,
                 onClick = { onAction(FilterAction.Toggled(facet, chip.value)) },
-                label = { Text(text = label(chip.value)) },
-                leadingIcon = icon?.let {
-                    { Icon(imageVector = it(chip.value), contentDescription = null) }
-                },
+                label = { label(chip.value) },
+                leadingIcon = leadingIcon?.let { { it(chip.value) } },
             )
         }
     }

@@ -9,7 +9,7 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.list_screen.domain.model.FilterFacet
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
-import de.davis.keygo.feature.list_screen.domain.model.ItemFacets
+import de.davis.keygo.feature.list_screen.domain.model.ItemAttributes
 import de.davis.keygo.feature.list_screen.domain.model.SortDirection
 import java.util.UUID
 import kotlin.test.Test
@@ -37,7 +37,7 @@ class FilterUseCaseTest {
         fun ascProduces(vararg expected: String) {
             val provided = items(*items.toTypedArray())
             val expected = items(*expected)
-            val result = useCase(filterStateAsc, provided, ItemFacets.None)
+            val result = useCase(filterStateAsc, provided, ItemAttributes.None)
 
             assertEquals(expected, result)
         }
@@ -45,7 +45,7 @@ class FilterUseCaseTest {
         fun descProduces(vararg expected: String) {
             val provided = items(*items.toTypedArray())
             val expected = items(*expected)
-            val result = useCase(filterStateDesc, provided, ItemFacets.None)
+            val result = useCase(filterStateDesc, provided, ItemAttributes.None)
 
             assertEquals(expected, result)
         }
@@ -74,7 +74,7 @@ class FilterUseCaseTest {
     fun `filtering an empty list returns empty list`() {
         val state = FilterState()
             .with(FilterFacet.PasswordScores, setOf(PasswordScore.Weak))
-        val result = useCase(state, emptyList<TestLiteItem>(), noFacets)
+        val result = useCase(state, emptyList<TestLiteItem>(), noAttributes)
         assertTrue(result.isEmpty())
     }
 
@@ -83,7 +83,7 @@ class FilterUseCaseTest {
         val result = useCase(
             filterStateAsc,
             items("cherry", "Banana", "apple", "Apple", "banana"),
-            ItemFacets.None
+            ItemAttributes.None
         )
 
         // At Collator.PRIMARY, Apple/apple are equal and banana/Banana are equal, so
@@ -110,7 +110,7 @@ class FilterUseCaseTest {
 
     @Test
     fun `identical names are stable - order preserved`() {
-        val result = useCase(filterStateAsc, items("same", "same", "same"), ItemFacets.None)
+        val result = useCase(filterStateAsc, items("same", "same", "same"), ItemAttributes.None)
         assertEquals(3, result.size)
         assertTrue(result.all { it.name == "same" })
     }
@@ -119,7 +119,7 @@ class FilterUseCaseTest {
     @Test
     fun `names starting with special characters sort before letters`() {
         val result =
-            useCase(filterStateAsc, items("banana", "apple", "/path", "&tag"), ItemFacets.None)
+            useCase(filterStateAsc, items("banana", "apple", "/path", "&tag"), ItemAttributes.None)
         val lastSpecialIndex = maxOf(
             result.indexOfFirst { it.name == "/path" },
             result.indexOfFirst { it.name == "&tag" }
@@ -134,15 +134,15 @@ class FilterUseCaseTest {
     @Test
     fun `special characters mixed with numbers produce deterministic order`() {
         val input = items("&2item", "/1item", "#3item")
-        val result1 = useCase(filterStateAsc, input, ItemFacets.None)
-        val result2 = useCase(filterStateAsc, input, ItemFacets.None)
+        val result1 = useCase(filterStateAsc, input, ItemAttributes.None)
+        val result2 = useCase(filterStateAsc, input, ItemAttributes.None)
         assertEquals(result1, result2)
     }
 
     @Test
     fun `backslash and forward slash in names returns all items`() {
         val input = items("aab", "a/b", "a&b", "a\\b")
-        val result = useCase(filterStateAsc, input, ItemFacets.None)
+        val result = useCase(filterStateAsc, input, ItemAttributes.None)
         assertEquals(4, result.size)
         assertTrue(result.map { it.name }.containsAll(input.map { it.name }))
     }
@@ -150,8 +150,8 @@ class FilterUseCaseTest {
     @Test
     fun `names with only special characters - descending is reverse of ascending`() {
         val input = items("///", "&&&", "\\\\", "###")
-        val asc = useCase(filterStateAsc, input, ItemFacets.None)
-        val desc = useCase(filterStateDesc, input, ItemFacets.None)
+        val asc = useCase(filterStateAsc, input, ItemAttributes.None)
+        val desc = useCase(filterStateDesc, input, ItemAttributes.None)
         assertEquals(asc.reversed(), desc)
     }
 
@@ -189,14 +189,18 @@ class FilterUseCaseTest {
 
     @Test
     fun `blank and empty names do not crash`() {
-        assertEquals(3, useCase(filterStateAsc, items("normal", " ", ""), ItemFacets.None).size)
+        assertEquals(3, useCase(filterStateAsc, items("normal", " ", ""), ItemAttributes.None).size)
     }
 
     // Edge: case sensitivity
     @Test
     fun `uppercase and lowercase letters with same prefix are grouped before later letters`() {
         val result =
-            useCase(filterStateAsc, items("Banana", "banana", "apple", "Apple"), ItemFacets.None)
+            useCase(
+                filterStateAsc,
+                items("Banana", "banana", "apple", "Apple"),
+                ItemAttributes.None
+            )
         val lastAppleIndex = maxOf(
             result.indexOfFirst { it.name == "apple" },
             result.indexOfFirst { it.name == "Apple" }
@@ -216,8 +220,8 @@ class FilterUseCaseTest {
     @Test
     fun `descending is exact reverse of ascending for unique names`() {
         val input = items("file2", "file10", "file1", "abc", "10abc")
-        val asc = useCase(filterStateAsc, input, ItemFacets.None)
-        val desc = useCase(filterStateDesc, input, ItemFacets.None)
+        val asc = useCase(filterStateAsc, input, ItemAttributes.None)
+        val desc = useCase(filterStateDesc, input, ItemAttributes.None)
         assertEquals(asc.reversed(), desc)
     }
 
@@ -225,8 +229,8 @@ class FilterUseCaseTest {
     @Test
     fun `fully mixed names produce deterministic order`() {
         val input = items("10", "abc", "/path", "2file", "FILE3", "&special", "1")
-        val result1 = useCase(filterStateAsc, input, ItemFacets.None)
-        val result2 = useCase(filterStateAsc, input, ItemFacets.None)
+        val result1 = useCase(filterStateAsc, input, ItemAttributes.None)
+        val result2 = useCase(filterStateAsc, input, ItemAttributes.None)
 
         assertEquals(result1, result2)
     }
@@ -235,7 +239,7 @@ class FilterUseCaseTest {
     fun `names with emoji do not crash`() {
         assertEquals(
             3,
-            useCase(filterStateAsc, items("banana", "🍌2", "🍎 apple"), ItemFacets.None).size
+            useCase(filterStateAsc, items("banana", "🍌2", "🍎 apple"), ItemAttributes.None).size
         )
     }
 
@@ -245,19 +249,19 @@ class FilterUseCaseTest {
         TestLiteItem(name = "Login B", id = newItemId(), itemType = VaultItemType.Login),
     )
 
-    private val noFacets = ItemFacets.None
+    private val noAttributes = ItemAttributes.None
 
     @Test
     fun `no item type selected returns all items`() {
         val state = FilterState()
-        val result = useCase(state, typedItems, noFacets)
+        val result = useCase(state, typedItems, noAttributes)
         assertEquals(result, typedItems)
     }
 
     @Test
     fun `selecting Login type keeps only logins`() {
         val state = FilterState().with(FilterFacet.ItemTypes, setOf(VaultItemType.Login))
-        val result = useCase(state, typedItems, noFacets)
+        val result = useCase(state, typedItems, noAttributes)
 
         assertTrue(result.all { it.itemType == VaultItemType.Login })
     }
@@ -276,13 +280,17 @@ class FilterUseCaseTest {
         scoredItems[3].id to PasswordScore.Weak,
     )
 
-    private val scoreFacets = ItemFacets(passwordScores = scores)
+    private val scoreAttributes = ItemAttributes(passwordScoreByItem = scores)
 
     @Test
     fun `no score selected returns all login items`() {
         val state = FilterState()
         val result =
-            useCase(state, scoredItems, scoreFacets).filter { it.itemType == VaultItemType.Login }
+            useCase(
+                state,
+                scoredItems,
+                scoreAttributes
+            ).filter { it.itemType == VaultItemType.Login }
         val expected = scoredItems.filter { it.itemType == VaultItemType.Login }
         assertEquals(expected, result)
     }
@@ -291,7 +299,7 @@ class FilterUseCaseTest {
     fun `selecting single score returns matching items`() {
         val state = FilterState()
             .with(FilterFacet.PasswordScores, setOf(PasswordScore.Weak))
-        val result = useCase(state, scoredItems, scoreFacets)
+        val result = useCase(state, scoredItems, scoreAttributes)
 
         val expected = scoredItems.filter { scores[it.id] == PasswordScore.Weak }
         assertEquals(expected, result)
@@ -301,7 +309,7 @@ class FilterUseCaseTest {
     fun `selecting multiple scores returns union of matches`() {
         val state = FilterState()
             .with(FilterFacet.PasswordScores, setOf(PasswordScore.Weak, PasswordScore.Excellent))
-        val result = useCase(state, scoredItems, scoreFacets)
+        val result = useCase(state, scoredItems, scoreAttributes)
 
         val expected = scoredItems.filter {
             scores[it.id] == PasswordScore.Weak ||
@@ -316,7 +324,7 @@ class FilterUseCaseTest {
     fun `selecting a score not present in any item returns empty list`() {
         val state = FilterState()
             .with(FilterFacet.PasswordScores, setOf(PasswordScore.Ridiculous))
-        val result = useCase(state, scoredItems, scoreFacets)
+        val result = useCase(state, scoredItems, scoreAttributes)
         assertTrue(result.isEmpty())
     }
 
@@ -326,7 +334,7 @@ class FilterUseCaseTest {
         val state = FilterState()
             .with(FilterFacet.ItemTypes, setOf(VaultItemType.Login))
             .with(FilterFacet.PasswordScores, setOf(PasswordScore.Excellent))
-        val result = useCase(state, scoredItems, scoreFacets)
+        val result = useCase(state, scoredItems, scoreAttributes)
         assertTrue(result.all { it.itemType == VaultItemType.Login })
         assertTrue(result.all { scores[it.id] == PasswordScore.Excellent })
     }
@@ -335,10 +343,10 @@ class FilterUseCaseTest {
     fun `filter result is still sorted by sort direction`() {
         val state = FilterState(sortDirection = SortDirection.Descending)
             .with(FilterFacet.PasswordScores, setOf(PasswordScore.Weak, PasswordScore.Strong))
-        val result = useCase(state, scoredItems, scoreFacets)
+        val result = useCase(state, scoredItems, scoreAttributes)
 
         val ascState = state.copy(sortDirection = SortDirection.Ascending)
-        val ascResult = useCase(ascState, scoredItems, scoreFacets)
+        val ascResult = useCase(ascState, scoredItems, scoreAttributes)
 
         assertEquals(ascResult.reversed(), result)
     }
@@ -353,7 +361,7 @@ class FilterUseCaseTest {
 
     @Test
     fun `pinned items appear before unpinned items`() {
-        val result = useCase(filterStateAsc, mixedPinnedItems, noFacets)
+        val result = useCase(filterStateAsc, mixedPinnedItems, noAttributes)
 
         val pinnedNames = result.takeWhile { it.pinned }.map { it.name }
         val unpinnedNames = result.dropWhile { it.pinned }.map { it.name }
@@ -364,7 +372,7 @@ class FilterUseCaseTest {
 
     @Test
     fun `pinned items appear before unpinned items in descending order`() {
-        val result = useCase(filterStateDesc, mixedPinnedItems, noFacets)
+        val result = useCase(filterStateDesc, mixedPinnedItems, noAttributes)
 
         val pinnedNames = result.takeWhile { it.pinned }.map { it.name }
         val unpinnedNames = result.dropWhile { it.pinned }.map { it.name }
@@ -376,7 +384,7 @@ class FilterUseCaseTest {
     @Test
     fun `onlyPinned filter excludes unpinned items`() {
         val state = FilterState().with(FilterFacet.Pinned, setOf(true))
-        val result = useCase(state, mixedPinnedItems, noFacets)
+        val result = useCase(state, mixedPinnedItems, noAttributes)
 
         assertTrue(result.all { it.pinned })
         assertEquals(2, result.size)
@@ -385,7 +393,7 @@ class FilterUseCaseTest {
     @Test
     fun `onlyPinned false returns all items`() {
         val state = FilterState()
-        val result = useCase(state, mixedPinnedItems, noFacets)
+        val result = useCase(state, mixedPinnedItems, noAttributes)
 
         assertEquals(4, result.size)
     }
@@ -394,7 +402,7 @@ class FilterUseCaseTest {
     fun `onlyPinned with no pinned items returns empty list`() {
         val state = FilterState().with(FilterFacet.Pinned, setOf(true))
         val unpinnedOnly = items("A", "B", "C")
-        val result = useCase(state, unpinnedOnly, noFacets)
+        val result = useCase(state, unpinnedOnly, noAttributes)
 
         assertTrue(result.isEmpty())
     }
@@ -404,7 +412,7 @@ class FilterUseCaseTest {
         val state = FilterState()
             .with(FilterFacet.Pinned, setOf(true))
             .with(FilterFacet.ItemTypes, setOf(VaultItemType.Login))
-        val result = useCase(state, mixedPinnedItems, noFacets)
+        val result = useCase(state, mixedPinnedItems, noAttributes)
 
         assertTrue(result.all { it.pinned })
         assertTrue(result.all { it.itemType == VaultItemType.Login })
@@ -417,7 +425,7 @@ class FilterUseCaseTest {
             TestLiteItem(name = "Alpha", pinned = true),
             TestLiteItem(name = "Mike", pinned = true),
         )
-        val result = useCase(filterStateAsc, allPinned, noFacets)
+        val result = useCase(filterStateAsc, allPinned, noAttributes)
 
         assertEquals(listOf("Alpha", "Mike", "Zulu"), result.map { it.name })
     }
@@ -433,14 +441,14 @@ class FilterUseCaseTest {
 
     @Test
     fun `an item carrying the selected tag passes while others are dropped`() {
-        val facets = ItemFacets(
+        val attributes = ItemAttributes(
             tagsByItem = mapOf(
                 tagItems[0].id to setOf(Tag.of("Bank")!!),
                 // tagItems[1] carries no tags entry at all.
                 tagItems[2].id to setOf(Tag.of("Work")!!),
             ),
         )
-        val result = useCase(bankTagged, tagItems, facets)
+        val result = useCase(bankTagged, tagItems, attributes)
 
         assertEquals(listOf(tagItems[0].id), result.map { it.id })
     }
@@ -449,14 +457,14 @@ class FilterUseCaseTest {
     fun `two selected tags keep items carrying either`() {
         val state = FilterState()
             .with(FilterFacet.Tags, setOf(Tag.of("Bank")!!, Tag.of("Work")!!))
-        val facets = ItemFacets(
+        val attributes = ItemAttributes(
             tagsByItem = mapOf(
                 tagItems[0].id to setOf(Tag.of("Bank")!!),
                 tagItems[1].id to setOf(Tag.of("Personal")!!),
                 tagItems[2].id to setOf(Tag.of("Work")!!),
             ),
         )
-        val result = useCase(state, tagItems, facets)
+        val result = useCase(state, tagItems, attributes)
 
         assertEquals(setOf(tagItems[0].id, tagItems[2].id), result.mapTo(mutableSetOf()) { it.id })
     }
@@ -464,8 +472,9 @@ class FilterUseCaseTest {
     @Test
     fun `a selected tag matches an item tagged with different casing`() {
         val state = FilterState().with(FilterFacet.Tags, setOf(Tag.of("bank")!!))
-        val facets = ItemFacets(tagsByItem = mapOf(tagItems[0].id to setOf(Tag.of("Bank")!!)))
-        val result = useCase(state, tagItems, facets)
+        val attributes =
+            ItemAttributes(tagsByItem = mapOf(tagItems[0].id to setOf(Tag.of("Bank")!!)))
+        val result = useCase(state, tagItems, attributes)
 
         assertEquals(listOf(tagItems[0].id), result.map { it.id })
     }
@@ -475,20 +484,20 @@ class FilterUseCaseTest {
         val loginBank = TestLiteItem(name = "Login Bank", itemType = VaultItemType.Login)
         val cardBank = TestLiteItem(name = "Card Bank", itemType = VaultItemType.CreditCard)
         val state = bankTagged.with(FilterFacet.ItemTypes, setOf(VaultItemType.Login))
-        val facets = ItemFacets(
+        val attributes = ItemAttributes(
             tagsByItem = mapOf(
                 loginBank.id to setOf(Tag.of("Bank")!!),
                 cardBank.id to setOf(Tag.of("Bank")!!),
             ),
         )
-        val result = useCase(state, listOf(loginBank, cardBank), facets)
+        val result = useCase(state, listOf(loginBank, cardBank), attributes)
 
         assertEquals(listOf(loginBank.id), result.map { it.id })
     }
 
     @Test
     fun `no Tags selection keeps untagged items`() {
-        val result = useCase(FilterState(), tagItems, noFacets)
+        val result = useCase(FilterState(), tagItems, noAttributes)
 
         assertEquals(tagItems.size, result.size)
         assertTrue(result.containsAll(tagItems))

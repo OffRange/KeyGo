@@ -6,7 +6,7 @@ import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.feature.list_screen.domain.model.FilterFacet
-import de.davis.keygo.feature.list_screen.domain.model.ItemFacets
+import de.davis.keygo.feature.list_screen.domain.model.ItemAttributes
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -32,7 +32,7 @@ class AvailableFacetValuesUseCaseTest {
                 TestLiteItem("Login"),
                 TestLiteItem("Card", itemType = VaultItemType.CreditCard),
             ),
-            facets = ItemFacets.None,
+            attributes = ItemAttributes.None,
         )
 
         assertEquals(
@@ -48,7 +48,7 @@ class AvailableFacetValuesUseCaseTest {
 
         val result = useCase(
             items = listOf(a, b),
-            facets = ItemFacets(
+            attributes = ItemAttributes(
                 tagsByItem = mapOf(
                     a.id to setOf(tag("Bank")),
                     b.id to setOf(tag("Work")),
@@ -66,7 +66,7 @@ class AvailableFacetValuesUseCaseTest {
 
         val result = useCase(
             items = listOf(a),
-            facets = ItemFacets(
+            attributes = ItemAttributes(
                 tagsByItem = mapOf(
                     a.id to setOf(tag("Bank")),
                     hidden.id to setOf(tag("Secret")),
@@ -79,7 +79,7 @@ class AvailableFacetValuesUseCaseTest {
 
     @Test
     fun `no tags, scores, or pinned flag when nothing carries them`() {
-        val result = useCase(listOf(TestLiteItem("A")), ItemFacets.None)
+        val result = useCase(listOf(TestLiteItem("A")), ItemAttributes.None)
 
         assertTrue(result[FilterFacet.Tags].isEmpty())
         assertTrue(result[FilterFacet.PasswordScores].isEmpty())
@@ -93,8 +93,8 @@ class AvailableFacetValuesUseCaseTest {
 
         val result = useCase(
             items = listOf(login, card),
-            facets = ItemFacets(
-                passwordScores = mapOf(
+            attributes = ItemAttributes(
+                passwordScoreByItem = mapOf(
                     login.id to PasswordScore.Strong,
                     // A score keyed to a non-login id should never happen in practice, but must not
                     // leak into the available set if it does.
@@ -110,7 +110,7 @@ class AvailableFacetValuesUseCaseTest {
     fun `pinned is offered when any item is pinned`() {
         val result = useCase(
             items = listOf(TestLiteItem("A", pinned = true), TestLiteItem("B")),
-            facets = ItemFacets.None,
+            attributes = ItemAttributes.None,
         )
 
         assertEquals(setOf(true), result[FilterFacet.Pinned])

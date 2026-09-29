@@ -30,6 +30,7 @@ class FilterMapperTest {
         available = facets.toAvailableFilterOptions(allTags = emptyList()),
         restrictedItemType = null,
         retained = retained,
+        isVisible = false,
     )
 
     private fun scoresAvailable(vararg scores: PasswordScore): FacetSelections =
@@ -55,7 +56,12 @@ class FilterMapperTest {
             .toAvailableFilterOptions(allTags = listOf(tag("Bank"), tag("Work")))
 
         val sheet = FilterState().with(FilterFacet.Tags, setOf(tag("Bank")))
-            .toBottomSheetState(available, restrictedItemType = null)
+            .toBottomSheetState(
+                available,
+                restrictedItemType = null,
+                retained = FacetSelections.None,
+                isVisible = false,
+            )
 
         val chips = sheet.itemSection?.tagChips.orEmpty()
         assertEquals(setOf(tag("Bank"), tag("Work")), chips.map { it.value }.toSet())
@@ -164,7 +170,12 @@ class FilterMapperTest {
             .toAvailableFilterOptions(allTags = listOf(tag("Work")))
 
         val sheet = FilterState().with(FilterFacet.Tags, setOf(tag("Bank")))
-            .toBottomSheetState(available, restrictedItemType = null)
+            .toBottomSheetState(
+                available,
+                restrictedItemType = null,
+                retained = FacetSelections.None,
+                isVisible = false,
+            )
 
         assertEquals(
             listOf(

@@ -20,7 +20,6 @@ class FacetSelectionsTest {
             .toggle(FilterFacet.PasswordScores, PasswordScore.Weak)
 
         assertEquals(FacetSelections.None, toggled)
-        assertTrue(toggled.isEmpty)
     }
 
     @Test

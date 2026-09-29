@@ -5,7 +5,7 @@ import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.feature.list_screen.domain.model.FilterResult
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
-import de.davis.keygo.feature.list_screen.domain.model.ItemFacets
+import de.davis.keygo.feature.list_screen.domain.model.ItemAttributes
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -23,16 +23,16 @@ class ObserveFilterResultUseCase(
         items: Flow<List<I>>,
         filterState: Flow<FilterState>,
     ): Flow<FilterResult<I>> {
-        val facets = combine(
+        val attributes = combine(
             loginRepository.observePasswordScores(),
             itemRepository.observeTagsByItem(),
-            ::ItemFacets,
+            ::ItemAttributes,
         )
-        return combine(items, filterState, facets) { items, filter, facets ->
-            val filtered = filterUseCase(filter, items, facets)
+        return combine(items, filterState, attributes) { items, filter, attributes ->
+            val filtered = filterUseCase(filter, items, attributes)
             FilterResult(
                 items = filtered,
-                available = availableFacetValues(items, facets),
+                available = availableFacetValues(items, attributes),
                 isEmptyBecauseOfFilter = filtered.isEmpty() && items.isNotEmpty(),
             )
         }.distinctUntilChanged()

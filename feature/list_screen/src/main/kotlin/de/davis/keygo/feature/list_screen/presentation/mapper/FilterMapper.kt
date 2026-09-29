@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.list_screen.presentation.mapper
 
+import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.feature.list_screen.domain.model.FacetSelections
@@ -14,8 +15,8 @@ import de.davis.keygo.feature.list_screen.presentation.model.PasswordSectionStat
 internal fun FilterState.toBottomSheetState(
     available: AvailableFilterOptions,
     restrictedItemType: VaultItemType?,
-    retained: FacetSelections = FacetSelections.None,
-    isVisible: Boolean = false,
+    retained: FacetSelections,
+    isVisible: Boolean,
 ): FilterBottomSheetState {
     val itemTypeChips = available.itemTypes.chips(selections, retained)
     // A single type offers no choice, unless the user has already picked it.
@@ -25,9 +26,12 @@ internal fun FilterState.toBottomSheetState(
     val tagChips = available.tags.chips(selections, retained)
     val scoreChips = available.passwordScores.chips(selections, retained)
 
-    val effectiveItemTypes = restrictedItemType?.let { setOf(it) } ?: this[FilterFacet.ItemTypes]
-    val showLoginSection = scoreChips.isNotEmpty() &&
-            (effectiveItemTypes.isEmpty() || VaultItemType.Login in effectiveItemTypes)
+    val effectiveItemTypes =
+        restrictedItemType?.let { setOf(it) } ?: selections[FilterFacet.ItemTypes]
+    val showLoginSection = scoreChips.isNotEmpty() && (
+            effectiveItemTypes.isEmpty() ||
+                    effectiveItemTypes.any(FilterFacet.PasswordScores::appliesTo)
+            )
 
     val itemSection = ItemSectionState(
         onlyPinned = onlyPinned,
@@ -46,17 +50,16 @@ internal fun FilterState.toBottomSheetState(
     )
 }
 
-internal fun FacetSelections.toAvailableFilterOptions(allTags: List<Tag>): AvailableFilterOptions {
-    val defaults = AvailableFilterOptions()
+internal fun FacetSelections.toAvailableFilterOptions(allTags: List<Tag>) = AvailableFilterOptions(
+    itemTypes = options(FilterFacet.ItemTypes, VaultItemType.entries),
+    tags = FacetOptions(
+        facet = FilterFacet.Tags,
+        order = allTags,
+        available = allTags.filterTo(mutableSetOf()) { it in this[FilterFacet.Tags] },
+    ),
+    passwordScores = options(FilterFacet.PasswordScores, PasswordScore.entries.reversed()),
+    pinned = options(FilterFacet.Pinned, listOf(true)),
+)
 
-    return AvailableFilterOptions(
-        itemTypes = defaults.itemTypes.copy(available = this[FilterFacet.ItemTypes]),
-        tags = FacetOptions(
-            facet = FilterFacet.Tags,
-            order = allTags,
-            available = allTags.filterTo(mutableSetOf()) { it in this[FilterFacet.Tags] },
-        ),
-        passwordScores = defaults.passwordScores.copy(available = this[FilterFacet.PasswordScores]),
-        pinned = defaults.pinned.copy(available = this[FilterFacet.Pinned]),
-    )
-}
+private fun <T : Any> FacetSelections.options(facet: FilterFacet<T>, order: List<T>) =
+    FacetOptions(facet, order, available = this[facet])
