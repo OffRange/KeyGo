@@ -49,4 +49,7 @@
     <string name="tags">Tags</string>
 
     <string name="only_pinned_items">Only pinned Items</string>
+
+    <string name="no_filter_matches">No items match your filters</string>
+    <string name="clear_filters">Clear filters</string>
 </resources>

@@ -3,6 +3,7 @@ package de.davis.keygo.feature.list_screen.presentation.components
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +23,7 @@ import androidx.compose.material3.SearchBarScrollBehavior
 import androidx.compose.material3.SearchBarState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -60,6 +62,7 @@ import de.davis.keygo.feature.list_screen.presentation.model.ListItemState
 import de.davis.keygo.feature.list_screen.presentation.model.SearchState
 import de.davis.keygo.feature.vault.presentation.VaultFlow
 import kotlinx.coroutines.launch
+import de.davis.keygo.feature.list_screen.R as ListScreenR
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -191,8 +194,12 @@ internal fun ItemListContent(
                     ) {
                         val showCreateCard =
                             !uiState.hasSearchQuery && notFoundStrategy is NoItemStrategy.ShowCreateNewItemCard
-                        when (showCreateCard) {
-                            true -> {
+                        when {
+                            uiState.isEmptyBecauseOfFilter -> NoFilterMatches(
+                                onClearFilters = { onFilterAction(FilterAction.ClearFilters) },
+                            )
+
+                            showCreateCard -> {
                                 val createTypes = remember(restrictedItemType) {
                                     restrictedItemType?.let { listOf(it) }
                                         ?: VaultItemType.entries
@@ -216,7 +223,7 @@ internal fun ItemListContent(
                                 }
                             }
 
-                            false -> Text(text = stringResource(R.string.match_not_found))
+                            else -> Text(text = stringResource(R.string.match_not_found))
                         }
                     }
                 }
@@ -339,6 +346,16 @@ private fun ItemListContentPreview() {
                 onDismissVaultFlow = {},
                 scrollBehavior = scrollBehavior
             )
+        }
+    }
+}
+
+@Composable
+private fun NoFilterMatches(onClearFilters: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = stringResource(ListScreenR.string.no_filter_matches))
+        TextButton(onClick = onClearFilters) {
+            Text(text = stringResource(ListScreenR.string.clear_filters))
         }
     }
 }

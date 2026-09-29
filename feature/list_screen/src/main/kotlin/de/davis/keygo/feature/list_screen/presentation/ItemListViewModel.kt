@@ -105,7 +105,8 @@ internal class ItemListViewModel(
         passwordScores,
         tagFilteredItemIds,
     ) { items, filter, scores, tagIds ->
-        filterUseCase(filter, items, scores, tagIds)
+        val filtered = filterUseCase(filter, items, scores, tagIds)
+        filtered to (filtered.isEmpty() && items.isNotEmpty())
     }.distinctUntilChanged()
 
     private val selection = MutableStateFlow(ItemSelection())
@@ -136,9 +137,10 @@ internal class ItemListViewModel(
         _isVaultFlowVisible,
         _isDeleteConfirmationVisible,
         cardExpiryStatuses,
-    ) { vaultsAndSel, items, searchState, selection, submittedSearchQuery, isVaultFlowVisible, isDeleteConfirmationVisible, expiryStatuses ->
+    ) { vaultsAndSel, (items, isEmptyBecauseOfFilter), searchState, selection, submittedSearchQuery, isVaultFlowVisible, isDeleteConfirmationVisible, expiryStatuses ->
         ListItemState(
             items = items,
+            isEmptyBecauseOfFilter = isEmptyBecauseOfFilter,
             cardExpiryStatuses = expiryStatuses,
             searchState = searchState,
             hasSearchQuery = submittedSearchQuery.isNotBlank(),

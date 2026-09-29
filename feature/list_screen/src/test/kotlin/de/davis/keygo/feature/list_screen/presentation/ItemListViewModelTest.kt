@@ -21,6 +21,7 @@ import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.ObserveCardExpiryStatusesUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.RankSearchResultsUseCase
 import de.davis.keygo.feature.list_screen.presentation.model.Event
+import de.davis.keygo.feature.list_screen.presentation.model.FilterAction
 import de.davis.keygo.feature.vault.domain.usecase.ObserveVaultsAndSelectionUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -424,6 +425,34 @@ class ItemListViewModelTest {
         advanceUntilIdle()
 
         assertEquals(Event.ItemSelected(opened.id), selected.await())
+    }
+
+    @Test
+    fun `deleting every item a filter matches leaves a list that is empty because of the filter`() =
+        runTest(dispatcher) {
+            val pinned = login("Pinned", pinned = true)
+            loginRepository.seed(pinned, login("Loose"))
+
+            val vm = viewModel()
+            backgroundScope.launchCollect(vm)
+            vm.onFilterAction(FilterAction.ShowOnlyPinnedToggled)
+            vm.onItemLongClick(pinned.id)
+            vm.onDeleteSelectedRequest()
+            vm.onConfirmDeleteSelected()
+            advanceUntilIdle()
+
+            assertTrue(vm.listItemState.value.items.isEmpty())
+            assertTrue(vm.listItemState.value.isEmptyBecauseOfFilter)
+        }
+
+    @Test
+    fun `an empty vault is not empty because of the filter`() = runTest(dispatcher) {
+        val vm = viewModel()
+        backgroundScope.launchCollect(vm)
+        vm.onFilterAction(FilterAction.ShowOnlyPinnedToggled)
+        advanceUntilIdle()
+
+        assertFalse(vm.listItemState.value.isEmptyBecauseOfFilter)
     }
 
     @Test
