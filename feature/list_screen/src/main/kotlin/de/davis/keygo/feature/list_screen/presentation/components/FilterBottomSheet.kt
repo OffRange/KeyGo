@@ -52,6 +52,7 @@ import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.core.ui.components.KeyGoSwitch
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.list_screen.R
+import de.davis.keygo.feature.list_screen.domain.model.FilterFacet
 import de.davis.keygo.feature.list_screen.domain.model.SortDirection
 import de.davis.keygo.feature.list_screen.presentation.model.FilterAction
 import de.davis.keygo.feature.list_screen.presentation.model.FilterBottomSheetState
@@ -134,7 +135,7 @@ private fun FilterBottomSheetContent(
             item(key = "passwords") {
                 PasswordSection(
                     state = state.passwordSection,
-                    onScoreToggled = { onAction(FilterAction.ScoreToggled(it)) },
+                    onAction = onAction,
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -158,11 +159,13 @@ private fun ItemSection(
             title = stringResource(R.string.item),
         )
 
-        if (state.showPinnedSwitch) {
+        if (state.onlyPinned != null) {
             OutlinedCard {
                 KeyGoSwitch(
-                    checked = state.onlyPinnedChecked,
-                    onCheckedChange = { onAction(FilterAction.ShowOnlyPinnedToggled) },
+                    checked = state.onlyPinned.selected,
+                    onCheckedChange = {
+                        onAction(FilterAction.Toggled(FilterFacet.Pinned, state.onlyPinned.value))
+                    },
                     shapes = ListItemDefaults.shapes(
                         shape = CardDefaults.outlinedShape,
                         pressedShape = CardDefaults.outlinedShape,
@@ -184,23 +187,13 @@ private fun ItemSection(
                 },
                 properties = KeyGoCardProperties.outlined(),
             ) {
-                FlowRow(horizontalArrangement = DefaultHorizontalArrangement) {
-                    state.itemTypeChips.forEach { chip ->
-                        FilterChip(
-                            selected = chip.selected,
-                            onClick = { onAction(FilterAction.ItemTypeToggled(chip.value)) },
-                            label = {
-                                Text(text = chip.value.presentation.first)
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = chip.value.presentation.second,
-                                    contentDescription = null,
-                                )
-                            },
-                        )
-                    }
-                }
+                FacetChips(
+                    facet = FilterFacet.ItemTypes,
+                    chips = state.itemTypeChips,
+                    onAction = onAction,
+                    label = { it.presentation.first },
+                    icon = { it.presentation.second },
+                )
             }
         }
 
@@ -211,17 +204,12 @@ private fun ItemSection(
                 },
                 properties = KeyGoCardProperties.outlined(),
             ) {
-                FlowRow(horizontalArrangement = DefaultHorizontalArrangement) {
-                    state.tagChips.forEach { chip ->
-                        FilterChip(
-                            selected = chip.selected,
-                            onClick = { onAction(FilterAction.TagToggled(chip.value)) },
-                            label = {
-                                Text(text = chip.value.display)
-                            },
-                        )
-                    }
-                }
+                FacetChips(
+                    facet = FilterFacet.Tags,
+                    chips = state.tagChips,
+                    onAction = onAction,
+                    label = { it.display },
+                )
             }
         }
     }
@@ -274,7 +262,7 @@ private fun SortSection(
 @Composable
 private fun PasswordSection(
     state: PasswordSectionState,
-    onScoreToggled: (PasswordScore) -> Unit,
+    onAction: (FilterAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -291,17 +279,34 @@ private fun PasswordSection(
                 Text(text = stringResource(R.string.password_strength))
             },
         ) {
-            FlowRow(horizontalArrangement = DefaultHorizontalArrangement) {
-                state.passwordScoreChips.forEach { chip ->
-                    FilterChip(
-                        selected = chip.selected,
-                        onClick = { onScoreToggled(chip.value) },
-                        label = {
-                            Text(text = chip.value.label())
-                        },
-                    )
-                }
-            }
+            FacetChips(
+                facet = FilterFacet.PasswordScores,
+                chips = state.passwordScoreChips,
+                onAction = onAction,
+                label = { it.label() },
+            )
+        }
+    }
+}
+
+@Composable
+private fun <T : Any> FacetChips(
+    facet: FilterFacet<T>,
+    chips: List<FilterChipState<T>>,
+    onAction: (FilterAction) -> Unit,
+    label: @Composable (T) -> String,
+    icon: (@Composable (T) -> ImageVector)? = null,
+) {
+    FlowRow(horizontalArrangement = DefaultHorizontalArrangement) {
+        chips.forEach { chip ->
+            FilterChip(
+                selected = chip.selected,
+                onClick = { onAction(FilterAction.Toggled(facet, chip.value)) },
+                label = { Text(text = label(chip.value)) },
+                leadingIcon = icon?.let {
+                    { Icon(imageVector = it(chip.value), contentDescription = null) }
+                },
+            )
         }
     }
 }
@@ -362,8 +367,7 @@ private fun FilterBottomSheetContentPreview() {
                 state = FilterBottomSheetState(
                     sortDirection = SortDirection.Ascending,
                     itemSection = ItemSectionState(
-                        showPinnedSwitch = true,
-                        onlyPinnedChecked = true,
+                        onlyPinned = FilterChipState(value = true, selected = true),
                         itemTypeChips = VaultItemType.entries.map { type ->
                             FilterChipState(value = type, selected = false)
                         },

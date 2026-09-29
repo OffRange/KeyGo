@@ -304,8 +304,7 @@ private fun ItemListContentPreview() {
                 FilterBottomSheetState(
                     sortDirection = SortDirection.Ascending,
                     itemSection = ItemSectionState(
-                        showPinnedSwitch = false,
-                        onlyPinnedChecked = false,
+                        onlyPinned = null,
                         itemTypeChips = emptyList(),
                         tagChips = emptyList()
                     ),

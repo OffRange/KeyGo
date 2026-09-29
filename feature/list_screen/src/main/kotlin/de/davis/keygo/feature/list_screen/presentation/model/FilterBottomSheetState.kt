@@ -17,8 +17,7 @@ internal data class FilterBottomSheetState(
 
 @Immutable
 internal data class ItemSectionState(
-    val showPinnedSwitch: Boolean,
-    val onlyPinnedChecked: Boolean,
+    val onlyPinned: FilterChipState<Boolean>?,
     val itemTypeChips: List<FilterChipState<VaultItemType>>,
     val tagChips: List<FilterChipState<Tag>>,
 )

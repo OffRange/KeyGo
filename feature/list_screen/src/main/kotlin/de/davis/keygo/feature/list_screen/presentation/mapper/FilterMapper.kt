@@ -1,79 +1,62 @@
 package de.davis.keygo.feature.list_screen.presentation.mapper
 
-import androidx.compose.ui.util.fastMapTo
-import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
-import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
+import de.davis.keygo.feature.list_screen.domain.model.FacetSelections
+import de.davis.keygo.feature.list_screen.domain.model.FilterFacet
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
 import de.davis.keygo.feature.list_screen.presentation.model.AvailableFilterOptions
+import de.davis.keygo.feature.list_screen.presentation.model.FacetOptions
 import de.davis.keygo.feature.list_screen.presentation.model.FilterBottomSheetState
-import de.davis.keygo.feature.list_screen.presentation.model.FilterChipState
 import de.davis.keygo.feature.list_screen.presentation.model.ItemSectionState
 import de.davis.keygo.feature.list_screen.presentation.model.PasswordSectionState
 
 internal fun FilterState.toBottomSheetState(
     available: AvailableFilterOptions,
     restrictedItemType: VaultItemType?,
+    retained: FacetSelections = FacetSelections.None,
+    isVisible: Boolean = false,
 ): FilterBottomSheetState {
-    val showItemTypeChips = restrictedItemType == null && available.itemTypes.size > 1
-    val showItemSection =
-        showItemTypeChips || available.tags.isNotEmpty() || available.hasPinnedItems
+    val itemTypeChips = available.itemTypes.chips(selections, retained)
+    // A single type offers no choice, unless the user has already picked it.
+    val showItemTypeChips = restrictedItemType == null &&
+            (itemTypeChips.size > 1 || (selections + retained)[FilterFacet.ItemTypes].isNotEmpty())
+    val onlyPinned = available.pinned.chips(selections, retained).singleOrNull()
+    val tagChips = available.tags.chips(selections, retained)
+    val scoreChips = available.passwordScores.chips(selections, retained)
 
-    val effectiveItemTypes = restrictedItemType?.let { setOf(it) } ?: selectedItemTypes
-    val showLoginSection = available.hasPasswordItems &&
+    val effectiveItemTypes = restrictedItemType?.let { setOf(it) } ?: this[FilterFacet.ItemTypes]
+    val showLoginSection = scoreChips.isNotEmpty() &&
             (effectiveItemTypes.isEmpty() || VaultItemType.Login in effectiveItemTypes)
+
+    val itemSection = ItemSectionState(
+        onlyPinned = onlyPinned,
+        itemTypeChips = if (showItemTypeChips) itemTypeChips else emptyList(),
+        tagChips = tagChips,
+    )
 
     return FilterBottomSheetState(
         sortDirection = sortDirection,
-        itemSection = if (showItemSection) ItemSectionState(
-            showPinnedSwitch = available.hasPinnedItems,
-            onlyPinnedChecked = onlyPinned,
-            itemTypeChips = if (showItemTypeChips) available.itemTypes.map { type ->
-                FilterChipState(value = type, selected = type in selectedItemTypes)
-            } else emptyList(),
-            tagChips = available.tags.map { tag ->
-                FilterChipState(value = tag, selected = tag in selectedTags)
-            },
-        ) else null,
-        passwordSection = if (showLoginSection) PasswordSectionState(
-            passwordScoreChips = available.passwordScores
-                .sortedByDescending { it.ordinal }
-                .map { score ->
-                    FilterChipState(value = score, selected = score in selectedScores)
-                },
-        ) else null,
+        itemSection = itemSection.takeIf {
+            it.onlyPinned != null || it.itemTypeChips.isNotEmpty() || it.tagChips.isNotEmpty()
+        },
+        passwordSection = if (showLoginSection) PasswordSectionState(scoreChips) else null,
         isDefault = isDefault,
+        isVisible = isVisible,
     )
 }
 
-internal fun List<LiteItem>.toAvailableFilterOptions(
-    passwordScores: Map<ItemId, PasswordScore>,
-    tagsByItem: Map<ItemId, Set<Tag>>,
-    allTags: List<Tag>,
-): AvailableFilterOptions {
-    val itemTypes = fastMapTo(mutableSetOf()) { it.itemType }
-    val hasLoginItems = VaultItemType.Login in itemTypes
-
-    val itemIds = if (hasLoginItems) fastMapTo(mutableSetOf()) { it.id }
-    else emptySet()
-
-    val scores = if (hasLoginItems)
-        passwordScores.filterKeys { it in itemIds }.values.toSet()
-    else emptySet()
-
-    val visibleTags = buildSet {
-        this@toAvailableFilterOptions.forEach { item ->
-            tagsByItem[item.id]?.let(::addAll)
-        }
-    }
+internal fun FacetSelections.toAvailableFilterOptions(allTags: List<Tag>): AvailableFilterOptions {
+    val defaults = AvailableFilterOptions()
 
     return AvailableFilterOptions(
-        itemTypes = itemTypes,
-        hasPasswordItems = hasLoginItems,
-        passwordScores = scores,
-        tags = allTags.filter { it in visibleTags }.toSet(),
-        hasPinnedItems = any { it.pinned },
+        itemTypes = defaults.itemTypes.copy(available = this[FilterFacet.ItemTypes]),
+        tags = FacetOptions(
+            facet = FilterFacet.Tags,
+            order = allTags,
+            available = allTags.filterTo(mutableSetOf()) { it in this[FilterFacet.Tags] },
+        ),
+        passwordScores = defaults.passwordScores.copy(available = this[FilterFacet.PasswordScores]),
+        pinned = defaults.pinned.copy(available = this[FilterFacet.Pinned]),
     )
 }

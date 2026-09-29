@@ -10,13 +10,13 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.getIdOrNull
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.domain.repository.ItemRepository
-import de.davis.keygo.core.item.domain.repository.LoginRepository
 import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.combine
+import de.davis.keygo.feature.list_screen.domain.model.FacetSelections
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
-import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.ObserveCardExpiryStatusesUseCase
+import de.davis.keygo.feature.list_screen.domain.usecase.ObserveFilterResultUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.RankSearchResultsUseCase
 import de.davis.keygo.feature.list_screen.presentation.mapper.toAvailableFilterOptions
 import de.davis.keygo.feature.list_screen.presentation.mapper.toBottomSheetState
@@ -38,14 +38,15 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
@@ -62,12 +63,11 @@ internal class ItemListViewModel(
     @InjectedParam private val enableSelection: Boolean,
     @InjectedParam private val restrictedItemType: VaultItemType?,
     private val itemRepository: ItemRepository,
-    private val filterUseCase: FilterUseCase,
     private val rankSearchResults: RankSearchResultsUseCase,
     observeAllTags: ObserveAllTagsSortedUseCase,
     observeVaultsAndSelection: ObserveVaultsAndSelectionUseCase,
+    observeFilterResult: ObserveFilterResultUseCase,
     observeCardExpiryStatuses: ObserveCardExpiryStatusesUseCase,
-    loginRepository: LoginRepository,
 ) : ViewModel() {
 
     private val vaultsAndSelection = observeVaultsAndSelection()
@@ -84,8 +84,6 @@ internal class ItemListViewModel(
         .flatMapLatest(::queryToItems)
         .distinctUntilChanged()
 
-    private val passwordScores = loginRepository.observePasswordScores()
-
     private val cardExpiryStatuses = observeCardExpiryStatuses().distinctUntilChanged()
 
     private val filterState = MutableStateFlow(FilterState.Default)
@@ -95,15 +93,10 @@ internal class ItemListViewModel(
     // once deselected and carried by no item, so the sheet never reshuffles under the user's finger.
     private val retainedSelections = MutableStateFlow(FacetSelections.None)
 
-    private val filteredItems = combine(
-        itemSource,
-        filterState,
-        passwordScores,
-        tagFilteredItemIds,
-    ) { items, filter, scores, tagIds ->
-        val filtered = filterUseCase(filter, items, scores, tagIds)
-        filtered to (filtered.isEmpty() && items.isNotEmpty())
-    }.distinctUntilChanged()
+    // Shared so the list and the filter sheet read off one upstream subscription instead of each
+    // recomputing the filter pipeline independently.
+    private val filterResult = observeFilterResult(itemSource, filterState)
+        .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
     private val selection = MutableStateFlow(ItemSelection())
     private val _isVaultFlowVisible = MutableStateFlow(false)
@@ -126,17 +119,17 @@ internal class ItemListViewModel(
 
     val listItemState = combine(
         vaultsAndSelection,
-        filteredItems,
+        filterResult,
         searchState,
         selection,
         submittedSearchQuery,
         _isVaultFlowVisible,
         _isDeleteConfirmationVisible,
         cardExpiryStatuses,
-    ) { vaultsAndSel, (items, isEmptyBecauseOfFilter), searchState, selection, submittedSearchQuery, isVaultFlowVisible, isDeleteConfirmationVisible, expiryStatuses ->
+    ) { vaultsAndSel, filterResult, searchState, selection, submittedSearchQuery, isVaultFlowVisible, isDeleteConfirmationVisible, expiryStatuses ->
         ListItemState(
-            items = items,
-            isEmptyBecauseOfFilter = isEmptyBecauseOfFilter,
+            items = filterResult.items,
+            isEmptyBecauseOfFilter = filterResult.isEmptyBecauseOfFilter,
             cardExpiryStatuses = expiryStatuses,
             searchState = searchState,
             hasSearchQuery = submittedSearchQuery.isNotBlank(),
@@ -153,20 +146,19 @@ internal class ItemListViewModel(
             initialValue = ListItemState(),
         )
 
-    private val availableFilterOptions = combine(
-        itemSource,
-        passwordScores,
-        itemRepository.observeTagsByItem(),
-        observeAllTags(),
-    ) { items, scores, tagsByItem, allTags ->
-        items.toAvailableFilterOptions(scores, tagsByItem, allTags)
-    }.distinctUntilChanged()
-
     val filterBottomSheetState = combine(
         filterState,
-        availableFilterOptions,
-    ) { filter, available ->
-        filter.toBottomSheetState(available, restrictedItemType)
+        filterResult.map { it.available }.distinctUntilChanged(),
+        observeAllTags(),
+        retainedSelections,
+        isFilterSheetVisible,
+    ) { filter, available, allTags, retained, isVisible ->
+        filter.toBottomSheetState(
+            available.toAvailableFilterOptions(allTags),
+            restrictedItemType,
+            retained,
+            isVisible,
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
