@@ -1,4 +1,3 @@
-import de.davis.gradle.plugin.versioning.AndroidVersionCodeGenerator
 import de.davis.gradle.plugin.versioning.versionedBy
 import io.github.z4kn4fein.semver.Version
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -15,14 +14,8 @@ plugins {
     alias(libs.plugins.mikepenz.aboutlibraries)
 }
 
-// Codes Play consumed without a shipped release. Stable builds end in 96, so 97-99 are free for re-uploads.
-private val burnedVersionCodes = mapOf("2.0.5" to 20000597u)
-
 versioning {
     minVersion = Version(major = 2, minor = 1)
-    versionCodeGenerator = { version ->
-        burnedVersionCodes[version.toString()] ?: AndroidVersionCodeGenerator(version)
-    }
 }
 
 android versionedBy versioning
