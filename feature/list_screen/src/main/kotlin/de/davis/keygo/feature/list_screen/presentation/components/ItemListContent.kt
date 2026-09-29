@@ -38,11 +38,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
+import de.davis.keygo.core.item.domain.model.CardExpiryStatus
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
 import de.davis.keygo.core.ui.R
 import de.davis.keygo.core.ui.components.HeaderContent
+import de.davis.keygo.core.ui.components.ItemStatus
 import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.core.ui.components.KeyGoColumn
@@ -56,6 +58,7 @@ import de.davis.keygo.feature.list_screen.presentation.model.ListItemState
 import de.davis.keygo.feature.list_screen.presentation.model.SearchState
 import de.davis.keygo.feature.vault.presentation.VaultFlow
 import kotlinx.coroutines.launch
+import de.davis.keygo.feature.list_screen.R as ListR
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -218,7 +221,10 @@ internal fun ItemListContent(
                 }
 
                 false -> {
-                    val items = remember(uiState.items, suggestedItemIds) {
+                    val expiryStatuses = uiState.cardExpiryStatuses.mapValues { (_, status) ->
+                        status.toItemStatus()
+                    }
+                    val items = remember(uiState.items, suggestedItemIds, expiryStatuses) {
                         uiState.items.map {
                             KeyGoColumnItem(
                                 header = when {
@@ -229,6 +235,7 @@ internal fun ItemListContent(
                                 title = it.name,
                                 id = it.id,
                                 itemType = it.itemType,
+                                status = expiryStatuses[it.id],
                             )
                         }
                     }
@@ -249,6 +256,18 @@ internal fun ItemListContent(
             }
         }
     }
+}
+
+@Composable
+private fun CardExpiryStatus.toItemStatus(): ItemStatus = when (this) {
+    CardExpiryStatus.ExpiresThisMonth ->
+        ItemStatus(stringResource(ListR.string.card_expires_this_month), emphasized = true)
+
+    CardExpiryStatus.ExpiresNextMonth ->
+        ItemStatus(stringResource(ListR.string.card_expires_next_month), emphasized = true)
+
+    CardExpiryStatus.Expired ->
+        ItemStatus(stringResource(ListR.string.card_expired), emphasized = false)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

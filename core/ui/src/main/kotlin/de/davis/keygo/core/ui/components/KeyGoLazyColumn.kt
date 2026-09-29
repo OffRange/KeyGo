@@ -45,7 +45,10 @@ import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -64,7 +67,10 @@ data class KeyGoColumnItem<ID : Any>(
     val title: String,
     val id: ID,
     val itemType: VaultItemType,
+    val status: ItemStatus? = null,
 )
+
+data class ItemStatus(val text: String, val emphasized: Boolean)
 
 /**
  * The item the sticky header currently belongs to: [index] plus its [top] within the column.
@@ -178,7 +184,10 @@ fun <ID : Any> KeyGoColumn(
                         }
                     },
                     supportingContent = {
-                        Text(text = item.itemType.presentation.first)
+                        SupportingText(
+                            typeLabel = item.itemType.presentation.first,
+                            status = item.status,
+                        )
                     },
                     selected = id in selectedItemIds,
                 ) {
@@ -273,6 +282,23 @@ private fun Modifier.expressiveAnimateItem(): Modifier = with(scope) {
         fadeInSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
         fadeOutSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
         placementSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+    )
+}
+
+@Composable
+private fun SupportingText(typeLabel: String, status: ItemStatus?) {
+    if (status == null) {
+        Text(text = typeLabel)
+        return
+    }
+
+    val statusColor = if (status.emphasized) MaterialTheme.colorScheme.error else Color.Unspecified
+    Text(
+        text = buildAnnotatedString {
+            append(typeLabel)
+            append(" \u2022 ")
+            withStyle(SpanStyle(color = statusColor)) { append(status.text) }
+        },
     )
 }
 

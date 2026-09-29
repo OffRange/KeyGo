@@ -2,6 +2,7 @@ package de.davis.keygo.feature.list_screen.presentation.model
 
 import androidx.compose.runtime.Stable
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.model.CardExpiryStatus
 import de.davis.keygo.core.item.domain.model.VaultContext
 import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
@@ -9,6 +10,7 @@ import de.davis.keygo.core.item.domain.model.lite.LiteItem
 @Stable
 internal data class ListItemState(
     val items: List<LiteItem> = emptyList(),
+    val cardExpiryStatuses: Map<ItemId, CardExpiryStatus> = emptyMap(),
     val searchState: SearchState = SearchState(),
     val hasSearchQuery: Boolean = false,
     val selection: ItemSelection = ItemSelection(),

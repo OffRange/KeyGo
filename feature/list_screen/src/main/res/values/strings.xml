@@ -49,4 +49,8 @@
     <string name="tags">Tags</string>
 
     <string name="only_pinned_items">Only pinned Items</string>
+
+    <string name="card_expires_this_month">Expires this month</string>
+    <string name="card_expires_next_month">Expires next month</string>
+    <string name="card_expired">Expired</string>
 </resources>

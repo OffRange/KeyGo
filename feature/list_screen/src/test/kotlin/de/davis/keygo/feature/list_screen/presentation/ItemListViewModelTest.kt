@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.list_screen.presentation
 
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import de.davis.keygo.core.item.FakeCreditCardRepository
 import de.davis.keygo.core.item.FakeItemRepository
 import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.FakeVaultContextRepository
@@ -9,12 +10,15 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
+import de.davis.keygo.core.item.domain.model.CardExpiryStatus
+import de.davis.keygo.core.item.domain.model.CreditCard
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
+import de.davis.keygo.feature.list_screen.domain.usecase.ObserveCardExpiryStatusesUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.RankSearchResultsUseCase
 import de.davis.keygo.feature.list_screen.presentation.model.Event
 import de.davis.keygo.feature.vault.domain.usecase.ObserveVaultsAndSelectionUseCase
@@ -29,6 +33,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import java.time.YearMonth
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -50,6 +55,7 @@ class ItemListViewModelTest {
     private val itemRepository = FakeItemRepository(loginRepository)
     private val vaultRepository = FakeVaultRepository()
     private val vaultContextRepository = FakeVaultContextRepository()
+    private val creditCardRepository = FakeCreditCardRepository()
     private val sortUseCase = SortUseCase()
 
     @BeforeTest
@@ -70,6 +76,7 @@ class ItemListViewModelTest {
             vaultContextRepository = vaultContextRepository,
             sortUseCase = sortUseCase,
         ),
+        observeCardExpiryStatuses = ObserveCardExpiryStatusesUseCase(creditCardRepository),
         loginRepository = loginRepository,
     )
 
@@ -417,6 +424,34 @@ class ItemListViewModelTest {
         advanceUntilIdle()
 
         assertEquals(Event.ItemSelected(opened.id), selected.await())
+    }
+
+    @Test
+    fun `an expired card carries its status into the list state`() = runTest(dispatcher) {
+        val card = CreditCard(
+            id = newItemId(),
+            vaultId = vaultId,
+            name = "Old card",
+            keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),
+            timestamp = Timestamp(),
+            tags = emptySet(),
+            note = null,
+            pinned = false,
+            holder = null,
+            cardNumber = null,
+            cvv = null,
+            expirationDate = YearMonth.now().minusYears(1),
+        )
+        creditCardRepository.seed(card)
+
+        val vm = viewModel()
+        backgroundScope.launchCollect(vm)
+        advanceUntilIdle()
+
+        assertEquals(
+            mapOf(card.id to CardExpiryStatus.Expired),
+            vm.listItemState.value.cardExpiryStatuses,
+        )
     }
 }
 
