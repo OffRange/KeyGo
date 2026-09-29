@@ -12,6 +12,7 @@ internal data class FilterBottomSheetState(
     val itemSection: ItemSectionState? = null,
     val passwordSection: PasswordSectionState? = null,
     val isDefault: Boolean = true,
+    val isVisible: Boolean = false,
 )
 
 @Immutable

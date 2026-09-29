@@ -89,15 +89,11 @@ internal class ItemListViewModel(
     private val cardExpiryStatuses = observeCardExpiryStatuses().distinctUntilChanged()
 
     private val filterState = MutableStateFlow(FilterState.Default)
+    private val isFilterSheetVisible = MutableStateFlow(false)
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val tagFilteredItemIds: Flow<Set<ItemId>?> = filterState
-        .map { it.selectedTags }
-        .distinctUntilChanged()
-        .flatMapLatest { tags ->
-            if (tags.isEmpty()) flowOf(null)
-            else itemRepository.observeItemIdsForTags(tags)
-        }
+    // Everything selected since the sheet opened. Those chips stay on screen until it closes, even
+    // once deselected and carried by no item, so the sheet never reshuffles under the user's finger.
+    private val retainedSelections = MutableStateFlow(FacetSelections.None)
 
     private val filteredItems = combine(
         itemSource,
@@ -183,29 +179,25 @@ internal class ItemListViewModel(
     val searchTextFieldState = TextFieldState()
 
     fun onFilterAction(action: FilterAction) {
-        when (action) {
-            is FilterAction.SortDirectionChanged -> filterState.update {
-                it.copy(sortDirection = action.direction)
+        val filter = filterState.updateAndGet {
+            when (action) {
+                is FilterAction.SortDirectionChanged -> it.copy(sortDirection = action.direction)
+                is FilterAction.Toggled<*> -> it.copy(selections = action.applyTo(it.selections))
+                FilterAction.ClearFilters -> FilterState.Default
             }
-
-            is FilterAction.ItemTypeToggled -> filterState.update {
-                it.copy(selectedItemTypes = it.selectedItemTypes.toggle(action.itemType))
-            }
-
-            is FilterAction.TagToggled -> filterState.update {
-                it.copy(selectedTags = it.selectedTags.toggle(action.tag))
-            }
-
-            is FilterAction.ScoreToggled -> filterState.update {
-                it.copy(selectedScores = it.selectedScores.toggle(action.passwordScore))
-            }
-
-            FilterAction.ShowOnlyPinnedToggled -> filterState.update {
-                it.copy(onlyPinned = !it.onlyPinned)
-            }
-
-            is FilterAction.ClearFilters -> filterState.update { FilterState.Default }
         }
+
+        if (isFilterSheetVisible.value) retainedSelections.update { it + filter.selections }
+    }
+
+    fun onShowFilterSheet() {
+        retainedSelections.update { filterState.value.selections }
+        isFilterSheetVisible.update { true }
+    }
+
+    fun onDismissFilterSheet() {
+        isFilterSheetVisible.update { false }
+        retainedSelections.update { FacetSelections.None }
     }
 
     fun onVaultSelectorClick() {
@@ -215,9 +207,6 @@ internal class ItemListViewModel(
     fun onDismissVaultFlow() {
         _isVaultFlowVisible.update { false }
     }
-
-    private fun <T> Set<T>.toggle(element: T): Set<T> =
-        if (element in this) this - element else this + element
 
     private fun queryToItems(query: String): Flow<List<LiteItem>> =
         if (query.isBlank()) vaultSpecificItems

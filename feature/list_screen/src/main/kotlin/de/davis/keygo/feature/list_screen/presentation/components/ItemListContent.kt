@@ -26,12 +26,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -81,6 +77,8 @@ internal fun ItemListContent(
     onSubmitQuery: () -> Unit,
     onClearQuery: () -> Unit,
     onFilterAction: (FilterAction) -> Unit,
+    onShowFilterSheet: () -> Unit,
+    onDismissFilterSheet: () -> Unit,
     onItemClick: (ItemId, forceSkipSelection: Boolean) -> Unit,
     onItemLongClick: (ItemId) -> Unit,
     onClearSelection: () -> Unit,
@@ -94,8 +92,6 @@ internal fun ItemListContent(
     scrollBehavior: SearchBarScrollBehavior,
     modifier: Modifier = Modifier
 ) {
-    var showFilterSheet by rememberSaveable { mutableStateOf(false) }
-
     val searchInputField = @Composable {
         ListSearchTextField(
             searchTextFieldState = searchTextFieldState,
@@ -103,17 +99,17 @@ internal fun ItemListContent(
             uiState = uiState,
             onSubmitQuery = onSubmitQuery,
             onClearQuery = onClearQuery,
-            onShowFilterClick = { showFilterSheet = true },
+            onShowFilterClick = onShowFilterSheet,
             onVaultSelectorClick = onVaultSelectorClick,
             filterBottomSheetState = filterBottomSheetState,
         )
     }
 
-    if (showFilterSheet)
+    if (filterBottomSheetState.isVisible)
         FilterBottomSheet(
             state = filterBottomSheetState,
             onAction = onFilterAction,
-            onDismiss = { showFilterSheet = false },
+            onDismiss = onDismissFilterSheet,
         )
 
     if (uiState.isVaultFlowVisible)
@@ -334,6 +330,8 @@ private fun ItemListContentPreview() {
                 onSubmitQuery = {},
                 onClearQuery = {},
                 onFilterAction = {},
+                onShowFilterSheet = {},
+                onDismissFilterSheet = {},
                 onItemClick = { _, _ -> },
                 onItemLongClick = {},
                 onClearSelection = {},
