@@ -17,9 +17,17 @@ internal class OkHttpRegistrableDomainResolver : RegistrableDomainResolver {
         val candidate = if ("://" !in hostOrNull) "https://$hostOrNull" else hostOrNull
 
         val url = candidate.toHttpUrlOrNull()
-            ?: "https://${IDN.toASCII(domain)}".toHttpUrlOrNull()
+            ?: domain.idnToAsciiOrNull()?.let { "https://$it".toHttpUrlOrNull() }
             ?: return null
 
         return url.topPrivateDomain()
+    }
+
+    // IDN throws, rather than returning, on anything DNS cannot hold: a label over 63 characters or,
+    // on Android, a name too long overall. Free text in a website field reaches here as is.
+    private fun String.idnToAsciiOrNull(): String? = try {
+        IDN.toASCII(this)
+    } catch (_: IllegalArgumentException) {
+        null
     }
 }
