@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.list_screen.presentation.mapper
 
+import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
@@ -37,7 +38,10 @@ class FilterMapperTest {
         defaultFacets.with(FilterFacet.PasswordScores, scores.toSet())
 
     private fun FilterBottomSheetState.scoreChips() =
-        passwordSection?.passwordScoreChips.orEmpty().map { it.value to it.selected }
+        loginSection?.passwordScoreChips.orEmpty().map { it.value to it.selected }
+
+    private fun FilterBottomSheetState.credentialChips() =
+        loginSection?.credentialChips.orEmpty().map { it.value to it.selected }
 
     @Test
     fun `tags are ordered by allTags and limited to the values present in the selections`() {
@@ -184,5 +188,45 @@ class FilterMapperTest {
             ),
             sheet.itemSection?.tagChips,
         )
+    }
+
+    @Test
+    fun `credential chips follow the credential order, whatever order they arrive in`() {
+        val sheet = sheetFor(
+            FilterState().with(FilterFacet.Credentials, setOf(CredentialType.Totp)),
+            facets = defaultFacets.with(
+                FilterFacet.Credentials,
+                setOf(CredentialType.Totp, CredentialType.Password),
+            ),
+        )
+
+        assertEquals(
+            listOf(CredentialType.Password to false, CredentialType.Totp to true),
+            sheet.credentialChips(),
+        )
+    }
+
+    @Test
+    fun `the login section shows for credentials alone, without score chips`() {
+        val sheet = sheetFor(
+            FilterState(),
+            facets = defaultFacets.with(FilterFacet.Credentials, setOf(CredentialType.Passkey)),
+        )
+
+        assertEquals(emptyList(), sheet.scoreChips())
+        assertEquals(listOf(CredentialType.Passkey to false), sheet.credentialChips())
+    }
+
+    @Test
+    fun `no login section while the selected item types exclude logins`() {
+        val sheet = sheetFor(
+            FilterState().with(FilterFacet.ItemTypes, setOf(VaultItemType.CreditCard)),
+            facets = defaultFacets
+                .with(FilterFacet.ItemTypes, setOf(VaultItemType.Login, VaultItemType.CreditCard))
+                .with(FilterFacet.Credentials, setOf(CredentialType.Passkey))
+                .with(FilterFacet.PasswordScores, setOf(PasswordScore.Strong)),
+        )
+
+        assertNull(sheet.loginSection)
     }
 }

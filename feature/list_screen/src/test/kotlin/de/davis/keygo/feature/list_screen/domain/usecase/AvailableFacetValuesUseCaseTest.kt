@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.list_screen.domain.usecase
 
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
@@ -78,11 +79,12 @@ class AvailableFacetValuesUseCaseTest {
     }
 
     @Test
-    fun `no tags, scores, or pinned flag when nothing carries them`() {
+    fun `no tags, scores, credentials, or pinned flag when nothing carries them`() {
         val result = useCase(listOf(TestLiteItem("A")), ItemAttributes.None)
 
         assertTrue(result[FilterFacet.Tags].isEmpty())
         assertTrue(result[FilterFacet.PasswordScores].isEmpty())
+        assertTrue(result[FilterFacet.Credentials].isEmpty())
         assertTrue(result[FilterFacet.Pinned].isEmpty())
     }
 
@@ -114,5 +116,28 @@ class AvailableFacetValuesUseCaseTest {
         )
 
         assertEquals(setOf(true), result[FilterFacet.Pinned])
+    }
+
+    @Test
+    fun `credentials are the union of what the listed logins hold`() {
+        val a = TestLiteItem("A")
+        val b = TestLiteItem("B")
+        val card = TestLiteItem("Card", itemType = VaultItemType.CreditCard)
+
+        val result = useCase(
+            items = listOf(a, b, card),
+            attributes = ItemAttributes(
+                credentialsByItem = mapOf(
+                    a.id to setOf(CredentialType.Password),
+                    b.id to setOf(CredentialType.Password, CredentialType.Totp),
+                    card.id to setOf(CredentialType.Passkey),
+                ),
+            ),
+        )
+
+        assertEquals(
+            setOf(CredentialType.Password, CredentialType.Totp),
+            result[FilterFacet.Credentials],
+        )
     }
 }

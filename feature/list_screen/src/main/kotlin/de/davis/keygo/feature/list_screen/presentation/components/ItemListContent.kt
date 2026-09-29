@@ -308,7 +308,7 @@ private fun ItemListContentPreview() {
                         itemTypeChips = emptyList(),
                         tagChips = emptyList()
                     ),
-                    passwordSection = null,
+                    loginSection = null,
                     isDefault = true
                 )
             }

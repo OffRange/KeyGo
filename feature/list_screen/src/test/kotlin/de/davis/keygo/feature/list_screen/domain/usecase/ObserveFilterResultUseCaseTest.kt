@@ -6,14 +6,17 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
+import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.PasskeyRef
 import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.Timestamp
+import de.davis.keygo.core.item.passkeyRef
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.list_screen.domain.model.FilterFacet
 import de.davis.keygo.feature.list_screen.domain.model.FilterResult
@@ -50,6 +53,7 @@ class ObserveFilterResultUseCaseTest {
         vault: VaultId = newVaultId(),
         tags: Set<Tag> = emptySet(),
         passwordCredential: PasswordCredential? = null,
+        passkeys: Set<PasskeyRef> = emptySet(),
     ) = Login(
         id = id,
         name = name,
@@ -57,7 +61,7 @@ class ObserveFilterResultUseCaseTest {
         domainInfos = emptySet(),
         passwordCredential = passwordCredential,
         totp = null,
-        passkeys = emptySet(),
+        passkeys = passkeys,
         note = null,
         pinned = false,
         vaultId = vault,
@@ -160,6 +164,26 @@ class ObserveFilterResultUseCaseTest {
         assertEquals(
             setOf(PasswordScore.Excellent),
             results.last().available[FilterFacet.PasswordScores]
+        )
+    }
+
+    @Test
+    fun `filters by a credential the login repository reports`() = runTest {
+        val withPasskey = login("With passkey", passkeys = setOf(passkeyRef("example.com")))
+        val without = login("Without", passwordCredential = credential(PasswordScore.Strong))
+        loginRepository.seed(withPasskey, without)
+
+        val items = MutableStateFlow(listOf(withPasskey, without))
+        val filterState = MutableStateFlow(
+            FilterState().with(FilterFacet.Credentials, setOf(CredentialType.Passkey)),
+        )
+
+        val result = useCase(items, filterState).first()
+
+        assertEquals(listOf(withPasskey.id), result.items.map { it.id })
+        assertEquals(
+            setOf(CredentialType.Passkey, CredentialType.Password),
+            result.available[FilterFacet.Credentials],
         )
     }
 }

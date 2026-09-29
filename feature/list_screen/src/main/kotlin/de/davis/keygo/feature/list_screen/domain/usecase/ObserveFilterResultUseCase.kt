@@ -26,6 +26,7 @@ class ObserveFilterResultUseCase(
         val attributes = combine(
             loginRepository.observePasswordScores(),
             itemRepository.observeTagsByItem(),
+            loginRepository.observeCredentialTypes(),
             ::ItemAttributes,
         )
         return combine(items, filterState, attributes) { items, filter, attributes ->

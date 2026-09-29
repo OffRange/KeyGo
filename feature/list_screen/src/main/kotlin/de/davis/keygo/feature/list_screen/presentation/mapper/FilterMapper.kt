@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.list_screen.presentation.mapper
 
+import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
@@ -10,7 +11,7 @@ import de.davis.keygo.feature.list_screen.presentation.model.AvailableFilterOpti
 import de.davis.keygo.feature.list_screen.presentation.model.FacetOptions
 import de.davis.keygo.feature.list_screen.presentation.model.FilterBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.ItemSectionState
-import de.davis.keygo.feature.list_screen.presentation.model.PasswordSectionState
+import de.davis.keygo.feature.list_screen.presentation.model.LoginSectionState
 
 internal fun FilterState.toBottomSheetState(
     available: AvailableFilterOptions,
@@ -24,14 +25,19 @@ internal fun FilterState.toBottomSheetState(
             (itemTypeChips.size > 1 || (selections + retained)[FilterFacet.ItemTypes].isNotEmpty())
     val onlyPinned = available.pinned.chips(selections, retained).singleOrNull()
     val tagChips = available.tags.chips(selections, retained)
-    val scoreChips = available.passwordScores.chips(selections, retained)
 
     val effectiveItemTypes =
         restrictedItemType?.let { setOf(it) } ?: selections[FilterFacet.ItemTypes]
-    val showLoginSection = scoreChips.isNotEmpty() && (
-            effectiveItemTypes.isEmpty() ||
-                    effectiveItemTypes.any(FilterFacet.PasswordScores::appliesTo)
-            )
+
+    fun <T : Any> FacetOptions<T>.chipsInScope() =
+        if (effectiveItemTypes.isEmpty() || effectiveItemTypes.any(facet::appliesTo))
+            chips(selections, retained)
+        else emptyList()
+
+    val loginSection = LoginSectionState(
+        passwordScoreChips = available.passwordScores.chipsInScope(),
+        credentialChips = available.credentials.chipsInScope(),
+    )
 
     val itemSection = ItemSectionState(
         onlyPinned = onlyPinned,
@@ -44,7 +50,9 @@ internal fun FilterState.toBottomSheetState(
         itemSection = itemSection.takeIf {
             it.onlyPinned != null || it.itemTypeChips.isNotEmpty() || it.tagChips.isNotEmpty()
         },
-        passwordSection = if (showLoginSection) PasswordSectionState(scoreChips) else null,
+        loginSection = loginSection.takeIf {
+            it.passwordScoreChips.isNotEmpty() || it.credentialChips.isNotEmpty()
+        },
         isDefault = isDefault,
         isVisible = isVisible,
     )
@@ -58,6 +66,7 @@ internal fun FacetSelections.toAvailableFilterOptions(allTags: List<Tag>) = Avai
         available = allTags.filterTo(mutableSetOf()) { it in this[FilterFacet.Tags] },
     ),
     passwordScores = options(FilterFacet.PasswordScores, PasswordScore.entries.reversed()),
+    credentials = options(FilterFacet.Credentials, CredentialType.entries),
     pinned = options(FilterFacet.Pinned, listOf(true)),
 )
 

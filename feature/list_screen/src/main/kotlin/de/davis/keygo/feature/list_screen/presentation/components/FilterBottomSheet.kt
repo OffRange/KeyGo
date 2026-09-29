@@ -14,7 +14,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Password
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,6 +45,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
@@ -58,7 +61,7 @@ import de.davis.keygo.feature.list_screen.presentation.model.FilterAction
 import de.davis.keygo.feature.list_screen.presentation.model.FilterBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.FilterChipState
 import de.davis.keygo.feature.list_screen.presentation.model.ItemSectionState
-import de.davis.keygo.feature.list_screen.presentation.model.PasswordSectionState
+import de.davis.keygo.feature.list_screen.presentation.model.LoginSectionState
 import de.davis.keygo.core.item.R as CoreItemR
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -131,10 +134,10 @@ private fun FilterBottomSheetContent(
             }
         }
 
-        if (state.passwordSection != null) {
-            item(key = "passwords") {
-                PasswordSection(
-                    state = state.passwordSection,
+        if (state.loginSection != null) {
+            item(key = "logins") {
+                LoginSection(
+                    state = state.loginSection,
                     onAction = onAction,
                     modifier = Modifier.animateItem(),
                 )
@@ -262,8 +265,8 @@ private fun SortSection(
 }
 
 @Composable
-private fun PasswordSection(
-    state: PasswordSectionState,
+private fun LoginSection(
+    state: LoginSectionState,
     onAction: (FilterAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -276,17 +279,37 @@ private fun PasswordSection(
             title = stringResource(CoreItemR.string.login),
         )
 
-        KeyGoCard(
-            title = {
-                Text(text = stringResource(R.string.password_strength))
-            },
-        ) {
-            FacetChips(
-                facet = FilterFacet.PasswordScores,
-                chips = state.passwordScoreChips,
-                onAction = onAction,
-                label = { Text(text = it.label()) },
-            )
+        if (state.passwordScoreChips.isNotEmpty()) {
+            KeyGoCard(
+                title = {
+                    Text(text = stringResource(R.string.password_strength))
+                },
+            ) {
+                FacetChips(
+                    facet = FilterFacet.PasswordScores,
+                    chips = state.passwordScoreChips,
+                    onAction = onAction,
+                    label = { Text(text = it.label()) },
+                )
+            }
+        }
+
+        if (state.credentialChips.isNotEmpty()) {
+            KeyGoCard(
+                title = {
+                    Text(text = stringResource(R.string.credentials))
+                },
+            ) {
+                FacetChips(
+                    facet = FilterFacet.Credentials,
+                    chips = state.credentialChips,
+                    onAction = onAction,
+                    label = { Text(text = it.label()) },
+                    leadingIcon = {
+                        Icon(imageVector = it.icon(), contentDescription = null)
+                    },
+                )
+            }
         }
     }
 }
@@ -344,6 +367,19 @@ private fun PasswordScore.label(): String = when (this) {
 }
 
 @Composable
+private fun CredentialType.label(): String = when (this) {
+    CredentialType.Password -> stringResource(CoreItemR.string.password)
+    CredentialType.Passkey -> stringResource(R.string.credential_passkey)
+    CredentialType.Totp -> stringResource(R.string.credential_totp)
+}
+
+private fun CredentialType.icon(): ImageVector = when (this) {
+    CredentialType.Password -> Icons.Default.Password
+    CredentialType.Passkey -> Icons.Default.Key
+    CredentialType.Totp -> Icons.Default.Timer
+}
+
+@Composable
 private fun SortDirection.label(): String = when (this) {
     SortDirection.Ascending -> stringResource(R.string.ascending)
     SortDirection.Descending -> stringResource(R.string.descending)
@@ -376,7 +412,7 @@ private fun FilterBottomSheetContentPreview() {
                             FilterChipState(value = Tag.of("Label2")!!, selected = true),
                         ),
                     ),
-                    passwordSection = PasswordSectionState(
+                    loginSection = LoginSectionState(
                         passwordScoreChips = listOf(
                             FilterChipState(value = PasswordScore.Excellent, selected = false),
                             FilterChipState(value = PasswordScore.Strong, selected = false),
@@ -384,6 +420,9 @@ private fun FilterBottomSheetContentPreview() {
                             FilterChipState(value = PasswordScore.Weak, selected = true),
                             FilterChipState(value = PasswordScore.Ridiculous, selected = false),
                         ),
+                        credentialChips = CredentialType.entries.map { type ->
+                            FilterChipState(value = type, selected = type == CredentialType.Passkey)
+                        },
                     ),
                     isDefault = false,
                 ),

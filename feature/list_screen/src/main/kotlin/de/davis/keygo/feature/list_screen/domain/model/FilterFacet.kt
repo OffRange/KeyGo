@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.list_screen.domain.model
 
+import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
@@ -28,6 +29,13 @@ sealed interface FilterFacet<T : Any> {
             setOfNotNull(attributes.passwordScoreByItem[item.id])
     }
 
+    data object Credentials : FilterFacet<CredentialType> {
+        override fun appliesTo(type: VaultItemType) = type == VaultItemType.Login
+
+        override fun valuesFor(item: LiteItem, attributes: ItemAttributes) =
+            attributes.credentialsByItem[item.id].orEmpty()
+    }
+
     data object Pinned : FilterFacet<Boolean> {
         override fun valuesFor(item: LiteItem, attributes: ItemAttributes) =
             if (item.pinned) setOf(true) else emptySet()
@@ -36,6 +44,7 @@ sealed interface FilterFacet<T : Any> {
     companion object {
         // A getter, not a stored list: the interface initializes while its objects still are, so an
         // eager list would capture a null.
-        val entries: List<FilterFacet<*>> get() = listOf(ItemTypes, Tags, PasswordScores, Pinned)
+        val entries: List<FilterFacet<*>>
+            get() = listOf(ItemTypes, Tags, PasswordScores, Credentials, Pinned)
     }
 }

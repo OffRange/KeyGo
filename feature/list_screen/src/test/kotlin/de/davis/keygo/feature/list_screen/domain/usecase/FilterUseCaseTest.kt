@@ -2,6 +2,7 @@ package de.davis.keygo.feature.list_screen.domain.usecase
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
+import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
@@ -501,5 +502,54 @@ class FilterUseCaseTest {
 
         assertEquals(tagItems.size, result.size)
         assertTrue(result.containsAll(tagItems))
+    }
+
+    // Filter by credential (from the item -> credentials map)
+    private val passkeyLogin = TestLiteItem(name = "Passkey")
+    private val totpLogin = TestLiteItem(name = "Totp")
+    private val passwordLogin = TestLiteItem(name = "Password")
+    private val card = TestLiteItem(name = "Card", itemType = VaultItemType.CreditCard)
+    private val logins = listOf(passkeyLogin, totpLogin, passwordLogin)
+
+    private val credentialAttributes = ItemAttributes(
+        credentialsByItem = mapOf(
+            passkeyLogin.id to setOf(CredentialType.Password, CredentialType.Passkey),
+            totpLogin.id to setOf(CredentialType.Totp),
+            passwordLogin.id to setOf(CredentialType.Password),
+        ),
+    )
+
+    @Test
+    fun `selecting a credential keeps only logins holding it`() {
+        val state = FilterState().with(FilterFacet.Credentials, setOf(CredentialType.Passkey))
+        val result = useCase(state, logins, credentialAttributes)
+
+        assertEquals(listOf(passkeyLogin.id), result.map { it.id })
+    }
+
+    @Test
+    fun `two selected credentials keep logins holding either`() {
+        val state = FilterState()
+            .with(FilterFacet.Credentials, setOf(CredentialType.Passkey, CredentialType.Totp))
+        val result = useCase(state, logins, credentialAttributes)
+
+        assertEquals(setOf(passkeyLogin.id, totpLogin.id), result.mapTo(mutableSetOf()) { it.id })
+    }
+
+    @Test
+    fun `a login without any credential entry is dropped by a credential filter`() {
+        val bare = TestLiteItem(name = "Bare")
+        val state = FilterState().with(FilterFacet.Credentials, setOf(CredentialType.Password))
+        val result = useCase(state, listOf(bare, passwordLogin), credentialAttributes)
+
+        assertEquals(listOf(passwordLogin.id), result.map { it.id })
+    }
+
+    @Test
+    fun `a credential filter does not apply to non-login items`() {
+        val state = FilterState().with(FilterFacet.Credentials, setOf(CredentialType.Totp))
+        val result = useCase(state, listOf(card, passwordLogin, totpLogin), credentialAttributes)
+
+        assertEquals(setOf(card.id, totpLogin.id), result.mapTo(mutableSetOf()) { it.id })
     }
 }

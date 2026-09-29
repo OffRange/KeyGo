@@ -41,10 +41,13 @@
     <string name="descending">Descending</string>
 
     <string name="password_strength">Password strength</string>
+    <string name="credentials">Credentials</string>
+    <string name="credential_passkey">Passkey</string>
+    <string name="credential_totp">TOTP</string>
     <string name="reset">Reset</string>
 
     <string name="item">Item</string>
-    <string name="item_type">Item Type</string>
+    <string name="item_type">Item type</string>
 
     <string name="tags">Tags</string>
 
