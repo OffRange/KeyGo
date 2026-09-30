@@ -77,6 +77,41 @@ internal fun List<HealthSection>.summary(): HealthSummary {
     )
 }
 
+internal data class SeverityBreakdown(
+    val critical: Int,
+    val high: Int,
+    val medium: Int,
+    val clean: Int,
+)
+
+internal fun List<HealthSection>.breakdown(checked: Int): SeverityBreakdown {
+    val worst = mutableMapOf<ItemId, FindingSeverity>()
+    fun flag(id: ItemId, severity: FindingSeverity?) {
+        if (severity != null) worst.merge(id, severity, ::maxOf)
+    }
+
+    forEach { section ->
+        section.standalone.forEach { flag(it.itemId, it.maxSeverity) }
+        section.groups.forEach { group ->
+            val memberIds = group.members.mapTo(mutableSetOf()) { it.itemId }
+            group.members.forEach { flag(it.itemId, it.maxSeverity) }
+            group.relations.forEach { relation ->
+                relation.relatedItemIds.forEach {
+                    if (it in memberIds) flag(it, relation.type.severity)
+                }
+            }
+        }
+    }
+
+    val counts = worst.values.groupingBy { it }.eachCount()
+    return SeverityBreakdown(
+        critical = counts[FindingSeverity.Critical] ?: 0,
+        high = counts[FindingSeverity.High] ?: 0,
+        medium = counts[FindingSeverity.Medium] ?: 0,
+        clean = (checked - worst.size).coerceAtLeast(0),
+    )
+}
+
 internal data class HealthSection(
     val severity: FindingSeverity,
     val groups: List<RelatedGroup>,
@@ -164,6 +199,10 @@ internal data class PasswordHealthUiState(
 
     val summary by lazy { healthSections.summary() }
 
+    val breakdown by lazy { healthSections.breakdown(totalPasswordCount - unreadable.size) }
+
+    val worstSeverity: FindingSeverity? = healthSections.firstOrNull()?.severity
+
     val breachGap: CheckGap? = checkGaps[CheckKind.Breach]
 
     val status = when {
@@ -174,6 +213,12 @@ internal data class PasswordHealthUiState(
         healthSections.isNotEmpty() -> PasswordHealthStatus.NEEDS_ATTENTION
         else -> PasswordHealthStatus.ALL_GOOD
     }
+
+    // Medium findings keep a neutral card and carry their tone in an accent, so the card reads
+    // calmer than a high one without looking disabled.
+    val isAccented = !isFirstLoad &&
+            status == PasswordHealthStatus.NEEDS_ATTENTION &&
+            worstSeverity == FindingSeverity.Medium
 }
 
 @Composable
@@ -183,7 +228,12 @@ internal fun PasswordHealthUiState.toneColor(): Color {
     return when (status) {
         PasswordHealthStatus.NO_DATA -> MaterialTheme.colorScheme.surfaceContainerHigh
         PasswordHealthStatus.ALL_GOOD -> MaterialTheme.colorScheme.secondaryContainer
-        PasswordHealthStatus.NEEDS_ATTENTION,
+        PasswordHealthStatus.NEEDS_ATTENTION -> when (worstSeverity) {
+            FindingSeverity.Critical, null -> MaterialTheme.colorScheme.errorContainer
+            FindingSeverity.High -> MaterialTheme.colorScheme.tertiaryContainer
+            FindingSeverity.Medium -> MaterialTheme.colorScheme.surfaceContainerHigh
+        }
+
         PasswordHealthStatus.FAILED -> MaterialTheme.colorScheme.errorContainer
     }
 }

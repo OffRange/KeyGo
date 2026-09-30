@@ -354,6 +354,116 @@ class PasswordHealthUiStateTest {
         assertEquals(1, state.summary.weak)
     }
 
+    @Test
+    fun theWorstSeverityIsTheTopSection() {
+        val state = PasswordHealthUiState(
+            totalPasswordCount = 3,
+            reportedSections = listOf(
+                section(
+                    FindingSeverity.High,
+                    groups = listOf(group(RelationType.Reused, item(0), item(1))),
+                ),
+                section(FindingSeverity.Medium, standalone = listOf(item(2, weak))),
+            ),
+        )
+
+        assertEquals(FindingSeverity.High, state.worstSeverity)
+    }
+
+    @Test
+    fun theWorstSeverityDropsOnceItsItemsAreFixed() {
+        val state = PasswordHealthUiState(
+            totalPasswordCount = 2,
+            reportedSections = listOf(
+                section(FindingSeverity.Critical, standalone = listOf(item(0, breached))),
+                section(FindingSeverity.Medium, standalone = listOf(item(1, weak))),
+            ),
+            optimisticallyFixed = setOf(id(0)),
+        )
+
+        assertEquals(FindingSeverity.Medium, state.worstSeverity)
+    }
+
+    @Test
+    fun nothingFlaggedHasNoWorstSeverity() {
+        assertNull(PasswordHealthUiState(totalPasswordCount = 3).worstSeverity)
+    }
+
+    @Test
+    fun theBreakdownPutsEachPasswordUnderItsWorstIssue() {
+        val sections = listOf(
+            section(
+                FindingSeverity.Critical,
+                groups = listOf(
+                    group(RelationType.Similar, item(0, breached), item(1), item(2, weak)),
+                ),
+                standalone = listOf(item(3, breached, weak)),
+            ),
+            section(
+                FindingSeverity.High,
+                groups = listOf(group(RelationType.Reused, item(4, weak), item(5))),
+            ),
+            section(FindingSeverity.Medium, standalone = listOf(item(6, weak))),
+        )
+
+        assertEquals(
+            SeverityBreakdown(critical = 2, high = 2, medium = 3, clean = 3),
+            sections.breakdown(checked = 10),
+        )
+    }
+
+    @Test
+    fun aGroupMemberTakesTheSeverityOfItsOwnRelationOnly() {
+        val mixed = RelatedGroup(
+            id = id(0),
+            members = (0..2).mapTo(mutableSetOf()) { item(it) },
+            relations = setOf(
+                HealthFinding.Relation(setOf(id(0), id(1)), RelationType.Reused),
+                HealthFinding.Relation(setOf(id(1), id(2)), RelationType.Similar),
+            ),
+        )
+
+        assertEquals(
+            SeverityBreakdown(critical = 0, high = 2, medium = 1, clean = 0),
+            listOf(section(FindingSeverity.High, groups = listOf(mixed))).breakdown(checked = 3),
+        )
+    }
+
+    @Test
+    fun unreadablePasswordsAreLeftOutOfTheBreakdown() {
+        val state = PasswordHealthUiState(
+            totalPasswordCount = 5,
+            reportedSections = listOf(
+                section(FindingSeverity.Medium, standalone = listOf(item(0, weak))),
+            ),
+            unreadable = setOf(id(8), id(9)),
+        )
+
+        assertEquals(
+            SeverityBreakdown(critical = 0, high = 0, medium = 1, clean = 2),
+            state.breakdown,
+        )
+    }
+
+    @Test
+    fun aFixedPasswordMovesToClean() {
+        val state = PasswordHealthUiState(
+            totalPasswordCount = 4,
+            reportedSections = listOf(
+                section(
+                    FindingSeverity.Critical,
+                    standalone = listOf(item(0, breached), item(1, breached)),
+                ),
+            ),
+            optimisticallyFixed = setOf(id(0)),
+        )
+
+        assertEquals(
+            SeverityBreakdown(critical = 1, high = 0, medium = 0, clean = 3),
+            state.breakdown,
+        )
+    }
+
     private fun id(n: Int): ItemId = UUID(0L, n.toLong())
 
     private fun item(n: Int, vararg issues: ItemIssue, title: String = "item-$n") = ItemHealth(

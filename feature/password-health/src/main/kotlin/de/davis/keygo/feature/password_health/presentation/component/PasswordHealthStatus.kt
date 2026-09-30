@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.Icon
@@ -34,6 +35,7 @@ import de.davis.keygo.feature.password_health.R
 import de.davis.keygo.feature.password_health.domain.model.CheckGap
 import de.davis.keygo.feature.password_health.domain.model.GapReason
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReportError
+import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthStatus
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiState
 import de.davis.keygo.feature.password_health.presentation.model.RunPhase
 import de.davis.keygo.feature.password_health.presentation.model.coverageNote
@@ -55,6 +57,11 @@ internal fun PasswordHealthStatus(
     val contentColor by animateColorAsState(
         targetValue = contentColorFor(containerColorTarget),
         label = "contentColor"
+    )
+    val iconColor by animateColorAsState(
+        targetValue = if (state.isAccented) MaterialTheme.colorScheme.tertiary
+        else contentColorFor(containerColorTarget),
+        label = "iconColor"
     )
 
     KeyGoCard(
@@ -78,12 +85,29 @@ internal fun PasswordHealthStatus(
                     false -> Icon(
                         imageVector = state.status.icon(),
                         contentDescription = null,
+                        tint = iconColor,
                     )
                 }
             }
         }
     ) {
         Text(text = state.verdict())
+
+        AnimatedVisibility(
+            visible = !state.isFirstLoad && state.status == PasswordHealthStatus.NEEDS_ATTENTION,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+            label = "breakdownVisibility"
+        ) {
+            SeverityBreakdownBar(
+                breakdown = state.breakdown,
+                containerColor = containerColorTarget,
+                accentColor =
+                    if (state.isAccented) MaterialTheme.colorScheme.tertiary
+                    else containerColorTarget,
+                modifier = Modifier.padding(vertical = 8.dp),
+            )
+        }
 
         SupportingLine(text = state.detailLine(), label = "detailLineVisibility")
         SupportingLine(text = state.coverageNote(), label = "coverageNoteVisibility")

@@ -29,6 +29,11 @@
     <string name="detail_line_reused">%1$d reused</string>
     <string name="detail_line_similar">%1$d similar</string>
 
+    <string name="breakdown_critical">%1$d critical</string>
+    <string name="breakdown_high">%1$d high</string>
+    <string name="breakdown_medium">%1$d to review</string>
+    <string name="breakdown_clean">%1$d fine</string>
+
     <string name="needs_attention_title">Needs attention</string>
     <string name="needs_attention_weak">Weak</string>
     <string name="needs_attention_reused">Reused</string>
