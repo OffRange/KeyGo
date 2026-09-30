@@ -23,6 +23,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
+import de.davis.keygo.core.item.presentation.CardExpiryStatusText
 import de.davis.keygo.feature.credit_card.presentation.CardScanEntry
 import de.davis.keygo.feature.item.core.presentation.component.CreateOrModifyItemTopAppBar
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
@@ -171,6 +172,9 @@ private fun CreditCardReadyContent(
                         ),
                         inputTransformation = ccExpirationDateInputTransformation,
                         error = state.expirationDateError,
+                        supportingText = state.expiryStatus?.let { status ->
+                            @Composable { CardExpiryStatusText(status = status) }
+                        },
                     )
                 }
             }

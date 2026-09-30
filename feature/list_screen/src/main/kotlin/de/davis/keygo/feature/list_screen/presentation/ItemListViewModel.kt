@@ -86,7 +86,7 @@ internal class ItemListViewModel(
 
     private val passwordScores = loginRepository.observePasswordScores()
 
-    private val cardExpiryStatuses = observeCardExpiryStatuses()
+    private val cardExpiryStatuses = observeCardExpiryStatuses().distinctUntilChanged()
 
     private val filterState = MutableStateFlow(FilterState.Default)
 

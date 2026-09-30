@@ -9,4 +9,8 @@
     <string name="password_strength_moderate">Moderate</string>
     <string name="password_strength_strong">Strong</string>
     <string name="password_strength_excellent">Excellent</string>
+
+    <string name="card_expires_this_month">Expires this month</string>
+    <string name="card_expires_next_month">Expires next month</string>
+    <string name="card_expired">Expired</string>
 </resources>

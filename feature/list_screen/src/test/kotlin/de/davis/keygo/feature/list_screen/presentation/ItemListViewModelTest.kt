@@ -428,20 +428,7 @@ class ItemListViewModelTest {
 
     @Test
     fun `an expired card carries its status into the list state`() = runTest(dispatcher) {
-        val card = CreditCard(
-            id = newItemId(),
-            vaultId = vaultId,
-            name = "Old card",
-            keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),
-            timestamp = Timestamp(),
-            tags = emptySet(),
-            note = null,
-            pinned = false,
-            holder = null,
-            cardNumber = null,
-            cvv = null,
-            expirationDate = YearMonth.now().minusYears(1),
-        )
+        val card = expiredCard()
         creditCardRepository.seed(card)
 
         val vm = viewModel()
@@ -453,6 +440,21 @@ class ItemListViewModelTest {
             vm.listItemState.value.cardExpiryStatuses,
         )
     }
+
+    private fun expiredCard() = CreditCard(
+        id = newItemId(),
+        vaultId = vaultId,
+        name = "Old card",
+        keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),
+        timestamp = Timestamp(),
+        tags = emptySet(),
+        note = null,
+        pinned = false,
+        holder = null,
+        cardNumber = null,
+        cvv = null,
+        expirationDate = YearMonth.now().minusYears(1),
+    )
 }
 
 /**

@@ -3,6 +3,7 @@ package de.davis.keygo.feature.item.view.creditcard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.model.CardExpiryStatus
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.repository.CreditCardRepository
 import de.davis.keygo.core.item.domain.repository.ItemRepository
@@ -51,6 +52,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
 @KoinViewModel
@@ -101,6 +103,9 @@ internal class ViewCreditCardViewModel(
                     cardNumber = number,
                     cvv = cvv,
                     expirationDate = card.expirationDate?.format(EXPIRATION_FORMATTER).orEmpty(),
+                    expiryStatus = card.expirationDate?.let {
+                        CardExpiryStatus.of(it, YearMonth.now())
+                    },
                     tags = sort(card.tags) { it.display }.toSet(),
                     note = card.note.orEmpty(),
                     pinned = card.pinned,

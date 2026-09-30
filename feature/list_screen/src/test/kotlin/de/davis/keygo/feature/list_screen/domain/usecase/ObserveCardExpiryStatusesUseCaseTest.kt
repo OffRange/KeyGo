@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.list_screen.domain.usecase
 
 import de.davis.keygo.core.item.FakeCreditCardRepository
+import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.CardExpiryStatus
@@ -8,6 +9,9 @@ import de.davis.keygo.core.item.domain.model.CreditCard
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Timestamp
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import java.time.YearMonth
 import kotlin.test.Test
@@ -58,9 +62,16 @@ class ObserveCardExpiryStatusesUseCaseTest {
         val today = YearMonth.now()
         val renewed = card(today.minusMonths(2))
         creditCardRepository.seed(renewed)
+        val emissions = mutableListOf<Map<ItemId, CardExpiryStatus>>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            useCase().toList(emissions)
+        }
 
         creditCardRepository.seed(renewed.copy(expirationDate = today.plusYears(4)))
 
-        assertEquals(emptyMap(), useCase().first())
+        assertEquals(
+            listOf(mapOf(renewed.id to CardExpiryStatus.Expired), emptyMap()),
+            emissions,
+        )
     }
 }

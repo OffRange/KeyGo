@@ -42,6 +42,8 @@ import de.davis.keygo.core.item.domain.model.CardExpiryStatus
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
+import de.davis.keygo.core.item.presentation.isEmphasized
+import de.davis.keygo.core.item.presentation.label
 import de.davis.keygo.core.ui.R
 import de.davis.keygo.core.ui.components.HeaderContent
 import de.davis.keygo.core.ui.components.ItemStatus
@@ -58,7 +60,6 @@ import de.davis.keygo.feature.list_screen.presentation.model.ListItemState
 import de.davis.keygo.feature.list_screen.presentation.model.SearchState
 import de.davis.keygo.feature.vault.presentation.VaultFlow
 import kotlinx.coroutines.launch
-import de.davis.keygo.feature.list_screen.R as ListR
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -221,10 +222,13 @@ internal fun ItemListContent(
                 }
 
                 false -> {
-                    val expiryStatuses = uiState.cardExpiryStatuses.mapValues { (_, status) ->
-                        status.toItemStatus()
-                    }
-                    val items = remember(uiState.items, suggestedItemIds, expiryStatuses) {
+                    val expiryLabels = CardExpiryStatus.entries.associateWith { it.label() }
+                    val items = remember(
+                        uiState.items,
+                        suggestedItemIds,
+                        uiState.cardExpiryStatuses,
+                        expiryLabels,
+                    ) {
                         uiState.items.map {
                             KeyGoColumnItem(
                                 header = when {
@@ -235,7 +239,12 @@ internal fun ItemListContent(
                                 title = it.name,
                                 id = it.id,
                                 itemType = it.itemType,
-                                status = expiryStatuses[it.id],
+                                status = uiState.cardExpiryStatuses[it.id]?.let { status ->
+                                    ItemStatus(
+                                        text = expiryLabels.getValue(status),
+                                        emphasized = status.isEmphasized,
+                                    )
+                                },
                             )
                         }
                     }
@@ -256,18 +265,6 @@ internal fun ItemListContent(
             }
         }
     }
-}
-
-@Composable
-private fun CardExpiryStatus.toItemStatus(): ItemStatus = when (this) {
-    CardExpiryStatus.ExpiresThisMonth ->
-        ItemStatus(stringResource(ListR.string.card_expires_this_month), emphasized = true)
-
-    CardExpiryStatus.ExpiresNextMonth ->
-        ItemStatus(stringResource(ListR.string.card_expires_next_month), emphasized = true)
-
-    CardExpiryStatus.Expired ->
-        ItemStatus(stringResource(ListR.string.card_expired), emphasized = false)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
