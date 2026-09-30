@@ -16,6 +16,7 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.combine
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
+import de.davis.keygo.feature.list_screen.domain.usecase.ObserveCardExpiryStatusesUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.RankSearchResultsUseCase
 import de.davis.keygo.feature.list_screen.presentation.mapper.toAvailableFilterOptions
 import de.davis.keygo.feature.list_screen.presentation.mapper.toBottomSheetState
@@ -65,6 +66,7 @@ internal class ItemListViewModel(
     private val rankSearchResults: RankSearchResultsUseCase,
     observeAllTags: ObserveAllTagsSortedUseCase,
     observeVaultsAndSelection: ObserveVaultsAndSelectionUseCase,
+    observeCardExpiryStatuses: ObserveCardExpiryStatusesUseCase,
     loginRepository: LoginRepository,
 ) : ViewModel() {
 
@@ -83,6 +85,8 @@ internal class ItemListViewModel(
         .distinctUntilChanged()
 
     private val passwordScores = loginRepository.observePasswordScores()
+
+    private val cardExpiryStatuses = observeCardExpiryStatuses().distinctUntilChanged()
 
     private val filterState = MutableStateFlow(FilterState.Default)
 
@@ -131,9 +135,11 @@ internal class ItemListViewModel(
         submittedSearchQuery,
         _isVaultFlowVisible,
         _isDeleteConfirmationVisible,
-    ) { vaultsAndSel, items, searchState, selection, submittedSearchQuery, isVaultFlowVisible, isDeleteConfirmationVisible ->
+        cardExpiryStatuses,
+    ) { vaultsAndSel, items, searchState, selection, submittedSearchQuery, isVaultFlowVisible, isDeleteConfirmationVisible, expiryStatuses ->
         ListItemState(
             items = items,
+            cardExpiryStatuses = expiryStatuses,
             searchState = searchState,
             hasSearchQuery = submittedSearchQuery.isNotBlank(),
             selection = selection,

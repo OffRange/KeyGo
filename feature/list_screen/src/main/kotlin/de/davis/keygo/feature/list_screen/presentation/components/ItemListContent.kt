@@ -38,11 +38,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
+import de.davis.keygo.core.item.domain.model.CardExpiryStatus
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
+import de.davis.keygo.core.item.presentation.isEmphasized
+import de.davis.keygo.core.item.presentation.label
 import de.davis.keygo.core.ui.R
 import de.davis.keygo.core.ui.components.HeaderContent
+import de.davis.keygo.core.ui.components.ItemStatus
 import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.core.ui.components.KeyGoColumn
@@ -218,7 +222,13 @@ internal fun ItemListContent(
                 }
 
                 false -> {
-                    val items = remember(uiState.items, suggestedItemIds) {
+                    val expiryLabels = CardExpiryStatus.entries.associateWith { it.label() }
+                    val items = remember(
+                        uiState.items,
+                        suggestedItemIds,
+                        uiState.cardExpiryStatuses,
+                        expiryLabels,
+                    ) {
                         uiState.items.map {
                             KeyGoColumnItem(
                                 header = when {
@@ -229,6 +239,12 @@ internal fun ItemListContent(
                                 title = it.name,
                                 id = it.id,
                                 itemType = it.itemType,
+                                status = uiState.cardExpiryStatuses[it.id]?.let { status ->
+                                    ItemStatus(
+                                        text = expiryLabels.getValue(status),
+                                        emphasized = status.isEmphasized,
+                                    )
+                                },
                             )
                         }
                     }

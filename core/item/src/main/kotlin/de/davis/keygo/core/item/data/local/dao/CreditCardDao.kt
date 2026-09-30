@@ -5,6 +5,7 @@ import androidx.room3.Query
 import androidx.room3.Transaction
 import androidx.room3.Upsert
 import de.davis.keygo.core.item.data.local.entity.CreditCardEntity
+import de.davis.keygo.core.item.data.local.pojo.CreditCardExpirationProjection
 import de.davis.keygo.core.item.data.local.pojo.CreditCardProjection
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
@@ -27,4 +28,7 @@ internal interface CreditCardDao {
     @Transaction
     @Query("SELECT * FROM credit_card WHERE id IN (SELECT id FROM item WHERE vault_id = :vaultId)")
     suspend fun getByVault(vaultId: VaultId): List<CreditCardProjection>
+
+    @Query("SELECT id, expiration_date FROM credit_card WHERE expiration_date IS NOT NULL")
+    fun observeExpirationDates(): Flow<List<CreditCardExpirationProjection>>
 }

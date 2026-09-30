@@ -5,6 +5,7 @@ import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.model.CreditCard
 import de.davis.keygo.core.util.Result
 import kotlinx.coroutines.flow.Flow
+import java.time.YearMonth
 
 interface CreditCardRepository {
     suspend fun createOrUpdateCreditCard(card: CreditCard): Result<ItemId, Throwable>
@@ -12,4 +13,6 @@ interface CreditCardRepository {
     fun observeCreditCardById(itemId: ItemId): Flow<CreditCard?>
     suspend fun getCreditCardById(itemId: ItemId): CreditCard?
     suspend fun getCreditCardsByVault(vaultId: VaultId): List<CreditCard>
+
+    fun observeExpirationDates(): Flow<Map<ItemId, YearMonth>>
 }

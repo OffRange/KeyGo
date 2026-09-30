@@ -7,6 +7,7 @@ import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
+import de.davis.keygo.core.item.domain.model.CardExpiryStatus
 import de.davis.keygo.core.item.domain.model.CreditCard
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
@@ -18,6 +19,7 @@ import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateCreditCardUseCase
+import de.davis.keygo.feature.item.view.creditcard.model.ViewCreditCardState
 import de.davis.keygo.feature.item.view.login.model.ObfuscatedString
 import de.davis.keygo.rust.FakeCardFormatter
 import kotlinx.coroutines.Dispatchers
@@ -28,10 +30,12 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import java.time.YearMonth
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class ViewCreditCardViewModelTest {
 
@@ -108,6 +112,38 @@ class ViewCreditCardViewModelTest {
     fun `card number hidden reveals only the last four digits`() = runTest(dispatcher) {
         val cardNumber = awaitCardNumber()
         assertEquals("**** **** **** 1111".replace('*', '\u2022'), cardNumber.hidden)
+    }
+
+    @Test
+    fun `an expired card shows as expired`() = runTest(dispatcher) {
+        creditCardRepository.seed(
+            creditCard.copy(expirationDate = YearMonth.now().minusMonths(1)),
+        )
+
+        assertEquals(CardExpiryStatus.Expired, awaitState().expiryStatus)
+    }
+
+    @Test
+    fun `a card expiring next month says so`() = runTest(dispatcher) {
+        creditCardRepository.seed(
+            creditCard.copy(expirationDate = YearMonth.now().plusMonths(1)),
+        )
+
+        assertEquals(CardExpiryStatus.ExpiresNextMonth, awaitState().expiryStatus)
+    }
+
+    @Test
+    fun `a card without an expiration date has no status`() = runTest(dispatcher) {
+        assertNull(awaitState().expiryStatus)
+    }
+
+    private suspend fun awaitState(): ViewCreditCardState {
+        val vm = makeViewModel().also { it.init(itemId) }
+        try {
+            return vm.state.first { it.name.isNotEmpty() }
+        } finally {
+            vm.viewModelScope.cancel()
+        }
     }
 
     private suspend fun awaitCardNumber(): ObfuscatedString {
