@@ -4,6 +4,7 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.CardExpiryStatus
 import de.davis.keygo.core.item.domain.repository.CreditCardRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import org.koin.core.annotation.Single
 import java.time.YearMonth
@@ -21,5 +22,5 @@ class ObserveCardExpiryStatusesUseCase(
                     CardExpiryStatus.of(expiration, today)?.let { put(id, it) }
                 }
             }
-        }
+        }.distinctUntilChanged()
 }

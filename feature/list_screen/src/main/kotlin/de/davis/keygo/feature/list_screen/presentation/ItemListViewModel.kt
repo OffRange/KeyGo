@@ -15,7 +15,6 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.combine
 import de.davis.keygo.feature.list_screen.domain.model.FacetSelections
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
-import de.davis.keygo.feature.list_screen.domain.usecase.ObserveCardExpiryStatusesUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.ObserveFilterResultUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.RankSearchResultsUseCase
 import de.davis.keygo.feature.list_screen.presentation.mapper.toAvailableFilterOptions
@@ -67,7 +66,6 @@ internal class ItemListViewModel(
     observeAllTags: ObserveAllTagsSortedUseCase,
     observeVaultsAndSelection: ObserveVaultsAndSelectionUseCase,
     observeFilterResult: ObserveFilterResultUseCase,
-    observeCardExpiryStatuses: ObserveCardExpiryStatusesUseCase,
 ) : ViewModel() {
 
     private val vaultsAndSelection = observeVaultsAndSelection()
@@ -83,8 +81,6 @@ internal class ItemListViewModel(
     private val itemSource = submittedSearchQuery
         .flatMapLatest(::queryToItems)
         .distinctUntilChanged()
-
-    private val cardExpiryStatuses = observeCardExpiryStatuses().distinctUntilChanged()
 
     private val filterState = MutableStateFlow(FilterState.Default)
     private val isFilterSheetVisible = MutableStateFlow(false)
@@ -125,12 +121,11 @@ internal class ItemListViewModel(
         submittedSearchQuery,
         _isVaultFlowVisible,
         _isDeleteConfirmationVisible,
-        cardExpiryStatuses,
-    ) { vaultsAndSel, filterResult, searchState, selection, submittedSearchQuery, isVaultFlowVisible, isDeleteConfirmationVisible, expiryStatuses ->
+    ) { vaultsAndSel, filterResult, searchState, selection, submittedSearchQuery, isVaultFlowVisible, isDeleteConfirmationVisible ->
         ListItemState(
             items = filterResult.items,
             isEmptyBecauseOfFilter = filterResult.isEmptyBecauseOfFilter,
-            cardExpiryStatuses = expiryStatuses,
+            cardExpiryStatuses = filterResult.cardExpiryStatuses,
             searchState = searchState,
             hasSearchQuery = submittedSearchQuery.isNotBlank(),
             selection = selection,

@@ -2,6 +2,7 @@ package de.davis.keygo.feature.list_screen.domain.usecase
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
+import de.davis.keygo.core.item.domain.model.CardExpiryStatus
 import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
@@ -551,5 +552,47 @@ class FilterUseCaseTest {
         val result = useCase(state, listOf(card, passwordLogin, totpLogin), credentialAttributes)
 
         assertEquals(setOf(card.id, totpLogin.id), result.mapTo(mutableSetOf()) { it.id })
+    }
+
+    // Filter by card expiry status (from the item -> status map)
+    private val expiredCard = TestLiteItem(name = "Expired", itemType = VaultItemType.CreditCard)
+    private val expiringCard = TestLiteItem(name = "Expiring", itemType = VaultItemType.CreditCard)
+    private val validCard = TestLiteItem(name = "Valid", itemType = VaultItemType.CreditCard)
+    private val cards = listOf(expiredCard, expiringCard, validCard)
+
+    private val expiryAttributes = ItemAttributes(
+        cardExpiryStatusByItem = mapOf(
+            expiredCard.id to CardExpiryStatus.Expired,
+            expiringCard.id to CardExpiryStatus.ExpiresThisMonth,
+        ),
+    )
+
+    @Test
+    fun `selecting an expiry status keeps only cards in it`() {
+        val state = FilterState()
+            .with(FilterFacet.CardExpiryStatuses, setOf(CardExpiryStatus.Expired))
+        val result = useCase(state, cards, expiryAttributes)
+
+        assertEquals(listOf(expiredCard.id), result.map { it.id })
+    }
+
+    @Test
+    fun `a card with no expiry status is dropped by an expiry filter`() {
+        val state = FilterState().with(
+            FilterFacet.CardExpiryStatuses,
+            setOf(CardExpiryStatus.Expired, CardExpiryStatus.ExpiresThisMonth),
+        )
+        val result = useCase(state, cards, expiryAttributes)
+
+        assertEquals(setOf(expiredCard.id, expiringCard.id), result.mapTo(mutableSetOf()) { it.id })
+    }
+
+    @Test
+    fun `an expiry filter does not apply to non-card items`() {
+        val state = FilterState()
+            .with(FilterFacet.CardExpiryStatuses, setOf(CardExpiryStatus.Expired))
+        val result = useCase(state, listOf(passwordLogin) + cards, expiryAttributes)
+
+        assertEquals(setOf(passwordLogin.id, expiredCard.id), result.mapTo(mutableSetOf()) { it.id })
     }
 }

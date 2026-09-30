@@ -86,9 +86,9 @@ class ItemListViewModelTest {
             itemRepository = itemRepository,
             loginRepository = loginRepository,
             filterUseCase = FilterUseCase(sortUseCase),
+            observeCardExpiryStatuses = ObserveCardExpiryStatusesUseCase(creditCardRepository),
             availableFacetValues = AvailableFacetValuesUseCase(),
         ),
-        observeCardExpiryStatuses = ObserveCardExpiryStatusesUseCase(creditCardRepository),
     )
 
     private fun login(

@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.list_screen.presentation.model
 
 import androidx.compose.runtime.Immutable
+import de.davis.keygo.core.item.domain.model.CardExpiryStatus
 import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
@@ -14,6 +15,7 @@ internal data class AvailableFilterOptions(
     val tags: FacetOptions<Tag>,
     val passwordScores: FacetOptions<PasswordScore>,
     val credentials: FacetOptions<CredentialType>,
+    val expiryStatuses: FacetOptions<CardExpiryStatus>,
     val pinned: FacetOptions<Boolean>,
 )
 

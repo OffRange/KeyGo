@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.list_screen.domain.model
 
+import de.davis.keygo.core.item.domain.model.CardExpiryStatus
 import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
@@ -41,10 +42,17 @@ sealed interface FilterFacet<T : Any> {
             if (item.pinned) setOf(true) else emptySet()
     }
 
+    data object CardExpiryStatuses : FilterFacet<CardExpiryStatus> {
+        override fun appliesTo(type: VaultItemType): Boolean = type == VaultItemType.CreditCard
+
+        override fun valuesFor(item: LiteItem, attributes: ItemAttributes) =
+            setOfNotNull(attributes.cardExpiryStatusByItem[item.id])
+    }
+
     companion object {
         // A getter, not a stored list: the interface initializes while its objects still are, so an
         // eager list would capture a null.
         val entries: List<FilterFacet<*>>
-            get() = listOf(ItemTypes, Tags, PasswordScores, Credentials, Pinned)
+            get() = listOf(ItemTypes, Tags, PasswordScores, Credentials, Pinned, CardExpiryStatuses)
     }
 }

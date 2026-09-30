@@ -16,6 +16,7 @@ class ObserveFilterResultUseCase(
     private val itemRepository: ItemRepository,
     private val loginRepository: LoginRepository,
     private val filterUseCase: FilterUseCase,
+    private val observeCardExpiryStatuses: ObserveCardExpiryStatusesUseCase,
     private val availableFacetValues: AvailableFacetValuesUseCase,
 ) {
 
@@ -27,6 +28,7 @@ class ObserveFilterResultUseCase(
             loginRepository.observePasswordScores(),
             itemRepository.observeTagsByItem(),
             loginRepository.observeCredentialTypes(),
+            observeCardExpiryStatuses(),
             ::ItemAttributes,
         )
         return combine(items, filterState, attributes) { items, filter, attributes ->
@@ -35,6 +37,7 @@ class ObserveFilterResultUseCase(
                 items = filtered,
                 available = availableFacetValues(items, attributes),
                 isEmptyBecauseOfFilter = filtered.isEmpty() && items.isNotEmpty(),
+                cardExpiryStatuses = attributes.cardExpiryStatusByItem,
             )
         }.distinctUntilChanged()
     }

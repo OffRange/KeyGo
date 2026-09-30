@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.list_screen.domain.usecase
 
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.item.domain.model.CardExpiryStatus
 import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
@@ -139,5 +140,23 @@ class AvailableFacetValuesUseCaseTest {
             setOf(CredentialType.Password, CredentialType.Totp),
             result[FilterFacet.Credentials],
         )
+    }
+
+    @Test
+    fun `expiry statuses are drawn only from items typed as credit cards`() {
+        val card = TestLiteItem("Card", itemType = VaultItemType.CreditCard)
+        val login = TestLiteItem("Login")
+
+        val result = useCase(
+            items = listOf(card, login),
+            attributes = ItemAttributes(
+                cardExpiryStatusByItem = mapOf(
+                    card.id to CardExpiryStatus.Expired,
+                    login.id to CardExpiryStatus.ExpiresNextMonth,
+                ),
+            ),
+        )
+
+        assertEquals(setOf(CardExpiryStatus.Expired), result[FilterFacet.CardExpiryStatuses])
     }
 }

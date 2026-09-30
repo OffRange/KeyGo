@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.list_screen.presentation.mapper
 
+import de.davis.keygo.core.item.domain.model.CardExpiryStatus
 import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
@@ -228,5 +229,38 @@ class FilterMapperTest {
         )
 
         assertNull(sheet.loginSection)
+    }
+
+    @Test
+    fun `expiry chips follow the expiry status order, whatever order they arrive in`() {
+        val sheet = sheetFor(
+            FilterState(),
+            facets = defaultFacets.with(
+                FilterFacet.CardExpiryStatuses,
+                CardExpiryStatus.entries.reversed().toSet(),
+            ),
+        )
+
+        assertEquals(
+            CardExpiryStatus.entries,
+            sheet.creditCardSection?.expiryStatusChips.orEmpty().map { it.value },
+        )
+    }
+
+    @Test
+    fun `no credit card section while no card carries an expiry status`() {
+        assertNull(sheetFor(FilterState()).creditCardSection)
+    }
+
+    @Test
+    fun `no credit card section while the selected item types exclude credit cards`() {
+        val sheet = sheetFor(
+            FilterState().with(FilterFacet.ItemTypes, setOf(VaultItemType.Login)),
+            facets = defaultFacets
+                .with(FilterFacet.ItemTypes, setOf(VaultItemType.Login, VaultItemType.CreditCard))
+                .with(FilterFacet.CardExpiryStatuses, setOf(CardExpiryStatus.Expired)),
+        )
+
+        assertNull(sheet.creditCardSection)
     }
 }

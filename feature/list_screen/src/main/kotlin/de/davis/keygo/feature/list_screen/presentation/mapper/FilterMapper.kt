@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.list_screen.presentation.mapper
 
+import de.davis.keygo.core.item.domain.model.CardExpiryStatus
 import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
@@ -8,6 +9,7 @@ import de.davis.keygo.feature.list_screen.domain.model.FacetSelections
 import de.davis.keygo.feature.list_screen.domain.model.FilterFacet
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
 import de.davis.keygo.feature.list_screen.presentation.model.AvailableFilterOptions
+import de.davis.keygo.feature.list_screen.presentation.model.CreditCardSectionState
 import de.davis.keygo.feature.list_screen.presentation.model.FacetOptions
 import de.davis.keygo.feature.list_screen.presentation.model.FilterBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.ItemSectionState
@@ -34,15 +36,19 @@ internal fun FilterState.toBottomSheetState(
             chips(selections, retained)
         else emptyList()
 
+    val itemSection = ItemSectionState(
+        onlyPinned = onlyPinned,
+        itemTypeChips = if (showItemTypeChips) itemTypeChips else emptyList(),
+        tagChips = tagChips,
+    )
+
     val loginSection = LoginSectionState(
         passwordScoreChips = available.passwordScores.chipsInScope(),
         credentialChips = available.credentials.chipsInScope(),
     )
 
-    val itemSection = ItemSectionState(
-        onlyPinned = onlyPinned,
-        itemTypeChips = if (showItemTypeChips) itemTypeChips else emptyList(),
-        tagChips = tagChips,
+    val creditCardSection = CreditCardSectionState(
+        expiryStatusChips = available.expiryStatuses.chipsInScope(),
     )
 
     return FilterBottomSheetState(
@@ -53,6 +59,7 @@ internal fun FilterState.toBottomSheetState(
         loginSection = loginSection.takeIf {
             it.passwordScoreChips.isNotEmpty() || it.credentialChips.isNotEmpty()
         },
+        creditCardSection = creditCardSection.takeIf { it.expiryStatusChips.isNotEmpty() },
         isDefault = isDefault,
         isVisible = isVisible,
     )
@@ -67,6 +74,7 @@ internal fun FacetSelections.toAvailableFilterOptions(allTags: List<Tag>) = Avai
     ),
     passwordScores = options(FilterFacet.PasswordScores, PasswordScore.entries.reversed()),
     credentials = options(FilterFacet.Credentials, CredentialType.entries),
+    expiryStatuses = options(FilterFacet.CardExpiryStatuses, CardExpiryStatus.entries),
     pinned = options(FilterFacet.Pinned, listOf(true)),
 )
 

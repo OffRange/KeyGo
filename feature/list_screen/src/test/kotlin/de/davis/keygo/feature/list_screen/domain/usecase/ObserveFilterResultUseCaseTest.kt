@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.list_screen.domain.usecase
 
+import de.davis.keygo.core.item.FakeCreditCardRepository
 import de.davis.keygo.core.item.FakeItemRepository
 import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.domain.alias.ItemId
@@ -38,12 +39,14 @@ class ObserveFilterResultUseCaseTest {
 
     private val loginRepository = FakeLoginRepository()
     private val itemRepository = FakeItemRepository(loginRepository)
+    private val creditCardRepository = FakeCreditCardRepository()
     private val sortUseCase = SortUseCase()
 
     private val useCase = ObserveFilterResultUseCase(
         itemRepository = itemRepository,
         loginRepository = loginRepository,
         filterUseCase = FilterUseCase(sortUseCase),
+        observeCardExpiryStatuses = ObserveCardExpiryStatusesUseCase(creditCardRepository),
         availableFacetValues = AvailableFacetValuesUseCase(),
     )
 

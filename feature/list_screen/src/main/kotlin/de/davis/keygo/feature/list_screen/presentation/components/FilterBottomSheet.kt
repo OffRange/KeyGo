@@ -45,11 +45,13 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.item.domain.model.CardExpiryStatus
 import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
+import de.davis.keygo.core.item.presentation.label
 import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.core.ui.components.KeyGoSwitch
@@ -57,6 +59,7 @@ import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.list_screen.R
 import de.davis.keygo.feature.list_screen.domain.model.FilterFacet
 import de.davis.keygo.feature.list_screen.domain.model.SortDirection
+import de.davis.keygo.feature.list_screen.presentation.model.CreditCardSectionState
 import de.davis.keygo.feature.list_screen.presentation.model.FilterAction
 import de.davis.keygo.feature.list_screen.presentation.model.FilterBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.FilterChipState
@@ -138,6 +141,16 @@ private fun FilterBottomSheetContent(
             item(key = "logins") {
                 LoginSection(
                     state = state.loginSection,
+                    onAction = onAction,
+                    modifier = Modifier.animateItem(),
+                )
+            }
+        }
+
+        if (state.creditCardSection != null) {
+            item(key = "credit_cards") {
+                CreditCardSection(
+                    state = state.creditCardSection,
                     onAction = onAction,
                     modifier = Modifier.animateItem(),
                 )
@@ -275,8 +288,8 @@ private fun LoginSection(
         verticalArrangement = DefaultHorizontalArrangement,
     ) {
         SectionHeader(
-            icon = Icons.Default.Password,
-            title = stringResource(CoreItemR.string.login),
+            icon = VaultItemType.Login.presentation.second,
+            title = VaultItemType.Login.presentation.first,
         )
 
         if (state.passwordScoreChips.isNotEmpty()) {
@@ -308,6 +321,38 @@ private fun LoginSection(
                     leadingIcon = {
                         Icon(imageVector = it.icon(), contentDescription = null)
                     },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreditCardSection(
+    state: CreditCardSectionState,
+    onAction: (FilterAction) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = DefaultHorizontalArrangement,
+    ) {
+        SectionHeader(
+            icon = VaultItemType.CreditCard.presentation.second,
+            title = VaultItemType.CreditCard.presentation.first,
+        )
+
+        if (state.expiryStatusChips.isNotEmpty()) {
+            KeyGoCard(
+                title = {
+                    Text(text = stringResource(R.string.expiry_status))
+                },
+            ) {
+                FacetChips(
+                    facet = FilterFacet.CardExpiryStatuses,
+                    chips = state.expiryStatusChips,
+                    onAction = onAction,
+                    label = { Text(text = it.label()) },
                 )
             }
         }
