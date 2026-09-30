@@ -133,6 +133,7 @@ class NaturalOrderComparatorTest {
         "", "a", "A", "b", "item", "item1", "item2", "item10", "Item10",
         "10", "2", "v1.2.0", "v1.10.0", "Äpfel", "apfel", "x9y", "x10y",
         "x09y", "x009y", "item02", "0", "000",
+        "x٣", "٣", "x5", "٣x",
     )
 
     @Test
