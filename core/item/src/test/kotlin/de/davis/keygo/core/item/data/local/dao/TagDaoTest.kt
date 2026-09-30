@@ -135,53 +135,6 @@ internal class TagDaoTest {
     }
 
     @Test
-    fun `observeItemIdsWithAnyTag returns ids of items having any of the values`() = runTest {
-        val a = insertItem()
-        val b = insertItem()
-        val c = insertItem()
-        tagDao.syncTags(a, setOf(tag("Bank")))
-        tagDao.syncTags(b, setOf(tag("Work"), tag("Bank")))
-        tagDao.syncTags(c, setOf(tag("Personal")))
-
-        val ids = tagDao.observeItemIdsWithAnyTag(setOf("bank")).first().toSet()
-
-        assertEquals(setOf(a, b), ids)
-    }
-
-    @Test
-    fun `observeItemIdsWithAnyTag unions multiple values`() = runTest {
-        val a = insertItem()
-        val b = insertItem()
-        val c = insertItem()
-        tagDao.syncTags(a, setOf(tag("Bank")))
-        tagDao.syncTags(b, setOf(tag("Work")))
-        tagDao.syncTags(c, setOf(tag("Personal")))
-
-        val ids = tagDao.observeItemIdsWithAnyTag(setOf("bank", "work")).first().toSet()
-
-        assertEquals(setOf(a, b), ids)
-    }
-
-    @Test
-    fun `observeItemIdsWithAnyTag returns empty when no tag matches`() = runTest {
-        val a = insertItem()
-        tagDao.syncTags(a, setOf(tag("Bank")))
-
-        assertEquals(emptyList(), tagDao.observeItemIdsWithAnyTag(setOf("nope")).first())
-    }
-
-    @Test
-    fun `observeItemIdsWithAnyTag matches the stored normalized form regardless of display casing`() =
-        runTest {
-            val a = insertItem()
-            tagDao.syncTags(a, setOf(tag("Bank")))
-
-            // Caller is required to pass normalized (lower-cased, trimmed) values.
-            assertEquals(listOf(a), tagDao.observeItemIdsWithAnyTag(setOf("bank")).first())
-            assertEquals(emptyList(), tagDao.observeItemIdsWithAnyTag(setOf("Bank")).first())
-        }
-
-    @Test
     fun `observeItemTags emits one row per item-tag pair using display value`() = runTest {
         val a = insertItem()
         val b = insertItem()

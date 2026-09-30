@@ -2,6 +2,7 @@ package de.davis.keygo.core.item.domain.repository
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
+import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasswordScore
@@ -44,4 +45,6 @@ interface LoginRepository {
     fun observeLogins(): Flow<List<Login>>
 
     fun observePasswordScores(): Flow<Map<ItemId, PasswordScore>>
+
+    fun observeCredentialTypes(): Flow<Map<ItemId, Set<CredentialType>>>
 }

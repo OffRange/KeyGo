@@ -10,6 +10,7 @@ import de.davis.keygo.core.item.domain.model.lite.LiteItem
 @Stable
 internal data class ListItemState(
     val items: List<LiteItem> = emptyList(),
+    val isEmptyBecauseOfFilter: Boolean = false,
     val cardExpiryStatuses: Map<ItemId, CardExpiryStatus> = emptyMap(),
     val searchState: SearchState = SearchState(),
     val hasSearchQuery: Boolean = false,

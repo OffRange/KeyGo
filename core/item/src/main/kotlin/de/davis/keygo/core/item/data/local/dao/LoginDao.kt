@@ -6,6 +6,7 @@ import androidx.room3.Transaction
 import androidx.room3.Upsert
 import de.davis.keygo.core.item.data.local.entity.LoginEntity
 import de.davis.keygo.core.item.data.local.pojo.LightweightLogin
+import de.davis.keygo.core.item.data.local.pojo.LoginCredentialsProjection
 import de.davis.keygo.core.item.data.local.pojo.LoginProjection
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
@@ -20,6 +21,17 @@ internal interface LoginDao {
     @Transaction
     @Query("SELECT * FROM login")
     fun observeAll(): Flow<List<LoginProjection>>
+
+    @Query(
+        """
+        SELECT l.id,
+               EXISTS (SELECT 1 FROM password p WHERE p.login_id = l.id) AS has_password,
+               EXISTS (SELECT 1 FROM passkey pk WHERE pk.login_id = l.id) AS has_passkey,
+               EXISTS (SELECT 1 FROM totp t WHERE t.login_id = l.id) AS has_totp
+        FROM login l
+        """
+    )
+    fun observeCredentials(): Flow<List<LoginCredentialsProjection>>
 
     @Transaction
     @Query("SELECT * FROM login WHERE id = :id")

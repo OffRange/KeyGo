@@ -120,6 +120,8 @@ fun ItemListScreen(
         onSubmitQuery = viewModel::onSubmitQuery,
         onClearQuery = viewModel::onClearQuery,
         onFilterAction = viewModel::onFilterAction,
+        onShowFilterSheet = viewModel::onShowFilterSheet,
+        onDismissFilterSheet = viewModel::onDismissFilterSheet,
         onItemClick = viewModel::onItemClick,
         onItemLongClick = viewModel::onItemLongClick,
         onClearSelection = viewModel::onClearSelection,

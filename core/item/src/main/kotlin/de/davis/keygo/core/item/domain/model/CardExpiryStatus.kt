@@ -3,9 +3,9 @@ package de.davis.keygo.core.item.domain.model
 import java.time.YearMonth
 
 enum class CardExpiryStatus {
+    Expired,
     ExpiresThisMonth,
-    ExpiresNextMonth,
-    Expired;
+    ExpiresNextMonth;
 
     companion object {
         fun of(expiration: YearMonth, today: YearMonth): CardExpiryStatus? = when {

@@ -9,6 +9,7 @@ import de.davis.keygo.core.item.data.local.dao.TagDao
 import de.davis.keygo.core.item.data.local.dao.TotpDao
 import de.davis.keygo.core.item.data.local.pojo.LightweightLogin
 import de.davis.keygo.core.item.data.local.pojo.LoginProjection
+import de.davis.keygo.core.item.data.mapper.toCredentialTypes
 import de.davis.keygo.core.item.data.mapper.toData
 import de.davis.keygo.core.item.data.mapper.toDomain
 import de.davis.keygo.core.item.data.mapper.toDomainInfoEntities
@@ -17,6 +18,7 @@ import de.davis.keygo.core.item.data.mapper.toPasswordEntity
 import de.davis.keygo.core.item.data.mapper.toTagEntities
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
+import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.Item
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.Passkey
@@ -105,5 +107,10 @@ internal class LoginRepositoryImpl(
     override fun observePasswordScores(): Flow<Map<ItemId, PasswordScore>> =
         passwordDao.observeScores().map { entries ->
             entries.associate { it.id to it.passwordScore }
+        }
+
+    override fun observeCredentialTypes(): Flow<Map<ItemId, Set<CredentialType>>> =
+        loginDao.observeCredentials().map { rows ->
+            rows.associate { it.id to it.toCredentialTypes() }
         }
 }

@@ -2,6 +2,7 @@ package de.davis.keygo.core.item
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
+import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasswordScore
@@ -114,5 +115,16 @@ class FakeLoginRepository : LoginRepository {
             logins.values
                 .mapNotNull { login -> login.passwordCredential?.let { login.id to it.score } }
                 .toMap()
+        }
+
+    override fun observeCredentialTypes(): Flow<Map<ItemId, Set<CredentialType>>> =
+        store.map { logins ->
+            logins.values.associate { login ->
+                login.id to buildSet {
+                    if (login.passwordCredential != null) add(CredentialType.Password)
+                    if (login.passkeys.isNotEmpty()) add(CredentialType.Passkey)
+                    if (login.totp != null) add(CredentialType.Totp)
+                }
+            }
         }
 }
