@@ -8,7 +8,6 @@ import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davis.keygo.feature.item.core.domain.model.set
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
 import de.davis.keygo.feature.item.view.domain.WebsiteHandler
-import de.davis.keygo.feature.password_health.domain.model.FindingSeverity
 import de.davis.keygo.feature.password_health.domain.model.GapReason
 import de.davis.keygo.feature.password_health.domain.model.PasswordFixError
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReport
@@ -18,11 +17,11 @@ import de.davis.keygo.feature.password_health.domain.repository.HealthSettingsRe
 import de.davis.keygo.feature.password_health.domain.usecase.PasswordHealthReportUseCase
 import de.davis.keygo.feature.password_health.domain.usecase.SetHealthNotificationsUseCase
 import de.davis.keygo.feature.password_health.presentation.model.FixFlow
-import de.davis.keygo.feature.password_health.presentation.model.HealthSection
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthEvent
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiEvent
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiState
 import de.davis.keygo.feature.password_health.presentation.model.RunPhase
+import de.davis.keygo.feature.password_health.presentation.model.toSections
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -224,14 +223,3 @@ private fun PasswordHealthUiState.withError(error: PasswordHealthReportError) = 
     unreadable = emptySet(),
     optimisticallyFixed = emptySet(),
 )
-
-private fun PasswordHealthReport.toSections(): List<HealthSection> {
-    val groupsBySeverity = groups.groupBy { it.maxSeverity }
-    val standaloneBySeverity = standalone.groupBy { requireNotNull(it.maxSeverity) }
-
-    return FindingSeverity.entries.sortedDescending().mapNotNull { severity ->
-        val g = groupsBySeverity[severity].orEmpty().sortedByDescending { it.members.size }
-        val s = standaloneBySeverity[severity].orEmpty().sortedByDescending { it.issues.size }
-        if (g.isEmpty() && s.isEmpty()) null else HealthSection(severity, g, s)
-    }
-}

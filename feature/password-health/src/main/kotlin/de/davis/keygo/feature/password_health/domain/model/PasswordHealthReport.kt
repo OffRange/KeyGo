@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.password_health.domain.model
 
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.util.domain.comparator.NaturalOrderComparator
 
 data class ItemHealth(
     val itemId: ItemId,
@@ -38,7 +39,10 @@ data class RelatedGroup(
             }.thenBy { (type, _) -> type.severity },
         )
         .key
-    val orderedMembers: List<ItemHealth> = members.sortedByDescending { it.maxSeverity }
+    val orderedMembers: List<ItemHealth> = members.sortedWith(
+        compareByDescending<ItemHealth> { it.maxSeverity }
+            .thenBy(NaturalOrderComparator) { it.title },
+    )
 }
 
 data class PasswordHealthReport(

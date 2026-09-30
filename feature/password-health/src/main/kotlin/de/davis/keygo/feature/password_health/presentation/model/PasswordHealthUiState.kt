@@ -14,12 +14,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import de.davis.keygo.core.item.domain.alias.ItemId
+import de.davis.keygo.core.util.domain.comparator.NaturalOrderComparator
 import de.davis.keygo.feature.password_health.R
 import de.davis.keygo.feature.password_health.domain.model.CheckGap
 import de.davis.keygo.feature.password_health.domain.model.CheckKind
 import de.davis.keygo.feature.password_health.domain.model.FindingSeverity
 import de.davis.keygo.feature.password_health.domain.model.ItemHealth
 import de.davis.keygo.feature.password_health.domain.model.ItemIssue
+import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReport
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReportError
 import de.davis.keygo.feature.password_health.domain.model.RelatedGroup
 import de.davis.keygo.feature.password_health.domain.model.RelationType
@@ -99,6 +101,23 @@ internal data class StandaloneCluster(
     val items: List<ItemHealth>,
 )
 
+internal fun PasswordHealthReport.toSections(): List<HealthSection> {
+    val groupsBySeverity = groups.groupBy { it.maxSeverity }
+    val standaloneBySeverity = standalone.groupBy { requireNotNull(it.maxSeverity) }
+
+    return FindingSeverity.entries.sortedDescending().mapNotNull { severity ->
+        val g = groupsBySeverity[severity].orEmpty().sortedWith(GroupOrder)
+        val s = standaloneBySeverity[severity].orEmpty().sortedWith(StandaloneOrder)
+        if (g.isEmpty() && s.isEmpty()) null else HealthSection(severity, g, s)
+    }
+}
+
+private val GroupOrder = compareByDescending<RelatedGroup> { it.members.size }
+    .thenBy(NaturalOrderComparator) { it.orderedMembers.first().title }
+
+private val StandaloneOrder = compareByDescending<ItemHealth> { it.maxSeverity }
+    .thenBy(NaturalOrderComparator) { it.title }
+
 internal fun List<HealthSection>.withoutFixed(fixed: Set<ItemId>): List<HealthSection> {
     if (fixed.isEmpty()) return this
 
@@ -113,10 +132,10 @@ internal fun List<HealthSection>.withoutFixed(fixed: Set<ItemId>): List<HealthSe
         }
 
         val standalone = (section.standalone.filterNot { it.itemId in fixed } + unrelated)
-            .sortedByDescending { it.maxSeverity }
+            .sortedWith(StandaloneOrder)
 
         if (groups.isEmpty() && standalone.isEmpty()) null
-        else section.copy(groups = groups, standalone = standalone)
+        else section.copy(groups = groups.sortedWith(GroupOrder), standalone = standalone)
     }
 }
 

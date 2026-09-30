@@ -9,6 +9,7 @@ import de.davis.keygo.feature.password_health.domain.model.GapReason
 import de.davis.keygo.feature.password_health.domain.model.HealthFinding
 import de.davis.keygo.feature.password_health.domain.model.ItemHealth
 import de.davis.keygo.feature.password_health.domain.model.ItemIssue
+import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReport
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReportError
 import de.davis.keygo.feature.password_health.domain.model.RelatedGroup
 import de.davis.keygo.feature.password_health.domain.model.RelationType
@@ -221,6 +222,85 @@ class PasswordHealthUiStateTest {
     }
 
     @Test
+    fun sectionsRunFromCriticalToMedium() {
+        val report = report(
+            groups = listOf(
+                group(RelationType.Similar, item(0), item(1)),
+                group(RelationType.Reused, item(4), item(5)),
+            ),
+            standalone = listOf(item(2, weak), item(3, breached)),
+        )
+
+        assertEquals(
+            listOf(FindingSeverity.Critical, FindingSeverity.High, FindingSeverity.Medium),
+            report.toSections().map { it.severity },
+        )
+    }
+
+    @Test
+    fun largerGroupsComeFirst() {
+        val pair = group(RelationType.Reused, item(0, title = "A"), item(1, title = "B"))
+        val trio = group(RelationType.Reused, item(2, title = "X"), item(3), item(4))
+
+        val section = report(groups = listOf(pair, trio)).toSections().single()
+
+        assertEquals(listOf(trio.id, pair.id), section.groups.map { it.id })
+    }
+
+    @Test
+    fun groupsOfTheSameSizeFollowTheNaturalOrderOfTheirFirstMember() {
+        val ten = group(RelationType.Reused, item(0, title = "Server 10"), item(1, title = "Zulu"))
+        val two = group(RelationType.Reused, item(2, title = "Server 2"), item(3, title = "Zulu"))
+
+        val section = report(groups = listOf(ten, two)).toSections().single()
+
+        assertEquals(listOf(two.id, ten.id), section.groups.map { it.id })
+    }
+
+    @Test
+    fun groupMembersAreOrderedBySeverityThenNaturally() {
+        val group = group(
+            RelationType.Reused,
+            item(0, title = "Item 10"),
+            item(1, breached, title = "Zulu"),
+            item(2, title = "item 2"),
+        )
+
+        assertEquals(listOf(id(1), id(2), id(0)), group.orderedMembers.map { it.itemId })
+    }
+
+    @Test
+    fun standaloneItemsAreOrderedNaturallyWhateverTheirIssueCount() {
+        val section = report(
+            standalone = listOf(
+                item(0, breached, title = "Mail 10"),
+                item(1, breached, title = "Mail 2"),
+                item(2, breached, weak, title = "Zulu"),
+            ),
+        ).toSections().single()
+
+        assertEquals(listOf(id(1), id(0), id(2)), section.standalone.map { it.itemId })
+    }
+
+    @Test
+    fun groupsReorderWhenAFixShrinksThem() {
+        val trio = group(
+            RelationType.Reused,
+            item(0, title = "Server 10"),
+            item(1, title = "Zulu 1"),
+            item(2, title = "Zulu 2"),
+        )
+        val pair =
+            group(RelationType.Reused, item(3, title = "Server 2"), item(4, title = "Zulu 3"))
+        val sections = report(groups = listOf(trio, pair)).toSections()
+        assertEquals(listOf(trio.id, pair.id), sections.single().groups.map { it.id })
+
+        val remaining = sections.withoutFixed(setOf(id(1))).single()
+
+        assertEquals(listOf(pair.id, trio.id), remaining.groups.map { it.id })
+    }
+
+    @Test
     fun summaryCountsEveryFlaggedItemOnce() {
         val sections = listOf(
             section(
@@ -276,9 +356,9 @@ class PasswordHealthUiStateTest {
 
     private fun id(n: Int): ItemId = UUID(0L, n.toLong())
 
-    private fun item(n: Int, vararg issues: ItemIssue) = ItemHealth(
+    private fun item(n: Int, vararg issues: ItemIssue, title: String = "item-$n") = ItemHealth(
         itemId = id(n),
-        title = "item-$n",
+        title = title,
         username = null,
         issues = issues.toList(),
     )
@@ -293,6 +373,11 @@ class PasswordHealthUiStateTest {
             )
         ),
     )
+
+    private fun report(
+        groups: List<RelatedGroup> = emptyList(),
+        standalone: List<ItemHealth> = emptyList(),
+    ) = PasswordHealthReport(groups, standalone, totalPasswordsScanned = 10)
 
     private fun section(
         severity: FindingSeverity,
