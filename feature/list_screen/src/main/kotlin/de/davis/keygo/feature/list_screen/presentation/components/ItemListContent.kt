@@ -174,28 +174,35 @@ internal fun ItemListContent(
             }
         }
     ) { innerPadding ->
+        val body = when {
+            uiState.items.isNotEmpty() -> ListBody.Items
+            uiState.isEmptyBecauseOfFilter -> ListBody.NoFilterMatches
+            !uiState.hasSearchQuery && notFoundStrategy is NoItemStrategy.ShowCreateNewItemCard ->
+                ListBody.CreateCard
+
+            else -> ListBody.NotFound
+        }
+
         AnimatedContent(
-            targetState = uiState.items.isEmpty(),
+            targetState = body,
             modifier = Modifier
                 .padding(innerPadding)
                 .padding(top = 4.dp)
-        ) { isEmpty ->
-            when (isEmpty) {
-                true -> {
+        ) { target ->
+            when (target) {
+                ListBody.NoFilterMatches, ListBody.CreateCard, ListBody.NotFound -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(16.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        val showCreateCard =
-                            !uiState.hasSearchQuery && notFoundStrategy is NoItemStrategy.ShowCreateNewItemCard
-                        when {
-                            uiState.isEmptyBecauseOfFilter -> NoFilterMatches(
+                        when (target) {
+                            ListBody.NoFilterMatches -> NoFilterMatches(
                                 onClearFilters = { onFilterAction(FilterAction.ClearFilters) },
                             )
 
-                            showCreateCard -> {
+                            ListBody.CreateCard -> {
                                 val createTypes = remember(restrictedItemType) {
                                     restrictedItemType?.let { listOf(it) }
                                         ?: VaultItemType.entries
@@ -224,7 +231,7 @@ internal fun ItemListContent(
                     }
                 }
 
-                false -> {
+                ListBody.Items -> {
                     val expiryLabels = CardExpiryStatus.entries.associateWith { it.label() }
                     val items = remember(
                         uiState.items,
@@ -346,6 +353,8 @@ private fun ItemListContentPreview() {
         }
     }
 }
+
+private enum class ListBody { Items, NoFilterMatches, CreateCard, NotFound }
 
 @Composable
 private fun NoFilterMatches(onClearFilters: () -> Unit) {
