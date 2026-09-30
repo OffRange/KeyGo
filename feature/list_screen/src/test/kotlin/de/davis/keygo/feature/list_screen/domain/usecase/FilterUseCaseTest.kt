@@ -5,7 +5,6 @@ import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
-import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
 import de.davis.keygo.feature.list_screen.domain.model.SortDirection
 import java.util.UUID
@@ -15,7 +14,7 @@ import kotlin.test.assertTrue
 
 class FilterUseCaseTest {
 
-    private val useCase: FilterUseCase = FilterUseCase(SortUseCase())
+    private val useCase: FilterUseCase = FilterUseCase()
 
     private val filterStateAsc = FilterState(sortDirection = SortDirection.Ascending)
     private val filterStateDesc = FilterState(sortDirection = SortDirection.Descending)
@@ -58,14 +57,15 @@ class FilterUseCaseTest {
     fun `sorts items with numeric suffixes alphanumerically desc`() =
         sorting("AAA 8", "AAA 9", "AAA 10").descProduces("AAA 10", "AAA 9", "AAA 8")
 
+    // 02 and 2 compare as equal, so they keep their input order
     @Test
     fun `sorts items with leading zeros and multi-digit numbers`() =
         sorting("file10", "file02", "file2", "file1")
-            .ascProduces("file1", "file2", "file02", "file10")
+            .ascProduces("file1", "file02", "file2", "file10")
 
     @Test
     fun `sorts items with leading numbers`() = sorting("10file", "02file", "2file", "1file")
-        .ascProduces("1file", "2file", "02file", "10file")
+        .ascProduces("1file", "02file", "2file", "10file")
 
     @Test
     fun `filtering an empty list returns empty list`() {

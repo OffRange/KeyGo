@@ -11,7 +11,7 @@ import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
-import de.davis.keygo.core.util.domain.usecase.SortUseCase
+import de.davis.keygo.core.util.domain.comparator.sortedNaturallyBy
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
@@ -61,7 +61,6 @@ internal class ViewCreditCardViewModel(
     private val updateCreditCard: CreateNewOrUpdateCreditCardUseCase,
     private val observeCreditCardWithCryptoScope: ItemWithCryptoScopeUseCase,
     private val observeAllTags: ObserveAllTagsSortedUseCase,
-    private val sort: SortUseCase,
     private val cardFormatter: CardFormatter,
 ) : ViewModel() {
 
@@ -101,7 +100,7 @@ internal class ViewCreditCardViewModel(
                     cardNumber = number,
                     cvv = cvv,
                     expirationDate = card.expirationDate?.format(EXPIRATION_FORMATTER).orEmpty(),
-                    tags = sort(card.tags) { it.display }.toSet(),
+                    tags = card.tags.sortedNaturallyBy { it.display }.toSet(),
                     note = card.note.orEmpty(),
                     pinned = card.pinned,
                 )

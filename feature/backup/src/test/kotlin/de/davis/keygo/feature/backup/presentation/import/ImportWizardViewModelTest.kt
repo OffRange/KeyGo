@@ -6,7 +6,6 @@ import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultContext
 import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.domain.Session
-import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.backup.FakeBackupFileStore
 import de.davis.keygo.feature.backup.RestorerTestEnv
 import de.davis.keygo.feature.backup.backupVault
@@ -104,7 +103,7 @@ class ImportWizardViewModelTest {
         resolver,
         ImportBackupUseCase(fileStore, json, csv, env.restorer, session),
         AnalyzeCsvUseCase(fileStore, csv),
-        ObserveVaultsAndSelectionUseCase(env.vaultRepo, contextRepo, SortUseCase()),
+        ObserveVaultsAndSelectionUseCase(env.vaultRepo, contextRepo),
     ).also { it.state.launchIn(backgroundScope) }
 
     private fun ImportWizardViewModel.selectJson() {
@@ -746,29 +745,33 @@ class ImportWizardViewModelTest {
             viewModel.seedFile(BackupDestinationUri("content://doc/keygo.json"))
             val finalState = viewModel.state.first { it.progress is ImportProgress.Succeeded }
 
-            assertEquals(1, assertIs<ImportProgress.Succeeded>(finalState.progress).summary.imported)
+            assertEquals(
+                1,
+                assertIs<ImportProgress.Succeeded>(finalState.progress).summary.imported
+            )
             assertEquals(emptyList(), finalState.columns)
         }
 
     @Test
-    fun `seedFile resolves the destination without a concurrent state write re-running it`() = runTest {
-        val gate = CompletableDeferred<Unit>()
-        val resolver = FakeBackupDestinationResolver(result = textDestination(), gate = gate)
-        val viewModel = viewModel(resolver)
+    fun `seedFile resolves the destination without a concurrent state write re-running it`() =
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            val resolver = FakeBackupDestinationResolver(result = textDestination(), gate = gate)
+            val viewModel = viewModel(resolver)
 
-        viewModel.seedFile(BackupDestinationUri("content://doc/notes.txt"))
-        // seedFile's coroutine has called resolve() and is now parked on the gate, mid-CAS-lambda.
-        runCurrent()
+            viewModel.seedFile(BackupDestinationUri("content://doc/notes.txt"))
+            // seedFile's coroutine has called resolve() and is now parked on the gate, mid-CAS-lambda.
+            runCurrent()
 
-        // A state write that lands while that lambda is still suspended: this is the same window
-        // the passphraseState.clearText() collector writes into in the real flow. If resolve() were
-        // still called from inside _state.update, the CAS retry this forces would call it again.
-        env.vaultRepo.seed(testVault(name = "Personal"))
-        runCurrent()
+            // A state write that lands while that lambda is still suspended: this is the same window
+            // the passphraseState.clearText() collector writes into in the real flow. If resolve() were
+            // still called from inside _state.update, the CAS retry this forces would call it again.
+            env.vaultRepo.seed(testVault(name = "Personal"))
+            runCurrent()
 
-        gate.complete(Unit)
-        viewModel.state.first { it.backupDestination != null }
+            gate.complete(Unit)
+            viewModel.state.first { it.backupDestination != null }
 
-        assertEquals(listOf(BackupDestinationUri("content://doc/notes.txt")), resolver.calls)
-    }
+            assertEquals(listOf(BackupDestinationUri("content://doc/notes.txt")), resolver.calls)
+        }
 }

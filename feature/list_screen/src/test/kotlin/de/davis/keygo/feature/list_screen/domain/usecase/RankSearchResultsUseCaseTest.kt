@@ -2,14 +2,13 @@ package de.davis.keygo.feature.list_screen.domain.usecase
 
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
-import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class RankSearchResultsUseCaseTest {
 
-    private val useCase = RankSearchResultsUseCase(SortUseCase())
+    private val useCase = RankSearchResultsUseCase()
 
     private fun result(
         name: String,
@@ -112,5 +111,17 @@ class RankSearchResultsUseCaseTest {
         )
 
         assertEquals(listOf("alpha", "Bravo", "Charlie"), ordered)
+    }
+
+    @Test
+    fun `a whitespace-only query falls back to plain alphabetical order`() {
+        val ordered = rank(
+            "  ",
+            result("Charlie"),
+            result("Zulu name", matchedName = true),
+            result("Bravo"),
+        )
+
+        assertEquals(listOf("Bravo", "Charlie", "Zulu name"), ordered)
     }
 }

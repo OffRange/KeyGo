@@ -7,7 +7,6 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultContext
-import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -24,7 +23,6 @@ class ObserveVaultsAndSelectionUseCaseTest {
     private val useCase = ObserveVaultsAndSelectionUseCase(
         vaultRepository = vaultRepository,
         vaultContextRepository = vaultContextRepository,
-        sortUseCase = SortUseCase(),
     )
 
     @Test

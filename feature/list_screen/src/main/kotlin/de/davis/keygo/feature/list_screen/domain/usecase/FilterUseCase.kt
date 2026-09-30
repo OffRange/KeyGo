@@ -4,15 +4,13 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
-import de.davis.keygo.core.util.domain.usecase.SortUseCase
+import de.davis.keygo.core.util.domain.comparator.NaturalOrderComparator
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
 import de.davis.keygo.feature.list_screen.domain.model.SortDirection
 import org.koin.core.annotation.Single
 
 @Single
-class FilterUseCase(
-    private val sortUseCase: SortUseCase,
-) {
+class FilterUseCase {
 
     operator fun <I : LiteItem> invoke(
         filterState: FilterState,
@@ -27,10 +25,17 @@ class FilterUseCase(
                     matchesTags(tagMatchingIds, item)
         }
 
-        val (pinned, unpinned) = filtered.partition { it.pinned }
-        return sort(filterState.sortDirection, pinned) +
-                sort(filterState.sortDirection, unpinned)
+        return filtered.sortedWith(
+            compareByDescending<LiteItem> { it.pinned }
+                .thenBy(filterState.sortDirection.nameOrder) { it.name },
+        )
     }
+
+    private val SortDirection.nameOrder: Comparator<String>
+        get() = when (this) {
+            SortDirection.Ascending -> NaturalOrderComparator
+            SortDirection.Descending -> NaturalOrderComparator.reversed()
+        }
 
     private fun matchesPinnedState(filterState: FilterState, item: LiteItem): Boolean =
         !filterState.onlyPinned || item.pinned
@@ -52,7 +57,4 @@ class FilterUseCase(
         val score = passwordScores[item.id] ?: return false
         return score in filterState.selectedScores
     }
-
-    private fun <I : LiteItem> sort(direction: SortDirection, items: List<I>): List<I> =
-        sortUseCase(items, ascending = direction == SortDirection.Ascending) { it.name }
 }
