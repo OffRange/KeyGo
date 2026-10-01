@@ -23,8 +23,9 @@ import de.davis.keygo.feature.item.view.login.model.ObfuscatedString
 import de.davis.keygo.rust.FakeCardFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.job
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -141,7 +142,7 @@ class ViewCreditCardViewModelTest {
         try {
             return vm.state.first { it.name.isNotEmpty() }
         } finally {
-            vm.viewModelScope.cancel()
+            vm.viewModelScope.coroutineContext.job.cancelAndJoin()
         }
     }
 
@@ -151,7 +152,7 @@ class ViewCreditCardViewModelTest {
             val state = vm.state.first { it.cardNumber != null }
             return state.cardNumber!!
         } finally {
-            vm.viewModelScope.cancel()
+            vm.viewModelScope.coroutineContext.job.cancelAndJoin()
         }
     }
 
