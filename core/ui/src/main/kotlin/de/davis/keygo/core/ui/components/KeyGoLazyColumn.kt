@@ -82,7 +82,7 @@ fun <ID : Any> KeyGoColumn(
     contentPadding: PaddingValues = PaddingValues(horizontal = 8.dp),
     openedItemId: ID? = null,
     selectedItemIds: Set<ID> = emptySet(),
-    listState: LazyListState = rememberLazyListState(),
+    state: LazyListState = rememberLazyListState(),
 ) {
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
@@ -99,14 +99,14 @@ fun <ID : Any> KeyGoColumn(
 
     // The first item reaching below the anchor owns the sticky header. With no status bar to
     // avoid this is exactly the first visible item.
-    val anchor by remember(listState, stickyTop) {
+    val anchor by remember(state, stickyTop) {
         derivedStateOf {
-            val info = listState.layoutInfo.visibleItemsInfo.firstOrNull {
+            val info = state.layoutInfo.visibleItemsInfo.firstOrNull {
                 it.offset + it.size > stickyTop
             }
 
             StickyAnchor(
-                index = info?.index ?: listState.firstVisibleItemIndex,
+                index = info?.index ?: state.firstVisibleItemIndex,
                 top = info?.offset ?: 0,
             )
         }
@@ -124,7 +124,7 @@ fun <ID : Any> KeyGoColumn(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            state = listState,
+            state = state,
             contentPadding = contentPadding,
             verticalArrangement = Arrangement.spacedBy(ItemVerticalPadding),
         ) {

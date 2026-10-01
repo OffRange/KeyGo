@@ -145,6 +145,7 @@ fun KeyGoNavigationWrapper(
         layoutType == NavigationSuiteType.NavigationBar && !touchExplorationEnabled
 
     val collapseState = remember { NavigationBarCollapseState() }
+    LaunchedEffect(selectedRoute, hidesOnScroll) { collapseState.reset() }
 
     val showNavigation = showChrome && !(hidesOnScroll && collapseState.isCollapsed)
     LaunchedEffect(showNavigation) {
