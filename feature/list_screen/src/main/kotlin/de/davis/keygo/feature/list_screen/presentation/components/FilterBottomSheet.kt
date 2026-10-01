@@ -14,7 +14,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Password
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,21 +45,26 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.item.domain.model.CardExpiryStatus
+import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
+import de.davis.keygo.core.item.presentation.label
 import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.core.ui.components.KeyGoSwitch
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.list_screen.R
+import de.davis.keygo.feature.list_screen.domain.model.FilterFacet
 import de.davis.keygo.feature.list_screen.domain.model.SortDirection
+import de.davis.keygo.feature.list_screen.presentation.model.CreditCardSectionState
 import de.davis.keygo.feature.list_screen.presentation.model.FilterAction
 import de.davis.keygo.feature.list_screen.presentation.model.FilterBottomSheetState
 import de.davis.keygo.feature.list_screen.presentation.model.FilterChipState
 import de.davis.keygo.feature.list_screen.presentation.model.ItemSectionState
-import de.davis.keygo.feature.list_screen.presentation.model.PasswordSectionState
+import de.davis.keygo.feature.list_screen.presentation.model.LoginSectionState
 import de.davis.keygo.core.item.R as CoreItemR
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -130,11 +137,21 @@ private fun FilterBottomSheetContent(
             }
         }
 
-        if (state.passwordSection != null) {
-            item(key = "passwords") {
-                PasswordSection(
-                    state = state.passwordSection,
-                    onScoreToggled = { onAction(FilterAction.ScoreToggled(it)) },
+        if (state.loginSection != null) {
+            item(key = "logins") {
+                LoginSection(
+                    state = state.loginSection,
+                    onAction = onAction,
+                    modifier = Modifier.animateItem(),
+                )
+            }
+        }
+
+        if (state.creditCardSection != null) {
+            item(key = "credit_cards") {
+                CreditCardSection(
+                    state = state.creditCardSection,
+                    onAction = onAction,
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -158,11 +175,13 @@ private fun ItemSection(
             title = stringResource(R.string.item),
         )
 
-        if (state.showPinnedSwitch) {
+        if (state.onlyPinned != null) {
             OutlinedCard {
                 KeyGoSwitch(
-                    checked = state.onlyPinnedChecked,
-                    onCheckedChange = { onAction(FilterAction.ShowOnlyPinnedToggled) },
+                    checked = state.onlyPinned.selected,
+                    onCheckedChange = {
+                        onAction(FilterAction.Toggled(FilterFacet.Pinned, state.onlyPinned.value))
+                    },
                     shapes = ListItemDefaults.shapes(
                         shape = CardDefaults.outlinedShape,
                         pressedShape = CardDefaults.outlinedShape,
@@ -184,23 +203,15 @@ private fun ItemSection(
                 },
                 properties = KeyGoCardProperties.outlined(),
             ) {
-                FlowRow(horizontalArrangement = DefaultHorizontalArrangement) {
-                    state.itemTypeChips.forEach { chip ->
-                        FilterChip(
-                            selected = chip.selected,
-                            onClick = { onAction(FilterAction.ItemTypeToggled(chip.value)) },
-                            label = {
-                                Text(text = chip.value.presentation.first)
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = chip.value.presentation.second,
-                                    contentDescription = null,
-                                )
-                            },
-                        )
-                    }
-                }
+                FacetChips(
+                    facet = FilterFacet.ItemTypes,
+                    chips = state.itemTypeChips,
+                    onAction = onAction,
+                    label = { Text(text = it.presentation.first) },
+                    leadingIcon = {
+                        Icon(imageVector = it.presentation.second, contentDescription = null)
+                    },
+                )
             }
         }
 
@@ -211,17 +222,12 @@ private fun ItemSection(
                 },
                 properties = KeyGoCardProperties.outlined(),
             ) {
-                FlowRow(horizontalArrangement = DefaultHorizontalArrangement) {
-                    state.tagChips.forEach { chip ->
-                        FilterChip(
-                            selected = chip.selected,
-                            onClick = { onAction(FilterAction.TagToggled(chip.value)) },
-                            label = {
-                                Text(text = chip.value.display)
-                            },
-                        )
-                    }
-                }
+                FacetChips(
+                    facet = FilterFacet.Tags,
+                    chips = state.tagChips,
+                    onAction = onAction,
+                    label = { Text(text = it.display) },
+                )
             }
         }
     }
@@ -272,9 +278,9 @@ private fun SortSection(
 }
 
 @Composable
-private fun PasswordSection(
-    state: PasswordSectionState,
-    onScoreToggled: (PasswordScore) -> Unit,
+private fun LoginSection(
+    state: LoginSectionState,
+    onAction: (FilterAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -282,26 +288,93 @@ private fun PasswordSection(
         verticalArrangement = DefaultHorizontalArrangement,
     ) {
         SectionHeader(
-            icon = Icons.Default.Password,
-            title = stringResource(CoreItemR.string.login),
+            icon = VaultItemType.Login.presentation.second,
+            title = VaultItemType.Login.presentation.first,
         )
 
-        KeyGoCard(
-            title = {
-                Text(text = stringResource(R.string.password_strength))
-            },
-        ) {
-            FlowRow(horizontalArrangement = DefaultHorizontalArrangement) {
-                state.passwordScoreChips.forEach { chip ->
-                    FilterChip(
-                        selected = chip.selected,
-                        onClick = { onScoreToggled(chip.value) },
-                        label = {
-                            Text(text = chip.value.label())
-                        },
-                    )
-                }
+        if (state.passwordScoreChips.isNotEmpty()) {
+            KeyGoCard(
+                title = {
+                    Text(text = stringResource(R.string.password_strength))
+                },
+            ) {
+                FacetChips(
+                    facet = FilterFacet.PasswordScores,
+                    chips = state.passwordScoreChips,
+                    onAction = onAction,
+                    label = { Text(text = it.label()) },
+                )
             }
+        }
+
+        if (state.credentialChips.isNotEmpty()) {
+            KeyGoCard(
+                title = {
+                    Text(text = stringResource(R.string.credentials))
+                },
+            ) {
+                FacetChips(
+                    facet = FilterFacet.Credentials,
+                    chips = state.credentialChips,
+                    onAction = onAction,
+                    label = { Text(text = it.label()) },
+                    leadingIcon = {
+                        Icon(imageVector = it.icon(), contentDescription = null)
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreditCardSection(
+    state: CreditCardSectionState,
+    onAction: (FilterAction) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = DefaultHorizontalArrangement,
+    ) {
+        SectionHeader(
+            icon = VaultItemType.CreditCard.presentation.second,
+            title = VaultItemType.CreditCard.presentation.first,
+        )
+
+        if (state.expiryStatusChips.isNotEmpty()) {
+            KeyGoCard(
+                title = {
+                    Text(text = stringResource(R.string.expiry_status))
+                },
+            ) {
+                FacetChips(
+                    facet = FilterFacet.CardExpiryStatuses,
+                    chips = state.expiryStatusChips,
+                    onAction = onAction,
+                    label = { Text(text = it.label()) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun <T : Any> FacetChips(
+    facet: FilterFacet<T>,
+    chips: List<FilterChipState<T>>,
+    onAction: (FilterAction) -> Unit,
+    label: @Composable (T) -> Unit,
+    leadingIcon: (@Composable (T) -> Unit)? = null,
+) {
+    FlowRow(horizontalArrangement = DefaultHorizontalArrangement) {
+        chips.forEach { chip ->
+            FilterChip(
+                selected = chip.selected,
+                onClick = { onAction(FilterAction.Toggled(facet, chip.value)) },
+                label = { label(chip.value) },
+                leadingIcon = leadingIcon?.let { { it(chip.value) } },
+            )
         }
     }
 }
@@ -339,6 +412,19 @@ private fun PasswordScore.label(): String = when (this) {
 }
 
 @Composable
+private fun CredentialType.label(): String = when (this) {
+    CredentialType.Password -> stringResource(CoreItemR.string.password)
+    CredentialType.Passkey -> stringResource(R.string.credential_passkey)
+    CredentialType.Totp -> stringResource(R.string.credential_totp)
+}
+
+private fun CredentialType.icon(): ImageVector = when (this) {
+    CredentialType.Password -> Icons.Default.Password
+    CredentialType.Passkey -> Icons.Default.Key
+    CredentialType.Totp -> Icons.Default.Timer
+}
+
+@Composable
 private fun SortDirection.label(): String = when (this) {
     SortDirection.Ascending -> stringResource(R.string.ascending)
     SortDirection.Descending -> stringResource(R.string.descending)
@@ -362,8 +448,7 @@ private fun FilterBottomSheetContentPreview() {
                 state = FilterBottomSheetState(
                     sortDirection = SortDirection.Ascending,
                     itemSection = ItemSectionState(
-                        showPinnedSwitch = true,
-                        onlyPinnedChecked = true,
+                        onlyPinned = FilterChipState(value = true, selected = true),
                         itemTypeChips = VaultItemType.entries.map { type ->
                             FilterChipState(value = type, selected = false)
                         },
@@ -372,7 +457,7 @@ private fun FilterBottomSheetContentPreview() {
                             FilterChipState(value = Tag.of("Label2")!!, selected = true),
                         ),
                     ),
-                    passwordSection = PasswordSectionState(
+                    loginSection = LoginSectionState(
                         passwordScoreChips = listOf(
                             FilterChipState(value = PasswordScore.Excellent, selected = false),
                             FilterChipState(value = PasswordScore.Strong, selected = false),
@@ -380,6 +465,9 @@ private fun FilterBottomSheetContentPreview() {
                             FilterChipState(value = PasswordScore.Weak, selected = true),
                             FilterChipState(value = PasswordScore.Ridiculous, selected = false),
                         ),
+                        credentialChips = CredentialType.entries.map { type ->
+                            FilterChipState(value = type, selected = type == CredentialType.Passkey)
+                        },
                     ),
                     isDefault = false,
                 ),

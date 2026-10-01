@@ -35,8 +35,6 @@ interface ItemRepository {
 
     fun observeAllTags(): Flow<List<Tag>>
 
-    fun observeItemIdsForTags(tags: Set<Tag>): Flow<Set<ItemId>>
-
     fun observeTagsByItem(): Flow<Map<ItemId, Set<Tag>>>
 
     fun observeLiteVaultItems(vaultId: VaultId? = null): Flow<List<LiteItem>>

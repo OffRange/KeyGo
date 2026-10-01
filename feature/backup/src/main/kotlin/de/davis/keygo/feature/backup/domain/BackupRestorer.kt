@@ -2,6 +2,7 @@ package de.davis.keygo.feature.backup.domain
 
 import de.davis.keygo.core.item.domain.repository.CreditCardRepository
 import de.davis.keygo.core.item.domain.repository.LoginRepository
+import de.davis.keygo.core.item.domain.repository.PasskeyRepository
 import de.davis.keygo.core.item.domain.repository.TransactionRunner
 import de.davis.keygo.core.item.domain.repository.VaultRepository
 import de.davis.keygo.core.util.Result
@@ -16,6 +17,8 @@ import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateCreditCa
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
 import de.davis.keygo.feature.vault.domain.usecase.CreateVaultUseCase
 import de.davisalessandro.keygo.rust.Backup
+import de.davisalessandro.keygo.rust.BackupLogin
+import de.davisalessandro.keygo.rust.BackupPasskey
 import kotlinx.coroutines.flow.first
 import org.koin.core.annotation.Single
 
@@ -23,6 +26,7 @@ import org.koin.core.annotation.Single
 internal class BackupRestorer(
     private val vaultRepository: VaultRepository,
     private val loginRepository: LoginRepository,
+    private val passkeyRepository: PasskeyRepository,
     private val creditCardRepository: CreditCardRepository,
     private val createVault: CreateVaultUseCase,
     private val createLogin: CreateNewOrUpdateLoginUseCase,
@@ -48,6 +52,7 @@ internal class BackupRestorer(
         // Room Flow inside a write transaction can deadlock.
         return transactionRunner.runInTransaction {
             val acc = ImportAccumulator(total, onProgress)
+            val claimedCredentials = mutableSetOf<List<Byte>>()
 
             // Resolved once, ahead of the loop rather than inside it: a target collapses every
             // vault in the backup into the single one the user chose, so `New` has to create
@@ -82,7 +87,7 @@ internal class BackupRestorer(
                     .map { it.name to it.holder }.toMutableSet()
 
                 acc.importItems(bvault.logins, loginKeys, { it.title to it.username }) {
-                    createLogin(it.toUpsertLogin(vaultId))
+                    createLogin(it.toUpsertLogin(vaultId, it.unclaimedPasskeys(claimedCredentials)))
                 }
                 acc.importItems(bvault.cards, cardKeys, { it.title to it.cardholder }) {
                     createCard(it.toUpsertCreditCard(vaultId))
@@ -91,6 +96,13 @@ internal class BackupRestorer(
 
             Result.Success(acc.toSummary())
         }
+    }
+
+    private suspend fun BackupLogin.unclaimedPasskeys(
+        claimed: MutableSet<List<Byte>>,
+    ): List<BackupPasskey> = passkeys.filter {
+        !passkeyRepository.doCredentialIdsExist(setOf(it.credentialId))
+                && claimed.add(it.credentialId.asList())
     }
 
     private class ImportAccumulator(

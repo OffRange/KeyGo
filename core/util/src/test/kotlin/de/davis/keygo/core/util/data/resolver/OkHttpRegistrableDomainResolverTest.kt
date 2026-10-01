@@ -136,6 +136,15 @@ class OkHttpRegistrableDomainResolverTest {
     }
 
     @Test
+    fun `resolves label longer than DNS allows to null`() {
+        val domain = "a".repeat(64) + ".com"
+        val expected = null
+        val result = resolver.resolve(domain)
+
+        assertEquals(expected = expected, actual = result)
+    }
+
+    @Test
     fun `resolves IPv4 to null`() {
         val domain = "127.0.0.1"
         val expected = null

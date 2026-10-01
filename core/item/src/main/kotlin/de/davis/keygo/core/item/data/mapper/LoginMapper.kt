@@ -5,7 +5,9 @@ import de.davis.keygo.core.item.data.local.entity.LoginEntity
 import de.davis.keygo.core.item.data.local.entity.TagEntity
 import de.davis.keygo.core.item.data.local.entity.credential.PasswordEntity
 import de.davis.keygo.core.item.data.local.pojo.LightweightLogin
+import de.davis.keygo.core.item.data.local.pojo.LoginCredentialsProjection
 import de.davis.keygo.core.item.data.local.pojo.LoginProjection
+import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.PasskeyRef
 import de.davis.keygo.core.item.domain.model.PasswordCredential
@@ -55,3 +57,9 @@ internal fun LightweightLogin.toDomain(): LiteLogin = LiteLogin(
     hasPassword = hasPassword,
     domains = domains.map(DomainInfoEntity::toDomain),
 )
+
+internal fun LoginCredentialsProjection.toCredentialTypes(): Set<CredentialType> = buildSet {
+    if (hasPassword) add(CredentialType.Password)
+    if (hasPasskey) add(CredentialType.Passkey)
+    if (hasTotp) add(CredentialType.Totp)
+}

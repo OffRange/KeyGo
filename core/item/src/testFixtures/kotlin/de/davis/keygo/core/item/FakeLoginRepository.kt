@@ -2,8 +2,9 @@ package de.davis.keygo.core.item
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
-import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.lite.LiteLogin
 import de.davis.keygo.core.item.domain.repository.LoginRepository
@@ -34,11 +35,20 @@ class FakeLoginRepository : LoginRepository {
      */
     var failCreateOrUpdateForId: Pair<ItemId, Throwable>? = null
 
+    private val passkeyRows = mutableListOf<Passkey>()
+
+    /** Passkey rows written through [createOrUpdateLogin], pruned to what each login still lists. */
+    val passkeys: List<Passkey>
+        get() = passkeyRows.toList()
+
     fun seed(vararg logins: Login) {
         store.update { it + logins.associateBy { p -> p.id } }
     }
 
-    override suspend fun createOrUpdateLogin(login: Login): Result<ItemId, Throwable> {
+    override suspend fun createOrUpdateLogin(
+        login: Login,
+        addedPasskeys: List<Passkey>,
+    ): Result<ItemId, Throwable> {
         failCreateOrUpdateForId?.let { (id, error) ->
             if (id == login.id) return Result.Failure(error)
         }
@@ -47,17 +57,11 @@ class FakeLoginRepository : LoginRepository {
             return Result.Failure(it)
         }
         store.update { it + (login.id to login) }
+        passkeyRows += addedPasskeys
+        passkeyRows.removeAll { row ->
+            row.loginId == login.id && login.passkeys.none { it.credentialId.contentEquals(row.credentialId) }
+        }
         return Result.Success(login.id)
-    }
-
-    override suspend fun updateDomainInfos(
-        itemId: ItemId,
-        domainInfos: Set<DomainInfo>,
-    ): Result<Unit, Throwable> {
-        val existing = store.value[itemId]
-            ?: return Result.Failure(NoSuchElementException("No login with id $itemId"))
-        store.update { it + (itemId to existing.copy(domainInfos = domainInfos)) }
-        return Result.Success(Unit)
     }
 
     override suspend fun getLoginsByTLD(
@@ -111,5 +115,16 @@ class FakeLoginRepository : LoginRepository {
             logins.values
                 .mapNotNull { login -> login.passwordCredential?.let { login.id to it.score } }
                 .toMap()
+        }
+
+    override fun observeCredentialTypes(): Flow<Map<ItemId, Set<CredentialType>>> =
+        store.map { logins ->
+            logins.values.associate { login ->
+                login.id to buildSet {
+                    if (login.passwordCredential != null) add(CredentialType.Password)
+                    if (login.passkeys.isNotEmpty()) add(CredentialType.Passkey)
+                    if (login.totp != null) add(CredentialType.Totp)
+                }
+            }
         }
 }

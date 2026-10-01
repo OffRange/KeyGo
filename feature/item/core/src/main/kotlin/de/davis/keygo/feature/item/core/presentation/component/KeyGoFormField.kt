@@ -51,6 +51,7 @@ fun KeyGoFormField(
     trailingContent: @Composable (() -> Unit)? = null,
     outsideTrailingContent: @Composable (() -> Unit)? = null,
     error: InputFieldError? = null,
+    supportingText: @Composable (() -> Unit)? = null,
     lineLimits: TextFieldLineLimits = TextFieldLineLimits.SingleLine,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next),
     onKeyboardAction: KeyboardActionHandler? = null,
@@ -58,7 +59,7 @@ fun KeyGoFormField(
     outputTransformation: OutputTransformation? = null,
     interactionSource: MutableInteractionSource? = null,
 ) {
-    val supportingText: @Composable (() -> Unit)? = error?.let {
+    val errorText: @Composable (() -> Unit)? = error?.let {
         {
             val text = when (error) {
                 InputFieldError.Empty -> stringResource(R.string.field_blank)
@@ -97,8 +98,8 @@ fun KeyGoFormField(
                             onClick = { passwordHidden = !passwordHidden },
                         )
                     },
-                    supportingText = supportingText,
-                    isError = supportingText != null,
+                    supportingText = errorText ?: supportingText,
+                    isError = errorText != null,
                     keyboardOptions = keyboardOptions,
                     onKeyboardAction = onKeyboardAction,
                     inputTransformation = inputTransformation,
@@ -117,8 +118,8 @@ fun KeyGoFormField(
                 prefix = prefix,
                 trailingIcon = trailingContent,
                 lineLimits = lineLimits,
-                supportingText = supportingText,
-                isError = supportingText != null,
+                supportingText = errorText ?: supportingText,
+                isError = errorText != null,
                 keyboardOptions = keyboardOptions,
                 onKeyboardAction = onKeyboardAction,
                 inputTransformation = inputTransformation,

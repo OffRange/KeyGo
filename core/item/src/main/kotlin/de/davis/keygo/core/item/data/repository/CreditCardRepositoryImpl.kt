@@ -15,6 +15,7 @@ import de.davis.keygo.core.util.Result
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.koin.core.annotation.Single
+import java.time.YearMonth
 
 @Single
 internal class CreditCardRepositoryImpl(
@@ -44,4 +45,9 @@ internal class CreditCardRepositoryImpl(
 
     override suspend fun getCreditCardsByVault(vaultId: VaultId): List<CreditCard> =
         creditCardDao.getByVault(vaultId).map(CreditCardProjection::toDomain)
+
+    override fun observeExpirationDates(): Flow<Map<ItemId, YearMonth>> =
+        creditCardDao.observeExpirationDates().map { entries ->
+            entries.associate { it.id to it.expirationDate }
+        }
 }
