@@ -13,6 +13,7 @@ import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.domain.model.CryptoScopeError
+import de.davis.keygo.core.util.FakeRegistrableDomainResolver
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
 import de.davis.keygo.feature.item.view.domain.WebsiteHandler
@@ -128,6 +129,7 @@ class PasswordHealthViewModelTest {
             upsertVaultItem = UpsertVaultItemUseCase(loginRepository, FakeCreditCardRepository()),
             passwordStrengthEstimator = FakePasswordStrengthEstimator(PasswordScore.Strong),
             totpService = FakeTotpService(),
+            registrableDomainResolver = FakeRegistrableDomainResolver(),
         ),
         healthSettingsRepository = breachState,
         setHealthNotifications = SetHealthNotificationsUseCase(

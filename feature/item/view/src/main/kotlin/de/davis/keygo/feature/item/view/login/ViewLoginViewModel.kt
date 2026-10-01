@@ -12,7 +12,6 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
 import de.davis.keygo.core.util.domain.comparator.sortedNaturallyBy
-import de.davis.keygo.core.util.domain.resolver.RegistrableDomainResolver
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.isSuccess
@@ -110,7 +109,7 @@ internal class ViewLoginViewModel(
                     password = obfuscated,
                     passwordStrengthScore = login.passwordCredential?.score,
                     username = login.username.orEmpty(),
-                    domains = login.domainInfos,
+                    domains = login.domainInfos.mapTo(mutableSetOf()) { it.value },
                     tags = login.tags.sortedNaturallyBy { it.display }.toSet(),
                     note = login.note.orEmpty(),
                     totpState = TotpState.NoTotp,

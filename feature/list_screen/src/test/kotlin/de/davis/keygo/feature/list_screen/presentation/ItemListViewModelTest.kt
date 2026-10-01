@@ -73,7 +73,6 @@ class ItemListViewModelTest {
         enableSelection = enableSelection,
         restrictedItemType = null,
         itemRepository = itemRepository,
-        filterUseCase = FilterUseCase(),
         rankSearchResults = RankSearchResultsUseCase(),
         observeAllTags = ObserveAllTagsSortedUseCase(itemRepository),
         observeVaultsAndSelection = ObserveVaultsAndSelectionUseCase(
@@ -83,7 +82,7 @@ class ItemListViewModelTest {
         observeFilterResult = ObserveFilterResultUseCase(
             itemRepository = itemRepository,
             loginRepository = loginRepository,
-            filterUseCase = filterUseCase,
+            filterUseCase = FilterUseCase(),
             observeCardExpiryStatuses = ObserveCardExpiryStatusesUseCase(creditCardRepository),
             availableFacetValues = AvailableFacetValuesUseCase(),
         ),

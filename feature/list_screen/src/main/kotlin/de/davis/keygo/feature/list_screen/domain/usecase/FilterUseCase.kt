@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.list_screen.domain.usecase
 
 import de.davis.keygo.core.item.domain.model.lite.LiteItem
+import de.davis.keygo.core.util.domain.comparator.NaturalOrderComparator
 import de.davis.keygo.feature.list_screen.domain.model.FacetSelections
 import de.davis.keygo.feature.list_screen.domain.model.FilterFacet
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
@@ -34,6 +35,7 @@ class FilterUseCase {
             SortDirection.Ascending -> NaturalOrderComparator
             SortDirection.Descending -> NaturalOrderComparator.reversed()
         }
+
     private fun <T : Any> FilterFacet<T>.matches(
         item: LiteItem,
         selections: FacetSelections,
