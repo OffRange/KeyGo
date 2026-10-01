@@ -3,7 +3,6 @@ package de.davis.keygo.feature.item.view.login
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.item.domain.repository.LoginRepository
@@ -70,7 +69,6 @@ internal class ViewLoginViewModel(
     private val isValidUrl: IsValidUrlUseCase,
     private val websiteHandler: WebsiteHandler,
     private val totpGenerator: TotpGenerator,
-    private val registrableDomainResolver: RegistrableDomainResolver,
     private val totpService: TotpService,
     private val observeLoginWithCryptoScope: ItemWithCryptoScopeUseCase,
     private val loginRepository: LoginRepository,
@@ -298,16 +296,9 @@ internal class ViewLoginViewModel(
                                 )
 
                                 FieldType.Domain -> newText.onSet {
-                                    val eTLD1 = registrableDomainResolver.resolve(it)
-                                    val updatedDomains = state.value.domains + DomainInfo(
-                                        id,
-                                        it,
-                                        eTLD1,
-                                    )
-
                                     UpsertLogin.update(
                                         itemId = id,
-                                        domains = set(updatedDomains),
+                                        addedDomains = setOf(it),
                                     )
                                 } ?: return@launch
 

@@ -7,6 +7,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
+import de.davis.keygo.feature.item.core.domain.model.NewPasskey
 import de.davis.keygo.feature.item.core.presentation.model.DetailPaneInformation
 import org.koin.androidx.compose.koinViewModel
 
@@ -15,7 +16,7 @@ fun LoginScreen(
     detailPaneInformation: DetailPaneInformation = DetailPaneInformation.Init.New(
         itemType = VaultItemType.Login,
     ),
-    pendingPasskeyRP: String? = null,
+    pendingPasskey: NewPasskey? = null,
     loginCreated: (ItemId) -> Unit,
     navigateBack: () -> Unit,
 ) {
@@ -26,8 +27,8 @@ fun LoginScreen(
         viewmodel.init(detailPaneInformation)
     }
 
-    LaunchedEffect(pendingPasskeyRP) {
-        viewmodel.setPendingPasskeyCount(pendingPasskeyRP)
+    LaunchedEffect(pendingPasskey) {
+        viewmodel.setPendingPasskey(pendingPasskey)
     }
 
     ObserveAsEvents(viewmodel.itemCreatedEvent) {

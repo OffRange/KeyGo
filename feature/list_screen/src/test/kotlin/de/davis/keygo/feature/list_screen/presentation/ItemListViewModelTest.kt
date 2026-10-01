@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.list_screen.presentation
 
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import de.davis.keygo.core.item.FakeCreditCardRepository
 import de.davis.keygo.core.item.FakeItemRepository
 import de.davis.keygo.core.item.FakeLoginRepository
 import de.davis.keygo.core.item.FakeVaultContextRepository
@@ -9,13 +10,22 @@ import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.domain.alias.newVaultId
+import de.davis.keygo.core.item.domain.model.CardExpiryStatus
+import de.davis.keygo.core.item.domain.model.CreditCard
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
+import de.davis.keygo.feature.list_screen.domain.model.FilterFacet
+import de.davis.keygo.feature.list_screen.domain.usecase.AvailableFacetValuesUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
+import de.davis.keygo.feature.list_screen.domain.usecase.ObserveCardExpiryStatusesUseCase
+import de.davis.keygo.feature.list_screen.domain.usecase.ObserveFilterResultUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.RankSearchResultsUseCase
 import de.davis.keygo.feature.list_screen.presentation.model.Event
+import de.davis.keygo.feature.list_screen.presentation.model.FilterAction
+import de.davis.keygo.feature.list_screen.presentation.model.FilterChipState
 import de.davis.keygo.feature.vault.domain.usecase.ObserveVaultsAndSelectionUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,11 +38,13 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import java.time.YearMonth
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -49,6 +61,7 @@ class ItemListViewModelTest {
     private val itemRepository = FakeItemRepository(loginRepository)
     private val vaultRepository = FakeVaultRepository()
     private val vaultContextRepository = FakeVaultContextRepository()
+    private val creditCardRepository = FakeCreditCardRepository()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(dispatcher)
@@ -67,7 +80,13 @@ class ItemListViewModelTest {
             vaultRepository = vaultRepository,
             vaultContextRepository = vaultContextRepository,
         ),
-        loginRepository = loginRepository,
+        observeFilterResult = ObserveFilterResultUseCase(
+            itemRepository = itemRepository,
+            loginRepository = loginRepository,
+            filterUseCase = filterUseCase,
+            observeCardExpiryStatuses = ObserveCardExpiryStatusesUseCase(creditCardRepository),
+            availableFacetValues = AvailableFacetValuesUseCase(),
+        ),
     )
 
     private fun login(
@@ -75,6 +94,7 @@ class ItemListViewModelTest {
         id: ItemId = newItemId(),
         vault: VaultId = vaultId,
         pinned: Boolean = false,
+        tags: Set<Tag> = emptySet(),
     ) = Login(
         id = id,
         name = name,
@@ -88,6 +108,7 @@ class ItemListViewModelTest {
         vaultId = vault,
         keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),
         timestamp = Timestamp(),
+        tags = tags,
     )
 
     private suspend fun storedIds(): Set<ItemId> =
@@ -415,6 +436,128 @@ class ItemListViewModelTest {
 
         assertEquals(Event.ItemSelected(opened.id), selected.await())
     }
+
+    @Test
+    fun `deleting every item a filter matches leaves a list that is empty because of the filter`() =
+        runTest(dispatcher) {
+            val pinned = login("Pinned", pinned = true)
+            loginRepository.seed(pinned, login("Loose"))
+
+            val vm = viewModel()
+            backgroundScope.launchCollect(vm)
+            vm.onFilterAction(FilterAction.Toggled(FilterFacet.Pinned, true))
+            vm.onItemLongClick(pinned.id)
+            vm.onDeleteSelectedRequest()
+            vm.onConfirmDeleteSelected()
+            advanceUntilIdle()
+
+            assertTrue(vm.listItemState.value.items.isEmpty())
+            assertTrue(vm.listItemState.value.isEmptyBecauseOfFilter)
+        }
+
+    @Test
+    fun `an empty vault is not empty because of the filter`() = runTest(dispatcher) {
+        val vm = viewModel()
+        backgroundScope.launchCollect(vm)
+        vm.onFilterAction(FilterAction.Toggled(FilterFacet.Pinned, true))
+        advanceUntilIdle()
+
+        assertFalse(vm.listItemState.value.isEmptyBecauseOfFilter)
+    }
+
+    @Test
+    fun `a filter nothing matches any more keeps its control until deselected and the sheet closes`() =
+        runTest(dispatcher) {
+            loginRepository.seed(login("Loose"))
+
+            val vm = viewModel()
+            backgroundScope.launchCollect(vm)
+            vm.onFilterAction(FilterAction.Toggled(FilterFacet.Pinned, true))
+            vm.onShowFilterSheet()
+            advanceUntilIdle()
+
+            assertEquals(
+                FilterChipState(value = true, selected = true),
+                vm.filterBottomSheetState.value.itemSection?.onlyPinned,
+            )
+
+            vm.onFilterAction(FilterAction.Toggled(FilterFacet.Pinned, true))
+            advanceUntilIdle()
+
+            assertEquals(
+                FilterChipState(value = true, selected = false),
+                vm.filterBottomSheetState.value.itemSection?.onlyPinned,
+            )
+
+            vm.onDismissFilterSheet()
+            advanceUntilIdle()
+
+            assertFalse(vm.filterBottomSheetState.value.isVisible)
+            assertNull(vm.filterBottomSheetState.value.itemSection?.onlyPinned)
+        }
+
+    @Test
+    fun `clearing filters outside the sheet drops the controls nothing matches right away`() =
+        runTest(dispatcher) {
+            loginRepository.seed(login("Loose"))
+
+            val vm = viewModel()
+            backgroundScope.launchCollect(vm)
+            vm.onFilterAction(FilterAction.Toggled(FilterFacet.Pinned, true))
+            vm.onFilterAction(FilterAction.ClearFilters)
+            advanceUntilIdle()
+
+            assertTrue(vm.filterBottomSheetState.value.isDefault)
+            assertNull(vm.filterBottomSheetState.value.itemSection?.onlyPinned)
+            assertEquals(1, vm.listItemState.value.items.size)
+        }
+
+    @Test
+    fun `selecting a tag narrows the list to items carrying it`() = runTest(dispatcher) {
+        val bank = Tag.of("Bank")!!
+        val tagged = login("Tagged", tags = setOf(bank))
+        val untagged = login("Untagged")
+        loginRepository.seed(tagged, untagged)
+
+        val vm = viewModel()
+        backgroundScope.launchCollect(vm)
+        advanceUntilIdle()
+
+        vm.onFilterAction(FilterAction.Toggled(FilterFacet.Tags, bank))
+        advanceUntilIdle()
+
+        assertEquals(setOf(tagged.id), vm.listItemState.value.items.mapTo(mutableSetOf()) { it.id })
+    }
+
+    @Test
+    fun `an expired card carries its status into the list state`() = runTest(dispatcher) {
+        val card = expiredCard()
+        creditCardRepository.seed(card)
+
+        val vm = viewModel()
+        backgroundScope.launchCollect(vm)
+        advanceUntilIdle()
+
+        assertEquals(
+            mapOf(card.id to CardExpiryStatus.Expired),
+            vm.listItemState.value.cardExpiryStatuses,
+        )
+    }
+
+    private fun expiredCard() = CreditCard(
+        id = newItemId(),
+        vaultId = vaultId,
+        name = "Old card",
+        keyInformation = KeyInformation(byteArrayOf(), byteArrayOf()),
+        timestamp = Timestamp(),
+        tags = emptySet(),
+        note = null,
+        pinned = false,
+        holder = null,
+        cardNumber = null,
+        cvv = null,
+        expirationDate = YearMonth.now().minusYears(1),
+    )
 }
 
 /**
@@ -423,4 +566,5 @@ class ItemListViewModelTest {
  */
 private fun CoroutineScope.launchCollect(vm: ItemListViewModel) {
     launch { vm.listItemState.collect { } }
+    launch { vm.filterBottomSheetState.collect { } }
 }

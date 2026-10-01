@@ -46,6 +46,7 @@ fun ItemListScreen(
     enableSelection: Boolean = true,
     dockedSearchResults: Boolean = false,
     scrollBehavior: SearchBarScrollBehavior = SearchBarDefaults.enterAlwaysSearchBarScrollBehavior(),
+    collapsesNavigationBar: Boolean = false,
 ) {
     val viewModel = koinViewModel<ItemListViewModel> {
         parametersOf(enableSelection, restrictedItemType)
@@ -120,6 +121,8 @@ fun ItemListScreen(
         onSubmitQuery = viewModel::onSubmitQuery,
         onClearQuery = viewModel::onClearQuery,
         onFilterAction = viewModel::onFilterAction,
+        onShowFilterSheet = viewModel::onShowFilterSheet,
+        onDismissFilterSheet = viewModel::onDismissFilterSheet,
         onItemClick = viewModel::onItemClick,
         onItemLongClick = viewModel::onItemLongClick,
         onClearSelection = viewModel::onClearSelection,
@@ -131,6 +134,7 @@ fun ItemListScreen(
         scrollBehavior = scrollBehavior,
         onVaultSelectorClick = viewModel::onVaultSelectorClick,
         onDismissVaultFlow = viewModel::onDismissVaultFlow,
-        modifier = modifier
+        modifier = modifier,
+        collapsesNavigationBar = collapsesNavigationBar,
     )
 }

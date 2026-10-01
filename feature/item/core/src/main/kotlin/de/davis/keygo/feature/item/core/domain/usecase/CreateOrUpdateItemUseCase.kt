@@ -66,6 +66,28 @@ abstract class CreateOrUpdateItemUseCase<U : UpsertItem, I : Item>(
     /** Returns a copy of [item] with [timestamp] applied. */
     protected abstract fun touch(item: I, timestamp: Timestamp): I
 
+    /** Writes the fully built [item]. */
+    protected open suspend fun persist(item: I, upsert: U): Result<ItemId, ItemUpsertError> =
+        upsertVaultItem(item).mapFailure(ItemUpsertError::DatabaseError)
+
+    /** Runs [block] under the item key [item] carries, wrapped for the vault it is headed to. */
+    protected suspend fun <R> itemScope(
+        item: I,
+        block: suspend CryptographicScope.() -> R,
+    ): Result<R, ItemUpsertError> {
+        val vaultKeyInformation = vaultRepository.getKeyInformation(item.vaultId)
+            ?: return Result.Failure(ItemUpsertError.InvalidVaultId)
+
+        return cryptographicScopeProvider.itemScope(
+            wrappedVaultKeyInformation = WrappedVaultKeyInformation(
+                wrappedVaultKey = vaultKeyInformation,
+                vaultId = item.vaultId,
+            ),
+            wrappedItemKeyInformation = item.wrappedItemKeyInformation(),
+            block = block,
+        ).mapFailure(ItemUpsertError::CryptoError)
+    }
+
     suspend operator fun invoke(upsert: U): Result<ItemId, Set<ItemUpsertError>> {
         val errors = validate(upsert)
         if (errors.isNotEmpty()) return Result.Failure(errors)
@@ -76,10 +98,7 @@ abstract class CreateOrUpdateItemUseCase<U : UpsertItem, I : Item>(
         }
 
         return when (built) {
-            is Result.Success -> upsertVaultItem(built.success).mapFailure {
-                setOf(ItemUpsertError.DatabaseError(it))
-            }
-
+            is Result.Success -> persist(built.success, upsert).mapFailure { setOf(it) }
             is Result.Failure -> Result.Failure(setOf(built.error))
         }
     }

@@ -9,6 +9,7 @@ import de.davis.keygo.core.item.data.local.dao.TagDao
 import de.davis.keygo.core.item.data.local.dao.TotpDao
 import de.davis.keygo.core.item.data.local.pojo.LightweightLogin
 import de.davis.keygo.core.item.data.local.pojo.LoginProjection
+import de.davis.keygo.core.item.data.mapper.toCredentialTypes
 import de.davis.keygo.core.item.data.mapper.toData
 import de.davis.keygo.core.item.data.mapper.toDomain
 import de.davis.keygo.core.item.data.mapper.toDomainInfoEntities
@@ -17,9 +18,10 @@ import de.davis.keygo.core.item.data.mapper.toPasswordEntity
 import de.davis.keygo.core.item.data.mapper.toTagEntities
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
-import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.model.CredentialType
 import de.davis.keygo.core.item.domain.model.Item
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.lite.LiteLogin
 import de.davis.keygo.core.item.domain.repository.LoginRepository
@@ -41,7 +43,10 @@ internal class LoginRepositoryImpl(
     private val passkeyDao: PasskeyDao,
 ) : LoginRepository {
 
-    override suspend fun createOrUpdateLogin(login: Login): Result<ItemId, Throwable> =
+    override suspend fun createOrUpdateLogin(
+        login: Login,
+        addedPasskeys: List<Passkey>,
+    ): Result<ItemId, Throwable> =
         runCatching {
             transactionRunner.runInTransaction {
                 itemDao.upsert((login as Item).toData())
@@ -57,7 +62,7 @@ internal class LoginRepositoryImpl(
                 domainInfoDao.syncForLogin(login.id, login.toDomainInfoEntities())
                 tagDao.syncTags(login.id, login.tags.toTagEntities())
 
-                // Delete only: passkeys are created through PasskeyRepository, never from here.
+                addedPasskeys.forEach { passkeyDao.insertPasskey(it.toData()) }
                 // See Login.passkeys for why this set has to come from a fresh read.
                 passkeyDao.deleteCredentialsNotIn(login.id, login.passkeys.map { it.credentialId })
 
@@ -65,20 +70,6 @@ internal class LoginRepositoryImpl(
             }
         }.fold(
             onSuccess = { Result.Success(it) },
-            onFailure = { Result.Failure(it) },
-        )
-
-    override suspend fun updateDomainInfos(
-        itemId: ItemId,
-        domainInfos: Set<DomainInfo>,
-    ): Result<Unit, Throwable> =
-        runCatching {
-            transactionRunner.runInTransaction {
-                val dataDomains = domainInfos.map { it.toData(itemId) }.toSet()
-                domainInfoDao.upsertAll(dataDomains)
-            }
-        }.fold(
-            onSuccess = { Result.Success(Unit) },
             onFailure = { Result.Failure(it) },
         )
 
@@ -116,5 +107,10 @@ internal class LoginRepositoryImpl(
     override fun observePasswordScores(): Flow<Map<ItemId, PasswordScore>> =
         passwordDao.observeScores().map { entries ->
             entries.associate { it.id to it.passwordScore }
+        }
+
+    override fun observeCredentialTypes(): Flow<Map<ItemId, Set<CredentialType>>> =
+        loginDao.observeCredentials().map { rows ->
+            rows.associate { it.id to it.toCredentialTypes() }
         }
 }

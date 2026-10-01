@@ -2,12 +2,15 @@ package de.davis.keygo.feature.list_screen.presentation.components
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animate
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AppBarWithSearch
@@ -19,17 +22,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SearchBarScrollBehavior
+import androidx.compose.material3.SearchBarScrollState
 import androidx.compose.material3.SearchBarState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -38,15 +41,20 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.newItemId
+import de.davis.keygo.core.item.domain.model.CardExpiryStatus
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
+import de.davis.keygo.core.item.presentation.isEmphasized
+import de.davis.keygo.core.item.presentation.label
 import de.davis.keygo.core.ui.R
 import de.davis.keygo.core.ui.components.HeaderContent
+import de.davis.keygo.core.ui.components.ItemStatus
 import de.davis.keygo.core.ui.components.KeyGoCard
 import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.core.ui.components.KeyGoColumn
 import de.davis.keygo.core.ui.components.KeyGoColumnItem
+import de.davis.keygo.core.ui.composition.NavigationBarCollapseEffect
 import de.davis.keygo.feature.list_screen.domain.model.SortDirection
 import de.davis.keygo.feature.list_screen.presentation.NoItemStrategy
 import de.davis.keygo.feature.list_screen.presentation.model.FilterAction
@@ -55,7 +63,9 @@ import de.davis.keygo.feature.list_screen.presentation.model.ItemSectionState
 import de.davis.keygo.feature.list_screen.presentation.model.ListItemState
 import de.davis.keygo.feature.list_screen.presentation.model.SearchState
 import de.davis.keygo.feature.vault.presentation.VaultFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import de.davis.keygo.feature.list_screen.R as ListScreenR
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,6 +84,8 @@ internal fun ItemListContent(
     onSubmitQuery: () -> Unit,
     onClearQuery: () -> Unit,
     onFilterAction: (FilterAction) -> Unit,
+    onShowFilterSheet: () -> Unit,
+    onDismissFilterSheet: () -> Unit,
     onItemClick: (ItemId, forceSkipSelection: Boolean) -> Unit,
     onItemLongClick: (ItemId) -> Unit,
     onClearSelection: () -> Unit,
@@ -85,10 +97,9 @@ internal fun ItemListContent(
     onVaultSelectorClick: () -> Unit,
     onDismissVaultFlow: () -> Unit,
     scrollBehavior: SearchBarScrollBehavior,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    collapsesNavigationBar: Boolean = false,
 ) {
-    var showFilterSheet by rememberSaveable { mutableStateOf(false) }
-
     val searchInputField = @Composable {
         ListSearchTextField(
             searchTextFieldState = searchTextFieldState,
@@ -96,17 +107,17 @@ internal fun ItemListContent(
             uiState = uiState,
             onSubmitQuery = onSubmitQuery,
             onClearQuery = onClearQuery,
-            onShowFilterClick = { showFilterSheet = true },
+            onShowFilterClick = onShowFilterSheet,
             onVaultSelectorClick = onVaultSelectorClick,
             filterBottomSheetState = filterBottomSheetState,
         )
     }
 
-    if (showFilterSheet)
+    if (filterBottomSheetState.isVisible)
         FilterBottomSheet(
             state = filterBottomSheetState,
             onAction = onFilterAction,
-            onDismiss = { showFilterSheet = false },
+            onDismiss = onDismissFilterSheet,
         )
 
     if (uiState.isVaultFlowVisible)
@@ -171,24 +182,40 @@ internal fun ItemListContent(
             }
         }
     ) { innerPadding ->
+        val body = when {
+            uiState.items.isNotEmpty() -> ListBody.Items
+            uiState.isEmptyBecauseOfFilter -> ListBody.NoFilterMatches
+            !uiState.hasSearchQuery && notFoundStrategy is NoItemStrategy.ShowCreateNewItemCard ->
+                ListBody.CreateCard
+
+            else -> ListBody.NotFound
+        }
+
         AnimatedContent(
-            targetState = uiState.items.isEmpty(),
+            targetState = body,
             modifier = Modifier
                 .padding(innerPadding)
                 .padding(top = 4.dp)
-        ) { isEmpty ->
-            when (isEmpty) {
-                true -> {
+        ) { target ->
+            LaunchedEffect(target) {
+                // Nothing here scrolls, so a hidden search bar could never be dragged back.
+                if (target != ListBody.Items) scrollBehavior.scrollState.reveal()
+            }
+
+            when (target) {
+                ListBody.NoFilterMatches, ListBody.CreateCard, ListBody.NotFound -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(16.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        val showCreateCard =
-                            !uiState.hasSearchQuery && notFoundStrategy is NoItemStrategy.ShowCreateNewItemCard
-                        when (showCreateCard) {
-                            true -> {
+                        when (target) {
+                            ListBody.NoFilterMatches -> NoFilterMatches(
+                                onClearFilters = { onFilterAction(FilterAction.ClearFilters) },
+                            )
+
+                            ListBody.CreateCard -> {
                                 val createTypes = remember(restrictedItemType) {
                                     restrictedItemType?.let { listOf(it) }
                                         ?: VaultItemType.entries
@@ -212,13 +239,19 @@ internal fun ItemListContent(
                                 }
                             }
 
-                            false -> Text(text = stringResource(R.string.match_not_found))
+                            else -> Text(text = stringResource(R.string.match_not_found))
                         }
                     }
                 }
 
-                false -> {
-                    val items = remember(uiState.items, suggestedItemIds) {
+                ListBody.Items -> {
+                    val expiryLabels = CardExpiryStatus.entries.associateWith { it.label() }
+                    val items = remember(
+                        uiState.items,
+                        suggestedItemIds,
+                        uiState.cardExpiryStatuses,
+                        expiryLabels,
+                    ) {
                         uiState.items.map {
                             KeyGoColumnItem(
                                 header = when {
@@ -229,9 +262,28 @@ internal fun ItemListContent(
                                 title = it.name,
                                 id = it.id,
                                 itemType = it.itemType,
+                                status = uiState.cardExpiryStatuses[it.id]?.let { status ->
+                                    ItemStatus(
+                                        text = expiryLabels.getValue(status),
+                                        emphasized = status.isEmphasized,
+                                    )
+                                },
                             )
                         }
                     }
+
+                    val listState = rememberLazyListState()
+                    // A list back at its top shows the search bar even when it got there without a
+                    // scroll, like after a delete.
+                    LaunchedEffect(listState) {
+                        snapshotFlow { listState.canScrollBackward }.collectLatest {
+                            if (!it) scrollBehavior.scrollState.reveal()
+                        }
+                    }
+                    NavigationBarCollapseEffect(
+                        state = listState,
+                        enabled = collapsesNavigationBar,
+                    )
 
                     KeyGoColumn(
                         items = items,
@@ -243,12 +295,18 @@ internal fun ItemListContent(
                             bottom = 96.dp,
                         ),
                         openedItemId = openedItemId,
-                        selectedItemIds = uiState.selectedItemIds
+                        selectedItemIds = uiState.selectedItemIds,
+                        state = listState,
                     )
                 }
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+private suspend fun SearchBarScrollState.reveal() {
+    if (scrollOffset != 0f) animate(scrollOffset, 0f) { value, _ -> scrollOffset = value }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -285,12 +343,11 @@ private fun ItemListContentPreview() {
                 FilterBottomSheetState(
                     sortDirection = SortDirection.Ascending,
                     itemSection = ItemSectionState(
-                        showPinnedSwitch = false,
-                        onlyPinnedChecked = false,
+                        onlyPinned = null,
                         itemTypeChips = emptyList(),
                         tagChips = emptyList()
                     ),
-                    passwordSection = null,
+                    loginSection = null,
                     isDefault = true
                 )
             }
@@ -311,6 +368,8 @@ private fun ItemListContentPreview() {
                 onSubmitQuery = {},
                 onClearQuery = {},
                 onFilterAction = {},
+                onShowFilterSheet = {},
+                onDismissFilterSheet = {},
                 onItemClick = { _, _ -> },
                 onItemLongClick = {},
                 onClearSelection = {},
@@ -323,6 +382,18 @@ private fun ItemListContentPreview() {
                 onDismissVaultFlow = {},
                 scrollBehavior = scrollBehavior
             )
+        }
+    }
+}
+
+private enum class ListBody { Items, NoFilterMatches, CreateCard, NotFound }
+
+@Composable
+private fun NoFilterMatches(onClearFilters: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = stringResource(ListScreenR.string.no_filter_matches))
+        TextButton(onClick = onClearFilters) {
+            Text(text = stringResource(ListScreenR.string.clear_filters))
         }
     }
 }

@@ -65,6 +65,7 @@ import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -79,12 +80,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -103,8 +100,9 @@ import de.davis.keygo.R
 import de.davis.keygo.app.presentation.AppDestinations
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.generated.presentation.presentation
+import de.davis.keygo.core.ui.composition.LocalNavigationBarCollapseState
+import de.davis.keygo.core.ui.composition.NavigationBarCollapseState
 import kotlinx.coroutines.launch
-import kotlin.math.sign
 import de.davis.keygo.core.ui.R as CoreUiR
 import de.davis.keygo.feature.password_health.R as PasswordHealthR
 
@@ -152,27 +150,10 @@ fun KeyGoNavigationWrapper(
     val hidesOnScroll =
         layoutType == NavigationSuiteType.NavigationBar && !touchExplorationEnabled
 
-    var hiddenByScroll by remember { mutableStateOf(false) }
+    val collapseState = remember { NavigationBarCollapseState() }
+    LaunchedEffect(selectedRoute, hidesOnScroll) { collapseState.reset() }
 
-    val density = LocalDensity.current
-    val scrollConnection = remember(density) {
-        NavigationScrollConnection(
-            thresholdPx = with(density) { NavigationScrollThreshold.toPx() },
-            onVisibilityChange = { visible -> hiddenByScroll = !visible },
-        )
-    }
-
-    // A newly selected top level destination shows its own content from the top, and a layout
-    // type that does not hide leaves nothing to come back from, so both start the component
-    // visible again. The run behind the flag is cleared with it: left standing at the threshold
-    // it had reached, the next scroll of a single pixel in the same direction would hide the
-    // component again without the distance ever being travelled.
-    LaunchedEffect(selectedRoute, hidesOnScroll) {
-        hiddenByScroll = false
-        scrollConnection.reset()
-    }
-
-    val showNavigation = showChrome && !(hidesOnScroll && hiddenByScroll)
+    val showNavigation = showChrome && !(hidesOnScroll && collapseState.isCollapsed)
     LaunchedEffect(showNavigation) {
         if (showNavigation) scaffoldState.show() else scaffoldState.hide()
     }
@@ -323,12 +304,11 @@ fun KeyGoNavigationWrapper(
                                     else -> WindowInsets(0, 0, 0, 0)
                                 }
                             )
-                            .then(
-                                if (hidesOnScroll) Modifier.nestedScroll(scrollConnection)
-                                else Modifier
-                            )
                     ) {
-                        content()
+                        CompositionLocalProvider(
+                            LocalNavigationBarCollapseState provides collapseState,
+                            content = content,
+                        )
 
                         // This slot ends where the navigation component starts, so a bottom
                         // aligned host clears the component on its own and follows it as it
@@ -631,48 +611,6 @@ private fun navigationInsets(
     }
 
 /**
- * Hides the navigation component once the content has been scrolled [thresholdPx] down, and brings
- * it back on the same distance scrolled up.
- *
- * Only the distance the content actually consumed counts, so overscrolling at either end of a list
- * does not move the component, and content that cannot scroll at all never hides it.
- */
-private class NavigationScrollConnection(
-    private val thresholdPx: Float,
-    private val onVisibilityChange: (visible: Boolean) -> Unit,
-) : NestedScrollConnection {
-
-    private var accumulated = 0f
-
-    /** Starts a new run, so the next scroll has to travel the whole threshold to decide again. */
-    fun reset() {
-        accumulated = 0f
-    }
-
-    override fun onPostScroll(
-        consumed: Offset,
-        available: Offset,
-        source: NestedScrollSource,
-    ): Offset {
-        // A scroll that moved the content nowhere, a horizontal one included, leaves the run
-        // it interrupted intact.
-        val delta = consumed.y
-        if (delta != 0f) {
-            // A change of direction starts a new run, so scrolling back reverses the decision
-            // after one threshold instead of first having to undo the whole distance travelled.
-            if (delta.sign != accumulated.sign) accumulated = 0f
-            accumulated = (accumulated + delta).coerceIn(-thresholdPx, thresholdPx)
-
-            if (accumulated <= -thresholdPx) onVisibilityChange(false)
-            else if (accumulated >= thresholdPx) onVisibilityChange(true)
-        }
-
-        // Nothing is consumed here: the scroll belongs to the content, this only watches it.
-        return super.onPostScroll(consumed, available, source)
-    }
-}
-
-/**
  * Whether an accessibility service that uses touch exploration, such as TalkBack, is running.
  *
  * Scroll driven hiding stays off while one is, the way Material does it for its own app bars: the
@@ -704,9 +642,6 @@ private fun rememberTouchExplorationEnabled(): Boolean {
 
 /** The padding [NavigationSuiteScaffoldLayout] places around the primary action content. */
 private val PrimaryActionContentPadding = 16.dp
-
-/** How far the content has to be scrolled before the navigation component follows it away. */
-private val NavigationScrollThreshold = 24.dp
 
 @Suppress("VisualLintOverlap")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)

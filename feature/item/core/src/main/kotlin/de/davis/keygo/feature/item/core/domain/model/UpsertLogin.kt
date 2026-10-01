@@ -2,7 +2,6 @@ package de.davis.keygo.feature.item.core.domain.model
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.alias.VaultId
-import de.davis.keygo.core.item.domain.model.DomainInfo
 import de.davis.keygo.core.item.domain.model.PasskeyRef
 import de.davis.keygo.core.item.domain.model.Tag
 
@@ -13,11 +12,12 @@ data class UpsertLogin private constructor(
     val password: FieldUpdate<String>,
     val totpUriOrSecret: FieldUpdate<String>,
     val username: FieldUpdate<String>,
-    val domains: FieldUpdate<Set<DomainInfo>>,
     override val tags: FieldUpdate<Set<Tag>>,
     override val note: FieldUpdate<String>,
     val removedPasskeys: Set<PasskeyRef>,
-    val pendingPasskey: Boolean,
+    val addedPasskeys: Set<NewPasskey>,
+    val removedDomains: Set<String>,
+    val addedDomains: Set<String>,
 ) : UpsertItem {
     companion object {
         fun create(
@@ -26,10 +26,10 @@ data class UpsertLogin private constructor(
             password: String? = null,
             totpUriOrSecret: String? = null,
             username: String? = null,
-            domains: Set<DomainInfo> = emptySet(),
+            domains: Set<String> = emptySet(),
             tags: Set<Tag> = emptySet(),
             note: String? = null,
-            pendingPasskey: Boolean = false,
+            addedPasskeys: Set<NewPasskey> = emptySet(),
         ) = UpsertLogin(
             upsertType = UpsertType.Create(vaultId),
             name = FieldUpdate.Set(name),
@@ -37,11 +37,12 @@ data class UpsertLogin private constructor(
             note = if (!note.isNullOrBlank()) FieldUpdate.Set(note) else FieldUpdate.Clear,
             totpUriOrSecret = if (!totpUriOrSecret.isNullOrBlank()) FieldUpdate.Set(totpUriOrSecret) else FieldUpdate.Clear,
             username = if (!username.isNullOrBlank()) FieldUpdate.Set(username) else FieldUpdate.Clear,
-            domains = if (domains.isNotEmpty()) FieldUpdate.Set(domains) else FieldUpdate.Clear,
             tags = if (tags.isNotEmpty()) FieldUpdate.Set(tags) else FieldUpdate.Clear,
             // A brand-new login holds no passkeys, so there is nothing to remove.
             removedPasskeys = emptySet(),
-            pendingPasskey = pendingPasskey,
+            addedPasskeys = addedPasskeys,
+            removedDomains = emptySet(),
+            addedDomains = domains,
         )
 
         fun update(
@@ -51,11 +52,12 @@ data class UpsertLogin private constructor(
             password: FieldUpdate<String> = keep(),
             totpUriOrSecret: FieldUpdate<String> = keep(),
             username: FieldUpdate<String> = keep(),
-            domains: FieldUpdate<Set<DomainInfo>> = keep(),
             tags: FieldUpdate<Set<Tag>> = keep(),
             note: FieldUpdate<String> = keep(),
             removedPasskeys: Set<PasskeyRef> = emptySet(),
-            pendingPasskey: Boolean = false,
+            addedPasskeys: Set<NewPasskey> = emptySet(),
+            removedDomains: Set<String> = emptySet(),
+            addedDomains: Set<String> = emptySet(),
         ) = UpsertLogin(
             upsertType = UpsertType.Update(itemId, vaultId),
             name = name,
@@ -64,9 +66,10 @@ data class UpsertLogin private constructor(
             totpUriOrSecret = totpUriOrSecret,
             tags = tags,
             username = username,
-            domains = domains,
             removedPasskeys = removedPasskeys,
-            pendingPasskey = pendingPasskey,
+            addedPasskeys = addedPasskeys,
+            removedDomains = removedDomains,
+            addedDomains = addedDomains,
         )
     }
 }

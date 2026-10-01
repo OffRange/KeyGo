@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import java.time.YearMonth
 
 /**
  * In-memory [CreditCardRepository] for tests.
@@ -54,4 +55,11 @@ class FakeCreditCardRepository : CreditCardRepository {
 
     override suspend fun getCreditCardsByVault(vaultId: VaultId): List<CreditCard> =
         store.value.values.filter { it.vaultId == vaultId }
+
+    override fun observeExpirationDates(): Flow<Map<ItemId, YearMonth>> =
+        store.map { cards ->
+            cards.values
+                .mapNotNull { card -> card.expirationDate?.let { card.id to it } }
+                .toMap()
+        }
 }

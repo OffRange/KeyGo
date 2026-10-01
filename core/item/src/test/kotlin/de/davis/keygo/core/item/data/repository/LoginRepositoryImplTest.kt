@@ -17,7 +17,9 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.EncryptedPayload
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
+import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasskeyRef
+import de.davis.keygo.core.item.domain.model.PasskeyUser
 import de.davis.keygo.core.item.domain.model.PasswordCredential
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.domain.model.PasswordSecret
@@ -29,6 +31,7 @@ import de.davis.keygo.core.util.isFailure
 import de.davis.keygo.core.util.isSuccess
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -217,6 +220,28 @@ class LoginRepositoryImplTest {
 
         assertTrue(result.isSuccess())
         coVerify(exactly = 1) { passkeyDao.deleteCredentialsNotIn(login.id, emptyList()) }
+    }
+
+    @Test
+    fun `createOrUpdateLogin inserts added passkeys and keeps them through the prune`() = runTest {
+        val ref = passkeyRef("example.org")
+        val login = testLogin(totpProvider = null, passkeys = setOf(ref))
+        val added = Passkey(
+            credentialId = ref.credentialId,
+            rp = ref.rp,
+            privateKey = Passkey.PrivateKey(EncryptedPayload.EMPTY),
+            loginId = login.id,
+            user = PasskeyUser(name = "alice", displayName = "Alice"),
+        )
+
+        val result = repository.createOrUpdateLogin(login, listOf(added))
+
+        assertTrue(result.isSuccess())
+        coVerifyOrder {
+            loginDao.upsert(any())
+            passkeyDao.insertPasskey(match { it.credentialId.contentEquals(ref.credentialId) })
+            passkeyDao.deleteCredentialsNotIn(login.id, listOf(ref.credentialId))
+        }
     }
 
     @Test

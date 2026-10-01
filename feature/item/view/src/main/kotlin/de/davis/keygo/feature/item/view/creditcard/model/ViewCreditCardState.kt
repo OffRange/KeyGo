@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.item.view.creditcard.model
 
 import androidx.compose.runtime.Immutable
+import de.davis.keygo.core.item.domain.model.CardExpiryStatus
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.feature.item.view.login.model.ObfuscatedString
@@ -13,6 +14,7 @@ data class ViewCreditCardState(
     val cardNumber: ObfuscatedString? = null,
     val cvv: ObfuscatedString? = null,
     val expirationDate: String = "",
+    val expiryStatus: CardExpiryStatus? = null,
     val tags: Set<Tag> = emptySet(),
     val note: String = "",
     val modificationDialog: ModificationDialog? = null,

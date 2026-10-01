@@ -1,13 +1,15 @@
 package de.davis.keygo.feature.backup.domain.mapper
 
 import de.davis.keygo.core.item.domain.alias.VaultId
-import de.davis.keygo.core.item.domain.model.DomainInfo
+import de.davis.keygo.core.item.domain.model.PasskeyUser
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.Vault
+import de.davis.keygo.feature.item.core.domain.model.NewPasskey
 import de.davis.keygo.feature.item.core.domain.model.UpsertCreditCard
 import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
 import de.davisalessandro.keygo.rust.BackupCard
 import de.davisalessandro.keygo.rust.BackupLogin
+import de.davisalessandro.keygo.rust.BackupPasskey
 import de.davisalessandro.keygo.rust.BackupVault
 
 /**
@@ -17,15 +19,26 @@ import de.davisalessandro.keygo.rust.BackupVault
 internal fun BackupVault.toVaultIcon(): Vault.Icon =
     Vault.Icon.entries.firstOrNull { it.name == icon } ?: Vault.Icon.Default
 
-internal fun BackupLogin.toUpsertLogin(vaultId: VaultId): UpsertLogin = UpsertLogin.create(
+internal fun BackupLogin.toUpsertLogin(
+    vaultId: VaultId,
+    passkeys: List<BackupPasskey>,
+): UpsertLogin = UpsertLogin.create(
     vaultId = vaultId,
     name = title,
     password = password,
     totpUriOrSecret = totpSecret,
     username = username,
-    domains = websites.map { DomainInfo(value = it, eTLD1 = null) }.toSet(),
+    domains = websites.toSet(),
     tags = tags.mapNotNull { Tag.of(it) }.toSet(),
     note = notes,
+    addedPasskeys = passkeys.mapTo(mutableSetOf()) { it.toNewPasskey() },
+)
+
+private fun BackupPasskey.toNewPasskey(): NewPasskey = NewPasskey(
+    credentialId = credentialId,
+    rp = rp,
+    user = PasskeyUser(name = userName, displayName = userDisplayName),
+    privateKey = privateKey,
 )
 
 internal fun BackupCard.toUpsertCreditCard(vaultId: VaultId): UpsertCreditCard =

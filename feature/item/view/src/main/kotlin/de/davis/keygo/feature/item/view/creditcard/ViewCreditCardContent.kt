@@ -2,6 +2,7 @@ package de.davis.keygo.feature.item.view.creditcard
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -57,6 +58,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.item.presentation.CardExpiryStatusText
 import de.davis.keygo.core.item.presentation.toImageVector
 import de.davis.keygo.core.ui.components.VisibilityButton
 import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
@@ -235,7 +237,15 @@ fun ViewCreditCardContent(state: ViewCreditCardState, onEvent: (ViewCreditCardUi
                     leadingIcon = Icons.Default.CalendarMonth,
                     dataToCopy = { state.expirationDate },
                 ) {
-                    Text(text = state.expirationDate)
+                    Column {
+                        Text(text = state.expirationDate)
+                        state.expiryStatus?.let {
+                            CardExpiryStatusText(
+                                status = it,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    }
                 }
             }
 

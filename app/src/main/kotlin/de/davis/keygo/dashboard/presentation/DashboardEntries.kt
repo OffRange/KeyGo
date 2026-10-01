@@ -45,6 +45,7 @@ fun EntryProviderScope<NavKey>.dashboardEntries(navigator: AppNavigator) {
             dockedSearchResults = listPaneVisible,
             enableDeletion = true,
             enableSelection = true,
+            collapsesNavigationBar = true,
         )
     }
 

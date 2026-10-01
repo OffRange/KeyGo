@@ -9,11 +9,8 @@ import de.davis.keygo.core.identity.domain.model.UnlockableByBiometricsResult
 import de.davis.keygo.core.identity.domain.usecase.UnlockWithBiometricsUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockableByBiometricsUseCase
 import de.davis.keygo.core.item.domain.alias.ItemId
-import de.davis.keygo.core.item.domain.model.Passkey
 import de.davis.keygo.core.item.domain.model.PasskeyUser
 import de.davis.keygo.core.item.domain.repository.PasskeyRepository
-import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
-import de.davis.keygo.core.security.domain.crypto.encrypt
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
@@ -22,6 +19,9 @@ import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.credentials.presentation.auth.SessionAuthState
 import de.davis.keygo.feature.credentials.presentation.auth.UnlockOutcome
 import de.davis.keygo.feature.credentials.presentation.auth.mapUnlockError
+import de.davis.keygo.feature.item.core.domain.model.NewPasskey
+import de.davis.keygo.feature.item.core.domain.model.UpsertLogin
+import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
 import de.davis.keygo.rust.passkey.PasskeyManager
 import de.davis.keygo.rust.passkey.getPasskeyInformation
 import de.davis.keygo.rust.passkey.registerWithResult
@@ -38,7 +38,7 @@ import org.koin.core.annotation.KoinViewModel
 @KoinViewModel
 internal class CreatePasskeyViewModel(
     private val passkeyRepository: PasskeyRepository,
-    private val cryptographicScopeProvider: CryptographicScopeProvider,
+    private val createNewOrUpdateLogin: CreateNewOrUpdateLoginUseCase,
     private val passkeyManager: PasskeyManager,
     private val unlockableByBiometrics: UnlockableByBiometricsUseCase,
     private val unlockWithBiometrics: UnlockWithBiometricsUseCase,
@@ -60,11 +60,15 @@ internal class CreatePasskeyViewModel(
     private val _rp = MutableStateFlow("")
     val rp = _rp.asStateFlow()
 
+    /** The registered credential, for the login screen to save with a new login. */
+    private val _pendingPasskey = MutableStateFlow<NewPasskey?>(null)
+    val pendingPasskey = _pendingPasskey.asStateFlow()
+
     /** Completed by [onUnlocked]. */
     private val unlocked = CompletableDeferred<Unit>()
 
-    /** Completed by [associatePasskeyAndFinish]. */
-    private val chosenItem = CompletableDeferred<ItemId>()
+    /** Completed by [associatePasskeyAndFinish] or [onLoginCreated], whichever comes first. */
+    private val target = CompletableDeferred<PasskeyTarget>()
 
     private var started = false
 
@@ -106,10 +110,19 @@ internal class CreatePasskeyViewModel(
             val response = passkeyManager.registerWithResult(requestJson)
                 .orAbort("Failed to register passkey") ?: return@launch
 
+            val passkey = response.toNewPasskey()
             _rp.update { response.rp }
+            _pendingPasskey.update { passkey }
             _authState.update { SessionAuthState.Authenticated }
 
-            storeAndFinish(response, chosenItem.await())
+            when (val target = target.await()) {
+                PasskeyTarget.NewLogin -> Unit
+                is PasskeyTarget.ExistingLogin -> createNewOrUpdateLogin(
+                    UpsertLogin.update(itemId = target.itemId, addedPasskeys = setOf(passkey))
+                ).orAbort("Failed to store passkey") ?: return@launch
+            }
+
+            _event.send(CreatePasskeyEvent.Finish(response.response))
         }
     }
 
@@ -133,36 +146,28 @@ internal class CreatePasskeyViewModel(
         }
     }
 
-    private suspend fun storeAndFinish(response: RegistrationResponse, itemId: ItemId) {
-        val privateKey = cryptographicScopeProvider.itemScope(itemId = itemId) {
-            Passkey.PrivateKey.encrypt(response.privateKey)
-        }.orAbort("Failed to encrypt passkey private key") ?: return
-
-        passkeyRepository.createPasskey(
-            Passkey(
-                credentialId = response.credentialId,
-                privateKey = privateKey,
-                rp = response.rp,
-                loginId = itemId,
-                user = PasskeyUser(
-                    name = response.userName,
-                    displayName = response.userDisplayName,
-                ),
-            )
-        )
-        _event.send(CreatePasskeyEvent.Finish(response.response))
-    }
+    private fun RegistrationResponse.toNewPasskey() = NewPasskey(
+        credentialId = credentialId,
+        rp = rp,
+        user = PasskeyUser(name = userName, displayName = userDisplayName),
+        privateKey = privateKey,
+    )
 
     fun onUnlocked() {
         unlocked.complete(Unit)
     }
 
     /**
-     * Names the login the passkey belongs to. Only the first call counts: a second tap landing
-     * before the dialog recomposes away would otherwise store the credential twice.
+     * Names the existing login the passkey belongs to. Only the first call counts: a second tap
+     * landing before the dialog recomposes away would otherwise store the credential twice.
      */
     fun associatePasskeyAndFinish(itemId: ItemId) {
-        chosenItem.complete(itemId)
+        target.complete(PasskeyTarget.ExistingLogin(itemId))
+    }
+
+    /** The login screen already saved [pendingPasskey] together with the new login. */
+    fun onLoginCreated() {
+        target.complete(PasskeyTarget.NewLogin)
     }
 
     fun onItemClicked(itemId: ItemId) {
@@ -186,6 +191,11 @@ internal class CreatePasskeyViewModel(
     private suspend fun abort(msg: String) {
         Log.w(TAG, "Aborting: $msg")
         _event.send(CreatePasskeyEvent.Abort)
+    }
+
+    private sealed interface PasskeyTarget {
+        data class ExistingLogin(val itemId: ItemId) : PasskeyTarget
+        data object NewLogin : PasskeyTarget
     }
 
     companion object {
