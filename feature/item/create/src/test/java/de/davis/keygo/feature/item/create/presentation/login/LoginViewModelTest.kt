@@ -24,7 +24,6 @@ import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
 import de.davis.keygo.core.util.FakeRegistrableDomainResolver
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
-import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.item.core.domain.model.NewPasskey
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUseCase
 import de.davis.keygo.feature.item.core.domain.usecase.ValidateTotpInputUseCase
@@ -354,7 +353,7 @@ class LoginViewModelTest {
         totpService = totpService,
         vaultContextRepository = vaultContextRepository,
         itemRepository = itemRepository,
-        observeAllTags = ObserveAllTagsSortedUseCase(itemRepository, SortUseCase()),
+        observeAllTags = ObserveAllTagsSortedUseCase(itemRepository),
         vaultRepository = vaultRepository,
         validateTotpInput = ValidateTotpInputUseCase(totpService)
     )

@@ -7,7 +7,6 @@ import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.Timestamp
-import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -17,10 +16,7 @@ class ObserveAllTagsSortedUseCaseTest {
 
     private val loginRepository = FakeLoginRepository()
     private val itemRepository = FakeItemRepository(loginRepository)
-    private val useCase = ObserveAllTagsSortedUseCase(
-        itemRepository = itemRepository,
-        sortUseCase = SortUseCase(),
-    )
+    private val useCase = ObserveAllTagsSortedUseCase(itemRepository = itemRepository)
 
     private fun tag(value: String): Tag = Tag.of(value)!!
 

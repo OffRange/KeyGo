@@ -17,15 +17,15 @@ import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
-import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateCreditCardUseCase
 import de.davis.keygo.feature.item.view.creditcard.model.ViewCreditCardState
 import de.davis.keygo.feature.item.view.login.model.ObfuscatedString
 import de.davis.keygo.rust.FakeCardFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.job
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -142,7 +142,7 @@ class ViewCreditCardViewModelTest {
         try {
             return vm.state.first { it.name.isNotEmpty() }
         } finally {
-            vm.viewModelScope.cancel()
+            vm.viewModelScope.coroutineContext.job.cancelAndJoin()
         }
     }
 
@@ -152,13 +152,12 @@ class ViewCreditCardViewModelTest {
             val state = vm.state.first { it.cardNumber != null }
             return state.cardNumber!!
         } finally {
-            vm.viewModelScope.cancel()
+            vm.viewModelScope.coroutineContext.job.cancelAndJoin()
         }
     }
 
     private fun makeViewModel(): ViewCreditCardViewModel {
-        val sort = SortUseCase()
-        val observeAllTags = ObserveAllTagsSortedUseCase(itemRepository, sort)
+        val observeAllTags = ObserveAllTagsSortedUseCase(itemRepository)
         val cryptoScopeUseCase = ItemWithCryptoScopeUseCase(vaultRepository, cryptoProvider)
         val upsertVaultItem = UpsertVaultItemUseCase(FakeLoginRepository(), creditCardRepository)
         val updateCreditCard = CreateNewOrUpdateCreditCardUseCase(
@@ -175,7 +174,6 @@ class ViewCreditCardViewModelTest {
             updateCreditCard = updateCreditCard,
             observeCreditCardWithCryptoScope = cryptoScopeUseCase,
             observeAllTags = observeAllTags,
-            sort = sort,
             cardFormatter = cardFormatter,
         )
     }

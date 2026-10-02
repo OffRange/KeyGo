@@ -6,6 +6,7 @@ import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davisalessandro.keygo.rust.ItemManagerInterface
 import de.davisalessandro.keygo.rust.KeyWrapperInterface
+import de.davisalessandro.keygo.rust.VaultManagerInterface
 
 /**
  * Constructs the production [CryptographicScopeProvider] backed by the supplied fakes.
@@ -21,9 +22,11 @@ fun BindingCryptographicScopeProvider(
     itemRepository: ItemRepository,
     itemManager: ItemManagerInterface,
     keyWrapper: KeyWrapperInterface,
+    vaultManager: VaultManagerInterface,
 ): CryptographicScopeProvider = CryptographicScopeProviderImpl(
     session = session,
     itemRepository = itemRepository,
     itemManager = itemManager,
     keyWrapper = keyWrapper,
+    vaultManager = vaultManager,
 )

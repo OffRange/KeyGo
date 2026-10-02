@@ -12,6 +12,7 @@ import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.rust.FakeItemManager
 import de.davis.keygo.rust.FakeKeyWrapper
+import de.davis.keygo.rust.FakeVaultManager
 import de.davisalessandro.keygo.rust.ItemAad
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
@@ -35,8 +36,13 @@ class CryptographicScopeImplTest {
     private val itemManager = FakeItemManager()
     private val keyWrapper = FakeKeyWrapper()
 
-    private val provider =
-        CryptographicScopeProviderImpl(session, itemRepository, itemManager, keyWrapper)
+    private val provider = CryptographicScopeProviderImpl(
+        session,
+        itemRepository,
+        itemManager,
+        keyWrapper,
+        FakeVaultManager(),
+    )
 
     private val label = "password"
 

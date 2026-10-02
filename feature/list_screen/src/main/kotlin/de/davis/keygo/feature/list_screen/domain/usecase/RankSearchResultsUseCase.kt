@@ -1,24 +1,18 @@
 package de.davis.keygo.feature.list_screen.domain.usecase
 
 import de.davis.keygo.core.item.domain.model.lite.LiteItemSearchResult
-import de.davis.keygo.core.util.domain.usecase.SortUseCase
+import de.davis.keygo.core.util.domain.comparator.NaturalOrderComparator
 import org.koin.core.annotation.Single
 
 @Single
-class RankSearchResultsUseCase(
-    private val sortUseCase: SortUseCase,
-) {
+class RankSearchResultsUseCase {
 
     operator fun invoke(
         query: String,
         results: List<LiteItemSearchResult>,
-    ): List<LiteItemSearchResult> {
-        val alphabetical = sortUseCase(results) { it.name }
-        if (query.isBlank()) return alphabetical
-
-        // sortedBy is stable, so the alphabetical order survives within each rank.
-        return alphabetical.sortedBy { rankOf(query, it) }
-    }
+    ): List<LiteItemSearchResult> =
+        if (query.isBlank()) results.sortedWith(ByName)
+        else results.sortedWith(compareBy<LiteItemSearchResult> { rankOf(query, it) }.then(ByName))
 
     private fun rankOf(query: String, result: LiteItemSearchResult): Int = when {
         result.name.equals(query, ignoreCase = true) -> EXACT_NAME
@@ -36,5 +30,7 @@ class RankSearchResultsUseCase(
         const val USERNAME = 3
         const val TAG = 4
         const val NOTE = 5
+
+        val ByName = compareBy<LiteItemSearchResult, String>(NaturalOrderComparator) { it.name }
     }
 }

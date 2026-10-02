@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package de.davis.keygo.feature.password_health.data.local.model;
+option java_multiple_files = true;
+
+message ProtoHealthSettings {
+  bool breachesEnabled = 1;
+  bool notificationsEnabled = 2;
+}

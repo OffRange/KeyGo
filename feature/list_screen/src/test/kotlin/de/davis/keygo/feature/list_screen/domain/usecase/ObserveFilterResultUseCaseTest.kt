@@ -18,7 +18,6 @@ import de.davis.keygo.core.item.domain.model.PasswordSecret
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.passkeyRef
-import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.list_screen.domain.model.FilterFacet
 import de.davis.keygo.feature.list_screen.domain.model.FilterResult
 import de.davis.keygo.feature.list_screen.domain.model.FilterState
@@ -40,12 +39,11 @@ class ObserveFilterResultUseCaseTest {
     private val loginRepository = FakeLoginRepository()
     private val itemRepository = FakeItemRepository(loginRepository)
     private val creditCardRepository = FakeCreditCardRepository()
-    private val sortUseCase = SortUseCase()
 
     private val useCase = ObserveFilterResultUseCase(
         itemRepository = itemRepository,
         loginRepository = loginRepository,
-        filterUseCase = FilterUseCase(sortUseCase),
+        filterUseCase = FilterUseCase(),
         observeCardExpiryStatuses = ObserveCardExpiryStatusesUseCase(creditCardRepository),
         availableFacetValues = AvailableFacetValuesUseCase(),
     )

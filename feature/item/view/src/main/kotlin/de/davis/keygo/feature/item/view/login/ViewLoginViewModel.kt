@@ -11,7 +11,7 @@ import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.security.domain.crypto.decrypt
 import de.davis.keygo.core.security.domain.usecase.ItemWithCryptoScopeUseCase
-import de.davis.keygo.core.util.domain.usecase.SortUseCase
+import de.davis.keygo.core.util.domain.comparator.sortedNaturallyBy
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.isSuccess
@@ -66,7 +66,6 @@ internal class ViewLoginViewModel(
     private val updateLogin: CreateNewOrUpdateLoginUseCase,
     private val validateTotpInput: ValidateTotpInputUseCase,
     private val isValidUrl: IsValidUrlUseCase,
-    private val sort: SortUseCase,
     private val websiteHandler: WebsiteHandler,
     private val totpGenerator: TotpGenerator,
     private val totpService: TotpService,
@@ -111,7 +110,7 @@ internal class ViewLoginViewModel(
                     passwordStrengthScore = login.passwordCredential?.score,
                     username = login.username.orEmpty(),
                     domains = login.domainInfos.mapTo(mutableSetOf()) { it.value },
-                    tags = sort(login.tags) { it.display }.toSet(),
+                    tags = login.tags.sortedNaturallyBy { it.display }.toSet(),
                     note = login.note.orEmpty(),
                     totpState = TotpState.NoTotp,
                     pinned = login.pinned,
@@ -327,7 +326,8 @@ internal class ViewLoginViewModel(
                                 dialog.copy(
                                     error = when {
                                         failure.contains(ItemUpsertError.BlankName) ||
-                                            failure.contains(ItemUpsertError.Empty) -> InputFieldError.Empty
+                                                failure.contains(ItemUpsertError.Empty) -> InputFieldError.Empty
+
                                         else -> InputFieldError.System
                                     },
                                 )

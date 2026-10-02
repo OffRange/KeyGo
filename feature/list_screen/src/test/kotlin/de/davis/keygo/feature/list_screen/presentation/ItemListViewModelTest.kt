@@ -17,7 +17,6 @@ import de.davis.keygo.core.item.domain.model.Login
 import de.davis.keygo.core.item.domain.model.Tag
 import de.davis.keygo.core.item.domain.model.Timestamp
 import de.davis.keygo.core.item.domain.usecase.ObserveAllTagsSortedUseCase
-import de.davis.keygo.core.util.domain.usecase.SortUseCase
 import de.davis.keygo.feature.list_screen.domain.model.FilterFacet
 import de.davis.keygo.feature.list_screen.domain.usecase.AvailableFacetValuesUseCase
 import de.davis.keygo.feature.list_screen.domain.usecase.FilterUseCase
@@ -63,7 +62,6 @@ class ItemListViewModelTest {
     private val vaultRepository = FakeVaultRepository()
     private val vaultContextRepository = FakeVaultContextRepository()
     private val creditCardRepository = FakeCreditCardRepository()
-    private val sortUseCase = SortUseCase()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(dispatcher)
@@ -75,17 +73,16 @@ class ItemListViewModelTest {
         enableSelection = enableSelection,
         restrictedItemType = null,
         itemRepository = itemRepository,
-        rankSearchResults = RankSearchResultsUseCase(sortUseCase),
-        observeAllTags = ObserveAllTagsSortedUseCase(itemRepository, sortUseCase),
+        rankSearchResults = RankSearchResultsUseCase(),
+        observeAllTags = ObserveAllTagsSortedUseCase(itemRepository),
         observeVaultsAndSelection = ObserveVaultsAndSelectionUseCase(
             vaultRepository = vaultRepository,
             vaultContextRepository = vaultContextRepository,
-            sortUseCase = sortUseCase,
         ),
         observeFilterResult = ObserveFilterResultUseCase(
             itemRepository = itemRepository,
             loginRepository = loginRepository,
-            filterUseCase = FilterUseCase(sortUseCase),
+            filterUseCase = FilterUseCase(),
             observeCardExpiryStatuses = ObserveCardExpiryStatusesUseCase(creditCardRepository),
             availableFacetValues = AvailableFacetValuesUseCase(),
         ),

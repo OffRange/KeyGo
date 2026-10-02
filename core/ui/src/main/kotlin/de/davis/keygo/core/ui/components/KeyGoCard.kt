@@ -36,17 +36,29 @@ data class KeyGoCardProperties(
     companion object {
 
         @Composable
-        fun outlined(containerColor: Color = Color.Unspecified) = KeyGoCardProperties(
+        fun outlined(
+            containerColor: Color = Color.Unspecified,
+            contentColor: Color = Color.Unspecified
+        ) = KeyGoCardProperties(
             shape = CardDefaults.outlinedShape,
-            colors = CardDefaults.outlinedCardColors(containerColor = containerColor),
+            colors = CardDefaults.outlinedCardColors(
+                containerColor = containerColor,
+                contentColor = contentColor
+            ),
             elevation = CardDefaults.outlinedCardElevation(),
             border = CardDefaults.outlinedCardBorder()
         )
 
         @Composable
-        fun elevated(containerColor: Color = Color.Unspecified) = KeyGoCardProperties(
+        fun elevated(
+            containerColor: Color = Color.Unspecified,
+            contentColor: Color = Color.Unspecified
+        ) = KeyGoCardProperties(
             shape = CardDefaults.elevatedShape,
-            colors = CardDefaults.elevatedCardColors(containerColor = containerColor),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = containerColor,
+                contentColor = contentColor
+            ),
             elevation = CardDefaults.elevatedCardElevation(),
             border = null
         )

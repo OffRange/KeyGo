@@ -6,6 +6,7 @@ import de.davis.keygo.core.security.domain.crypto.model.WrappedItemKeyInformatio
 import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformation
 import de.davis.keygo.core.security.domain.model.CryptoScopeError
 import de.davis.keygo.core.util.Result
+import java.util.UUID
 
 interface CryptographicScopeProvider {
 
@@ -17,6 +18,12 @@ interface CryptographicScopeProvider {
     suspend fun <R> itemScope(
         wrappedVaultKeyInformation: WrappedVaultKeyInformation,
         wrappedItemKeyInformation: WrappedItemKeyInformation,
+        block: suspend CryptographicScope.() -> R,
+    ): Result<R, CryptoScopeError>
+
+    suspend fun <R> accountScope(
+        namespace: UUID,
+        wrapped: KeyInformation?,
         block: suspend CryptographicScope.() -> R,
     ): Result<R, CryptoScopeError>
 

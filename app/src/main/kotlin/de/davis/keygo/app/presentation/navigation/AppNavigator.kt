@@ -48,6 +48,15 @@ class AppNavigator(val state: AppNavigationState) {
     }
 
     /**
+     * Selects the top level [route] for a request from outside the app, such as a notification.
+     * Not gated: it only changes what sits under the overlay, so a gate stays up and the unlock
+     * reveals [route].
+     */
+    fun selectBehindOverlay(route: NavKey) {
+        if (route in state.backStacks) state.topLevelRoute = route
+    }
+
+    /**
      * Switches to the top level [route], keeping whatever history it had. Picking the destination
      * already showing is what clears it, popping back to its base. Nothing sits underneath a base,
      * so back from there closes the app.

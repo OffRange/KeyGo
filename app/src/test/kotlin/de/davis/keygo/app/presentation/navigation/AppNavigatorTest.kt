@@ -8,6 +8,7 @@ import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
+import de.davis.keygo.feature.password_health.presentation.PasswordHealthRoute
 import de.davis.keygo.feature.settings.presentation.ChangePasswordRoute
 import de.davis.keygo.feature.settings.presentation.SettingsRoute
 import de.davis.keygo.feature.totp.presentation.SelectItemForTotpRoute
@@ -209,6 +210,27 @@ class AppNavigatorTest {
     }
 
     @Test
+    fun `an item opened from the health report lands beside it, not on the home stack`() {
+        val navigator = unlocked()
+        val itemId = newItemId()
+        navigator.navigate(PasswordHealthRoute)
+
+        navigator.showDetail(RouteDestination.ViewItem(itemId))
+
+        assertEquals(
+            listOf(PasswordHealthRoute, RouteDestination.ViewItem(itemId)),
+            navigator.shown,
+        )
+        assertEquals(
+            listOf(RouteDestination.Home),
+            navigator.state.backStacks.getValue(RouteDestination.Home).toList(),
+        )
+
+        navigator.goBack()
+        assertEquals(listOf(PasswordHealthRoute), navigator.shown)
+    }
+
+    @Test
     fun `editing stacks on the item it edits, so back returns to it`() {
         val navigator = unlocked()
         val itemId = newItemId()
@@ -395,6 +417,40 @@ class AppNavigatorTest {
     }
 
     @Test
+    fun `a tab selected from outside the app waits behind the gate until the unlock`() {
+        val navigator = navigator()
+
+        navigator.selectBehindOverlay(PasswordHealthRoute)
+
+        assertEquals(listOf(AuthRoute()), navigator.shown)
+
+        navigator.unlock()
+
+        assertEquals(listOf(PasswordHealthRoute), navigator.shown)
+    }
+
+    @Test
+    fun `a tab selected from outside the app keeps the history that tab had`() {
+        val navigator = unlocked()
+        navigator.navigate(SettingsRoute)
+        navigator.navigate(ChangePasswordRoute)
+        navigator.navigate(RouteDestination.Home)
+
+        navigator.selectBehindOverlay(SettingsRoute)
+
+        assertEquals(listOf(SettingsRoute, ChangePasswordRoute), navigator.shown)
+    }
+
+    @Test
+    fun `a route that is not a tab is not selected from outside the app`() {
+        val navigator = unlocked()
+
+        navigator.selectBehindOverlay(ChangePasswordRoute)
+
+        assertEquals(RouteDestination.Home, navigator.state.topLevelRoute)
+    }
+
+    @Test
     fun `the chrome still standing behind the gate cannot navigate anywhere`() {
         // The navigation bar animates out rather than disappearing, so it stays clickable for a
         // moment after the gate goes up. A tap landing then must not push over the gate.
@@ -571,6 +627,7 @@ class AppNavigatorTest {
     private companion object {
         val TOP_LEVEL_ROUTES: Set<NavKey> = linkedSetOf(
             RouteDestination.Home,
+            PasswordHealthRoute,
             RouteDestination.Connectivity,
             SettingsRoute,
         )

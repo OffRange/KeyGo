@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="password_health_title">Password Health</string>
+
+    <string name="password_health_overview_label">Overview</string>
+    <string name="password_health_no_data">Add some passwords to see how they\'re doing</string>
+    <string name="password_health_all_good">All your passwords look great</string>
+    <string name="password_health_checked_all_good">Every password that could be checked looks great</string>
+    <plurals name="password_health_needs_attention">
+        <item quantity="one">%1$d password needs attention</item>
+        <item quantity="other">%1$d passwords need attention</item>
+    </plurals>
+    <string name="checking_passwords">Checking your passwords…</string>
+    <string name="password_health_check_failed">Couldn\'t check your passwords</string>
+    <string name="password_health_unreadable">None of your passwords could be opened for checking</string>
+    <string name="password_health_retry_hint">Pull down to try again</string>
+    <plurals name="password_health_unreadable_count">
+        <item quantity="one">%1$d password couldn\'t be opened and went unchecked</item>
+        <item quantity="other">%1$d passwords couldn\'t be opened and went unchecked</item>
+    </plurals>
+
+    <plurals name="detail_line_checked">
+        <item quantity="one">%1$d password checked</item>
+        <item quantity="other">%1$d passwords checked</item>
+    </plurals>
+    <string name="detail_line_checked_short">%1$d checked</string>
+    <string name="detail_line_breached">%1$d breached</string>
+    <string name="detail_line_weak">%1$d weak</string>
+    <string name="detail_line_reused">%1$d reused</string>
+    <string name="detail_line_similar">%1$d similar</string>
+
+    <string name="breakdown_critical">%1$d critical</string>
+    <string name="breakdown_high">%1$d high</string>
+    <string name="breakdown_medium">%1$d to review</string>
+    <string name="breakdown_clean">%1$d fine</string>
+
+    <string name="needs_attention_title">Needs attention</string>
+    <string name="needs_attention_weak">Weak</string>
+    <string name="needs_attention_reused">Reused</string>
+    <string name="needs_attention_breached">Breached</string>
+
+    <string name="needs_attention_severity_critical">Critical</string>
+    <string name="needs_attention_severity_high">High</string>
+    <string name="needs_attention_severity_medium">Needs review</string>
+
+    <plurals name="needs_attention_group_reused">
+        <item quantity="one">Reused across %1$d login</item>
+        <item quantity="other">Reused across %1$d logins</item>
+    </plurals>
+    <plurals name="needs_attention_group_similar">
+        <item quantity="one">Similar password across %1$d login</item>
+        <item quantity="other">Similar passwords across %1$d logins</item>
+    </plurals>
+
+    <plurals name="needs_attention_standalone_breached">
+        <item quantity="one">Breached password on %1$d login</item>
+        <item quantity="other">Breached passwords on %1$d logins</item>
+    </plurals>
+    <plurals name="needs_attention_standalone_weak">
+        <item quantity="one">Weak password on %1$d login</item>
+        <item quantity="other">Weak passwords on %1$d logins</item>
+    </plurals>
+
+    <plurals name="needs_attention_found_in_breach">
+        <item quantity="one">Found in %1$d breach</item>
+        <item quantity="other">Found in %1$d breaches</item>
+    </plurals>
+
+    <string name="breach_check_enable">Check for breaches</string>
+    <string name="breach_check_opt_in_description">Only the first 5 characters of each password\'s hash ever leave your device</string>
+    <plurals name="breach_check_unreachable">
+        <item quantity="one">Breach check failed for %1$d password: no connection to the breach service</item>
+        <item quantity="other">Breach check failed for %1$d passwords: no connection to the breach service</item>
+    </plurals>
+    <plurals name="breach_check_failed">
+        <item quantity="one">Breach check failed for %1$d password: the breach service didn\'t respond</item>
+        <item quantity="other">Breach check failed for %1$d passwords: the breach service didn\'t respond</item>
+    </plurals>
+
+    <string name="fix_copied_label">Generated password</string>
+    <string name="fix_pending_instruction">New password copied. Change it where this login is used, then confirm here.</string>
+    <string name="fix_open_site">Open site</string>
+    <string name="fix_confirm_changed">I changed it</string>
+    <string name="fix_cancel">Cancel</string>
+    <string name="fix_failed_locked">Your session ended before it could be saved. Try again.</string>
+    <string name="fix_failed_save">Couldn\'t save the new password. Try again.</string>
+
+    <string name="password_health_detail_placeholder">Pick an item to see it here</string>
+
+    <string name="health_notifications_enable">Enable notifications</string>
+    <string name="health_notifications_description">KeyGo will remind you of any security issues with your passwords.</string>
+    <string name="notification_permission_title">Notification permission</string>
+    <string name="notification_permission_rationale">KeyGo needs permission to send notifications to remind you about passwords that need attention.</string>
+    <string name="notification_permission_denied_permanently">Notifications are turned off for KeyGo. To get password reminders, allow them in your app settings.</string>
+    <string name="notification_permission_grant">Grant</string>
+    <string name="notification_permission_open_settings">Open settings</string>
+    <string name="notification_permission_cancel">Cancel</string>
+
+    <string name="password_health_notification_channel_name">Password health</string>
+    <string name="password_health_notification_channel_description">Reminders when some of your passwords need attention</string>
+</resources>

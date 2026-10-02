@@ -13,6 +13,7 @@ import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -21,6 +22,7 @@ fun KeyGoSwitch(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    verticalAlignment: Alignment.Vertical = ListItemDefaults.verticalAlignment(),
     overlineContent: @Composable (() -> Unit)? = null,
     supportingContent: @Composable (() -> Unit)? = null,
     leadingContent: @Composable (() -> Unit)? = null,
@@ -35,6 +37,7 @@ fun KeyGoSwitch(
         overlineContent = overlineContent,
         supportingContent = supportingContent,
         leadingContent = leadingContent,
+        verticalAlignment = verticalAlignment,
         trailingContent = {
             Switch(
                 checked = checked,
