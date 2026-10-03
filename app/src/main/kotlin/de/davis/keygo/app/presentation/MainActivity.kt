@@ -2,6 +2,7 @@ package de.davis.keygo.app.presentation
 
 import android.content.Intent
 import android.os.Bundle
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.SnackbarHost
@@ -132,6 +133,7 @@ private fun App(
     val listPaneVisible = directive.maxHorizontalPartitions > 1
 
     DropAutoSelectedDetailWhenListLeaves(listPaneVisible, navigator)
+    CloseFormBesideList(listPaneVisible, navigator)
 
     val entries = navigationState.toDecoratedEntries(keyGoEntryProvider(navigator, hasAccess))
     val shell = entries.resolveAppShell(listPaneVisible)
@@ -179,6 +181,17 @@ private fun LockAppWhenSessionEnds(isSessionActive: Boolean, navigator: AppNavig
     LaunchedEffect(isSessionActive, topOverlayRoute) {
         if (!isSessionActive) navigator.lock()
     }
+}
+
+/**
+ * The list-detail scene only takes a back press that changes which panes are showing. A form opened
+ * beside the list leaves both panes as they were, so the scene passes the press on and the system
+ * closes the app instead of closing the form.
+ */
+@Composable
+private fun CloseFormBesideList(listPaneVisible: Boolean, navigator: AppNavigator) {
+    val formOnTop = navigator.state.currentStack.lastOrNull() is RouteDestination.Form
+    BackHandler(enabled = listPaneVisible && formOnTop) { navigator.goBack() }
 }
 
 /**
