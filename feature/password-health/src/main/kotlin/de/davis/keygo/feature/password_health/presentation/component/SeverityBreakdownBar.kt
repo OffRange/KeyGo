@@ -8,7 +8,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,7 +17,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,13 +28,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -86,10 +78,7 @@ internal fun SeverityBreakdownBar(
             )
         }
 
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
+        CountRow {
             segments.filter { it.count > 0 }.forEach {
                 LegendEntry(it)
             }
@@ -146,28 +135,7 @@ private fun LegendEntry(segment: Segment) {
                 .size(8.dp)
                 .background(segment.color, CircleShape),
         )
-        Text(
-            text = segment.legendText(),
-            style = MaterialTheme.typography.bodySmall,
-        )
-    }
-}
-
-@Composable
-private fun Segment.legendText(): AnnotatedString {
-    val text = stringResource(label, count)
-
-    // stringResource does format the same way by taking the first locale
-    val number = "%d".format(LocalConfiguration.current.locales[0], count)
-    val start = text.indexOf(number)
-
-    return buildAnnotatedString {
-        append(text)
-        if (start >= 0) addStyle(
-            style = SpanStyle(fontWeight = FontWeight.SemiBold),
-            start = start,
-            end = start + number.length,
-        )
+        CountText(label = segment.label, count = segment.count)
     }
 }
 

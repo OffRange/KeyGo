@@ -2,6 +2,7 @@ package de.davis.keygo.feature.password_health.presentation.model
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.feature.password_health.R
 import de.davis.keygo.feature.password_health.domain.model.CheckGap
 import de.davis.keygo.feature.password_health.domain.model.CheckKind
 import de.davis.keygo.feature.password_health.domain.model.FindingSeverity
@@ -338,6 +339,21 @@ class PasswordHealthUiStateTest {
     @Test
     fun summaryOfNothingIsAllZero() {
         assertEquals(HealthSummary(0, 0, 0, 0, 0), emptyList<HealthSection>().summary())
+    }
+
+    @Test
+    fun issueCountsRunFromBreachedToSimilarAndSkipZeroes() {
+        val summary =
+            HealthSummary(needsAttention = 6, weak = 2, breached = 1, reused = 0, similar = 3)
+
+        assertEquals(
+            listOf(
+                IssueCount(R.string.issue_count_breached, 1),
+                IssueCount(R.string.issue_count_weak, 2),
+                IssueCount(R.string.issue_count_similar, 3),
+            ),
+            summary.issueCounts(),
+        )
     }
 
     @Test

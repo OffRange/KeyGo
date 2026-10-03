@@ -10,11 +10,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -23,26 +26,23 @@ import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.alias.newItemId
-import de.davis.keygo.core.ui.components.KeyGoCard
-import de.davis.keygo.core.ui.components.KeyGoCardProperties
 import de.davis.keygo.feature.password_health.R
 import de.davis.keygo.feature.password_health.domain.model.CheckGap
 import de.davis.keygo.feature.password_health.domain.model.GapReason
 import de.davis.keygo.feature.password_health.domain.model.PasswordHealthReportError
-import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthStatus
 import de.davis.keygo.feature.password_health.presentation.model.PasswordHealthUiState
 import de.davis.keygo.feature.password_health.presentation.model.RunPhase
 import de.davis.keygo.feature.password_health.presentation.model.coverageNote
-import de.davis.keygo.feature.password_health.presentation.model.detailLine
 import de.davis.keygo.feature.password_health.presentation.model.icon
+import de.davis.keygo.feature.password_health.presentation.model.statusCopy
 import de.davis.keygo.feature.password_health.presentation.model.toneColor
-import de.davis.keygo.feature.password_health.presentation.model.verdict
 
 @Composable
 internal fun PasswordHealthStatus(
@@ -63,55 +63,81 @@ internal fun PasswordHealthStatus(
         else contentColorFor(containerColorTarget),
         label = "iconColor"
     )
+    val copy = state.statusCopy()
 
-    KeyGoCard(
-        title = {
-            Text(text = stringResource(R.string.password_health_overview_label))
-        },
+    ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize(),
-        properties = KeyGoCardProperties.elevated(
+        colors = CardDefaults.elevatedCardColors(
             containerColor = containerColor,
-            contentColor = contentColor
+            contentColor = contentColor,
         ),
-        leadingItem = {
-            AnimatedContent(state.isFirstLoad) {
-                when (it) {
-                    true -> CircularWavyProgressIndicator(
-                        modifier = Modifier.size(40.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                AnimatedContent(state.isFirstLoad) {
+                    when (it) {
+                        true -> CircularWavyProgressIndicator(
+                            modifier = Modifier.size(24.dp)
+                        )
+
+                        false -> Icon(
+                            imageVector = state.status.icon(),
+                            contentDescription = null,
+                            tint = iconColor,
+                        )
+                    }
+                }
+
+                Text(
+                    text = copy.headline,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+
+            SupportingLine(
+                text = copy.verdict,
+                label = "verdictLineVisibility",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
+            AnimatedVisibility(
+                visible = state.showsFindings,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+                label = "breakdownVisibility"
+            ) {
+                Column(
+                    modifier = Modifier.padding(top = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    SeverityBreakdownBar(
+                        breakdown = state.breakdown,
+                        containerColor = containerColorTarget,
+                        accentColor =
+                            if (state.isAccented) MaterialTheme.colorScheme.tertiary
+                            else containerColorTarget,
                     )
 
-                    false -> Icon(
-                        imageVector = state.status.icon(),
-                        contentDescription = null,
-                        tint = iconColor,
-                    )
+                    CountRow {
+                        state.issueCounts.forEach {
+                            CountText(label = it.label, count = it.count)
+                        }
+                    }
                 }
             }
-        }
-    ) {
-        Text(text = state.verdict())
 
-        AnimatedVisibility(
-            visible = !state.isFirstLoad && state.status == PasswordHealthStatus.NEEDS_ATTENTION,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-            label = "breakdownVisibility"
-        ) {
-            SeverityBreakdownBar(
-                breakdown = state.breakdown,
-                containerColor = containerColorTarget,
-                accentColor =
-                    if (state.isAccented) MaterialTheme.colorScheme.tertiary
-                    else containerColorTarget,
-                modifier = Modifier.padding(vertical = 8.dp),
-            )
+            SupportingLine(text = copy.detail, label = "detailLineVisibility")
+            SupportingLine(text = state.coverageNote(), label = "coverageNoteVisibility")
+            SupportingLine(text = state.breachGap?.message(), label = "breachGapVisibility")
         }
-
-        SupportingLine(text = state.detailLine(), label = "detailLineVisibility")
-        SupportingLine(text = state.coverageNote(), label = "coverageNoteVisibility")
-        SupportingLine(text = state.breachGap?.message(), label = "breachGapVisibility")
     }
 }
 
@@ -130,7 +156,11 @@ private fun CheckGap.message(): String? {
 }
 
 @Composable
-private fun SupportingLine(text: String?, label: String) {
+private fun SupportingLine(
+    text: String?,
+    label: String,
+    style: TextStyle = MaterialTheme.typography.bodySmall,
+) {
     AnimatedVisibility(
         visible = text != null,
         enter = fadeIn() + expandVertically(),
@@ -140,7 +170,7 @@ private fun SupportingLine(text: String?, label: String) {
         if (text != null) {
             Text(
                 text = text,
-                style = MaterialTheme.typography.bodySmall
+                style = style,
             )
         }
     }
@@ -160,11 +190,6 @@ private fun AllGoodPreview() {
                 PasswordHealthStatus(
                     state = PasswordHealthUiState(
                         phase = RunPhase.FirstLoad
-                    )
-                )
-                PasswordHealthStatus(
-                    state = PasswordHealthUiState(
-                        totalPasswordCount = 12,
                     )
                 )
                 PasswordHealthStatus(

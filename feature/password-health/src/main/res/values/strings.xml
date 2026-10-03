@@ -2,7 +2,11 @@
 <resources>
     <string name="password_health_title">Password Health</string>
 
-    <string name="password_health_overview_label">Overview</string>
+    <string name="password_health_headline_checking">Checking…</string>
+    <string name="password_health_headline_no_data">No passwords yet</string>
+    <string name="password_health_headline_all_good">All good</string>
+    <string name="password_health_headline_failed">Check failed</string>
+
     <string name="password_health_no_data">Add some passwords to see how they\'re doing</string>
     <string name="password_health_all_good">All your passwords look great</string>
     <string name="password_health_checked_all_good">Every password that could be checked looks great</string>
@@ -23,11 +27,10 @@
         <item quantity="one">%1$d password checked</item>
         <item quantity="other">%1$d passwords checked</item>
     </plurals>
-    <string name="detail_line_checked_short">%1$d checked</string>
-    <string name="detail_line_breached">%1$d breached</string>
-    <string name="detail_line_weak">%1$d weak</string>
-    <string name="detail_line_reused">%1$d reused</string>
-    <string name="detail_line_similar">%1$d similar</string>
+    <string name="issue_count_breached">%1$d breached</string>
+    <string name="issue_count_weak">%1$d weak</string>
+    <string name="issue_count_reused">%1$d reused</string>
+    <string name="issue_count_similar">%1$d similar</string>
 
     <string name="breakdown_critical">%1$d critical</string>
     <string name="breakdown_high">%1$d high</string>

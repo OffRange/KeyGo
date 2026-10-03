@@ -214,11 +214,13 @@ internal data class PasswordHealthUiState(
         else -> PasswordHealthStatus.ALL_GOOD
     }
 
+    val showsFindings = !isFirstLoad && status == PasswordHealthStatus.NEEDS_ATTENTION
+
+    val issueCounts by lazy { summary.issueCounts() }
+
     // Medium findings keep a neutral card and carry their tone in an accent, so the card reads
     // calmer than a high one without looking disabled.
-    val isAccented = !isFirstLoad &&
-            status == PasswordHealthStatus.NEEDS_ATTENTION &&
-            worstSeverity == FindingSeverity.Medium
+    val isAccented = showsFindings && worstSeverity == FindingSeverity.Medium
 }
 
 @Composable
@@ -265,35 +267,58 @@ internal fun PasswordHealthUiState.verdict(): String {
             summary.needsAttention
         )
 
-        PasswordHealthStatus.FAILED -> error.failureMessage()
+        PasswordHealthStatus.FAILED ->
+            error.failureReason() ?: stringResource(R.string.password_health_check_failed)
     }
 }
+
+internal data class HealthStatusStrings(
+    val headline: String,
+    val verdict: String? = null,
+    val detail: String? = null,
+)
 
 @Composable
 @ReadOnlyComposable
-internal fun PasswordHealthUiState.detailLine(): String? {
-    if (isFirstLoad) return null
-
+internal fun PasswordHealthUiState.statusCopy(): HealthStatusStrings {
+    if (isFirstLoad) return HealthStatusStrings(stringResource(R.string.password_health_headline_checking))
     return when (status) {
-        PasswordHealthStatus.NO_DATA -> null
-        PasswordHealthStatus.FAILED -> stringResource(R.string.password_health_retry_hint)
-        PasswordHealthStatus.ALL_GOOD -> pluralStringResource(
-            R.plurals.detail_line_checked,
-            totalPasswordCount,
-            totalPasswordCount
+        PasswordHealthStatus.NO_DATA -> HealthStatusStrings(
+            headline = stringResource(R.string.password_health_headline_no_data),
+            verdict = verdict(),
         )
 
-        PasswordHealthStatus.NEEDS_ATTENTION -> {
-            listOfNotNull(
-                countLabel(R.string.detail_line_checked_short, totalPasswordCount),
-                countLabel(R.string.detail_line_breached, summary.breached),
-                countLabel(R.string.detail_line_weak, summary.weak),
-                countLabel(R.string.detail_line_reused, summary.reused),
-                countLabel(R.string.detail_line_similar, summary.similar),
-            ).joinToString(" \u2022 ")
-        }
+        PasswordHealthStatus.ALL_GOOD -> HealthStatusStrings(
+            headline = stringResource(R.string.password_health_headline_all_good),
+            verdict = verdict(),
+            detail = pluralStringResource(
+                R.plurals.detail_line_checked,
+                totalPasswordCount,
+                totalPasswordCount,
+            ),
+        )
+
+        PasswordHealthStatus.NEEDS_ATTENTION -> HealthStatusStrings(headline = verdict())
+
+        PasswordHealthStatus.FAILED -> HealthStatusStrings(
+            headline = stringResource(R.string.password_health_headline_failed),
+            verdict = error.failureReason(),
+            detail = stringResource(R.string.password_health_retry_hint),
+        )
     }
 }
+
+internal data class IssueCount(
+    @param:StringRes val label: Int,
+    val count: Int,
+)
+
+internal fun HealthSummary.issueCounts(): List<IssueCount> = listOf(
+    IssueCount(R.string.issue_count_breached, breached),
+    IssueCount(R.string.issue_count_weak, weak),
+    IssueCount(R.string.issue_count_reused, reused),
+    IssueCount(R.string.issue_count_similar, similar),
+).filter { it.count > 0 }
 
 @Composable
 @ReadOnlyComposable
@@ -309,13 +334,7 @@ internal fun PasswordHealthUiState.coverageNote(): String? {
 
 @Composable
 @ReadOnlyComposable
-private fun PasswordHealthReportError?.failureMessage(): String = when (this) {
+private fun PasswordHealthReportError?.failureReason(): String? = when (this) {
     PasswordHealthReportError.Unreadable -> stringResource(R.string.password_health_unreadable)
-    PasswordHealthReportError.NoPasswords, null ->
-        stringResource(R.string.password_health_check_failed)
+    PasswordHealthReportError.NoPasswords, null -> null
 }
-
-@Composable
-@ReadOnlyComposable
-private fun countLabel(@StringRes id: Int, count: Int): String? =
-    if (count > 0) stringResource(id, count, count) else null
