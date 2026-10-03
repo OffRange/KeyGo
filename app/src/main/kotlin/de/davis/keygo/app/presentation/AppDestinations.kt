@@ -14,35 +14,23 @@ import de.davis.keygo.feature.password_health.presentation.ACTION_OPEN_PASSWORD_
 import de.davis.keygo.feature.password_health.presentation.PasswordHealthRoute
 import de.davis.keygo.feature.settings.presentation.SettingsRoute
 
-/** The navigation bar's destinations. */
 enum class AppDestinations(
     val route: NavKey,
     @StringRes val label: Int,
     val icon: ImageVector,
-    @StringRes val contentDescription: Int,
     val intentAction: String? = null,
+    @StringRes val shortLabel: Int = label,
 ) {
-    HOME(RouteDestination.Home, R.string.home, Icons.Default.Home, R.string.home),
+    HOME(RouteDestination.Home, R.string.home, Icons.Default.Home),
     PASSWORD_HEALTH(
         PasswordHealthRoute,
         R.string.password_health,
         Icons.Default.HealthAndSafety,
-        R.string.password_health,
         ACTION_OPEN_PASSWORD_HEALTH,
+        R.string.password_health_short,
     ),
-    CONNECTIVITY(
-        RouteDestination.Connectivity,
-        R.string.connectivity,
-        Icons.Default.Cast,
-        R.string.connectivity
-    ),
-    SETTINGS(
-        SettingsRoute,
-        R.string.settings,
-        Icons.Default.Settings,
-        R.string.settings
-    ),
-    ;
+    CONNECTIVITY(RouteDestination.Connectivity, R.string.connectivity, Icons.Default.Cast),
+    SETTINGS(SettingsRoute, R.string.settings, Icons.Default.Settings);
 
     companion object {
         fun fromIntentAction(action: String?): AppDestinations? =

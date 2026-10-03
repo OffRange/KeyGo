@@ -1,113 +1,46 @@
 package de.davis.keygo.app.presentation.component
 
 import android.view.accessibility.AccessibilityManager
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuOpen
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.Menu
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.DrawerDefaults
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
-import androidx.compose.material3.FloatingActionButtonMenu
-import androidx.compose.material3.FloatingActionButtonMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarDefaults
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailDefaults
-import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.PermanentDrawerSheet
-import androidx.compose.material3.PlainTooltip
+import androidx.compose.material3.ShortNavigationBar
+import androidx.compose.material3.ShortNavigationBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleFloatingActionButton
-import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
-import androidx.compose.material3.TooltipAnchorPosition
-import androidx.compose.material3.TooltipBox
-import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.WideNavigationRailDefaults
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldLayout
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldState
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldValue
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.material3.adaptive.navigationsuite.rememberNavigationSuiteScaffoldState
-import androidx.compose.material3.animateFloatingActionButton
-import androidx.compose.material3.contentColorFor
-import androidx.compose.material3.rememberDrawerState
-import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.traversalIndex
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.getSystemService
 import androidx.navigation3.runtime.NavKey
 import androidx.window.core.layout.WindowSizeClass
-import de.davis.keygo.R
 import de.davis.keygo.app.presentation.AppDestinations
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
-import de.davis.keygo.core.item.generated.presentation.presentation
 import de.davis.keygo.core.ui.composition.LocalNavigationBarCollapseState
 import de.davis.keygo.core.ui.composition.NavigationBarCollapseState
-import kotlinx.coroutines.launch
-import de.davis.keygo.core.ui.R as CoreUiR
-import de.davis.keygo.feature.password_health.R as PasswordHealthR
 
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun KeyGoNavigationWrapper(
     selectedRoute: NavKey?,
@@ -117,498 +50,109 @@ fun KeyGoNavigationWrapper(
     showChrome: Boolean = true,
     showPrimaryActionButton: Boolean = true,
     needsAttentionCount: Int = 0,
-    containerColor: Color = NavigationSuiteScaffoldDefaults.containerColor,
-    contentColor: Color = NavigationSuiteScaffoldDefaults.contentColor,
-    buttonContainerColor: Color = MaterialTheme.colorScheme.tertiaryContainer,
-    buttonContentColor: Color = contentColorFor(buttonContainerColor),
     snackbarHost: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
-    val windowSize = LocalWindowInfo.current.containerDpSize
-
-    val layoutType = when {
-        adaptiveInfo.windowPosture.isTabletop -> NavigationSuiteType.NavigationBar
-
-        adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND) &&
-                windowSize.width >= 1200.dp -> NavigationSuiteType.NavigationDrawer
-
-        adaptiveInfo.windowSizeClass.isAtLeastBreakpoint(
-            WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND,
-            WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND
-        ) -> NavigationSuiteType.NavigationRail
-
-        else -> NavigationSuiteType.NavigationBar
-    }
-
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
-
-    val scaffoldState = rememberNavigationSuiteScaffoldState()
+    val navigationSuiteType = NavigationSuiteScaffoldDefaults.navigationSuiteType(adaptiveInfo)
+    val isBar = navigationSuiteType.isBar
 
     val touchExplorationEnabled = rememberTouchExplorationEnabled()
-    val hidesOnScroll =
-        layoutType == NavigationSuiteType.NavigationBar && !touchExplorationEnabled
+    val hidesOnScroll = isBar && !touchExplorationEnabled
 
     val collapseState = remember { NavigationBarCollapseState() }
     LaunchedEffect(selectedRoute, hidesOnScroll) { collapseState.reset() }
 
     val showNavigation = showChrome && !(hidesOnScroll && collapseState.isCollapsed)
+    val scaffoldState = rememberNavigationSuiteScaffoldState(
+        if (showNavigation) NavigationSuiteScaffoldValue.Visible
+        else NavigationSuiteScaffoldValue.Hidden
+    )
     LaunchedEffect(showNavigation) {
         if (showNavigation) scaffoldState.show() else scaffoldState.hide()
     }
 
-    // Height of the primary action button, so the snackbar can clear it. Measured on the
-    // button itself and not on its menu, which grows to the full item list when expanded.
-    var primaryActionHeight by remember { mutableIntStateOf(0) }
+    val showCreateMenu = isBar && showChrome && showPrimaryActionButton
 
-    ModalNavigationDrawer(
-        drawerContent = {
-            ModalDrawerSheet(
-                drawerState = drawerState
-            ) {
-                DrawerContent(
-                    selectedRoute = selectedRoute,
-                    navigateToTopLvlDestination = navigateToTopLevelDestination,
-                    onButtonClicked = onButtonClicked,
-                    onCloseDrawer = {
-                        scope.launch {
-                            drawerState.close()
-                        }
-                    },
-                    needsAttentionCount = needsAttentionCount,
-                    buttonContainerColor = buttonContainerColor,
-                    buttonContentColor = buttonContentColor
-                )
-            }
-        },
-        gesturesEnabled = false,
-        drawerState = drawerState
+    Surface(
+        color = NavigationSuiteScaffoldDefaults.containerColor,
+        contentColor = NavigationSuiteScaffoldDefaults.contentColor,
     ) {
-        Surface(color = containerColor, contentColor = contentColor) {
-            NavigationSuiteScaffoldLayout(
-                navigationSuite = {
-                    KeyGoNavigationSuite(
+        NavigationSuiteScaffoldLayout(
+            navigationSuiteType = navigationSuiteType,
+            state = scaffoldState,
+            navigationSuite = {
+                if (isBar) ShortNavigationBar {
+                    AppDestinationItems(
+                        navigationSuiteType = navigationSuiteType,
                         selectedRoute = selectedRoute,
-                        layoutType = layoutType,
-                        navigateToTopLvlDestination = navigateToTopLevelDestination,
-                        onButtonClicked = onButtonClicked,
-                        onOpenDrawer = {
-                            scope.launch {
-                                drawerState.open()
-                            }
-                        },
                         needsAttentionCount = needsAttentionCount,
-                        buttonContainerColor = buttonContainerColor,
-                        buttonContentColor = buttonContentColor,
-                    )
-                },
-                navigationSuiteType = layoutType,
-                state = scaffoldState,
-                primaryActionContent = {
-                    var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
-                    val focusRequester = remember { FocusRequester() }
-
-                    val showPrimaryAction = showChrome && showPrimaryActionButton
-
-                    // The open menu draws no scrim and consumes nothing outside its items, so the
-                    // destination underneath keeps taking taps and can navigate away while the
-                    // menu is still open. The menu belongs to the shell and outlives that
-                    // navigation, so a destination that drops the button takes the menu with it.
-                    LaunchedEffect(showPrimaryAction) {
-                        if (!showPrimaryAction) fabMenuExpanded = false
-                    }
-
-                    FloatingActionButtonMenu(
-                        expanded = fabMenuExpanded,
-                        modifier = Modifier.animateFloatingActionButton(
-                            visible = showPrimaryAction || fabMenuExpanded,
-                            alignment = Alignment.BottomEnd,
-                        ),
-                        button = {
-                            TooltipBox(
-                                positionProvider =
-                                    TooltipDefaults.rememberTooltipPositionProvider(
-                                        if (fabMenuExpanded) {
-                                            TooltipAnchorPosition.Start
-                                        } else {
-                                            TooltipAnchorPosition.Above
-                                        }
-                                    ),
-                                tooltip = { PlainTooltip { Text(stringResource(R.string.add_element_content_description)) } },
-                                state = rememberTooltipState(),
-                            ) {
-                                ToggleFloatingActionButton(
-                                    checked = fabMenuExpanded,
-                                    onCheckedChange = { fabMenuExpanded = !fabMenuExpanded },
-                                    modifier = Modifier
-                                        .onSizeChanged { primaryActionHeight = it.height }
-                                        .semantics {
-                                            traversalIndex = -1f
-                                        }
-                                        .focusRequester(focusRequester),
-                                ) {
-                                    val imageVector by remember {
-                                        derivedStateOf {
-                                            if (checkedProgress > 0.5f) Icons.Filled.Close else Icons.Filled.Add
-                                        }
-                                    }
-                                    Icon(
-                                        painter = rememberVectorPainter(imageVector),
-                                        contentDescription = null,
-                                        modifier = Modifier.animateIcon({ checkedProgress }),
-                                    )
-                                }
-                            }
-                        }
-                    ) {
-                        VaultItemType.entries.forEach { type ->
-                            val (text, icon) = type.presentation
-                            FloatingActionButtonMenuItem(
-                                onClick = {
-                                    fabMenuExpanded = false
-                                    onItemSelected(type)
-                                },
-                                icon = {
-                                    Icon(
-                                        imageVector = icon,
-                                        contentDescription = null,
-                                    )
-                                },
-                                text = { Text(text = text) },
-                            )
-                        }
-                    }
-                },
-                content = {
-                    Box(
-                        Modifier
-                            .fillMaxSize()
-                            // We only consume system insets if the navigation UI (showChrome) is
-                            // visible. Otherwise, the content goes edge-to-edge and needs the
-                            // insets to prevent buttons (like in onboarding/backup wizards) from
-                            // hiding under the system nav bar.
-                            .consumeWindowInsets(
-                                when {
-                                    !showChrome -> WindowInsets(0, 0, 0, 0)
-
-                                    layoutType == NavigationSuiteType.NavigationBar ->
-                                        NavigationBarDefaults.windowInsets.only(WindowInsetsSides.Bottom)
-
-                                    layoutType == NavigationSuiteType.NavigationRail ->
-                                        NavigationRailDefaults.windowInsets.only(WindowInsetsSides.Start)
-
-                                    layoutType == NavigationSuiteType.NavigationDrawer ->
-                                        DrawerDefaults.windowInsets.only(WindowInsetsSides.Start)
-
-                                    else -> WindowInsets(0, 0, 0, 0)
-                                }
-                            )
-                    ) {
-                        CompositionLocalProvider(
-                            LocalNavigationBarCollapseState provides collapseState,
-                            content = content,
-                        )
-
-                        // This slot ends where the navigation component starts, so a bottom
-                        // aligned host clears the component on its own and follows it as it
-                        // collapses. Only the primary action button is left to pad around.
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(
-                                    bottom = if (showChrome && showPrimaryActionButton)
-                                        with(LocalDensity.current) { primaryActionHeight.toDp() } +
-                                                PrimaryActionContentPadding
-                                    else 0.dp
-                                )
-                        ) {
-                            snackbarHost()
-                        }
-                    }
-                }
-            )
-        }
-    }
-}
-
-@Composable
-fun KeyGoNavigationSuite(
-    selectedRoute: NavKey?,
-    layoutType: NavigationSuiteType,
-    navigateToTopLvlDestination: (NavKey) -> Unit,
-    onButtonClicked: () -> Unit,
-    onOpenDrawer: () -> Unit,
-    needsAttentionCount: Int = 0,
-    buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
-    buttonContentColor: Color = contentColorFor(buttonContainerColor),
-) {
-    when (layoutType) {
-        NavigationSuiteType.NavigationBar -> {
-            KeyGoNavigationBar(
-                selectedRoute = selectedRoute,
-                navigateToTopLvlDestination = navigateToTopLvlDestination,
-                needsAttentionCount = needsAttentionCount,
-            )
-        }
-
-        NavigationSuiteType.NavigationRail -> {
-            KeyGoNavigationRail(
-                selectedRoute = selectedRoute,
-                navigateToTopLvlDestination = navigateToTopLvlDestination,
-                onButtonClicked = onButtonClicked,
-                onOpenDrawer = onOpenDrawer,
-                needsAttentionCount = needsAttentionCount,
-                buttonContainerColor = buttonContainerColor,
-                buttonContentColor = buttonContentColor
-            )
-        }
-
-        NavigationSuiteType.NavigationDrawer -> {
-            KeyGoNavigationDrawer(
-                selectedRoute = selectedRoute,
-                onButtonClicked = onButtonClicked,
-                navigateToTopLvlDestination = navigateToTopLvlDestination,
-                needsAttentionCount = needsAttentionCount,
-                buttonContainerColor = buttonContainerColor,
-                buttonContentColor = buttonContentColor
-            )
-        }
-
-        else -> {}
-    }
-}
-
-@Composable
-fun KeyGoNavigationBar(
-    selectedRoute: NavKey?,
-    navigateToTopLvlDestination: (NavKey) -> Unit,
-    needsAttentionCount: Int = 0,
-) {
-    NavigationBar {
-        AppDestinations.entries.forEach { destination ->
-            NavigationBarItem(
-                selected = destination.route == selectedRoute,
-                onClick = { navigateToTopLvlDestination(destination.route) },
-                icon = { DestinationIcon(destination, destination.badge(needsAttentionCount)) },
-                label = { Text(text = stringResource(destination.label)) },
-                alwaysShowLabel = false
-            )
-        }
-    }
-}
-
-@Composable
-fun KeyGoNavigationRail(
-    selectedRoute: NavKey?,
-    navigateToTopLvlDestination: (NavKey) -> Unit,
-    onButtonClicked: () -> Unit,
-    onOpenDrawer: () -> Unit,
-    needsAttentionCount: Int = 0,
-    buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
-    buttonContentColor: Color = contentColorFor(buttonContainerColor)
-) {
-    NavigationRail(
-        header = {
-            NavigationRailItem(
-                selected = false,
-                onClick = onOpenDrawer,
-                icon = {
-                    Icon(
-                        imageVector = Icons.Outlined.Menu,
-                        contentDescription = stringResource(R.string.open_navigation_drawer_content_description)
+                        onDestinationSelected = navigateToTopLevelDestination,
                     )
                 }
-            )
-
-            FloatingActionButton(
-                onClick = onButtonClicked,
-                modifier = Modifier.padding(top = 8.dp, bottom = 32.dp),
-                containerColor = buttonContainerColor,
-                contentColor = buttonContentColor,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(R.string.add_element_content_description),
-                )
-            }
-        }
-    ) {
-        Column(
-            modifier = Modifier.fillMaxHeight(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            AppDestinations.entries.forEach { destination ->
-                NavigationRailItem(
-                    selected = destination.route == selectedRoute,
-                    onClick = { navigateToTopLvlDestination(destination.route) },
-                    icon = { DestinationIcon(destination, destination.badge(needsAttentionCount)) },
-                    label = { Text(text = stringResource(destination.label)) },
-                    alwaysShowLabel = false
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun KeyGoNavigationDrawer(
-    selectedRoute: NavKey?,
-    navigateToTopLvlDestination: (NavKey) -> Unit,
-    onButtonClicked: () -> Unit,
-    needsAttentionCount: Int = 0,
-    buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
-    buttonContentColor: Color = contentColorFor(buttonContainerColor)
-) {
-    PermanentDrawerSheet(
-        modifier = Modifier.widthIn(min = 200.dp, max = 300.dp)
-    ) {
-        DrawerContent(
-            selectedRoute = selectedRoute,
-            navigateToTopLvlDestination = navigateToTopLvlDestination,
-            onButtonClicked = onButtonClicked,
-            needsAttentionCount = needsAttentionCount,
-            buttonContainerColor = buttonContainerColor,
-            buttonContentColor = buttonContentColor
-        )
-    }
-}
-
-@Composable
-fun DrawerContent(
-    selectedRoute: NavKey?,
-    navigateToTopLvlDestination: (NavKey) -> Unit,
-    onButtonClicked: () -> Unit,
-    onCloseDrawer: (() -> Unit)? = null,
-    needsAttentionCount: Int = 0,
-    buttonContainerColor: Color = FloatingActionButtonDefaults.containerColor,
-    buttonContentColor: Color = contentColorFor(buttonContainerColor)
-) {
-    Column(
-        modifier = Modifier.padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stringResource(CoreUiR.string.app_name),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            onCloseDrawer?.let {
-                IconButton(
-                    onClick = it
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Default.MenuOpen,
-                        contentDescription = stringResource(R.string.close_content_description)
-                    )
-                }
-            }
-        }
-
-        ExtendedFloatingActionButton(
-            onClick = onButtonClicked,
-            modifier = Modifier.padding(top = 8.dp, bottom = 40.dp),
-            containerColor = buttonContainerColor,
-            contentColor = buttonContentColor,
-            text = {
-                Text(
-                    text = stringResource(CoreUiR.string.add),
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
+                else KeyGoNavigationRail(
+                    modal = !adaptiveInfo.windowSizeClass
+                        .isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_LARGE_LOWER_BOUND),
+                    visible = showChrome,
+                    selectedRoute = selectedRoute,
+                    needsAttentionCount = needsAttentionCount,
+                    onDestinationSelected = navigateToTopLevelDestination,
+                    onCreateClicked = onButtonClicked,
                 )
             },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(R.string.add_element_content_description),
+            primaryActionContent = {
+                if (isBar) CreateItemMenu(
+                    visible = showCreateMenu,
+                    onItemSelected = onItemSelected,
                 )
-            }
-        )
-
-        Column(
-            modifier = Modifier
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            AppDestinations.entries.forEach { destination ->
-                NavigationDrawerItem(
-                    icon = {
-                        Icon(
-                            imageVector = destination.icon,
-                            contentDescription = stringResource(destination.contentDescription)
+            },
+            content = {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        // Hidden chrome leaves the insets to the content, so full screen flows
+                        // (onboarding, backup wizards) keep their buttons clear of the system bars.
+                        .consumeWindowInsets(
+                            if (showChrome) navigationSuiteType.insets else NoWindowInsets
                         )
-                    },
-                    label = {
-                        Text(text = stringResource(destination.label))
-                    },
-                    selected = destination.route == selectedRoute,
-                    onClick = { navigateToTopLvlDestination(destination.route) },
-                    badge = destination.badge(needsAttentionCount),
-                )
-            }
-        }
-    }
-}
+                ) {
+                    CompositionLocalProvider(
+                        LocalNavigationBarCollapseState provides collapseState,
+                        content = content,
+                    )
 
-private fun AppDestinations.badge(needsAttentionCount: Int): (@Composable () -> Unit)? =
-    if (this != AppDestinations.PASSWORD_HEALTH || needsAttentionCount <= 0) null
-    else ({ AttentionBadge(needsAttentionCount) })
-
-@Composable
-private fun AttentionBadge(count: Int) {
-    val description = pluralStringResource(
-        PasswordHealthR.plurals.password_health_needs_attention,
-        count,
-        count,
-    )
-    Badge(modifier = Modifier.semantics { contentDescription = description }) {
-        Text(text = if (count > MaxBadgeCount) "$MaxBadgeCount+" else count.toString())
-    }
-}
-
-@Composable
-private fun DestinationIcon(destination: AppDestinations, badge: (@Composable () -> Unit)?) {
-    val icon = @Composable {
-        Icon(
-            imageVector = destination.icon,
-            contentDescription = stringResource(destination.contentDescription),
+                    // This slot ends where the bar starts, so the host already clears the bar and
+                    // follows it as it collapses. Only the create button is left to pad around.
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(
+                                bottom = if (showCreateMenu)
+                                    CreateItemMenuButtonSize + PrimaryActionContentPadding
+                                else 0.dp
+                            )
+                    ) {
+                        snackbarHost()
+                    }
+                }
+            },
         )
     }
-
-    if (badge != null) BadgedBox(badge = { badge.invoke() }) { icon() }
-    else icon()
 }
 
-private const val MaxBadgeCount = 99
+private val NavigationSuiteType.isBar: Boolean
+    get() = this == NavigationSuiteType.ShortNavigationBarCompact ||
+            this == NavigationSuiteType.ShortNavigationBarMedium
 
-@Composable
-private fun navigationInsets(
-    layoutType: NavigationSuiteType,
-    state: NavigationSuiteScaffoldState,
-): WindowInsets =
-    if (state.currentValue == NavigationSuiteScaffoldValue.Hidden && !state.isAnimating)
-        WindowInsets(0, 0, 0, 0)
-    else when (layoutType) {
-        NavigationSuiteType.NavigationBar ->
-            NavigationBarDefaults.windowInsets.only(WindowInsetsSides.Bottom)
+private val NavigationSuiteType.insets: WindowInsets
+    @Composable get() =
+        if (isBar) ShortNavigationBarDefaults.windowInsets.only(WindowInsetsSides.Bottom)
+        else WideNavigationRailDefaults.windowInsets.only(WindowInsetsSides.Start)
 
-        NavigationSuiteType.NavigationRail ->
-            NavigationRailDefaults.windowInsets.only(WindowInsetsSides.Start)
+private val NoWindowInsets = WindowInsets(0, 0, 0, 0)
 
-        NavigationSuiteType.NavigationDrawer ->
-            DrawerDefaults.windowInsets.only(WindowInsetsSides.Start)
-
-        else -> WindowInsets(0, 0, 0, 0)
-    }
+/** The padding [NavigationSuiteScaffoldLayout] places around the primary action content. */
+private val PrimaryActionContentPadding = 16.dp
 
 /**
  * Whether an accessibility service that uses touch exploration, such as TalkBack, is running.
@@ -620,7 +164,7 @@ private fun navigationInsets(
 private fun rememberTouchExplorationEnabled(): Boolean {
     val context = LocalContext.current
     val accessibilityManager =
-        remember(context) { context.getSystemService(AccessibilityManager::class.java) }
+        remember(context) { context.getSystemService<AccessibilityManager>() }
 
     var enabled by remember(accessibilityManager) {
         mutableStateOf(accessibilityManager?.isTouchExplorationEnabled == true)
@@ -640,26 +184,21 @@ private fun rememberTouchExplorationEnabled(): Boolean {
     return enabled
 }
 
-/** The padding [NavigationSuiteScaffoldLayout] places around the primary action content. */
-private val PrimaryActionContentPadding = 16.dp
-
 @Suppress("VisualLintOverlap")
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Preview(name = "Default")
+@Preview(name = "Phone")
 @Preview(device = "spec:width=673dp,height=841dp", name = "Medium Tablet")
 @Preview(device = "spec:width=1920dp,height=1080dp,dpi=160", name = "Desktop")
 @Composable
 private fun KeyGoNavigationWrapperPreview() {
     MaterialTheme {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            KeyGoNavigationWrapper(
-                selectedRoute = AppDestinations.entries.first().route,
-                navigateToTopLevelDestination = {},
-                onButtonClicked = {},
-                onItemSelected = {},
-            ) {
-                Text("ASASASASAS")
-            }
+        KeyGoNavigationWrapper(
+            selectedRoute = AppDestinations.entries.first().route,
+            navigateToTopLevelDestination = {},
+            onButtonClicked = {},
+            onItemSelected = {},
+            needsAttentionCount = 3,
+        ) {
+            Text("Content")
         }
     }
 }
