@@ -1,8 +1,13 @@
 package de.davis.keygo.dashboard.presentation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import de.davis.keygo.app.presentation.navigation.AppNavigator
@@ -50,36 +55,53 @@ fun EntryProviderScope<NavKey>.dashboardEntries(navigator: AppNavigator) {
     }
 
     entry<RouteDestination.ViewItem>(metadata = DetailPaneMetadata) { route ->
-        ViewVaultItemScreen(
-            itemId = route.id,
-            navigate = { event ->
-                when (event) {
-                    NavigationEvent.NavigateBack -> navigator.goBack()
+        DetailPaneWidth {
+            ViewVaultItemScreen(
+                itemId = route.id,
+                navigate = { event ->
+                    when (event) {
+                        NavigationEvent.NavigateBack -> navigator.goBack()
 
-                    is NavigationEvent.NavigateToEdit -> navigator.openOnTopOfDetail(
-                        RouteDestination.EditItem(event.vaultType, event.itemId),
-                    )
-                }
-            },
-        )
+                        is NavigationEvent.NavigateToEdit -> navigator.openOnTopOfDetail(
+                            RouteDestination.EditItem(event.vaultType, event.itemId),
+                        )
+                    }
+                },
+            )
+        }
     }
 
     entry<RouteDestination.CreateItem>(metadata = DetailPaneMetadata) { route ->
-        EditVaultItemScreen(
-            detailPaneInformation = DetailPaneInformation.Init.New(route.itemType),
-            onCreated = { navigator.goBack() },
-            navigateBack = { navigator.goBack() },
-        )
+        DetailPaneWidth {
+            EditVaultItemScreen(
+                detailPaneInformation = DetailPaneInformation.Init.New(route.itemType),
+                onCreated = { navigator.goBack() },
+                navigateBack = { navigator.goBack() },
+            )
+        }
     }
 
     entry<RouteDestination.EditItem>(metadata = DetailPaneMetadata) { route ->
-        EditVaultItemScreen(
-            detailPaneInformation = DetailPaneInformation.Init.Existing(route.itemType, route.id),
-            onCreated = { navigator.goBack() },
-            navigateBack = { navigator.goBack() },
-        )
+        DetailPaneWidth {
+            EditVaultItemScreen(
+                detailPaneInformation = DetailPaneInformation.Init.Existing(
+                    route.itemType,
+                    route.id,
+                ),
+                onCreated = { navigator.goBack() },
+                navigateBack = { navigator.goBack() },
+            )
+        }
     }
 }
+
+/** A wide window hands the detail pane everything the list leaves, far wider than a form reads. */
+@Composable
+private fun DetailPaneWidth(content: @Composable () -> Unit) {
+    Box(modifier = Modifier.widthIn(max = DetailPaneMaxWidth)) { content() }
+}
+
+private val DetailPaneMaxWidth = 840.dp
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 private val DetailPaneMetadata: Map<String, Any> =
