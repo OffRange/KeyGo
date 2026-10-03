@@ -65,8 +65,8 @@
     </plurals>
 
     <plurals name="needs_attention_found_in_breach">
-        <item quantity="one">Found in %1$d breach</item>
-        <item quantity="other">Found in %1$d breaches</item>
+        <item quantity="one">Found in %1$,d breach</item>
+        <item quantity="other">Found in %1$,d breaches</item>
     </plurals>
 
     <string name="breach_check_enable">Check for breaches</string>
