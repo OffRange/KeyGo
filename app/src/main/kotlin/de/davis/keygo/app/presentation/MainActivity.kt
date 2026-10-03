@@ -9,6 +9,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
+import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
@@ -128,7 +129,7 @@ private fun App(
 
     val windowAdaptiveInfo = currentWindowAdaptiveInfoV2()
     val directive = remember(windowAdaptiveInfo) {
-        calculatePaneScaffoldDirective(windowAdaptiveInfo)
+        calculatePaneScaffoldDirective(windowAdaptiveInfo).withoutAutoFocus()
     }
     val listPaneVisible = directive.maxHorizontalPartitions > 1
 
@@ -182,6 +183,23 @@ private fun LockAppWhenSessionEnds(isSessionActive: Boolean, navigator: AppNavig
         if (!isSessionActive) navigator.lock()
     }
 }
+
+/**
+ * The scaffold moves focus into the detail pane whenever its effect relaunches, and recreating the
+ * Activity relaunches it, which lands focus on the first field of an open form and raises the
+ * keyboard. Built by hand because [PaneScaffoldDirective.copy] resets the flag to true.
+ */
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+private fun PaneScaffoldDirective.withoutAutoFocus() = PaneScaffoldDirective(
+    maxHorizontalPartitions = maxHorizontalPartitions,
+    horizontalPartitionSpacerSize = horizontalPartitionSpacerSize,
+    maxVerticalPartitions = maxVerticalPartitions,
+    verticalPartitionSpacerSize = verticalPartitionSpacerSize,
+    defaultPanePreferredWidth = defaultPanePreferredWidth,
+    defaultPanePreferredHeight = defaultPanePreferredHeight,
+    excludedBounds = excludedBounds,
+    shouldAutoFocusCurrentDestination = false,
+)
 
 /**
  * The list-detail scene only takes a back press that changes which panes are showing. A form opened
