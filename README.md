@@ -22,7 +22,7 @@ passkeys, and credit card information encrypted entirely on your local device.
 * **Local-Only Storage:** Your data will never leave your device.
 * **Comprehensive Management:** Store passwords, passkeys, and credit cards.
 * **MFA Support:** Built-in authenticator for TOTP tokens.
-* **Advanced Security:** Per-item, industry-standard encryption.
+* **Advanced Security:** Per-item, industry-standard encryption & password health scanning.
 * **Seamless Integration:** System-wide autofill service for all your credentials.
 
 ## Download
