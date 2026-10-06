@@ -2,6 +2,7 @@ package de.davis.keygo.app.presentation.component
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuOpen
@@ -86,9 +87,26 @@ internal fun KeyGoNavigationRail(
         )
     }
 
-    if (modal) ModalWideNavigationRail(state = state, header = header, content = items)
-    else WideNavigationRail(state = state, header = header, content = items)
+    if (modal) ModalWideNavigationRail(
+        state = state,
+        header = header,
+        contentPadding = RailContentPadding,
+        content = items,
+    )
+    else WideNavigationRail(
+        state = state,
+        header = header,
+        contentPadding = RailContentPadding,
+        content = items,
+    )
 }
+
+/**
+ * Replaces the spec's 44dp top space, which assumes nothing sits beside the rail's header. Every
+ * top level screen opens with a 64dp top app bar or [androidx.compose.material3.AppBarWithSearch],
+ * both centred 32dp below the status bar, so 8dp centres the 48dp menu toggle on that same line.
+ */
+private val RailContentPadding = PaddingValues(top = 8.dp)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
