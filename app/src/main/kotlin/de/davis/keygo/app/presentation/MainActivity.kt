@@ -153,6 +153,7 @@ private fun App(
             showChrome = shell.showNavigation,
             showPrimaryActionButton = shell.showCreateButton,
             needsAttentionCount = needsAttentionCount,
+            listPaneWidth = if (listPaneVisible) directive.defaultPanePreferredWidth else null,
             snackbarHost = {
                 SnackbarHost(hostState = snackbarHostState)
             },

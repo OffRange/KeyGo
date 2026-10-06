@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarDefaults
@@ -32,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.getSystemService
 import androidx.navigation3.runtime.NavKey
@@ -50,6 +52,7 @@ fun KeyGoNavigationWrapper(
     showChrome: Boolean = true,
     showPrimaryActionButton: Boolean = true,
     needsAttentionCount: Int = 0,
+    listPaneWidth: Dp? = null,
     snackbarHost: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
@@ -101,11 +104,22 @@ fun KeyGoNavigationWrapper(
                 )
             },
             primaryActionContent = {
-                if (isBar) CreateItemMenu(
-                    visible = showCreateMenu,
-                    onItemSelected = onItemSelected,
-                )
+                // Beside a detail pane the window's end edge belongs to the detail, so the button
+                // is kept to the list pane it creates items for.
+                if (isBar) Box(
+                    modifier = if (listPaneWidth != null)
+                        Modifier.width(listPaneWidth - PrimaryActionContentPadding * 2)
+                    else Modifier,
+                    contentAlignment = Alignment.BottomEnd,
+                ) {
+                    CreateItemMenu(
+                        visible = showCreateMenu,
+                        onItemSelected = onItemSelected,
+                    )
+                }
             },
+            primaryActionContentHorizontalAlignment =
+                if (listPaneWidth != null) Alignment.Start else Alignment.End,
             content = {
                 Box(
                     Modifier
