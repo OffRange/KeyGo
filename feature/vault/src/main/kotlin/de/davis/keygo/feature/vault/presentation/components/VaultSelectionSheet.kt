@@ -21,7 +21,6 @@ import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenuPopup
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItemDefaults
@@ -95,7 +94,7 @@ fun VaultSelectionSheet(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun VaultSelectionSheetContent(
     vaultState: VaultState.Select,
@@ -272,7 +271,7 @@ private fun VaultSelectionSheetContent(
                                             onDeleteRequest(metadata)
                                         },
                                         shape = MenuDefaults.trailingItemShape,
-                                        colors = MenuDefaults.selectableItemColors(
+                                        colors = MenuDefaults.itemColors().copy(
                                             containerColor = MaterialTheme.colorScheme.errorContainer,
                                         ),
                                         leadingIcon = {

@@ -1,6 +1,5 @@
 package de.davis.keygo.feature.item.create.presentation.password
 
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SliderState
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
@@ -28,14 +27,13 @@ import org.koin.core.annotation.KoinViewModel
 import kotlin.time.Duration.Companion.milliseconds
 
 @KoinViewModel
-@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
+@OptIn(FlowPreview::class)
 internal class GeneratePasswordViewModel(
     private val passwordGenerator: PasswordGenerator,
     private val passwordStrengthEstimator: PasswordStrengthEstimator,
 ) : ViewModel() {
 
-    @OptIn(ExperimentalMaterial3Api::class)
-    val sliderState = SliderState(value = 10f, valueRange = 8f..100f)
+    val sliderState = SliderState(value = 10f, trackRange = 8f..100f)
 
     private val finalPasswordChannel = Channel<String>()
     val finalPassword = finalPasswordChannel.receiveAsFlow()
@@ -73,7 +71,6 @@ internal class GeneratePasswordViewModel(
             initialValue = GeneratePasswordUiState(),
         )
 
-    @OptIn(ExperimentalMaterial3Api::class)
     fun onEvent(event: GeneratePasswordUiEvent) {
         when (event) {
             is GeneratePasswordUiEvent.OnCharacterSetClick -> {

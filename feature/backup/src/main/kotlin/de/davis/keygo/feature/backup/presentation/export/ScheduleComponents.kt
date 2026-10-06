@@ -10,7 +10,6 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,7 +30,6 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -78,7 +76,6 @@ import de.davis.keygo.feature.backup.presentation.label
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun IntervalPicker(
     interval: BackupInterval,
@@ -115,7 +112,7 @@ internal fun IntervalPicker(
                         0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
                         else -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                     },
-                    colors = OutlinedToggleButtonDefaults.outlinedToggleButtonColors(
+                    colors = OutlinedToggleButtonDefaults.colors(
                         checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                         checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
@@ -127,7 +124,6 @@ internal fun IntervalPicker(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun RetentionPicker(
     keepCount: Int,
@@ -314,7 +310,6 @@ private fun StepperButton(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StepperValueField(
     value: Int,

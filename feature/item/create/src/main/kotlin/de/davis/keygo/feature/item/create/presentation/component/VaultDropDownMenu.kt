@@ -4,9 +4,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -15,6 +12,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SelectableDropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,7 +26,6 @@ import de.davis.keygo.core.item.presentation.toImageVector
 import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.presentation.model.VaultsState
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun VaultDropDownMenu(
     vaultsState: VaultsState,
@@ -72,7 +69,7 @@ fun VaultDropDownMenu(
         ) {
             val optionCount = vaultsState.vaults.size
             vaultsState.vaults.forEachIndexed { index, metadata ->
-                DropdownMenuItem(
+                SelectableDropdownMenuItem(
                     shapes = MenuDefaults.itemShape(index, optionCount),
                     colors = MenuDefaults.selectableItemColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,

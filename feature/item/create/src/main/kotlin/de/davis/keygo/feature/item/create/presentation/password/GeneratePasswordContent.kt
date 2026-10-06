@@ -141,7 +141,10 @@ fun GeneratePasswordContent(
                     .fillMaxWidth(),
                 properties = cardProp,
             ) {
-                Slider(state = viewModel.sliderState)
+                Slider(
+                    state = viewModel.sliderState,
+                    onValueChange = { viewModel.sliderState.value = it },
+                )
             }
         }
 

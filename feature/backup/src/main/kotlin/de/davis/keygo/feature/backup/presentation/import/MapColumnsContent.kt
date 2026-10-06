@@ -11,7 +11,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.TableChart
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -22,6 +21,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.SelectableDropdownMenuItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -254,7 +254,7 @@ private fun TypeSegment(
             shape = MenuDefaults.standaloneGroupShape,
         ) {
             TYPE_OPTIONS.forEachIndexed { index, option ->
-                DropdownMenuItem(
+                SelectableDropdownMenuItem(
                     selected = selectedType == option,
                     onClick = {
                         onTypeChange(option)
