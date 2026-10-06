@@ -120,7 +120,7 @@ private fun VaultSelectionSheetContent(
                 colors = ListItemDefaults.segmentedColors(),
                 leadingContent = {
                     Icon(
-                        painter = AllVaultsIcon,
+                        imageVector = AllVaultsIcon,
                         modifier = Modifier.size(24.dp),
                         contentDescription = null
                     )
