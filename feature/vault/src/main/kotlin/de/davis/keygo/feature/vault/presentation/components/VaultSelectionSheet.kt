@@ -231,6 +231,7 @@ private fun VaultSelectionSheetContent(
                                     leadingIcon = {
                                         Icon(
                                             imageVector = Icons.Default.Edit,
+                                            modifier = Modifier.size(MenuDefaults.LeadingIconSize),
                                             contentDescription = stringResource(R.string.edit)
                                         )
                                     }
@@ -249,6 +250,7 @@ private fun VaultSelectionSheetContent(
                                         leadingIcon = {
                                             Icon(
                                                 imageVector = Icons.AutoMirrored.Default.DriveFileMove,
+                                                modifier = Modifier.size(MenuDefaults.LeadingIconSize),
                                                 contentDescription = stringResource(R.string.move_to)
                                             )
                                         }
@@ -277,6 +279,7 @@ private fun VaultSelectionSheetContent(
                                         leadingIcon = {
                                             Icon(
                                                 imageVector = Icons.Default.DeleteForever,
+                                                modifier = Modifier.size(MenuDefaults.LeadingIconSize),
                                                 contentDescription = stringResource(R.string.delete)
                                             )
                                         }

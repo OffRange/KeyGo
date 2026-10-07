@@ -45,6 +45,7 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.item.presentation.toImageVector
+import de.davis.keygo.core.ui.components.KeyGoMenuDefaults
 import de.davis.keygo.core.ui.components.KeyGoSwitch
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.vault.R
@@ -225,15 +226,14 @@ private fun DstVaultDropdown(
         ExposedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            containerColor = KeyGoMenuDefaults.containerColor,
+            shape = MenuDefaults.standaloneGroupShape,
         ) {
             val optionCount = dstVaults.size
             dstVaults.forEachIndexed { index, vault ->
                 SelectableDropdownMenuItem(
                     shapes = MenuDefaults.itemShape(index, optionCount),
-                    colors = MenuDefaults.selectableItemColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    ),
+                    colors = KeyGoMenuDefaults.selectableItemColors,
                     selected = vault.vaultId == selectedDstVault?.vaultId,
                     text = {
                         Text(

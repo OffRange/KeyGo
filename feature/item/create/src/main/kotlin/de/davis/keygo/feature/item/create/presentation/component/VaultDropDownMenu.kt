@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import de.davis.keygo.core.item.domain.alias.VaultId
 import de.davis.keygo.core.item.presentation.toImageVector
+import de.davis.keygo.core.ui.components.KeyGoMenuDefaults
 import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.presentation.model.VaultsState
 
@@ -65,15 +66,14 @@ fun VaultDropDownMenu(
         ExposedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            containerColor = KeyGoMenuDefaults.containerColor,
+            shape = MenuDefaults.standaloneGroupShape,
         ) {
             val optionCount = vaultsState.vaults.size
             vaultsState.vaults.forEachIndexed { index, metadata ->
                 SelectableDropdownMenuItem(
                     shapes = MenuDefaults.itemShape(index, optionCount),
-                    colors = MenuDefaults.selectableItemColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    ),
+                    colors = KeyGoMenuDefaults.selectableItemColors,
                     text = {
                         Text(
                             metadata.name,
