@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="general_information">Allgemeine Angaben</string>
+    <string name="additional_information">Weitere Angaben</string>
+    <string name="password_information">Passwort</string>
+    <string name="cc_information">Kartendaten</string>
+    <string name="domain_information">Domains</string>
+    <string name="passkey_information">Passkey</string>
+    <string name="tag_information">Tags</string>
+
+    <string name="override_totp_fields">TOTP-Felder überschreiben?</string>
+    <string name="overriding_totp_fields_description">Der Eintrag enthält bereits TOTP-Felder, die von den neuen TOTP-Daten abweichen. Wähle aus, welche Felder du überschreiben möchtest.</string>
+
+    <string name="totp_secret">TOTP-Schlüssel</string>
+
+    <string name="override">Überschreiben</string>
+    <string name="keep">Behalten</string>
+
+    <string name="select_item">Eintrag auswählen</string>
+
+    <string name="length">Länge [%d]</string>
+    <string name="character_sets">Zeichensätze</string>
+
+    <string name="warning">Warnung</string>
+    <string name="cancel">Abbrechen</string>
+
+    <string name="delete_passkey">Passkey löschen</string>
+    <string name="delete_passkey_warning">Der Passkey für &lt;b>%s&lt;/b> wird beim Speichern entfernt. Du kannst dich dort dann nicht mehr damit anmelden, und er lässt sich nicht wiederherstellen.</string>
+
+    <string name="generate_password">Passwort generieren</string>
+
+    <string name="caution">Achtung</string>
+
+    <string name="lowercase">Kleinbuchstaben</string>
+    <string name="uppercase">Großbuchstaben</string>
+    <string name="digits">Ziffern</string>
+    <string name="punctuations">Sonderzeichen</string>
+    <string name="consider_all_char_sets">Am sichersten ist eine Mischung aus Klein- und Großbuchstaben, Ziffern und Sonderzeichen.</string>
+
+    <string name="use_generated_password">Generiertes Passwort verwenden</string>
+
+    <string name="multiple_items_same_name">Einige Einträge haben dann denselben Namen.</string>
+
+    <string name="name_placeholder">Name eingeben</string>
+    <string name="note_placeholder">Notiz schreiben</string>
+
+    <string name="list_before">• Vorher: %s</string>
+    <string name="list_after">• Nachher: %s</string>
+
+    <string name="submit_content_description">Speichern</string>
+    <string name="generate_password_content_description">Passwort generieren</string>
+
+    <string name="add_domains">Domains hinzufügen</string>
+    <string name="add_tags">Tags hinzufügen</string>
+
+    <string name="database_error">Unerwarteter Datenbankfehler: %s</string>
+    <string name="invalid_vault_id">Der Tresor wurde nicht gefunden</string>
+
+    <string name="vault">Tresor</string>
+</resources>

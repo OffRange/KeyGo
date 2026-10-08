@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="create">Erstellen</string>
+    <string name="all_vaults">Alle Tresore</string>
+    <string name="vault_name">Name des Tresors</string>
+    <string name="vault_name_placeholder">z. B. Arbeit</string>
+    <string name="create_new_vault">Neuen Tresor erstellen</string>
+    <string name="icon">Symbol</string>
+    <string name="vault_name_blank_error">Der Name des Tresors darf nicht leer sein</string>
+    <string name="vault_creation_wrap_failed">Der Tresorschlüssel konnte nicht verschlüsselt werden</string>
+    <string name="vault_creation_session_locked">Dein Tresor ist gesperrt. Entsperre ihn und versuch es noch einmal.</string>
+    <plurals name="vault_item_entry_count">
+        <item quantity="one">1 Eintrag</item>
+        <item quantity="other">%d Einträge</item>
+    </plurals>
+    <string name="edit">Bearbeiten</string>
+    <string name="move_to">Verschieben nach</string>
+    <string name="delete">Löschen</string>
+    <string name="move">Verschieben</string>
+    <string name="cancel">Abbrechen</string>
+    <string name="destination_vault">Zieltresor</string>
+    <string name="source_vault">Quelltresor</string>
+    <string name="moving_items">Einträge werden verschoben…</string>
+
+    <string name="delete_vault_after_move">Tresor nach dem Verschieben löschen</string>
+    <!-- We need &lt; notation so it is recognized as HTML -->
+    <string name="permanently_delete">Endgültig löschen</string>
+    <string name="delete_instruction">Gib zur Bestätigung unten „&lt;b>%s&lt;/b>“ ein, um den Tresor endgültig zu löschen.</string>
+    <plurals name="delete_vault_warning">
+        <item quantity="one">Wenn du &lt;b>%1$s&lt;/b> löschst, werden der Tresor und sein &lt;b>%2$d Eintrag&lt;/b> endgültig entfernt. Das lässt sich nicht rückgängig machen. Verschieb den Eintrag am besten vorher in einen anderen Tresor.</item>
+
+        <item quantity="other">Wenn du &lt;b>%1$s&lt;/b> löschst, werden der Tresor und seine &lt;b>%2$d Einträge&lt;/b> endgültig entfernt. Das lässt sich nicht rückgängig machen. Verschieb die Einträge am besten vorher in einen anderen Tresor.</item>
+    </plurals>
+    <string name="name_does_not_match">Der Name stimmt nicht überein</string>
+</resources>

@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="recommended">Empfohlen</string>
+
+    <string name="csv">CSV</string>
+    <string name="json">JSON</string>
+
+    <string name="dispatched_backups">Backups</string>
+    <string name="no_dispatched_backups">Noch keine Backups</string>
+    <string name="cancel_backup">Abbrechen</string>
+    <string name="backup_progress">%1$d / %2$d</string>
+
+    <string name="export_backup">Exportieren</string>
+    <string name="import_backup">Importieren</string>
+
+    <string name="backup_section_in_progress">Läuft</string>
+    <string name="backup_section_scheduled">Geplant</string>
+    <string name="backup_section_recent">Zuletzt</string>
+
+    <string name="backup_state_enqueued">Wartet</string>
+
+    <string name="backup_kind_one_time">Einmalig</string>
+    <string name="backup_kind_recurring">Regelmäßig</string>
+    <string name="backup_failure_nothing_to_export">Es gab nichts zu sichern</string>
+    <string name="backup_failure_crypto">Deine Daten konnten nicht entsperrt werden</string>
+    <string name="backup_failure_serialization">Die Backup-Datei konnte nicht erstellt werden</string>
+    <string name="backup_failure_serialization_crypto">Das Backup konnte nicht verschlüsselt werden</string>
+    <string name="backup_failure_write">Die Backup-Datei konnte nicht gespeichert werden</string>
+    <string name="backup_failure_not_provisioned">Backups sind auf diesem Gerät nicht eingerichtet</string>
+    <string name="backup_failure_retries_exhausted">Konnte nicht ausgeführt werden, weil das Gerät gesperrt blieb</string>
+    <!-- Frames a reason on a row that still reads "Scheduled". %1$s is a backup_failure_* string. -->
+    <string name="backup_failure_last_run">Letzter Durchlauf fehlgeschlagen: %1$s</string>
+    <string name="file_type_backup">%1$s-Backup</string>
+
+    <plurals name="backup_interval_days">
+        <item quantity="one">Täglich</item>
+        <item quantity="other">Alle %1$d Tage</item>
+    </plurals>
+
+    <plurals name="backup_interval_weeks">
+        <item quantity="one">Wöchentlich</item>
+        <item quantity="other">Alle %1$d Wochen</item>
+    </plurals>
+
+    <string name="continue_step">Weiter</string>
+    <string name="passphrase">Passphrase</string>
+    <string name="confirm_passphrase">Passphrase bestätigen</string>
+
+    <string name="export_description_json">Exportiert alle Daten – Tresore, Logins, Karten und TOTP – in eine sicher verschlüsselte JSON-Datei.</string>
+    <string name="export_description_csv">Exportiert nur Logins. Achtung: Dieses Format ist unverschlüsselt und wird als Klartext gespeichert.</string>
+
+    <string name="export_passphrase_instruction">Lege eine Passphrase fest, mit der dein Backup verschlüsselt wird. Du brauchst sie, um deine Daten später wiederherzustellen.\nHinweis: Für regelmäßige Backups wird die Passphrase sicher auf deinem Gerät gespeichert, bei einmaligen Exporten dagegen nie.</string>
+
+    <string name="encryption_method_passphrase">Passphrase</string>
+    <string name="encryption_method_passphrase_description">Wähle eine Passphrase. Damit lässt sich das Backup auf jedem Gerät wiederherstellen.</string>
+    <string name="encryption_method_ark">Dieses Gerät &amp; Konto</string>
+    <string name="encryption_method_ark_description">Nutzt den Schlüssel dieses Kontos – du musst dir nichts merken. Lässt sich nur in diesem Konto wiederherstellen.</string>
+    <string name="encryption_method_ark_warning">Nur dieses Konto auf diesem Gerät kann das Backup entschlüsseln. Wenn du KeyGo neu installierst, dein Gerät verlierst oder dein Konto zurücksetzt, bleibt die Datei für immer verschlüsselt und alles darin ist verloren. Niemand kann sie wiederherstellen.</string>
+
+    <string name="csv_preset_browser">Browser-kompatibel</string>
+    <string name="csv_preset_browser_description">Spalten: name, url, username, password, note. Lässt sich in Chrome, Edge und andere Browser importieren. Ohne TOTP.</string>
+    <string name="csv_preset_keygo">KeyGo</string>
+    <string name="csv_preset_keygo_description">Alle Spalten inklusive TOTP. Lässt sich ohne Verluste wieder in KeyGo importieren.</string>
+
+    <string name="select_file_format_title">Dateiformat wählen</string>
+    <string name="select_schedule_title">Backup-Zeitplan</string>
+    <string name="select_destination_title">Speicherort</string>
+    <string name="provide_passphrase_title">Passphrase festlegen</string>
+    <string name="select_csv_preset_title">CSV-Layout wählen</string>
+    <string name="review_backup_title">Backup überprüfen</string>
+
+    <string name="destination_provider_unknown">Unbekannt</string>
+    <string name="destination_provider_on_device">Dieses Gerät</string>
+
+    <string name="destination_choose_title">Speicherort wählen</string>
+    <string name="destination_choose_subtitle">Wähle einen Ordner auf diesem Gerät oder einen Cloud-Anbieter wie Nextcloud, Drive oder Dropbox.</string>
+    <string name="destination_choose_action">Speicherort wählen</string>
+    <string name="file_chooser_change">Ändern</string>
+    <string name="destination_filename_label">Gespeichert als %s</string>
+
+    <string name="select_import_file_title">Backup importieren</string>
+    <string name="import_choose_title">Backup-Datei wählen</string>
+    <string name="import_choose_subtitle">Wähle ein .json- oder .csv-Backup von diesem Gerät oder von einem Cloud-Anbieter wie Nextcloud, Drive oder Dropbox.</string>
+    <string name="import_choose_action">Datei wählen</string>
+    <string name="import_selected_label">Ausgewählt: %s</string>
+    <string name="import_passphrase_instruction">Dieses Backup ist verschlüsselt. Gib die Passphrase ein, um fortzufahren.</string>
+    <string name="import_passphrase_error">Falsche Passphrase. Bitte versuch es noch einmal.</string>
+    <string name="import_running_title">Import läuft</string>
+    <string name="import_reading">Datei wird gelesen…</string>
+    <string name="import_parsing">Backup wird entschlüsselt…</string>
+    <string name="import_running">Einträge werden importiert…</string>
+    <string name="import_progress">%1$d / %2$d</string>
+    <string name="import_result_title">Import abgeschlossen</string>
+    <string name="import_result_imported">Importiert</string>
+    <string name="import_result_skipped">Übersprungen (schon vorhanden)</string>
+    <string name="import_result_failed">Fehlgeschlagen</string>
+    <string name="import_result_vaults">Neue Tresore</string>
+    <string name="import_done">Fertig</string>
+    <string name="import_error_title">Import fehlgeschlagen</string>
+    <string name="import_try_again">Zurück</string>
+    <string name="import_error_file_unreadable">Die ausgewählte Datei konnte nicht gelesen werden.</string>
+    <string name="import_error_empty">Die ausgewählte Datei ist leer.</string>
+    <string name="import_error_unsupported">KeyGo kann nur .json- und .csv-Dateien importieren. Bitte wähle eine Datei mit einer dieser Endungen.</string>
+    <string name="import_error_nothing">In diesem Backup gibt es nichts zu importieren.</string>
+    <string name="import_error_parse">Diese Datei ist kein gültiges KeyGo-Backup.</string>
+    <string name="import_error_session_locked">Dein Tresor ist gesperrt. Entsperre ihn und versuch es noch einmal.</string>
+    <string name="import_error_generic">Beim Import ist etwas schiefgelaufen.</string>
+
+    <string name="destination_behavior_one_time">Dein Backup wird einmalig hier gespeichert.</string>
+    <string name="destination_behavior_recurring">Laut Zeitplan wird hier jeweils ein neues Backup gespeichert. Ältere Backups bleiben erhalten.</string>
+    <string name="destination_behavior_recurring_pruned">Laut Zeitplan wird hier jeweils ein neues Backup gespeichert. Ältere Backups werden automatisch gelöscht.</string>
+
+    <string name="schedule_one_time_title">Einmaliges Backup</string>
+    <string name="schedule_one_time_description">Einmal an einen Ort deiner Wahl exportieren. Es wird nichts gespeichert oder wiederholt.</string>
+    <string name="schedule_recurring_title">Regelmäßiges Backup</string>
+    <string name="schedule_recurring_description">KeyGo erstellt automatisch nach deinem Zeitplan ein neues Backup.</string>
+    <string name="schedule_recurring_requires_encryption">Regelmäßige Backups brauchen ein verschlüsseltes Format. Wähle JSON, um automatische Backups zu planen.</string>
+
+    <string name="schedule_repeat_every_label">Wiederholen alle</string>
+    <string name="schedule_auto_delete_label">Alte Backups automatisch löschen</string>
+
+    <string name="interval_unit_days">Tage</string>
+    <string name="interval_unit_weeks">Wochen</string>
+
+    <plurals name="schedule_keep_unit">
+        <item quantity="one">Backup</item>
+        <item quantity="other">Backups</item>
+    </plurals>
+
+    <plurals name="schedule_keep_summary">
+        <item quantity="one">Nur das neueste Backup wird behalten. Ältere werden automatisch gelöscht.</item>
+        <item quantity="other">Nur die %1$d neuesten Backups werden behalten. Ältere werden automatisch gelöscht.</item>
+    </plurals>
+
+    <string name="schedule_keep_all_summary">Alle Backups werden behalten. Es wird nichts automatisch gelöscht.</string>
+
+    <string name="schedule_backup">Backup planen</string>
+
+    <string name="review_ready_title">Bereit fürs Backup</string>
+    <string name="review_ready_subtitle">Prüf die Details unten noch einmal, bevor du exportierst.</string>
+
+    <string name="review_section_format">Format</string>
+    <string name="review_section_schedule">Zeitplan</string>
+    <string name="review_section_retention">Aufbewahrung</string>
+    <string name="review_section_destination">Speicherort</string>
+    <string name="review_section_encryption">Verschlüsselung</string>
+    <string name="review_section_contents">Inhalt</string>
+    <string name="review_section_passphrase">Stärke der Passphrase</string>
+    <string name="review_section_csv_preset">CSV-Layout</string>
+
+    <string name="review_schedule_one_time">Einmalig</string>
+
+    <string name="review_retention_all">Alle behalten</string>
+    <plurals name="review_retention">
+        <item quantity="one">Nur das letzte Backup</item>
+        <item quantity="other">Die letzten %1$d Backups</item>
+    </plurals>
+
+    <string name="review_encryption_on">Verschlüsselt</string>
+    <string name="review_encryption_off">Nicht verschlüsselt</string>
+
+    <string name="review_contents_all">Alle Tresore &amp; Einträge</string>
+    <string name="review_contents_logins">Nur Logins</string>
+
+    <string name="review_plaintext_warning">Diese Datei wird als Klartext gespeichert. Jeder, der sie öffnet, kann deine Logins lesen – bewahre sie also gut auf.</string>
+
+    <string name="create_backup">Backup erstellen</string>
+
+    <string name="enable">Aktivieren</string>
+
+    <string name="export_error_passphrase_empty">Gib eine Passphrase ein, um das Backup zu verschlüsseln</string>
+    <string name="export_error_crypto">Die Passphrase konnte nicht sicher gespeichert werden. Bitte versuch es noch einmal.</string>
+    <string name="export_error_schedule">Das Backup konnte nicht gespeichert werden. Bitte versuch es noch einmal.</string>
+    <string name="export_error_destination_permission">Kein Zugriff auf den ausgewählten Ordner. Bitte wähle ihn noch einmal aus.</string>
+
+    <string name="map_columns_title">Spalten zuordnen</string>
+    <string name="select_vault_title">Importieren in</string>
+    <string name="select_vault_new">Neuer Tresor</string>
+    <string name="select_vault_name_label">Name des Tresors</string>
+    <string name="select_vault_icon_label">Symbol</string>
+    <plurals name="select_vault_item_count">
+        <item quantity="one">%1$d Eintrag</item>
+        <item quantity="other">%1$d Einträge</item>
+    </plurals>
+    <string name="csv_type_title">Titel</string>
+    <string name="csv_type_url">URL</string>
+    <string name="csv_type_username">Benutzername</string>
+    <string name="csv_type_password">Passwort</string>
+    <string name="csv_type_notes">Notizen</string>
+    <string name="csv_type_totp">TOTP</string>
+    <string name="csv_type_ignore">Ignorieren</string>
+    <string name="csv_type_verify_hint">Automatisch erkannt – bitte prüfen</string>
+    <string name="csv_type_duplicate_error">Dieser Typ ist schon einer anderen Spalte zugeordnet</string>
+
+    <string name="map_columns_intro_title">CSV-Spalten zuordnen</string>
+    <string name="csv_column_source_label">Spalte %1$d in deiner Datei</string>
+    <string name="csv_type_row_label">Importieren als</string>
+    <string name="csv_samples_label">Beispielwerte aus dieser Spalte</string>
+    <string name="csv_samples_empty">Diese Spalte ist leer</string>
+
+    <plurals name="map_columns_intro_subtitle">
+        <item quantity="one">%1$d Spalte in %2$s gefunden. Prüf, ob sie im richtigen Feld landet – alles auf „Ignorieren“ wird übersprungen.</item>
+        <item quantity="other">%1$d Spalten in %2$s gefunden. Prüf, ob jede im richtigen Feld landet – alles auf „Ignorieren“ wird übersprungen.</item>
+    </plurals>
+
+    <plurals name="map_columns_intro_subtitle_no_file">
+        <item quantity="one">%1$d Spalte gefunden. Prüf, ob sie im richtigen Feld landet – alles auf „Ignorieren“ wird übersprungen.</item>
+        <item quantity="other">%1$d Spalten gefunden. Prüf, ob jede im richtigen Feld landet – alles auf „Ignorieren“ wird übersprungen.</item>
+    </plurals>
+</resources>

@@ -29,7 +29,7 @@
     <string name="backup_failure_not_provisioned">Backup isn\'t set up on this device</string>
     <string name="backup_failure_retries_exhausted">Couldn\'t run while the device stayed locked</string>
     <!-- Frames a reason on a row that still reads "Scheduled". %1$s is a backup_failure_* string. -->
-    <string name="backup_failure_last_run">Last run failed. %1$s</string>
+    <string name="backup_failure_last_run">Last run failed: %1$s</string>
     <string name="file_type_backup">%1$s Backup</string>
 
     <plurals name="backup_interval_days">
@@ -86,9 +86,9 @@
     <string name="import_passphrase_instruction">This backup is encrypted. Enter its passphrase to continue.</string>
     <string name="import_passphrase_error">Wrong passphrase. Please try again.</string>
     <string name="import_running_title">Importing</string>
-    <string name="import_reading">Reading file...</string>
-    <string name="import_parsing">Decrypting backup...</string>
-    <string name="import_running">Importing items...</string>
+    <string name="import_reading">Reading file…</string>
+    <string name="import_parsing">Decrypting backup…</string>
+    <string name="import_running">Importing items…</string>
     <string name="import_progress">%1$d / %2$d</string>
     <string name="import_result_title">Import complete</string>
     <string name="import_result_imported">Imported</string>
@@ -169,9 +169,9 @@
     <string name="enable">Enable</string>
 
     <string name="export_error_passphrase_empty">Enter a passphrase to encrypt the backup</string>
-    <string name="export_error_crypto">Couldn\'t secure the passphrase. Please try again</string>
-    <string name="export_error_schedule">Couldn\'t save the backup. Please try again</string>
-    <string name="export_error_destination_permission">Couldn\'t get access to the selected folder. Choose it again</string>
+    <string name="export_error_crypto">Couldn\'t secure the passphrase. Please try again.</string>
+    <string name="export_error_schedule">Couldn\'t save the backup. Please try again.</string>
+    <string name="export_error_destination_permission">Couldn\'t get access to the selected folder. Choose it again.</string>
 
     <string name="map_columns_title">Map columns</string>
     <string name="select_vault_title">Import into</string>

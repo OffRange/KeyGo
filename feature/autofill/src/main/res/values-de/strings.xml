@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="autofill_service">Autofill-Dienst</string>
+    <string name="fill_anyway">Trotzdem ausfüllen</string>
+
+    <string name="checking_website_link">App wird überprüft</string>
+    <string name="checking_website_link_description">KeyGo fragt bei &lt;b>%1$s&lt;/b> nach, ob diese App dafür freigegeben ist.</string>
+
+    <string name="suspicious_activity">Verdächtige Aktivität</string>
+    <string name="suspicious_activity_description">Diese App (&lt;b>%1$s&lt;/b>) ist kein bekannter Browser, zeigt aber eine Website an (&lt;b>%2$s&lt;/b>). Wenn du hier automatisch ausfüllst, könnte die App deine Zugangsdaten erhalten. Fahre nur fort, wenn du der App und der Website vertraust.</string>
+
+    <string name="unverified_activity">App konnte nicht überprüft werden</string>
+    <string name="unverified_activity_description">Diese App (&lt;b>%1$s&lt;/b>) ist kein bekannter Browser, und es ließ sich nicht prüfen, ob sie &lt;b>%2$s&lt;/b> verwenden darf. Der Prüfdienst war nicht erreichbar – meistens ist das Gerät offline oder die App hat keinen Netzwerkzugriff. Fahre nur fort, wenn du der App und der Website vertraust.</string>
+
+    <string name="suggest">Vorschlagen</string>
+    <string name="suggest_for_this_app">Diesen Eintrag vorschlagen</string>
+
+    <string name="suggest_text">„%1$s“ wird dir bei der nächsten Anmeldung vorgeschlagen. Diese Einstellung wird nur auf deinem Gerät gespeichert und lässt sich in den Details des Eintrags ändern.</string>
+    <string name="suggest_text_with_domain">„%1$s“ wird dir bei der nächsten Anmeldung auf %2$s vorgeschlagen. Diese Einstellung wird nur auf deinem Gerät gespeichert und lässt sich in den Details des Eintrags ändern.</string>
+
+    <string name="not_now">Nicht jetzt</string>
+
+    <string name="cancel">Abbrechen</string>
+
+    <string name="open_app">KeyGo-Autofill verwenden</string>
+    <string name="sms_code">SMS-Code</string>
+    <string name="waiting_for_sms_code">Warte auf SMS-Code</string>
+    <string name="waiting_for_sms_code_description">KeyGo trägt den Code automatisch ein, sobald die SMS ankommt.</string>
+</resources>

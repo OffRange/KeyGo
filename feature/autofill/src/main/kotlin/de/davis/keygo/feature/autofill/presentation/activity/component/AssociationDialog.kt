@@ -13,7 +13,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import de.davis.keygo.feature.autofill.R
@@ -47,12 +46,8 @@ internal fun AssociationDialog(
         },
         text = {
             Text(
-                text = pluralStringResource(
-                    R.plurals.suggest_text,
-                    if (domain.isNullOrBlank()) 0 else 1,
-                    itemName,
-                    domain.orEmpty(),
-                )
+                text = if (domain.isNullOrBlank()) stringResource(R.string.suggest_text, itemName)
+                else stringResource(R.string.suggest_text_with_domain, itemName, domain)
             )
         },
         icon = {

@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -115,8 +116,9 @@ fun AuthContent(
                     title = { Text(text = stringResource(R.string.migration_summary_title)) },
                     text = {
                         Text(
-                            text = stringResource(
-                                R.string.migration_summary_description,
+                            text = pluralStringResource(
+                                R.plurals.migration_summary_description,
+                                state.skippedItems,
                                 state.skippedItems,
                             ),
                         )
@@ -182,10 +184,12 @@ private fun InteractableAuthContent(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    val (titleStart, titleEnd) = state.title
+                        .split(TitleHighlightPlaceholder, limit = 2)
+                        .let { it.first() to it.getOrElse(1) { "" } }
                     Text(
                         text = buildAnnotatedString {
-                            append(state.firstTitlePart)
-                            append(" ")
+                            append(titleStart)
 
                             withStyle(
                                 SpanStyle(
@@ -200,8 +204,10 @@ private fun InteractableAuthContent(
                                     )
                                 )
                             ) {
-                                append(stringResource(R.string.your_vault))
+                                append(stringResource(R.string.auth_title_highlight))
                             }
+
+                            append(titleEnd)
                         },
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center,
@@ -385,11 +391,13 @@ fun MigrationDialog(onClick: () -> Unit) {
 internal val DialogMinWidth = 280.dp
 internal val DialogMaxWidth = 560.dp
 
-private val AuthState.Interactable.firstTitlePart: String
+private const val TitleHighlightPlaceholder = "%1\$s"
+
+private val AuthState.Interactable.title: String
     @Composable
     get() = when (this) {
-        is AuthState.Login -> stringResource(R.string.authenticate_to_access)
-        is AuthState.Migrating -> stringResource(R.string.migrate_to_access)
+        is AuthState.Login -> stringResource(R.string.auth_title_unlock)
+        is AuthState.Migrating -> stringResource(R.string.auth_title_migrate)
     }
 
 private val AuthState.Interactable.buttonText: String

@@ -1,0 +1,19 @@
+<resources>
+    <string name="expand_navigation_content_description">Navigation ausklappen</string>
+    <string name="collapse_navigation_content_description">Navigation einklappen</string>
+    <string name="add_element_content_description">Eintrag hinzufügen</string>
+    <string name="search_content_description">Suchen</string>
+    <string name="open_website_content_description">Website öffnen</string>
+
+    <string name="add_new_element">Neuer Eintrag</string>
+
+    <string name="home">Start</string>
+    <string name="password_health">Passwort-Check</string>
+    <string name="password_health_short">Sicherheit</string>
+    <string name="connectivity">Verbindungen</string>
+    <string name="settings">Einstellungen</string>
+
+    <string name="match_not_found">Keine Treffer</string>
+
+    <string name="coming_soon">Demnächst verfügbar</string>
+</resources>
