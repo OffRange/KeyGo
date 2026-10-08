@@ -11,9 +11,9 @@ passkeys, and credit card information encrypted entirely on your local device.
 ### Driven by a modern & intuitive design
 
 <div align="center">
-    <img src="docs/assets/phone-1.png" width="32%" alt="Vault List Screenshot"/>
-    <img src="docs/assets/phone-2.png" width="32%" alt="Item Detail Screenshot"/>
-    <img src="docs/assets/phone-3.png" width="32%" alt="Password Generator Screenshot"/>
+    <img src="docs/assets/phone/01_hero.png" width="32%" alt="Vault List Screenshot"/>
+    <img src="docs/assets/phone/02_password_health.png" width="32%" alt="Password Health Screenshot"/>
+    <img src="docs/assets/phone/03_2fa.png" width="32%" alt="Two-Factor Authenticator Screenshot"/>
 </div>
 
 ## Features
@@ -22,17 +22,17 @@ passkeys, and credit card information encrypted entirely on your local device.
 * **Local-Only Storage:** Your data will never leave your device.
 * **Comprehensive Management:** Store passwords, passkeys, and credit cards.
 * **MFA Support:** Built-in authenticator for TOTP tokens.
-* **Advanced Security:** Per-item, industry-standard encryption.
+* **Advanced Security:** Per-item, industry-standard encryption & password health scanning.
 * **Seamless Integration:** System-wide autofill service for all your credentials.
 
 ## Download
 
 Get the latest version of KeyGo directly from the Play Store or GitHub:
-|Platform|Status|
-|:------:|:----:|
-| Google Play
-Store | [<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Download from Google Play" height="80">](https://play.google.com/store/apps/details?id=de.davis.passwordmanager) |
-|GitHub. | [![GitHub tag](https://img.shields.io/github/release/OffRange/KeyGo?include_prereleases=&sort=semver)](https://github.com/OffRange/KeyGo/releases/)|
+
+|     Platform      |                                                                                                          Status                                                                                                           |
+|:-----------------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
+| Google Play Store | [<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Download from Google Play" height="80">](https://play.google.com/store/apps/details?id=de.davis.passwordmanager) |
+|      GitHub       |                                    [![GitHub tag](https://img.shields.io/github/release/OffRange/KeyGo?include_prereleases=&sort=semver)](https://github.com/OffRange/KeyGo/releases/)                                    |
 
 ## Build it Yourself
 

@@ -6,13 +6,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.TableChart
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -22,6 +21,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.SelectableDropdownMenuItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -193,7 +193,6 @@ private fun SourceSegment(columnIndex: Int, header: String) {
  * since all three segments carry the same weight of leading icon. This is the only segment of the
  * three that is genuinely interactive.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TypeSegment(
     selectedType: CsvColumnType?,
@@ -254,7 +253,7 @@ private fun TypeSegment(
             shape = MenuDefaults.standaloneGroupShape,
         ) {
             TYPE_OPTIONS.forEachIndexed { index, option ->
-                DropdownMenuItem(
+                SelectableDropdownMenuItem(
                     selected = selectedType == option,
                     onClick = {
                         onTypeChange(option)
@@ -262,10 +261,18 @@ private fun TypeSegment(
                     },
                     text = { Text(text = option.displayName) },
                     leadingIcon = {
-                        Icon(imageVector = option.icon, contentDescription = null)
+                        Icon(
+                            imageVector = option.icon,
+                            modifier = Modifier.size(MenuDefaults.LeadingIconSize),
+                            contentDescription = null,
+                        )
                     },
                     selectedLeadingIcon = {
-                        Icon(imageVector = Icons.Default.Check, contentDescription = null)
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            modifier = Modifier.size(MenuDefaults.LeadingIconSize),
+                            contentDescription = null,
+                        )
                     },
                     shapes = MenuDefaults.itemShape(index, TYPE_OPTIONS.size)
                 )

@@ -10,10 +10,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenuPopup
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,9 +23,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.ui.components.KeyGoMenuDefaults
 import de.davis.keygo.feature.item.core.R
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MenuChip(
     chipText: String,
@@ -56,7 +54,7 @@ fun MenuChip(
         ) {
             DropdownMenuGroup(
                 shapes = MenuDefaults.groupShape(0, 1),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                containerColor = KeyGoMenuDefaults.containerColor,
             ) {
                 onModifyClick?.let { onModify ->
                     DropdownMenuItem(

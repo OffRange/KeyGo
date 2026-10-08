@@ -13,9 +13,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -28,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.SelectableDropdownMenuItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,13 +45,13 @@ import de.davis.keygo.core.item.domain.alias.newVaultId
 import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.item.presentation.toImageVector
+import de.davis.keygo.core.ui.components.KeyGoMenuDefaults
 import de.davis.keygo.core.ui.components.KeyGoSwitch
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.vault.R
 import de.davis.keygo.feature.vault.domain.model.MoveItemsProgress
 import de.davis.keygo.feature.vault.presentation.model.VaultState
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoveVaultDialog(
     vaultState: VaultState.Move,
@@ -105,7 +103,6 @@ fun MoveVaultDialog(
     )
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MoveVaultProgressContent(progress: MoveItemsProgress) {
     val animatedFraction by animateFloatAsState(
@@ -134,7 +131,6 @@ private fun MoveVaultProgressContent(progress: MoveItemsProgress) {
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MoveVaultDialogContent(
     vaultState: VaultState.Move,
@@ -193,7 +189,6 @@ private fun SrcVaultRow(srcVault: VaultMetadata) {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun DstVaultDropdown(
     dstVaults: List<VaultMetadata>,
@@ -231,15 +226,14 @@ private fun DstVaultDropdown(
         ExposedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            containerColor = KeyGoMenuDefaults.containerColor,
+            shape = MenuDefaults.standaloneGroupShape,
         ) {
             val optionCount = dstVaults.size
             dstVaults.forEachIndexed { index, vault ->
-                DropdownMenuItem(
+                SelectableDropdownMenuItem(
                     shapes = MenuDefaults.itemShape(index, optionCount),
-                    colors = MenuDefaults.selectableItemColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    ),
+                    colors = KeyGoMenuDefaults.selectableItemColors,
                     selected = vault.vaultId == selectedDstVault?.vaultId,
                     text = {
                         Text(
