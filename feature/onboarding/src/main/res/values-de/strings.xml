@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="get_started">Los geht\'s</string>
+    <string name="continue_text">Weiter</string>
+    <string name="skip_for_now">Später</string>
+    <string name="enable_biometrics">Biometrie aktivieren</string>
+    <string name="finish_setup">Einrichtung abschließen</string>
+
+
+    <string name="welcome_title">Deine Zugangsdaten. Deine Privatsphäre.</string>
+    <string name="welcome_subtitle">KeyGo verschlüsselt alles lokal. Keine Server, keine Cloud, kein Tracking. Nur du und deine Daten.</string>
+    <string name="welcome_totp_import_title">Nur noch ein Schritt bis zu deinem Code</string>
+    <string name="welcome_totp_import_subtitle">Schließ die Einrichtung ab, damit dieser Authenticator-Code hinzugefügt wird.</string>
+
+    <string name="main_password_title">Lege dein Hauptpasswort fest</string>
+    <string name="main_password_subtitle">Mit diesem Passwort werden deine Tresore verschlüsselt. KeyGo speichert es nie – wähle also ein sicheres.</string>
+    <string name="main_password_info">Wenn du dein Passwort vergisst, kann niemand deine Tresore wiederherstellen. Das ist kryptografisch unmöglich.</string>
+    <string name="main_password_label">Hauptpasswort</string>
+    <string name="confirm_main_password_label">Hauptpasswort bestätigen</string>
+
+    <string name="import_title">Bring deine Passwörter mit</string>
+    <string name="import_subtitle">Importe werden lokal verschlüsselt und verlassen nie dein Gerät. Wähle eine Datei aus, um loszulegen.</string>
+
+    <string name="biometrics_title">Entsperren per Fingertipp</string>
+    <string name="biometrics_subtitle">Öffne KeyGo mit deinem Fingerabdruck. Dein Hauptpasswort funktioniert weiterhin als Alternative.</string>
+
+    <string name="autofill_title">Mach KeyGo zu deinem Autofill-Dienst</string>
+    <string name="autofill_subtitle">Dann schlägt dir KeyGo deine gespeicherten Passwörter vor, sobald du dich irgendwo anmeldest. Du kannst das jederzeit in den Geräteeinstellungen wieder ändern.</string>
+    <string name="autofill_open_settings">Systemeinstellungen öffnen</string>
+    <string name="autofill_open_settings_support">Öffne die Einstellungen deines Geräts</string>
+    <string name="autofill_choose_keygo">KeyGo auswählen</string>
+    <string name="autofill_choose_keygo_support">Wähle KeyGo als Autofill-Dienst aus &amp; bestätige</string>
+    <string name="autofill_chrome">Für Chrome aktivieren</string>
+    <string name="autofill_chrome_support">Öffne die Chrome-Einstellungen &amp; erlaube Autofill mit einem anderen Dienst</string>
+    <string name="autofill_enable_in_chrome">In Chrome aktivieren</string>
+</resources>

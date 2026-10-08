@@ -7,10 +7,11 @@
 
     <string name="use_biometrics">Use biometrics</string>
 
-    <string name="migrate_to_access">Migrate to access</string>
-    <string name="authenticate_to_access">Authenticate to access</string>
+    <!-- Unlock screen headline. %1$s is auth_title_highlight, drawn with a gradient. -->
+    <string name="auth_title_unlock">Unlock %1$s</string>
+    <string name="auth_title_migrate">Welcome to the new %1$s</string>
+    <string name="auth_title_highlight" translatable="false">KeyGo</string>
     <string name="create_access_access">Create an access to</string>
-    <string name="your_vault">your vault</string>
 
     <string name="migrating">Migrating</string>
     <string name="migrate">Migrate</string>
@@ -22,7 +23,10 @@
     <string name="importing_legacy_data">Importing your data</string>
     <string name="importing_legacy_data_description">Moving your items into your new vault. This happens once.</string>
     <string name="migration_summary_title">Import finished</string>
-    <string name="migration_summary_description">%1$d of your items could not be read and were left behind. Everything else is in your vault.</string>
+    <plurals name="migration_summary_description">
+        <item quantity="one">%1$d of your items could not be read and was left behind. Everything else is in your vault.</item>
+        <item quantity="other">%1$d of your items could not be read and were left behind. Everything else is in your vault.</item>
+    </plurals>
     <string name="migration_failed_title">Import incomplete</string>
     <string name="migration_failed_description">Your items could not be imported. Nothing was lost, and KeyGo will try again the next time you open it.</string>
     <string name="biometric_reset_title">Biometric unlock turned off</string>

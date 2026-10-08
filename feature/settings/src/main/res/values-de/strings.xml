@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_security">Sicherheit</string>
+    <string name="settings_use_biometrics">Biometrie verwenden</string>
+    <string name="settings_use_biometrics_description">KeyGo per Fingerabdruck oder Gesichtserkennung entsperren</string>
+    <string name="settings_reset_password">Hauptpasswort ändern</string>
+    <string name="settings_reset_password_description">Ändere das Hauptpasswort, das deine Daten schützt</string>
+    <string name="settings_autofill">Autofill</string>
+    <string name="settings_autofill_description">Logins in anderen Apps und Browsern automatisch ausfüllen</string>
+    <string name="settings_autofill_finish_setup">Autofill-Einrichtung abschließen</string>
+    <string name="settings_autofill_finish_setup_needs_chrome">Aktiviere in Chrome „Autofill mit einem anderen Dienst“, um die Einrichtung abzuschließen</string>
+    <string name="settings_biometric_update_failed">Biometrische Entsperrung konnte nicht geändert werden</string>
+    <string name="settings_auto_lock">Automatische Sperre</string>
+    <string name="settings_auto_lock_immediately">Sofort</string>
+    <plurals name="settings_auto_lock_n_minute">
+        <item quantity="one">%d Minute</item>
+        <item quantity="other">%d Minuten</item>
+    </plurals>
+
+    <string name="settings_backup">Backup</string>
+    <string name="settings_backup_and_restore">Sichern &amp; Wiederherstellen</string>
+    <!-- %1$s is a relative time ("vor 2 Tagen", "Gestern"), hence the colon -->
+    <string name="settings_backup_last">Letztes Backup: %1$s</string>
+    <string name="settings_backup_none">Noch keine Backups</string>
+
+    <string name="settings_about">Über KeyGo</string>
+    <string name="settings_report_issue">Problem melden</string>
+    <string name="settings_3rd_party_licenses">Drittanbieter-Lizenzen</string>
+    <string name="settings_version">Version</string>
+
+    <string name="change_password_title">Passwort ändern</string>
+    <string name="current_password">Aktuelles Passwort</string>
+    <string name="new_password">Neues Passwort</string>
+    <string name="confirm_password">Neues Passwort bestätigen</string>
+    <string name="change_password_action">Passwort ändern</string>
+    <string name="biometric_confirm_helper">Du bestätigst mit deinem Fingerabdruck</string>
+    <string name="reauth_dialog_title">Gib dein aktuelles Passwort ein</string>
+    <string name="password_changed">Passwort geändert</string>
+    <string name="change_password_failed">Passwort konnte nicht geändert werden</string>
+
+    <string name="cancel">Abbrechen</string>
+</resources>

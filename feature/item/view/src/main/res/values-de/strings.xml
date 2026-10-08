@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="add_totp">TOTP-Schlüssel hinzufügen</string>
+    <string name="add_username">Benutzername hinzufügen</string>
+    <string name="add_domain">Domain hinzufügen</string>
+    <string name="add_tag">Tag hinzufügen</string>
+    <string name="add_note">Notiz hinzufügen</string>
+
+    <string name="add_holder">Karteninhaber hinzufügen</string>
+    <string name="add_card_number">Kartennummer hinzufügen</string>
+    <string name="add_cvv">CVV hinzufügen</string>
+    <string name="add_expiration">Ablaufdatum hinzufügen</string>
+</resources>

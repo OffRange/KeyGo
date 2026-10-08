@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="password">Passwort</string>
+    <string name="login">Login</string>
+    <string name="credit_card">Kreditkarte</string>
+
+    <string name="password_strength_ridiculous">Extrem schwach</string>
+    <string name="password_strength_weak">Schwach</string>
+    <string name="password_strength_moderate">Mittel</string>
+    <string name="password_strength_strong">Stark</string>
+    <string name="password_strength_excellent">Hervorragend</string>
+
+    <string name="card_expires_this_month">Läuft diesen Monat ab</string>
+    <string name="card_expires_next_month">Läuft nächsten Monat ab</string>
+    <string name="card_expired">Abgelaufen</string>
+</resources>

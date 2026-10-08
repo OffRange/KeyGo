@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="search_your_vault">Tresor durchsuchen</string>
+
+    <string name="search_match_name">Name</string>
+    <string name="search_match_username">Benutzername</string>
+    <string name="search_match_note">Notiz</string>
+    <string name="search_match_tag">Tag</string>
+    <string name="search_match_reason">Treffer in: %1$s</string>
+
+    <plurals name="search_result_count">
+        <item quantity="one">%1$d Ergebnis</item>
+        <item quantity="other">%1$d Ergebnisse</item>
+    </plurals>
+
+    <string name="search_no_matches">Keine Treffer</string>
+    <string name="search_no_matches_for">Nichts in deinem Tresor passt zu „%1$s“</string>
+    <string name="search_nothing_to_search">In diesem Tresor gibt es noch nichts zu durchsuchen</string>
+
+    <string name="selected_count">%d ausgewählt</string>
+    <string name="clear_selection">Auswahl aufheben</string>
+    <string name="select_all">Alle auswählen</string>
+    <string name="pin_all">Alle anheften</string>
+    <string name="unpin_all">Alle loslösen</string>
+    <string name="delete">Löschen</string>
+    <string name="cancel">Abbrechen</string>
+
+    <plurals name="delete_items_title">
+        <item quantity="one">Eintrag löschen?</item>
+        <item quantity="other">%d Einträge löschen?</item>
+    </plurals>
+
+    <plurals name="delete_items_message">
+        <item quantity="one">Dieser Eintrag wird endgültig gelöscht. Das lässt sich nicht rückgängig machen.</item>
+        <item quantity="other">Diese %d Einträge werden endgültig gelöscht. Das lässt sich nicht rückgängig machen.</item>
+    </plurals>
+    <string name="filter">Filter</string>
+    <string name="sort_order">Sortierung</string>
+
+    <string name="ascending">Aufsteigend</string>
+    <string name="descending">Absteigend</string>
+
+    <string name="password_strength">Passwortstärke</string>
+    <string name="credentials">Zugangsdaten</string>
+    <string name="credential_passkey">Passkey</string>
+    <string name="credential_totp">TOTP</string>
+    <string name="reset">Zurücksetzen</string>
+
+    <string name="item">Eintrag</string>
+    <string name="item_type">Eintragstyp</string>
+
+    <string name="expiry_status">Ablaufstatus</string>
+
+    <string name="tags">Tags</string>
+
+    <string name="only_pinned_items">Nur angeheftete Einträge</string>
+
+    <string name="no_filter_matches">Keine Einträge passen zu deinen Filtern</string>
+    <string name="clear_filters">Filter zurücksetzen</string>
+</resources>

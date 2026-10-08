@@ -94,6 +94,11 @@ android {
         compose = true
     }
 
+    androidResources {
+        // res/resources.properties names the default language.
+        generateLocaleConfig = true
+    }
+
     flavorDimensions += listOf("store")
     productFlavors {
         create("playStore") {

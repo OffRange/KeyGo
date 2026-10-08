@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scan_qr_code">QR-Code scannen</string>
+
+    <string name="camera_permission_rationale">Um QR-Codes für die TOTP-Einrichtung zu scannen, braucht KeyGo Zugriff auf deine Kamera.</string>
+    <string name="grant">Erlauben</string>
+    <string name="cancel">Abbrechen</string>
+
+    <string name="permission_title">Kamerazugriff</string>
+    <string name="permission_denied_permanently">Der Kamerazugriff wurde verweigert. Um QR-Codes zu scannen, erlaube ihn in den App-Einstellungen.</string>
+    <string name="open_settings">Einstellungen öffnen</string>
+    <string name="ok">OK</string>
+
+    <string name="totp_parse_error">Ungültiger TOTP-Code</string>
+    <string name="totp_parse_error_description">Der TOTP-Code konnte nicht gelesen werden.</string>
+
+    <string name="select_item_for_totp">Zu welchem Eintrag hinzufügen?</string>
+    <string name="create_new">Neu erstellen</string>
+</resources>

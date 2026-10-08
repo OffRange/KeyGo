@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="card_scan_ready_title">Bereit zum Scannen</string>
+    <string name="card_scan_ready_message">Halte deine Karte flach an die Rückseite deines Smartphones.</string>
+    <string name="card_scan_reading">Karte wird gelesen…</string>
+    <string name="card_scan_reading_message">Halte die Karte ruhig, bis der Vorgang abgeschlossen ist.</string>
+    <string name="card_scan_success">Karte gelesen</string>
+    <string name="card_scan_nfc_disabled_title">NFC ist aus</string>
+    <string name="card_scan_nfc_disabled_message">NFC ist ausgeschaltet. Schalte es ein, um deine Karte zu scannen.</string>
+    <string name="card_scan_enable_nfc">NFC einschalten</string>
+    <string name="card_scan_error_title">Karte konnte nicht gelesen werden</string>
+    <string name="card_scan_retry">Erneut versuchen</string>
+    <string name="card_scan_error_not_emv">Das scheint keine Zahlungskarte zu sein.</string>
+    <string name="card_scan_error_tag_lost">Die Karte wurde zu früh bewegt. Halte sie ruhig und versuch es noch einmal.</string>
+    <string name="card_scan_error_no_data">Die Daten dieser Karte konnten nicht gelesen werden.</string>
+    <string name="card_scan_error_unexpected">Beim Lesen der Karte ist etwas schiefgelaufen.</string>
+    <string name="card_scan_entry_title">Karte scannen</string>
+    <string name="card_scan_entry_subtitle">Daten per NFC ausfüllen</string>
+</resources>

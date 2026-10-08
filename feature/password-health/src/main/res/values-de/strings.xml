@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="password_health_title">Passwort-Check</string>
+
+    <string name="password_health_headline_checking">Wird geprüft…</string>
+    <string name="password_health_headline_no_data">Noch keine Passwörter</string>
+    <string name="password_health_headline_all_good">Alles in Ordnung</string>
+    <string name="password_health_headline_failed">Prüfung fehlgeschlagen</string>
+
+    <string name="password_health_no_data">Füge Passwörter hinzu, um zu sehen, wie sicher sie sind</string>
+    <string name="password_health_all_good">Alle deine Passwörter sehen gut aus</string>
+    <string name="password_health_checked_all_good">Alle Passwörter, die geprüft werden konnten, sehen gut aus</string>
+    <plurals name="password_health_needs_attention">
+        <item quantity="one">%1$d Passwort solltest du dir ansehen</item>
+        <item quantity="other">%1$d Passwörter solltest du dir ansehen</item>
+    </plurals>
+    <string name="checking_passwords">Deine Passwörter werden geprüft…</string>
+    <string name="password_health_check_failed">Deine Passwörter konnten nicht geprüft werden</string>
+    <string name="password_health_unreadable">Keines deiner Passwörter konnte für die Prüfung geöffnet werden</string>
+    <string name="password_health_retry_hint">Zum Wiederholen nach unten ziehen</string>
+    <plurals name="password_health_unreadable_count">
+        <item quantity="one">%1$d Passwort konnte nicht geöffnet und daher nicht geprüft werden</item>
+        <item quantity="other">%1$d Passwörter konnten nicht geöffnet und daher nicht geprüft werden</item>
+    </plurals>
+
+    <plurals name="detail_line_checked">
+        <item quantity="one">%1$d Passwort geprüft</item>
+        <item quantity="other">%1$d Passwörter geprüft</item>
+    </plurals>
+    <string name="issue_count_breached">%1$d kompromittiert</string>
+    <string name="issue_count_weak">%1$d schwach</string>
+    <string name="issue_count_reused">%1$d mehrfach verwendet</string>
+    <string name="issue_count_similar">%1$d ähnlich</string>
+
+    <string name="breakdown_critical">%1$d kritisch</string>
+    <string name="breakdown_high">%1$d hoch</string>
+    <string name="breakdown_medium">%1$d zu prüfen</string>
+    <string name="breakdown_clean">%1$d in Ordnung</string>
+
+    <string name="needs_attention_title">Gefundene Probleme</string>
+    <string name="needs_attention_weak">Schwach</string>
+    <string name="needs_attention_reused">Mehrfach verwendet</string>
+    <string name="needs_attention_breached">Kompromittiert</string>
+
+    <string name="needs_attention_severity_critical">Kritisch</string>
+    <string name="needs_attention_severity_high">Hoch</string>
+    <string name="needs_attention_severity_medium">Prüfen empfohlen</string>
+
+    <plurals name="needs_attention_group_reused">
+        <item quantity="one">In %1$d Login verwendet</item>
+        <item quantity="other">In %1$d Logins verwendet</item>
+    </plurals>
+    <plurals name="needs_attention_group_similar">
+        <item quantity="one">Ähnliches Passwort in %1$d Login</item>
+        <item quantity="other">Ähnliche Passwörter in %1$d Logins</item>
+    </plurals>
+
+    <plurals name="needs_attention_standalone_breached">
+        <item quantity="one">Kompromittiertes Passwort in %1$d Login</item>
+        <item quantity="other">Kompromittierte Passwörter in %1$d Logins</item>
+    </plurals>
+    <plurals name="needs_attention_standalone_weak">
+        <item quantity="one">Schwaches Passwort in %1$d Login</item>
+        <item quantity="other">Schwache Passwörter in %1$d Logins</item>
+    </plurals>
+
+    <plurals name="needs_attention_found_in_breach">
+        <item quantity="one">In %1$d Datenleck gefunden</item>
+        <item quantity="other">In %1$d Datenlecks gefunden</item>
+    </plurals>
+
+    <string name="breach_check_enable">Auf Datenlecks prüfen</string>
+    <string name="breach_check_opt_in_description">Von jedem Passwort verlassen nur die ersten 5 Zeichen seines Hashs dein Gerät</string>
+    <plurals name="breach_check_unreachable">
+        <item quantity="one">Datenleck-Prüfung für %1$d Passwort fehlgeschlagen: keine Verbindung zum Prüfdienst</item>
+        <item quantity="other">Datenleck-Prüfung für %1$d Passwörter fehlgeschlagen: keine Verbindung zum Prüfdienst</item>
+    </plurals>
+    <plurals name="breach_check_failed">
+        <item quantity="one">Datenleck-Prüfung für %1$d Passwort fehlgeschlagen: Der Prüfdienst hat nicht geantwortet</item>
+        <item quantity="other">Datenleck-Prüfung für %1$d Passwörter fehlgeschlagen: Der Prüfdienst hat nicht geantwortet</item>
+    </plurals>
+
+    <string name="fix_copied_label">Generiertes Passwort</string>
+    <string name="fix_pending_instruction">Neues Passwort kopiert. Ändere es dort, wo du diesen Login verwendest, und bestätige es dann hier.</string>
+    <string name="fix_open_site">Website öffnen</string>
+    <string name="fix_confirm_changed">Hab ich geändert</string>
+    <string name="fix_cancel">Abbrechen</string>
+    <string name="fix_failed_locked">Deine Sitzung ist abgelaufen, bevor gespeichert werden konnte. Versuch es noch einmal.</string>
+    <string name="fix_failed_save">Das neue Passwort konnte nicht gespeichert werden. Versuch es noch einmal.</string>
+
+    <string name="password_health_detail_placeholder">Wähle einen Eintrag aus, um ihn hier zu sehen</string>
+
+    <string name="health_notifications_enable">Benachrichtigungen aktivieren</string>
+    <string name="health_notifications_description">KeyGo erinnert dich, wenn es Sicherheitsprobleme mit deinen Passwörtern gibt</string>
+    <string name="notification_permission_title">Benachrichtigungen erlauben</string>
+    <string name="notification_permission_rationale">Damit KeyGo dich an Passwörter erinnern kann, die du dir ansehen solltest, braucht die App die Berechtigung für Benachrichtigungen.</string>
+    <string name="notification_permission_denied_permanently">Benachrichtigungen sind für KeyGo deaktiviert. Wenn du Erinnerungen zu deinen Passwörtern bekommen möchtest, erlaube sie in den App-Einstellungen.</string>
+    <string name="notification_permission_grant">Erlauben</string>
+    <string name="notification_permission_open_settings">Einstellungen öffnen</string>
+    <string name="notification_permission_cancel">Abbrechen</string>
+
+    <string name="password_health_notification_channel_name">Passwort-Check</string>
+    <string name="password_health_notification_channel_description">Erinnerungen, wenn du dir einige deiner Passwörter ansehen solltest</string>
+</resources>

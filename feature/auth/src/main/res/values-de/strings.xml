@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="confirm_password">Passwort bestätigen</string>
+    <string name="authenticate">Entsperren</string>
+    <string name="unlock_item">%s entsperren</string>
+    <string name="create_access">Zugang einrichten</string>
+
+    <string name="use_biometrics">Biometrie verwenden</string>
+
+    <!-- Unlock screen headline. %1$s is auth_title_highlight, drawn with a gradient. -->
+    <string name="auth_title_unlock">%1$s entsperren</string>
+    <string name="auth_title_migrate">Willkommen beim neuen %1$s</string>
+    <string name="create_access_access">Erstelle einen Zugang für</string>
+
+    <string name="migrating">Wird umgestellt</string>
+    <string name="migrate">Umstellen</string>
+    <string name="migrate_to_access_description">Damit deine Daten sicher und unversehrt bleiben, stellen wir deinen Zugang jetzt um. Dafür brauchst du einmal dein Hauptpasswort.</string>
+
+    <string name="request_biometric_authentication_content_description">Biometrische Entsperrung starten</string>
+    <string name="pending_totp_import_subtitle">Entsperre deinen Tresor, um diesen Authenticator-Code hinzuzufügen.</string>
+
+    <string name="importing_legacy_data">Deine Daten werden importiert</string>
+    <string name="importing_legacy_data_description">Deine Einträge werden in deinen neuen Tresor übertragen. Das passiert nur einmal.</string>
+    <string name="migration_summary_title">Import abgeschlossen</string>
+    <plurals name="migration_summary_description">
+        <item quantity="one">%1$d Eintrag konnte nicht gelesen werden und wurde nicht übernommen. Alles andere ist jetzt in deinem Tresor.</item>
+        <item quantity="other">%1$d Einträge konnten nicht gelesen werden und wurden nicht übernommen. Alles andere ist jetzt in deinem Tresor.</item>
+    </plurals>
+    <string name="migration_failed_title">Import unvollständig</string>
+    <string name="migration_failed_description">Deine Einträge konnten nicht importiert werden. Es ist nichts verloren gegangen – KeyGo versucht es beim nächsten Öffnen einfach noch einmal.</string>
+    <string name="biometric_reset_title">Biometrische Entsperrung deaktiviert</string>
+    <string name="biometric_reset_description">Dein Gerät kann den Tresor mit dem für die biometrische Entsperrung gespeicherten Schlüssel nicht mehr öffnen, deshalb hat KeyGo ihn entfernt. Melde dich mit deinem Hauptpasswort an und schalte die biometrische Entsperrung danach in den Einstellungen wieder ein.</string>
+    <string name="got_it">Verstanden</string>
+
+    <string name="retry">Erneut versuchen</string>
+    <string name="continue_anyway">Weiter</string>
+</resources>
