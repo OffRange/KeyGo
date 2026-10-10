@@ -33,3 +33,6 @@ sha2 = "0.11.0"
 subtle = "2.6"
 totp-rs = { version = "6.0.0", features = ["otpauth", "zeroize"] }
 url = "2.5.8"
+
+[dev-dependencies]
+tokio = { version = "1.48.0", features = ["rt", "macros"] }

@@ -61,7 +61,7 @@ pub async fn register_passkey(
         serde_json::from_str(json_request).map_err(|_| InvalidJsonFormat)?;
 
     let domain = creation_options.rp.id.as_deref().unwrap_or_default();
-    let user_name = creation_options.rp.name.clone();
+    let user_name = creation_options.user.name.clone();
     let user_display_name = creation_options.user.display_name.clone();
 
     let authenticator = keygo_authenticator(None);
@@ -88,4 +88,25 @@ pub async fn register_passkey(
         rp: response.rp_id.clone(),
         private_key: to_bytes(response).map_err(KeyEncodeError)?,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const REQUEST: &str = r#"{
+        "rp": { "id": "example.com", "name": "Example Corp" },
+        "user": { "id": "AQIDBA", "name": "alice@example.com", "displayName": "Alice" },
+        "challenge": "AAECAwQFBgcICQoLDA0ODw",
+        "pubKeyCredParams": [{ "type": "public-key", "alg": -7 }]
+    }"#;
+
+    #[tokio::test]
+    async fn registration_reports_the_users_name_not_the_relying_partys() {
+        let registration = register_passkey(REQUEST).await.unwrap();
+
+        assert_eq!(registration.user_name, "alice@example.com");
+        assert_eq!(registration.user_display_name, "Alice");
+        assert_eq!(registration.rp, "example.com");
+    }
 }
