@@ -3,10 +3,10 @@
 ABIS         ?= arm64-v8a armeabi-v7a x86_64
 MIN_SDK      ?= 26
 PROFILE      ?= release
-CRATE        := keygo-bindings
+CRATE        := keygo-uniffi
 LIB_NAME     := libkeygo_bindings.so
-JNI_DIR      := ../../core/rust/build/generated/source/uniffi/jniLibs
-KOTLIN_OUT   := ../../core/rust/build/generated/source/uniffi/kotlin/
+JNI_DIR      ?= ../core/rust/build/generated/source/uniffi/jniLibs
+KOTLIN_OUT   ?= ../core/rust/build/generated/source/uniffi/kotlin/
 BINDGEN_ABI  := arm64-v8a
 BINDGEN_TRIPLE := aarch64-linux-android
 
@@ -32,6 +32,8 @@ help: ## Show this help
 # MIN_SDK    ?= 26                             Android API level for the NDK linker
 # PROFILE    ?= release                        Cargo profile (release|debug)
 # NDK        ?= $$ANDROID_NDK_HOME             Path to the Android NDK
+# JNI_DIR    ?= ../core/rust/build/...         Output dir for the per-ABI cdylibs
+# KOTLIN_OUT ?= ../core/rust/build/...         Output dir for the generated Kotlin
 
 all: build bindgen ## Build cdylibs and generate Kotlin bindings
 
@@ -43,11 +45,11 @@ tools: ## Install cargo-ndk and missing rustup targets (idempotent)
 	  echo "$$installed" | grep -qx "$$t" || rustup target add "$$t"; \
 	done
 
-build: tools ## Build cdylibs per ABI into ../src/main/jniLibs
+build: tools ## Build cdylibs per ABI into JNI_DIR
 	cargo ndk $(CARGO_NDK_FLAGS) -o $(JNI_DIR) build --$(PROFILE) -p $(CRATE)
 
 bindgen: build ## Generate Kotlin UniFFI bindings
-	cargo run -p $(CRATE) --bin uniffi-bindgen -- generate \
+	cargo run -p uniffi-bindgen -- generate \
 	  --library target/$(BINDGEN_TRIPLE)/$(PROFILE)/$(LIB_NAME) \
 	  --language kotlin \
 	  --no-format \

@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.keygo.android.library)
 }
 
+val uniffiDir = "build/generated/source/uniffi"
+
 android {
     namespace = "de.davis.keygo.rust"
 
@@ -13,8 +15,8 @@ android {
 
     sourceSets {
         getByName("main") {
-            jniLibs.directories += "build/generated/source/uniffi/jniLibs"
-            kotlin.directories += "build/generated/source/uniffi/kotlin"
+            jniLibs.directories += "$uniffiDir/jniLibs"
+            kotlin.directories += "$uniffiDir/kotlin"
         }
     }
 
@@ -45,12 +47,14 @@ val buildRust by tasks.register<Exec>("buildRust") {
         providers.gradleProperty("rust.compile").getOrElse("true").toBoolean()
     }
 
-    workingDir = rootDir.resolve("rust/rust-code")
+    workingDir = rootDir.resolve("rust")
 
     commandLine(
         "make",
         "all",
         "MIN_SDK=${libs.versions.minSdk.get()}",
+        "JNI_DIR=${projectDir.resolve("$uniffiDir/jniLibs")}",
+        "KOTLIN_OUT=${projectDir.resolve("$uniffiDir/kotlin")}",
     )
 }
 

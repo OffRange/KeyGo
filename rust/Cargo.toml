@@ -1,7 +1,7 @@
 [workspace]
 members = [
-    "core",
-    "bindings",
+    "crates/*",
+    "tools/*",
 ]
 resolver = "3"
 
@@ -12,3 +12,5 @@ edition = "2024"
 [workspace.dependencies]
 thiserror = "2.0.18"
 uuid = { version = "1.23.1", features = ["serde", "v4"] }
+uniffi = "0.32.0"
+zeroize = "1.8.2"

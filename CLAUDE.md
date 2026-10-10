@@ -15,8 +15,8 @@ repository.
 ## Build & Test
 
 ```bash
-make -C rust/rust-code test            # Rust unit tests
-make -C rust/rust-code bindgen         # Generate uniffi bindings
+make -C rust test                      # Rust unit tests
+make -C rust bindgen                   # Generate uniffi bindings
 ./gradlew build                        # Full build
 ./gradlew test                         # All unit tests
 ./gradlew :app:test                    # Module-specific tests (preferred for small changes)
@@ -54,8 +54,7 @@ Android password manager using Clean Architecture per module:
 | `:automation`            | `@VaultItem` annotation + automation support                             |
 | `:automation-processor`  | KSP processor generating code from `@VaultItem`                          |
 | `:legacy-migration`      | The whole v1 to v2 migration: main password, item import (high risk)     |
-| `:core:rust`             | Rust crypto/passkey ops via UniFFI-generated Kotlin bindings; the Rust   |
-|                          | sources it builds live in `rust/rust-code/`                              |
+| `:core:rust`             | Rust crypto/passkey ops via UniFFI-generated Kotlin bindings; Rust sources in `rust/crates/` |
 
 ## Key Patterns
 
