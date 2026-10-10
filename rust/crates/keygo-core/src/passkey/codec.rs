@@ -1,10 +1,13 @@
+//! The bytes a passkey is stored as. Shipped passkeys are in this format: the `V1` tag and the
+//! field names of [`StoredPasskey`] must not change.
+
 use coset::{CborSerializable, CoseError, CoseKey};
 use passkey::types::Passkey;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 #[derive(Serialize, Deserialize)]
-pub struct KeyGoPasskey {
+struct StoredPasskey {
     key: Vec<u8>,
     credential_id: Vec<u8>,
     rp_id: String,
@@ -15,12 +18,12 @@ pub struct KeyGoPasskey {
 }
 
 #[derive(Serialize, Deserialize)]
-pub enum KeyGoPasskeyWire {
-    V1(KeyGoPasskey),
+enum Versioned {
+    V1(StoredPasskey),
 }
 
 #[derive(Debug, Error)]
-pub enum PasskeyCodecError {
+pub enum CodecError {
     #[error("cose key error: {0:?}")]
     Cose(CoseError),
     #[error("cbor encode error: {0}")]
@@ -29,53 +32,33 @@ pub enum PasskeyCodecError {
     CborDecode(#[from] ciborium::de::Error<std::io::Error>),
 }
 
-impl TryFrom<Passkey> for KeyGoPasskey {
-    type Error = PasskeyCodecError;
-
-    fn try_from(value: Passkey) -> Result<Self, Self::Error> {
-        let key = value.key.to_vec().map_err(PasskeyCodecError::Cose)?;
-        Ok(Self {
-            key,
-            credential_id: value.credential_id.to_vec(),
-            rp_id: value.rp_id,
-            user_handle: value.user_handle.map(|b| b.to_vec()),
-            username: value.username,
-            user_display_name: value.user_display_name,
-            counter: value.counter,
-        })
-    }
-}
-
-impl TryFrom<KeyGoPasskey> for Passkey {
-    type Error = PasskeyCodecError;
-
-    fn try_from(value: KeyGoPasskey) -> Result<Self, Self::Error> {
-        let key = CoseKey::from_slice(&value.key).map_err(PasskeyCodecError::Cose)?;
-        Ok(Self {
-            key,
-            credential_id: value.credential_id.into(),
-            rp_id: value.rp_id,
-            user_handle: value.user_handle.map(|b| b.into()),
-            username: value.username,
-            user_display_name: value.user_display_name,
-            counter: value.counter,
-            extensions: Default::default(),
-        })
-    }
-}
-
-pub fn to_bytes(passkey: Passkey) -> Result<Vec<u8>, PasskeyCodecError> {
-    let wire = KeyGoPasskeyWire::V1(KeyGoPasskey::try_from(passkey)?);
+pub(crate) fn encode(passkey: Passkey) -> Result<Vec<u8>, CodecError> {
+    let stored = StoredPasskey {
+        key: passkey.key.to_vec().map_err(CodecError::Cose)?,
+        credential_id: passkey.credential_id.to_vec(),
+        rp_id: passkey.rp_id,
+        user_handle: passkey.user_handle.map(|b| b.to_vec()),
+        username: passkey.username,
+        user_display_name: passkey.user_display_name,
+        counter: passkey.counter,
+    };
     let mut buf = Vec::new();
-    ciborium::into_writer(&wire, &mut buf)?;
+    ciborium::into_writer(&Versioned::V1(stored), &mut buf)?;
     Ok(buf)
 }
 
-pub fn passkey_from_bytes(bytes: &[u8]) -> Result<Passkey, PasskeyCodecError> {
-    let wire: KeyGoPasskeyWire = ciborium::from_reader(bytes)?;
-    match wire {
-        KeyGoPasskeyWire::V1(kgo_pk) => Passkey::try_from(kgo_pk),
-    }
+pub(crate) fn decode(bytes: &[u8]) -> Result<Passkey, CodecError> {
+    let Versioned::V1(stored) = ciborium::from_reader(bytes)?;
+    Ok(Passkey {
+        key: CoseKey::from_slice(&stored.key).map_err(CodecError::Cose)?,
+        credential_id: stored.credential_id.into(),
+        rp_id: stored.rp_id,
+        user_handle: stored.user_handle.map(Into::into),
+        username: stored.username,
+        user_display_name: stored.user_display_name,
+        counter: stored.counter,
+        extensions: Default::default(),
+    })
 }
 
 #[cfg(test)]
@@ -107,7 +90,7 @@ mod tests {
     #[test]
     fn golden_v1_still_decodes() {
         let original = sample_passkey();
-        let decoded = passkey_from_bytes(&crate::b64::decode(GOLDEN_V1).unwrap()).unwrap();
+        let decoded = decode(&crate::b64::decode(GOLDEN_V1).unwrap()).unwrap();
 
         assert_eq!(decoded.key, original.key);
         assert_eq!(decoded.credential_id, original.credential_id);
@@ -121,7 +104,7 @@ mod tests {
     #[test]
     fn encoding_is_stable() {
         assert_eq!(
-            crate::b64::encode(to_bytes(sample_passkey()).unwrap()),
+            crate::b64::encode(encode(sample_passkey()).unwrap()),
             GOLDEN_V1
         );
     }
@@ -129,8 +112,8 @@ mod tests {
     #[test]
     fn roundtrip_preserves_fields() {
         let original = sample_passkey();
-        let bytes = to_bytes(original.clone()).expect("encode");
-        let decoded = passkey_from_bytes(&bytes).expect("decode");
+        let bytes = encode(original.clone()).expect("encode");
+        let decoded = decode(&bytes).expect("decode");
 
         assert_eq!(decoded.credential_id, original.credential_id);
         assert_eq!(decoded.rp_id, original.rp_id);

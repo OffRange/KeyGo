@@ -1,8 +1,6 @@
 use keygo_core::passkey::{
-    KeyGoRegistrationResponse, PasskeyInformation as CorePasskeyInformation, RegistrationError,
-    get_passkey_information, register_passkey,
+    self as core, CreationInfo, PasskeyError as CorePasskeyError, Registration,
 };
-use keygo_core::passkey::{ProviderError, provide_passkey};
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
@@ -17,31 +15,18 @@ pub enum PasskeyError {
     KeyCodec { reason: String },
 }
 
-impl From<RegistrationError> for PasskeyError {
-    fn from(value: RegistrationError) -> Self {
+impl From<CorePasskeyError> for PasskeyError {
+    fn from(value: CorePasskeyError) -> Self {
         match value {
-            RegistrationError::InvalidJsonFormat => Self::InvalidJsonFormat,
-            RegistrationError::InvalidDomain => Self::InvalidDomain,
-            RegistrationError::WebauthnError(e) => Self::Webauthn {
+            CorePasskeyError::InvalidRequest(_) => Self::InvalidJsonFormat,
+            CorePasskeyError::InvalidDomain => Self::InvalidDomain,
+            CorePasskeyError::Webauthn(e) => Self::Webauthn {
                 reason: format!("{e:?}"),
             },
-            RegistrationError::KeyEncodeError(e) => Self::KeyCodec {
-                reason: format!("{e:?}"),
-            },
-        }
-    }
-}
-
-impl From<ProviderError> for PasskeyError {
-    fn from(value: ProviderError) -> Self {
-        match value {
-            ProviderError::InvalidJsonFormat => Self::InvalidJsonFormat,
-            ProviderError::InvalidDomain => Self::InvalidDomain,
-            ProviderError::WebauthnError(e) => Self::Webauthn {
-                reason: format!("{e:?}"),
-            },
-            ProviderError::PasskeyDecodeError(e) => Self::KeyCodec {
-                reason: format!("{e:?}"),
+            other @ (CorePasskeyError::Codec(_)
+            | CorePasskeyError::ResponseEncoding(_)
+            | CorePasskeyError::NoCredentialCreated) => Self::KeyCodec {
+                reason: other.to_string(),
             },
         }
     }
@@ -57,8 +42,8 @@ pub struct RegistrationResponse {
     pub rp: String,
 }
 
-impl From<KeyGoRegistrationResponse> for RegistrationResponse {
-    fn from(value: KeyGoRegistrationResponse) -> Self {
+impl From<Registration> for RegistrationResponse {
+    fn from(value: Registration) -> Self {
         Self {
             response: value.response,
             user_name: value.user_name,
@@ -76,8 +61,8 @@ pub struct PasskeyInformation {
     pub rp: String,
 }
 
-impl From<CorePasskeyInformation> for PasskeyInformation {
-    fn from(value: CorePasskeyInformation) -> Self {
+impl From<CreationInfo> for PasskeyInformation {
+    fn from(value: CreationInfo) -> Self {
         Self {
             exclude_credentials: value.exclude_credentials,
             rp: value.rp,
@@ -99,19 +84,14 @@ impl RustPasskey {
         &self,
         json_request: String,
     ) -> Result<RegistrationResponse, PasskeyError> {
-        register_passkey(&json_request)
-            .await
-            .map(Into::into)
-            .map_err(Into::into)
+        Ok(core::register(&json_request).await?.into())
     }
 
     pub fn passkey_information(
         &self,
         json_request: String,
     ) -> Result<PasskeyInformation, PasskeyError> {
-        get_passkey_information(&json_request)
-            .map(Into::into)
-            .map_err(Into::into)
+        Ok(core::creation_info(&json_request)?.into())
     }
 
     pub async fn authenticate(
@@ -120,8 +100,6 @@ impl RustPasskey {
         passkey: Vec<u8>,
         client_data_hash: Option<Vec<u8>>,
     ) -> Result<String, PasskeyError> {
-        provide_passkey(&json_request, &passkey, client_data_hash)
-            .await
-            .map_err(Into::into)
+        Ok(core::authenticate(&json_request, &passkey, client_data_hash).await?)
     }
 }

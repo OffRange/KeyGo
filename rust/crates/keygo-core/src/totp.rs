@@ -1,6 +1,6 @@
 use thiserror::Error;
 pub use totp_rs::Algorithm;
-use totp_rs::{Builder, Secret, SecretParseError, Totp, TotpError as TOTPError};
+use totp_rs::{Builder, Secret, SecretParseError, Totp};
 
 /// A secret long enough to clear `Builder::build`'s 128 bit floor, swapped in
 /// for the real one while validating. Plenty of providers hand out 80 bit
@@ -10,10 +10,87 @@ const SECRET_FLOOR_STANDIN: [u8; 16] = [0; 16];
 
 #[derive(Debug, Error)]
 pub enum TotpError {
-    #[error("url error: {0}")]
-    Url(TOTPError),
-    #[error("secret parse error: {0}")]
+    #[error("invalid totp: {0}")]
+    Invalid(totp_rs::TotpError),
+    #[error("invalid secret: {0}")]
     Secret(SecretParseError),
+}
+
+/// How codes are generated from a secret.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TotpParams {
+    pub algorithm: Algorithm,
+    pub digits: u8,
+    /// Seconds each code is valid for.
+    pub period: u64,
+}
+
+pub struct TotpInfo {
+    /// Base32, as it appears in an `otpauth://` URI.
+    pub secret: String,
+    pub issuer: Option<String>,
+    pub account_name: String,
+    pub params: TotpParams,
+}
+
+/// The current code for a base32 `secret`.
+pub fn generate(params: TotpParams, secret: &str) -> Result<String, TotpError> {
+    Ok(build(params, secret, None, "")?
+        .generate_current()
+        .to_string())
+}
+
+/// An `otpauth://` URI for a base32 `secret`.
+pub fn to_uri(
+    params: TotpParams,
+    secret: &str,
+    issuer: Option<&str>,
+    account_name: &str,
+) -> Result<String, TotpError> {
+    build(params, secret, issuer, account_name)?
+        .to_url()
+        .map_err(TotpError::Invalid)
+}
+
+pub fn parse_uri(uri: &str) -> Result<TotpInfo, TotpError> {
+    let totp = Totp::from_url_unchecked(uri).map_err(TotpError::Invalid)?;
+    validate(&totp)?;
+
+    Ok(TotpInfo {
+        secret: totp.secret().to_base32(),
+        issuer: totp.issuer().map(String::from),
+        account_name: totp.account_name().to_string(),
+        params: TotpParams {
+            algorithm: totp.algorithm(),
+            digits: totp.digits(),
+            period: totp.step(),
+        },
+    })
+}
+
+pub(crate) fn is_valid_totp_secret(s: &str) -> bool {
+    base32::decode(base32::Alphabet::Rfc4648 { padding: false }, s).is_some()
+}
+
+fn build(
+    params: TotpParams,
+    secret: &str,
+    issuer: Option<&str>,
+    account_name: &str,
+) -> Result<Totp, TotpError> {
+    let secret = Secret::try_from_base32(secret).map_err(TotpError::Secret)?;
+    let totp = Builder::new()
+        .with_algorithm(params.algorithm)
+        .with_digits(params.digits)
+        .with_skew(1)
+        .with_step_duration(params.period)
+        .with_secret(secret)
+        .with_issuer(issuer)
+        .with_account_name(account_name)
+        .build_noncompliant();
+    validate(&totp)?;
+
+    Ok(totp)
 }
 
 /// Every check `Builder::build` runs, with its 128 bit secret floor replaced by
@@ -27,7 +104,9 @@ pub enum TotpError {
 /// adds later.
 fn validate(totp: &Totp) -> Result<(), TotpError> {
     if totp.secret().is_empty() {
-        return Err(TotpError::Url(TOTPError::SecretTooShort { bits: 0 }));
+        return Err(TotpError::Invalid(totp_rs::TotpError::SecretTooShort {
+            bits: 0,
+        }));
     }
 
     Builder::new()
@@ -40,79 +119,7 @@ fn validate(totp: &Totp) -> Result<(), TotpError> {
         .with_account_name(totp.account_name())
         .build()
         .map(|_| ())
-        .map_err(TotpError::Url)
-}
-
-fn build_totp(
-    algorithm: Algorithm,
-    digits: u8,
-    step: u64,
-    secret: String,
-    issuer: Option<String>,
-    account_name: String,
-) -> Result<Totp, TotpError> {
-    let secret = Secret::try_from_base32(secret).map_err(TotpError::Secret)?;
-    let totp = Builder::new()
-        .with_algorithm(algorithm)
-        .with_digits(digits)
-        .with_skew(1)
-        .with_step_duration(step)
-        .with_secret(secret)
-        .with_issuer(issuer)
-        .with_account_name(account_name)
-        .build_noncompliant();
-    validate(&totp)?;
-
-    Ok(totp)
-}
-
-pub fn get_totp(
-    algorithm: Algorithm,
-    digits: u8,
-    step: u64,
-    secret: String,
-) -> Result<String, TotpError> {
-    let totp = build_totp(algorithm, digits, step, secret, None, "".to_string())?;
-    Ok(totp.generate_current().to_string())
-}
-
-pub struct TotpInfo {
-    pub secret: String,
-    pub issuer: Option<String>,
-    pub account_name: String,
-    pub algorithm: Algorithm,
-    pub digits: u8,
-    pub period: u64,
-}
-
-pub fn get_totp_info_from_uri(uri: String) -> Result<TotpInfo, TotpError> {
-    let totp = Totp::from_url_unchecked(uri).map_err(TotpError::Url)?;
-    validate(&totp)?;
-
-    Ok(TotpInfo {
-        secret: totp.secret().to_base32(),
-        issuer: totp.issuer().map(String::from),
-        account_name: totp.account_name().to_string(),
-        algorithm: totp.algorithm(),
-        digits: totp.digits(),
-        period: totp.step(),
-    })
-}
-
-pub fn get_totp_url(
-    algorithm: Algorithm,
-    digits: u8,
-    step: u64,
-    secret: String,
-    issuer: Option<String>,
-    account_name: String,
-) -> Result<String, TotpError> {
-    let totp = build_totp(algorithm, digits, step, secret, issuer, account_name)?;
-    totp.to_url().map_err(TotpError::Url)
-}
-
-pub(crate) fn is_valid_totp_secret(s: &str) -> bool {
-    base32::decode(base32::Alphabet::Rfc4648 { padding: false }, s).is_some()
+        .map_err(TotpError::Invalid)
 }
 
 #[cfg(test)]
@@ -124,31 +131,30 @@ mod tests {
     /// 160 bits, the length RFC 4226 recommends.
     const LONG_SECRET: &str = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
 
+    const SHA1_6_30: TotpParams = TotpParams {
+        algorithm: Algorithm::SHA1,
+        digits: 6,
+        period: 30,
+    };
+
     fn uri(secret: &str) -> String {
         format!("otpauth://totp/GitHub:alice?secret={secret}&issuer=GitHub")
     }
 
     fn url_with_issuer(issuer: &str) -> Result<String, TotpError> {
-        get_totp_url(
-            Algorithm::SHA1,
-            6,
-            30,
-            SHORT_SECRET.to_string(),
-            Some(issuer.to_string()),
-            "alice".to_string(),
-        )
+        to_uri(SHA1_6_30, SHORT_SECRET, Some(issuer), "alice")
     }
 
     #[test]
     fn generates_code_for_secret_below_128_bits() {
-        let code = get_totp(Algorithm::SHA1, 6, 30, SHORT_SECRET.to_string()).unwrap();
+        let code = generate(SHA1_6_30, SHORT_SECRET).unwrap();
         assert_eq!(6, code.len());
     }
 
     #[test]
     fn parses_uri_regardless_of_secret_length() {
-        let short = get_totp_info_from_uri(uri(SHORT_SECRET)).unwrap();
-        let long = get_totp_info_from_uri(uri(LONG_SECRET)).unwrap();
+        let short = parse_uri(&uri(SHORT_SECRET)).unwrap();
+        let long = parse_uri(&uri(LONG_SECRET)).unwrap();
 
         assert_eq!(SHORT_SECRET, short.secret);
         assert_eq!(LONG_SECRET, long.secret);
@@ -163,12 +169,21 @@ mod tests {
 
     #[test]
     fn rejects_empty_secret() {
-        assert!(get_totp(Algorithm::SHA1, 6, 30, "".to_string()).is_err());
+        assert!(generate(SHA1_6_30, "").is_err());
     }
 
     #[test]
     fn rejects_digits_outside_rfc_range() {
-        assert!(get_totp(Algorithm::SHA1, 9, 30, SHORT_SECRET.to_string()).is_err());
+        assert!(
+            generate(
+                TotpParams {
+                    digits: 9,
+                    ..SHA1_6_30
+                },
+                SHORT_SECRET
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -178,17 +193,26 @@ mod tests {
 
     #[test]
     fn rejects_uri_without_secret() {
-        assert!(get_totp_info_from_uri(uri("")).is_err());
+        assert!(parse_uri(&uri("")).is_err());
     }
 
     #[test]
     fn rejects_secret_that_is_not_base32() {
-        assert!(get_totp(Algorithm::SHA1, 6, 30, "not base32!".to_string()).is_err());
+        assert!(generate(SHA1_6_30, "not base32!").is_err());
     }
 
     #[test]
     fn rejects_step_of_zero() {
-        assert!(get_totp(Algorithm::SHA1, 6, 0, SHORT_SECRET.to_string()).is_err());
+        assert!(
+            generate(
+                TotpParams {
+                    period: 0,
+                    ..SHA1_6_30
+                },
+                SHORT_SECRET
+            )
+            .is_err()
+        );
     }
 
     /// A step of zero used to reach `generate`, where dividing the timestamp by
@@ -198,7 +222,7 @@ mod tests {
     fn rejects_uri_with_period_of_zero() {
         let uri = format!("otpauth://totp/GitHub:alice?secret={SHORT_SECRET}&period=0");
 
-        assert!(get_totp_info_from_uri(uri).is_err());
+        assert!(parse_uri(&uri).is_err());
     }
 
     /// totp-rs 6.0 made an empty account name an error rather than emitting
@@ -206,14 +230,7 @@ mod tests {
     /// the otpauth format, so the caller has to supply one.
     #[test]
     fn requires_account_name_for_url() {
-        let url = get_totp_url(
-            Algorithm::SHA1,
-            6,
-            30,
-            SHORT_SECRET.to_string(),
-            Some("GitHub".to_string()),
-            "".to_string(),
-        );
+        let url = to_uri(SHA1_6_30, SHORT_SECRET, Some("GitHub"), "");
 
         assert!(url.is_err());
     }
@@ -256,15 +273,12 @@ mod tests {
         ];
 
         for (algorithm, secret, expected) in cases {
-            let totp = build_totp(
+            let params = TotpParams {
                 algorithm,
-                8,
-                30,
-                secret.to_string(),
-                None,
-                "alice".to_string(),
-            )
-            .unwrap();
+                digits: 8,
+                period: 30,
+            };
+            let totp = build(params, secret, None, "alice").unwrap();
 
             for (time, expected) in TIMES.iter().zip(expected) {
                 assert_eq!(

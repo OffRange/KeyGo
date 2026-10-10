@@ -4,10 +4,12 @@ use passkey::types::Passkey;
 use passkey::types::ctap2::{Aaguid, Ctap2Error};
 use passkey_authenticator::UiHint;
 
-pub(crate) struct KeyGoUserValidation {}
+/// Reports presence and verification as requested: the app has already verified the user by the
+/// time a request reaches Rust.
+pub(super) struct PreVerifiedUser;
 
 #[async_trait::async_trait]
-impl UserValidationMethod for KeyGoUserValidation {
+impl UserValidationMethod for PreVerifiedUser {
     type PasskeyItem = Passkey;
 
     async fn check_user<'a>(
@@ -31,10 +33,13 @@ impl UserValidationMethod for KeyGoUserValidation {
     }
 }
 
-pub(crate) fn keygo_authenticator<S: CredentialStore>(
+pub(super) fn authenticator<S: CredentialStore>(
     store: S,
-) -> Authenticator<S, KeyGoUserValidation, RustCryptoBackend> {
-    let aaguid = Aaguid::new_empty();
-
-    Authenticator::new(aaguid, store, KeyGoUserValidation {}, RustCryptoBackend)
+) -> Authenticator<S, PreVerifiedUser, RustCryptoBackend> {
+    Authenticator::new(
+        Aaguid::new_empty(),
+        store,
+        PreVerifiedUser,
+        RustCryptoBackend,
+    )
 }

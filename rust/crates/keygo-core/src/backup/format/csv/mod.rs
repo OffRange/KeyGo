@@ -12,14 +12,15 @@ use csv::StringRecord;
 use self::detect::{build_mapping, build_reader, strip_bom};
 use crate::backup::{Backup, BackupError, Login, Vault};
 
+/// Which column (by index) holds each field.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ColumnMapping {
-    pub title: Option<usize>,
-    pub url: Option<usize>,
-    pub username: Option<usize>,
-    pub password: Option<usize>,
-    pub notes: Option<usize>,
-    pub totp: Option<usize>,
+    pub title: Option<u32>,
+    pub url: Option<u32>,
+    pub username: Option<u32>,
+    pub password: Option<u32>,
+    pub notes: Option<u32>,
+    pub totp: Option<u32>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -105,7 +106,7 @@ impl Field {
 }
 
 impl ColumnMapping {
-    fn set(&mut self, field: Field, idx: usize) {
+    fn set(&mut self, field: Field, idx: u32) {
         match field {
             Field::Title => self.title = Some(idx),
             Field::Url => self.url = Some(idx),
@@ -245,8 +246,8 @@ pub fn import(data: &str, mapping: &ColumnMapping) -> Result<(Backup, ImportRepo
             }
         };
 
-        let field = |col: Option<usize>| -> Option<String> {
-            col.and_then(|i| record.get(i))
+        let field = |col: Option<u32>| -> Option<String> {
+            col.and_then(|i| record.get(i as usize))
                 .map(str::trim)
                 .filter(|s| !s.is_empty())
                 .map(str::to_owned)

@@ -1,92 +1,69 @@
-use crate::passkey::authenticator::keygo_authenticator;
-use crate::passkey::keygo_passkey::{PasskeyCodecError, to_bytes};
-use crate::passkey::registration::RegistrationError::{
-    InvalidDomain, InvalidJsonFormat, KeyEncodeError,
-};
-use crate::url::sanitize_to_https_url;
-use passkey::client::{Client, DefaultClientData, WebauthnError};
+use crate::passkey::authenticator::authenticator;
+use crate::passkey::{PasskeyError, codec, origin, parse_request, to_json};
+use passkey::client::{Client, DefaultClientData};
 use passkey::types::webauthn::{CredentialCreationOptions, PublicKeyCredentialCreationOptions};
-use thiserror::Error;
 
-pub struct KeyGoRegistrationResponse {
+/// A newly created passkey: the response JSON for the relying party, and what to store.
+pub struct Registration {
     pub response: String,
     pub user_name: String,
     pub user_display_name: String,
     pub credential_id: Vec<u8>,
+    /// The passkey in its stored encoding.
     pub private_key: Vec<u8>,
     pub rp: String,
 }
 
-#[derive(Debug, Error)]
-pub enum RegistrationError {
-    #[error("invalid json format")]
-    InvalidJsonFormat,
-    #[error("invalid url")]
-    InvalidDomain,
-    #[error("webauthn error: {0:?}")]
-    WebauthnError(WebauthnError),
-    #[error("key encode error: {0:?}")]
-    KeyEncodeError(PasskeyCodecError),
-}
-
-pub struct PasskeyInformation {
+/// What the app needs from a creation request before asking the user to confirm it.
+pub struct CreationInfo {
     pub exclude_credentials: Vec<Vec<u8>>,
     pub rp: String,
 }
 
-pub fn get_passkey_information(
-    json_request: &str,
-) -> Result<PasskeyInformation, RegistrationError> {
-    let creation_options: PublicKeyCredentialCreationOptions =
-        serde_json::from_str(json_request).map_err(|_| InvalidJsonFormat)?;
-
-    let exclude_credentials: Vec<Vec<u8>> = creation_options
-        .exclude_credentials
-        .unwrap_or_default()
-        .into_iter()
-        .map(|desc| desc.id.into())
-        .collect();
-    let rp = creation_options.rp.id.unwrap_or_default();
-
-    Ok(PasskeyInformation {
-        exclude_credentials,
-        rp,
+pub fn creation_info(request_json: &str) -> Result<CreationInfo, PasskeyError> {
+    let options: PublicKeyCredentialCreationOptions = parse_request(request_json)?;
+    Ok(CreationInfo {
+        exclude_credentials: options
+            .exclude_credentials
+            .unwrap_or_default()
+            .into_iter()
+            .map(|descriptor| descriptor.id.into())
+            .collect(),
+        rp: options.rp.id.unwrap_or_default(),
     })
 }
 
-pub async fn register_passkey(
-    json_request: &str,
-) -> Result<KeyGoRegistrationResponse, RegistrationError> {
-    let creation_options: PublicKeyCredentialCreationOptions =
-        serde_json::from_str(json_request).map_err(|_| InvalidJsonFormat)?;
+pub async fn register(request_json: &str) -> Result<Registration, PasskeyError> {
+    let options: PublicKeyCredentialCreationOptions = parse_request(request_json)?;
+    let origin = origin(options.rp.id.as_deref())?;
+    let user_name = options.user.name.clone();
+    let user_display_name = options.user.display_name.clone();
 
-    let domain = creation_options.rp.id.as_deref().unwrap_or_default();
-    let user_name = creation_options.user.name.clone();
-    let user_display_name = creation_options.user.display_name.clone();
-
-    let authenticator = keygo_authenticator(None);
-    let mut client = Client::new(authenticator);
-
-    let domain = sanitize_to_https_url(domain).map_err(|_| InvalidDomain)?;
-    let options = CredentialCreationOptions {
-        public_key: creation_options,
-    };
-    let pub_key_credential = client
-        .register(domain, options, DefaultClientData)
+    let mut client = Client::new(authenticator(None));
+    let credential = client
+        .register(
+            origin,
+            CredentialCreationOptions {
+                public_key: options,
+            },
+            DefaultClientData,
+        )
         .await
-        .map_err(RegistrationError::WebauthnError)?;
-    let response_json = serde_json::to_string(&pub_key_credential).unwrap();
+        .map_err(PasskeyError::Webauthn)?;
 
-    let response = client.authenticator().store().clone().unwrap();
+    let passkey = client
+        .authenticator()
+        .store()
+        .clone()
+        .ok_or(PasskeyError::NoCredentialCreated)?;
 
-    let credential_id = response.credential_id.clone().into();
-    Ok(KeyGoRegistrationResponse {
-        response: response_json,
+    Ok(Registration {
+        response: to_json(&credential)?,
         user_name,
         user_display_name,
-        credential_id,
-        rp: response.rp_id.clone(),
-        private_key: to_bytes(response).map_err(KeyEncodeError)?,
+        credential_id: passkey.credential_id.to_vec(),
+        rp: passkey.rp_id.clone(),
+        private_key: codec::encode(passkey)?,
     })
 }
 
@@ -103,7 +80,7 @@ mod tests {
 
     #[tokio::test]
     async fn registration_reports_the_users_name_not_the_relying_partys() {
-        let registration = register_passkey(REQUEST).await.unwrap();
+        let registration = register(REQUEST).await.unwrap();
 
         assert_eq!(registration.user_name, "alice@example.com");
         assert_eq!(registration.user_display_name, "Alice");

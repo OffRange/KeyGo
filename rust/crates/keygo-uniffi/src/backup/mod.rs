@@ -5,11 +5,11 @@ use std::sync::Arc;
 
 use keygo_core::ark_session::ArkSessionError;
 use keygo_core::backup::{
-    Backup, BackupCredential as CoreCredential, BackupError as CoreError, ExportPreset, KeySource,
-    csv as core_csv, json as core_json,
+    Backup, BackupCredential as CoreCredential, BackupError as CoreError, ColumnMapping,
+    CsvAnalysis, ExportPreset, KeySource, csv as core_csv, json as core_json,
 };
 
-use self::csv::{ColumnMapping, CsvAnalysis, CsvImportResult, JsonEncryption};
+use self::csv::{CsvImportResult, JsonEncryption};
 use crate::ark_session::ArkCredential;
 
 #[derive(uniffi::Enum)]
@@ -127,7 +127,7 @@ impl CsvBackupManager {
     }
 
     pub fn analyze(&self, data: String) -> Result<CsvAnalysis, BackupError> {
-        Ok(core_csv::analyze(&data)?.into())
+        Ok(core_csv::analyze(&data)?)
     }
 
     pub fn import(
@@ -135,7 +135,7 @@ impl CsvBackupManager {
         data: String,
         mapping: ColumnMapping,
     ) -> Result<CsvImportResult, BackupError> {
-        let (backup, report) = core_csv::import(&data, &mapping.into())?;
+        let (backup, report) = core_csv::import(&data, &mapping)?;
         Ok(CsvImportResult { backup, report })
     }
 

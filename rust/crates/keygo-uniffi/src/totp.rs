@@ -1,9 +1,6 @@
 use std::sync::Arc;
 
-use keygo_core::totp::{
-    TotpInfo as CoreTotpInfo, get_totp as core_get_totp,
-    get_totp_info_from_uri as core_get_totp_info_from_uri, get_totp_url as core_get_totp_url,
-};
+use keygo_core::totp::{self as core, TotpInfo as CoreTotpInfo, TotpParams};
 use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, uniffi::Enum)]
@@ -58,9 +55,9 @@ impl TryFrom<CoreTotpInfo> for TotpInfo {
             secret: value.secret,
             issuer: value.issuer,
             account_name: value.account_name,
-            algorithm: value.algorithm.try_into()?,
-            digits: i32::from(value.digits),
-            period: i32::try_from(value.period).map_err(|_| TotpError::InvalidInput)?,
+            algorithm: value.params.algorithm.try_into()?,
+            digits: i32::from(value.params.digits),
+            period: i32::try_from(value.params.period).map_err(|_| TotpError::InvalidInput)?,
         })
     }
 }
@@ -80,6 +77,15 @@ impl From<keygo_core::totp::TotpError> for TotpError {
     }
 }
 
+/// Kotlin hands these over as `Int`; anything negative or out of range is rejected here.
+fn params(algorithm: Algorithm, digits: i32, period: i32) -> Result<TotpParams, TotpError> {
+    Ok(TotpParams {
+        algorithm: algorithm.into(),
+        digits: u8::try_from(digits).map_err(|_| TotpError::InvalidInput)?,
+        period: u64::try_from(period).map_err(|_| TotpError::InvalidInput)?,
+    })
+}
+
 #[derive(uniffi::Object)]
 pub struct TotpService;
 
@@ -97,9 +103,7 @@ impl TotpService {
         step: i32,
         secret: String,
     ) -> Result<String, TotpError> {
-        let digits = u8::try_from(digits).map_err(|_| TotpError::InvalidInput)?;
-        let step = u64::try_from(step).map_err(|_| TotpError::InvalidInput)?;
-        core_get_totp(algorithm.into(), digits, step, secret).map_err(Into::into)
+        Ok(core::generate(params(algorithm, digits, step)?, &secret)?)
     }
 
     pub fn get_url(
@@ -111,16 +115,15 @@ impl TotpService {
         issuer: Option<String>,
         account_name: String,
     ) -> Result<String, TotpError> {
-        let digits = u8::try_from(digits).map_err(|_| TotpError::InvalidInput)?;
-        let step = u64::try_from(step).map_err(|_| TotpError::InvalidInput)?;
-
-        core_get_totp_url(algorithm.into(), digits, step, secret, issuer, account_name)
-            .map_err(Into::into)
+        Ok(core::to_uri(
+            params(algorithm, digits, step)?,
+            &secret,
+            issuer.as_deref(),
+            &account_name,
+        )?)
     }
 
     pub fn get_info_from_uri(&self, uri: String) -> Result<TotpInfo, TotpError> {
-        core_get_totp_info_from_uri(uri)
-            .map_err(TotpError::from)?
-            .try_into()
+        core::parse_uri(&uri)?.try_into()
     }
 }

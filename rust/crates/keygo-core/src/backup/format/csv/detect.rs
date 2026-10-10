@@ -287,7 +287,7 @@ pub(super) fn build_mapping(
             continue;
         }
         let field = ALL_FIELDS[field_idx];
-        mapping.set(field, col);
+        mapping.set(field, col as u32);
         confidence.set(field, Confidence::from_score(score));
         used_cols[col] = true;
         used_fields[field_idx] = true;
