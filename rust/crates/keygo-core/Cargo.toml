@@ -14,12 +14,12 @@ async-trait = "0.1.89"
 ciborium = "0.2.2"
 coset = "0.4.2"
 ed25519-dalek = { version = "3.0.0", features = ["rand_core"] }
-passkey = "0.5.0"
-passkey-authenticator = { version = "0.5.0", features = ["tokio", "testable"] }
+passkey = "0.6.0"
+passkey-authenticator = { version = "0.6.0", features = ["tokio", "testable"] }
 # Needed so passkey JSON responses are serialized into base64 strings
-passkey-types = { version = "0.5.0", features = ["serialize_bytes_as_base64_string"] }
+passkey-types = { version = "0.6.0", features = ["serialize_bytes_as_base64_string"] }
 
-argon2 = "0.5.3"
+argon2 = "0.6.0"
 base32 = "0.5.1"
 base64 = "0.23.1"
 bcs = "0.2.0"

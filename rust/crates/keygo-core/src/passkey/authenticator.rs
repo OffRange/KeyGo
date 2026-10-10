@@ -1,4 +1,5 @@
 use passkey::authenticator::{Authenticator, CredentialStore, UserCheck, UserValidationMethod};
+use passkey::crypto::rust_crypto::RustCryptoBackend;
 use passkey::types::Passkey;
 use passkey::types::ctap2::{Aaguid, Ctap2Error};
 use passkey_authenticator::UiHint;
@@ -32,8 +33,8 @@ impl UserValidationMethod for KeyGoUserValidation {
 
 pub(crate) fn keygo_authenticator<S: CredentialStore>(
     store: S,
-) -> Authenticator<S, KeyGoUserValidation> {
+) -> Authenticator<S, KeyGoUserValidation, RustCryptoBackend> {
     let aaguid = Aaguid::new_empty();
 
-    Authenticator::new(aaguid, store, KeyGoUserValidation {})
+    Authenticator::new(aaguid, store, KeyGoUserValidation {}, RustCryptoBackend)
 }
