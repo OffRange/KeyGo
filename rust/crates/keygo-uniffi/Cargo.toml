@@ -12,5 +12,5 @@ keygo-core = { path = "../keygo-core" }
 thiserror.workspace = true
 uuid.workspace = true
 
-tokio = { version = "1.48.0", features = ["rt", "rt-multi-thread"] }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
 uniffi = { workspace = true, features = ["tokio"] }
