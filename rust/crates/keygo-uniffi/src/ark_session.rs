@@ -1,10 +1,9 @@
 use crate::key_wrap::{KeyWrapError, WrappedKeyBlob};
 use keygo_core::ark_session::{
     ArkSession as CoreArkSession, ArkSessionError as CoreArkSessionError,
+    NewAccount as CoreNewAccount, PasswordWrappedArk,
 };
-use keygo_core::crypto::VaultKey;
-use keygo_core::crypto::primitive::wrap_key::{AeadWrappedKey, WrappedKey};
-use keygo_core::crypto::types::{UserId, VaultId};
+use keygo_core::crypto::{CryptoError, UserId, VaultId, VaultKey};
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
@@ -24,9 +23,15 @@ impl From<CoreArkSessionError> for ArkSessionError {
         match value {
             CoreArkSessionError::Locked => Self::Locked,
             CoreArkSessionError::WrongPassword => Self::WrongPassword,
-            CoreArkSessionError::Derivation(msg) => Self::Derivation(msg),
-            CoreArkSessionError::KeyWrap(crypto_error) => Self::KeyWrap(crypto_error.into()),
+            CoreArkSessionError::Derivation(e) => Self::Derivation(e.to_string()),
+            CoreArkSessionError::KeyWrap(e) => e.into(),
         }
+    }
+}
+
+impl From<CryptoError> for ArkSessionError {
+    fn from(value: CryptoError) -> Self {
+        Self::KeyWrap(value.into())
     }
 }
 
@@ -39,21 +44,41 @@ pub struct NewAccount {
     pub wrapped_vault_key: WrappedKeyBlob,
 }
 
+impl From<CoreNewAccount> for NewAccount {
+    fn from(account: CoreNewAccount) -> Self {
+        Self {
+            user_id: account.user_id,
+            salt: account.password_wrapped_ark.salt,
+            password_wrapped_ark: account.password_wrapped_ark.wrapped.into(),
+            vault_id: account.vault_id,
+            wrapped_vault_key: account.wrapped_vault_key.into(),
+        }
+    }
+}
+
 #[derive(uniffi::Record)]
 pub struct PasswordWrapped {
     pub salt: Vec<u8>,
     pub wrapped: WrappedKeyBlob,
 }
 
-fn blob<T, W>(wrapped: &impl WrappedKey<T, W>) -> WrappedKeyBlob
-where
-    T: keygo_core::crypto::KeyMaterial,
-    W: keygo_core::crypto::AeadKey,
-{
-    WrappedKeyBlob {
-        ciphertext: wrapped.ciphertext().to_vec(),
-        nonce: wrapped.nonce_bytes().to_vec(),
+impl From<PasswordWrappedArk> for PasswordWrapped {
+    fn from(value: PasswordWrappedArk) -> Self {
+        Self {
+            salt: value.salt,
+            wrapped: value.wrapped.into(),
+        }
     }
+}
+
+fn password_wrapped_ark(
+    salt: Vec<u8>,
+    wrapped: WrappedKeyBlob,
+) -> Result<PasswordWrappedArk, CryptoError> {
+    Ok(PasswordWrappedArk {
+        salt,
+        wrapped: wrapped.into_sealed()?,
+    })
 }
 
 #[derive(uniffi::Object)]
@@ -91,14 +116,7 @@ impl ArkSession {
     }
 
     pub fn create_account(&self, password: String) -> Result<NewAccount, ArkSessionError> {
-        let account = self.session.create_account(&password)?;
-        Ok(NewAccount {
-            user_id: account.user_id,
-            salt: account.salt,
-            password_wrapped_ark: blob(&account.password_wrapped_ark),
-            vault_id: account.vault_id,
-            wrapped_vault_key: blob(&account.wrapped_vault_key),
-        })
+        Ok(self.session.create_account(&password)?.into())
     }
 
     pub fn unlock_with_password(
@@ -108,10 +126,10 @@ impl ArkSession {
         wrapped: WrappedKeyBlob,
         user_id: UserId,
     ) -> Result<(), ArkSessionError> {
-        let wrapped = AeadWrappedKey::from_parts_bytes(wrapped.ciphertext, &wrapped.nonce);
+        let wrapped = password_wrapped_ark(salt, wrapped)?;
         Ok(self
             .session
-            .unlock_with_password(&password, &salt, wrapped, user_id)?)
+            .unlock_with_password(&password, &wrapped, user_id)?)
     }
 
     pub fn unlock_with_ark(&self, ark: Vec<u8>) -> Result<(), ArkSessionError> {
@@ -129,10 +147,8 @@ impl ArkSession {
         wrapped: WrappedKeyBlob,
         user_id: UserId,
     ) -> Result<(), ArkSessionError> {
-        let wrapped = AeadWrappedKey::from_parts_bytes(wrapped.ciphertext, &wrapped.nonce);
-        Ok(self
-            .session
-            .verify_password(&password, &salt, wrapped, user_id)?)
+        let wrapped = password_wrapped_ark(salt, wrapped)?;
+        Ok(self.session.verify_password(&password, &wrapped, user_id)?)
     }
 
     pub fn verify_ark(&self, ark: Vec<u8>) -> Result<bool, ArkSessionError> {
@@ -144,13 +160,10 @@ impl ArkSession {
         new_password: String,
         user_id: UserId,
     ) -> Result<PasswordWrapped, ArkSessionError> {
-        let wrapped = self
+        Ok(self
             .session
-            .rewrap_for_new_password(&new_password, user_id)?;
-        Ok(PasswordWrapped {
-            salt: wrapped.salt,
-            wrapped: blob(&wrapped.wrapped),
-        })
+            .rewrap_for_new_password(&new_password, user_id)?
+            .into())
     }
 
     pub fn unwrap_vault_key(
@@ -158,10 +171,9 @@ impl ArkSession {
         wrapped: WrappedKeyBlob,
         vault_id: VaultId,
     ) -> Result<VaultKey, ArkSessionError> {
-        let wrapped = AeadWrappedKey::from_parts_bytes(wrapped.ciphertext, &wrapped.nonce);
-        self.session
-            .unwrap_vault_key(wrapped, vault_id)
-            .map_err(ArkSessionError::from)
+        Ok(self
+            .session
+            .unwrap_vault_key(&wrapped.into_sealed()?, vault_id)?)
     }
 
     pub fn wrap_vault_key(
@@ -169,10 +181,7 @@ impl ArkSession {
         vault_key: VaultKey,
         vault_id: VaultId,
     ) -> Result<WrappedKeyBlob, ArkSessionError> {
-        self.session
-            .wrap_vault_key(vault_key, vault_id)
-            .map_err(ArkSessionError::from)
-            .map(|wrapped| blob(&wrapped))
+        Ok(self.session.wrap_vault_key(&vault_key, vault_id)?.into())
     }
 
     pub fn ark_credential(self: Arc<Self>) -> Arc<ArkCredential> {

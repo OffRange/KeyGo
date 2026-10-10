@@ -1,13 +1,10 @@
 use crate::b64;
 use crate::backup::BackupError;
 use crate::backup::BackupKey;
-use crate::crypto::AccountRootKey;
-use crate::crypto::primitive::aead_data::{AeadCiphertext, AeadEncryptor};
-use crate::crypto::primitive::argon2::Argon2Params;
+use crate::crypto::kdf::argon2::Argon2Params;
 use crate::crypto::random::random_bytes;
+use crate::crypto::{AccountRootKey, Encrypts, Sealed};
 use serde::{Deserialize, Serialize};
-
-const NONCE_LEN: usize = 12;
 
 #[derive(Serialize, Deserialize)]
 pub struct EncryptionHeader {
@@ -62,7 +59,7 @@ pub struct BackupAad {
     pub source: KeySource,
 }
 
-impl AeadEncryptor for BackupKey {
+impl Encrypts for BackupKey {
     type Aad = BackupAad;
 }
 
@@ -99,14 +96,10 @@ pub fn seal(
         ),
     };
     let aad = BackupAad { version, source };
-    let ciphertext = backup_key.encrypt_data(plaintext, &aad)?;
+    let (nonce, ciphertext) = backup_key.encrypt(plaintext, &aad)?.into_parts();
     Ok(SealedPayload {
-        header: EncryptionHeader {
-            source,
-            kdf,
-            nonce: ciphertext.nonce_bytes().to_vec(),
-        },
-        ciphertext: ciphertext.ciphertext().to_vec(),
+        header: EncryptionHeader { source, kdf, nonce },
+        ciphertext,
     })
 }
 
@@ -116,9 +109,9 @@ pub fn open(
     cred: BackupCredential<'_>,
     version: u32,
 ) -> Result<Vec<u8>, BackupError> {
-    if header.nonce.len() != NONCE_LEN {
-        return Err(BackupError::MalformedHeader);
-    }
+    // Checked before deriving the key, which may cost a full Argon2 run.
+    let sealed = Sealed::from_parts(&header.nonce, ciphertext.to_vec())
+        .map_err(|_| BackupError::MalformedHeader)?;
 
     let key = match (header.source, &header.kdf, cred) {
         // Credential's source disagrees with the header's declared source.
@@ -161,18 +154,15 @@ pub fn open(
         version,
         source: header.source,
     };
-    let parts = AeadCiphertext::<BackupKey>::from_parts_bytes(ciphertext.to_vec(), &header.nonce);
-    Ok(key.decrypt_data(&parts, &aad)?)
+    Ok(key.decrypt(&sealed, &aad)?)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::backup::CURRENT_VERSION;
-    use crate::crypto::AccountRootKey;
-    use crate::crypto::KeyMaterial;
-    use crate::crypto::error::CryptoError;
-    use crate::crypto::primitive::argon2::MAX_ARGON2_MEM_KIB;
+    use crate::crypto::kdf::argon2::MAX_ARGON2_MEM_KIB;
+    use crate::crypto::{CryptoError, SymmetricKey};
 
     #[test]
     fn key_source_serialization() {
@@ -208,8 +198,8 @@ mod tests {
             version: CURRENT_VERSION,
             source: KeySource::Passphrase,
         };
-        let ct = key.encrypt_data(b"secret-bytes", &aad).unwrap();
-        let pt = key.decrypt_data(&ct, &aad).unwrap();
+        let ct = key.encrypt(b"secret-bytes", &aad).unwrap();
+        let pt = key.decrypt(&ct, &aad).unwrap();
         assert_eq!(pt, b"secret-bytes");
     }
 
@@ -225,9 +215,9 @@ mod tests {
             version: 2,
             source: KeySource::Passphrase,
         };
-        let ct = key.encrypt_data(b"secret", &aad).unwrap();
+        let ct = key.encrypt(b"secret", &aad).unwrap();
         assert!(matches!(
-            key.decrypt_data(&ct, &wrong),
+            key.decrypt(&ct, &wrong),
             Err(CryptoError::DecryptionFailed),
         ));
     }
@@ -251,7 +241,7 @@ mod tests {
 
     #[test]
     fn ark_seal_records_hkdf_kdf() {
-        let ark = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
+        let ark = AccountRootKey::from_bytes(&[5u8; 32]).unwrap();
         let sealed = seal(b"x", BackupCredential::Ark(&ark), CURRENT_VERSION).unwrap();
         assert!(matches!(sealed.header.source, KeySource::Ark));
         assert!(matches!(sealed.header.kdf, Kdf::HkdfSha256 { .. }));
@@ -259,7 +249,7 @@ mod tests {
 
     #[test]
     fn ark_seal_then_open_round_trips() {
-        let ark = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
+        let ark = AccountRootKey::from_bytes(&[5u8; 32]).unwrap();
         let cred = BackupCredential::Ark(&ark);
         let sealed = seal(b"hello-ark", cred, CURRENT_VERSION).unwrap();
         let pt = open(&sealed.header, &sealed.ciphertext, cred, CURRENT_VERSION).unwrap();
@@ -268,7 +258,7 @@ mod tests {
 
     #[test]
     fn open_rejects_ark_source_with_argon2id_kdf() {
-        let ark = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
+        let ark = AccountRootKey::from_bytes(&[5u8; 32]).unwrap();
         let cred = BackupCredential::Ark(&ark);
         let mut sealed = seal(b"x", cred, CURRENT_VERSION).unwrap();
         // Header still says source=Ark but now carries a passphrase-style KDF.
@@ -297,6 +287,9 @@ mod tests {
             *mem_kib = MAX_ARGON2_MEM_KIB + 1;
         }
         let err = open(&sealed.header, &sealed.ciphertext, cred, CURRENT_VERSION).unwrap_err();
-        assert!(matches!(err, BackupError::Crypto(CryptoError::KdfError(_)),));
+        assert!(matches!(
+            err,
+            BackupError::Crypto(CryptoError::Argon2MemoryTooHigh { .. })
+        ));
     }
 }

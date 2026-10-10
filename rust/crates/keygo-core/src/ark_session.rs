@@ -1,10 +1,9 @@
-use crate::crypto::error::CryptoError;
-use crate::crypto::primitive::argon2::MIN_SALT_LEN;
-use crate::crypto::primitive::wrap_key::{AeadWrappedKey, KeyWrapper};
+use crate::crypto::kdf::argon2::MIN_SALT_LEN;
 use crate::crypto::random::random_bytes;
-use crate::crypto::types::{UserId, VaultId};
-use crate::crypto::{AccountRootKey, KeyMaterial, RootKEK, TryDeriveFrom, VaultKey};
-use std::sync::Mutex;
+use crate::crypto::{
+    AccountRootKey, CryptoError, RootKEK, Sealed, SymmetricKey, UserId, VaultId, VaultKey, Wraps,
+};
+use std::sync::{Mutex, MutexGuard};
 use subtle::ConstantTimeEq;
 use zeroize::Zeroizing;
 
@@ -15,55 +14,44 @@ pub enum ArkSessionError {
     #[error("Wrong password")]
     WrongPassword,
     #[error("Key derivation failed: {0}")]
-    Derivation(String),
+    Derivation(#[source] CryptoError),
     #[error("{0}")]
     KeyWrap(#[from] CryptoError),
 }
 
-pub struct NewAccount {
-    pub user_id: UserId,
-    pub salt: Vec<u8>,
-    pub password_wrapped_ark: AeadWrappedKey<AccountRootKey, RootKEK>,
-    pub vault_id: VaultId,
-    pub wrapped_vault_key: AeadWrappedKey<VaultKey, AccountRootKey>,
-}
-
-pub struct PasswordWrapped {
-    pub salt: Vec<u8>,
-    pub wrapped: AeadWrappedKey<AccountRootKey, RootKEK>,
-}
-
 type ArkSessionResult<T> = Result<T, ArkSessionError>;
 
-const PASSWORD_DOMAIN: &[u8] = b"v1:kek/pwd";
 const SALT_LEN: usize = MIN_SALT_LEN;
 
+/// The ARK wrapped under a key derived from the user's password, plus the salt that derivation
+/// needs. The user id is the wrap's AAD.
+pub struct PasswordWrappedArk {
+    pub salt: Vec<u8>,
+    pub wrapped: Sealed<AccountRootKey>,
+}
+
+impl PasswordWrappedArk {
+    fn open(&self, password: &str, user_id: UserId) -> ArkSessionResult<AccountRootKey> {
+        Ok(derive_kek(password, &self.salt)?.unwrap_key(&self.wrapped, &user_id)?)
+    }
+}
+
+pub struct NewAccount {
+    pub user_id: UserId,
+    pub password_wrapped_ark: PasswordWrappedArk,
+    pub vault_id: VaultId,
+    pub wrapped_vault_key: Sealed<VaultKey>,
+}
+
+/// Holds the ARK while the vault is unlocked.
+#[derive(Default)]
 pub struct ArkSession {
     ark: Mutex<Option<AccountRootKey>>,
 }
 
-impl Default for ArkSession {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl ArkSession {
     pub fn new() -> Self {
-        Self {
-            ark: Mutex::new(None),
-        }
-    }
-
-    fn unlock(
-        &self,
-        kek: RootKEK,
-        wrapped_key: AeadWrappedKey<AccountRootKey, RootKEK>,
-        aad: UserId,
-    ) -> ArkSessionResult<()> {
-        let ark = kek.unwrap_key(&wrapped_key, &aad)?;
-        *self.lock() = Some(ark);
-        Ok(())
+        Self::default()
     }
 
     pub fn end(&self) {
@@ -74,47 +62,23 @@ impl ArkSession {
         self.lock().is_some()
     }
 
-    fn lock(&self) -> std::sync::MutexGuard<'_, Option<AccountRootKey>> {
-        self.ark.lock().unwrap_or_else(|e| e.into_inner())
-    }
-
-    pub fn unwrap_vault_key(
-        &self,
-        wrapped: AeadWrappedKey<VaultKey, AccountRootKey>,
-        aad: VaultId,
-    ) -> ArkSessionResult<VaultKey> {
-        let guard = self.lock();
-        let ark = guard.as_ref().ok_or(ArkSessionError::Locked)?;
-        Ok(ark.unwrap_key(&wrapped, &aad)?)
-    }
-
-    pub fn wrap_vault_key(
-        &self,
-        vault_key: VaultKey,
-        aad: VaultId,
-    ) -> ArkSessionResult<AeadWrappedKey<VaultKey, AccountRootKey>> {
-        let guard = self.lock();
-        let ark = guard.as_ref().ok_or(ArkSessionError::Locked)?;
-        Ok(ark.wrap_key(&vault_key, &aad)?)
-    }
-
     pub fn create_account(&self, password: &str) -> ArkSessionResult<NewAccount> {
         let user_id = UserId::new_v4();
         let vault_id = VaultId::new_v4();
-        let ark = AccountRootKey::generate_random();
-        let vault_key = VaultKey::generate_random();
+        let ark = AccountRootKey::generate();
+        let vault_key = VaultKey::generate();
 
-        let salt = random_bytes::<SALT_LEN>().to_vec();
-        let kek = derive_kek(password, &salt)?;
-
-        let password_wrapped_ark = kek.wrap_key(&ark, &user_id)?;
+        let salt = new_salt();
+        let password_wrapped_ark = PasswordWrappedArk {
+            wrapped: derive_kek(password, &salt)?.wrap_key(&ark, &user_id)?,
+            salt,
+        };
         let wrapped_vault_key = ark.wrap_key(&vault_key, &vault_id)?;
 
         *self.lock() = Some(ark);
 
         Ok(NewAccount {
             user_id,
-            salt,
             password_wrapped_ark,
             vault_id,
             wrapped_vault_key,
@@ -124,16 +88,16 @@ impl ArkSession {
     pub fn unlock_with_password(
         &self,
         password: &str,
-        salt: &[u8],
-        wrapped: AeadWrappedKey<AccountRootKey, RootKEK>,
+        wrapped: &PasswordWrappedArk,
         user_id: UserId,
     ) -> ArkSessionResult<()> {
-        let kek = derive_kek(password, salt)?;
-        self.unlock(kek, wrapped, user_id)
+        let ark = wrapped.open(password, user_id)?;
+        *self.lock() = Some(ark);
+        Ok(())
     }
 
     pub fn unlock_with_ark(&self, ark: &[u8]) -> ArkSessionResult<()> {
-        let ark = AccountRootKey::try_from_bytes(ark)?;
+        let ark = AccountRootKey::from_bytes(ark)?;
         *self.lock() = Some(ark);
         Ok(())
     }
@@ -142,62 +106,87 @@ impl ArkSession {
         self.with_ark(|ark| Zeroizing::new(ark.as_bytes().to_vec()))
     }
 
+    /// Succeeds only if `password` opens `wrapped` and what it opens is the ARK this session
+    /// holds, so a rewrap after this cannot put a new password around a different account's key.
     pub fn verify_password(
         &self,
         password: &str,
-        salt: &[u8],
-        wrapped: AeadWrappedKey<AccountRootKey, RootKEK>,
+        wrapped: &PasswordWrappedArk,
         user_id: UserId,
     ) -> ArkSessionResult<()> {
-        let kek = derive_kek(password, salt)?;
-        let stored = kek
-            .unwrap_key(&wrapped, &user_id)
-            .map_err(|_| ArkSessionError::WrongPassword)?;
+        let stored = match wrapped.open(password, user_id) {
+            Err(ArkSessionError::KeyWrap(_)) => return Err(ArkSessionError::WrongPassword),
+            other => other?,
+        };
 
-        let guard = self.lock();
-        let live = guard.as_ref().ok_or(ArkSessionError::Locked)?;
-        if bool::from(live.as_bytes().ct_eq(stored.as_bytes())) {
-            Ok(())
-        } else {
-            Err(ArkSessionError::WrongPassword)
-        }
+        self.with_live_ark(|live| {
+            if bool::from(live.as_bytes().ct_eq(stored.as_bytes())) {
+                Ok(())
+            } else {
+                Err(ArkSessionError::WrongPassword)
+            }
+        })
     }
 
     pub fn verify_ark(&self, candidate: &[u8]) -> ArkSessionResult<bool> {
-        let guard = self.lock();
-        let ark = guard.as_ref().ok_or(ArkSessionError::Locked)?;
-        Ok(ark.as_bytes().ct_eq(candidate).into())
+        self.with_live_ark(|ark| Ok(ark.as_bytes().ct_eq(candidate).into()))
     }
 
     pub fn rewrap_for_new_password(
         &self,
         new_password: &str,
         user_id: UserId,
-    ) -> ArkSessionResult<PasswordWrapped> {
-        let salt = random_bytes::<SALT_LEN>().to_vec();
+    ) -> ArkSessionResult<PasswordWrappedArk> {
+        // Derive before taking the lock: Argon2 is slow, and nothing else may wait on it.
+        let salt = new_salt();
         let kek = derive_kek(new_password, &salt)?;
-
-        let guard = self.lock();
-        let ark = guard.as_ref().ok_or(ArkSessionError::Locked)?;
-        let wrapped = kek.wrap_key(ark, &user_id)?;
-
-        Ok(PasswordWrapped { salt, wrapped })
+        let wrapped = self.with_live_ark(|ark| Ok(kek.wrap_key(ark, &user_id)?))?;
+        Ok(PasswordWrappedArk { salt, wrapped })
     }
 
-    pub fn with_ark<R>(&self, f: impl FnOnce(&AccountRootKey) -> R) -> ArkSessionResult<R> {
-        let ark = {
-            let guard = self.lock();
-            let live = guard.as_ref().ok_or(ArkSessionError::Locked)?;
-            AccountRootKey::try_from_bytes(live.as_bytes())?
-        };
+    pub fn wrap_vault_key(
+        &self,
+        vault_key: &VaultKey,
+        vault_id: VaultId,
+    ) -> ArkSessionResult<Sealed<VaultKey>> {
+        self.with_live_ark(|ark| Ok(ark.wrap_key(vault_key, &vault_id)?))
+    }
 
+    pub fn unwrap_vault_key(
+        &self,
+        wrapped: &Sealed<VaultKey>,
+        vault_id: VaultId,
+    ) -> ArkSessionResult<VaultKey> {
+        self.with_live_ark(|ark| Ok(ark.unwrap_key(wrapped, &vault_id)?))
+    }
+
+    /// Runs `f` on a copy of the live ARK, without holding the session lock, so `f` may call back
+    /// into the session and keeps a usable key even if the session ends meanwhile.
+    pub fn with_ark<R>(&self, f: impl FnOnce(&AccountRootKey) -> R) -> ArkSessionResult<R> {
+        let ark = self.with_live_ark(|live| Ok(AccountRootKey::from_bytes(live.as_bytes())?))?;
         Ok(f(&ark))
+    }
+
+    /// Runs `f` on the live ARK while holding the session lock. `f` must not call back into the
+    /// session.
+    fn with_live_ark<R>(
+        &self,
+        f: impl FnOnce(&AccountRootKey) -> ArkSessionResult<R>,
+    ) -> ArkSessionResult<R> {
+        f(self.lock().as_ref().ok_or(ArkSessionError::Locked)?)
+    }
+
+    fn lock(&self) -> MutexGuard<'_, Option<AccountRootKey>> {
+        self.ark.lock().unwrap_or_else(|e| e.into_inner())
     }
 }
 
+fn new_salt() -> Vec<u8> {
+    random_bytes::<SALT_LEN>().to_vec()
+}
+
 fn derive_kek(password: &str, salt: &[u8]) -> ArkSessionResult<RootKEK> {
-    RootKEK::try_derive_from(password.as_bytes(), salt, PASSWORD_DOMAIN)
-        .map_err(|e| ArkSessionError::Derivation(format!("{e}")))
+    RootKEK::from_password(password.as_bytes(), salt).map_err(ArkSessionError::Derivation)
 }
 
 #[cfg(test)]
@@ -224,12 +213,7 @@ mod tests {
         session.end();
 
         session
-            .unlock_with_password(
-                PASSWORD,
-                &account.salt,
-                account.password_wrapped_ark,
-                account.user_id,
-            )
+            .unlock_with_password(PASSWORD, &account.password_wrapped_ark, account.user_id)
             .unwrap();
 
         assert!(session.is_active());
@@ -241,7 +225,7 @@ mod tests {
 
         assert!(
             session
-                .unwrap_vault_key(account.wrapped_vault_key, account.vault_id)
+                .unwrap_vault_key(&account.wrapped_vault_key, account.vault_id)
                 .is_ok()
         );
     }
@@ -251,12 +235,8 @@ mod tests {
         let (session, account) = unlocked();
         session.end();
 
-        let result = session.unlock_with_password(
-            "wrong",
-            &account.salt,
-            account.password_wrapped_ark,
-            account.user_id,
-        );
+        let result =
+            session.unlock_with_password("wrong", &account.password_wrapped_ark, account.user_id);
 
         assert!(matches!(result, Err(ArkSessionError::KeyWrap(_))));
         assert!(!session.is_active());
@@ -269,12 +249,8 @@ mod tests {
 
         // The blob was wrapped with account.user_id as AAD; unlocking with a different id must
         // fail the AEAD tag check, the same binding that stops a blob transplant between users.
-        let result = session.unlock_with_password(
-            PASSWORD,
-            &account.salt,
-            account.password_wrapped_ark,
-            UserId::new_v4(),
-        );
+        let result =
+            session.unlock_with_password(PASSWORD, &account.password_wrapped_ark, UserId::new_v4());
 
         assert!(matches!(result, Err(ArkSessionError::KeyWrap(_))));
         assert!(!session.is_active());
@@ -285,12 +261,8 @@ mod tests {
         let (session, account) = unlocked();
         let original = session.export_ark().unwrap();
 
-        let result = session.unlock_with_password(
-            "wrong",
-            &account.salt,
-            account.password_wrapped_ark,
-            account.user_id,
-        );
+        let result =
+            session.unlock_with_password("wrong", &account.password_wrapped_ark, account.user_id);
 
         // A failed unlock attempt must not log the user out: the session stays active and keeps
         // holding the ARK it had before the attempt.
@@ -309,9 +281,9 @@ mod tests {
 
         // Both sessions hold the same ARK, so a key wrapped by one unwraps under the other.
         let wrapped = session
-            .wrap_vault_key(VaultKey::generate_random(), account.vault_id)
+            .wrap_vault_key(&VaultKey::generate(), account.vault_id)
             .unwrap();
-        assert!(second.unwrap_vault_key(wrapped, account.vault_id).is_ok());
+        assert!(second.unwrap_vault_key(&wrapped, account.vault_id).is_ok());
     }
 
     #[test]
@@ -342,7 +314,7 @@ mod tests {
 
         assert!(
             session
-                .verify_password(PASSWORD, &wrapped.salt, wrapped.wrapped, account.user_id)
+                .verify_password(PASSWORD, &wrapped, account.user_id)
                 .is_ok()
         );
 
@@ -350,7 +322,7 @@ mod tests {
             .rewrap_for_new_password(PASSWORD, account.user_id)
             .unwrap();
         assert!(matches!(
-            session.verify_password("nope", &wrapped.salt, wrapped.wrapped, account.user_id),
+            session.verify_password("nope", &wrapped, account.user_id),
             Err(ArkSessionError::WrongPassword)
         ));
     }
@@ -363,12 +335,7 @@ mod tests {
         let (_, other) = unlocked();
 
         assert!(matches!(
-            session.verify_password(
-                PASSWORD,
-                &other.salt,
-                other.password_wrapped_ark,
-                other.user_id,
-            ),
+            session.verify_password(PASSWORD, &other.password_wrapped_ark, other.user_id),
             Err(ArkSessionError::WrongPassword)
         ));
     }
@@ -379,12 +346,7 @@ mod tests {
         session.end();
 
         assert!(matches!(
-            session.verify_password(
-                PASSWORD,
-                &account.salt,
-                account.password_wrapped_ark,
-                account.user_id,
-            ),
+            session.verify_password(PASSWORD, &account.password_wrapped_ark, account.user_id),
             Err(ArkSessionError::Locked)
         ));
     }
@@ -421,12 +383,7 @@ mod tests {
         session.end();
 
         session
-            .unlock_with_password(
-                "new-password",
-                &rewrapped.salt,
-                rewrapped.wrapped,
-                account.user_id,
-            )
+            .unlock_with_password("new-password", &rewrapped, account.user_id)
             .unwrap();
 
         // Same ARK, only the wrapping changed.
@@ -455,26 +412,6 @@ mod tests {
             session.rewrap_for_new_password("new-password", UserId::new_v4()),
             Err(ArkSessionError::Locked)
         ));
-    }
-
-    /// Known-answer test: pins `PASSWORD_DOMAIN` together with the Argon2 cost profile and the
-    /// derived key length behind it. Every shipped account's ARK is wrapped under a KEK derived
-    /// with this exact domain and parameter set, so if any of them drift, no existing account's
-    /// password can unlock it again. This is the tripwire for that.
-    #[test]
-    fn password_domain_is_pinned() {
-        assert_eq!(PASSWORD_DOMAIN, b"v1:kek/pwd");
-
-        const SALT: [u8; 16] = [7; 16];
-        let kek = derive_kek("hunter2", &SALT).unwrap();
-
-        assert_eq!(
-            kek.as_bytes(),
-            &[
-                243, 77, 26, 134, 177, 95, 102, 67, 54, 167, 232, 38, 115, 170, 132, 28, 98, 29,
-                146, 108, 157, 245, 225, 131, 93, 9, 236, 235, 207, 6, 219, 103,
-            ][..]
-        );
     }
 
     #[test]

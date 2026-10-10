@@ -1,14 +1,23 @@
-use keygo_core::crypto::KeyMaterial;
-use keygo_core::crypto::VaultKey;
-use keygo_core::crypto::error::CryptoError;
-use keygo_core::crypto::primitive::wrap_key::{KeyWrapper as KeyWrapperTrait, WrappedKey};
-use keygo_core::crypto::{ItemAad, ItemKey};
+use keygo_core::crypto::{CryptoError, ItemAad, ItemKey, Sealed, VaultKey, Wraps};
 use std::sync::Arc;
 
 #[derive(uniffi::Record)]
 pub struct WrappedKeyBlob {
     pub ciphertext: Vec<u8>,
     pub nonce: Vec<u8>,
+}
+
+impl<T> From<Sealed<T>> for WrappedKeyBlob {
+    fn from(sealed: Sealed<T>) -> Self {
+        let (nonce, ciphertext) = sealed.into_parts();
+        Self { ciphertext, nonce }
+    }
+}
+
+impl WrappedKeyBlob {
+    pub(crate) fn into_sealed<T>(self) -> Result<Sealed<T>, CryptoError> {
+        Sealed::from_parts(&self.nonce, self.ciphertext)
+    }
 }
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
@@ -30,43 +39,13 @@ impl From<CryptoError> for KeyWrapError {
         match value {
             CryptoError::KeyWrapFailed => Self::WrapFailed,
             CryptoError::KeyUnwrapFailed => Self::UnwrapFailed,
-            CryptoError::InvalidKey => Self::InvalidKey,
             CryptoError::InvalidKeyLength { expected, got } => Self::InvalidKeyLength {
                 expected: expected as u64,
                 got: got as u64,
             },
-            other => Self::Other(format!("{other}")),
+            other => Self::Other(other.to_string()),
         }
     }
-}
-
-pub(crate) fn wrap<Wrapper, Target>(
-    wrapper: &Wrapper,
-    target: &Target,
-    aad: &Wrapper::Aad,
-) -> Result<WrappedKeyBlob, KeyWrapError>
-where
-    Target: KeyMaterial,
-    Wrapper: KeyWrapperTrait<Target>,
-{
-    let wrapped = wrapper.wrap_key(target, aad)?;
-    Ok(WrappedKeyBlob {
-        ciphertext: wrapped.ciphertext().to_vec(),
-        nonce: wrapped.nonce_bytes().to_vec(),
-    })
-}
-
-pub(crate) fn unwrap<Wrapper, Target>(
-    wrapper: &Wrapper,
-    blob: &WrappedKeyBlob,
-    aad: &Wrapper::Aad,
-) -> Result<Target, KeyWrapError>
-where
-    Target: KeyMaterial,
-    Wrapper: KeyWrapperTrait<Target>,
-{
-    let wrapped = Wrapper::Wrapped::from_parts_bytes(blob.ciphertext.clone(), &blob.nonce);
-    Ok(wrapper.unwrap_key(&wrapped, aad)?)
 }
 
 #[derive(uniffi::Object)]
@@ -85,7 +64,7 @@ impl KeyWrapper {
         item_key: ItemKey,
         aad: ItemAad,
     ) -> Result<WrappedKeyBlob, KeyWrapError> {
-        wrap::<VaultKey, ItemKey>(&vault_key, &item_key, &aad)
+        Ok(vault_key.wrap_key(&item_key, &aad)?.into())
     }
 
     pub fn unwrap_item_key(
@@ -94,6 +73,6 @@ impl KeyWrapper {
         wrapped: WrappedKeyBlob,
         aad: ItemAad,
     ) -> Result<ItemKey, KeyWrapError> {
-        unwrap::<VaultKey, ItemKey>(&vault_key, &wrapped, &aad)
+        Ok(vault_key.unwrap_key(&wrapped.into_sealed()?, &aad)?)
     }
 }

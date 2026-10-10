@@ -12,6 +12,6 @@ impl VaultManager {
     }
 
     pub fn create_new_vault_key(&self) -> VaultKey {
-        VaultKey::generate_random()
+        VaultKey::generate()
     }
 }

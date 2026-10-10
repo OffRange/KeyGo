@@ -48,9 +48,7 @@ mod tests {
     use super::*;
     use crate::backup::encryption::{Kdf, KeySource};
     use crate::backup::{Card, Login, Passkey, Vault};
-    use crate::crypto::AccountRootKey;
-    use crate::crypto::KeyMaterial;
-    use crate::crypto::error::CryptoError;
+    use crate::crypto::{AccountRootKey, CryptoError, SymmetricKey};
 
     fn sample_backup() -> Backup {
         Backup {
@@ -238,7 +236,7 @@ mod tests {
 
     #[test]
     fn golden_v1_ark_still_decrypts() {
-        let ark = AccountRootKey::try_from_bytes(&GOLDEN_V1_ARK_KEY).unwrap();
+        let ark = AccountRootKey::from_bytes(&GOLDEN_V1_ARK_KEY).unwrap();
         let backup = import(GOLDEN_V1_ARK, BackupCredential::Ark(&ark)).unwrap();
         let vault = &backup.vaults[0];
         let login = &vault.logins[0];
@@ -252,7 +250,7 @@ mod tests {
 
     #[test]
     fn ark_round_trip() {
-        let ark = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
+        let ark = AccountRootKey::from_bytes(&[5u8; 32]).unwrap();
         let original = sample_backup();
         let json = export(&original, BackupCredential::Ark(&ark)).unwrap();
         let restored = import(&json, BackupCredential::Ark(&ark)).unwrap();
@@ -271,8 +269,8 @@ mod tests {
 
     #[test]
     fn wrong_ark_fails() {
-        let right = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
-        let wrong = AccountRootKey::try_from_bytes(&[6u8; 32]).unwrap();
+        let right = AccountRootKey::from_bytes(&[5u8; 32]).unwrap();
+        let wrong = AccountRootKey::from_bytes(&[6u8; 32]).unwrap();
         let json = export(&sample_backup(), BackupCredential::Ark(&right)).unwrap();
         let err = import(&json, BackupCredential::Ark(&wrong)).unwrap_err();
         assert!(matches!(
@@ -284,12 +282,15 @@ mod tests {
     #[test]
     fn empty_passphrase_is_rejected() {
         let err = export(&sample_backup(), BackupCredential::Passphrase(b"")).unwrap_err();
-        assert!(matches!(err, BackupError::Crypto(CryptoError::KdfError(_))));
+        assert!(matches!(
+            err,
+            BackupError::Crypto(CryptoError::EmptyPassword)
+        ));
     }
 
     #[test]
     fn credential_source_mismatch_fails() {
-        let ark = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
+        let ark = AccountRootKey::from_bytes(&[5u8; 32]).unwrap();
         let json = export(&sample_backup(), BackupCredential::Ark(&ark)).unwrap();
         let err = import(&json, BackupCredential::Passphrase(b"x")).unwrap_err();
         assert!(matches!(err, BackupError::CredentialMismatch));
@@ -408,7 +409,7 @@ mod tests {
 
     #[test]
     fn inspect_reports_ark() {
-        let ark = AccountRootKey::try_from_bytes(&[5u8; 32]).unwrap();
+        let ark = AccountRootKey::from_bytes(&[5u8; 32]).unwrap();
         let json = export(&sample_backup(), BackupCredential::Ark(&ark)).unwrap();
         assert!(matches!(inspect(&json).unwrap(), KeySource::Ark));
     }

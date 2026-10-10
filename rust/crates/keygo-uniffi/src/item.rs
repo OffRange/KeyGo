@@ -1,18 +1,5 @@
-use keygo_core::crypto::KeyMaterial;
-use keygo_core::crypto::error::CryptoError;
-use keygo_core::crypto::primitive::aead_data::{AeadCiphertext, AeadEncryptor};
-use keygo_core::crypto::types::{ItemId, VaultId};
-use keygo_core::crypto::{ItemAad, ItemDataAad, ItemKey};
+use keygo_core::crypto::{CryptoError, Encrypts, ItemAad, ItemId, ItemKey, Sealed, VaultId};
 use std::sync::Arc;
-
-uniffi::custom_type!(ItemKey, Vec<u8>, {
-    remote,
-    try_lift: |bytes| {
-        ItemKey::try_from_bytes(&bytes)
-            .map_err(|e| uniffi::deps::anyhow::anyhow!("{e:?}"))
-    },
-    lower: |key| key.as_bytes().to_vec(),
-});
 
 #[uniffi::remote(Record)]
 pub struct ItemAad {
@@ -24,6 +11,19 @@ pub struct ItemAad {
 pub struct EncryptedItemBlob {
     pub ciphertext: Vec<u8>,
     pub nonce: Vec<u8>,
+}
+
+impl From<Sealed<[u8]>> for EncryptedItemBlob {
+    fn from(sealed: Sealed<[u8]>) -> Self {
+        let (nonce, ciphertext) = sealed.into_parts();
+        Self { ciphertext, nonce }
+    }
+}
+
+impl EncryptedItemBlob {
+    fn into_sealed(self) -> Result<Sealed<[u8]>, CryptoError> {
+        Sealed::from_parts(&self.nonce, self.ciphertext)
+    }
 }
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
@@ -45,12 +45,11 @@ impl From<CryptoError> for ItemCryptoError {
         match value {
             CryptoError::EncryptionFailed => Self::EncryptionFailed,
             CryptoError::DecryptionFailed => Self::DecryptionFailed,
-            CryptoError::InvalidKey => Self::InvalidKey,
             CryptoError::InvalidKeyLength { expected, got } => Self::InvalidKeyLength {
                 expected: expected as u64,
                 got: got as u64,
             },
-            other => Self::Other(format!("{other}")),
+            other => Self::Other(other.to_string()),
         }
     }
 }
@@ -66,7 +65,7 @@ impl ItemManager {
     }
 
     pub fn create_new_item_key(&self) -> ItemKey {
-        ItemKey::generate_random()
+        ItemKey::generate()
     }
 
     pub fn encrypt_item_data(
@@ -75,12 +74,7 @@ impl ItemManager {
         data: Vec<u8>,
         aad: Vec<u8>,
     ) -> Result<EncryptedItemBlob, ItemCryptoError> {
-        let aad = ItemDataAad(aad);
-        let ct = item_key.encrypt_data(&data, &aad)?;
-        Ok(EncryptedItemBlob {
-            ciphertext: ct.ciphertext().to_vec(),
-            nonce: ct.nonce_bytes().to_vec(),
-        })
+        Ok(item_key.encrypt(&data, &aad)?.into())
     }
 
     pub fn decrypt_item_data(
@@ -89,8 +83,6 @@ impl ItemManager {
         blob: EncryptedItemBlob,
         aad: Vec<u8>,
     ) -> Result<Vec<u8>, ItemCryptoError> {
-        let aad = ItemDataAad(aad);
-        let ciphertext = AeadCiphertext::<ItemKey>::from_parts_bytes(blob.ciphertext, &blob.nonce);
-        Ok(item_key.decrypt_data(&ciphertext, &aad)?)
+        Ok(item_key.decrypt(&blob.into_sealed()?, &aad)?)
     }
 }

@@ -1,4 +1,4 @@
-use crate::crypto::error::CryptoError;
+use crate::crypto::CryptoError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BackupError {
