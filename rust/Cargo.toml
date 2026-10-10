@@ -14,3 +14,8 @@ thiserror = "2.0.18"
 uuid = { version = "1.23.1", features = ["serde", "v4"] }
 uniffi = "0.32.0"
 zeroize = "1.8.2"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = "debuginfo"

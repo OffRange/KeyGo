@@ -1012,7 +1012,6 @@ dependencies = [
  "ciborium",
  "coset",
  "csv",
- "ed25519-dalek",
  "email_address",
  "hkdf",
  "passkey",

@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 pub mod ark_session;
 mod b64;
 pub mod backup;

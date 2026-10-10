@@ -13,7 +13,6 @@ aes-gcm-siv = "0.12.1"
 async-trait = "0.1.89"
 ciborium = "0.2.2"
 coset = "0.4.2"
-ed25519-dalek = { version = "3.0.0", features = ["rand_core"] }
 passkey = "0.6.0"
 passkey-authenticator = { version = "0.6.0", features = ["tokio", "testable"] }
 # Needed so passkey JSON responses are serialized into base64 strings
