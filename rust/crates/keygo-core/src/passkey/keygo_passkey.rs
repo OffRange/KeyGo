@@ -100,6 +100,32 @@ mod tests {
         }
     }
 
+    /// `sample_passkey` as encoded when the format shipped. Every stored passkey is in this
+    /// shape, so the decoder must keep reading it: the `V1` tag and the field names are the format.
+    const GOLDEN_V1: &str = "oWJWMadja2V5hRiiAQEDGCdtY3JlZGVudGlhbF9pZIQBAgMEZXJwX2lka2V4YW1wbGUuY29ta3VzZXJfaGFuZGxlgwkJCWh1c2VybmFtZWVhbGljZXF1c2VyX2Rpc3BsYXlfbmFtZWVBbGljZWdjb3VudGVyGCo=";
+
+    #[test]
+    fn golden_v1_still_decodes() {
+        let original = sample_passkey();
+        let decoded = passkey_from_bytes(&crate::b64::decode(GOLDEN_V1).unwrap()).unwrap();
+
+        assert_eq!(decoded.key, original.key);
+        assert_eq!(decoded.credential_id, original.credential_id);
+        assert_eq!(decoded.rp_id, original.rp_id);
+        assert_eq!(decoded.user_handle, original.user_handle);
+        assert_eq!(decoded.username, original.username);
+        assert_eq!(decoded.user_display_name, original.user_display_name);
+        assert_eq!(decoded.counter, original.counter);
+    }
+
+    #[test]
+    fn encoding_is_stable() {
+        assert_eq!(
+            crate::b64::encode(to_bytes(sample_passkey()).unwrap()),
+            GOLDEN_V1
+        );
+    }
+
     #[test]
     fn roundtrip_preserves_fields() {
         let original = sample_passkey();

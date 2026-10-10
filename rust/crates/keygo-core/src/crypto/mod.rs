@@ -11,3 +11,6 @@ pub use keys::{
     AccountRootKey, ItemAad, ItemDataAad, ItemKey, RootKEK, ScopedSigningKey, TryDeriveFrom,
     VaultKey,
 };
+
+#[cfg(test)]
+mod golden_tests;
