@@ -45,7 +45,7 @@ val buildRust by tasks.register<Exec>("buildRust") {
         providers.gradleProperty("rust.compile").getOrElse("true").toBoolean()
     }
 
-    workingDir = projectDir.resolve("rust-code")
+    workingDir = rootDir.resolve("rust/rust-code")
 
     commandLine(
         "make",

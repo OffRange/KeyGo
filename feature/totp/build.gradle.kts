@@ -21,7 +21,7 @@ android {
 dependencies {
     implementation(libs.com.google.accompanist.permissions)
 
-    implementation(projects.rust)
+    implementation(projects.core.rust)
     implementation(projects.core.ui)
     implementation(projects.core.security)
     implementation(projects.core.item)
@@ -38,7 +38,7 @@ dependencies {
     testImplementation(testFixtures(projects.core.security))
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.util))
-    testImplementation(testFixtures(projects.rust))
+    testImplementation(testFixtures(projects.core.rust))
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.junit)
 }

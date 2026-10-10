@@ -54,7 +54,8 @@ Android password manager using Clean Architecture per module:
 | `:automation`            | `@VaultItem` annotation + automation support                             |
 | `:automation-processor`  | KSP processor generating code from `@VaultItem`                          |
 | `:legacy-migration`      | The whole v1 to v2 migration: main password, item import (high risk)     |
-| `:rust`                  | Rust crypto/passkey ops via UniFFI-generated Kotlin bindings             |
+| `:core:rust`             | Rust crypto/passkey ops via UniFFI-generated Kotlin bindings; the Rust   |
+|                          | sources it builds live in `rust/rust-code/`                              |
 
 ## Key Patterns
 
@@ -155,10 +156,10 @@ carries its own rules:
   (for example, validating that a side-effecting API was invoked)
 - Do not use mocks as the default way to model dependencies when a fake or testFixture exists
 - Run broader tests for cross-module or security changes
-- **Rust fakes** — `:rust` uses UniFFI (not raw JNI) to generate Kotlin bindings. UniFFI emits
+- **Rust fakes** — `:core:rust` uses UniFFI (not raw JNI) to generate Kotlin bindings. UniFFI emits
   `KeyWrapperInterface`/`ItemManagerInterface`/`VaultManagerInterface`/`CardFormatterInterface`/
   `CsvBackupManagerInterface`/`JsonBackupManagerInterface`/`RustPasskeyInterface`/
-  `TotpServiceInterface` for test seams; fakes live in `:rust` testFixtures
+  `TotpServiceInterface` for test seams; fakes live in `:core:rust` testFixtures
   (`de.davis.keygo.rust`).
   Never instantiate the real UniFFI classes (`KeyWrapper()`, etc.) in JVM unit
   tests — their default constructors require the native Rust library at runtime.

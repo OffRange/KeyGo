@@ -15,7 +15,7 @@ dependencies {
     implementation(libs.androidx.credentials)
     implementation(libs.kotlinx.serialization.json)
 
-    implementation(projects.rust)
+    implementation(projects.core.rust)
     implementation(projects.core.identity)
     implementation(projects.core.item)
     implementation(projects.core.ui)
@@ -28,6 +28,6 @@ dependencies {
     testImplementation(testFixtures(projects.core.identity))
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.security))
-    testImplementation(testFixtures(projects.rust))
+    testImplementation(testFixtures(projects.core.rust))
 
 }

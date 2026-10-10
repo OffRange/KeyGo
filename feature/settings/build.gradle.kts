@@ -26,7 +26,7 @@ dependencies {
     testImplementation(testFixtures(projects.core.identity))
     testImplementation(testFixtures(projects.core.security))
     testImplementation(testFixtures(projects.core.util))
-    testImplementation(testFixtures(projects.rust))
+    testImplementation(testFixtures(projects.core.rust))
     testImplementation(testFixtures(projects.feature.autofill))
     testImplementation(testFixtures(projects.feature.backup))
 
