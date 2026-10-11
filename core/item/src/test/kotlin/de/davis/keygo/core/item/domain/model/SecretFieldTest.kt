@@ -16,7 +16,7 @@ class SecretFieldTest {
         override val blueprint: SecretBlueprint<String, out SecretField<String>> = TestSecretField
 
         companion object : SecretBlueprint<String, TestSecretField>() {
-            override val label: String = "test_label"
+            override val kind: SecretKind = SecretKind.Password
             override val codec: SecretCodec<String> = SecretCodec.StringCodec
 
             override fun createField(payload: EncryptedPayload): TestSecretField =

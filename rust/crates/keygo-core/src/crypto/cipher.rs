@@ -2,7 +2,6 @@ use crate::crypto::{CryptoError, CryptoResult};
 use aead::array::typenum::Unsigned;
 use aead::{Aead, AeadCore, Generate, KeyInit, KeySizeUser, Nonce, Payload};
 use aes_gcm_siv::Aes256GcmSiv;
-use serde::Serialize;
 use std::marker::PhantomData;
 
 pub type Cipher = Aes256GcmSiv;
@@ -69,11 +68,6 @@ impl<T: ?Sized> Sealed<T> {
             },
         )
     }
-}
-
-/// AADs are BCS-encoded; the encoding is part of the stored format.
-pub(crate) fn encode_aad(aad: &(impl Serialize + ?Sized)) -> CryptoResult<Vec<u8>> {
-    Ok(bcs::to_bytes(aad)?)
 }
 
 #[cfg(test)]

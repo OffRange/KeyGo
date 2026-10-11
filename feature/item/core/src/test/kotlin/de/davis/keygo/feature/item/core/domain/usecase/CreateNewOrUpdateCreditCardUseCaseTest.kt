@@ -144,11 +144,11 @@ class CreateNewOrUpdateCreditCardUseCaseTest {
         val stored = storedById(result.getOrNull())
         assertNotNull(stored)
 
-        val labels = cryptoProvider.encryptCalls.map { it.label }
-        assertContains(labels, CreditCard.CardNumber.label)
-        assertContains(labels, CreditCard.CVV.label)
+        val kinds = cryptoProvider.encryptCalls.map { it.kind }
+        assertContains(kinds, CreditCard.CardNumber.kind)
+        assertContains(kinds, CreditCard.CVV.kind)
 
-        val numberCall = cryptoProvider.encryptCalls.single { it.label == CreditCard.CardNumber.label }
+        val numberCall = cryptoProvider.encryptCalls.single { it.kind == CreditCard.CardNumber.kind }
         assertContentEquals(plaintextNumber.encodeToByteArray(), numberCall.plaintext)
 
         assertNotNull(stored.cardNumber)
@@ -240,7 +240,7 @@ class CreateNewOrUpdateCreditCardUseCaseTest {
 
         assertTrue(result.isSuccess(), "result: $result")
 
-        val numberCall = cryptoProvider.encryptCalls.single { it.label == CreditCard.CardNumber.label }
+        val numberCall = cryptoProvider.encryptCalls.single { it.kind == CreditCard.CardNumber.kind }
         assertContentEquals(plaintextNumber.encodeToByteArray(), numberCall.plaintext)
 
         val stored = creditCardRepository.getCreditCardById(existing.id)

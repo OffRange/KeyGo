@@ -2,6 +2,7 @@ package de.davis.keygo.core.security.crypto
 
 import de.davis.keygo.core.item.FakeItemRepository
 import de.davis.keygo.core.item.domain.model.KeyInformation
+import de.davis.keygo.core.item.domain.model.SecretKind
 import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.data.crypto.CryptographicScopeProviderImpl
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
@@ -44,7 +45,7 @@ class CryptographicScopeImplTest {
         FakeVaultManager(),
     )
 
-    private val label = "password"
+    private val kind = SecretKind.Password
 
     private suspend fun wrappedVaultKeyInformation(
         vaultId: UUID = UUID.randomUUID(),
@@ -77,7 +78,7 @@ class CryptographicScopeImplTest {
             wrappedVaultKeyInformation = vaultInfo,
             wrappedItemKeyInformation = WrappedItemKeyInformation(itemAad = aad),
         ) {
-            plaintext.encrypt(label) to wrapCurrentItemKey()
+            plaintext.encrypt(kind) to wrapCurrentItemKey()
         }.assertSuccess()
 
         val recovered = provider.itemScope(
@@ -86,7 +87,7 @@ class CryptographicScopeImplTest {
                 itemAad = aad,
                 wrappedItemKey = wrapped,
             ),
-        ) { cipher.decrypt(label) }.assertSuccess()
+        ) { cipher.decrypt(kind) }.assertSuccess()
 
         assertContentEquals(plaintext, recovered)
     }
@@ -102,8 +103,8 @@ class CryptographicScopeImplTest {
             wrappedVaultKeyInformation = vaultInfo,
             wrappedItemKeyInformation = WrappedItemKeyInformation(itemAad = aad),
         ) {
-            val a = first.encrypt(label)
-            val b = second.encrypt(label)
+            val a = first.encrypt(kind)
+            val b = second.encrypt(kind)
             (a to b) to wrapCurrentItemKey()
         }.assertSuccess()
 
@@ -114,8 +115,8 @@ class CryptographicScopeImplTest {
                 wrappedItemKey = wrapped,
             ),
         ) {
-            assertContentEquals(first, encrypted.first.decrypt(label))
-            assertContentEquals(second, encrypted.second.decrypt(label))
+            assertContentEquals(first, encrypted.first.decrypt(kind))
+            assertContentEquals(second, encrypted.second.decrypt(kind))
         }
     }
 
@@ -129,7 +130,7 @@ class CryptographicScopeImplTest {
             wrappedVaultKeyInformation = vaultInfo,
             wrappedItemKeyInformation = WrappedItemKeyInformation(itemAad = aad),
         ) {
-            plaintext.encrypt(label) to wrapCurrentItemKey()
+            plaintext.encrypt(kind) to wrapCurrentItemKey()
         }.assertSuccess()
 
         val otherVault = wrappedVaultKeyInformation()
@@ -139,11 +140,11 @@ class CryptographicScopeImplTest {
                 itemAad = aad,
                 wrappedItemKey = wrapped,
             ),
-        ) { cipher.decrypt(label) }.assertFailure()
+        ) { cipher.decrypt(kind) }.assertFailure()
     }
 
     @Test
-    fun `decrypting with a different label fails`() = runTest {
+    fun `decrypting with a different kind fails`() = runTest {
         val vaultInfo = wrappedVaultKeyInformation()
         val aad = itemAad(vaultInfo.vaultId)
         val plaintext = "secret".toByteArray()
@@ -152,7 +153,7 @@ class CryptographicScopeImplTest {
             wrappedVaultKeyInformation = vaultInfo,
             wrappedItemKeyInformation = WrappedItemKeyInformation(itemAad = aad),
         ) {
-            plaintext.encrypt(label = "password") to wrapCurrentItemKey()
+            plaintext.encrypt(SecretKind.Password) to wrapCurrentItemKey()
         }.assertSuccess()
 
         assertFailsWith<Exception> {
@@ -162,12 +163,12 @@ class CryptographicScopeImplTest {
                     itemAad = aad,
                     wrappedItemKey = wrapped,
                 ),
-            ) { cipher.decrypt(label = "totp_secret") }
+            ) { cipher.decrypt(SecretKind.TotpSecret) }
         }
     }
 
     @Test
-    fun `decrypting with a different itemAad under same label fails`() = runTest {
+    fun `decrypting with a different itemAad under same kind fails`() = runTest {
         val vaultInfo = wrappedVaultKeyInformation()
         val aad = itemAad(vaultInfo.vaultId)
         val plaintext = "secret".toByteArray()
@@ -176,7 +177,7 @@ class CryptographicScopeImplTest {
             wrappedVaultKeyInformation = vaultInfo,
             wrappedItemKeyInformation = WrappedItemKeyInformation(itemAad = aad),
         ) {
-            plaintext.encrypt(label) to wrapCurrentItemKey()
+            plaintext.encrypt(kind) to wrapCurrentItemKey()
         }.assertSuccess()
 
         provider.itemScope(
@@ -185,7 +186,7 @@ class CryptographicScopeImplTest {
                 itemAad = itemAad(vaultInfo.vaultId),
                 wrappedItemKey = wrapped,
             ),
-        ) { cipher.decrypt(label) }.assertFailure()
+        ) { cipher.decrypt(kind) }.assertFailure()
     }
 
     @Test
@@ -198,7 +199,7 @@ class CryptographicScopeImplTest {
             wrappedVaultKeyInformation = vaultInfo,
             wrappedItemKeyInformation = WrappedItemKeyInformation(itemAad = aad),
         ) {
-            plaintext.encrypt(label) to wrapCurrentItemKey()
+            plaintext.encrypt(kind) to wrapCurrentItemKey()
         }.assertSuccess()
 
         provider.itemScope(
@@ -207,7 +208,7 @@ class CryptographicScopeImplTest {
                 itemAad = itemAad(vaultInfo.vaultId),
                 wrappedItemKey = wrapped,
             ),
-        ) { cipher.decrypt(label) }.assertFailure()
+        ) { cipher.decrypt(kind) }.assertFailure()
     }
 
     @Test
@@ -233,7 +234,7 @@ class CryptographicScopeImplTest {
             wrappedVaultKeyInformation = vaultInfo,
             wrappedItemKeyInformation = WrappedItemKeyInformation(itemAad = aad),
         ) {
-            ByteArray(0).encrypt(label) to wrapCurrentItemKey()
+            ByteArray(0).encrypt(kind) to wrapCurrentItemKey()
         }.assertSuccess()
 
         val recovered = provider.itemScope(
@@ -242,7 +243,7 @@ class CryptographicScopeImplTest {
                 itemAad = aad,
                 wrappedItemKey = wrapped,
             ),
-        ) { cipher.decrypt(label) }.assertSuccess()
+        ) { cipher.decrypt(kind) }.assertSuccess()
 
         assertContentEquals(ByteArray(0), recovered)
     }
@@ -258,7 +259,7 @@ class CryptographicScopeImplTest {
             wrappedVaultKeyInformation = vaultInfo,
             wrappedItemKeyInformation = WrappedItemKeyInformation(itemAad = aad),
         ) {
-            List(attempts) { plaintext.encrypt(label) }
+            List(attempts) { plaintext.encrypt(kind) }
         }.assertSuccess()
 
         val uniqueCiphertexts = ciphertexts.map { it.data.contentToString() }.toSet()
@@ -278,7 +279,7 @@ class CryptographicScopeImplTest {
     }
 
     @Test
-    fun `different labels yield different ciphertext for same plaintext`() = runTest {
+    fun `different kinds yield different ciphertext for same plaintext`() = runTest {
         val vaultInfo = wrappedVaultKeyInformation()
         val aad = itemAad(vaultInfo.vaultId)
         val plaintext = "Same data, different field".toByteArray()
@@ -288,8 +289,8 @@ class CryptographicScopeImplTest {
             wrappedItemKeyInformation = WrappedItemKeyInformation(itemAad = aad),
         ) {
             Triple(
-                plaintext.encrypt(label = "password"),
-                plaintext.encrypt(label = "totp_secret"),
+                plaintext.encrypt(SecretKind.Password),
+                plaintext.encrypt(SecretKind.TotpSecret),
                 wrapCurrentItemKey(),
             )
         }.assertSuccess()
@@ -303,7 +304,7 @@ class CryptographicScopeImplTest {
                 wrappedItemKey = wrapped,
             ),
         ) {
-            passwordCipher.decrypt(label = "password") to totpCipher.decrypt(label = "totp_secret")
+            passwordCipher.decrypt(SecretKind.Password) to totpCipher.decrypt(SecretKind.TotpSecret)
         }.assertSuccess()
 
         assertContentEquals(plaintext, recoveredPassword)
@@ -320,7 +321,7 @@ class CryptographicScopeImplTest {
             wrappedVaultKeyInformation = vaultInfo,
             wrappedItemKeyInformation = WrappedItemKeyInformation(itemAad = aad),
         ) {
-            plaintext.encrypt(label) to wrapCurrentItemKey()
+            plaintext.encrypt(kind) to wrapCurrentItemKey()
         }.assertSuccess()
 
         val tampered = CryptographicData(
@@ -338,7 +339,7 @@ class CryptographicScopeImplTest {
                     itemAad = aad,
                     wrappedItemKey = wrapped,
                 ),
-            ) { tampered.decrypt(label) }
+            ) { tampered.decrypt(kind) }
         }
     }
 
@@ -354,8 +355,8 @@ class CryptographicScopeImplTest {
         ) {
             val jobs: List<Deferred<Boolean>> = List(10) {
                 async {
-                    val encrypted = plaintext.encrypt(label)
-                    val decrypted = encrypted.decrypt(label)
+                    val encrypted = plaintext.encrypt(kind)
+                    val decrypted = encrypted.decrypt(kind)
                     plaintext.contentEquals(decrypted)
                 }
             }
@@ -378,7 +379,7 @@ class CryptographicScopeImplTest {
             wrappedVaultKeyInformation = vaultInfo,
             wrappedItemKeyInformation = WrappedItemKeyInformation(itemAad = aad),
         ) {
-            plaintext.encrypt(label) to wrapCurrentItemKey()
+            plaintext.encrypt(kind) to wrapCurrentItemKey()
         }.assertSuccess()
 
         val recovered = provider.itemScope(
@@ -387,7 +388,7 @@ class CryptographicScopeImplTest {
                 itemAad = aad,
                 wrappedItemKey = wrapped,
             ),
-        ) { cipher.decrypt(label) }.assertSuccess()
+        ) { cipher.decrypt(kind) }.assertSuccess()
 
         assertContentEquals(plaintext, recovered)
     }
@@ -405,7 +406,7 @@ class CryptographicScopeImplTest {
                 wrappedVaultKeyInformation = vaultInfo,
                 wrappedItemKeyInformation = WrappedItemKeyInformation(itemAad = aad),
             ) {
-                plaintext.encrypt(label) to wrapCurrentItemKey()
+                plaintext.encrypt(kind) to wrapCurrentItemKey()
             }.assertSuccess()
 
             val recovered = provider.itemScope(
@@ -414,7 +415,7 @@ class CryptographicScopeImplTest {
                     itemAad = aad,
                     wrappedItemKey = wrapped,
                 ),
-            ) { cipher.decrypt(label) }.assertSuccess()
+            ) { cipher.decrypt(kind) }.assertSuccess()
 
             assertContentEquals(plaintext, recovered, "size=$size should round-trip")
         }

@@ -1,13 +1,14 @@
 //! Shipped ciphertexts under fixed keys. They must keep opening; regenerate only with a migration.
 
 use crate::crypto::{
-    AccountRootKey, Encrypts, ItemAad, ItemKey, RootKEK, Sealed, SymmetricKey, VaultKey, Wraps,
+    AccountRootKey, Encrypts, ItemAad, ItemDataAad, ItemId, ItemKey, RootKEK, Sealed, SecretKind,
+    SymmetricKey, UserId, VaultId, VaultKey, Wraps,
 };
 use uuid::Uuid;
 
-const USER_ID: Uuid = Uuid::from_u128(0x1111_1111_1111_4111_8111_1111_1111_1111);
-const VAULT_ID: Uuid = Uuid::from_u128(0x2222_2222_2222_4222_8222_2222_2222_2222);
-const ITEM_ID: Uuid = Uuid::from_u128(0x3333_3333_3333_4333_8333_3333_3333_3333);
+const USER_ID: UserId = UserId(Uuid::from_u128(0x1111_1111_1111_4111_8111_1111_1111_1111));
+const VAULT_ID: VaultId = VaultId(Uuid::from_u128(0x2222_2222_2222_4222_8222_2222_2222_2222));
+const ITEM_ID: ItemId = ItemId(Uuid::from_u128(0x3333_3333_3333_4333_8333_3333_3333_3333));
 
 const KEK: [u8; 32] = [4; 32];
 const ARK: [u8; 32] = [1; 32];
@@ -26,11 +27,11 @@ const WRAPPED_ITEM_KEY: (&str, &str) = (
     "JynhAutrXQRAHS1c",
     "D58m240ktQyE5IheW9sB4zFcdZY0T7zQ33qzrIWY9Iq6HkhM6weLprmSPQ2//RbA",
 );
+/// Sealed by the 2.1.0 path, with the AAD built by hand as `ITEM_ID || "password"`.
 const ITEM_DATA: (&str, &str) = (
-    "t78N42bK5A+RKqzk",
-    "qD1SvmKQlBXgEE4MzPeJ3ZWJKduWgqkOU+xSRBxlBsY=",
+    "EPAic05x44CkZoRK",
+    "OPtIsA8vfGNIVOsCp2wM+wtEQFJkhvA5X4v+js1gKio=",
 );
-const ITEM_DATA_AAD: &[u8] = b"item-aad";
 const ITEM_DATA_PLAINTEXT: &[u8] = b"secret item data";
 
 fn sealed<T: ?Sized>((nonce, ciphertext): (&str, &str)) -> Sealed<T> {
@@ -73,6 +74,10 @@ fn item_key_still_unwraps() {
 #[test]
 fn item_data_still_decrypts() {
     let item_key = ItemKey::from_bytes(&ITEM_KEY).unwrap();
-    let plaintext = item_key.decrypt(&sealed(ITEM_DATA), ITEM_DATA_AAD).unwrap();
+    let aad = ItemDataAad {
+        item_id: ITEM_ID,
+        kind: SecretKind::Password,
+    };
+    let plaintext = item_key.decrypt(&sealed(ITEM_DATA), &aad).unwrap();
     assert_eq!(plaintext, ITEM_DATA_PLAINTEXT);
 }

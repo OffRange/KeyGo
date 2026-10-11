@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import com.google.protobuf.kotlin.isNotEmpty
 import com.google.protobuf.kotlin.toByteString
 import de.davis.keygo.core.item.domain.model.KeyInformation
+import de.davis.keygo.core.item.domain.model.SecretKind
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.util.Result
@@ -39,7 +40,7 @@ internal class HealthReportStoreRepositoryImpl(
                 namespace = REPORT_NAMESPACE,
                 wrapped = stored?.toWrappedKey(),
             ) {
-                compressedReport.encrypt(REPORT_LABEL) to wrapCurrentItemKey()
+                compressedReport.encrypt(SecretKind.PasswordHealthReport) to wrapCurrentItemKey()
             }.bind { HealthReportStoreError.CryptoFailed }
 
             dataStore.updateData {
@@ -67,7 +68,7 @@ internal class HealthReportStoreRepositoryImpl(
                     CryptographicData(
                         data = stored.ciphertext.toByteArray(),
                         iv = stored.iv.toByteArray(),
-                    ).decrypt(REPORT_LABEL)
+                    ).decrypt(SecretKind.PasswordHealthReport)
                 } catch (_: ItemCryptoException) {
                     null
                 }
@@ -88,6 +89,5 @@ internal class HealthReportStoreRepositoryImpl(
         // doing so makes every previously stored report permanently undecryptable.
         private val REPORT_NAMESPACE: UUID = UUID.fromString("39050172-ce6d-4f4d-8787-6e12ab44eb0e")
 
-        private const val REPORT_LABEL = "password_health_report"
     }
 }

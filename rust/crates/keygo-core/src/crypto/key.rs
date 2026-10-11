@@ -1,6 +1,5 @@
-use crate::crypto::cipher::encode_aad;
-use crate::crypto::{CipherKey, CryptoError, CryptoResult, Sealed};
-use serde::Serialize;
+use crate::crypto::aad::encode_aad;
+use crate::crypto::{Aad, CipherKey, CryptoError, CryptoResult, Sealed};
 use zeroize::{ZeroizeOnDrop, Zeroizing};
 
 pub trait SymmetricKey: Sized + ZeroizeOnDrop {
@@ -15,7 +14,7 @@ pub trait SymmetricKey: Sized + ZeroizeOnDrop {
 }
 
 pub trait Wraps<K: SymmetricKey>: SymmetricKey {
-    type Aad: Serialize + ?Sized;
+    type Aad: Aad;
 
     fn wrap_key(&self, key: &K, aad: &Self::Aad) -> CryptoResult<Sealed<K>> {
         Sealed::seal(self.cipher_key(), key.as_bytes(), &encode_aad(aad)?)
@@ -32,7 +31,7 @@ pub trait Wraps<K: SymmetricKey>: SymmetricKey {
 }
 
 pub trait Encrypts: SymmetricKey {
-    type Aad: Serialize + ?Sized;
+    type Aad: Aad;
 
     fn encrypt(&self, plaintext: &[u8], aad: &Self::Aad) -> CryptoResult<Sealed<[u8]>> {
         Sealed::seal(self.cipher_key(), plaintext, &encode_aad(aad)?)
@@ -73,6 +72,7 @@ pub(crate) use symmetric_key;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::crypto::aad;
 
     symmetric_key! {
         struct TestWrappingKey;
@@ -81,9 +81,10 @@ mod tests {
         struct TestKey;
     }
 
-    #[derive(Serialize)]
-    struct TestAad {
-        scope: &'static str,
+    aad! {
+        struct TestAad {
+            scope: &'static str,
+        }
     }
 
     impl Wraps<TestKey> for TestWrappingKey {

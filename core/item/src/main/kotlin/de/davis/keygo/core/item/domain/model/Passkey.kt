@@ -39,7 +39,7 @@ data class Passkey(
         override val blueprint: SecretBlueprint<ByteArray, out SecretField<ByteArray>> = PrivateKey
 
         companion object : SecretBlueprint<ByteArray, PrivateKey>() {
-            override val label: String = "passkey_private_key"
+            override val kind: SecretKind = SecretKind.PasskeyPrivateKey
             override val codec: SecretCodec<ByteArray> = SecretCodec.ByteArrayCodec
 
             override fun createField(payload: EncryptedPayload): PrivateKey = PrivateKey(payload)

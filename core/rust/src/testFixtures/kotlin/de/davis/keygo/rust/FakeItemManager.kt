@@ -2,6 +2,7 @@ package de.davis.keygo.rust
 
 import de.davisalessandro.keygo.rust.EncryptedItemBlob
 import de.davisalessandro.keygo.rust.ItemCryptoException
+import de.davisalessandro.keygo.rust.ItemDataAad
 import de.davisalessandro.keygo.rust.ItemKey
 import de.davisalessandro.keygo.rust.ItemManagerInterface
 import java.security.SecureRandom
@@ -23,19 +24,19 @@ class FakeItemManager : ItemManagerInterface {
     override fun encryptItemData(
         itemKey: ItemKey,
         data: ByteArray,
-        aad: ByteArray,
+        aad: ItemDataAad,
     ): EncryptedItemBlob {
         val nonce = ByteArray(12).also { SecureRandom().nextBytes(it) }
-        val ciphertext = xorStream(data, itemKey, aad, nonce)
-        record[Key(itemKey.toList(), ciphertext.toList(), aad.toList(), nonce.toList())] = data
+        val ciphertext = xorStream(data, itemKey, aad.toString().encodeToByteArray(), nonce)
+        record[Key(itemKey.toList(), ciphertext.toList(), aad, nonce.toList())] = data
         return EncryptedItemBlob(ciphertext = ciphertext, nonce = nonce)
     }
 
     override fun decryptItemData(
         itemKey: ItemKey,
         blob: EncryptedItemBlob,
-        aad: ByteArray,
-    ): ByteArray = record[Key(itemKey.toList(), blob.ciphertext.toList(), aad.toList(), blob.nonce.toList())]
+        aad: ItemDataAad,
+    ): ByteArray = record[Key(itemKey.toList(), blob.ciphertext.toList(), aad, blob.nonce.toList())]
         ?: throw ItemCryptoException.DecryptionFailed()
 
     private fun xorStream(
@@ -57,7 +58,7 @@ class FakeItemManager : ItemManagerInterface {
     private data class Key(
         val itemKey: List<Byte>,
         val ciphertext: List<Byte>,
-        val aad: List<Byte>,
+        val aad: ItemDataAad,
         val nonce: List<Byte>,
     )
 }

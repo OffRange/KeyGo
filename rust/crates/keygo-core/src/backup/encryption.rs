@@ -3,7 +3,7 @@ use crate::backup::BackupError;
 use crate::backup::BackupKey;
 use crate::crypto::kdf::argon2::Argon2Params;
 use crate::crypto::kdf::new_salt;
-use crate::crypto::{AccountRootKey, Encrypts, Sealed};
+use crate::crypto::{AccountRootKey, Encrypts, Sealed, aad};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -52,11 +52,12 @@ impl Kdf {
     }
 }
 
-/// Wire format: change only with a version bump.
-#[derive(Serialize)]
-pub struct BackupAad {
-    pub version: u32,
-    pub source: KeySource,
+aad! {
+    /// Wire format: change only with a version bump.
+    pub struct BackupAad {
+        pub version: u32,
+        pub source: KeySource,
+    }
 }
 
 impl Encrypts for BackupKey {

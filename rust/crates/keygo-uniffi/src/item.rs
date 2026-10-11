@@ -1,10 +1,28 @@
-use keygo_core::crypto::{CryptoError, Encrypts, ItemAad, ItemId, ItemKey, Sealed, VaultId};
+use keygo_core::crypto::{
+    CryptoError, Encrypts, ItemAad, ItemDataAad, ItemId, ItemKey, Sealed, SecretKind, VaultId,
+};
 use std::sync::Arc;
 
 #[uniffi::remote(Record)]
 pub struct ItemAad {
     pub item_id: ItemId,
     pub vault_id: VaultId,
+}
+
+#[uniffi::remote(Record)]
+pub struct ItemDataAad {
+    pub item_id: ItemId,
+    pub kind: SecretKind,
+}
+
+#[uniffi::remote(Enum)]
+pub enum SecretKind {
+    Password,
+    CardNumber,
+    Cvv,
+    PasskeyPrivateKey,
+    TotpSecret,
+    PasswordHealthReport,
 }
 
 #[derive(uniffi::Record)]
@@ -70,7 +88,7 @@ impl ItemManager {
         &self,
         item_key: ItemKey,
         data: Vec<u8>,
-        aad: Vec<u8>,
+        aad: ItemDataAad,
     ) -> Result<EncryptedItemBlob, ItemCryptoError> {
         Ok(item_key.encrypt(&data, &aad)?.into())
     }
@@ -79,7 +97,7 @@ impl ItemManager {
         &self,
         item_key: ItemKey,
         blob: EncryptedItemBlob,
-        aad: Vec<u8>,
+        aad: ItemDataAad,
     ) -> Result<Vec<u8>, ItemCryptoError> {
         Ok(item_key.decrypt(&blob.into_sealed()?, &aad)?)
     }

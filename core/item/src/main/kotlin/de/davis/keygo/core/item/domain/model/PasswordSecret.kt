@@ -6,7 +6,7 @@ data class PasswordSecret(
     override val blueprint: SecretBlueprint<String, out SecretField<String>> = PasswordSecret
 
     companion object : SecretBlueprint<String, PasswordSecret>() {
-        override val label: String = "password"
+        override val kind: SecretKind = SecretKind.Password
         override val codec: SecretCodec<String> = SecretCodec.StringCodec
 
         override fun createField(payload: EncryptedPayload): PasswordSecret =

@@ -4,6 +4,7 @@ import com.google.protobuf.kotlin.toByteString
 import de.davis.keygo.core.item.FakeItemRepository
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.item.domain.model.SecretKind
 import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.BindingCryptographicScopeProvider
 import de.davis.keygo.core.security.domain.SessionError
@@ -179,7 +180,7 @@ class HealthReportStoreRepositoryImplTest {
             wrapped = stored.wrappedKey(),
         ) {
             CryptographicData(stored.ciphertext.toByteArray(), stored.iv.toByteArray())
-                .decrypt(REPORT_LABEL)
+                .decrypt(SecretKind.PasswordHealthReport)
         }
 
         assertEquals(report, (opened as Result.Success).success.toStoredHealthReport())
@@ -261,7 +262,7 @@ class HealthReportStoreRepositoryImplTest {
     private suspend fun seal(plaintext: ByteArray) {
         val stored = dataStore.state.value
         val sealed = provider.accountScope(REPORT_NAMESPACE, stored.wrappedKey()) {
-            plaintext.encrypt(REPORT_LABEL)
+            plaintext.encrypt(SecretKind.PasswordHealthReport)
         }.assertSuccess()
 
         dataStore.state.value = stored.toBuilder()
@@ -284,6 +285,5 @@ class HealthReportStoreRepositoryImplTest {
 
         // Pinned on purpose: changing either makes every stored report undecryptable.
         val REPORT_NAMESPACE: UUID = UUID.fromString("39050172-ce6d-4f4d-8787-6e12ab44eb0e")
-        const val REPORT_LABEL = "password_health_report"
     }
 }

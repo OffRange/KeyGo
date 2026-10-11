@@ -2,6 +2,7 @@ package de.davis.keygo.core.security.crypto
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.KeyInformation
+import de.davis.keygo.core.item.domain.model.SecretKind
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
@@ -21,8 +22,8 @@ class FakeCryptographicScopeProvider(
 
     sealed interface CallHistory {
 
-        class EncryptCall(val label: String, val plaintext: ByteArray) : CallHistory
-        class DecryptCall(val label: String, val data: ByteArray) : CallHistory
+        class EncryptCall(val kind: SecretKind, val plaintext: ByteArray) : CallHistory
+        class DecryptCall(val kind: SecretKind, val data: ByteArray) : CallHistory
         class RewrapCall(
             val sourceVault: WrappedVaultKeyInformation,
             val sourceItem: WrappedItemKeyInformation,
@@ -103,18 +104,18 @@ class FakeCryptographicScopeProvider(
 
     private fun recordingScope() = object : CryptographicScope {
         override suspend fun ByteArray.encrypt(
-            label: String,
+            kind: SecretKind,
             context: CoroutineContext,
         ): CryptographicData {
-            callHistory += CallHistory.EncryptCall(label, this.copyOf())
+            callHistory += CallHistory.EncryptCall(kind, this.copyOf())
             return CryptographicData(data = transform(this), iv = IV)
         }
 
         override suspend fun CryptographicData.decrypt(
-            label: String,
+            kind: SecretKind,
             context: CoroutineContext,
         ): ByteArray {
-            callHistory += CallHistory.DecryptCall(label, this.data.copyOf())
+            callHistory += CallHistory.DecryptCall(kind, this.data.copyOf())
             return transform(data)
         }
 

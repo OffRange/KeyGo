@@ -138,7 +138,7 @@ class CreateNewOrUpdateLoginUseCaseTest {
             FakeCryptographicScopeProvider.transform("private".encodeToByteArray()),
             row.privateKey.payload.ciphertext,
         )
-        assertContains(cryptoProvider.encryptCalls.map { it.label }, Passkey.PrivateKey.label)
+        assertContains(cryptoProvider.encryptCalls.map { it.kind }, Passkey.PrivateKey.kind)
     }
 
     @Test
@@ -847,15 +847,15 @@ class CreateNewOrUpdateLoginUseCaseTest {
         val stored = storedById(result.getOrNull())
         assertNotNull(stored)
 
-        val labels = cryptoProvider.encryptCalls.map { it.label }
-        assertContains(labels, PasswordSecret.label)
-        assertContains(labels, Totp.Secret.label)
-        assertEquals(2, labels.size)
+        val kinds = cryptoProvider.encryptCalls.map { it.kind }
+        assertContains(kinds, PasswordSecret.kind)
+        assertContains(kinds, Totp.Secret.kind)
+        assertEquals(2, kinds.size)
 
-        val passwordCall = cryptoProvider.encryptCalls.single { it.label == PasswordSecret.label }
+        val passwordCall = cryptoProvider.encryptCalls.single { it.kind == PasswordSecret.kind }
         assertContentEquals(plaintextPassword.encodeToByteArray(), passwordCall.plaintext)
 
-        val totpCall = cryptoProvider.encryptCalls.single { it.label == Totp.Secret.label }
+        val totpCall = cryptoProvider.encryptCalls.single { it.kind == Totp.Secret.kind }
         assertContentEquals(plaintextTotp.encodeToByteArray(), totpCall.plaintext)
 
         val storedSecret = stored.passwordCredential!!.secret

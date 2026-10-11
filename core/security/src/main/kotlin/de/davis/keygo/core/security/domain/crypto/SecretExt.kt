@@ -12,7 +12,7 @@ suspend fun <T, F : SecretField<T>> SecretBlueprint<T, F>.encrypt(
     value: T,
     ctx: CoroutineContext = Dispatchers.Default
 ): F = with(scope) {
-    val encrypted = codec.encode(value).encrypt(label = label, context = ctx)
+    val encrypted = codec.encode(value).encrypt(kind = kind, context = ctx)
     createField(encrypted.toPayload())
 }
 
@@ -20,7 +20,7 @@ context(scope: CryptographicScope)
 suspend fun <T> SecretField<T>.decrypt(
     ctx: CoroutineContext = Dispatchers.Default
 ): T = with(scope) {
-    payload.toCryptographicData().decrypt(label = blueprint.label, context = ctx)
+    payload.toCryptographicData().decrypt(kind = blueprint.kind, context = ctx)
         .let { decryptedBytes ->
             blueprint.codec.decode(decryptedBytes)
         }
