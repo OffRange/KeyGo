@@ -26,6 +26,8 @@ pub enum PasskeyError {
     ResponseEncoding(#[source] serde_json::Error),
     #[error("the authenticator stored no credential")]
     NoCredentialCreated,
+    #[error("the passkey belongs to another relying party")]
+    RpMismatch,
 }
 
 fn parse_request<T: serde::de::DeserializeOwned>(json: &str) -> Result<T, PasskeyError> {

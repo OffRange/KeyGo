@@ -19,7 +19,7 @@ impl From<CorePasskeyError> for PasskeyError {
     fn from(value: CorePasskeyError) -> Self {
         match value {
             CorePasskeyError::InvalidRequest(_) => Self::InvalidJsonFormat,
-            CorePasskeyError::InvalidDomain => Self::InvalidDomain,
+            CorePasskeyError::InvalidDomain | CorePasskeyError::RpMismatch => Self::InvalidDomain,
             CorePasskeyError::Webauthn(e) => Self::Webauthn {
                 reason: format!("{e:?}"),
             },
