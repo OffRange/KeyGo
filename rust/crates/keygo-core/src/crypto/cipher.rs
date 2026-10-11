@@ -5,17 +5,12 @@ use aes_gcm_siv::Aes256GcmSiv;
 use serde::Serialize;
 use std::marker::PhantomData;
 
-/// The AEAD behind every key in the hierarchy.
 pub type Cipher = Aes256GcmSiv;
 pub type CipherKey = aead::Key<Cipher>;
 
 pub const KEY_LEN: usize = <<Cipher as KeySizeUser>::KeySize as Unsigned>::USIZE;
 pub const NONCE_LEN: usize = <<Cipher as AeadCore>::NonceSize as Unsigned>::USIZE;
 
-/// A ciphertext and the nonce it was sealed under.
-///
-/// `T` names what is inside: a key type for a wrapped key, `[u8]` for data. A wrapped vault key
-/// is a `Sealed<VaultKey>` and cannot be handed to code that unwraps a `Sealed<ItemKey>`.
 pub struct Sealed<T: ?Sized> {
     nonce: Nonce<Cipher>,
     ciphertext: Vec<u8>,
@@ -76,7 +71,7 @@ impl<T: ?Sized> Sealed<T> {
     }
 }
 
-/// AADs are BCS-encoded. The encoding is part of every stored ciphertext's format.
+/// AADs are BCS-encoded; the encoding is part of the stored format.
 pub(crate) fn encode_aad(aad: &(impl Serialize + ?Sized)) -> CryptoResult<Vec<u8>> {
     Ok(bcs::to_bytes(aad)?)
 }

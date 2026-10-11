@@ -3,12 +3,6 @@ use hkdf::Hkdf;
 use sha2::Sha256;
 use zeroize::Zeroizing;
 
-/// Derive a key from high-entropy keying material with HKDF-SHA256 (RFC 5869).
-///
-/// Unlike [`super::argon2::derive_argon2id`], this performs no memory-hard stretch: it is for
-/// inputs that are already uniformly random (e.g. the ARK), where a password KDF would add cost
-/// without security. `salt` is the extract salt (a fresh per-use random value); `info` is the
-/// expand label that domain-separates otherwise identical derivations.
 pub(crate) fn derive_hkdf_sha256(ikm: &[u8], salt: &[u8], info: &[u8]) -> Zeroizing<[u8; KEY_LEN]> {
     let mut out = Zeroizing::new([0u8; KEY_LEN]);
     Hkdf::<Sha256>::new(Some(salt), ikm)

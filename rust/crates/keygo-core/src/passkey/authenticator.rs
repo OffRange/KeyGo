@@ -4,8 +4,7 @@ use passkey::types::Passkey;
 use passkey::types::ctap2::{Aaguid, Ctap2Error};
 use passkey_authenticator::UiHint;
 
-/// Reports presence and verification as requested: the app has already verified the user by the
-/// time a request reaches Rust.
+/// Always reports presence and verification: the app verifies the user first.
 pub(super) struct PreVerifiedUser;
 
 #[async_trait::async_trait]

@@ -1,10 +1,3 @@
-//! CSV import and export.
-//!
-//! [`analyze`] inspects an unknown CSV and proposes a [`ColumnMapping`]; the user
-//! edits it; [`import`] then reads the file under that mapping. [`export`] writes
-//! one back out in a chosen [`ExportPreset`]. The column-guessing heuristics that
-//! back `analyze` live in `detect`.
-
 mod detect;
 
 use csv::StringRecord;
@@ -12,7 +5,6 @@ use csv::StringRecord;
 use self::detect::{build_mapping, build_reader, strip_bom};
 use crate::backup::{Backup, BackupError, Login, Vault};
 
-/// Which column (by index) holds each field.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ColumnMapping {
     pub title: Option<u32>,
@@ -91,8 +83,6 @@ const ALL_FIELDS: [Field; 6] = [
 ];
 
 impl Field {
-    /// Borrow this field's value from a login, or `None` for an absent optional.
-    /// The title is always present.
     fn read(self, login: &Login) -> Option<&str> {
         match self {
             Field::Title => Some(login.title.as_str()),
@@ -133,11 +123,7 @@ impl FieldConfidence {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExportPreset {
-    /// KeyGo's own layout: every field, with headers that [`analyze`] maps back
-    /// at High confidence, so a backup round-trips through [`import`].
     KeyGo,
-    /// A browser-importable layout (Chrome, Edge, ...): `name,url,username,password,note`
-    /// and no TOTP column.
     Browser,
 }
 
@@ -164,17 +150,10 @@ impl ExportPreset {
     }
 }
 
-/// How many data rows feed the analysis. Must be `>= DISPLAY_SAMPLES`.
+/// Must be `>= DISPLAY_SAMPLES`.
 const SAMPLE_ROWS: usize = 10;
 const DISPLAY_SAMPLES: usize = 5;
 
-/// Inspect a CSV and return a review-ready analysis: the columns (with a few
-/// sample values each), a suggested editable mapping, and per-field confidence.
-///
-/// Column types are inferred from the header names and from the first
-/// `SAMPLE_ROWS` parseable data rows (malformed rows are skipped). Only those
-/// rows are read, so the result is deterministic and the cost is independent of
-/// file size.
 pub fn analyze(data: &str) -> Result<CsvAnalysis, BackupError> {
     let data = strip_bom(data);
     if data.trim().is_empty() {
@@ -192,8 +171,7 @@ pub fn analyze(data: &str) -> Result<CsvAnalysis, BackupError> {
         return Err(BackupError::EmptyCsv);
     }
 
-    // Read at most the first SAMPLE_ROWS parseable rows, skipping malformed
-    // ones. `take` keeps this lazy, so a large file is never fully scanned.
+    // `take` keeps this lazy; large files are never fully scanned.
     let samples: Vec<StringRecord> = reader
         .records()
         .filter_map(Result::ok)
@@ -324,8 +302,6 @@ mod tests {
 
     #[test]
     fn analyze_samples_only_leading_rows_deterministically() {
-        // 12 data rows, but only the first SAMPLE_ROWS feed the analysis and the
-        // result is stable across runs (no randomness).
         let mut csv = String::from("name,login_uri,login_username\n");
         for i in 0..12 {
             csv.push_str(&format!(
@@ -335,12 +311,10 @@ mod tests {
         let a1 = analyze(&csv).unwrap();
         let a2 = analyze(&csv).unwrap();
         assert_eq!(a1.columns[0].sample_values, a2.columns[0].sample_values);
-        // Display samples are the first rows, in file order.
         assert_eq!(
             a1.columns[0].sample_values,
             vec!["Site 0", "Site 1", "Site 2", "Site 3", "Site 4"]
         );
-        // Separator-styled headers map (and value sniffing agrees).
         assert_eq!(a1.suggested.url, Some(1));
         assert_eq!(a1.suggested.username, Some(2));
         assert_eq!(a1.confidence.url, Some(Confidence::High));
@@ -397,20 +371,19 @@ Bank,https://bank.example,bob,hunter2,\n";
             vec!["https://mail.example".to_string()]
         );
         assert_eq!(v.logins[0].notes.as_deref(), Some("primary"));
-        assert_eq!(v.logins[1].notes, None); // empty cell -> None
+        assert_eq!(v.logins[1].notes, None);
     }
 
     #[test]
     fn import_honors_user_edited_mapping() {
         let mut a = analyze(CHROME_CSV).unwrap();
-        a.suggested.notes = None; // user removes the notes mapping
+        a.suggested.notes = None;
         let (backup, _) = import(CHROME_CSV, &a.suggested).unwrap();
         assert!(backup.vaults[0].logins.iter().all(|l| l.notes.is_none()));
     }
 
     #[test]
     fn import_skips_empty_rows_and_reports() {
-        // 2 valid rows, 1 all-empty row.
         let data = "name,username,password\nA,alice,pw1\n,,\nB,bob,pw2\n";
         let mapping = ColumnMapping {
             title: Some(0),
@@ -431,7 +404,6 @@ Bank,https://bank.example,bob,hunter2,\n";
 
     #[test]
     fn import_tolerates_ragged_rows() {
-        // Second row has fewer columns than the header; it must not error.
         let data = "name,username,password\nFull,alice,pw\nPartial,bob\n";
         let mapping = ColumnMapping {
             title: Some(0),
@@ -443,7 +415,7 @@ Bank,https://bank.example,bob,hunter2,\n";
         assert_eq!(report.imported, 2);
         let partial = &backup.vaults[0].logins[1];
         assert_eq!(partial.username.as_deref(), Some("bob"));
-        assert_eq!(partial.password, None); // missing column -> None
+        assert_eq!(partial.password, None);
     }
 
     #[test]
@@ -458,8 +430,8 @@ Bank,https://bank.example,bob,hunter2,\n";
         let (backup, _) = import(data, &mapping).unwrap();
         let logins = &backup.vaults[0].logins;
         assert_eq!(logins[0].title, "https://only-url.example"); // url fallback
-        assert_eq!(logins[1].title, "carol"); // username fallback
-        assert_eq!(logins[2].title, "Untitled"); // last-resort
+        assert_eq!(logins[1].title, "carol");
+        assert_eq!(logins[2].title, "Untitled");
     }
 
     #[test]
@@ -505,7 +477,6 @@ Bank,https://bank.example,bob,hunter2,\n";
             lines[1],
             "Email,https://mail.example,alice,s3cr3t,primary,JBSWY3DPEHPK3PXP"
         );
-        // Only the title is set; every optional becomes an empty cell.
         assert_eq!(lines[2], "Bare,,,,,");
     }
 
@@ -524,7 +495,6 @@ Bank,https://bank.example,bob,hunter2,\n";
         let lines: Vec<&str> = csv.lines().collect();
         assert_eq!(lines[0], "name,url,username,password,note");
         assert_eq!(lines[1], "Email,https://mail.example,alice,s3cr3t,primary");
-        // The browser layout carries no TOTP column.
         assert!(!csv.contains("JBSWY3DPEHPK3PXP"));
     }
 
@@ -556,7 +526,7 @@ Bank,https://bank.example,bob,hunter2,\n";
             .lines()
             .map(str::to_owned)
             .collect();
-        assert_eq!(lines.len(), 3); // header + one row per login
+        assert_eq!(lines.len(), 3);
         assert_eq!(lines[1], "A,,,,");
         assert_eq!(lines[2], "B,,,,");
     }
@@ -595,7 +565,6 @@ Bank,https://bank.example,bob,hunter2,\n";
             ..Default::default()
         }]);
         let csv = export(&backup, ExportPreset::KeyGo).unwrap();
-        // The exact escaping is the csv crate's job; assert it re-imports losslessly.
         let analysis = analyze(&csv).unwrap();
         let (restored, _) = import(&csv, &analysis.suggested).unwrap();
         let l = &restored.vaults[0].logins[0];
@@ -605,10 +574,7 @@ Bank,https://bank.example,bob,hunter2,\n";
 
     #[test]
     fn export_preset_headers_analyze_as_high_confidence() {
-        // Every header an export preset emits must be recognized by `analyze` at
-        // High confidence; otherwise an exported file would re-import with a weak
-        // or missing column mapping. A "contains"-only match scores Low, so this
-        // assertion fails if any preset header drifts off an exact keyword.
+        // Preset headers must map at High confidence, or exports re-import poorly.
         fn confidence_of(c: &FieldConfidence, field: Field) -> Option<&Confidence> {
             match field {
                 Field::Title => c.title.as_ref(),
@@ -621,7 +587,6 @@ Bank,https://bank.example,bob,hunter2,\n";
         }
 
         for preset in [ExportPreset::KeyGo, ExportPreset::Browser] {
-            // Drive the real export path: an empty backup yields just the header row.
             let csv = export(&Backup { vaults: vec![] }, preset).unwrap();
             let analysis = analyze(&csv).unwrap();
             for &(header, field) in preset.columns() {

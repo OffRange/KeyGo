@@ -23,10 +23,7 @@ impl From<Algorithm> for keygo_core::totp::Algorithm {
 impl TryFrom<keygo_core::totp::Algorithm> for Algorithm {
     type Error = TotpError;
 
-    /// `totp_rs::Algorithm` is `#[non_exhaustive]`, so a variant this binding
-    /// does not expose stays representable no matter what we match on. Reaching
-    /// one means the input named an algorithm we cannot hand to Kotlin, which
-    /// is an error to report, not a reason to unwind across the FFI boundary.
+    /// `Algorithm` is non-exhaustive; an unknown variant is an error, not a panic across FFI.
     fn try_from(value: keygo_core::totp::Algorithm) -> Result<Self, Self::Error> {
         match value {
             keygo_core::totp::Algorithm::SHA1 => Ok(Algorithm::Sha1),
@@ -77,7 +74,6 @@ impl From<keygo_core::totp::TotpError> for TotpError {
     }
 }
 
-/// Kotlin hands these over as `Int`; anything negative or out of range is rejected here.
 fn params(algorithm: Algorithm, digits: i32, period: i32) -> Result<TotpParams, TotpError> {
     Ok(TotpParams {
         algorithm: algorithm.into(),

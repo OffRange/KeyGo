@@ -20,16 +20,13 @@ pub enum ArkSessionError {
 
 type ArkSessionResult<T> = Result<T, ArkSessionError>;
 
-/// The ARK wrapped under a key derived from the user's password, plus the salt that derivation
-/// needs. The user id is the wrap's AAD.
 pub struct PasswordWrappedArk {
     pub salt: Vec<u8>,
     pub wrapped: Sealed<AccountRootKey>,
 }
 
 impl PasswordWrappedArk {
-    /// A failed unwrap is reported as [`ArkSessionError::WrongPassword`]: the AEAD tag cannot tell
-    /// a wrong password from a wrong user id or a corrupted blob.
+    /// Any unwrap failure is `WrongPassword`: AEAD cannot tell the causes apart.
     fn open(&self, password: &str, user_id: UserId) -> ArkSessionResult<AccountRootKey> {
         derive_kek(password, &self.salt)?
             .unwrap_key(&self.wrapped, &user_id)
@@ -47,7 +44,6 @@ pub struct NewAccount {
     pub wrapped_vault_key: Sealed<VaultKey>,
 }
 
-/// Holds the ARK while the vault is unlocked.
 #[derive(Default)]
 pub struct ArkSession {
     ark: Mutex<Option<AccountRootKey>>,
@@ -110,8 +106,7 @@ impl ArkSession {
         self.with_ark(|ark| Zeroizing::new(ark.as_bytes().to_vec()))
     }
 
-    /// Succeeds only if `password` opens `wrapped` and what it opens is the ARK this session
-    /// holds, so a rewrap after this cannot put a new password around a different account's key.
+    /// Fails unless `wrapped` opens to the ARK this session already holds.
     pub fn verify_password(
         &self,
         password: &str,
@@ -138,7 +133,7 @@ impl ArkSession {
         new_password: &str,
         user_id: UserId,
     ) -> ArkSessionResult<PasswordWrappedArk> {
-        // Derive before taking the lock: Argon2 is slow, and nothing else may wait on it.
+        // Argon2 is slow; derive outside the lock.
         let salt = new_salt().to_vec();
         let kek = derive_kek(new_password, &salt)?;
         let wrapped = self.with_live_ark(|ark| Ok(kek.wrap_key(ark, &user_id)?))?;
@@ -161,15 +156,13 @@ impl ArkSession {
         self.with_live_ark(|ark| Ok(ark.unwrap_key(wrapped, &vault_id)?))
     }
 
-    /// Runs `f` on a copy of the live ARK, without holding the session lock, so `f` may call back
-    /// into the session and keeps a usable key even if the session ends meanwhile.
+    /// Runs `f` on a copy of the ARK outside the lock, so `f` may re-enter the session.
     pub fn with_ark<R>(&self, f: impl FnOnce(&AccountRootKey) -> R) -> ArkSessionResult<R> {
         let ark = self.with_live_ark(|live| Ok(AccountRootKey::from_bytes(live.as_bytes())?))?;
         Ok(f(&ark))
     }
 
-    /// Runs `f` on the live ARK while holding the session lock. `f` must not call back into the
-    /// session.
+    /// Runs `f` under the lock; `f` must not re-enter the session.
     fn with_live_ark<R>(
         &self,
         f: impl FnOnce(&AccountRootKey) -> ArkSessionResult<R>,
@@ -244,8 +237,6 @@ mod tests {
         let (session, account) = unlocked();
         session.end();
 
-        // The blob was wrapped with account.user_id as AAD; unlocking with a different id must
-        // fail the AEAD tag check, the same binding that stops a blob transplant between users.
         let result =
             session.unlock_with_password(PASSWORD, &account.password_wrapped_ark, UserId::new_v4());
 
@@ -261,8 +252,6 @@ mod tests {
         let result =
             session.unlock_with_password("wrong", &account.password_wrapped_ark, account.user_id);
 
-        // A failed unlock attempt must not log the user out: the session stays active and keeps
-        // holding the ARK it had before the attempt.
         assert!(result.is_err());
         assert!(session.is_active());
         assert_eq!(session.export_ark().unwrap(), original);
@@ -276,7 +265,6 @@ mod tests {
         let second = ArkSession::new();
         second.unlock_with_ark(&exported).unwrap();
 
-        // Both sessions hold the same ARK, so a key wrapped by one unwraps under the other.
         let wrapped = session
             .wrap_vault_key(&VaultKey::generate(), account.vault_id)
             .unwrap();
@@ -327,8 +315,6 @@ mod tests {
     #[test]
     fn verify_password_rejects_a_blob_that_holds_a_different_ark() {
         let (session, _) = unlocked();
-        // Same password, another account: the blob opens, but around a key this session does not
-        // hold. Rewrapping after this would put the new password around the wrong ARK.
         let (_, other) = unlocked();
 
         assert!(matches!(
@@ -383,7 +369,6 @@ mod tests {
             .unlock_with_password("new-password", &rewrapped, account.user_id)
             .unwrap();
 
-        // Same ARK, only the wrapping changed.
         assert_eq!(ark_before, session.export_ark().unwrap());
     }
 
@@ -415,8 +400,7 @@ mod tests {
     fn with_ark_does_not_hold_the_lock_across_the_closure() {
         let (session, _) = unlocked();
 
-        // Every one of these takes the same lock. Under a lock held across the closure they would
-        // all deadlock rather than fail, so this test hanging is itself the regression signal.
+        // All take the same lock; a hang here means a deadlock.
         let reentered = session
             .with_ark(|ark| {
                 let exported = session.export_ark().unwrap();
@@ -434,8 +418,6 @@ mod tests {
         let (session, _) = unlocked();
         let original = session.export_ark().unwrap();
 
-        // Ending the session mid-closure is the case the clone exists for: `f` keeps working on
-        // the key it was handed instead of reading a slot that is now empty.
         let observed = session
             .with_ark(|ark| {
                 session.end();

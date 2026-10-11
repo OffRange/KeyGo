@@ -1,6 +1,3 @@
-//! WebAuthn registration and authentication, backed by the `passkey` crate's software
-//! authenticator. The user is verified on the Kotlin side before either call is made.
-
 mod authentication;
 mod authenticator;
 mod codec;
@@ -35,7 +32,6 @@ fn parse_request<T: serde::de::DeserializeOwned>(json: &str) -> Result<T, Passke
     serde_json::from_str(json).map_err(PasskeyError::InvalidRequest)
 }
 
-/// The origin a request is made for, from the relying party id it names.
 fn origin(rp_id: Option<&str>) -> Result<Url, PasskeyError> {
     sanitize_to_https_url(rp_id.unwrap_or_default()).map_err(|_| PasskeyError::InvalidDomain)
 }

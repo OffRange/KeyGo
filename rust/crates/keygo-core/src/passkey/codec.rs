@@ -1,5 +1,4 @@
-//! The bytes a passkey is stored as. Shipped passkeys are in this format: the `V1` tag and the
-//! field names of [`StoredPasskey`] must not change.
+//! Stored passkey format. The `V1` tag and [`StoredPasskey`] field names must not change.
 
 use coset::{CborSerializable, CoseError, CoseKey};
 use passkey::types::Passkey;
@@ -83,8 +82,6 @@ mod tests {
         }
     }
 
-    /// `sample_passkey` as encoded when the format shipped. Every stored passkey is in this
-    /// shape, so the decoder must keep reading it: the `V1` tag and the field names are the format.
     const GOLDEN_V1: &str = "oWJWMadja2V5hRiiAQEDGCdtY3JlZGVudGlhbF9pZIQBAgMEZXJwX2lka2V4YW1wbGUuY29ta3VzZXJfaGFuZGxlgwkJCWh1c2VybmFtZWVhbGljZXF1c2VyX2Rpc3BsYXlfbmFtZWVBbGljZWdjb3VudGVyGCo=";
 
     #[test]

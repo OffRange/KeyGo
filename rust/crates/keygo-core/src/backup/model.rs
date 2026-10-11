@@ -8,10 +8,6 @@ pub struct Backup {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Vault {
     pub name: String,
-    /// Names an icon from the client's own set; the format assigns it no meaning beyond a label to
-    /// hand back on restore. `default` covers producers that have none to give - CSV imports, and
-    /// backups written before the field existed, including the frozen v1 goldens - which read as an
-    /// empty string and let the client fall back to its own default.
     #[serde(default)]
     pub icon: String,
     pub logins: Vec<Login>,
@@ -49,12 +45,8 @@ backup_item! {
         pub username: Option<String>,
         pub password: Option<String>,
         pub totp_secret: Option<String>,
-        /// A login can be associated with several sites. `default` keeps pre-field backups -
-        /// including the frozen v1 goldens - readable.
         #[serde(default)]
         pub websites: Vec<String>,
-        /// A login can hold several passkeys (one per RP). `default` keeps pre-field backups -
-        /// including the frozen v1 goldens - readable.
         #[serde(default)]
         pub passkeys: Vec<Passkey>,
    }

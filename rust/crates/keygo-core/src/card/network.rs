@@ -1,6 +1,3 @@
-//! Card-network identification from the leading digits (the IIN/BIN) and the
-//! per-network metadata that drives capping, validation, and grouping.
-
 use super::{MAX_PAN_DIGITS, digits_only};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -17,18 +14,10 @@ pub enum CardNetwork {
 }
 
 impl CardNetwork {
-    /// Detect the network from a (possibly dirty) number's leading digits.
     pub fn detect(number: &str) -> CardNetwork {
         Self::from_digits(&digits_only(number))
     }
 
-    /// Detect the network from already-cleaned `digits` by IIN range. More
-    /// specific ranges are checked before broader ones so overlapping prefixes
-    /// resolve correctly.
-    ///
-    /// Callers that have already stripped non-digits (such as
-    /// [`Card::parse`](crate::card::Card::parse)) use this directly to avoid a
-    /// redundant clean; [`CardNetwork::detect`] is the dirty-input wrapper.
     pub(super) fn from_digits(digits: &str) -> CardNetwork {
         use CardNetwork::*;
         if digits.is_empty() {
@@ -39,7 +28,7 @@ impl CardNetwork {
         if matches!(prefix(digits, 2), Some(34 | 37)) {
             return Amex;
         }
-        // JCB: 3528-3589 (checked before the broader Diners "3" ranges)
+        // JCB: 3528-3589, before Diners
         if matches!(prefix(digits, 4), Some(3528..=3589)) {
             return Jcb;
         }
@@ -59,8 +48,7 @@ impl CardNetwork {
         {
             return Mastercard;
         }
-        // Discover: 6011, 644-649, 65, and the 622126-622925 co-brand range
-        // (checked before UnionPay's broad "62").
+        // Discover: 6011, 644-649, 65, 622126-622925 (before UnionPay)
         if matches!(prefix(digits, 4), Some(6011))
             || matches!(prefix(digits, 3), Some(644..=649))
             || matches!(prefix(digits, 2), Some(65))
@@ -72,7 +60,7 @@ impl CardNetwork {
         if matches!(prefix(digits, 2), Some(62 | 81)) {
             return UnionPay;
         }
-        // Maestro: a selection of the common debit ranges
+        // Maestro: common debit ranges
         if matches!(prefix(digits, 2), Some(50 | 56 | 57 | 58 | 63 | 67 | 69)) {
             return Maestro;
         }
@@ -104,14 +92,11 @@ impl CardNetwork {
             CardNetwork::Jcb => &[16, 17, 18, 19],
             CardNetwork::UnionPay => &[16, 17, 18, 19],
             CardNetwork::Maestro => &[12, 13, 14, 15, 16, 17, 18, 19],
-            // Unrecognised IIN: accept the full plausible PAN range so an unknown network
-            // is still structurally validatable by length + Luhn (see `Card::is_valid`).
+            // Unknown IIN: any plausible length, so Luhn can still validate it.
             CardNetwork::Unknown => &[12, 13, 14, 15, 16, 17, 18, 19],
         }
     }
 
-    /// The longest number this network issues. Unknown networks fall back to the global
-    /// [`MAX_PAN_DIGITS`].
     pub fn max_len(self) -> usize {
         self.valid_lengths()
             .iter()
@@ -127,7 +112,6 @@ impl CardNetwork {
         }
     }
 
-    /// Group sizes used to space a number of `len` digits.
     pub(super) fn groups(self, len: usize) -> Vec<usize> {
         match self {
             CardNetwork::Amex => fit_pattern(&[4, 6, 5], len),
@@ -141,9 +125,7 @@ fn prefix(digits: &str, n: usize) -> Option<u32> {
     digits.get(..n).and_then(|p| p.parse().ok())
 }
 
-/// Truncate a fixed grouping `pattern` (e.g. Amex's `[4, 6, 5]`) to cover exactly
-/// `len` digits, so a partially typed number is spaced the same way it will be once
-/// complete. Any digits beyond the pattern trail in fours as a safety net.
+/// Cuts `pattern` to `len` digits so partial input groups like the full number.
 fn fit_pattern(pattern: &[usize], len: usize) -> Vec<usize> {
     let mut groups = Vec::new();
     let mut remaining = len;
@@ -213,7 +195,6 @@ mod tests {
 
     #[test]
     fn jcb_beats_diners_in_3500_range() {
-        // 3530 is JCB even though "3x" is otherwise Diners territory.
         assert_eq!(CardNetwork::detect("3530111333300000"), CardNetwork::Jcb);
     }
 

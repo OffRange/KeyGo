@@ -13,13 +13,7 @@ pub use format::{csv, json};
 pub use key::BackupKey;
 pub use model::{Backup, Card, Login, Passkey, Vault};
 
-/// Version stamped into newly written backups.
 pub const CURRENT_VERSION: u32 = 1;
 
-/// Oldest envelope version this build can still read. Backups are long-lived: a
-/// file written by an old build may be restored by a much newer one. When
-/// [`CURRENT_VERSION`] is bumped, keep older versions readable here (and
-/// preserve their exact AAD/BCS layout - see `encryption::BackupAad`) instead of
-/// rejecting them. Per-version decode branches belong in the format's `import`,
-/// keyed off the envelope version.
+/// Oldest readable version. On a bump, keep older versions and their AAD layout readable.
 pub const MIN_SUPPORTED_VERSION: u32 = 1;

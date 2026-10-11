@@ -52,7 +52,7 @@ impl Kdf {
     }
 }
 
-/// Evolve it only via a version bump, never by editing fields in place.
+/// Wire format: change only with a version bump.
 #[derive(Serialize)]
 pub struct BackupAad {
     pub version: u32,
@@ -109,18 +109,16 @@ pub fn open(
     cred: BackupCredential<'_>,
     version: u32,
 ) -> Result<Vec<u8>, BackupError> {
-    // Checked before deriving the key, which may cost a full Argon2 run.
+    // Before key derivation, which may run Argon2.
     let sealed =
         Sealed::from_parts(&header.nonce, ciphertext).map_err(|_| BackupError::MalformedHeader)?;
 
     let key = match (header.source, &header.kdf, cred) {
-        // Credential's source disagrees with the header's declared source.
         (KeySource::Passphrase, _, BackupCredential::Ark(_))
         | (KeySource::Ark, _, BackupCredential::Passphrase(_)) => {
             return Err(BackupError::CredentialMismatch);
         }
 
-        // Source matches credential and the KDF matches the source: derive.
         (
             KeySource::Passphrase,
             Kdf::Argon2id {
@@ -143,7 +141,7 @@ pub fn open(
             BackupKey::from_ark(ark, salt)?
         }
 
-        // Source matches credential but the KDF disagrees with the source.
+        // KDF does not match the source.
         (KeySource::Passphrase, _, BackupCredential::Passphrase(_))
         | (KeySource::Ark, _, BackupCredential::Ark(_)) => {
             return Err(BackupError::MalformedHeader);
@@ -261,7 +259,6 @@ mod tests {
         let ark = AccountRootKey::from_bytes(&[5u8; 32]).unwrap();
         let cred = BackupCredential::Ark(&ark);
         let mut sealed = seal(b"x", cred, CURRENT_VERSION).unwrap();
-        // Header still says source=Ark but now carries a passphrase-style KDF.
         sealed.header.kdf = Kdf::argon2id(vec![1u8; 16], Argon2Params::default());
         let err = open(&sealed.header, sealed.ciphertext, cred, CURRENT_VERSION).unwrap_err();
         assert!(matches!(err, BackupError::MalformedHeader));
@@ -280,9 +277,6 @@ mod tests {
     fn open_rejects_argon2_params_exceeding_memory_limit() {
         let cred = BackupCredential::Passphrase(b"pw");
         let mut sealed = seal(b"x", cred, CURRENT_VERSION).unwrap();
-        // A hostile header claiming an enormous memory cost must fail key
-        // derivation cleanly - not abort the process, and not be silently ignored
-        // (which is what happened before the params were threaded through).
         if let Kdf::Argon2id { mem_kib, .. } = &mut sealed.header.kdf {
             *mem_kib = MAX_ARGON2_MEM_KIB + 1;
         }

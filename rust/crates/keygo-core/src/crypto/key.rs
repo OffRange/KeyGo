@@ -3,8 +3,6 @@ use crate::crypto::{CipherKey, CryptoError, CryptoResult, Sealed};
 use serde::Serialize;
 use zeroize::{ZeroizeOnDrop, Zeroizing};
 
-/// A key for the hierarchy's [`Cipher`](crate::crypto::Cipher). Declare one with
-/// [`symmetric_key!`].
 pub trait SymmetricKey: Sized + ZeroizeOnDrop {
     fn from_bytes(bytes: &[u8]) -> CryptoResult<Self>;
 
@@ -16,8 +14,6 @@ pub trait SymmetricKey: Sized + ZeroizeOnDrop {
     fn cipher_key(&self) -> &CipherKey;
 }
 
-/// `Self` wraps keys of type `K`. Each wrap is bound to an `Aad`, so it only unwraps in the
-/// context it was made for.
 pub trait Wraps<K: SymmetricKey>: SymmetricKey {
     type Aad: Serialize + ?Sized;
 
@@ -35,7 +31,6 @@ pub trait Wraps<K: SymmetricKey>: SymmetricKey {
     }
 }
 
-/// `Self` encrypts data. Each ciphertext is bound to an `Aad`.
 pub trait Encrypts: SymmetricKey {
     type Aad: Serialize + ?Sized;
 
@@ -51,7 +46,6 @@ pub trait Encrypts: SymmetricKey {
     }
 }
 
-/// Declares a zeroize-on-drop [`SymmetricKey`] newtype.
 macro_rules! symmetric_key {
     ($(#[$meta:meta])* $vis:vis struct $name:ident;) => {
         $(#[$meta])*

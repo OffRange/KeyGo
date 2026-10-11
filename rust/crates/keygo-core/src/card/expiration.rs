@@ -1,18 +1,11 @@
-//! `MM/YY` expiration-date formatting for text being typed or deleted live.
-
 use super::digits_only;
 
 const SEPARATOR: char = '/';
 
-/// Applies expiration-date formatting to an edit, given the `previous` text and the `proposed`
-/// text the user just produced. The separator is auto-inserted while typing forward; deletions
-/// erase it together with adjacent digits so the user can never get stuck on `MM/`:
-///
-/// - `12/34` -> `12/3` -> `12` -> `1` -> `` (each backspace removes one visible character)
-/// - deleting the separator itself also drops the preceding month digit (`12/` -> `1`, `05/` -> `0`)
+/// Formats an edit live. Each backspace removes one visible char and never sticks on `MM/`.
 pub fn format_expiration_after_edit(previous: &str, proposed: &str) -> String {
     let deleting = proposed.chars().count() < previous.chars().count();
-    // Backspacing the separator leaves the bare month behind; take the month digit with it.
+    // Deleting the separator also takes the month digit.
     let deleted_separator =
         deleting && previous.ends_with(SEPARATOR) && !proposed.ends_with(SEPARATOR);
     let source = if deleted_separator {
@@ -25,14 +18,7 @@ pub fn format_expiration_after_edit(previous: &str, proposed: &str) -> String {
     format_expiration_inner(&source, !deleting)
 }
 
-/// Reformats arbitrary `input` into a partial-or-complete `MM/YY` expiration date.
-///
-/// - A leading digit greater than `1` is padded into a complete single-digit month (`5` -> `05`).
-/// - A second month digit that would form an invalid month is dropped (`13` -> `1`, `00` -> `0`).
-/// - The separator follows a complete month; the year is capped at two digits.
-///
-/// `append_trailing_separator` controls whether a complete month with no year yet renders as
-/// `MM/` (typing forward) or plain `MM` (deleting, so the user can erase back into the month).
+/// `append_trailing_separator` renders a lone month as `MM/` (typing) or `MM` (deleting).
 fn format_expiration_inner(input: &str, append_trailing_separator: bool) -> String {
     let digits = digits_only(input);
     let Some(first) = digits.chars().next() else {
@@ -40,7 +26,7 @@ fn format_expiration_inner(input: &str, append_trailing_separator: bool) -> Stri
     };
 
     let (month, year_digits): (String, &str) = if first > '1' {
-        // 2..=9 can only be a single-digit month, so pad it and treat it as complete.
+        // 2..=9 can only be a one-digit month.
         (format!("0{first}"), &digits[1..])
     } else {
         let second = digits[1..].chars().next();
@@ -122,7 +108,6 @@ mod tests {
 
     #[test]
     fn expiration_edit_deletes_year_digits_then_the_separator_with_the_month() {
-        // 12/34 -> 12/3 -> 12 -> 1 -> "" (one visible char per backspace)
         assert_eq!(format_expiration_after_edit("12/34", "12/3"), "12/3");
         assert_eq!(format_expiration_after_edit("12/3", "12/"), "12");
         assert_eq!(format_expiration_after_edit("12/", "12"), "1");
@@ -132,7 +117,6 @@ mod tests {
 
     #[test]
     fn expiration_edit_collapses_a_padded_month_on_separator_deletion() {
-        // 05/ -> delete -> 0
         assert_eq!(format_expiration_after_edit("05/", "05"), "0");
     }
 }

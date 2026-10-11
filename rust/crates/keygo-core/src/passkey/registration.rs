@@ -3,18 +3,15 @@ use crate::passkey::{PasskeyError, codec, origin, parse_request, to_json};
 use passkey::client::{Client, DefaultClientData};
 use passkey::types::webauthn::{CredentialCreationOptions, PublicKeyCredentialCreationOptions};
 
-/// A newly created passkey: the response JSON for the relying party, and what to store.
 pub struct Registration {
     pub response: String,
     pub user_name: String,
     pub user_display_name: String,
     pub credential_id: Vec<u8>,
-    /// The passkey in its stored encoding.
     pub private_key: Vec<u8>,
     pub rp: String,
 }
 
-/// What the app needs from a creation request before asking the user to confirm it.
 pub struct CreationInfo {
     pub exclude_credentials: Vec<Vec<u8>>,
     pub rp: String,

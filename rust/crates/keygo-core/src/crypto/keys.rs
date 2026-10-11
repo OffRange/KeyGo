@@ -1,4 +1,4 @@
-//! The key hierarchy, and what each wrap is bound to:
+//! Key hierarchy and the AAD of each wrap:
 //!
 //! ```text
 //! RootKEK --UserId--> AccountRootKey --VaultId--> VaultKey --ItemAad--> ItemKey --[u8]--> item data
@@ -11,32 +11,25 @@ use crate::crypto::{
 use aead::Generate;
 use serde::Serialize;
 
-/// Mixed into the password KEK's salt. Every account's ARK is wrapped under a KEK derived with
-/// it, so it can never change.
+/// Part of every password KEK's salt; must never change.
 const PASSWORD_DOMAIN: &[u8] = b"v1:kek/pwd";
 
 symmetric_key! {
-    /// Root key-encryption key: wraps the [`AccountRootKey`]. Derived from the user's password on
-    /// every unlock and never stored.
     pub struct RootKEK;
 }
 
 symmetric_key! {
-    /// One per account. Held by the session while unlocked.
     pub struct AccountRootKey;
 }
 
 symmetric_key! {
-    /// One per vault.
     pub struct VaultKey;
 }
 
 symmetric_key! {
-    /// One per item. Moving an item between vaults rewraps this key, not the item's data.
     pub struct ItemKey;
 }
 
-/// Binds a wrapped [`ItemKey`] to its item and vault, so it cannot be transplanted.
 #[derive(Serialize)]
 pub struct ItemAad {
     pub item_id: ItemId,
@@ -44,11 +37,11 @@ pub struct ItemAad {
 }
 
 impl Wraps<AccountRootKey> for RootKEK {
-    type Aad = UserId; // TODO: also include epoch: pw wrapped: pwd_cred_epoch, rk wrapped: rk_cred_epoch
+    type Aad = UserId; // TODO: bind the credential epoch
 }
 
 impl Wraps<VaultKey> for AccountRootKey {
-    type Aad = VaultId; //TODO: also include epoch: vault_key_epoch
+    type Aad = VaultId; // TODO: bind vault_key_epoch
 }
 
 impl Wraps<ItemKey> for VaultKey {
@@ -98,10 +91,7 @@ mod tests {
         assert_ne!(a.as_bytes(), b.as_bytes());
     }
 
-    /// Known-answer test: pins `PASSWORD_DOMAIN` together with the Argon2 cost profile and the
-    /// derived key length behind it. Every shipped account's ARK is wrapped under a KEK derived
-    /// with this exact domain and parameter set, so if any of them drift, no existing account's
-    /// password can unlock it again. This is the tripwire for that.
+    /// Pins `PASSWORD_DOMAIN` and the Argon2 profile; drift locks out every account.
     #[test]
     fn password_domain_is_pinned() {
         assert_eq!(PASSWORD_DOMAIN, b"v1:kek/pwd");

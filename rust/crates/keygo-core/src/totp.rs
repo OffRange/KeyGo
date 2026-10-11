@@ -2,10 +2,7 @@ use thiserror::Error;
 pub use totp_rs::Algorithm;
 use totp_rs::{Builder, Secret, SecretParseError, Totp};
 
-/// A secret long enough to clear `Builder::build`'s 128 bit floor, swapped in
-/// for the real one while validating. Plenty of providers hand out 80 bit
-/// secrets and refusing those would make the app useless for them, so that
-/// floor is the one rule we drop.
+/// Stand-in that clears totp-rs's 128-bit floor; real 80-bit secrets are common.
 const SECRET_FLOOR_STANDIN: [u8; 16] = [0; 16];
 
 #[derive(Debug, Error)]
@@ -16,7 +13,6 @@ pub enum TotpError {
     Secret(SecretParseError),
 }
 
-/// How codes are generated from a secret.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TotpParams {
     pub algorithm: Algorithm,
@@ -26,21 +22,18 @@ pub struct TotpParams {
 }
 
 pub struct TotpInfo {
-    /// Base32, as it appears in an `otpauth://` URI.
     pub secret: String,
     pub issuer: Option<String>,
     pub account_name: String,
     pub params: TotpParams,
 }
 
-/// The current code for a base32 `secret`.
 pub fn generate(params: TotpParams, secret: &str) -> Result<String, TotpError> {
     Ok(build(params, secret, None, "")?
         .generate_current()
         .to_string())
 }
 
-/// An `otpauth://` URI for a base32 `secret`.
 pub fn to_uri(
     params: TotpParams,
     secret: &str,
@@ -93,15 +86,8 @@ fn build(
     Ok(totp)
 }
 
-/// Every check `Builder::build` runs, with its 128 bit secret floor replaced by
-/// "the secret must not be empty".
-///
-/// The checks are deliberately not restated here. Copying them means the copy
-/// silently rots whenever totp-rs adds one, which is exactly how the
-/// step-of-zero check 6.0 introduced went missing: a `period=0` URI parsed
-/// fine, and generating a code from it divided by zero. Building against a
-/// stand-in secret keeps the rules the library's to define, including any it
-/// adds later.
+/// Runs totp-rs's own checks on a stand-in secret, dropping only the 128-bit floor.
+/// Restating them would miss new ones, as with 6.0's `period=0` check.
 fn validate(totp: &Totp) -> Result<(), TotpError> {
     if totp.secret().is_empty() {
         return Err(TotpError::Invalid(totp_rs::TotpError::SecretTooShort {
@@ -126,9 +112,7 @@ fn validate(totp: &Totp) -> Result<(), TotpError> {
 mod tests {
     use super::*;
 
-    /// 80 bits, the kind of secret services like GitHub hand out.
     const SHORT_SECRET: &str = "JBSWY3DPEHPK3PXP";
-    /// 160 bits, the length RFC 4226 recommends.
     const LONG_SECRET: &str = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
 
     const SHA1_6_30: TotpParams = TotpParams {
@@ -215,9 +199,6 @@ mod tests {
         );
     }
 
-    /// A step of zero used to reach `generate`, where dividing the timestamp by
-    /// it panicked. Anyone who can hand the app a URI picks the period, so this
-    /// has to fail as an error rather than take the process down.
     #[test]
     fn rejects_uri_with_period_of_zero() {
         let uri = format!("otpauth://totp/GitHub:alice?secret={SHORT_SECRET}&period=0");
@@ -225,9 +206,6 @@ mod tests {
         assert!(parse_uri(&uri).is_err());
     }
 
-    /// totp-rs 6.0 made an empty account name an error rather than emitting
-    /// `otpauth://totp/?secret=...` the way 5.x did. The label is required by
-    /// the otpauth format, so the caller has to supply one.
     #[test]
     fn requires_account_name_for_url() {
         let url = to_uri(SHA1_6_30, SHORT_SECRET, Some("GitHub"), "");
@@ -235,8 +213,6 @@ mod tests {
         assert!(url.is_err());
     }
 
-    /// The RFC 6238 appendix B vectors, which pin the generated codes to known
-    /// answers across upgrades of the hashing crates underneath totp-rs.
     #[test]
     fn matches_rfc6238_test_vectors() {
         const TIMES: [u64; 6] = [

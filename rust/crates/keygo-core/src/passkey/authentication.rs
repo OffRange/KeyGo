@@ -3,7 +3,6 @@ use crate::passkey::{PasskeyError, codec, origin, parse_request, to_json};
 use passkey::client::Client;
 use passkey::types::webauthn::{CredentialRequestOptions, PublicKeyCredentialRequestOptions};
 
-/// Answer a WebAuthn assertion request with a stored passkey, returning the response JSON.
 pub async fn authenticate(
     request_json: &str,
     stored_passkey: &[u8],

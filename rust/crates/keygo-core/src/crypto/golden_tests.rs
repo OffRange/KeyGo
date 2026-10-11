@@ -1,7 +1,4 @@
-//! Ciphertexts produced when the key hierarchy shipped, under fixed keys and ids. Every vault in
-//! the field holds blobs of exactly this shape, so each one must keep opening: a change to the
-//! cipher, the nonce layout, or the BCS encoding of an AAD fails here instead of on a device.
-//! Regenerate only alongside a deliberate, migrated format change.
+//! Shipped ciphertexts under fixed keys. They must keep opening; regenerate only with a migration.
 
 use crate::crypto::{
     AccountRootKey, Encrypts, ItemAad, ItemKey, RootKEK, Sealed, SymmetricKey, VaultKey, Wraps,

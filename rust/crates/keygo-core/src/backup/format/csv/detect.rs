@@ -7,7 +7,6 @@ use crate::url::sanitize_to_https_url;
 
 const DELIMITERS: [u8; 4] = *b",;\t|";
 
-/// Strip a leading UTF-8 BOM, if present.
 pub(super) fn strip_bom(data: &str) -> &str {
     data.strip_prefix('\u{feff}').unwrap_or(data)
 }
@@ -83,10 +82,7 @@ const HEADER_CONTAINS: u32 = 30;
 const VALUE_MAX: u32 = 50;
 const MIN_SCORE: u32 = 25;
 
-/// Lowercase a header and collapse every run of non-alphanumeric characters
-/// (spaces, `_`, `-`, `.`, `/`, ...) into a single space, trimming the ends. This
-/// makes `login_uri`, `Login-URI`, `login.uri`, and `Login URI` all compare
-/// equal, so a header matches the keyword tables regardless of separator style.
+/// Lowercase and collapse separator runs to one space, so `login_uri` == `Login-URI`.
 fn normalize_header(header: &str) -> String {
     let mut out = String::with_capacity(header.len());
     let mut pending_space = false;
@@ -104,7 +100,7 @@ fn normalize_header(header: &str) -> String {
     out
 }
 
-/// Score a single field against an already-[`normalize_header`]d header.
+/// `header` must already be normalized.
 fn header_score(field: Field, header: &str) -> u32 {
     let (exact, contains): (&[&str], &[&str]) = match field {
         Field::Title => (
@@ -232,8 +228,7 @@ fn profile_column(samples: &[StringRecord], col: usize) -> Profile {
             }
             total += 1;
 
-            // url and email are mutually exclusive: looks_like_url already
-            // rejects anything that parses as an email.
+            // looks_like_url already rejects emails.
             if looks_like_url(cell) {
                 url += 1;
             } else if looks_like_email(cell) {
@@ -253,9 +248,7 @@ fn profile_column(samples: &[StringRecord], col: usize) -> Profile {
     }
 }
 
-/// Greedy best-fit assignment: each column maps to at most one field and each
-/// field to at most one column, taking the highest scores first. Ties resolve by
-/// field declaration order, then column index, for determinism.
+/// Greedy best-fit, highest score first; ties break by field order, then column.
 pub(super) fn build_mapping(
     headers: &[String],
     samples: &[StringRecord],
@@ -319,7 +312,7 @@ mod tests {
         assert_eq!(m.username, Some(2));
         assert_eq!(m.password, Some(3));
         assert_eq!(m.notes, Some(4));
-        assert_eq!(c.password, Some(Confidence::High)); // exact header match
+        assert_eq!(c.password, Some(Confidence::High));
     }
 
     #[test]
@@ -370,7 +363,6 @@ mod tests {
 
     #[test]
     fn value_sniffing_drives_vague_headers() {
-        // Columns 1 and 2 have meaningless headers; only their values reveal them.
         let headers = hdrs(&["name", "field_a", "field_b"]);
         let samples = rows(&[
             &["Site One", "alice@example.com", "https://one.example"],
@@ -378,9 +370,9 @@ mod tests {
         ]);
         let (m, c) = build_mapping(&headers, &samples);
         assert_eq!(m.title, Some(0));
-        assert_eq!(m.username, Some(1)); // emails
-        assert_eq!(m.url, Some(2)); // urls
-        assert_eq!(c.username, Some(Confidence::Medium)); // value-only match
+        assert_eq!(m.username, Some(1));
+        assert_eq!(m.url, Some(2));
+        assert_eq!(c.username, Some(Confidence::Medium));
     }
 
     #[test]
@@ -392,9 +384,6 @@ mod tests {
 
     #[test]
     fn header_separators_normalize_to_exact_match() {
-        // Underscore, hyphen, dot, mixed case, and repeated spaces all normalize
-        // to one exact-match phrase and earn High (not merely "contains")
-        // confidence.
         for h in [
             "login_username",
             "login-username",
@@ -431,8 +420,6 @@ mod tests {
 
     #[test]
     fn semicolon_wins_when_commas_only_inside_fields() {
-        // header has no commas; a data cell does. The semicolon count is
-        // consistent across lines, so it must win over the ragged comma count.
         let data = "name;url;notes\nSite;https://x.com;\"a, b, c\"";
         assert_eq!(detect_delimiter(data), b';');
     }
@@ -447,7 +434,7 @@ mod tests {
     fn email_detection() {
         assert!(looks_like_email("alice@example.com"));
         assert!(looks_like_email("a.b+c@mail.co.uk"));
-        assert!(!looks_like_email("alice@localhost")); // no dot in domain
+        assert!(!looks_like_email("alice@localhost"));
         assert!(!looks_like_email("not an email"));
         assert!(!looks_like_email("https://example.com"));
         assert!(!looks_like_email(""));
@@ -457,8 +444,8 @@ mod tests {
     fn url_detection() {
         assert!(looks_like_url("https://example.com/login"));
         assert!(looks_like_url("http://sub.example.org"));
-        assert!(looks_like_url("example.com")); // bare host
-        assert!(!looks_like_url("alice@example.com")); // email, not url
+        assert!(looks_like_url("example.com"));
+        assert!(!looks_like_url("alice@example.com"));
         assert!(!looks_like_url("just a note"));
         assert!(!looks_like_url(""));
     }
@@ -468,10 +455,10 @@ mod tests {
         assert!(looks_like_totp(
             "otpauth://totp/Example:alice?secret=JBSWY3DPEHPK3PXP"
         ));
-        assert!(looks_like_totp("JBSWY3DPEHPK3PXP234")); // base32, >=16 chars
-        assert!(!looks_like_totp("jbsw y3dp ehpk 3pxp 234")); // spaced/lowercase: not importable as-is
-        assert!(!looks_like_totp("short")); // too short
-        assert!(!looks_like_totp("has-symbols-!@#$%^&*()")); // not base32
+        assert!(looks_like_totp("JBSWY3DPEHPK3PXP234"));
+        assert!(!looks_like_totp("jbsw y3dp ehpk 3pxp 234"));
+        assert!(!looks_like_totp("short"));
+        assert!(!looks_like_totp("has-symbols-!@#$%^&*()"));
         assert!(!looks_like_totp(""));
     }
 }

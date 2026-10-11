@@ -87,7 +87,6 @@ pub struct ArkCredential {
 }
 
 impl ArkCredential {
-    /// The session this credential borrows its key from.
     pub(crate) fn session(&self) -> &CoreArkSession {
         &self.ark_session.session
     }

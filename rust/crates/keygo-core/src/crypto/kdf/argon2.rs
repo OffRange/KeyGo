@@ -9,9 +9,7 @@ pub(crate) const MAX_ARGON2_MEM_KIB: u32 = 256 * 1024;
 pub(crate) struct Argon2Params {
     /// Memory cost in KiB
     pub mem_kib: u32,
-    /// Iterations / time cost
     pub iters: u32,
-    /// Degree of parallelism
     pub lanes: u32,
 }
 
@@ -39,15 +37,8 @@ impl Argon2Params {
     }
 }
 
-/// Derive a key from a password with Argon2id.
-///
-/// The salt must be at least `MIN_SALT_LEN` bytes and persisted with the credential, so the same
-/// key can be derived again later. `domain` is appended to the salt as a label, separating
-/// otherwise identical derivations (e.g. the password KEK from a backup key). The costs are explicit
-/// so a derivation can be reproduced from costs recorded when it was first made; a header asking
-/// for more than `MAX_ARGON2_MEM_KIB` is rejected rather than allowed to exhaust memory.
-///
-/// The password is not zeroized here: the caller owns that buffer.
+/// Argon2id. `domain` is appended to the salt to separate derivations.
+/// Rejects costs above `MAX_ARGON2_MEM_KIB`; the caller zeroizes the password.
 pub(crate) fn derive_argon2id(
     password: &[u8],
     salt: &[u8],

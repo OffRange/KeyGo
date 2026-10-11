@@ -3,7 +3,6 @@ pub(crate) mod hkdf;
 
 use aead::Generate;
 
-/// Length of every salt this crate generates, for either KDF.
 pub(crate) const SALT_LEN: usize = 16;
 
 pub(crate) fn new_salt() -> [u8; SALT_LEN] {
