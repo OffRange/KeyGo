@@ -19,8 +19,8 @@ pub enum BackupCredential {
 }
 
 impl BackupCredential {
-    /// Run `f` with the core credential. The ARK is borrowed from the session for exactly the
-    /// length of the call, so it is never copied out to build a credential.
+    /// Run `f` with the core credential. An ARK credential hands `f` a copy of the session's live
+    /// ARK that is dropped, and zeroized, when the call returns.
     fn with_core<R>(
         &self,
         f: impl FnOnce(CoreCredential<'_>) -> Result<R, CoreError>,

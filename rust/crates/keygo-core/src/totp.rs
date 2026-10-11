@@ -69,7 +69,7 @@ pub fn parse_uri(uri: &str) -> Result<TotpInfo, TotpError> {
 }
 
 pub(crate) fn is_valid_totp_secret(s: &str) -> bool {
-    base32::decode(base32::Alphabet::Rfc4648 { padding: false }, s).is_some()
+    Secret::try_from_base32(s).is_ok()
 }
 
 fn build(

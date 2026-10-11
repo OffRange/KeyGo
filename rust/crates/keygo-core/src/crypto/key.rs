@@ -8,7 +8,9 @@ use zeroize::{ZeroizeOnDrop, Zeroizing};
 pub trait SymmetricKey: Sized + ZeroizeOnDrop {
     fn from_bytes(bytes: &[u8]) -> CryptoResult<Self>;
 
-    fn as_bytes(&self) -> &[u8];
+    fn as_bytes(&self) -> &[u8] {
+        self.cipher_key().as_slice()
+    }
 
     #[doc(hidden)]
     fn cipher_key(&self) -> &CipherKey;
@@ -64,10 +66,6 @@ macro_rules! symmetric_key {
                         got: bytes.len(),
                     }
                 })
-            }
-
-            fn as_bytes(&self) -> &[u8] {
-                self.0.as_slice()
             }
 
             fn cipher_key(&self) -> &$crate::crypto::CipherKey {

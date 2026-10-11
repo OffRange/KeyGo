@@ -4,7 +4,6 @@ mod ids;
 pub(crate) mod kdf;
 mod key;
 mod keys;
-pub(crate) mod random;
 
 pub use cipher::{Cipher, CipherKey, KEY_LEN, NONCE_LEN, Sealed};
 pub use error::{CryptoError, CryptoResult};

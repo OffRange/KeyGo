@@ -1,7 +1,7 @@
 package de.davis.keygo.rust
 
-import de.davisalessandro.keygo.rust.PasskeyInformation
-import de.davisalessandro.keygo.rust.RegistrationResponse
+import de.davisalessandro.keygo.rust.CreationInfo
+import de.davisalessandro.keygo.rust.Registration
 import de.davisalessandro.keygo.rust.RustPasskeyInterface
 
 class FakePasskeyManager : RustPasskeyInterface {
@@ -20,10 +20,10 @@ class FakePasskeyManager : RustPasskeyInterface {
     var authenticateResult: String? = null
 
     /** Result returned by [register]. Throws if null. */
-    var registerResult: RegistrationResponse? = null
+    var registerResult: Registration? = null
 
     /** Result returned by [passkeyInformation]. */
-    var passkeyInformationResult: PasskeyInformation = PasskeyInformation(
+    var passkeyInformationResult: CreationInfo = CreationInfo(
         excludeCredentials = emptyList(),
         rp = "example.com",
     )
@@ -37,12 +37,12 @@ class FakePasskeyManager : RustPasskeyInterface {
         return authenticateResult ?: error("authenticateResult not set on FakePasskeyManager")
     }
 
-    override fun passkeyInformation(jsonRequest: String): PasskeyInformation {
+    override fun passkeyInformation(jsonRequest: String): CreationInfo {
         passkeyInformationCalls += jsonRequest
         return passkeyInformationResult
     }
 
-    override suspend fun register(jsonRequest: String): RegistrationResponse {
+    override suspend fun register(jsonRequest: String): Registration {
         registerCalls += jsonRequest
         return registerResult ?: error("registerResult not set on FakePasskeyManager")
     }

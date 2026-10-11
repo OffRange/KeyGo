@@ -1,9 +1,9 @@
 package de.davis.keygo.rust.passkey
 
 import de.davis.keygo.core.util.Result
+import de.davisalessandro.keygo.rust.CreationInfo
 import de.davisalessandro.keygo.rust.PasskeyException
-import de.davisalessandro.keygo.rust.PasskeyInformation
-import de.davisalessandro.keygo.rust.RegistrationResponse
+import de.davisalessandro.keygo.rust.Registration
 import de.davisalessandro.keygo.rust.RustPasskeyInterface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -23,7 +23,7 @@ suspend fun RustPasskeyInterface.authenticateWithResult(
 
 suspend fun RustPasskeyInterface.registerWithResult(
     requestJson: String
-): Result<RegistrationResponse, PasskeyException> = withContext(Dispatchers.Default) {
+): Result<Registration, PasskeyException> = withContext(Dispatchers.Default) {
     runCatching {
         register(requestJson)
     }.fold(
@@ -34,7 +34,7 @@ suspend fun RustPasskeyInterface.registerWithResult(
 
 fun RustPasskeyInterface.getPasskeyInformation(
     requestJson: String
-): Result<PasskeyInformation, PasskeyException> = runCatching {
+): Result<CreationInfo, PasskeyException> = runCatching {
     passkeyInformation(requestJson)
 }.fold(
     onSuccess = { Result.Success(it) },

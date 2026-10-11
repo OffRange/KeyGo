@@ -2,7 +2,7 @@ use crate::b64;
 use crate::backup::BackupError;
 use crate::backup::BackupKey;
 use crate::crypto::kdf::argon2::Argon2Params;
-use crate::crypto::random::random_bytes;
+use crate::crypto::kdf::new_salt;
 use crate::crypto::{AccountRootKey, Encrypts, Sealed};
 use serde::{Deserialize, Serialize};
 
@@ -79,7 +79,7 @@ pub fn seal(
     cred: BackupCredential<'_>,
     version: u32,
 ) -> Result<SealedPayload, BackupError> {
-    let salt = random_bytes::<16>();
+    let salt = new_salt();
     let (backup_key, source, kdf) = match cred {
         BackupCredential::Passphrase(passphrase) => {
             let argon_param = Argon2Params::default();
@@ -105,13 +105,13 @@ pub fn seal(
 
 pub fn open(
     header: &EncryptionHeader,
-    ciphertext: &[u8],
+    ciphertext: Vec<u8>,
     cred: BackupCredential<'_>,
     version: u32,
 ) -> Result<Vec<u8>, BackupError> {
     // Checked before deriving the key, which may cost a full Argon2 run.
-    let sealed = Sealed::from_parts(&header.nonce, ciphertext.to_vec())
-        .map_err(|_| BackupError::MalformedHeader)?;
+    let sealed =
+        Sealed::from_parts(&header.nonce, ciphertext).map_err(|_| BackupError::MalformedHeader)?;
 
     let key = match (header.source, &header.kdf, cred) {
         // Credential's source disagrees with the header's declared source.
@@ -226,7 +226,7 @@ mod tests {
     fn seal_then_open_round_trips() {
         let cred = BackupCredential::Passphrase(b"pw");
         let sealed = seal(b"hello-bytes", cred, CURRENT_VERSION).unwrap();
-        let pt = open(&sealed.header, &sealed.ciphertext, cred, CURRENT_VERSION).unwrap();
+        let pt = open(&sealed.header, sealed.ciphertext, cred, CURRENT_VERSION).unwrap();
         assert_eq!(pt, b"hello-bytes");
     }
 
@@ -235,7 +235,7 @@ mod tests {
         let cred = BackupCredential::Passphrase(b"pw");
         let mut sealed = seal(b"x", cred, CURRENT_VERSION).unwrap();
         sealed.header.nonce.push(0);
-        let err = open(&sealed.header, &sealed.ciphertext, cred, CURRENT_VERSION).unwrap_err();
+        let err = open(&sealed.header, sealed.ciphertext, cred, CURRENT_VERSION).unwrap_err();
         assert!(matches!(err, BackupError::MalformedHeader));
     }
 
@@ -252,7 +252,7 @@ mod tests {
         let ark = AccountRootKey::from_bytes(&[5u8; 32]).unwrap();
         let cred = BackupCredential::Ark(&ark);
         let sealed = seal(b"hello-ark", cred, CURRENT_VERSION).unwrap();
-        let pt = open(&sealed.header, &sealed.ciphertext, cred, CURRENT_VERSION).unwrap();
+        let pt = open(&sealed.header, sealed.ciphertext, cred, CURRENT_VERSION).unwrap();
         assert_eq!(pt, b"hello-ark");
     }
 
@@ -263,7 +263,7 @@ mod tests {
         let mut sealed = seal(b"x", cred, CURRENT_VERSION).unwrap();
         // Header still says source=Ark but now carries a passphrase-style KDF.
         sealed.header.kdf = Kdf::argon2id(vec![1u8; 16], Argon2Params::default());
-        let err = open(&sealed.header, &sealed.ciphertext, cred, CURRENT_VERSION).unwrap_err();
+        let err = open(&sealed.header, sealed.ciphertext, cred, CURRENT_VERSION).unwrap_err();
         assert!(matches!(err, BackupError::MalformedHeader));
     }
 
@@ -272,7 +272,7 @@ mod tests {
         let cred = BackupCredential::Passphrase(b"pw");
         let mut sealed = seal(b"x", cred, CURRENT_VERSION).unwrap();
         sealed.header.kdf = Kdf::hkdf_sha256(vec![1u8; 16]);
-        let err = open(&sealed.header, &sealed.ciphertext, cred, CURRENT_VERSION).unwrap_err();
+        let err = open(&sealed.header, sealed.ciphertext, cred, CURRENT_VERSION).unwrap_err();
         assert!(matches!(err, BackupError::MalformedHeader));
     }
 
@@ -286,7 +286,7 @@ mod tests {
         if let Kdf::Argon2id { mem_kib, .. } = &mut sealed.header.kdf {
             *mem_kib = MAX_ARGON2_MEM_KIB + 1;
         }
-        let err = open(&sealed.header, &sealed.ciphertext, cred, CURRENT_VERSION).unwrap_err();
+        let err = open(&sealed.header, sealed.ciphertext, cred, CURRENT_VERSION).unwrap_err();
         assert!(matches!(
             err,
             BackupError::Crypto(CryptoError::Argon2MemoryTooHigh { .. })

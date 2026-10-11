@@ -32,8 +32,8 @@ impl From<CorePasskeyError> for PasskeyError {
     }
 }
 
-#[derive(uniffi::Record)]
-pub struct RegistrationResponse {
+#[uniffi::remote(Record)]
+pub struct Registration {
     pub response: String,
     pub user_name: String,
     pub user_display_name: String,
@@ -42,32 +42,10 @@ pub struct RegistrationResponse {
     pub rp: String,
 }
 
-impl From<Registration> for RegistrationResponse {
-    fn from(value: Registration) -> Self {
-        Self {
-            response: value.response,
-            user_name: value.user_name,
-            user_display_name: value.user_display_name,
-            credential_id: value.credential_id,
-            private_key: value.private_key,
-            rp: value.rp,
-        }
-    }
-}
-
-#[derive(uniffi::Record)]
-pub struct PasskeyInformation {
+#[uniffi::remote(Record)]
+pub struct CreationInfo {
     pub exclude_credentials: Vec<Vec<u8>>,
     pub rp: String,
-}
-
-impl From<CreationInfo> for PasskeyInformation {
-    fn from(value: CreationInfo) -> Self {
-        Self {
-            exclude_credentials: value.exclude_credentials,
-            rp: value.rp,
-        }
-    }
 }
 
 #[derive(uniffi::Object)]
@@ -80,18 +58,12 @@ impl RustPasskey {
         Arc::new(Self)
     }
 
-    pub async fn register(
-        &self,
-        json_request: String,
-    ) -> Result<RegistrationResponse, PasskeyError> {
-        Ok(core::register(&json_request).await?.into())
+    pub async fn register(&self, json_request: String) -> Result<Registration, PasskeyError> {
+        Ok(core::register(&json_request).await?)
     }
 
-    pub fn passkey_information(
-        &self,
-        json_request: String,
-    ) -> Result<PasskeyInformation, PasskeyError> {
-        Ok(core::creation_info(&json_request)?.into())
+    pub fn passkey_information(&self, json_request: String) -> Result<CreationInfo, PasskeyError> {
+        Ok(core::creation_info(&json_request)?)
     }
 
     pub async fn authenticate(

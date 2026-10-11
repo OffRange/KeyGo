@@ -66,23 +66,17 @@ impl RootKEK {
     }
 }
 
-impl AccountRootKey {
-    pub fn generate() -> Self {
-        Self(CipherKey::generate())
-    }
+macro_rules! impl_generate {
+    ($($key:ident),+) => {
+        $(impl $key {
+            pub fn generate() -> Self {
+                Self(CipherKey::generate())
+            }
+        })+
+    };
 }
 
-impl VaultKey {
-    pub fn generate() -> Self {
-        Self(CipherKey::generate())
-    }
-}
-
-impl ItemKey {
-    pub fn generate() -> Self {
-        Self(CipherKey::generate())
-    }
-}
+impl_generate!(AccountRootKey, VaultKey, ItemKey);
 
 #[cfg(test)]
 mod tests {

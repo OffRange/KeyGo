@@ -32,8 +32,6 @@ pub enum ItemCryptoError {
     EncryptionFailed,
     #[error("Decryption failed: ciphertext invalid or tampered")]
     DecryptionFailed,
-    #[error("Invalid key material")]
-    InvalidKey,
     #[error("Invalid key length: expected {expected} bytes, got {got} bytes")]
     InvalidKeyLength { expected: u64, got: u64 },
     #[error("{0}")]

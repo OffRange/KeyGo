@@ -26,7 +26,7 @@ pub fn export(backup: &Backup, cred: BackupCredential<'_>) -> Result<String, Bac
 pub fn import(data: &str, cred: BackupCredential<'_>) -> Result<Backup, BackupError> {
     let env = parse_envelope(data)?;
     let ciphertext = b64::decode(&env.payload).map_err(|_| BackupError::Base64)?;
-    let payload_bytes = encryption::open(&env.encryption, &ciphertext, cred, env.version)?;
+    let payload_bytes = encryption::open(&env.encryption, ciphertext, cred, env.version)?;
     Ok(serde_json::from_slice(&payload_bytes)?)
 }
 

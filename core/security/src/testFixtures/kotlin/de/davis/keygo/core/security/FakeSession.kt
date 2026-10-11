@@ -71,7 +71,7 @@ class FakeSession(startUnlocked: Boolean = false) : Session {
         if (failDerivation) return Result.Failure(SessionError.Derivation("forced"))
 
         val recovered = unwrap(kek(password, salt), wrapped, userId)
-            ?: return Result.Failure(SessionError.KeyWrap(KeyWrapException.UnwrapFailed()))
+            ?: return Result.Failure(SessionError.WrongPassword)
 
         ark = recovered
         _isActive.value = true
