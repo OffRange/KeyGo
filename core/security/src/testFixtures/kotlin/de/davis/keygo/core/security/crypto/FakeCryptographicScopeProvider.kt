@@ -2,6 +2,7 @@ package de.davis.keygo.core.security.crypto
 
 import de.davis.keygo.core.item.domain.alias.ItemId
 import de.davis.keygo.core.item.domain.model.KeyInformation
+import de.davis.keygo.core.item.domain.model.SecretKind
 import de.davis.keygo.core.item.domain.repository.ItemRepository
 import de.davis.keygo.core.security.domain.crypto.CryptographicScope
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
@@ -11,7 +12,6 @@ import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformati
 import de.davis.keygo.core.security.domain.model.CryptoScopeError
 import de.davis.keygo.core.util.Result
 import java.util.Collections
-import java.util.UUID
 import kotlin.coroutines.CoroutineContext
 import kotlin.experimental.xor
 
@@ -21,15 +21,13 @@ class FakeCryptographicScopeProvider(
 
     sealed interface CallHistory {
 
-        class EncryptCall(val label: String, val plaintext: ByteArray) : CallHistory
-        class DecryptCall(val label: String, val data: ByteArray) : CallHistory
+        class EncryptCall(val kind: SecretKind, val plaintext: ByteArray) : CallHistory
+        class DecryptCall(val kind: SecretKind, val data: ByteArray) : CallHistory
         class RewrapCall(
             val sourceVault: WrappedVaultKeyInformation,
             val sourceItem: WrappedItemKeyInformation,
             val destinationVault: WrappedVaultKeyInformation,
         ) : CallHistory
-
-        class AccountScopeCall(val namespace: UUID, val hadKey: Boolean) : CallHistory
     }
 
     // Synchronized: BackupCollector calls encrypt/decrypt concurrently across items, and this
@@ -39,9 +37,6 @@ class FakeCryptographicScopeProvider(
         get() = callHistory.filterIsInstance<CallHistory.EncryptCall>()
     val rewrapCalls
         get() = callHistory.filterIsInstance<CallHistory.RewrapCall>()
-    val accountScopeCalls
-        get() = callHistory.filterIsInstance<CallHistory.AccountScopeCall>()
-
 
     /** Result returned by the next [rewrapItemKey] call. */
     var rewrapResult: Result<KeyInformation, CryptoScopeError> =
@@ -81,17 +76,6 @@ class FakeCryptographicScopeProvider(
         return block(recordingScope()).let(Result<R, CryptoScopeError>::Success)
     }
 
-    override suspend fun <R> accountScope(
-        namespace: UUID,
-        wrapped: KeyInformation?,
-        block: suspend CryptographicScope.() -> R
-    ): Result<R, CryptoScopeError> {
-        callHistory += CallHistory.AccountScopeCall(namespace, wrapped != null)
-        itemScopeFailure?.let { return Result.Failure(it) }
-
-        return block(recordingScope()).let(Result<R, CryptoScopeError>::Success)
-    }
-
     override suspend fun rewrapItemKey(
         sourceVault: WrappedVaultKeyInformation,
         sourceItem: WrappedItemKeyInformation,
@@ -103,18 +87,18 @@ class FakeCryptographicScopeProvider(
 
     private fun recordingScope() = object : CryptographicScope {
         override suspend fun ByteArray.encrypt(
-            label: String,
+            kind: SecretKind,
             context: CoroutineContext,
         ): CryptographicData {
-            callHistory += CallHistory.EncryptCall(label, this.copyOf())
+            callHistory += CallHistory.EncryptCall(kind, this.copyOf())
             return CryptographicData(data = transform(this), iv = IV)
         }
 
         override suspend fun CryptographicData.decrypt(
-            label: String,
+            kind: SecretKind,
             context: CoroutineContext,
         ): ByteArray {
-            callHistory += CallHistory.DecryptCall(label, this.data.copyOf())
+            callHistory += CallHistory.DecryptCall(kind, this.data.copyOf())
             return transform(data)
         }
 

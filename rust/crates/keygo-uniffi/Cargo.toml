@@ -1,0 +1,16 @@
+[package]
+name = "keygo-uniffi"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "keygo_bindings"
+crate-type = ["cdylib"]
+
+[dependencies]
+keygo-core = { path = "../keygo-core" }
+thiserror.workspace = true
+uuid.workspace = true
+
+tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
+uniffi = { workspace = true, features = ["tokio"] }

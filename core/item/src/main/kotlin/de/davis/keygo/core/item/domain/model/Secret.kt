@@ -52,8 +52,17 @@ interface SecretField<T> {
     val blueprint: SecretBlueprint<T, out SecretField<T>>
 }
 
+enum class SecretKind {
+    Password,
+    CardNumber,
+    Cvv,
+    PasskeyPrivateKey,
+    TotpSecret,
+    PasswordHealthReport,
+}
+
 abstract class SecretBlueprint<T, F : SecretField<T>> {
-    abstract val label: String
+    abstract val kind: SecretKind
     abstract val codec: SecretCodec<T>
 
     abstract fun createField(payload: EncryptedPayload): F

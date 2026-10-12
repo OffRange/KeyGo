@@ -23,6 +23,6 @@ dependencies {
     testImplementation(testFixtures(projects.core.identity))
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.security))
-    testImplementation(testFixtures(projects.rust))
+    testImplementation(testFixtures(projects.core.rust))
     testImplementation(testFixtures(projects.feature.autofill))
 }

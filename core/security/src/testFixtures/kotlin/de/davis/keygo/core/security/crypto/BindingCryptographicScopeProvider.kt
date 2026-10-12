@@ -6,13 +6,12 @@ import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.CryptographicScopeProvider
 import de.davisalessandro.keygo.rust.ItemManagerInterface
 import de.davisalessandro.keygo.rust.KeyWrapperInterface
-import de.davisalessandro.keygo.rust.VaultManagerInterface
 
 /**
  * Constructs the production [CryptographicScopeProvider] backed by the supplied fakes.
  *
  * Use when a test depends on the AAD-binding semantics: ciphertext bound to
- * (vaultId, itemId, label), item keys wrapped under the vault key. For tests
+ * (vaultId, itemId, secret kind), item keys wrapped under the vault key. For tests
  * that only need a deterministic round-trip with no AAD enforcement,
  * [FakeCryptographicScopeProvider] is simpler.
  */
@@ -22,11 +21,9 @@ fun BindingCryptographicScopeProvider(
     itemRepository: ItemRepository,
     itemManager: ItemManagerInterface,
     keyWrapper: KeyWrapperInterface,
-    vaultManager: VaultManagerInterface,
 ): CryptographicScopeProvider = CryptographicScopeProviderImpl(
     session = session,
     itemRepository = itemRepository,
     itemManager = itemManager,
     keyWrapper = keyWrapper,
-    vaultManager = vaultManager,
 )

@@ -1,14 +1,13 @@
 package de.davis.keygo.feature.password_health.data.repository
 
 import com.google.protobuf.kotlin.toByteString
-import de.davis.keygo.core.item.FakeItemRepository
 import de.davis.keygo.core.item.domain.model.KeyInformation
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.item.domain.model.SecretKind
 import de.davis.keygo.core.security.FakeSession
-import de.davis.keygo.core.security.crypto.BindingCryptographicScopeProvider
-import de.davis.keygo.core.security.domain.SessionError
+import de.davis.keygo.core.security.crypto.BindingAccountRecordSealer
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
-import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.security.domain.crypto.model.SealedAccountRecord
 import de.davis.keygo.core.util.assertFailure
 import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.feature.password_health.data.local.model.ProtoHealthReportStore
@@ -26,30 +25,22 @@ import de.davis.keygo.feature.password_health.domain.model.StoredHealthReport
 import de.davis.keygo.feature.password_health.domain.report.breach
 import de.davis.keygo.feature.password_health.domain.report.id
 import de.davis.keygo.feature.password_health.domain.report.storedItem
-import de.davis.keygo.rust.FakeItemManager
-import de.davis.keygo.rust.FakeKeyWrapper
-import de.davis.keygo.rust.FakeVaultManager
 import kotlinx.coroutines.test.runTest
 import java.io.ByteArrayOutputStream
 import java.util.UUID
 import java.util.zip.GZIPOutputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 class HealthReportStoreRepositoryImplTest {
 
     private val session = FakeSession(startUnlocked = true)
-    private val provider = BindingCryptographicScopeProvider(
-        session = session,
-        itemRepository = FakeItemRepository(),
-        itemManager = FakeItemManager(),
-        keyWrapper = FakeKeyWrapper(),
-        vaultManager = FakeVaultManager(),
-    )
+    private val sealer = BindingAccountRecordSealer(session)
     private val dataStore = FakeDataStore(ProtoHealthReportStore.getDefaultInstance())
-    private val repository = HealthReportStoreRepositoryImpl(dataStore, provider)
+    private val repository = HealthReportStoreRepositoryImpl(dataStore, sealer)
 
     private val report = StoredHealthReport(
         items = listOf(
@@ -57,7 +48,12 @@ class HealthReportStoreRepositoryImplTest {
             storedItem(id(1), breach = breach(0, CHECKED_AT)),
             storedItem(id(2), unreadable = true),
         ),
-        relationalFindings = listOf(HealthFinding.Relation(setOf(id(0), id(1)), RelationType.Reused)),
+        relationalFindings = listOf(
+            HealthFinding.Relation(
+                setOf(id(0), id(1)),
+                RelationType.Reused
+            )
+        ),
         gaps = mapOf(CheckKind.Breach to CheckGap(GapReason.Unreachable, setOf(id(2)))),
         breachCheckEnabled = true,
     )
@@ -97,46 +93,44 @@ class HealthReportStoreRepositoryImplTest {
     }
 
     @Test
-    fun laterReportsReuseTheFirstKey() = runTest {
+    fun everyReportGetsAFreshKey() = runTest {
         repository.storeReport(report).assertSuccess()
         val firstKey = dataStore.state.value.wrappedKey
 
-        repository.storeReport(report.copy(breachCheckEnabled = false)).assertSuccess()
+        repository.storeReport(report).assertSuccess()
 
-        assertEquals(firstKey, dataStore.state.value.wrappedKey)
+        assertNotEquals(firstKey, dataStore.state.value.wrappedKey)
     }
 
     @Test
     fun aLockedSessionCannotStoreAndLeavesTheStoreUntouched() = runTest {
         val locked = HealthReportStoreRepositoryImpl(
             dataStore,
-            BindingCryptographicScopeProvider(
-                session = FakeSession(startUnlocked = false),
-                itemRepository = FakeItemRepository(),
-                itemManager = FakeItemManager(),
-                keyWrapper = FakeKeyWrapper(),
-                vaultManager = FakeVaultManager(),
-            ),
+            BindingAccountRecordSealer(FakeSession(startUnlocked = false)),
         )
 
-        assertEquals(HealthReportStoreError.CryptoFailed, locked.storeReport(report).assertFailure())
+        assertEquals(
+            HealthReportStoreError.CryptoFailed,
+            locked.storeReport(report).assertFailure()
+        )
         assertEquals(ProtoHealthReportStore.getDefaultInstance(), dataStore.state.value)
     }
 
+    /** Also the upgrade from 2.1.0, whose reports were sealed under another AAD. */
     @Test
-    fun aKeyThatWillNotUnwrapIsACryptoFailureOnStore() = runTest {
+    fun aReportWhoseKeyWillNotUnwrapIsReplacedByTheNextStore() = runTest {
         repository.storeReport(report).assertSuccess()
-        val before = dataStore.state.value
-        session.unwrapVaultKeyFailure = SessionError.Locked
+        damageTheWrappedKey()
 
-        assertEquals(HealthReportStoreError.CryptoFailed, repository.storeReport(report).assertFailure())
-        assertEquals(before, dataStore.state.value)
+        repository.storeReport(report).assertSuccess()
+
+        assertEquals(report, repository.load().assertSuccess())
     }
 
     @Test
     fun aKeyThatWillNotUnwrapIsACryptoFailureOnLoad() = runTest {
         repository.storeReport(report).assertSuccess()
-        session.unwrapVaultKeyFailure = SessionError.Locked
+        damageTheWrappedKey()
 
         assertEquals(HealthReportStoreError.CryptoFailed, repository.load().assertFailure())
     }
@@ -172,29 +166,35 @@ class HealthReportStoreRepositoryImplTest {
     @Test
     fun theReportIsSealedUnderItsFixedNamespaceAndLabel() = runTest {
         repository.storeReport(report).assertSuccess()
-        val stored = dataStore.state.value
-
-        val opened = provider.accountScope(
+        val opened = sealer.open(
             namespace = REPORT_NAMESPACE,
-            wrapped = stored.wrappedKey(),
-        ) {
-            CryptographicData(stored.ciphertext.toByteArray(), stored.iv.toByteArray())
-                .decrypt(REPORT_LABEL)
-        }
+            kind = SecretKind.PasswordHealthReport,
+            record = dataStore.state.value.sealedRecord(),
+        ).assertSuccess()
 
-        assertEquals(report, (opened as Result.Success).success.toStoredHealthReport())
+        assertEquals(report, opened.toStoredHealthReport())
     }
 
     @Test
     fun theKeyIsBoundToTheReportNamespace() = runTest {
         repository.storeReport(report).assertSuccess()
 
-        val opened = provider.accountScope(
+        sealer.open(
             namespace = UUID.randomUUID(),
-            wrapped = dataStore.state.value.wrappedKey(),
-        ) { }
+            kind = SecretKind.PasswordHealthReport,
+            record = dataStore.state.value.sealedRecord(),
+        ).assertFailure()
+    }
 
-        assertTrue(opened is Result.Failure)
+    @Test
+    fun theDataIsBoundToTheReportLabel() = runTest {
+        repository.storeReport(report).assertSuccess()
+
+        sealer.open(
+            namespace = REPORT_NAMESPACE,
+            kind = SecretKind.Password,
+            record = dataStore.state.value.sealedRecord(),
+        ).assertFailure()
     }
 
     @Test
@@ -259,16 +259,30 @@ class HealthReportStoreRepositoryImplTest {
 
     /** Replaces the stored report with [plaintext], sealed the way the repository seals one. */
     private suspend fun seal(plaintext: ByteArray) {
-        val stored = dataStore.state.value
-        val sealed = provider.accountScope(REPORT_NAMESPACE, stored.wrappedKey()) {
-            plaintext.encrypt(REPORT_LABEL)
-        }.assertSuccess()
+        val sealed = sealer.seal(
+            namespace = REPORT_NAMESPACE,
+            kind = SecretKind.PasswordHealthReport,
+            plaintext = plaintext,
+        ).assertSuccess()
 
-        dataStore.state.value = stored.toBuilder()
-            .setCiphertext(sealed.data.toByteString())
-            .setIv(sealed.iv.toByteString())
+        dataStore.state.value = dataStore.state.value.toBuilder()
+            .setWrappedKey(sealed.wrappedKey.wrappedKey.toByteString())
+            .setWrappedKeyNonce(sealed.wrappedKey.keyNonce.toByteString())
+            .setCiphertext(sealed.data.data.toByteString())
+            .setIv(sealed.data.iv.toByteString())
             .build()
     }
+
+    private fun damageTheWrappedKey() {
+        val stored = dataStore.state.value
+        val damaged = stored.wrappedKey.toByteArray().also { it[0] = (it[0] + 1).toByte() }
+        dataStore.state.value = stored.toBuilder().setWrappedKey(damaged.toByteString()).build()
+    }
+
+    private fun ProtoHealthReportStore.sealedRecord() = SealedAccountRecord(
+        wrappedKey = wrappedKey(),
+        data = CryptographicData(ciphertext.toByteArray(), iv.toByteArray()),
+    )
 
     private fun ProtoHealthReportStore.wrappedKey() = KeyInformation(
         wrappedKey = wrappedKey.toByteArray(),
@@ -282,8 +296,7 @@ class HealthReportStoreRepositoryImplTest {
     private companion object {
         val CHECKED_AT: Instant = Instant.fromEpochMilliseconds(1_700_000_000_000)
 
-        // Pinned on purpose: changing either makes every stored report undecryptable.
+        // Pinned on purpose: changing it makes every stored report unreadable.
         val REPORT_NAMESPACE: UUID = UUID.fromString("39050172-ce6d-4f4d-8787-6e12ab44eb0e")
-        const val REPORT_LABEL = "password_health_report"
     }
 }

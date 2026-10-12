@@ -36,7 +36,7 @@ data class CreditCard(
         override val blueprint: SecretBlueprint<String, out SecretField<String>> = CardNumber
 
         companion object : SecretBlueprint<String, CardNumber>() {
-            override val label: String = "credit_card_number"
+            override val kind: SecretKind = SecretKind.CardNumber
             override val codec: SecretCodec<String> = SecretCodec.StringCodec
 
             override fun createField(payload: EncryptedPayload): CardNumber = CardNumber(payload)
@@ -49,7 +49,7 @@ data class CreditCard(
         override val blueprint: SecretBlueprint<String, out SecretField<String>> = CVV
 
         companion object : SecretBlueprint<String, CVV>() {
-            override val label: String = "credit_card_cvv"
+            override val kind: SecretKind = SecretKind.Cvv
             override val codec: SecretCodec<String> = SecretCodec.StringCodec
 
             override fun createField(payload: EncryptedPayload): CVV = CVV(payload)

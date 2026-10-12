@@ -65,7 +65,7 @@ android {
                 "proguard-rules.pro"
             )
 
-            // Packages symbols for the :rust cdylibs into the AAB so Play can
+            // Packages symbols for the :core:rust cdylibs into the AAB so Play can
             // symbolicate native crashes. Stripped before delivery to devices.
             ndk {
                 debugSymbolLevel = "SYMBOL_TABLE"
@@ -128,7 +128,7 @@ dependencies {
 
     implementation(libs.aboutlibraries.compose.m3)
 
-    implementation(projects.rust)
+    implementation(projects.core.rust)
     implementation(projects.core.item)
     implementation(projects.core.identity)
     implementation(projects.core.ui)

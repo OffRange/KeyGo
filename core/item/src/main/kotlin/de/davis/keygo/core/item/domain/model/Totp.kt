@@ -25,7 +25,7 @@ data class Totp(
         override val blueprint: SecretBlueprint<String, out SecretField<String>> = Secret
 
         companion object : SecretBlueprint<String, Secret>() {
-            override val label: String = "totp_secret"
+            override val kind: SecretKind = SecretKind.TotpSecret
             override val codec: SecretCodec<String> = SecretCodec.StringCodec
 
             override fun createField(payload: EncryptedPayload): Secret = Secret(payload)

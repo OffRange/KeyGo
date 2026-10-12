@@ -4,11 +4,14 @@ import de.davis.keygo.core.security.domain.ExportArk
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.SessionError
 import de.davis.keygo.core.util.Result
+import de.davisalessandro.keygo.rust.AccountRecord
 import de.davisalessandro.keygo.rust.ArkCredential
+import de.davisalessandro.keygo.rust.EncryptedItemBlob
 import de.davisalessandro.keygo.rust.KeyWrapException
 import de.davisalessandro.keygo.rust.NewAccount
 import de.davisalessandro.keygo.rust.NoHandle
 import de.davisalessandro.keygo.rust.PasswordWrapped
+import de.davisalessandro.keygo.rust.SecretKind
 import de.davisalessandro.keygo.rust.WrappedKeyBlob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -71,7 +74,7 @@ class FakeSession(startUnlocked: Boolean = false) : Session {
         if (failDerivation) return Result.Failure(SessionError.Derivation("forced"))
 
         val recovered = unwrap(kek(password, salt), wrapped, userId)
-            ?: return Result.Failure(SessionError.KeyWrap(KeyWrapException.UnwrapFailed()))
+            ?: return Result.Failure(SessionError.WrongPassword)
 
         ark = recovered
         _isActive.value = true
@@ -154,6 +157,38 @@ class FakeSession(startUnlocked: Boolean = false) : Session {
         return Result.Success(recovered)
     }
 
+    override suspend fun sealAccountRecord(
+        namespace: UUID,
+        kind: SecretKind,
+        plaintext: ByteArray,
+    ): Result<AccountRecord, SessionError> {
+        val active = ark ?: return Result.Failure(SessionError.Locked)
+        val key = randomBytes(32)
+        val data = wrap(key, plaintext, recordId(namespace, kind))
+
+        return Result.Success(
+            AccountRecord(
+                wrappedKey = wrap(active, key, namespace),
+                data = EncryptedItemBlob(ciphertext = data.ciphertext, nonce = data.nonce),
+            ),
+        )
+    }
+
+    override suspend fun openAccountRecord(
+        namespace: UUID,
+        kind: SecretKind,
+        record: AccountRecord,
+    ): Result<ByteArray, SessionError> {
+        val active = ark ?: return Result.Failure(SessionError.Locked)
+        val key = unwrap(active, record.wrappedKey, namespace)
+            ?: return Result.Failure(SessionError.KeyWrap(KeyWrapException.UnwrapFailed()))
+        val data = WrappedKeyBlob(ciphertext = record.data.ciphertext, nonce = record.data.nonce)
+
+        return unwrap(key, data, recordId(namespace, kind))
+            ?.let { Result.Success(it) }
+            ?: Result.Failure(SessionError.DecryptionFailed)
+    }
+
     override fun endSession() {
         ark = null
         _isActive.value = false
@@ -208,6 +243,10 @@ class FakeSession(startUnlocked: Boolean = false) : Session {
             (data[i].toInt() xor mask).toByte()
         }
     }
+
+    /** Binds a record's data to its kind as well as its namespace, as the Rust AAD does. */
+    private fun recordId(namespace: UUID, kind: SecretKind): UUID =
+        UUID.nameUUIDFromBytes("$namespace/$kind".toByteArray())
 
     private fun randomBytes(size: Int): ByteArray = random.nextBytes(size)
 

@@ -14,12 +14,12 @@ dependencies {
     implementation(projects.core.ui)
     implementation(projects.legacyMigration)
 
-    testImplementation(projects.rust)
+    testImplementation(projects.core.rust)
     testImplementation(libs.robolectric)
     testImplementation(testFixtures(projects.core.biometrics))
     testImplementation(testFixtures(projects.core.identity))
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.security))
-    testImplementation(testFixtures(projects.rust))
+    testImplementation(testFixtures(projects.core.rust))
     testImplementation(testFixtures(projects.legacyMigration))
 }

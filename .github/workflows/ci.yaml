@@ -43,7 +43,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: ./rust/rust-code
+        working-directory: ./rust
 
     steps:
       - uses: actions/checkout@v6
@@ -52,7 +52,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            rust/rust-code/target
+            rust/target
           key: ${{ runner.os }}-cargo-host-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-host-
       - name: Check formatting
@@ -68,7 +68,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: ./rust/rust-code
+        working-directory: ./rust
 
     steps:
       - uses: actions/checkout@v6
@@ -77,7 +77,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            rust/rust-code/target
+            rust/target
           key: ${{ runner.os }}-cargo-host-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-host-
       - name: Build
@@ -113,7 +113,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            rust/rust-code/target
+            rust/target
           key: ${{ runner.os }}-cargo-android-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-android-
       - name: Grant execute permission for gradlew

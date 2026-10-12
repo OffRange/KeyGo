@@ -26,7 +26,7 @@ dependencies {
     implementation(projects.core.util)
     implementation(projects.core.item)
     implementation(projects.core.security)
-    implementation(projects.rust)
+    implementation(projects.core.rust)
     implementation(projects.feature.item.core)
     implementation(projects.feature.vault)
 
@@ -34,7 +34,7 @@ dependencies {
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.security))
     testImplementation(testFixtures(projects.core.util))
-    testImplementation(testFixtures(projects.rust))
+    testImplementation(testFixtures(projects.core.rust))
     testImplementation(libs.robolectric)
 
     testFixturesApi(projects.core.util)

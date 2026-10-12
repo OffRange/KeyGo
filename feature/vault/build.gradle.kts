@@ -11,11 +11,11 @@ dependencies {
     implementation(projects.core.ui)
     implementation(projects.core.util)
     implementation(projects.core.security)
-    implementation(projects.rust)
+    implementation(projects.core.rust)
 
     testImplementation(testFixtures(projects.core.util))
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.security))
-    testImplementation(testFixtures(projects.rust))
+    testImplementation(testFixtures(projects.core.rust))
 
 }

@@ -19,6 +19,6 @@ dependencies {
 
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.security))
-    testImplementation(testFixtures(projects.rust))
+    testImplementation(testFixtures(projects.core.rust))
 
 }

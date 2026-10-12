@@ -5,11 +5,13 @@ import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.SessionError
 import de.davis.keygo.core.security.domain.toSessionError
 import de.davis.keygo.core.util.Result
+import de.davisalessandro.keygo.rust.AccountRecord
 import de.davisalessandro.keygo.rust.ArkCredential
 import de.davisalessandro.keygo.rust.ArkSessionException
 import de.davisalessandro.keygo.rust.ArkSessionInterface
 import de.davisalessandro.keygo.rust.NewAccount
 import de.davisalessandro.keygo.rust.PasswordWrapped
+import de.davisalessandro.keygo.rust.SecretKind
 import de.davisalessandro.keygo.rust.WrappedKeyBlob
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -78,6 +80,22 @@ internal class SessionImpl(
         vaultId: UUID,
     ): Result<ByteArray, SessionError> = withContext(Dispatchers.Default) {
         catching { binding.unwrapVaultKey(wrapped, vaultId) }
+    }
+
+    override suspend fun sealAccountRecord(
+        namespace: UUID,
+        kind: SecretKind,
+        plaintext: ByteArray,
+    ): Result<AccountRecord, SessionError> = withContext(Dispatchers.Default) {
+        catching { binding.sealAccountRecord(namespace, kind, plaintext) }
+    }
+
+    override suspend fun openAccountRecord(
+        namespace: UUID,
+        kind: SecretKind,
+        record: AccountRecord,
+    ): Result<ByteArray, SessionError> = withContext(Dispatchers.Default) {
+        catching { binding.openAccountRecord(namespace, kind, record) }
     }
 
     override fun endSession() {

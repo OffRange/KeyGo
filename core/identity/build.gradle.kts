@@ -15,7 +15,7 @@ dependencies {
     api(projects.core.biometrics)
     api(projects.core.security)
     implementation(projects.core.item)
-    implementation(projects.rust)
+    implementation(projects.core.rust)
 
     // Datastore
     implementation(libs.androidx.datastore)
@@ -25,8 +25,8 @@ dependencies {
     testImplementation(testFixtures(projects.core.item))
     testImplementation(testFixtures(projects.core.security))
     testImplementation(testFixtures(projects.core.util))
-    testImplementation(testFixtures(projects.rust))
+    testImplementation(testFixtures(projects.core.rust))
 
     testFixturesApi(projects.core.util)
-    testFixturesImplementation(projects.rust)
+    testFixturesImplementation(projects.core.rust)
 }

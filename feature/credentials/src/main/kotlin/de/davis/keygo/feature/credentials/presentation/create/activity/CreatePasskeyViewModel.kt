@@ -25,7 +25,7 @@ import de.davis.keygo.feature.item.core.domain.usecase.CreateNewOrUpdateLoginUse
 import de.davis.keygo.rust.passkey.PasskeyManager
 import de.davis.keygo.rust.passkey.getPasskeyInformation
 import de.davis.keygo.rust.passkey.registerWithResult
-import de.davisalessandro.keygo.rust.RegistrationResponse
+import de.davisalessandro.keygo.rust.Registration
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -146,7 +146,7 @@ internal class CreatePasskeyViewModel(
         }
     }
 
-    private fun RegistrationResponse.toNewPasskey() = NewPasskey(
+    private fun Registration.toNewPasskey() = NewPasskey(
         credentialId = credentialId,
         rp = rp,
         user = PasskeyUser(name = userName, displayName = userDisplayName),

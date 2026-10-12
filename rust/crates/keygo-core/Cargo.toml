@@ -1,0 +1,35 @@
+[package]
+name = "keygo-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+uuid.workspace = true
+zeroize.workspace = true
+
+aead = "0.6.0"
+aes-gcm-siv = "0.12.1"
+async-trait = "0.1.89"
+ciborium = "0.2.2"
+coset = "0.4.2"
+passkey = "0.6.0"
+passkey-authenticator = { version = "0.6.0", features = ["tokio"] }
+# Needed so passkey JSON responses are serialized into base64 strings
+passkey-types = { version = "0.6.0", features = ["serialize_bytes_as_base64_string"] }
+
+argon2 = "0.6.0"
+base64 = "0.23.1"
+bcs = "0.2.0"
+csv = "1.4.0"
+email_address = "0.2.9"
+hkdf = "0.13.0"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+sha2 = "0.11.0"
+subtle = "2.6"
+totp-rs = { version = "6.0.0", features = ["otpauth", "zeroize"] }
+url = "2.5.8"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }

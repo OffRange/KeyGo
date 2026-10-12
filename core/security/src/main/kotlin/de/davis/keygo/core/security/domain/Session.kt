@@ -3,10 +3,12 @@ package de.davis.keygo.core.security.domain
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.resultBinding
+import de.davisalessandro.keygo.rust.AccountRecord
 import de.davisalessandro.keygo.rust.ArkCredential
 import de.davisalessandro.keygo.rust.ArkSessionException
 import de.davisalessandro.keygo.rust.NewAccount
 import de.davisalessandro.keygo.rust.PasswordWrapped
+import de.davisalessandro.keygo.rust.SecretKind
 import de.davisalessandro.keygo.rust.WrappedKeyBlob
 import kotlinx.coroutines.flow.StateFlow
 import java.util.UUID
@@ -59,6 +61,22 @@ interface Session {
         vaultId: UUID,
     ): Result<ByteArray, SessionError>
 
+    /**
+     * Seals [plaintext] as the account-wide record [namespace], under a fresh key each time. The
+     * namespace key never leaves Rust.
+     */
+    suspend fun sealAccountRecord(
+        namespace: UUID,
+        kind: SecretKind,
+        plaintext: ByteArray,
+    ): Result<AccountRecord, SessionError>
+
+    suspend fun openAccountRecord(
+        namespace: UUID,
+        kind: SecretKind,
+        record: AccountRecord,
+    ): Result<ByteArray, SessionError>
+
     fun endSession()
 }
 
@@ -87,5 +105,6 @@ internal fun ArkSessionException.toSessionError(): SessionError = when (this) {
     is ArkSessionException.Locked -> SessionError.Locked
     is ArkSessionException.WrongPassword -> SessionError.WrongPassword
     is ArkSessionException.Derivation -> SessionError.Derivation(v1)
+    is ArkSessionException.DecryptionFailed -> SessionError.DecryptionFailed
     is ArkSessionException.KeyWrap -> SessionError.KeyWrap(v1)
 }
