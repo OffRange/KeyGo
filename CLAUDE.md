@@ -84,6 +84,7 @@ Password / Biometric
       ↓ unwrap
    ARK (Account Root Key) ────── Session (in-memory); wrapped in account_registry.pb;
                                  optionally escrowed in backup_ark_data.pb (see Backup Escrow)
+      ├─ unwrap (one per account record) → NamespaceKey ── never leaves Rust (see Account records)
       ↓ unwrap (one per vault)
    VaultKey ──────────────────── wrapped in VaultEntity.keyInformation (Room)
       ↓ unwrap (one per item)
@@ -98,6 +99,13 @@ Password / Biometric
   both inside `ProtoAccount` in `account_registry.pb`.
 - **VaultKey / ItemKey** — wrapped with AES-256-GCM; moving items between vaults
   re-wraps only the ItemKey, not the ciphertext.
+- **Account records** — data owned by the account rather than a vault (the password-health
+  report) goes through `AccountRecordSealer`: a fresh `NamespaceKey` per seal, wrapped by the ARK.
+  Both AADs carry a domain tag (`v1:ns/key`, `v1:ns/data`) so they never encode like a vault's or
+  an item's. Seal and open run inside Rust (`ArkSession.seal_record` / `open_record`); the key never
+  crosses UniFFI. Only recomputable caches belong here: 2.1.0 reports used another layout and are
+  simply rescanned. The namespace UUID and domains are on-disk identity, pinned by
+  `namespace_aads_are_pinned` and `account_record_still_opens`.
 - **AAD** (`itemId + vaultId`) — bound to every ciphertext; prevents transplant attacks.
 - **Rust FFI** (`de.davis.keygo.rust`) implements all wrap/unwrap/derive operations.
 

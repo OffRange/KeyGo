@@ -12,7 +12,6 @@ import de.davis.keygo.core.security.domain.crypto.model.WrappedVaultKeyInformati
 import de.davis.keygo.core.security.domain.model.CryptoScopeError
 import de.davis.keygo.core.util.Result
 import java.util.Collections
-import java.util.UUID
 import kotlin.coroutines.CoroutineContext
 import kotlin.experimental.xor
 
@@ -29,8 +28,6 @@ class FakeCryptographicScopeProvider(
             val sourceItem: WrappedItemKeyInformation,
             val destinationVault: WrappedVaultKeyInformation,
         ) : CallHistory
-
-        class AccountScopeCall(val namespace: UUID, val hadKey: Boolean) : CallHistory
     }
 
     // Synchronized: BackupCollector calls encrypt/decrypt concurrently across items, and this
@@ -40,9 +37,6 @@ class FakeCryptographicScopeProvider(
         get() = callHistory.filterIsInstance<CallHistory.EncryptCall>()
     val rewrapCalls
         get() = callHistory.filterIsInstance<CallHistory.RewrapCall>()
-    val accountScopeCalls
-        get() = callHistory.filterIsInstance<CallHistory.AccountScopeCall>()
-
 
     /** Result returned by the next [rewrapItemKey] call. */
     var rewrapResult: Result<KeyInformation, CryptoScopeError> =
@@ -77,17 +71,6 @@ class FakeCryptographicScopeProvider(
         wrappedItemKeyInformation: WrappedItemKeyInformation,
         block: suspend CryptographicScope.() -> R,
     ): Result<R, CryptoScopeError> {
-        itemScopeFailure?.let { return Result.Failure(it) }
-
-        return block(recordingScope()).let(Result<R, CryptoScopeError>::Success)
-    }
-
-    override suspend fun <R> accountScope(
-        namespace: UUID,
-        wrapped: KeyInformation?,
-        block: suspend CryptographicScope.() -> R
-    ): Result<R, CryptoScopeError> {
-        callHistory += CallHistory.AccountScopeCall(namespace, wrapped != null)
         itemScopeFailure?.let { return Result.Failure(it) }
 
         return block(recordingScope()).let(Result<R, CryptoScopeError>::Success)

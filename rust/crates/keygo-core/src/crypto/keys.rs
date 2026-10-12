@@ -2,18 +2,26 @@
 //!
 //! ```text
 //! RootKEK --UserId--> AccountRootKey --VaultId--> VaultKey --ItemAad--> ItemKey --ItemDataAad--> item data
+//!                                    \
+//!                                     --NamespaceKeyAad--> NamespaceKey --NamespaceDataAad--> account record
 //! ```
 
 use crate::crypto::kdf::argon2::{Argon2Params, derive_argon2id};
 use crate::crypto::{
-    Aad, CipherKey, CryptoResult, Encrypts, ItemId, SymmetricKey, UserId, VaultId, Wraps, aad,
-    symmetric_key,
+    Aad, CipherKey, CryptoResult, Encrypts, ItemId, NamespaceId, SymmetricKey, UserId, VaultId,
+    Wraps, aad, symmetric_key,
 };
 use aead::Generate;
 use serde::{Serialize, Serializer};
 
 /// Part of every password KEK's salt; must never change.
 const PASSWORD_DOMAIN: &[u8] = b"v1:kek/pwd";
+
+/// Part of every namespace-key wrap AAD; must never change.
+const NAMESPACE_KEY_DOMAIN: &str = "v1:ns/key";
+
+/// Part of every account-record AAD; must never change.
+const NAMESPACE_DATA_DOMAIN: &str = "v1:ns/data";
 
 symmetric_key! {
     pub struct RootKEK;
@@ -29,6 +37,11 @@ symmetric_key! {
 
 symmetric_key! {
     pub struct ItemKey;
+}
+
+symmetric_key! {
+    /// Seals one account-wide record that belongs to no vault.
+    pub struct NamespaceKey;
 }
 
 aad! {
@@ -55,6 +68,31 @@ impl Serialize for ItemDataAad {
 }
 
 impl Aad for ItemDataAad {}
+
+pub struct NamespaceKeyAad {
+    pub namespace: NamespaceId,
+}
+
+impl Serialize for NamespaceKeyAad {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        (NAMESPACE_KEY_DOMAIN, self.namespace).serialize(serializer)
+    }
+}
+
+impl Aad for NamespaceKeyAad {}
+
+pub struct NamespaceDataAad {
+    pub namespace: NamespaceId,
+    pub kind: SecretKind,
+}
+
+impl Serialize for NamespaceDataAad {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        (NAMESPACE_DATA_DOMAIN, self.namespace, self.kind.label()).serialize(serializer)
+    }
+}
+
+impl Aad for NamespaceDataAad {}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SecretKind {
@@ -96,6 +134,14 @@ impl Encrypts for ItemKey {
     type Aad = ItemDataAad;
 }
 
+impl Wraps<NamespaceKey> for AccountRootKey {
+    type Aad = NamespaceKeyAad;
+}
+
+impl Encrypts for NamespaceKey {
+    type Aad = NamespaceDataAad;
+}
+
 impl RootKEK {
     pub fn from_password(password: &[u8], salt: &[u8]) -> CryptoResult<Self> {
         let derived = derive_argon2id(password, salt, PASSWORD_DOMAIN, Argon2Params::default())?;
@@ -113,11 +159,12 @@ macro_rules! impl_generate {
     };
 }
 
-impl_generate!(AccountRootKey, VaultKey, ItemKey);
+impl_generate!(AccountRootKey, VaultKey, ItemKey, NamespaceKey);
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::crypto::Sealed;
 
     const SALT: &[u8] = &[6; 16];
 
@@ -191,6 +238,62 @@ mod tests {
         assert_eq!(
             bcs::to_bytes(&aad).unwrap(),
             bcs::to_bytes(&hand_built).unwrap()
+        );
+    }
+
+    const NAMESPACE: NamespaceId = NamespaceId(uuid::Uuid::from_u128(1));
+
+    /// Pins both namespace AAD layouts; drift makes every account record unreadable.
+    #[test]
+    fn namespace_aads_are_pinned() {
+        let id = NAMESPACE.0.as_bytes();
+        let mut key_aad = vec![9];
+        key_aad.extend_from_slice(b"v1:ns/key");
+        key_aad.push(16);
+        key_aad.extend_from_slice(id);
+
+        let mut data_aad = vec![10];
+        data_aad.extend_from_slice(b"v1:ns/data");
+        data_aad.push(16);
+        data_aad.extend_from_slice(id);
+        data_aad.push(22);
+        data_aad.extend_from_slice(b"password_health_report");
+
+        assert_eq!(
+            bcs::to_bytes(&NamespaceKeyAad {
+                namespace: NAMESPACE
+            })
+            .unwrap(),
+            key_aad
+        );
+        assert_eq!(
+            bcs::to_bytes(&NamespaceDataAad {
+                namespace: NAMESPACE,
+                kind: SecretKind::PasswordHealthReport,
+            })
+            .unwrap(),
+            data_aad
+        );
+    }
+
+    #[test]
+    fn a_wrapped_vault_key_never_unwraps_as_a_namespace_key() {
+        let ark = AccountRootKey::generate();
+        let wrapped = ark
+            .wrap_key(&VaultKey::generate(), &VaultId(NAMESPACE.0))
+            .unwrap();
+        let as_namespace_key =
+            Sealed::<NamespaceKey>::from_parts(wrapped.nonce(), wrapped.ciphertext().to_vec())
+                .unwrap();
+
+        assert!(
+            ark.unwrap_key(
+                &as_namespace_key,
+                &NamespaceKeyAad {
+                    namespace: NAMESPACE
+                }
+            )
+            .is_err()
         );
     }
 

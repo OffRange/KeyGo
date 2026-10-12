@@ -15,4 +15,4 @@ macro_rules! id {
     };
 }
 
-id!(UserId, VaultId, ItemId);
+id!(UserId, VaultId, ItemId, NamespaceId);

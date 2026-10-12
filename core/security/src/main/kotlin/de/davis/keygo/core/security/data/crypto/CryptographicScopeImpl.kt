@@ -61,7 +61,7 @@ internal class CryptographicScopeImpl(
     )
 }
 
-private fun SecretKind.toFfi(): FfiSecretKind = when (this) {
+internal fun SecretKind.toFfi(): FfiSecretKind = when (this) {
     SecretKind.Password -> FfiSecretKind.PASSWORD
     SecretKind.CardNumber -> FfiSecretKind.CARD_NUMBER
     SecretKind.Cvv -> FfiSecretKind.CVV

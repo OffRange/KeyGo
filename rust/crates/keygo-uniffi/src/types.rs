@@ -1,4 +1,4 @@
-use keygo_core::crypto::{ItemId, ItemKey, SymmetricKey, UserId, VaultId, VaultKey};
+use keygo_core::crypto::{ItemId, ItemKey, NamespaceId, SymmetricKey, UserId, VaultId, VaultKey};
 use uuid::Uuid;
 
 uniffi::custom_type!(Uuid, String, {
@@ -22,6 +22,12 @@ uniffi::custom_type!(VaultId, Uuid, {
 uniffi::custom_type!(ItemId, Uuid, {
     remote,
     try_lift: |u| Ok(ItemId(u)),
+    lower: |id| id.0,
+});
+
+uniffi::custom_type!(NamespaceId, Uuid, {
+    remote,
+    try_lift: |u| Ok(NamespaceId(u)),
     lower: |id| id.0,
 });
 

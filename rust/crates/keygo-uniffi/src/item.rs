@@ -39,7 +39,7 @@ impl From<Sealed<[u8]>> for EncryptedItemBlob {
 }
 
 impl EncryptedItemBlob {
-    fn into_sealed(self) -> Result<Sealed<[u8]>, CryptoError> {
+    pub(crate) fn into_sealed(self) -> Result<Sealed<[u8]>, CryptoError> {
         Sealed::from_parts(&self.nonce, self.ciphertext)
     }
 }

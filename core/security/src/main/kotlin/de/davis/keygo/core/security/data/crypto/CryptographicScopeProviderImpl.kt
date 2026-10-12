@@ -15,7 +15,6 @@ import de.davis.keygo.core.util.mapFailure
 import de.davis.keygo.core.util.mapSuccess
 import de.davis.keygo.core.util.resultBinding
 import de.davis.keygo.rust.item.ItemManager
-import de.davis.keygo.rust.vault.VaultManager
 import de.davis.keygo.rust.wrap.KeyWrapper
 import de.davis.keygo.rust.wrap.unwrapItemKeyWithResult
 import de.davis.keygo.rust.wrap.wrapItemKeyWithResult
@@ -23,7 +22,6 @@ import de.davisalessandro.keygo.rust.ItemAad
 import de.davisalessandro.keygo.rust.KeyWrapException
 import de.davisalessandro.keygo.rust.WrappedKeyBlob
 import org.koin.core.annotation.Single
-import java.util.UUID
 
 @Single
 internal class CryptographicScopeProviderImpl(
@@ -31,7 +29,6 @@ internal class CryptographicScopeProviderImpl(
     private val itemRepository: ItemRepository,
     private val itemManager: ItemManager,
     private val keyWrapper: KeyWrapper,
-    private val vaultManager: VaultManager,
 ) : CryptographicScopeProvider {
 
     override suspend fun <R> itemScope(
@@ -87,32 +84,6 @@ internal class CryptographicScopeProviderImpl(
         ).block()
     }
 
-    override suspend fun <R> accountScope(
-        namespace: UUID,
-        wrapped: KeyInformation?,
-        block: suspend CryptographicScope.() -> R
-    ): Result<R, CryptoScopeError> = resultBinding {
-        val (key, wrappedKey) = if (wrapped != null) {
-            val unwrapped = session.unwrapVaultKey(
-                wrapped = wrapped.toWrappedKeyBlob(),
-                vaultId = namespace,
-            ).mapFailure { it.toCryptoScopeError() }.bind()
-            unwrapped to wrapped
-        } else {
-            val fresh = vaultManager.createNewVaultKey()
-            val blob = session.wrapVaultKey(vaultKey = fresh, vaultId = namespace)
-                .mapFailure { it.toCryptoScopeError() }.bind()
-            fresh to blob.toKeyInformation()
-        }
-
-        CryptographicScopeImpl(
-            itemKey = key,
-            itemAad = ItemAad(itemId = namespace, vaultId = namespace),
-            itemManager = itemManager,
-            wrapAction = { wrappedKey },
-        ).block()
-    }
-
     override suspend fun rewrapItemKey(
         sourceVault: WrappedVaultKeyInformation,
         sourceItem: WrappedItemKeyInformation,
@@ -151,14 +122,14 @@ internal class CryptographicScopeProviderImpl(
 private fun SessionError.toCryptoScopeError(): CryptoScopeError = when (this) {
     SessionError.Locked -> CryptoScopeError.NoActiveSession
     is SessionError.KeyWrap -> CryptoScopeError.KeyWrapError(cause)
-    SessionError.WrongPassword, is SessionError.Derivation ->
+    SessionError.WrongPassword, is SessionError.Derivation, SessionError.DecryptionFailed ->
         CryptoScopeError.KeyWrapError(KeyWrapException.UnwrapFailed())
 }
 
-private fun KeyInformation.toWrappedKeyBlob() = WrappedKeyBlob(
+internal fun KeyInformation.toWrappedKeyBlob() = WrappedKeyBlob(
     ciphertext = wrappedKey,
     nonce = keyNonce
 )
 
-private fun WrappedKeyBlob.toKeyInformation(): KeyInformation =
+internal fun WrappedKeyBlob.toKeyInformation(): KeyInformation =
     KeyInformation(wrappedKey = ciphertext, keyNonce = nonce)

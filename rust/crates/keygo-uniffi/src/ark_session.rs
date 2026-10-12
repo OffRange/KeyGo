@@ -1,9 +1,10 @@
+use crate::item::EncryptedItemBlob;
 use crate::key_wrap::{KeyWrapError, WrappedKeyBlob};
 use keygo_core::ark_session::{
-    ArkSession as CoreArkSession, ArkSessionError as CoreArkSessionError,
-    NewAccount as CoreNewAccount, PasswordWrappedArk,
+    AccountRecord as CoreAccountRecord, ArkSession as CoreArkSession,
+    ArkSessionError as CoreArkSessionError, NewAccount as CoreNewAccount, PasswordWrappedArk,
 };
-use keygo_core::crypto::{CryptoError, UserId, VaultId, VaultKey};
+use keygo_core::crypto::{CryptoError, NamespaceId, SecretKind, UserId, VaultId, VaultKey};
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
@@ -14,6 +15,8 @@ pub enum ArkSessionError {
     WrongPassword,
     #[error("Key derivation failed: {0}")]
     Derivation(String),
+    #[error("Decryption failed: ciphertext invalid or tampered")]
+    DecryptionFailed,
     #[error("{0}")]
     KeyWrap(#[from] KeyWrapError),
 }
@@ -24,6 +27,7 @@ impl From<CoreArkSessionError> for ArkSessionError {
             CoreArkSessionError::Locked => Self::Locked,
             CoreArkSessionError::WrongPassword => Self::WrongPassword,
             CoreArkSessionError::Derivation(e) => Self::Derivation(e.to_string()),
+            CoreArkSessionError::KeyWrap(CryptoError::DecryptionFailed) => Self::DecryptionFailed,
             CoreArkSessionError::KeyWrap(e) => e.into(),
         }
     }
@@ -68,6 +72,30 @@ impl From<PasswordWrappedArk> for PasswordWrapped {
             salt: value.salt,
             wrapped: value.wrapped.into(),
         }
+    }
+}
+
+#[derive(uniffi::Record)]
+pub struct AccountRecord {
+    pub wrapped_key: WrappedKeyBlob,
+    pub data: EncryptedItemBlob,
+}
+
+impl From<CoreAccountRecord> for AccountRecord {
+    fn from(record: CoreAccountRecord) -> Self {
+        Self {
+            wrapped_key: record.wrapped_key.into(),
+            data: record.data.into(),
+        }
+    }
+}
+
+impl AccountRecord {
+    fn into_core(self) -> Result<CoreAccountRecord, CryptoError> {
+        Ok(CoreAccountRecord {
+            wrapped_key: self.wrapped_key.into_sealed()?,
+            data: self.data.into_sealed()?,
+        })
     }
 }
 
@@ -181,6 +209,29 @@ impl ArkSession {
         vault_id: VaultId,
     ) -> Result<WrappedKeyBlob, ArkSessionError> {
         Ok(self.session.wrap_vault_key(&vault_key, vault_id)?.into())
+    }
+
+    pub fn seal_account_record(
+        &self,
+        namespace: NamespaceId,
+        kind: SecretKind,
+        plaintext: Vec<u8>,
+    ) -> Result<AccountRecord, ArkSessionError> {
+        Ok(self
+            .session
+            .seal_record(namespace, kind, &plaintext)?
+            .into())
+    }
+
+    pub fn open_account_record(
+        &self,
+        namespace: NamespaceId,
+        kind: SecretKind,
+        record: AccountRecord,
+    ) -> Result<Vec<u8>, ArkSessionError> {
+        Ok(self
+            .session
+            .open_record(namespace, kind, &record.into_core()?)?)
     }
 
     pub fn ark_credential(self: Arc<Self>) -> Arc<ArkCredential> {

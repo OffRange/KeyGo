@@ -1,6 +1,7 @@
 use crate::crypto::kdf::new_salt;
 use crate::crypto::{
-    AccountRootKey, CryptoError, RootKEK, Sealed, SymmetricKey, UserId, VaultId, VaultKey, Wraps,
+    AccountRootKey, CryptoError, Encrypts, NamespaceDataAad, NamespaceId, NamespaceKey,
+    NamespaceKeyAad, RootKEK, Sealed, SecretKind, SymmetricKey, UserId, VaultId, VaultKey, Wraps,
 };
 use std::sync::{Mutex, MutexGuard};
 use subtle::ConstantTimeEq;
@@ -42,6 +43,12 @@ pub struct NewAccount {
     pub password_wrapped_ark: PasswordWrappedArk,
     pub vault_id: VaultId,
     pub wrapped_vault_key: Sealed<VaultKey>,
+}
+
+/// One account-wide record and the key that seals it, wrapped under the ARK.
+pub struct AccountRecord {
+    pub wrapped_key: Sealed<NamespaceKey>,
+    pub data: Sealed<[u8]>,
 }
 
 #[derive(Default)]
@@ -154,6 +161,32 @@ impl ArkSession {
         vault_id: VaultId,
     ) -> ArkSessionResult<VaultKey> {
         self.with_live_ark(|ark| Ok(ark.unwrap_key(wrapped, &vault_id)?))
+    }
+
+    /// Seals `plaintext` under a fresh key, so a record never depends on an older one opening.
+    pub fn seal_record(
+        &self,
+        namespace: NamespaceId,
+        kind: SecretKind,
+        plaintext: &[u8],
+    ) -> ArkSessionResult<AccountRecord> {
+        let key = NamespaceKey::generate();
+        let wrapped_key =
+            self.with_live_ark(|ark| Ok(ark.wrap_key(&key, &NamespaceKeyAad { namespace })?))?;
+        let data = key.encrypt(plaintext, &NamespaceDataAad { namespace, kind })?;
+        Ok(AccountRecord { wrapped_key, data })
+    }
+
+    pub fn open_record(
+        &self,
+        namespace: NamespaceId,
+        kind: SecretKind,
+        record: &AccountRecord,
+    ) -> ArkSessionResult<Vec<u8>> {
+        let key = self.with_live_ark(|ark| {
+            Ok(ark.unwrap_key(&record.wrapped_key, &NamespaceKeyAad { namespace })?)
+        })?;
+        Ok(key.decrypt(&record.data, &NamespaceDataAad { namespace, kind })?)
     }
 
     /// Runs `f` on a copy of the ARK outside the lock, so `f` may re-enter the session.
@@ -392,6 +425,86 @@ mod tests {
 
         assert!(matches!(
             session.rewrap_for_new_password("new-password", UserId::new_v4()),
+            Err(ArkSessionError::Locked)
+        ));
+    }
+
+    const NAMESPACE: NamespaceId = NamespaceId(uuid::Uuid::from_u128(
+        0x5555_5555_5555_4555_8555_5555_5555_5555,
+    ));
+    const KIND: SecretKind = SecretKind::PasswordHealthReport;
+
+    #[test]
+    fn a_sealed_record_opens_to_its_plaintext() {
+        let (session, _) = unlocked();
+
+        let record = session.seal_record(NAMESPACE, KIND, b"report").unwrap();
+
+        assert_eq!(
+            session.open_record(NAMESPACE, KIND, &record).unwrap(),
+            b"report"
+        );
+    }
+
+    #[test]
+    fn every_seal_uses_a_fresh_key() {
+        let (session, _) = unlocked();
+
+        let first = session.seal_record(NAMESPACE, KIND, b"report").unwrap();
+        let second = session.seal_record(NAMESPACE, KIND, b"report").unwrap();
+
+        assert_ne!(
+            first.wrapped_key.ciphertext(),
+            second.wrapped_key.ciphertext()
+        );
+    }
+
+    #[test]
+    fn a_record_does_not_open_under_another_namespace() {
+        let (session, _) = unlocked();
+        let record = session.seal_record(NAMESPACE, KIND, b"report").unwrap();
+
+        assert!(matches!(
+            session.open_record(NamespaceId::new_v4(), KIND, &record),
+            Err(ArkSessionError::KeyWrap(CryptoError::KeyUnwrapFailed))
+        ));
+    }
+
+    #[test]
+    fn a_record_does_not_open_as_another_kind() {
+        let (session, _) = unlocked();
+        let record = session.seal_record(NAMESPACE, KIND, b"report").unwrap();
+
+        assert!(matches!(
+            session.open_record(NAMESPACE, SecretKind::Password, &record),
+            Err(ArkSessionError::KeyWrap(CryptoError::DecryptionFailed))
+        ));
+    }
+
+    #[test]
+    fn a_record_does_not_open_under_another_account() {
+        let (session, _) = unlocked();
+        let (other, _) = unlocked();
+        let record = session.seal_record(NAMESPACE, KIND, b"report").unwrap();
+
+        assert!(matches!(
+            other.open_record(NAMESPACE, KIND, &record),
+            Err(ArkSessionError::KeyWrap(CryptoError::KeyUnwrapFailed))
+        ));
+    }
+
+    #[test]
+    fn records_need_an_unlocked_session() {
+        let (session, _) = unlocked();
+        let record = session.seal_record(NAMESPACE, KIND, b"report").unwrap();
+        session.end();
+
+        assert!(matches!(
+            session.seal_record(NAMESPACE, KIND, b"report"),
+            Err(ArkSessionError::Locked)
+        ));
+        assert!(matches!(
+            session.open_record(NAMESPACE, KIND, &record),
             Err(ArkSessionError::Locked)
         ));
     }

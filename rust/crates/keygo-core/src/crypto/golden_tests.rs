@@ -1,19 +1,23 @@
 //! Shipped ciphertexts under fixed keys. They must keep opening; regenerate only with a migration.
 
 use crate::crypto::{
-    AccountRootKey, Encrypts, ItemAad, ItemDataAad, ItemId, ItemKey, RootKEK, Sealed, SecretKind,
-    SymmetricKey, UserId, VaultId, VaultKey, Wraps,
+    AccountRootKey, Encrypts, ItemAad, ItemDataAad, ItemId, ItemKey, NamespaceDataAad, NamespaceId,
+    NamespaceKey, NamespaceKeyAad, RootKEK, Sealed, SecretKind, SymmetricKey, UserId, VaultId,
+    VaultKey, Wraps,
 };
 use uuid::Uuid;
 
 const USER_ID: UserId = UserId(Uuid::from_u128(0x1111_1111_1111_4111_8111_1111_1111_1111));
 const VAULT_ID: VaultId = VaultId(Uuid::from_u128(0x2222_2222_2222_4222_8222_2222_2222_2222));
 const ITEM_ID: ItemId = ItemId(Uuid::from_u128(0x3333_3333_3333_4333_8333_3333_3333_3333));
+const NAMESPACE_ID: NamespaceId =
+    NamespaceId(Uuid::from_u128(0x5555_5555_5555_4555_8555_5555_5555_5555));
 
 const KEK: [u8; 32] = [4; 32];
 const ARK: [u8; 32] = [1; 32];
 const VAULT_KEY: [u8; 32] = [2; 32];
 const ITEM_KEY: [u8; 32] = [3; 32];
+const NAMESPACE_KEY: [u8; 32] = [5; 32];
 
 const WRAPPED_ARK: (&str, &str) = (
     "U/SS+Svk6Yv/KYpM",
@@ -33,6 +37,16 @@ const ITEM_DATA: (&str, &str) = (
     "OPtIsA8vfGNIVOsCp2wM+wtEQFJkhvA5X4v+js1gKio=",
 );
 const ITEM_DATA_PLAINTEXT: &[u8] = b"secret item data";
+/// 2.1.0 records used another layout and do not open; they hold only a recomputable cache.
+const WRAPPED_NAMESPACE_KEY: (&str, &str) = (
+    "ZBYHD4Ba5f8x0Iqp",
+    "WlgyNZ7gqtj96qSp69IwZjvaRteVojcjS21Jlu0pCv7kMB/SHDQ5DXw9TCOniyo8",
+);
+const ACCOUNT_RECORD: (&str, &str) = (
+    "jnjYy46BgaZ9dpz0",
+    "AsaNIah7v0htQHg4v6FjcqDp/jmqVuEydndsjgKE8BCNKcPwaw==",
+);
+const ACCOUNT_RECORD_PLAINTEXT: &[u8] = b"secret account record";
 
 fn sealed<T: ?Sized>((nonce, ciphertext): (&str, &str)) -> Sealed<T> {
     Sealed::from_parts(
@@ -52,7 +66,7 @@ fn password_wrapped_ark_still_unwraps() {
 #[test]
 fn vault_key_still_unwraps() {
     let ark = AccountRootKey::from_bytes(&ARK).unwrap();
-    let vault_key = ark
+    let vault_key: VaultKey = ark
         .unwrap_key(&sealed(WRAPPED_VAULT_KEY), &VAULT_ID)
         .unwrap();
     assert_eq!(vault_key.as_bytes(), VAULT_KEY);
@@ -80,4 +94,25 @@ fn item_data_still_decrypts() {
     };
     let plaintext = item_key.decrypt(&sealed(ITEM_DATA), &aad).unwrap();
     assert_eq!(plaintext, ITEM_DATA_PLAINTEXT);
+}
+
+#[test]
+fn account_record_still_opens() {
+    let ark = AccountRootKey::from_bytes(&ARK).unwrap();
+    let key: NamespaceKey = ark
+        .unwrap_key(
+            &sealed(WRAPPED_NAMESPACE_KEY),
+            &NamespaceKeyAad {
+                namespace: NAMESPACE_ID,
+            },
+        )
+        .unwrap();
+    assert_eq!(key.as_bytes(), NAMESPACE_KEY);
+
+    let aad = NamespaceDataAad {
+        namespace: NAMESPACE_ID,
+        kind: SecretKind::PasswordHealthReport,
+    };
+    let plaintext = key.decrypt(&sealed(ACCOUNT_RECORD), &aad).unwrap();
+    assert_eq!(plaintext, ACCOUNT_RECORD_PLAINTEXT);
 }

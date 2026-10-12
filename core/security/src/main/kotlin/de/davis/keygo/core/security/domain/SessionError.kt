@@ -7,5 +7,6 @@ sealed interface SessionError {
     data object Locked : SessionError
     data object WrongPassword : SessionError
     data class Derivation(val message: String) : SessionError
+    data object DecryptionFailed : SessionError
     data class KeyWrap(val cause: KeyWrapException) : SessionError
 }
