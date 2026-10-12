@@ -287,4 +287,18 @@ mod tests {
             BackupError::Crypto(CryptoError::Argon2MemoryTooHigh { .. })
         ));
     }
+
+    #[test]
+    fn open_rejects_argon2_params_exceeding_iteration_limit() {
+        let cred = BackupCredential::Passphrase(b"pw");
+        let mut sealed = seal(b"x", cred, CURRENT_VERSION).unwrap();
+        if let Kdf::Argon2id { iters, .. } = &mut sealed.header.kdf {
+            *iters = u32::MAX;
+        }
+        let err = open(&sealed.header, sealed.ciphertext, cred, CURRENT_VERSION).unwrap_err();
+        assert!(matches!(
+            err,
+            BackupError::Crypto(CryptoError::Argon2ItersTooHigh { .. })
+        ));
+    }
 }

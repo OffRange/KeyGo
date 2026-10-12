@@ -4,6 +4,7 @@ use zeroize::Zeroizing;
 
 pub(crate) const MIN_SALT_LEN: usize = 16;
 pub(crate) const MAX_ARGON2_MEM_KIB: u32 = 256 * 1024;
+pub(crate) const MAX_ARGON2_ITERS: u32 = 16;
 
 #[derive(Clone, Copy)]
 pub(crate) struct Argon2Params {
@@ -31,6 +32,12 @@ impl Argon2Params {
                 got: self.mem_kib,
             });
         }
+        if self.iters > MAX_ARGON2_ITERS {
+            return Err(CryptoError::Argon2ItersTooHigh {
+                max: MAX_ARGON2_ITERS,
+                got: self.iters,
+            });
+        }
         let params = Params::new(self.mem_kib, self.iters, self.lanes, Some(KEY_LEN))
             .map_err(CryptoError::Argon2)?;
         Ok(Argon2::new(Algorithm::Argon2id, Version::V0x13, params))
@@ -38,7 +45,7 @@ impl Argon2Params {
 }
 
 /// Argon2id. `domain` is appended to the salt to separate derivations.
-/// Rejects costs above `MAX_ARGON2_MEM_KIB`; the caller zeroizes the password.
+/// Rejects costs above `MAX_ARGON2_MEM_KIB` or `MAX_ARGON2_ITERS`; the caller zeroizes the password.
 pub(crate) fn derive_argon2id(
     password: &[u8],
     salt: &[u8],
@@ -137,6 +144,28 @@ mod tests {
             derive_argon2id(PW, &SALT, b"pwd", params),
             Err(CryptoError::Argon2MemoryTooHigh { .. })
         ));
+    }
+
+    #[test]
+    fn rejects_excessive_iterations() {
+        let params = Argon2Params {
+            iters: MAX_ARGON2_ITERS + 1,
+            ..Argon2Params::default()
+        };
+        assert!(matches!(
+            derive_argon2id(PW, &SALT, b"pwd", params),
+            Err(CryptoError::Argon2ItersTooHigh {
+                max: MAX_ARGON2_ITERS,
+                got,
+            }) if got == MAX_ARGON2_ITERS + 1
+        ));
+    }
+
+    #[test]
+    fn default_params_are_within_the_limits() {
+        let params = Argon2Params::default();
+        assert!(params.mem_kib <= MAX_ARGON2_MEM_KIB);
+        assert!(params.iters <= MAX_ARGON2_ITERS);
     }
 
     #[test]

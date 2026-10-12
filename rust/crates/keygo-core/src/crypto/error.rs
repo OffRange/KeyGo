@@ -26,6 +26,8 @@ pub enum CryptoError {
     SaltTooShort { min: usize, got: usize },
     #[error("Argon2 memory cost too high: {got} KiB exceeds the {max} KiB limit")]
     Argon2MemoryTooHigh { max: u32, got: u32 },
+    #[error("Argon2 iteration count too high: {got} exceeds the {max} limit")]
+    Argon2ItersTooHigh { max: u32, got: u32 },
     #[error("Argon2 failed: {0}")]
     Argon2(argon2::Error),
 }
