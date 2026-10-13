@@ -54,7 +54,7 @@ mod tests {
             allow_signups: true,
         };
 
-        let (status, body) = get(state, "/api/v1/server").await;
+        let (status, body) = get(state, "/api/v1/meta").await;
 
         assert_eq!(status, StatusCode::OK);
         let body: Value = serde_json::from_slice(&body).unwrap();
