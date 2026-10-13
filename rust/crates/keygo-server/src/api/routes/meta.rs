@@ -9,7 +9,7 @@ pub fn router() -> Router<AppState> {
 }
 
 #[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 struct ServerInfo {
     version: &'static str,
     allow_signups: bool,
