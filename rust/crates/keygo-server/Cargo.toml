@@ -1,0 +1,9 @@
+[package]
+name = "keygo-server"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow = "1.0.104"
+clap = { version = "4.6.7", features = ["derive", "env"] }
+secret-string = "0.0.2"
