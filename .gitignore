@@ -259,3 +259,7 @@ docs/superpowers/
 
 graphify-out/
 .gitattributes
+
+.docker/
+# Docker Compose
+.env

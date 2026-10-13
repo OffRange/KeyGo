@@ -1,5 +1,6 @@
 mod commands;
 
+use crate::cli::commands::serve::ServeArgs;
 use crate::config::Config;
 use clap::{Parser, Subcommand};
 
@@ -17,6 +18,7 @@ pub struct Cli {
 enum Commands {
     Init,
     Check,
+    Serve(ServeArgs),
 }
 
 impl Cli {
@@ -26,6 +28,7 @@ impl Cli {
         match cli.command {
             Commands::Init => commands::init::run(&cli.config),
             Commands::Check => commands::check::run(&cli.config),
+            Commands::Serve(args) => commands::serve::run(&cli.config, &args),
         }
     }
 }

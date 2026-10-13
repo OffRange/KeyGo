@@ -1,0 +1,43 @@
+{$DOMAIN} {
+    encode zstd gzip
+
+    request_body {
+        max_size 1MB
+    }
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer"
+        -Server
+    }
+
+    handle_errors {
+        @updating {
+            expression {err.status_code} in [502, 503, 504]
+            file {
+                root /control
+                try_files /updating
+            }
+        }
+        handle @updating {
+            header Retry-After 15
+            respond `{"status":"updating"}` 503
+        }
+
+        @failed {
+            expression {err.status_code} in [502, 503, 504]
+            file {
+                root /control
+                try_files /update-failed
+            }
+        }
+        handle @failed {
+            respond `{"status":"update_failed"}` 503
+        }
+
+        respond `{"status":"unavailable"}` 502
+    }
+
+    reverse_proxy api:8000
+}

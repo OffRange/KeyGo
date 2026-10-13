@@ -14,3 +14,14 @@ hex = "0.4.3"
 secrecy = "0.10.3"
 tempfile = "3.27.0"
 url = "2.5.8"
+axum = "0.8.9"
+serde = { version = "1.0.229", features = ["derive"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "signal"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+tower-http = { version = "0.7.1", features = ["trace"] }
+
+[dev-dependencies]
+http-body-util = "0.1.5"
+serde_json = "1.0.154"
+tower = { version = "0.5.3", features = ["util"] }

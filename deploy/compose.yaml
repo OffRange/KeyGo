@@ -1,0 +1,91 @@
+name: KeyGo Backend Server
+
+x-app: &app
+  build:
+    context: ../rust
+    dockerfile: crates/keygo-server/Dockerfile
+  environment: &app-env
+    KEYGO_PUBLIC_URL: https://${DOMAIN:?Set DOMAIN in .env (copy .env.example)}
+    KEYGO_ALLOW_SIGNUPS: ${KEYGO_ALLOW_SIGNUP:-false}
+    KEYGO_DATABASE_USERNAME: ${KEYGO_DATABASE_USER:-keygo}
+    KEYGO_DATABASE_NAME: ${KEYGO_DATABASE_NAME:-keygo}
+
+services:
+  init:
+    <<: *app
+    read_only: true
+    profiles:
+      - setup
+    command: [ "keygo-server", "init" ]
+    network_mode: none
+    volumes:
+      - secrets:/run/secrets
+
+  postgres:
+    image: postgres:18-trixie
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${KEYGO_DATABASE_USER:-keygo}
+      POSTGRES_DB: ${KEYGO_DATABASE_NAME:-keygo}
+      # Read by the entrypoint while still root, so the keygo-owned 0400 file is fine.
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    networks:
+      - backend
+    volumes:
+      - secrets:/run/secrets:ro
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\"" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Needs `keygo-server serve`, which does not exist yet: start with `--profile server`.
+  api:
+    <<: *app
+    command: [ "keygo-server", "serve" ]
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      # The proxy subnet: only Caddy reaches api there, so trust its X-Forwarded-*.
+      FORWARDED_ALLOW_IPS: 172.31.0.0/24
+    networks:
+      - backend
+      - proxy
+    volumes:
+      - secrets:/run/secrets:ro
+    depends_on:
+      postgres: { condition: service_healthy }
+    read_only: true
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+      - ./caddy:/etc/caddy:ro
+    networks:
+      - web
+      - proxy
+
+volumes:
+  secrets:
+  pgdata:
+  caddy_data:
+  caddy_config:
+
+networks:
+  backend:
+    internal: true
+  proxy:
+    internal: true
+    ipam:
+      config: [ { subnet: 172.31.0.0/24 } ]
+  web: { }
