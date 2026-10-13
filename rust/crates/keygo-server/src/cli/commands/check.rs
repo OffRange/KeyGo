@@ -278,6 +278,7 @@ fn plural(n: usize, word: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use secrecy::ExposeSecret;
     use std::fs::Permissions;
 
     const VALID: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
@@ -464,5 +465,31 @@ mod tests {
 
         assert_eq!(check.status, Status::Warn);
         assert!(!check.detail.contains("hunter2"));
+    }
+
+    #[test]
+    fn generated_opaque_setup_passes() {
+        let dir = secrets_dir(0o700);
+        let value = Secret::OpaqueSetup.generate().unwrap();
+        write_secret(
+            dir.path(),
+            Secret::OpaqueSetup,
+            value.expose_secret(),
+            0o400,
+        );
+
+        let check = check_secret(&SecretStore::new(dir.path()), Secret::OpaqueSetup);
+
+        assert_eq!(check.status, Status::Pass);
+    }
+
+    #[test]
+    fn corrupt_opaque_setup_fails() {
+        let dir = secrets_dir(0o700);
+        write_secret(dir.path(), Secret::OpaqueSetup, VALID, 0o400);
+
+        let check = check_secret(&SecretStore::new(dir.path()), Secret::OpaqueSetup);
+
+        assert_eq!(check.status, Status::Fail);
     }
 }

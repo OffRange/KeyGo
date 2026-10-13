@@ -1,45 +1,51 @@
 use anyhow::{Context, anyhow, ensure};
+use keygo_opaque::server::ServerSetup;
 use secrecy::{ExposeSecret, SecretString};
 use std::fs::{self, DirBuilder, File, Permissions};
 use std::io::{ErrorKind, Write};
 use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use zeroize::Zeroizing;
 
-#[derive(Clone, Copy, Debug)]
-pub enum Secret {
-    DbPassword,
+macro_rules! secrets {
+    ($($ty:ident),+ $(,)?) => {
+        #[derive(Clone, Copy, Debug)]
+        pub enum Secret {
+            $($ty,)+
+        }
+
+        impl Secret {
+            pub const ALL: &'static [Secret] = &[$(Secret::$ty),+];
+
+            pub const fn name(self) -> &'static str {
+                match self {
+                    $(Secret::$ty => <$ty as TypedSecret>::NAME,)+
+                }
+            }
+
+            pub fn generate(self) -> anyhow::Result<SecretString> {
+                match self {
+                    $(Secret::$ty => <$ty as TypedSecret>::generate(),)+
+                }
+            }
+
+            /// Fails if the server cannot use `stored`, otherwise says why it looks weak, if it does.
+            fn assess(self, stored: &str) -> anyhow::Result<Option<String>> {
+                match self {
+                    $(Secret::$ty => assess::<$ty>(stored),)+
+                }
+            }
+        }
+    };
 }
 
-impl Secret {
-    pub const ALL: &'static [Secret] = &[Secret::DbPassword];
-
-    pub fn name(self) -> &'static str {
-        match self {
-            Secret::DbPassword => "db_password",
-        }
-    }
-
-    pub fn generate(self) -> anyhow::Result<SecretString> {
-        match self {
-            Secret::DbPassword => DbPassword::generate(),
-        }
-    }
-
-    /// Fails if the server cannot use `stored`, otherwise says why it looks weak, if it does.
-    fn assess(self, stored: &str) -> anyhow::Result<Option<String>> {
-        fn assess<T: TypedSecret>(stored: &str) -> anyhow::Result<Option<String>> {
-            T::decode(stored).map(|value| T::weakness(&value))
-        }
-
-        match self {
-            Secret::DbPassword => assess::<DbPassword>(stored),
-        }
-    }
+fn assess<T: TypedSecret>(stored: &str) -> anyhow::Result<Option<String>> {
+    T::decode(stored).map(|value| T::weakness(&value))
 }
 
 pub trait TypedSecret {
-    const SECRET: Secret;
+    /// File name inside the secrets directory.
+    const NAME: &'static str;
     type Value;
 
     fn generate() -> anyhow::Result<SecretString>;
@@ -57,7 +63,7 @@ impl DbPassword {
 }
 
 impl TypedSecret for DbPassword {
-    const SECRET: Secret = Secret::DbPassword;
+    const NAME: &'static str = "db_password";
     type Value = SecretString;
 
     fn generate() -> anyhow::Result<SecretString> {
@@ -76,6 +82,27 @@ impl TypedSecret for DbPassword {
         (value.expose_secret().chars().count() < MIN_CHARS)
             .then(|| format!("shorter than {MIN_CHARS} characters"))
     }
+}
+
+pub struct OpaqueSetup;
+
+impl TypedSecret for OpaqueSetup {
+    const NAME: &'static str = "opaque_setup";
+    type Value = ServerSetup;
+
+    fn generate() -> anyhow::Result<SecretString> {
+        Ok(hex::encode(ServerSetup::generate().to_bytes().as_slice()).into())
+    }
+
+    fn decode(stored: &str) -> anyhow::Result<ServerSetup> {
+        let raw = Zeroizing::new(hex::decode(stored).context("not hex")?);
+        ServerSetup::from_bytes(&raw).context("not an OPAQUE server setup")
+    }
+}
+
+secrets! {
+    DbPassword,
+    OpaqueSetup,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -97,6 +124,10 @@ impl SecretStore {
         self.dir.join(secret.name())
     }
 
+    fn path_of<T: TypedSecret>(&self) -> PathBuf {
+        self.dir.join(T::NAME)
+    }
+
     pub fn create_dir(&self) -> anyhow::Result<()> {
         DirBuilder::new()
             .recursive(true)
@@ -106,27 +137,17 @@ impl SecretStore {
     }
 
     pub fn read<T: TypedSecret>(&self) -> anyhow::Result<T::Value> {
-        let stored = self.read_text(T::SECRET)?;
-        T::decode(stored.expose_secret())
-            .with_context(|| format!("{} is invalid", self.path(T::SECRET).display()))
+        let path = self.path_of::<T>();
+        let stored = read_text(&path)?;
+        T::decode(stored.expose_secret()).with_context(|| format!("{} is invalid", path.display()))
     }
 
     pub fn inspect(&self, secret: Secret) -> anyhow::Result<Option<String>> {
-        let stored = self.read_text(secret)?;
+        let path = self.path(secret);
+        let stored = read_text(&path)?;
         secret
             .assess(stored.expose_secret())
-            .with_context(|| format!("{} is invalid", self.path(secret).display()))
-    }
-
-    fn read_text(&self, secret: Secret) -> anyhow::Result<SecretString> {
-        let path = self.path(secret);
-        let bytes = Zeroizing::new(
-            fs::read(&path).with_context(|| format!("cannot read {}", path.display()))?,
-        );
-        let value = str::from_utf8(&bytes)
-            .with_context(|| format!("{} is not UTF-8", path.display()))?
-            .trim();
-        Ok(value.into())
+            .with_context(|| format!("{} is invalid", path.display()))
     }
 
     pub fn create(&self, secret: Secret, value: &SecretString) -> anyhow::Result<CreateOutcome> {
@@ -158,6 +179,15 @@ impl SecretStore {
             .with_context(|| format!("cannot sync {}", self.dir.display()))?;
         Ok(CreateOutcome::Created)
     }
+}
+
+fn read_text(path: &Path) -> anyhow::Result<SecretString> {
+    let bytes =
+        Zeroizing::new(fs::read(path).with_context(|| format!("cannot read {}", path.display()))?);
+    let value = str::from_utf8(&bytes)
+        .with_context(|| format!("{} is not UTF-8", path.display()))?
+        .trim();
+    Ok(value.into())
 }
 
 #[cfg(test)]
@@ -209,6 +239,35 @@ mod tests {
             Some("shorter than 16 characters"),
         );
         assert_eq!(Secret::DbPassword.assess(&"x".repeat(16)).unwrap(), None);
+    }
+
+    #[test]
+    fn generated_opaque_setup_is_valid_and_decodes() {
+        let value = Secret::OpaqueSetup.generate().unwrap();
+
+        assert_eq!(
+            Secret::OpaqueSetup.assess(value.expose_secret()).unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_opaque_setups_differ() {
+        let a = Secret::OpaqueSetup.generate().unwrap();
+        let b = Secret::OpaqueSetup.generate().unwrap();
+
+        assert_ne!(a.expose_secret(), b.expose_secret());
+    }
+
+    #[test]
+    fn random_hex_is_not_an_opaque_setup() {
+        assert!(OpaqueSetup::decode(VALID).is_err());
+    }
+
+    #[test]
+    fn non_hex_opaque_setup_is_rejected() {
+        assert!(OpaqueSetup::decode("not hex at all").is_err());
+        assert!(OpaqueSetup::decode("").is_err());
     }
 
     #[test]
@@ -282,6 +341,18 @@ mod tests {
     }
 
     #[test]
+    fn read_decodes_stored_opaque_setup() {
+        let (_dir, store) = store();
+        let stored = OpaqueSetup::generate().unwrap();
+        let setup = OpaqueSetup::decode(stored.expose_secret()).unwrap();
+        store.create(Secret::OpaqueSetup, &stored).unwrap();
+
+        let read = store.read::<OpaqueSetup>().unwrap();
+
+        assert_eq!(read.public_key(), setup.public_key());
+    }
+
+    #[test]
     fn read_returns_db_password_as_stored() {
         let (_dir, store) = store();
         store.create(Secret::DbPassword, &VALID.into()).unwrap();
@@ -289,6 +360,14 @@ mod tests {
         let password = store.read::<DbPassword>().unwrap();
 
         assert_eq!(password.expose_secret(), VALID);
+    }
+
+    #[test]
+    fn read_rejects_corrupt_opaque_setup() {
+        let (_dir, store) = store();
+        write_raw(&store, Secret::OpaqueSetup, VALID.as_bytes());
+
+        assert!(store.read::<OpaqueSetup>().is_err());
     }
 
     #[test]
@@ -330,11 +409,11 @@ mod tests {
     }
 
     #[test]
-    fn inspect_rejects_empty_value() {
+    fn inspect_rejects_corrupt_opaque_setup() {
         let (_dir, store) = store();
-        write_raw(&store, Secret::DbPassword, b"\r\n");
+        write_raw(&store, Secret::OpaqueSetup, VALID.as_bytes());
 
-        assert!(store.inspect(Secret::DbPassword).is_err());
+        assert!(store.inspect(Secret::OpaqueSetup).is_err());
     }
 
     #[test]
