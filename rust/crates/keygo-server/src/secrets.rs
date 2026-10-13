@@ -20,34 +20,61 @@ impl Secret {
         }
     }
 
-    /// Strength of the values `init` generates.
-    pub fn generated_bits(self) -> usize {
+    pub fn generate(self) -> anyhow::Result<SecretString> {
         match self {
-            Secret::DbPassword => 256,
+            Secret::DbPassword => DbPassword::generate(),
         }
     }
 
-    pub fn generate(self) -> anyhow::Result<SecretString> {
-        let mut raw = Zeroizing::new(vec![0u8; self.generated_bits() / 8]);
+    /// Fails if the server cannot use `stored`, otherwise says why it looks weak, if it does.
+    fn assess(self, stored: &str) -> anyhow::Result<Option<String>> {
+        fn assess<T: TypedSecret>(stored: &str) -> anyhow::Result<Option<String>> {
+            T::decode(stored).map(|value| T::weakness(&value))
+        }
+
+        match self {
+            Secret::DbPassword => assess::<DbPassword>(stored),
+        }
+    }
+}
+
+pub trait TypedSecret {
+    const SECRET: Secret;
+    type Value;
+
+    fn generate() -> anyhow::Result<SecretString>;
+
+    fn decode(stored: &str) -> anyhow::Result<Self::Value>;
+    fn weakness(_value: &Self::Value) -> Option<String> {
+        None
+    }
+}
+
+pub struct DbPassword;
+
+impl DbPassword {
+    const GENERATED_BITS: usize = 256;
+}
+
+impl TypedSecret for DbPassword {
+    const SECRET: Secret = Secret::DbPassword;
+    type Value = SecretString;
+
+    fn generate() -> anyhow::Result<SecretString> {
+        let mut raw = Zeroizing::new(vec![0u8; Self::GENERATED_BITS / 8]);
         getrandom::fill(raw.as_mut_slice()).map_err(|e| anyhow!("getrandom: {}", e))?;
         Ok(hex::encode(raw.as_slice()).into())
     }
 
-    /// Rejects values the server cannot use at all.
-    pub fn validate(self, value: &str) -> anyhow::Result<()> {
-        match self {
-            Secret::DbPassword => ensure!(!value.is_empty(), "empty"),
-        }
-        Ok(())
+    fn decode(stored: &str) -> anyhow::Result<SecretString> {
+        ensure!(!stored.is_empty(), "empty");
+        Ok(stored.into())
     }
 
-    /// Flags a usable value that looks weak.
-    pub fn weakness(self, value: &str) -> Option<String> {
+    fn weakness(value: &SecretString) -> Option<String> {
         const MIN_CHARS: usize = 16;
-        match self {
-            Secret::DbPassword => (value.chars().count() < MIN_CHARS)
-                .then(|| format!("shorter than {MIN_CHARS} characters")),
-        }
+        (value.expose_secret().chars().count() < MIN_CHARS)
+            .then(|| format!("shorter than {MIN_CHARS} characters"))
     }
 }
 
@@ -78,7 +105,20 @@ impl SecretStore {
             .with_context(|| format!("cannot create {}", self.dir.display()))
     }
 
-    pub fn load(&self, secret: Secret) -> anyhow::Result<SecretString> {
+    pub fn read<T: TypedSecret>(&self) -> anyhow::Result<T::Value> {
+        let stored = self.read_text(T::SECRET)?;
+        T::decode(stored.expose_secret())
+            .with_context(|| format!("{} is invalid", self.path(T::SECRET).display()))
+    }
+
+    pub fn inspect(&self, secret: Secret) -> anyhow::Result<Option<String>> {
+        let stored = self.read_text(secret)?;
+        secret
+            .assess(stored.expose_secret())
+            .with_context(|| format!("{} is invalid", self.path(secret).display()))
+    }
+
+    fn read_text(&self, secret: Secret) -> anyhow::Result<SecretString> {
         let path = self.path(secret);
         let bytes = Zeroizing::new(
             fs::read(&path).with_context(|| format!("cannot read {}", path.display()))?,
@@ -86,15 +126,12 @@ impl SecretStore {
         let value = str::from_utf8(&bytes)
             .with_context(|| format!("{} is not UTF-8", path.display()))?
             .trim();
-        secret
-            .validate(value)
-            .with_context(|| format!("{} is invalid", path.display()))?;
         Ok(value.into())
     }
 
     pub fn create(&self, secret: Secret, value: &SecretString) -> anyhow::Result<CreateOutcome> {
         secret
-            .validate(value.expose_secret())
+            .assess(value.expose_secret())
             .with_context(|| format!("refusing to store invalid {}", secret.name()))?;
 
         let path = self.path(secret);
@@ -144,7 +181,7 @@ mod tests {
     fn generated_db_password_is_valid() {
         let value = Secret::DbPassword.generate().unwrap();
 
-        assert!(Secret::DbPassword.validate(value.expose_secret()).is_ok());
+        assert!(DbPassword::decode(value.expose_secret()).is_ok());
     }
 
     #[test]
@@ -156,47 +193,32 @@ mod tests {
     }
 
     #[test]
-    fn generated_value_has_exactly_the_generated_bits() {
-        let value = Secret::DbPassword.generate().unwrap();
-
-        assert_eq!(
-            value.expose_secret().len() * 4,
-            Secret::DbPassword.generated_bits()
-        );
-        assert_eq!(Secret::DbPassword.weakness(value.expose_secret()), None);
-    }
-
-    #[test]
     fn externally_issued_password_is_accepted() {
-        assert!(Secret::DbPassword.validate("Tr0ub4dor&3-Cloud!").is_ok());
+        assert!(DbPassword::decode("Tr0ub4dor&3-Cloud!").is_ok());
     }
 
     #[test]
     fn empty_password_is_rejected() {
-        assert!(Secret::DbPassword.validate("").is_err());
+        assert!(DbPassword::decode("").is_err());
     }
 
     #[test]
     fn short_password_is_usable_but_weak() {
-        assert!(Secret::DbPassword.validate("hunter2").is_ok());
         assert_eq!(
-            Secret::DbPassword.weakness("hunter2").as_deref(),
+            Secret::DbPassword.assess("hunter2").unwrap().as_deref(),
             Some("shorter than 16 characters"),
         );
-        assert_eq!(Secret::DbPassword.weakness(&"x".repeat(16)), None);
+        assert_eq!(Secret::DbPassword.assess(&"x".repeat(16)).unwrap(), None);
     }
 
     #[test]
-    fn create_then_load_round_trips() {
+    fn create_then_read_round_trips() {
         let (_dir, store) = store();
 
         let outcome = store.create(Secret::DbPassword, &VALID.into()).unwrap();
 
         assert_eq!(outcome, CreateOutcome::Created);
-        assert_eq!(
-            store.load(Secret::DbPassword).unwrap().expose_secret(),
-            VALID
-        );
+        assert_eq!(store.read::<DbPassword>().unwrap().expose_secret(), VALID);
     }
 
     #[test]
@@ -246,7 +268,7 @@ mod tests {
     }
 
     #[test]
-    fn load_strips_trailing_line_breaks() {
+    fn read_strips_trailing_line_breaks() {
         let (_dir, store) = store();
         write_raw(
             &store,
@@ -254,16 +276,26 @@ mod tests {
             format!("{VALID}\r\n").as_bytes(),
         );
 
-        let value = store.load(Secret::DbPassword).unwrap();
+        let value = store.read::<DbPassword>().unwrap();
 
         assert_eq!(value.expose_secret(), VALID);
     }
 
     #[test]
-    fn load_fails_when_missing() {
+    fn read_returns_db_password_as_stored() {
+        let (_dir, store) = store();
+        store.create(Secret::DbPassword, &VALID.into()).unwrap();
+
+        let password = store.read::<DbPassword>().unwrap();
+
+        assert_eq!(password.expose_secret(), VALID);
+    }
+
+    #[test]
+    fn read_fails_when_missing() {
         let (_dir, store) = store();
 
-        let err = store.load(Secret::DbPassword).unwrap_err();
+        let err = store.read::<DbPassword>().unwrap_err();
 
         assert_eq!(
             err.downcast_ref::<std::io::Error>().map(|e| e.kind()),
@@ -272,19 +304,37 @@ mod tests {
     }
 
     #[test]
-    fn load_rejects_empty_value() {
+    fn read_rejects_empty_value() {
         let (_dir, store) = store();
         write_raw(&store, Secret::DbPassword, b"\r\n");
 
-        assert!(store.load(Secret::DbPassword).is_err());
+        assert!(store.read::<DbPassword>().is_err());
     }
 
     #[test]
-    fn load_rejects_non_utf8() {
+    fn read_rejects_non_utf8() {
         let (_dir, store) = store();
         write_raw(&store, Secret::DbPassword, &[0xff; 64]);
 
-        assert!(store.load(Secret::DbPassword).is_err());
+        assert!(store.read::<DbPassword>().is_err());
+    }
+
+    #[test]
+    fn inspect_reports_weak_stored_secret() {
+        let (_dir, store) = store();
+        write_raw(&store, Secret::DbPassword, b"hunter2");
+
+        let weakness = store.inspect(Secret::DbPassword).unwrap();
+
+        assert_eq!(weakness.as_deref(), Some("shorter than 16 characters"));
+    }
+
+    #[test]
+    fn inspect_rejects_empty_value() {
+        let (_dir, store) = store();
+        write_raw(&store, Secret::DbPassword, b"\r\n");
+
+        assert!(store.inspect(Secret::DbPassword).is_err());
     }
 
     #[test]

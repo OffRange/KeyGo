@@ -2,7 +2,6 @@ use crate::config::{Config, DatabaseConfig, Environment};
 use crate::secrets::{Secret, SecretStore};
 use anstream::println;
 use anstyle::{AnsiColor, Style};
-use secrecy::ExposeSecret;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -198,13 +197,13 @@ fn check_secrets_dir(dir: &Path) -> Check {
 
 fn check_secret(store: &SecretStore, secret: Secret) -> Check {
     let label = secret.name();
-    let value = match store.load(secret) {
-        Ok(value) => value,
+    let weakness = match store.inspect(secret) {
+        Ok(weakness) => weakness,
         Err(e) => return Check::new(Status::Fail, label, format!("{e:#}")),
     };
 
-    let mut issues: Vec<String> = secret.weakness(value.expose_secret()).into_iter().collect();
-    // load() already read the file, so its metadata is only missing on a race we can ignore.
+    let mut issues: Vec<String> = weakness.into_iter().collect();
+    // inspect() already read the file, so its metadata is only missing on a race we can ignore.
     let mode = fs::metadata(store.path(secret))
         .map(|m| m.permissions().mode() & 0o777)
         .unwrap_or(0);

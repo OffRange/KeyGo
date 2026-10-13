@@ -11,7 +11,7 @@ pub fn run(config: &Config) -> anyhow::Result<()> {
             CreateOutcome::Created => "created",
             CreateOutcome::AlreadyExists => {
                 store
-                    .load(secret)
+                    .inspect(secret)
                     .context("refusing to overwrite an existing secret")?;
                 "exists"
             }
