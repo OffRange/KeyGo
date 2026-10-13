@@ -16,6 +16,7 @@ pub struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Init,
+    Check,
 }
 
 impl Cli {
@@ -24,6 +25,7 @@ impl Cli {
 
         match cli.command {
             Commands::Init => commands::init::run(&cli.config),
+            Commands::Check => commands::check::run(&cli.config),
         }
     }
 }

@@ -5,9 +5,12 @@ edition.workspace = true
 
 [dependencies]
 zeroize.workspace = true
+anstream = "1.0.0"
+anstyle = "1.0.14"
 anyhow = "1.0.104"
 clap = { version = "4.6.7", features = ["derive", "env"] }
 getrandom = "0.4.3"
 hex = "0.4.3"
 secrecy = "0.10.3"
 tempfile = "3.27.0"
+url = "2.5.8"

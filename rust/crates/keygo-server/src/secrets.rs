@@ -20,21 +20,34 @@ impl Secret {
         }
     }
 
-    pub fn generate(self) -> anyhow::Result<SecretString> {
+    /// Strength of the values `init` generates.
+    pub fn generated_bits(self) -> usize {
         match self {
-            Secret::DbPassword => {
-                let mut raw = Zeroizing::new([0u8; 32]);
-                getrandom::fill(raw.as_mut_slice()).map_err(|e| anyhow!("getrandom: {}", e))?;
-                Ok(hex::encode(raw.as_slice()).into())
-            }
+            Secret::DbPassword => 256,
         }
     }
 
+    pub fn generate(self) -> anyhow::Result<SecretString> {
+        let mut raw = Zeroizing::new(vec![0u8; self.generated_bits() / 8]);
+        getrandom::fill(raw.as_mut_slice()).map_err(|e| anyhow!("getrandom: {}", e))?;
+        Ok(hex::encode(raw.as_slice()).into())
+    }
+
+    /// Rejects values the server cannot use at all.
     pub fn validate(self, value: &str) -> anyhow::Result<()> {
         match self {
-            Secret::DbPassword => ensure!(value.len() >= 64, "shorter than 64 characters"),
+            Secret::DbPassword => ensure!(!value.is_empty(), "empty"),
         }
         Ok(())
+    }
+
+    /// Flags a usable value that looks weak.
+    pub fn weakness(self, value: &str) -> Option<String> {
+        const MIN_CHARS: usize = 16;
+        match self {
+            Secret::DbPassword => (value.chars().count() < MIN_CHARS)
+                .then(|| format!("shorter than {MIN_CHARS} characters")),
+        }
     }
 }
 
@@ -143,9 +156,34 @@ mod tests {
     }
 
     #[test]
-    fn db_password_length_boundary() {
-        assert!(Secret::DbPassword.validate(&VALID[..63]).is_err());
-        assert!(Secret::DbPassword.validate(VALID).is_ok());
+    fn generated_value_has_exactly_the_generated_bits() {
+        let value = Secret::DbPassword.generate().unwrap();
+
+        assert_eq!(
+            value.expose_secret().len() * 4,
+            Secret::DbPassword.generated_bits()
+        );
+        assert_eq!(Secret::DbPassword.weakness(value.expose_secret()), None);
+    }
+
+    #[test]
+    fn externally_issued_password_is_accepted() {
+        assert!(Secret::DbPassword.validate("Tr0ub4dor&3-Cloud!").is_ok());
+    }
+
+    #[test]
+    fn empty_password_is_rejected() {
+        assert!(Secret::DbPassword.validate("").is_err());
+    }
+
+    #[test]
+    fn short_password_is_usable_but_weak() {
+        assert!(Secret::DbPassword.validate("hunter2").is_ok());
+        assert_eq!(
+            Secret::DbPassword.weakness("hunter2").as_deref(),
+            Some("shorter than 16 characters"),
+        );
+        assert_eq!(Secret::DbPassword.weakness(&"x".repeat(16)), None);
     }
 
     #[test]
@@ -203,7 +241,7 @@ mod tests {
     fn create_rejects_invalid_value_without_writing() {
         let (dir, store) = store();
 
-        assert!(store.create(Secret::DbPassword, &"short".into()).is_err());
+        assert!(store.create(Secret::DbPassword, &"".into()).is_err());
         assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
     }
 
@@ -234,9 +272,9 @@ mod tests {
     }
 
     #[test]
-    fn load_rejects_too_short_value() {
+    fn load_rejects_empty_value() {
         let (_dir, store) = store();
-        write_raw(&store, Secret::DbPassword, b"short\n");
+        write_raw(&store, Secret::DbPassword, b"\r\n");
 
         assert!(store.load(Secret::DbPassword).is_err());
     }

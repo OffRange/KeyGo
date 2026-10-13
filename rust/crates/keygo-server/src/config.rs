@@ -79,3 +79,12 @@ pub enum Environment {
     #[value(alias = "dev")]
     Development,
 }
+
+impl Environment {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Environment::Production => "production",
+            Environment::Development => "development",
+        }
+    }
+}

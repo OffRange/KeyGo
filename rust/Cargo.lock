@@ -1047,12 +1047,15 @@ dependencies = [
 name = "keygo-server"
 version = "0.1.0"
 dependencies = [
+ "anstream",
+ "anstyle",
  "anyhow",
  "clap",
  "getrandom",
  "hex",
  "secrecy",
  "tempfile",
+ "url",
  "zeroize",
 ]
 
