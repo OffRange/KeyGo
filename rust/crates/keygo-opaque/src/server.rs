@@ -10,6 +10,7 @@ use zeroize::Zeroizing;
 
 opaque_newtype! {
     /// Long-term server keypair and OPRF seed, shared by all accounts.
+    #[derive(Clone)]
     ServerSetup(ServerSetup) as Zeroizing<Vec<u8>>;
 
     /// Server state held between KE2 and KE3.

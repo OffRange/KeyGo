@@ -1,4 +1,6 @@
+use crate::secrets::{OpaqueSetup, SecretStore};
 use clap::{Args, ValueEnum};
+use keygo_opaque::server::ServerSetup;
 use std::path::PathBuf;
 
 #[derive(Args)]
@@ -86,5 +88,11 @@ impl Environment {
             Environment::Production => "production",
             Environment::Development => "development",
         }
+    }
+}
+
+impl Config {
+    pub(crate) fn opaque_setup(&self) -> anyhow::Result<ServerSetup> {
+        SecretStore::new(&self.secrets_dir).read::<OpaqueSetup>()
     }
 }

@@ -38,6 +38,7 @@ mod tests {
     fn state() -> AppState {
         AppState {
             allow_signups: false,
+            opaque_state: keygo_opaque::server::ServerSetup::generate(),
         }
     }
 
@@ -52,6 +53,7 @@ mod tests {
     async fn server_info_reports_version_and_signups() {
         let state = AppState {
             allow_signups: true,
+            ..state()
         };
 
         let (status, body) = get(state, "/api/v1/meta").await;

@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+keygo-opaque = { path = "../keygo-opaque" }
 zeroize.workspace = true
 anstream = "1.0.0"
 anstyle = "1.0.14"

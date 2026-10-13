@@ -6,7 +6,7 @@ use tokio::net::TcpListener;
 use tokio::signal::unix::{SignalKind, signal};
 
 pub async fn start(config: &Config, listen: SocketAddr) -> anyhow::Result<()> {
-    let app = api::router(AppState::new(config));
+    let app = api::router(AppState::new(config)?);
     let listener = TcpListener::bind(listen)
         .await
         .with_context(|| format!("cannot listen on {listen}"))?;
