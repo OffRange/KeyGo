@@ -1,6 +1,4 @@
-use anyhow::Context;
 use clap::{Args, ValueEnum};
-use secret_string::SecretString;
 use std::path::PathBuf;
 
 #[derive(Args)]
@@ -24,6 +22,15 @@ pub struct Config {
 
     #[arg(long, env = "KEYGO_ALLOW_SIGNUPS", global = true)]
     pub allow_signups: bool,
+
+    /// Directory with one file per secret. Compose mounts its secrets at /run/secrets.
+    #[arg(
+        long,
+        env = "KEYGO_SECRETS_DIR",
+        default_value = "/run/secrets",
+        global = true
+    )]
+    pub secrets_dir: PathBuf,
 
     #[command(flatten, next_help_heading = "Database")]
     pub database: DatabaseConfig,
@@ -62,26 +69,6 @@ pub struct DatabaseConfig {
         global = true
     )]
     pub username: String,
-
-    #[arg(
-        long = "db-password-file",
-        env = "KEYGO_DATABASE_PASSWORD_FILE",
-        global = true
-    )]
-    pub password_file: Option<PathBuf>,
-}
-
-impl DatabaseConfig {
-    pub fn password(&self) -> anyhow::Result<Option<SecretString<String>>> {
-        self.password_file
-            .as_deref()
-            .map(|path| {
-                let raw = std::fs::read_to_string(path)
-                    .with_context(|| format!("cannot read {}", path.display()))?;
-                Ok(SecretString::from(raw.trim().to_owned()))
-            })
-            .transpose()
-    }
 }
 
 #[derive(ValueEnum, Clone, Copy, Default, Debug, PartialEq, Eq)]

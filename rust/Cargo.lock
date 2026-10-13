@@ -811,6 +811,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
+name = "hex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
 name = "hkdf"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1043,7 +1049,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "secret-string",
+ "getrandom",
+ "hex",
+ "secrecy",
+ "tempfile",
+ "zeroize",
 ]
 
 [[package]]
@@ -1489,10 +1499,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "secret-string"
-version = "0.0.2"
+name = "secrecy"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "068d960589a13890bdb2a9ea5e7ae0974b89249101117f2e9a5e166bf3af44b9"
+checksum = "e891af845473308773346dc847b2c23ee78fe442e0472ac50e22a18a93d3ae5a"
+dependencies = [
+ "zeroize",
+]
 
 [[package]]
 name = "semver"
