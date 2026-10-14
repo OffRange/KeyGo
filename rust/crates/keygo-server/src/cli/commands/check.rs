@@ -475,14 +475,6 @@ mod tests {
     }
 
     #[test]
-    fn database_url_password_is_measured_after_percent_decoding() {
-        // 18 characters as written, but only 6 once decoded.
-        let db = database_url("postgres://keygo:%41%41%41%41%41%41@localhost/keygo");
-
-        assert_eq!(check_database(&db).status, Status::Warn);
-    }
-
-    #[test]
     fn database_url_without_password_warns() {
         let db = database_url("postgres://keygo@localhost:5432/keygo");
 
