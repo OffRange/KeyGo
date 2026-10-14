@@ -21,6 +21,7 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "sig
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 tower-http = { version = "0.7.1", features = ["trace"] }
+uuid = { workspace = true, features = ["v4"] }
 
 [dev-dependencies]
 http-body-util = "0.1.5"

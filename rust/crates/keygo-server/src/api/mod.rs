@@ -15,7 +15,9 @@ pub fn router(state: AppState) -> Router {
 }
 
 fn v1() -> Router<AppState> {
-    Router::new().nest("/meta", routes::meta::router())
+    Router::new()
+        .nest("/meta", routes::meta::router())
+        .nest("/auth", routes::auth::router())
 }
 
 #[cfg(test)]
@@ -62,7 +64,7 @@ mod tests {
         let body: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(
             body,
-            json!({ "version": env!("CARGO_PKG_VERSION"), "allowSignups": true }),
+            json!({ "version": env!("CARGO_PKG_VERSION"), "allow_signups": true }),
         );
     }
 
