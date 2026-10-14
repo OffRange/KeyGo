@@ -41,6 +41,16 @@ pub struct Config {
 
 #[derive(Args)]
 pub struct DatabaseConfig {
+    /// Full connection URL. When set, it replaces the options below and the db_password secret.
+    /// Meant for local development, where `make serve` sets it.
+    #[arg(
+        long = "db-url",
+        env = "KEYGO_DATABASE_URL",
+        hide_env_values = true,
+        global = true
+    )]
+    pub url: Option<SecretString>,
+
     #[arg(
         long = "db-host",
         env = "KEYGO_DATABASE_HOST",

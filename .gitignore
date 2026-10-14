@@ -263,3 +263,6 @@ graphify-out/
 .docker/
 # Docker Compose
 .env
+
+# Local dev secrets (`make -C rust db`)
+rust/dev-secrets/

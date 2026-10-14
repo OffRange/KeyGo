@@ -1,14 +1,18 @@
 use crate::config::{Config, DatabaseConfig, Environment};
-use crate::secrets::{Secret, SecretStore};
+use crate::secrets::{DbPassword, Secret, SecretStore, TypedSecret};
 use anstream::println;
 use anstyle::{AnsiColor, Style};
+use secrecy::{ExposeSecret, SecretString};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use url::Url;
 
 pub fn run(config: &Config) -> anyhow::Result<()> {
-    let sections = [check_config(config), check_secrets(&config.secrets_dir)];
+    let sections = [
+        check_config(config),
+        check_secrets(&config.secrets_dir, config.database.url.is_some()),
+    ];
     print_report(&sections);
 
     if sections.iter().any(|s| s.count(Status::Fail) > 0) {
@@ -134,6 +138,10 @@ fn check_signups(allow_signups: bool, environment: Environment) -> Check {
 }
 
 fn check_database(db: &DatabaseConfig) -> Check {
+    if let Some(url) = &db.url {
+        return check_database_url(url.expose_secret());
+    }
+
     let label = "database";
     let missing: Vec<_> = [
         ("host", &db.host),
@@ -158,14 +166,54 @@ fn check_database(db: &DatabaseConfig) -> Check {
     }
 }
 
-fn check_secrets(dir: &Path) -> Section {
+fn check_database_url(raw: &str) -> Check {
+    let label = "database url";
+    let url = match Url::parse(raw) {
+        Ok(url) => url,
+        Err(e) => return Check::new(Status::Fail, label, format!("not a URL: {e}")),
+    };
+
+    if !matches!(url.scheme(), "postgres" | "postgresql") {
+        return Check::new(
+            Status::Fail,
+            label,
+            format!("must use postgres://, not {}://", url.scheme()),
+        );
+    }
+
+    // Never echo the password: report the URL without it.
+    let host = url.host_str().unwrap_or("");
+    let port = url.port().map(|p| format!(":{p}")).unwrap_or_default();
+    let target = format!("{}@{host}{port}{}", url.username(), url.path());
+
+    let password: SecretString = url.password().unwrap_or("").into();
+    if password.expose_secret().is_empty() {
+        return Check::new(
+            Status::Warn,
+            label,
+            format!("{target}, but has no password"),
+        );
+    }
+    match DbPassword::weakness(&password) {
+        Some(weakness) => Check::new(
+            Status::Warn,
+            label,
+            format!("{target}, but its password is {weakness}"),
+        ),
+        None => Check::new(Status::Pass, label, target),
+    }
+}
+
+fn check_secrets(dir: &Path, db_url_set: bool) -> Section {
     let store = SecretStore::new(dir);
     let mut checks = vec![check_secrets_dir(dir)];
-    checks.extend(
-        Secret::ALL
-            .iter()
-            .map(|&secret| check_secret(&store, secret)),
-    );
+    checks.extend(Secret::ALL.iter().map(|&secret| match secret {
+        // The server never reads it then, so its state says nothing about the deployment.
+        Secret::DbPassword if db_url_set => {
+            Check::new(Status::Pass, secret.name(), "unused, database url is set")
+        }
+        _ => check_secret(&store, secret),
+    }));
 
     Section {
         title: format!("Secrets ({})", dir.display()),
@@ -285,6 +333,7 @@ mod tests {
 
     fn database() -> DatabaseConfig {
         DatabaseConfig {
+            url: None,
             host: "postgres".into(),
             port: 5432,
             name: "keygo".into(),
@@ -392,6 +441,79 @@ mod tests {
         };
 
         assert_eq!(check_database(&db).status, Status::Fail);
+    }
+
+    fn database_url(url: &str) -> DatabaseConfig {
+        DatabaseConfig {
+            url: Some(url.into()),
+            ..database()
+        }
+    }
+
+    #[test]
+    fn database_url_with_strong_password_passes_without_echoing_it() {
+        let db = database_url(&format!("postgres://keygo:{VALID}@localhost:5432/keygo"));
+
+        let check = check_database(&db);
+
+        assert_eq!(check.status, Status::Pass);
+        assert!(!check.detail.contains(VALID), "{}", check.detail);
+        assert_eq!(check.detail, "keygo@localhost:5432/keygo");
+    }
+
+    #[test]
+    fn database_url_with_weak_password_warns_without_echoing_it() {
+        let db = database_url("postgres://keygo:keygo@localhost:5432/keygo");
+
+        let check = check_database(&db);
+
+        assert_eq!(check.status, Status::Warn);
+        assert_eq!(
+            check.detail,
+            "keygo@localhost:5432/keygo, but its password is shorter than 16 characters"
+        );
+    }
+
+    #[test]
+    fn database_url_password_is_measured_after_percent_decoding() {
+        // 18 characters as written, but only 6 once decoded.
+        let db = database_url("postgres://keygo:%41%41%41%41%41%41@localhost/keygo");
+
+        assert_eq!(check_database(&db).status, Status::Warn);
+    }
+
+    #[test]
+    fn database_url_without_password_warns() {
+        let db = database_url("postgres://keygo@localhost:5432/keygo");
+
+        let check = check_database(&db);
+
+        assert_eq!(check.status, Status::Warn);
+        assert!(check.detail.ends_with("no password"), "{}", check.detail);
+    }
+
+    #[test]
+    fn database_url_with_foreign_scheme_fails() {
+        let db = DatabaseConfig {
+            url: Some("mysql://keygo@localhost/keygo".into()),
+            ..database()
+        };
+
+        assert_eq!(check_database(&db).status, Status::Fail);
+    }
+
+    #[test]
+    fn db_password_secret_is_not_required_when_database_url_is_set() {
+        let dir = secrets_dir(0o700);
+
+        let section = check_secrets(dir.path(), true);
+
+        let db_password = section
+            .checks
+            .iter()
+            .find(|c| c.label == Secret::DbPassword.name())
+            .unwrap();
+        assert_eq!(db_password.status, Status::Pass);
     }
 
     #[test]
