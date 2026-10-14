@@ -1,6 +1,7 @@
-use crate::secrets::{OpaqueSetup, SecretStore};
+use crate::secrets::{DbPassword, OpaqueSetup, SecretStore};
 use clap::{Args, ValueEnum};
 use keygo_opaque::server::ServerSetup;
+use secrecy::SecretString;
 use std::path::PathBuf;
 
 #[derive(Args)]
@@ -40,6 +41,16 @@ pub struct Config {
 
 #[derive(Args)]
 pub struct DatabaseConfig {
+    /// Full connection URL. When set, it replaces the options below and the db_password secret.
+    /// Meant for local development, where `make serve` sets it.
+    #[arg(
+        long = "db-url",
+        env = "KEYGO_DATABASE_URL",
+        hide_env_values = true,
+        global = true
+    )]
+    pub url: Option<SecretString>,
+
     #[arg(
         long = "db-host",
         env = "KEYGO_DATABASE_HOST",
@@ -94,5 +105,8 @@ impl Environment {
 impl Config {
     pub(crate) fn opaque_setup(&self) -> anyhow::Result<ServerSetup> {
         SecretStore::new(&self.secrets_dir).read::<OpaqueSetup>()
+    }
+    pub(crate) fn db_password(&self) -> anyhow::Result<SecretString> {
+        SecretStore::new(&self.secrets_dir).read::<DbPassword>()
     }
 }
