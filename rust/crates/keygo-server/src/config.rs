@@ -1,6 +1,7 @@
-use crate::secrets::{OpaqueSetup, SecretStore};
+use crate::secrets::{DbPassword, OpaqueSetup, SecretStore};
 use clap::{Args, ValueEnum};
 use keygo_opaque::server::ServerSetup;
+use secrecy::SecretString;
 use std::path::PathBuf;
 
 #[derive(Args)]
@@ -94,5 +95,8 @@ impl Environment {
 impl Config {
     pub(crate) fn opaque_setup(&self) -> anyhow::Result<ServerSetup> {
         SecretStore::new(&self.secrets_dir).read::<OpaqueSetup>()
+    }
+    pub(crate) fn db_password(&self) -> anyhow::Result<SecretString> {
+        SecretStore::new(&self.secrets_dir).read::<DbPassword>()
     }
 }
