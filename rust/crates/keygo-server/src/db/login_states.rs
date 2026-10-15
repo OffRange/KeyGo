@@ -77,3 +77,171 @@ pub async fn take(
         state,
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testing::{count, expire, expires_in_secs};
+    use keygo_opaque::client::ClientLogin;
+    use keygo_opaque::server::ServerSetup;
+    use sqlx::PgPool;
+
+    const TTL: Duration = Duration::from_mins(1);
+
+    fn server_login() -> ServerLogin {
+        let (_, request) = ClientLogin::start(b"password").unwrap();
+        let (state, _) =
+            ServerLogin::start(&ServerSetup::generate(), None, request, b"identifier").unwrap();
+        state
+    }
+
+    async fn insert_new(conn: &mut PgConnection, user_id: Option<Uuid>) -> LoginId {
+        let login_id = LoginId::random();
+        insert(
+            conn,
+            &login_id,
+            user_id,
+            Purpose::Login,
+            &server_login(),
+            TTL,
+        )
+        .await
+        .unwrap();
+        login_id
+    }
+
+    #[sqlx::test]
+    async fn state_is_taken_once(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        let user_id = Uuid::new_v4();
+        let login_id = insert_new(&mut conn, Some(user_id)).await;
+
+        let pending = take(&mut conn, &login_id, Purpose::Login)
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(pending.user_id, Some(user_id));
+        assert!(
+            take(&mut conn, &login_id, Purpose::Login)
+                .await
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(count(&db, "login_states").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn state_round_trips_its_bytes(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        let state = server_login();
+        let login_id = LoginId::random();
+        insert(&mut conn, &login_id, None, Purpose::Login, &state, TTL)
+            .await
+            .unwrap();
+
+        let pending = take(&mut conn, &login_id, Purpose::Login)
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(*pending.state.to_bytes(), *state.to_bytes());
+    }
+
+    #[sqlx::test]
+    async fn fake_path_stores_no_user(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        let login_id = insert_new(&mut conn, None).await;
+
+        let pending = take(&mut conn, &login_id, Purpose::Login)
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(pending.user_id, None);
+    }
+
+    #[sqlx::test]
+    async fn unknown_login_is_none(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        insert_new(&mut conn, None).await;
+
+        let pending = take(&mut conn, &LoginId::random(), Purpose::Login)
+            .await
+            .unwrap();
+
+        assert!(pending.is_none());
+        assert_eq!(count(&db, "login_states").await, 1);
+    }
+
+    #[sqlx::test]
+    async fn expired_login_is_none(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        let login_id = insert_new(&mut conn, None).await;
+        expire(&db, "login_states").await;
+
+        assert!(
+            take(&mut conn, &login_id, Purpose::Login)
+                .await
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[sqlx::test]
+    async fn state_expires_after_ttl(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        insert_new(&mut conn, None).await;
+
+        let remaining = expires_in_secs(&db, "login_states").await;
+
+        assert!(
+            (TTL.as_secs_f64() - 5.0..=TTL.as_secs_f64()).contains(&remaining),
+            "{remaining}"
+        );
+    }
+
+    #[sqlx::test]
+    async fn state_of_another_purpose_is_not_taken(db: PgPool) {
+        let login_id = LoginId::random();
+        sqlx::query(
+            "INSERT INTO login_states (id, purpose, state, expires_at)
+             VALUES ($1, 'step_up', $2, now() + interval '1 minute')",
+        )
+        .bind(login_id.as_bytes().as_slice())
+        .bind(server_login().to_bytes().as_slice())
+        .execute(&db)
+        .await
+        .unwrap();
+        let mut conn = db.acquire().await.unwrap();
+
+        assert!(
+            take(&mut conn, &login_id, Purpose::Login)
+                .await
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(count(&db, "login_states").await, 1);
+    }
+
+    #[sqlx::test]
+    async fn undecodable_state_is_corrupt(db: PgPool) {
+        let login_id = LoginId::random();
+        sqlx::query(
+            "INSERT INTO login_states (id, purpose, state, expires_at)
+             VALUES ($1, 'login', '\\x00', now() + interval '1 minute')",
+        )
+        .bind(login_id.as_bytes().as_slice())
+        .execute(&db)
+        .await
+        .unwrap();
+        let mut conn = db.acquire().await.unwrap();
+
+        let err = take(&mut conn, &login_id, Purpose::Login)
+            .await
+            .err()
+            .unwrap();
+
+        assert!(matches!(err, sqlx::Error::Decode(_)));
+    }
+}

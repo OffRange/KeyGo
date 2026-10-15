@@ -60,3 +60,149 @@ pub async fn find_by_username(
         file,
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::users;
+    use crate::testing::{PASSWORD, username};
+    use keygo_opaque::client::ClientRegistration;
+    use keygo_opaque::server::{self, ServerSetup};
+    use sqlx::PgPool;
+
+    fn password_file(user_id: Uuid) -> PasswordFile {
+        let setup = ServerSetup::generate();
+        let (client, request) = ClientRegistration::start(PASSWORD).unwrap();
+        let response = server::registration_start(&setup, request, user_id.as_bytes()).unwrap();
+        let finish = client.finish(PASSWORD, response).unwrap();
+        server::registration_finish(finish.upload)
+    }
+
+    async fn insert_user(db: &PgPool, name: &str) -> Uuid {
+        let user_id = Uuid::new_v4();
+        let mut conn = db.acquire().await.unwrap();
+        users::insert(&mut conn, user_id, &username(name))
+            .await
+            .unwrap();
+        user_id
+    }
+
+    async fn insert_raw(db: &PgPool, user_id: Uuid, suite: &str, record: &[u8]) {
+        sqlx::query(
+            "INSERT INTO opaque_records (user_id, suite, record, updated_at)
+             VALUES ($1, $2, $3, now())",
+        )
+        .bind(user_id)
+        .bind(suite)
+        .bind(record)
+        .execute(db)
+        .await
+        .unwrap();
+    }
+
+    #[sqlx::test]
+    async fn record_is_found_by_username(db: PgPool) {
+        let user_id = insert_user(&db, "ada").await;
+        let file = password_file(user_id);
+        let mut conn = db.acquire().await.unwrap();
+        insert(&mut conn, user_id, &file).await.unwrap();
+
+        let record = find_by_username(&mut conn, &username("ada"))
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(record.user_id, user_id);
+        assert_eq!(*record.file.to_bytes(), *file.to_bytes());
+    }
+
+    #[sqlx::test]
+    async fn record_stores_the_suite(db: PgPool) {
+        let user_id = insert_user(&db, "ada").await;
+        let mut conn = db.acquire().await.unwrap();
+        insert(&mut conn, user_id, &password_file(user_id))
+            .await
+            .unwrap();
+
+        let suite: String = sqlx::query_scalar("SELECT suite FROM opaque_records")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+
+        assert_eq!(suite, SUITE_ID);
+    }
+
+    #[sqlx::test]
+    async fn unknown_username_has_no_record(db: PgPool) {
+        insert_user(&db, "ada").await;
+        let mut conn = db.acquire().await.unwrap();
+
+        for name in ["bob", "ada"] {
+            let record = find_by_username(&mut conn, &username(name)).await.unwrap();
+            assert!(record.is_none(), "{name}");
+        }
+    }
+
+    #[sqlx::test]
+    async fn record_requires_a_user(db: PgPool) {
+        let user_id = Uuid::new_v4();
+        let mut conn = db.acquire().await.unwrap();
+
+        let err = insert(&mut conn, user_id, &password_file(user_id))
+            .await
+            .unwrap_err();
+
+        assert!(err.as_database_error().unwrap().is_foreign_key_violation());
+    }
+
+    #[sqlx::test]
+    async fn record_is_deleted_with_its_user(db: PgPool) {
+        let user_id = insert_user(&db, "ada").await;
+        let mut conn = db.acquire().await.unwrap();
+        insert(&mut conn, user_id, &password_file(user_id))
+            .await
+            .unwrap();
+
+        sqlx::query("DELETE FROM users WHERE id = $1")
+            .bind(user_id)
+            .execute(&db)
+            .await
+            .unwrap();
+
+        assert_eq!(crate::testing::count(&db, "opaque_records").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn unknown_suite_is_corrupt(db: PgPool) {
+        let user_id = insert_user(&db, "ada").await;
+        insert_raw(
+            &db,
+            user_id,
+            "keygo-opaque-v0",
+            &password_file(user_id).to_bytes(),
+        )
+        .await;
+        let mut conn = db.acquire().await.unwrap();
+
+        let err = find_by_username(&mut conn, &username("ada"))
+            .await
+            .err()
+            .unwrap();
+
+        assert!(matches!(err, sqlx::Error::Decode(_)));
+    }
+
+    #[sqlx::test]
+    async fn undecodable_record_is_corrupt(db: PgPool) {
+        let user_id = insert_user(&db, "ada").await;
+        insert_raw(&db, user_id, SUITE_ID, &[0]).await;
+        let mut conn = db.acquire().await.unwrap();
+
+        let err = find_by_username(&mut conn, &username("ada"))
+            .await
+            .err()
+            .unwrap();
+
+        assert!(matches!(err, sqlx::Error::Decode(_)));
+    }
+}

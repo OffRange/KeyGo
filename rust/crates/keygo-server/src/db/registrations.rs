@@ -94,3 +94,141 @@ pub async fn take(
         username,
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testing::{count, expire, username};
+    use sqlx::PgPool;
+
+    const TTL: Duration = Duration::from_mins(5);
+
+    async fn reserve_new(
+        conn: &mut PgConnection,
+        user_id: Uuid,
+        name: &str,
+    ) -> Result<RegistrationId, ReserveError> {
+        let registration_id = RegistrationId::random();
+        reserve(conn, &registration_id, user_id, &username(name), TTL).await?;
+        Ok(registration_id)
+    }
+
+    #[sqlx::test]
+    async fn reservation_is_taken_once(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        let user_id = Uuid::new_v4();
+        let registration_id = reserve_new(&mut conn, user_id, "ada").await.unwrap();
+
+        let pending = take(&mut conn, &registration_id).await.unwrap().unwrap();
+
+        assert_eq!(pending.user_id, user_id);
+        assert_eq!(pending.username, username("ada"));
+        assert!(take(&mut conn, &registration_id).await.unwrap().is_none());
+        assert_eq!(count(&db, "pending_registrations").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn unknown_registration_is_none(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        reserve_new(&mut conn, Uuid::new_v4(), "ada").await.unwrap();
+
+        let pending = take(&mut conn, &RegistrationId::random()).await.unwrap();
+
+        assert!(pending.is_none());
+        assert_eq!(count(&db, "pending_registrations").await, 1);
+    }
+
+    #[sqlx::test]
+    async fn expired_registration_is_none(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        let registration_id = reserve_new(&mut conn, Uuid::new_v4(), "ada").await.unwrap();
+        expire(&db, "pending_registrations").await;
+
+        assert!(take(&mut conn, &registration_id).await.unwrap().is_none());
+    }
+
+    #[sqlx::test]
+    async fn live_reservation_holds_its_username(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        reserve_new(&mut conn, Uuid::new_v4(), "ada").await.unwrap();
+
+        let err = reserve_new(&mut conn, Uuid::new_v4(), "ada")
+            .await
+            .unwrap_err();
+
+        assert!(matches!(err, ReserveError::UsernameTaken), "{err:?}");
+    }
+
+    #[sqlx::test]
+    async fn expired_reservation_frees_its_username(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        let stale = reserve_new(&mut conn, Uuid::new_v4(), "ada").await.unwrap();
+        expire(&db, "pending_registrations").await;
+        let user_id = Uuid::new_v4();
+
+        let fresh = reserve_new(&mut conn, user_id, "ada").await.unwrap();
+
+        assert!(take(&mut conn, &stale).await.unwrap().is_none());
+        let pending = take(&mut conn, &fresh).await.unwrap().unwrap();
+        assert_eq!(pending.user_id, user_id);
+    }
+
+    #[sqlx::test]
+    async fn same_user_id_takes_over_its_reservation(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        let user_id = Uuid::new_v4();
+        let first = reserve_new(&mut conn, user_id, "ada").await.unwrap();
+
+        let second = reserve_new(&mut conn, user_id, "bob").await.unwrap();
+
+        assert!(take(&mut conn, &first).await.unwrap().is_none());
+        let pending = take(&mut conn, &second).await.unwrap().unwrap();
+        assert_eq!(pending.username, username("bob"));
+        reserve_new(&mut conn, Uuid::new_v4(), "ada").await.unwrap();
+    }
+
+    #[sqlx::test]
+    async fn takeover_cannot_claim_another_users_name(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        let user_id = Uuid::new_v4();
+        let own = reserve_new(&mut conn, user_id, "ada").await.unwrap();
+        reserve_new(&mut conn, Uuid::new_v4(), "bob").await.unwrap();
+
+        let err = reserve_new(&mut conn, user_id, "bob").await.unwrap_err();
+
+        assert!(matches!(err, ReserveError::UsernameTaken), "{err:?}");
+        assert!(take(&mut conn, &own).await.unwrap().is_some());
+    }
+
+    #[sqlx::test]
+    async fn reservation_expires_after_ttl(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        reserve_new(&mut conn, Uuid::new_v4(), "ada").await.unwrap();
+
+        let remaining = crate::testing::expires_in_secs(&db, "pending_registrations").await;
+
+        assert!(
+            (TTL.as_secs_f64() - 5.0..=TTL.as_secs_f64()).contains(&remaining),
+            "{remaining}"
+        );
+    }
+
+    #[sqlx::test]
+    async fn stored_invalid_username_is_corrupt(db: PgPool) {
+        let registration_id = RegistrationId::random();
+        sqlx::query(
+            "INSERT INTO pending_registrations (id, user_id, username, expires_at)
+             VALUES ($1, $2, 'NOT VALID', now() + interval '1 minute')",
+        )
+        .bind(registration_id.as_bytes().as_slice())
+        .bind(Uuid::new_v4())
+        .execute(&db)
+        .await
+        .unwrap();
+        let mut conn = db.acquire().await.unwrap();
+
+        let err = take(&mut conn, &registration_id).await.err().unwrap();
+
+        assert!(matches!(err, sqlx::Error::Decode(_)));
+    }
+}

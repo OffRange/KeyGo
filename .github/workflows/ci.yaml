@@ -66,6 +66,27 @@ jobs:
     if: needs.detect-changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
 
+    # keygo-server's #[sqlx::test]s create a throwaway database per test through DATABASE_URL.
+    # SQLX_OFFLINE keeps the query! macros on the committed .sqlx data instead of this empty server.
+    services:
+      postgres:
+        image: postgres:18-trixie
+        env:
+          POSTGRES_USER: keygo
+          POSTGRES_PASSWORD: keygo
+          POSTGRES_DB: keygo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U keygo -d keygo"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+
+    env:
+      DATABASE_URL: postgres://keygo:keygo@localhost:5432/keygo
+      SQLX_OFFLINE: "true"
+
     defaults:
       run:
         working-directory: ./rust

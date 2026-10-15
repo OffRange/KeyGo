@@ -8,6 +8,8 @@ mod domain;
 mod secrets;
 mod server;
 mod service;
+#[cfg(test)]
+mod testing;
 
 fn main() -> anyhow::Result<()> {
     Cli::start()

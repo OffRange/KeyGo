@@ -78,6 +78,7 @@ fn fake_identifier(username: &Username) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::testing::{count, register, start_login};
 
     fn name(raw: &str) -> Username {
         Username::parse(raw).unwrap()
@@ -92,5 +93,42 @@ mod tests {
     #[test]
     fn fake_identifier_is_pinned() {
         assert_eq!(fake_identifier(&name("ada")), b"v1:fake/login\0ada");
+    }
+
+    async fn stored_user_ids(db: &PgPool) -> Vec<Option<uuid::Uuid>> {
+        sqlx::query_scalar("SELECT user_id FROM login_states")
+            .fetch_all(db)
+            .await
+            .unwrap()
+    }
+
+    #[sqlx::test]
+    async fn start_stores_state_for_a_known_user(db: PgPool) {
+        let setup = ServerSetup::generate();
+        let user_id = register(&db, &setup, "ada").await;
+
+        let (_, started) = start_login(&db, &setup, "ada").await;
+
+        assert_eq!(started.expires_in, TTL);
+        assert_eq!(stored_user_ids(&db).await, [Some(user_id)]);
+    }
+
+    #[sqlx::test]
+    async fn start_answers_an_unknown_user_without_one(db: PgPool) {
+        let (_, started) = start_login(&db, &ServerSetup::generate(), "ada").await;
+
+        assert_eq!(started.expires_in, TTL);
+        assert_eq!(stored_user_ids(&db).await, [None]);
+    }
+
+    #[sqlx::test]
+    async fn every_start_is_a_separate_login(db: PgPool) {
+        let setup = ServerSetup::generate();
+
+        let (_, first) = start_login(&db, &setup, "ada").await;
+        let (_, second) = start_login(&db, &setup, "ada").await;
+
+        assert_ne!(first.login_id, second.login_id);
+        assert_eq!(count(&db, "login_states").await, 2);
     }
 }

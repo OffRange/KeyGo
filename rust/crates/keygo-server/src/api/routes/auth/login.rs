@@ -99,7 +99,38 @@ async fn finish(
 mod tests {
     use super::*;
     use crate::api::error::render;
+    use crate::testing::{PASSWORD, count, post, register};
     use keygo_opaque::OpaqueError;
+    use keygo_opaque::client::ClientLogin;
+    use keygo_opaque::server::ServerSetup;
+    use serde_json::{Value, json};
+    use sqlx::PgPool;
+
+    const START: &str = "/api/v1/auth/login/start";
+    const FINISH: &str = "/api/v1/auth/login/finish";
+
+    async fn start_over_http(
+        db: &PgPool,
+        setup: &ServerSetup,
+        username: &str,
+    ) -> (ClientLogin, Value) {
+        let (client, request) = ClientLogin::start(PASSWORD).unwrap();
+        let body = json!({ "username": username, "credential_request": request.to_base64() });
+        let (status, started) = post(db, setup, START, body).await;
+        assert_eq!(status, StatusCode::OK);
+        (client, started)
+    }
+
+    fn finalization(client: ClientLogin, started: &Value) -> String {
+        let response =
+            CredentialResponse::from_base64(started["credential_response"].as_str().unwrap())
+                .unwrap();
+        client
+            .finish(PASSWORD, response)
+            .unwrap()
+            .finalization
+            .to_base64()
+    }
 
     #[tokio::test]
     async fn expired_logins_are_bad_requests() {
@@ -115,5 +146,124 @@ mod tests {
 
         assert_eq!(status, StatusCode::UNAUTHORIZED);
         assert_eq!(body["code"], "invalid_credentials");
+    }
+
+    #[sqlx::test]
+    async fn logs_in_over_http(db: PgPool) {
+        let setup = ServerSetup::generate();
+        let user_id = register(&db, &setup, "ada").await;
+        let (client, started) = start_over_http(&db, &setup, "Ada").await;
+
+        assert_eq!(started["expires_in"], login::TTL.as_secs());
+        let body = json!({
+            "login_id": started["login_id"],
+            "credential_finalization": finalization(client, &started),
+        });
+
+        let (status, finished) = post(&db, &setup, FINISH, body).await;
+
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(finished, json!({ "user_id": user_id, "username": "ada" }));
+        assert_eq!(count(&db, "login_states").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn unknown_user_starts_like_a_known_one(db: PgPool) {
+        let setup = ServerSetup::generate();
+        register(&db, &setup, "ada").await;
+
+        let (_, known) = start_over_http(&db, &setup, "ada").await;
+        let (_, unknown) = start_over_http(&db, &setup, "bob").await;
+
+        let shape = |body: &Value| {
+            body.as_object()
+                .unwrap()
+                .iter()
+                .map(|(key, value)| (key.clone(), value.as_str().map(str::len)))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(shape(&known), shape(&unknown));
+    }
+
+    #[sqlx::test]
+    async fn start_rejects_an_invalid_username(db: PgPool) {
+        let (_, request) = ClientLogin::start(PASSWORD).unwrap();
+        let body = json!({ "username": "a", "credential_request": request.to_base64() });
+
+        let (status, body) = post(&db, &ServerSetup::generate(), START, body).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["code"], "invalid_username");
+    }
+
+    #[sqlx::test]
+    async fn start_rejects_a_malformed_credential_request(db: PgPool) {
+        let body = json!({ "username": "ada", "credential_request": "AAAA" });
+
+        let (status, body) = post(&db, &ServerSetup::generate(), START, body).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["code"], "invalid_request");
+        assert_eq!(count(&db, "login_states").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn foreign_finalization_is_unauthorized(db: PgPool) {
+        let setup = ServerSetup::generate();
+        register(&db, &setup, "ada").await;
+        let (_, target) = start_over_http(&db, &setup, "ada").await;
+        let (client, other) = start_over_http(&db, &setup, "ada").await;
+        let body = json!({
+            "login_id": target["login_id"],
+            "credential_finalization": finalization(client, &other),
+        });
+
+        let (status, body) = post(&db, &setup, FINISH, body).await;
+
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        assert_eq!(body["code"], "invalid_credentials");
+    }
+
+    #[sqlx::test]
+    async fn unknown_user_finish_is_unauthorized(db: PgPool) {
+        let setup = ServerSetup::generate();
+        register(&db, &setup, "ada").await;
+        let (_, fake) = start_over_http(&db, &setup, "bob").await;
+        let (client, real) = start_over_http(&db, &setup, "ada").await;
+        let body = json!({
+            "login_id": fake["login_id"],
+            "credential_finalization": finalization(client, &real),
+        });
+
+        let (status, body) = post(&db, &setup, FINISH, body).await;
+
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        assert_eq!(body["code"], "invalid_credentials");
+    }
+
+    #[sqlx::test]
+    async fn finish_rejects_an_unknown_login(db: PgPool) {
+        let setup = ServerSetup::generate();
+        register(&db, &setup, "ada").await;
+        let (client, started) = start_over_http(&db, &setup, "ada").await;
+        let body = json!({
+            "login_id": LoginId::random(),
+            "credential_finalization": finalization(client, &started),
+        });
+
+        let (status, body) = post(&db, &setup, FINISH, body).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["code"], "login_expired");
+    }
+
+    #[sqlx::test]
+    async fn finish_rejects_a_malformed_login_id(db: PgPool) {
+        let body = json!({ "login_id": "short", "credential_finalization": "AAAA" });
+
+        let (status, body) = post(&db, &ServerSetup::generate(), FINISH, body).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["code"], "invalid_request");
     }
 }

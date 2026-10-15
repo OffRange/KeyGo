@@ -102,6 +102,24 @@ async fn finish(
 mod tests {
     use super::*;
     use crate::api::error::render;
+    use crate::testing::{count, post, register};
+    use keygo_opaque::client::ClientRegistration;
+    use keygo_opaque::server::ServerSetup;
+    use serde_json::{Value, json};
+    use sqlx::PgPool;
+
+    const START: &str = "/api/v1/auth/register/start";
+    const FINISH: &str = "/api/v1/auth/register/finish";
+
+    fn start_body(username: &str, user_id: Uuid) -> (ClientRegistration, Value) {
+        let (client, request) = ClientRegistration::start(crate::testing::PASSWORD).unwrap();
+        let body = json!({
+            "username": username,
+            "user_id": user_id,
+            "registration_request": request.to_base64(),
+        });
+        (client, body)
+    }
 
     #[tokio::test]
     async fn expired_registrations_are_bad_requests() {
@@ -117,5 +135,116 @@ mod tests {
 
         assert_eq!(status, StatusCode::CONFLICT);
         assert_eq!(body["code"], "username_taken");
+    }
+
+    #[sqlx::test]
+    async fn registers_over_http(db: PgPool) {
+        let setup = ServerSetup::generate();
+        let user_id = Uuid::new_v4();
+        let (client, body) = start_body("Ada", user_id);
+
+        let (status, started) = post(&db, &setup, START, body).await;
+
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(started["expires_in"], registration::TTL.as_secs());
+        let response =
+            RegistrationResponse::from_base64(started["registration_response"].as_str().unwrap())
+                .unwrap();
+        let upload = client
+            .finish(crate::testing::PASSWORD, response)
+            .unwrap()
+            .upload;
+        let body = json!({
+            "registration_id": started["registration_id"],
+            "registration_upload": upload.to_base64(),
+        });
+
+        let (status, finished) = post(&db, &setup, FINISH, body).await;
+
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(finished, json!({ "username": "ada" }));
+        assert_eq!(count(&db, "users").await, 1);
+    }
+
+    #[sqlx::test]
+    async fn start_rejects_an_invalid_username(db: PgPool) {
+        let (_, body) = start_body("a", Uuid::new_v4());
+
+        let (status, body) = post(&db, &ServerSetup::generate(), START, body).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["code"], "invalid_username");
+    }
+
+    #[sqlx::test]
+    async fn start_rejects_a_structured_user_id(db: PgPool) {
+        let (_, body) = start_body("ada", Uuid::nil());
+
+        let (status, body) = post(&db, &ServerSetup::generate(), START, body).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["code"], "invalid_request");
+    }
+
+    #[sqlx::test]
+    async fn start_rejects_a_malformed_registration_request(db: PgPool) {
+        let body = json!({
+            "username": "ada",
+            "user_id": Uuid::new_v4(),
+            "registration_request": "AAAA",
+        });
+
+        let (status, body) = post(&db, &ServerSetup::generate(), START, body).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["code"], "invalid_request");
+    }
+
+    #[sqlx::test]
+    async fn start_conflicts_on_a_taken_username(db: PgPool) {
+        let setup = ServerSetup::generate();
+        register(&db, &setup, "ada").await;
+        let (_, body) = start_body("ADA", Uuid::new_v4());
+
+        let (status, body) = post(&db, &setup, START, body).await;
+
+        assert_eq!(status, StatusCode::CONFLICT);
+        assert_eq!(body["code"], "username_taken");
+    }
+
+    #[sqlx::test]
+    async fn start_conflicts_on_a_taken_user_id(db: PgPool) {
+        let setup = ServerSetup::generate();
+        let user_id = register(&db, &setup, "ada").await;
+        let (_, body) = start_body("bob", user_id);
+
+        let (status, body) = post(&db, &setup, START, body).await;
+
+        assert_eq!(status, StatusCode::CONFLICT);
+        assert_eq!(body["code"], "user_id_taken");
+    }
+
+    #[sqlx::test]
+    async fn finish_rejects_an_unknown_registration(db: PgPool) {
+        let setup = ServerSetup::generate();
+        let (client, body) = start_body("ada", Uuid::new_v4());
+        let (_, started) = post(&db, &setup, START, body).await;
+        let response =
+            RegistrationResponse::from_base64(started["registration_response"].as_str().unwrap())
+                .unwrap();
+        let upload = client
+            .finish(crate::testing::PASSWORD, response)
+            .unwrap()
+            .upload;
+        let body = json!({
+            "registration_id": RegistrationId::random(),
+            "registration_upload": upload.to_base64(),
+        });
+
+        let (status, body) = post(&db, &setup, FINISH, body).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["code"], "registration_expired");
+        assert_eq!(count(&db, "users").await, 0);
     }
 }

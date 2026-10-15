@@ -99,6 +99,8 @@ fn is_random_uuid(id: Uuid) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::testing::{count, register, username};
+    use keygo_opaque::client::ClientRegistration;
 
     #[test]
     fn accepts_random_uuids() {
@@ -119,5 +121,64 @@ mod tests {
         assert!(!is_random_uuid(
             "7f0c1e52-3a9b-4c11-cd0e-2b5a6c9d4e10".parse().unwrap()
         ));
+    }
+
+    async fn start_as(db: &PgPool, user_id: Uuid, name: &str) -> Result<Started, StartError> {
+        let (_, registration_request) = ClientRegistration::start(b"password").unwrap();
+        let input = StartRegistration {
+            username: username(name),
+            user_id,
+            registration_request,
+        };
+        start(db, &ServerSetup::generate(), input).await
+    }
+
+    #[sqlx::test]
+    async fn start_reserves_the_username(db: PgPool) {
+        let started = start_as(&db, Uuid::new_v4(), "ada").await.unwrap();
+
+        assert_eq!(started.expires_in, TTL);
+        assert_eq!(count(&db, "pending_registrations").await, 1);
+        let err = start_as(&db, Uuid::new_v4(), "ada").await.err().unwrap();
+        assert!(matches!(err, StartError::UsernameTaken), "{err:?}");
+    }
+
+    #[sqlx::test]
+    async fn start_rejects_structured_user_ids(db: PgPool) {
+        let err = start_as(&db, Uuid::nil(), "ada").await.err().unwrap();
+
+        assert!(matches!(err, StartError::InvalidUserId), "{err:?}");
+        assert_eq!(count(&db, "pending_registrations").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn start_rejects_a_registered_username(db: PgPool) {
+        register(&db, &ServerSetup::generate(), "ada").await;
+
+        let err = start_as(&db, Uuid::new_v4(), "ada").await.err().unwrap();
+
+        assert!(matches!(err, StartError::UsernameTaken), "{err:?}");
+        assert_eq!(count(&db, "pending_registrations").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn start_rejects_a_registered_user_id(db: PgPool) {
+        let user_id = register(&db, &ServerSetup::generate(), "ada").await;
+
+        let err = start_as(&db, user_id, "bob").await.err().unwrap();
+
+        assert!(matches!(err, StartError::UserIdTaken), "{err:?}");
+        assert_eq!(count(&db, "pending_registrations").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn restart_with_the_same_user_id_replaces_the_reservation(db: PgPool) {
+        let user_id = Uuid::new_v4();
+        start_as(&db, user_id, "ada").await.unwrap();
+
+        start_as(&db, user_id, "bob").await.unwrap();
+
+        assert_eq!(count(&db, "pending_registrations").await, 1);
+        start_as(&db, Uuid::new_v4(), "ada").await.unwrap();
     }
 }
