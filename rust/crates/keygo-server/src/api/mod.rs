@@ -3,7 +3,7 @@ mod extract;
 mod routes;
 mod state;
 
-pub use error::{ServerError, ServerResult};
+pub use error::{HttpError, ServerError, ServerResult};
 pub use extract::Json;
 pub use state::AppState;
 
@@ -14,7 +14,7 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .nest("/health", routes::health::router())
         .nest("/api/v1", v1())
-        .fallback(not_fount)
+        .fallback(not_found)
         .layer(TraceLayer::new_for_http())
         .with_state(state)
 }
@@ -25,7 +25,7 @@ fn v1() -> Router<AppState> {
         .nest("/auth", routes::auth::router())
 }
 
-async fn not_fount() -> ServerError {
+async fn not_found() -> ServerError {
     ServerError::not_found()
 }
 
