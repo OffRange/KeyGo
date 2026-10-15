@@ -6,4 +6,4 @@ pub use start::*;
 
 use std::time::Duration;
 
-pub const TTL: Duration = Duration::from_secs(60);
+pub const TTL: Duration = Duration::from_mins(1);
