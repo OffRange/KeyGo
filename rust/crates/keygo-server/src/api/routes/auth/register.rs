@@ -1,10 +1,9 @@
-use crate::api::AppState;
+use crate::api::{AppState, Json, ServerError, ServerResult};
+use axum::Router;
 use axum::extract::State;
-use axum::http::StatusCode;
 use axum::routing::post;
-use axum::{Json, Router};
 use keygo_opaque::{
-    OpaqueError, RegistrationRequest, RegistrationResponse, RegistrationUpload, server,
+    RegistrationRequest, RegistrationResponse, RegistrationUpload, server,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -36,17 +35,14 @@ struct RegisterStart {
 async fn start(
     State(state): State<AppState>,
     Json(payload): Json<RegisterStartRequest>,
-) -> Result<Json<RegisterStart>, StatusCode> {
-    if payload.username.is_empty() {
-        return Err(StatusCode::UNPROCESSABLE_ENTITY);
-    }
+) -> ServerResult<Json<RegisterStart>> {
+    // TODO: handle username
 
     let response = server::registration_start(
         &state.opaque_state,
         payload.registration_request,
         payload.user_id.as_bytes(),
-    )
-    .map_err(opaque_status)?;
+    )?;
 
     Ok(Json(RegisterStart {
         registration_response: response,
@@ -56,16 +52,6 @@ async fn start(
 async fn finish(
     State(state): State<AppState>,
     Json(payload): Json<RegisterFinishRequest>,
-) -> StatusCode {
-    StatusCode::NOT_IMPLEMENTED
-}
-
-fn opaque_status(err: OpaqueError) -> StatusCode {
-    match err {
-        OpaqueError::Malformed => StatusCode::UNPROCESSABLE_ENTITY,
-        other => {
-            tracing::error!("OPAQUE registration failed: {other}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        }
-    }
+) -> ServerResult<()> {
+    Err(ServerError::not_implemented())
 }

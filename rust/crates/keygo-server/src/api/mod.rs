@@ -1,6 +1,10 @@
+mod error;
+mod extract;
 mod routes;
 mod state;
 
+pub use error::{ServerError, ServerResult};
+pub use extract::Json;
 pub use state::AppState;
 
 use axum::Router;
@@ -10,6 +14,7 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .nest("/health", routes::health::router())
         .nest("/api/v1", v1())
+        .fallback(not_fount)
         .layer(TraceLayer::new_for_http())
         .with_state(state)
 }
@@ -18,6 +23,10 @@ fn v1() -> Router<AppState> {
     Router::new()
         .nest("/meta", routes::meta::router())
         .nest("/auth", routes::auth::router())
+}
+
+async fn not_fount() -> ServerError {
+    ServerError::not_found()
 }
 
 #[cfg(test)]
@@ -31,6 +40,17 @@ mod tests {
 
     async fn get(state: AppState, uri: &str) -> (StatusCode, Vec<u8>) {
         let request = Request::get(uri).body(Body::empty()).unwrap();
+        let response = router(state).oneshot(request).await.unwrap();
+        let status = response.status();
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        (status, body.to_vec())
+    }
+
+    async fn post_json(state: AppState, uri: &str, body: Value) -> (StatusCode, Vec<u8>) {
+        let request = Request::post(uri)
+            .header("content-type", "application/json")
+            .body(Body::from(body.to_string()))
+            .unwrap();
         let response = router(state).oneshot(request).await.unwrap();
         let status = response.status();
         let body = response.into_body().collect().await.unwrap().to_bytes();
@@ -73,8 +93,38 @@ mod tests {
 
     #[tokio::test]
     async fn unknown_route_is_not_found() {
-        let (status, _) = get(state(), "/api/v1/nope").await;
+        let (status, body) = get(state(), "/api/v1/nope").await;
 
         assert_eq!(status, StatusCode::NOT_FOUND);
+        let body: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body["code"], "not_found");
+    }
+
+    #[tokio::test]
+    async fn invalid_body_is_reported_as_json() {
+        let (status, body) = post_json(
+            state(),
+            "/api/v1/auth/register/start",
+            json!({ "username": "a", "user_id": "not-a-uuid" }),
+        )
+        .await;
+
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+        let body: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body["code"], "invalid_body");
+        assert!(body["message"].as_str().is_some_and(|m| !m.is_empty()));
+    }
+
+    #[tokio::test]
+    async fn missing_content_type_is_reported_as_json() {
+        let request = Request::post("/api/v1/auth/register/start")
+            .body(Body::from("{}"))
+            .unwrap();
+        let response = router(state()).oneshot(request).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let body: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body["code"], "invalid_body");
     }
 }
