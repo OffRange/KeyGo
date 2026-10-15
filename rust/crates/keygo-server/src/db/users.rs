@@ -1,0 +1,21 @@
+use crate::domain::Username;
+use sqlx::PgConnection;
+use uuid::Uuid;
+
+pub async fn username_exists(conn: &mut PgConnection, username: &Username) -> sqlx::Result<bool> {
+    sqlx::query_scalar!(
+        r#"SELECT EXISTS(SELECT 1 FROM users WHERE username = $1) AS "exists!""#,
+        username.as_str(),
+    )
+    .fetch_one(conn)
+    .await
+}
+
+pub async fn id_exists(conn: &mut PgConnection, user_id: Uuid) -> sqlx::Result<bool> {
+    sqlx::query_scalar!(
+        r#"SELECT EXISTS(SELECT 1 FROM users WHERE id = $1) AS "exists!""#,
+        user_id,
+    )
+    .fetch_one(conn)
+    .await
+}

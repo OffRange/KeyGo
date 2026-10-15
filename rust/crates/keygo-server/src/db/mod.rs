@@ -1,3 +1,6 @@
+pub mod registrations;
+pub mod users;
+
 use crate::config::Config;
 use secrecy::ExposeSecret;
 use sqlx::PgPool;

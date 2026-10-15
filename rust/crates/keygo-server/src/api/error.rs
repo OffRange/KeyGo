@@ -1,4 +1,5 @@
 use crate::domain::UsernameError;
+use crate::service::registration;
 use axum::extract::rejection::JsonRejection;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -126,6 +127,27 @@ impl HttpError for OpaqueError {
 }
 
 impl HttpError for sqlx::Error {}
+
+impl HttpError for registration::StartError {
+    fn status(&self) -> StatusCode {
+        match self {
+            Self::InvalidUserId => StatusCode::BAD_REQUEST,
+            Self::UsernameTaken | Self::UserIdTaken => StatusCode::CONFLICT,
+            Self::Opaque(err) => err.status(),
+            Self::Db(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+
+    fn code(&self) -> &'static str {
+        match self {
+            Self::InvalidUserId => "invalid_request",
+            Self::UsernameTaken => "username_taken",
+            Self::UserIdTaken => "user_id_taken",
+            Self::Opaque(err) => err.code(),
+            Self::Db(_) => "internal",
+        }
+    }
+}
 
 impl HttpError for UsernameError {
     fn status(&self) -> StatusCode {

@@ -7,6 +7,7 @@ mod db;
 mod domain;
 mod secrets;
 mod server;
+mod service;
 
 fn main() -> anyhow::Result<()> {
     Cli::start()

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM pending_registrations\n         WHERE expires_at <= now() AND (username = $1 OR user_id = $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d466775c2062b7f3f136ba466c9b32986fa08c450e22784ac82c70e33539e8a0"
+}
