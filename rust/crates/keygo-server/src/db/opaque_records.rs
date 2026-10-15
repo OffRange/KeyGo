@@ -1,6 +1,8 @@
+use crate::domain::Username;
 use keygo_opaque::{PasswordFile, SUITE_ID};
 use sqlx::PgConnection;
 use uuid::Uuid;
+use zeroize::Zeroizing;
 
 pub async fn insert(
     conn: &mut PgConnection,
@@ -19,4 +21,41 @@ pub async fn insert(
     .await?;
 
     Ok(())
+}
+
+pub struct Record {
+    pub user_id: Uuid,
+    pub file: PasswordFile,
+}
+
+pub async fn find_by_username(
+    conn: &mut PgConnection,
+    username: &Username,
+) -> sqlx::Result<Option<Record>> {
+    let Some(row) = sqlx::query!(
+        "SELECT r.user_id, r.suite, r.record
+         FROM opaque_records r JOIN users u ON u.id = r.user_id
+         WHERE u.username = $1",
+        username.as_str(),
+    )
+    .fetch_optional(conn)
+    .await?
+    else {
+        return Ok(None);
+    };
+
+    if row.suite != SUITE_ID {
+        return Err(sqlx::Error::Decode(
+            format!("opaque record uses unknown suite {:?}", row.suite).into(),
+        ));
+    }
+
+    let record = Zeroizing::new(row.record);
+    let file =
+        PasswordFile::from_bytes(&record).map_err(|err| sqlx::Error::Decode(Box::new(err)))?;
+
+    Ok(Some(Record {
+        user_id: row.user_id,
+        file,
+    }))
 }

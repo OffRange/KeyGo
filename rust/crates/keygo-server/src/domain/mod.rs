@@ -1,5 +1,5 @@
-mod registration_id;
+mod random_id;
 mod username;
 
-pub use registration_id::RegistrationId;
+pub use random_id::{LoginId, RegistrationId};
 pub use username::{Username, UsernameError};

@@ -21,3 +21,12 @@ CREATE UNLOGGED TABLE pending_registrations
     -- invite_id  text REFERENCES invites,
     expires_at timestamptz NOT NULL
 );
+
+CREATE UNLOGGED TABLE login_states
+(
+    id         bytea PRIMARY KEY,    -- login_id, 16 random bytes
+    user_id    uuid,                 -- null on the fake path
+    purpose    text        NOT NULL CHECK (purpose IN ('login', 'step_up')),
+    state      bytea       NOT NULL, -- serialized ServerLogin
+    expires_at timestamptz NOT NULL
+);

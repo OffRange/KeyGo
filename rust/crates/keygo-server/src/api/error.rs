@@ -1,5 +1,5 @@
 use crate::domain::UsernameError;
-use crate::service::registration;
+use crate::service::{login, registration};
 use axum::extract::rejection::JsonRejection;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -160,6 +160,22 @@ impl HttpError for registration::FinishError {
     fn code(&self) -> &'static str {
         match self {
             Self::Expired => "registration_expired",
+            Self::Db(_) => "internal",
+        }
+    }
+}
+
+impl HttpError for login::StartError {
+    fn status(&self) -> StatusCode {
+        match self {
+            Self::Opaque(err) => err.status(),
+            Self::Db(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+
+    fn code(&self) -> &'static str {
+        match self {
+            Self::Opaque(err) => err.code(),
             Self::Db(_) => "internal",
         }
     }
