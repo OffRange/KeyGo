@@ -6,10 +6,13 @@ use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tokio::signal::unix::{SignalKind, signal};
 
+mod sweeper;
+
 pub async fn start(config: &Config, listen: SocketAddr) -> anyhow::Result<()> {
     let db = db::connect(config).await?;
     db::migrate(&db).await?;
 
+    let sweeper = tokio::spawn(sweeper::run(db.clone()));
     let app = api::router(AppState::new(config, db)?);
     let listener = TcpListener::bind(listen)
         .await
@@ -19,6 +22,7 @@ pub async fn start(config: &Config, listen: SocketAddr) -> anyhow::Result<()> {
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
+    sweeper.abort();
     tracing::info!("stopped");
     Ok(())
 }

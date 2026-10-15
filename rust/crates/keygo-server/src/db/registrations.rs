@@ -95,6 +95,14 @@ pub async fn take(
     }))
 }
 
+pub async fn delete_expired(conn: &mut PgConnection) -> sqlx::Result<u64> {
+    let result = sqlx::query!("DELETE FROM pending_registrations WHERE expires_at <= now()")
+        .execute(conn)
+        .await?;
+
+    Ok(result.rows_affected())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -211,6 +219,18 @@ mod tests {
             (TTL.as_secs_f64() - 5.0..=TTL.as_secs_f64()).contains(&remaining),
             "{remaining}"
         );
+    }
+
+    #[sqlx::test]
+    async fn delete_expired_keeps_live_reservations(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        reserve_new(&mut conn, Uuid::new_v4(), "ada").await.unwrap();
+        expire(&db, "pending_registrations").await;
+        let live = reserve_new(&mut conn, Uuid::new_v4(), "bob").await.unwrap();
+
+        assert_eq!(delete_expired(&mut conn).await.unwrap(), 1);
+        assert_eq!(count(&db, "pending_registrations").await, 1);
+        assert!(take(&mut conn, &live).await.unwrap().is_some());
     }
 
     #[sqlx::test]

@@ -78,6 +78,14 @@ pub async fn take(
     }))
 }
 
+pub async fn delete_expired(conn: &mut PgConnection) -> sqlx::Result<u64> {
+    let result = sqlx::query!("DELETE FROM login_states WHERE expires_at <= now()")
+        .execute(conn)
+        .await?;
+
+    Ok(result.rows_affected())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -185,6 +193,24 @@ mod tests {
                 .await
                 .unwrap()
                 .is_none()
+        );
+    }
+
+    #[sqlx::test]
+    async fn delete_expired_keeps_live_states(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        insert_new(&mut conn, None).await;
+        insert_new(&mut conn, Some(Uuid::new_v4())).await;
+        expire(&db, "login_states").await;
+        let live = insert_new(&mut conn, None).await;
+
+        assert_eq!(delete_expired(&mut conn).await.unwrap(), 2);
+        assert_eq!(count(&db, "login_states").await, 1);
+        assert!(
+            take(&mut conn, &live, Purpose::Login)
+                .await
+                .unwrap()
+                .is_some()
         );
     }
 

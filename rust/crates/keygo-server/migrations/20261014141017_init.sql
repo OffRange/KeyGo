@@ -22,6 +22,8 @@ CREATE UNLOGGED TABLE pending_registrations
     expires_at timestamptz NOT NULL
 );
 
+CREATE INDEX pending_registrations_expires_at_idx ON pending_registrations (expires_at);
+
 CREATE UNLOGGED TABLE login_states
 (
     id         bytea PRIMARY KEY,    -- login_id, 16 random bytes
@@ -30,3 +32,5 @@ CREATE UNLOGGED TABLE login_states
     state      bytea       NOT NULL, -- serialized ServerLogin
     expires_at timestamptz NOT NULL
 );
+
+CREATE INDEX login_states_expires_at_idx ON login_states (expires_at);
