@@ -186,6 +186,24 @@ impl HttpError for login::StartError {
     }
 }
 
+impl HttpError for login::FinishError {
+    fn status(&self) -> StatusCode {
+        match self {
+            Self::Expired => StatusCode::BAD_REQUEST,
+            Self::Opaque(err) => err.status(),
+            Self::Db(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+
+    fn code(&self) -> &'static str {
+        match self {
+            Self::Expired => "login_expired",
+            Self::Opaque(err) => err.code(),
+            Self::Db(_) => "internal",
+        }
+    }
+}
+
 impl HttpError for UsernameError {
     fn status(&self) -> StatusCode {
         StatusCode::BAD_REQUEST
@@ -229,6 +247,22 @@ mod tests {
 
         assert_eq!(status, StatusCode::BAD_REQUEST);
         assert_eq!(body["code"], "invalid_request");
+    }
+
+    #[tokio::test]
+    async fn expired_logins_are_bad_requests() {
+        let (status, body) = render(login::FinishError::Expired).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["code"], "login_expired");
+    }
+
+    #[tokio::test]
+    async fn failed_login_finish_matches_failed_start() {
+        let (status, body) = render(login::FinishError::Opaque(OpaqueError::InvalidLogin)).await;
+
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        assert_eq!(body["code"], "invalid_credentials");
     }
 
     #[tokio::test]

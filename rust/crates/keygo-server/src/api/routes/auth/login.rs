@@ -1,11 +1,12 @@
-use crate::api::{AppState, Json, ServerError, ServerResult};
+use crate::api::{AppState, Json, ServerResult};
 use crate::domain::{LoginId, Username};
-use crate::service::login::{self, StartLogin};
+use crate::service::login::{self, FinishLogin, StartLogin};
 use axum::Router;
 use axum::extract::State;
 use axum::routing::post;
-use keygo_opaque::{CredentialRequest, CredentialResponse};
+use keygo_opaque::{CredentialFinalization, CredentialRequest, CredentialResponse};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -19,11 +20,23 @@ struct LoginStartRequest {
     credential_request: CredentialRequest,
 }
 
+#[derive(Deserialize)]
+struct LoginFinishRequest {
+    login_id: LoginId,
+    credential_finalization: CredentialFinalization,
+}
+
 #[derive(Serialize)]
 struct LoginStart {
     login_id: LoginId,
     credential_response: CredentialResponse,
     expires_in: u64,
+}
+
+#[derive(Serialize)]
+struct LoginFinish {
+    user_id: Uuid,
+    username: Username,
 }
 
 async fn start(
@@ -44,6 +57,19 @@ async fn start(
     }))
 }
 
-async fn finish() -> ServerResult<()> {
-    Err(ServerError::not_implemented())
+async fn finish(
+    State(state): State<AppState>,
+    Json(payload): Json<LoginFinishRequest>,
+) -> ServerResult<Json<LoginFinish>> {
+    let input = FinishLogin {
+        login_id: payload.login_id,
+        credential_finalization: payload.credential_finalization,
+    };
+
+    let finished = login::finish(&state.db, input).await?;
+
+    Ok(Json(LoginFinish {
+        user_id: finished.user_id,
+        username: finished.username,
+    }))
 }

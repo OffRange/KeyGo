@@ -34,3 +34,20 @@ pub async fn insert(
     .await?;
     Ok(())
 }
+
+pub async fn find_username(
+    conn: &mut PgConnection,
+    user_id: Uuid,
+) -> sqlx::Result<Option<Username>> {
+    let Some(username) = sqlx::query_scalar!("SELECT username FROM users WHERE id = $1", user_id)
+        .fetch_optional(conn)
+        .await?
+    else {
+        return Ok(None);
+    };
+
+    // `insert` only stores parsed names, so this fails only on a corrupted row.
+    Username::parse(&username)
+        .map(Some)
+        .map_err(|err| sqlx::Error::Decode(Box::new(err)))
+}
