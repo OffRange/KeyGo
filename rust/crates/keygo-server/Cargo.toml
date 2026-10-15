@@ -6,6 +6,7 @@ edition.workspace = true
 [dependencies]
 keygo-opaque = { path = "../keygo-opaque" }
 zeroize.workspace = true
+thiserror.workspace = true
 anstream = "1.0.0"
 anstyle = "1.0.14"
 anyhow = "1.0.104"
@@ -24,6 +25,7 @@ tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 tower-http = { version = "0.7.1", features = ["trace"] }
 uuid = { workspace = true, features = ["v4"] }
 sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "postgres", "migrate", "macros"] }
+unicode-normalization = "0.1.25"
 
 [dev-dependencies]
 http-body-util = "0.1.5"

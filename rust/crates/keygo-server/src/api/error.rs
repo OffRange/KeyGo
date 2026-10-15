@@ -1,3 +1,4 @@
+use crate::domain::UsernameError;
 use axum::extract::rejection::JsonRejection;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -125,6 +126,16 @@ impl HttpError for OpaqueError {
 }
 
 impl HttpError for sqlx::Error {}
+
+impl HttpError for UsernameError {
+    fn status(&self) -> StatusCode {
+        StatusCode::UNPROCESSABLE_ENTITY
+    }
+
+    fn code(&self) -> &'static str {
+        "invalid_username"
+    }
+}
 
 #[cfg(test)]
 mod tests {

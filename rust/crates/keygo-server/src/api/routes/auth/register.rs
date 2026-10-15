@@ -1,10 +1,9 @@
 use crate::api::{AppState, Json, ServerError, ServerResult};
+use crate::domain::Username;
 use axum::Router;
 use axum::extract::State;
 use axum::routing::post;
-use keygo_opaque::{
-    RegistrationRequest, RegistrationResponse, RegistrationUpload, server,
-};
+use keygo_opaque::{RegistrationRequest, RegistrationResponse, RegistrationUpload, server};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -36,7 +35,7 @@ async fn start(
     State(state): State<AppState>,
     Json(payload): Json<RegisterStartRequest>,
 ) -> ServerResult<Json<RegisterStart>> {
-    // TODO: handle username
+    let username = Username::parse(&payload.username)?;
 
     let response = server::registration_start(
         &state.opaque_state,

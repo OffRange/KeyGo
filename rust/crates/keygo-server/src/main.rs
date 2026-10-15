@@ -4,6 +4,7 @@ mod api;
 mod cli;
 mod config;
 mod db;
+mod domain;
 mod secrets;
 mod server;
 
