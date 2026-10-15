@@ -1,5 +1,7 @@
+mod finish;
 mod start;
 
+pub use finish::*;
 pub use start::*;
 
 use std::time::Duration;

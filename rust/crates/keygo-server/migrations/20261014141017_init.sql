@@ -5,6 +5,14 @@ CREATE TABLE users
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
+create table opaque_records
+(
+    user_id    uuid primary key references users on delete cascade,
+    suite      text        not null,
+    record     bytea       not null,
+    updated_at timestamptz not null
+);
+
 CREATE UNLOGGED TABLE pending_registrations
 (
     id         bytea PRIMARY KEY,           -- registration_id, 16 random bytes

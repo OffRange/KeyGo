@@ -19,3 +19,18 @@ pub async fn id_exists(conn: &mut PgConnection, user_id: Uuid) -> sqlx::Result<b
     .fetch_one(conn)
     .await
 }
+
+pub async fn insert(
+    conn: &mut PgConnection,
+    user_id: Uuid,
+    username: &Username,
+) -> sqlx::Result<()> {
+    sqlx::query!(
+        "INSERT INTO users (id, username) VALUES ($1, $2)",
+        user_id,
+        username.as_str()
+    )
+    .execute(conn)
+    .await?;
+    Ok(())
+}

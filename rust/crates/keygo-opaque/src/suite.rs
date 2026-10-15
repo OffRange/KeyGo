@@ -11,6 +11,10 @@ pub const KSF_LANES: u32 = 4;
 /// Binds logins to KeyGo so they can't be replayed against other OPAQUE deployments.
 pub const LOGIN_CONTEXT: &[u8] = b"KeyGo-OPAQUE-v1";
 
+/// Names `KeyGoSuite` and the KSF parameters above, stored next to every password file. Bump it
+/// whenever either changes, so records made under the old suite can be told apart and upgraded.
+pub const SUITE_ID: &str = "keygo-opaque-v1";
+
 pub(crate) struct KeyGoSuite;
 
 impl CipherSuite for KeyGoSuite {

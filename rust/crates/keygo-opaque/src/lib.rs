@@ -17,4 +17,4 @@ pub use messages::{
     CredentialFinalization, CredentialRequest, CredentialResponse, PasswordFile,
     RegistrationRequest, RegistrationResponse, RegistrationUpload,
 };
-pub use suite::{KSF_ITERS, KSF_LANES, KSF_MEM_KIB, LOGIN_CONTEXT};
+pub use suite::{KSF_ITERS, KSF_LANES, KSF_MEM_KIB, LOGIN_CONTEXT, SUITE_ID};

@@ -1,6 +1,6 @@
-use crate::api::{AppState, Json, ServerError, ServerResult};
+use crate::api::{AppState, Json, ServerResult};
 use crate::domain::{RegistrationId, Username};
-use crate::service::registration::{self, StartRegistration};
+use crate::service::registration::{self, FinishRegistration, StartRegistration};
 use axum::Router;
 use axum::extract::State;
 use axum::routing::post;
@@ -24,6 +24,7 @@ struct RegisterStartRequest {
 
 #[derive(Deserialize)]
 struct RegisterFinishRequest {
+    registration_id: RegistrationId,
     registration_upload: RegistrationUpload,
 }
 
@@ -32,6 +33,11 @@ struct RegisterStart {
     registration_id: RegistrationId,
     registration_response: RegistrationResponse,
     expires_in: u64,
+}
+
+#[derive(Serialize)]
+struct RegisterFinish {
+    pub username: Username,
 }
 
 async fn start(
@@ -56,6 +62,15 @@ async fn start(
 async fn finish(
     State(state): State<AppState>,
     Json(payload): Json<RegisterFinishRequest>,
-) -> ServerResult<()> {
-    Err(ServerError::not_implemented())
+) -> ServerResult<Json<RegisterFinish>> {
+    let input = FinishRegistration {
+        registration_id: payload.registration_id,
+        registration_upload: payload.registration_upload,
+    };
+
+    let finished = registration::finish(&state.db, input).await?;
+
+    Ok(Json(RegisterFinish {
+        username: finished.username,
+    }))
 }

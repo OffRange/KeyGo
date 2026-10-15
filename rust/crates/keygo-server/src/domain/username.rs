@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use thiserror::Error;
 use unicode_normalization::UnicodeNormalization;
@@ -25,7 +26,8 @@ pub enum UsernameError {
     OnlyDigits,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(try_from = "String")]
 pub struct Username(String);
 
 impl Username {

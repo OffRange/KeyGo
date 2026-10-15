@@ -62,3 +62,40 @@ pub async fn reserve(
 
     Ok(())
 }
+
+#[derive(Debug, Error)]
+pub enum ConsumeError {
+    #[error("registration request expired")]
+    Expired,
+    #[error("database error: {0}")]
+    Db(#[from] sqlx::Error),
+}
+
+pub struct Pending {
+    pub user_id: Uuid,
+    pub username: Username,
+}
+
+pub async fn consume(
+    conn: &mut PgConnection,
+    registration_id: &RegistrationId,
+) -> Result<Pending, ConsumeError> {
+    let row = sqlx::query!(
+        "DELETE FROM pending_registrations
+         WHERE id = $1 AND expires_at > now()
+         RETURNING user_id, username",
+        registration_id.as_bytes().as_slice(),
+    )
+    .fetch_optional(conn)
+    .await?
+    .ok_or(ConsumeError::Expired)?;
+
+    // `reserve` only stores parsed names, so this fails only on a corrupted row.
+    let username =
+        Username::parse(&row.username).map_err(|err| sqlx::Error::Decode(Box::new(err)))?;
+
+    Ok(Pending {
+        user_id: row.user_id,
+        username,
+    })
+}

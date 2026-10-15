@@ -1,3 +1,4 @@
+pub mod opaque_records;
 pub mod registrations;
 pub mod users;
 

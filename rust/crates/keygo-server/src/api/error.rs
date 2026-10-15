@@ -149,6 +149,22 @@ impl HttpError for registration::StartError {
     }
 }
 
+impl HttpError for registration::FinishError {
+    fn status(&self) -> StatusCode {
+        match self {
+            Self::Expired => StatusCode::BAD_REQUEST,
+            Self::Db(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+
+    fn code(&self) -> &'static str {
+        match self {
+            Self::Expired => "registration_expired",
+            Self::Db(_) => "internal",
+        }
+    }
+}
+
 impl HttpError for UsernameError {
     fn status(&self) -> StatusCode {
         StatusCode::UNPROCESSABLE_ENTITY
