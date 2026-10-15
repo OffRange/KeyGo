@@ -94,11 +94,16 @@ impl IntoResponse for ServerError {
 
 impl HttpError for JsonRejection {
     fn status(&self) -> StatusCode {
-        JsonRejection::status(self)
+        match self {
+            // Malformed or mistyped JSON is a bad request like any other (§15); a missing content
+            // type or an oversized body keeps its own HTTP status.
+            Self::JsonDataError(_) | Self::JsonSyntaxError(_) => StatusCode::BAD_REQUEST,
+            _ => JsonRejection::status(self),
+        }
     }
 
     fn code(&self) -> &'static str {
-        "invalid_body"
+        "invalid_request"
     }
 }
 
@@ -106,7 +111,7 @@ impl HttpError for OpaqueError {
     fn status(&self) -> StatusCode {
         match self {
             Self::InvalidLogin => StatusCode::UNAUTHORIZED,
-            Self::Malformed => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::Malformed => StatusCode::BAD_REQUEST,
             // `ReflectedValue` and `EmptyPassword` are only raised by the client half of the
             // protocol; seeing one here means server code called a client function.
             Self::ReflectedValue | Self::EmptyPassword | Self::Protocol(_) => {
@@ -119,8 +124,8 @@ impl HttpError for OpaqueError {
         match self {
             // One code for wrong password and unknown account, so a username's existence never
             // leaks.
-            Self::InvalidLogin => "invalid_login",
-            Self::Malformed => "malformed_opaque",
+            Self::InvalidLogin => "invalid_credentials",
+            Self::Malformed => "invalid_request",
             Self::ReflectedValue | Self::EmptyPassword | Self::Protocol(_) => "internal",
         }
     }
@@ -183,7 +188,7 @@ impl HttpError for login::StartError {
 
 impl HttpError for UsernameError {
     fn status(&self) -> StatusCode {
-        StatusCode::UNPROCESSABLE_ENTITY
+        StatusCode::BAD_REQUEST
     }
 
     fn code(&self) -> &'static str {
@@ -212,10 +217,26 @@ mod tests {
         assert_eq!(
             body,
             json!({
-                "code": "invalid_login",
+                "code": "invalid_credentials",
                 "message": OpaqueError::InvalidLogin.to_string(),
             }),
         );
+    }
+
+    #[tokio::test]
+    async fn malformed_opaque_messages_are_invalid_requests() {
+        let (status, body) = render(OpaqueError::Malformed).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["code"], "invalid_request");
+    }
+
+    #[tokio::test]
+    async fn invalid_usernames_are_bad_requests() {
+        let (status, body) = render(UsernameError::TooShort).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["code"], "invalid_username");
     }
 
     #[tokio::test]

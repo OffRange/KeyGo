@@ -109,9 +109,9 @@ mod tests {
         )
         .await;
 
-        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(status, StatusCode::BAD_REQUEST);
         let body: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(body["code"], "invalid_body");
+        assert_eq!(body["code"], "invalid_request");
         assert!(body["message"].as_str().is_some_and(|m| !m.is_empty()));
     }
 
@@ -125,6 +125,6 @@ mod tests {
         assert_eq!(response.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
         let body = response.into_body().collect().await.unwrap().to_bytes();
         let body: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(body["code"], "invalid_body");
+        assert_eq!(body["code"], "invalid_request");
     }
 }
