@@ -1,3 +1,4 @@
+use super::corrupt;
 use crate::domain::{RegistrationId, Username};
 use sqlx::PgConnection;
 use std::time::Duration;
@@ -63,24 +64,18 @@ pub async fn reserve(
     Ok(())
 }
 
-#[derive(Debug, Error)]
-pub enum ConsumeError {
-    #[error("registration request expired")]
-    Expired,
-    #[error("database error: {0}")]
-    Db(#[from] sqlx::Error),
-}
-
 pub struct Pending {
     pub user_id: Uuid,
     pub username: Username,
 }
 
-pub async fn consume(
+/// Deletes the reservation as it reads it, so a registration can be finished at most once. Returns
+/// `None` for an unknown or expired registration.
+pub async fn take(
     conn: &mut PgConnection,
     registration_id: &RegistrationId,
-) -> Result<Pending, ConsumeError> {
-    let row = sqlx::query!(
+) -> sqlx::Result<Option<Pending>> {
+    let Some(row) = sqlx::query!(
         "DELETE FROM pending_registrations
          WHERE id = $1 AND expires_at > now()
          RETURNING user_id, username",
@@ -88,14 +83,14 @@ pub async fn consume(
     )
     .fetch_optional(conn)
     .await?
-    .ok_or(ConsumeError::Expired)?;
+    else {
+        return Ok(None);
+    };
 
-    // `reserve` only stores parsed names, so this fails only on a corrupted row.
-    let username =
-        Username::parse(&row.username).map_err(|err| sqlx::Error::Decode(Box::new(err)))?;
+    let username = Username::parse(&row.username).map_err(corrupt)?;
 
-    Ok(Pending {
+    Ok(Some(Pending {
         user_id: row.user_id,
         username,
-    })
+    }))
 }

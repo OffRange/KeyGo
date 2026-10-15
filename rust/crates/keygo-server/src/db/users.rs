@@ -1,3 +1,4 @@
+use super::corrupt;
 use crate::domain::Username;
 use sqlx::PgConnection;
 use uuid::Uuid;
@@ -28,10 +29,11 @@ pub async fn insert(
     sqlx::query!(
         "INSERT INTO users (id, username) VALUES ($1, $2)",
         user_id,
-        username.as_str()
+        username.as_str(),
     )
     .execute(conn)
     .await?;
+
     Ok(())
 }
 
@@ -46,8 +48,5 @@ pub async fn find_username(
         return Ok(None);
     };
 
-    // `insert` only stores parsed names, so this fails only on a corrupted row.
-    Username::parse(&username)
-        .map(Some)
-        .map_err(|err| sqlx::Error::Decode(Box::new(err)))
+    Username::parse(&username).map(Some).map_err(corrupt)
 }

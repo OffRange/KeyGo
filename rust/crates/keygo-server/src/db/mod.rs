@@ -40,3 +40,9 @@ pub async fn migrate(pool: &PgPool) -> anyhow::Result<()> {
     sqlx::migrate!().run(pool).await?;
     Ok(())
 }
+
+/// Reports a stored value that no longer decodes. Every writer stores only valid values, so this
+/// means a corrupted row.
+fn corrupt(err: impl Into<sqlx::error::BoxDynError>) -> sqlx::Error {
+    sqlx::Error::Decode(err.into())
+}

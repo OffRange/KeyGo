@@ -3,7 +3,7 @@ mod extract;
 mod routes;
 mod state;
 
-pub use error::{HttpError, ServerError, ServerResult};
+pub use error::{ErrorCode, HttpError, ServerError, ServerResult};
 pub use extract::Json;
 pub use state::AppState;
 

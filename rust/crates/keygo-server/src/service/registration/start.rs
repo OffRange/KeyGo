@@ -1,5 +1,5 @@
-use crate::db::registrations::ReserveError;
-use crate::db::{registrations, users};
+use crate::db::registrations::{self, ReserveError};
+use crate::db::users;
 use crate::domain::{RegistrationId, Username};
 use crate::service::registration::TTL;
 use keygo_opaque::server::ServerSetup;
@@ -37,12 +37,12 @@ pub struct StartRegistration {
     pub username: Username,
     pub user_id: Uuid,
     // TODO: add `invite: Option<InviteHash>` once invites exist.
-    pub request: RegistrationRequest,
+    pub registration_request: RegistrationRequest,
 }
 
 pub struct Started {
     pub registration_id: RegistrationId,
-    pub response: RegistrationResponse,
+    pub registration_response: RegistrationResponse,
     pub expires_in: Duration,
 }
 
@@ -54,7 +54,7 @@ pub async fn start(
     let StartRegistration {
         username,
         user_id,
-        request,
+        registration_request,
     } = input;
 
     if !is_random_uuid(user_id) {
@@ -62,6 +62,10 @@ pub async fn start(
     }
 
     // TODO: check the invite here once invites exist, so only invite holders can probe usernames.
+
+    // Pure computation, so it runs before the transaction to keep the reservation's lock short.
+    let registration_response =
+        server::registration_start(setup, registration_request, user_id.as_bytes())?;
 
     let mut tx = db.begin().await?;
     let registration_id = RegistrationId::random();
@@ -78,12 +82,11 @@ pub async fn start(
         return Err(StartError::UserIdTaken);
     }
 
-    let response = server::registration_start(setup, request, user_id.as_bytes())?;
     tx.commit().await?;
 
     Ok(Started {
         registration_id,
-        response,
+        registration_response,
         expires_in: TTL,
     })
 }

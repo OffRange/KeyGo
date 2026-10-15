@@ -1,8 +1,8 @@
+use super::corrupt;
 use crate::domain::LoginId;
 use keygo_opaque::server::ServerLogin;
 use sqlx::PgConnection;
 use std::time::Duration;
-use thiserror::Error;
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
@@ -43,27 +43,20 @@ pub async fn insert(
     Ok(())
 }
 
-#[derive(Debug, Error)]
-pub enum TakeError {
-    #[error("login expired or unknown")]
-    Expired,
-    #[error("database error: {0}")]
-    Db(#[from] sqlx::Error),
-}
-
-pub struct Taken {
+pub struct Pending {
     /// `None` on the fake path for an unknown username.
     pub user_id: Option<Uuid>,
     pub state: ServerLogin,
 }
 
-/// Deletes the state as it reads it, so a login can be finished at most once.
+/// Deletes the state as it reads it, so a login can be finished at most once. Returns `None` for
+/// an unknown or expired login.
 pub async fn take(
     conn: &mut PgConnection,
     login_id: &LoginId,
     purpose: Purpose,
-) -> Result<Taken, TakeError> {
-    let row = sqlx::query!(
+) -> sqlx::Result<Option<Pending>> {
+    let Some(row) = sqlx::query!(
         "DELETE FROM login_states
          WHERE id = $1 AND purpose = $2 AND expires_at > now()
          RETURNING user_id, state",
@@ -72,15 +65,15 @@ pub async fn take(
     )
     .fetch_optional(conn)
     .await?
-    .ok_or(TakeError::Expired)?;
+    else {
+        return Ok(None);
+    };
 
     let state = Zeroizing::new(row.state);
-    // `insert` only stores serialized states, so this fails only on a corrupted row.
-    let state =
-        ServerLogin::from_bytes(&state).map_err(|err| sqlx::Error::Decode(Box::new(err)))?;
+    let state = ServerLogin::from_bytes(&state).map_err(corrupt)?;
 
-    Ok(Taken {
+    Ok(Some(Pending {
         user_id: row.user_id,
         state,
-    })
+    }))
 }

@@ -1,5 +1,4 @@
-use crate::db::registrations::{self, ConsumeError};
-use crate::db::{opaque_records, users};
+use crate::db::{opaque_records, registrations, users};
 use crate::domain::{RegistrationId, Username};
 use keygo_opaque::{RegistrationUpload, server};
 use sqlx::PgPool;
@@ -11,15 +10,6 @@ pub enum FinishError {
     Expired,
     #[error("database error: {0}")]
     Db(#[from] sqlx::Error),
-}
-
-impl From<ConsumeError> for FinishError {
-    fn from(err: ConsumeError) -> Self {
-        match err {
-            ConsumeError::Expired => Self::Expired,
-            ConsumeError::Db(err) => Self::Db(err),
-        }
-    }
 }
 
 pub struct FinishRegistration {
@@ -43,7 +33,9 @@ pub async fn finish(db: &PgPool, input: FinishRegistration) -> Result<Finished, 
     let password_file = server::registration_finish(registration_upload);
 
     let mut tx = db.begin().await?;
-    let pending = registrations::consume(&mut tx, &registration_id).await?;
+    let pending = registrations::take(&mut tx, &registration_id)
+        .await?
+        .ok_or(FinishError::Expired)?;
     users::insert(&mut tx, pending.user_id, &pending.username).await?;
     opaque_records::insert(&mut tx, pending.user_id, &password_file).await?;
     tx.commit().await?;

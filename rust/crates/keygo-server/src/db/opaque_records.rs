@@ -1,3 +1,4 @@
+use super::corrupt;
 use crate::domain::Username;
 use keygo_opaque::{PasswordFile, SUITE_ID};
 use sqlx::PgConnection;
@@ -45,14 +46,14 @@ pub async fn find_by_username(
     };
 
     if row.suite != SUITE_ID {
-        return Err(sqlx::Error::Decode(
-            format!("opaque record uses unknown suite {:?}", row.suite).into(),
-        ));
+        return Err(corrupt(format!(
+            "opaque record uses unknown suite {:?}",
+            row.suite
+        )));
     }
 
     let record = Zeroizing::new(row.record);
-    let file =
-        PasswordFile::from_bytes(&record).map_err(|err| sqlx::Error::Decode(Box::new(err)))?;
+    let file = PasswordFile::from_bytes(&record).map_err(corrupt)?;
 
     Ok(Some(Record {
         user_id: row.user_id,

@@ -18,12 +18,12 @@ pub enum StartError {
 
 pub struct StartLogin {
     pub username: Username,
-    pub request: CredentialRequest,
+    pub credential_request: CredentialRequest,
 }
 
 pub struct Started {
     pub login_id: LoginId,
-    pub response: CredentialResponse,
+    pub credential_response: CredentialResponse,
     pub expires_in: Duration,
 }
 
@@ -37,7 +37,11 @@ pub async fn start(
     setup: &ServerSetup,
     input: StartLogin,
 ) -> Result<Started, StartError> {
-    let StartLogin { username, request } = input;
+    let StartLogin {
+        username,
+        credential_request,
+    } = input;
+
     // TODO: rate-limit starts per account
 
     let mut conn = db.acquire().await?;
@@ -52,14 +56,15 @@ pub async fn start(
         None => (None, None, fake_identifier(&username)),
     };
 
-    let (state, response) = ServerLogin::start(setup, password_file, request, &identifier)?;
+    let (state, credential_response) =
+        ServerLogin::start(setup, password_file, credential_request, &identifier)?;
 
     let login_id = LoginId::random();
     login_states::insert(&mut conn, &login_id, user_id, Purpose::Login, &state, TTL).await?;
 
     Ok(Started {
         login_id,
-        response,
+        credential_response,
         expires_in: TTL,
     })
 }
