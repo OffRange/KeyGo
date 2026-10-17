@@ -62,14 +62,14 @@ pub fn finish_login(client: ClientLogin, started: login::Started) -> FinishLogin
 }
 
 pub async fn count(db: &PgPool, table: &str) -> i64 {
-    sqlx::query_scalar(AssertSqlSafe(format!("SELECT count(*) FROM {table}")))
+    sqlx::query_scalar(AssertSqlSafe(format!("select count(*) from {table}")))
         .fetch_one(db)
         .await
         .unwrap()
 }
 pub async fn expire(db: &PgPool, table: &str) {
     sqlx::query(AssertSqlSafe(format!(
-        "UPDATE {table} SET expires_at = now() - interval '1 second'"
+        "update {table} set expires_at = now() - interval '1 second'"
     )))
     .execute(db)
     .await
@@ -77,7 +77,7 @@ pub async fn expire(db: &PgPool, table: &str) {
 }
 pub async fn expires_in_secs(db: &PgPool, table: &str) -> f64 {
     sqlx::query_scalar(AssertSqlSafe(format!(
-        "SELECT extract(epoch FROM max(expires_at) - now())::float8 FROM {table}"
+        "select extract(epoch from max(expires_at) - now())::float8 from {table}"
     )))
     .fetch_one(db)
     .await

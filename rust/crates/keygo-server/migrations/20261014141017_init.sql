@@ -1,8 +1,15 @@
-CREATE TABLE users
+create table users
 (
-    id         UUID PRIMARY KEY,            -- client-generated, equals local user_id
-    username   TEXT        NOT NULL UNIQUE, -- normalized
-    created_at timestamptz NOT NULL DEFAULT now()
+    id         uuid primary key,            -- client-generated, equals local user_id
+    username   text        not null unique, -- normalized
+    created_at timestamptz not null default now()
+);
+
+create table invites
+(
+    code_hash  bytea primary key,
+    created_at timestamptz not null default now(),
+    expires_at timestamptz not null
 );
 
 create table opaque_records
@@ -13,24 +20,22 @@ create table opaque_records
     updated_at timestamptz not null
 );
 
-CREATE UNLOGGED TABLE pending_registrations
+create unlogged table pending_registrations
 (
-    id         bytea PRIMARY KEY,           -- registration_id, 16 random bytes
-    user_id    uuid        NOT NULL UNIQUE,
-    username   text        NOT NULL UNIQUE, -- the reservation
-    -- invite_id  text REFERENCES invites,
-    expires_at timestamptz NOT NULL
+    id         bytea primary key,           -- registration_id, 16 random bytes
+    user_id    uuid        not null unique,
+    username   text        not null unique, -- the reservation
+    -- invite_id  text references invites,
+    expires_at timestamptz not null
 );
+create index pending_registrations_expires_at_idx on pending_registrations (expires_at);
 
-CREATE INDEX pending_registrations_expires_at_idx ON pending_registrations (expires_at);
-
-CREATE UNLOGGED TABLE login_states
+create unlogged table login_states
 (
-    id         bytea PRIMARY KEY,    -- login_id, 16 random bytes
+    id         bytea primary key,    -- login_id, 16 random bytes
     user_id    uuid,                 -- null on the fake path
-    purpose    text        NOT NULL CHECK (purpose IN ('login', 'step_up')),
-    state      bytea       NOT NULL, -- serialized ServerLogin
-    expires_at timestamptz NOT NULL
+    purpose    text        not null check (purpose in ('login', 'step_up')),
+    state      bytea       not null, -- serialized ServerLogin
+    expires_at timestamptz not null
 );
-
-CREATE INDEX login_states_expires_at_idx ON login_states (expires_at);
+create index login_states_expires_at_idx on login_states (expires_at);

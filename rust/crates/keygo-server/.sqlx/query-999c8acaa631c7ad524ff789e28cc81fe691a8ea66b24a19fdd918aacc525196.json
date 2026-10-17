@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT r.user_id, r.suite, r.record\n         FROM opaque_records r JOIN users u ON u.id = r.user_id\n         WHERE u.username = $1",
+  "query": "select r.user_id, r.suite, r.record\n         from opaque_records r join users u on u.id = r.user_id\n         where u.username = $1",
   "describe": {
     "columns": [
       {
@@ -48,5 +48,5 @@
       false
     ]
   },
-  "hash": "549204cb13cb17bac289cd3aaca8a1b90c12382a950eba28fae0b46dc7af76a4"
+  "hash": "999c8acaa631c7ad524ff789e28cc81fe691a8ea66b24a19fdd918aacc525196"
 }

@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 pub async fn username_exists(conn: &mut PgConnection, username: &Username) -> sqlx::Result<bool> {
     sqlx::query_scalar!(
-        r#"SELECT EXISTS(SELECT 1 FROM users WHERE username = $1) AS "exists!""#,
+        r#"select exists(select 1 from users where username = $1) as "exists!""#,
         username.as_str(),
     )
     .fetch_one(conn)
@@ -14,7 +14,7 @@ pub async fn username_exists(conn: &mut PgConnection, username: &Username) -> sq
 
 pub async fn id_exists(conn: &mut PgConnection, user_id: Uuid) -> sqlx::Result<bool> {
     sqlx::query_scalar!(
-        r#"SELECT EXISTS(SELECT 1 FROM users WHERE id = $1) AS "exists!""#,
+        r#"select exists(select 1 from users where id = $1) as "exists!""#,
         user_id,
     )
     .fetch_one(conn)
@@ -27,7 +27,7 @@ pub async fn insert(
     username: &Username,
 ) -> sqlx::Result<()> {
     sqlx::query!(
-        "INSERT INTO users (id, username) VALUES ($1, $2)",
+        "insert into users (id, username) values ($1, $2)",
         user_id,
         username.as_str(),
     )
@@ -41,7 +41,7 @@ pub async fn find_username(
     conn: &mut PgConnection,
     user_id: Uuid,
 ) -> sqlx::Result<Option<Username>> {
-    let Some(username) = sqlx::query_scalar!("SELECT username FROM users WHERE id = $1", user_id)
+    let Some(username) = sqlx::query_scalar!("select username from users where id = $1", user_id)
         .fetch_optional(conn)
         .await?
     else {
@@ -102,7 +102,7 @@ mod tests {
     #[sqlx::test]
     async fn stored_invalid_username_is_corrupt(db: PgPool) {
         let user_id = Uuid::new_v4();
-        sqlx::query("INSERT INTO users (id, username) VALUES ($1, 'NOT VALID')")
+        sqlx::query("insert into users (id, username) values ($1, 'NOT VALID')")
             .bind(user_id)
             .execute(&db)
             .await

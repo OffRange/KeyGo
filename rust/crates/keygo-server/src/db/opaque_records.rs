@@ -12,8 +12,8 @@ pub async fn insert(
 ) -> sqlx::Result<()> {
     let record = file.to_bytes();
     sqlx::query!(
-        "INSERT INTO opaque_records (user_id, suite, record, updated_at)
-         VALUES ($1, $2, $3, now())",
+        "insert into opaque_records (user_id, suite, record, updated_at)
+         values ($1, $2, $3, now())",
         user_id,
         SUITE_ID,
         record.as_slice(),
@@ -34,9 +34,9 @@ pub async fn find_by_username(
     username: &Username,
 ) -> sqlx::Result<Option<Record>> {
     let Some(row) = sqlx::query!(
-        "SELECT r.user_id, r.suite, r.record
-         FROM opaque_records r JOIN users u ON u.id = r.user_id
-         WHERE u.username = $1",
+        "select r.user_id, r.suite, r.record
+         from opaque_records r join users u on u.id = r.user_id
+         where u.username = $1",
         username.as_str(),
     )
     .fetch_optional(conn)
@@ -89,8 +89,8 @@ mod tests {
 
     async fn insert_raw(db: &PgPool, user_id: Uuid, suite: &str, record: &[u8]) {
         sqlx::query(
-            "INSERT INTO opaque_records (user_id, suite, record, updated_at)
-             VALUES ($1, $2, $3, now())",
+            "insert into opaque_records (user_id, suite, record, updated_at)
+             values ($1, $2, $3, now())",
         )
         .bind(user_id)
         .bind(suite)
@@ -124,7 +124,7 @@ mod tests {
             .await
             .unwrap();
 
-        let suite: String = sqlx::query_scalar("SELECT suite FROM opaque_records")
+        let suite: String = sqlx::query_scalar("select suite from opaque_records")
             .fetch_one(&db)
             .await
             .unwrap();
@@ -163,7 +163,7 @@ mod tests {
             .await
             .unwrap();
 
-        sqlx::query("DELETE FROM users WHERE id = $1")
+        sqlx::query("delete from users where id = $1")
             .bind(user_id)
             .execute(&db)
             .await

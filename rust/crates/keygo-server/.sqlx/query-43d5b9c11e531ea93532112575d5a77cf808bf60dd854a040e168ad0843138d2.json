@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "DELETE FROM login_states\n         WHERE id = $1 AND purpose = $2 AND expires_at > now()\n         RETURNING user_id, state",
+  "query": "delete from login_states\n         where id = $1 and purpose = $2 and expires_at > now()\n         returning user_id, state",
   "describe": {
     "columns": [
       {
@@ -37,5 +37,5 @@
       false
     ]
   },
-  "hash": "20a3c17f09385f8518a5e59b21ed3b17c37c8ef5d69e68670e7cccf69aafafce"
+  "hash": "43d5b9c11e531ea93532112575d5a77cf808bf60dd854a040e168ad0843138d2"
 }

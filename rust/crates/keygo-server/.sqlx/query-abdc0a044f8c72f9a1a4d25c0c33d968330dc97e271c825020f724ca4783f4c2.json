@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1) AS \"exists!\"",
+  "query": "select exists(select 1 from users where username = $1) as \"exists!\"",
   "describe": {
     "columns": [
       {
@@ -12,12 +12,12 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Text"
       ]
     },
     "nullable": [
       null
     ]
   },
-  "hash": "76a7e92c144ac7ff3992987838d894bd58d2bf0e4f61101192fece85284d40ff"
+  "hash": "abdc0a044f8c72f9a1a4d25c0c33d968330dc97e271c825020f724ca4783f4c2"
 }

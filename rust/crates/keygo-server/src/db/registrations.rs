@@ -38,8 +38,8 @@ pub async fn reserve(
     ttl: Duration,
 ) -> Result<(), ReserveError> {
     sqlx::query!(
-        "DELETE FROM pending_registrations
-         WHERE expires_at <= now() AND (username = $1 OR user_id = $2)",
+        "delete from pending_registrations
+         where expires_at <= now() and (username = $1 or user_id = $2)",
         username.as_str(),
         user_id,
     )
@@ -49,10 +49,10 @@ pub async fn reserve(
     // A concurrent reserve that wins between the sweep and here surfaces as a unique violation on
     // username, or as a takeover on user_id, so the two statements need no surrounding transaction.
     sqlx::query!(
-        "INSERT INTO pending_registrations (id, user_id, username, expires_at)
-         VALUES ($1, $2, $3, now() + make_interval(secs => $4))
-         ON CONFLICT (user_id) DO UPDATE
-         SET id = excluded.id, username = excluded.username, expires_at = excluded.expires_at",
+        "insert into pending_registrations (id, user_id, username, expires_at)
+         values ($1, $2, $3, now() + make_interval(secs => $4))
+         on conflict (user_id) do update
+         set id = excluded.id, username = excluded.username, expires_at = excluded.expires_at",
         registration_id.as_bytes().as_slice(),
         user_id,
         username.as_str(),
@@ -76,9 +76,9 @@ pub async fn take(
     registration_id: &RegistrationId,
 ) -> sqlx::Result<Option<Pending>> {
     let Some(row) = sqlx::query!(
-        "DELETE FROM pending_registrations
-         WHERE id = $1 AND expires_at > now()
-         RETURNING user_id, username",
+        "delete from pending_registrations
+         where id = $1 and expires_at > now()
+         returning user_id, username",
         registration_id.as_bytes().as_slice(),
     )
     .fetch_optional(conn)
@@ -96,7 +96,7 @@ pub async fn take(
 }
 
 pub async fn delete_expired(conn: &mut PgConnection) -> sqlx::Result<u64> {
-    let result = sqlx::query!("DELETE FROM pending_registrations WHERE expires_at <= now()")
+    let result = sqlx::query!("delete from pending_registrations where expires_at <= now()")
         .execute(conn)
         .await?;
 
@@ -237,8 +237,8 @@ mod tests {
     async fn stored_invalid_username_is_corrupt(db: PgPool) {
         let registration_id = RegistrationId::random();
         sqlx::query(
-            "INSERT INTO pending_registrations (id, user_id, username, expires_at)
-             VALUES ($1, $2, 'NOT VALID', now() + interval '1 minute')",
+            "insert into pending_registrations (id, user_id, username, expires_at)
+             values ($1, $2, 'NOT VALID', now() + interval '1 minute')",
         )
         .bind(registration_id.as_bytes().as_slice())
         .bind(Uuid::new_v4())

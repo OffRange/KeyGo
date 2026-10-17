@@ -171,7 +171,7 @@ mod tests {
         let setup = ServerSetup::generate();
         let user_id = register(&db, &setup, "ada").await;
         let (client, started) = start_login(&db, &setup, "ada").await;
-        sqlx::query("DELETE FROM users WHERE id = $1")
+        sqlx::query("delete from users where id = $1")
             .bind(user_id)
             .execute(&db)
             .await

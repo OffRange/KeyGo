@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "DELETE FROM pending_registrations\n         WHERE id = $1 AND expires_at > now()\n         RETURNING user_id, username",
+  "query": "delete from pending_registrations\n         where id = $1 and expires_at > now()\n         returning user_id, username",
   "describe": {
     "columns": [
       {
@@ -36,5 +36,5 @@
       false
     ]
   },
-  "hash": "d94f57324fb5b110dd162ebf921b3490ec0792f4f5352b8fb06f0d78074e0c1f"
+  "hash": "5ac9a52348e7466479ac7371eff01c68fc7ec51caaefa2eae62db88f6e851acf"
 }

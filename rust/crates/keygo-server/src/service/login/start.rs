@@ -96,7 +96,7 @@ mod tests {
     }
 
     async fn stored_user_ids(db: &PgPool) -> Vec<Option<uuid::Uuid>> {
-        sqlx::query_scalar("SELECT user_id FROM login_states")
+        sqlx::query_scalar("select user_id from login_states")
             .fetch_all(db)
             .await
             .unwrap()

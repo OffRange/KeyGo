@@ -1,3 +1,4 @@
+use super::InviteHash;
 use hmac::{Hmac, KeyInit, Mac};
 use sha2::Sha256;
 use std::fmt::{Display, Formatter};
@@ -14,11 +15,11 @@ impl InvitePepper {
         Self(Zeroizing::new(bytes))
     }
 
-    pub fn hash(&self, code: &InviteCode) -> [u8; 32] {
+    pub fn hash(&self, code: &InviteCode) -> InviteHash {
         let mut mac =
             Hmac::<Sha256>::new_from_slice(self.0.as_slice()).expect("HMAC accepts any key length");
         mac.update(&code.0);
-        mac.finalize().into_bytes().into()
+        <[u8; 32]>::from(mac.finalize().into_bytes()).into()
     }
 }
 
@@ -118,8 +119,8 @@ mod tests {
         mac.update(b"7KQ2M9XD4HPA");
 
         assert_eq!(
-            pepper(1).hash(&code),
-            <[u8; 32]>::from(mac.finalize().into_bytes())
+            pepper(1).hash(&code).as_bytes(),
+            &<[u8; 32]>::from(mac.finalize().into_bytes())
         );
     }
 }

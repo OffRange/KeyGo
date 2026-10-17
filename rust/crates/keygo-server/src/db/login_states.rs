@@ -29,8 +29,8 @@ pub async fn insert(
 ) -> sqlx::Result<()> {
     let state = state.to_bytes();
     sqlx::query!(
-        "INSERT INTO login_states (id, user_id, purpose, state, expires_at)
-         VALUES ($1, $2, $3, $4, now() + make_interval(secs => $5))",
+        "insert into login_states (id, user_id, purpose, state, expires_at)
+         values ($1, $2, $3, $4, now() + make_interval(secs => $5))",
         login_id.as_bytes().as_slice(),
         user_id,
         purpose.as_str(),
@@ -57,9 +57,9 @@ pub async fn take(
     purpose: Purpose,
 ) -> sqlx::Result<Option<Pending>> {
     let Some(row) = sqlx::query!(
-        "DELETE FROM login_states
-         WHERE id = $1 AND purpose = $2 AND expires_at > now()
-         RETURNING user_id, state",
+        "delete from login_states
+         where id = $1 and purpose = $2 and expires_at > now()
+         returning user_id, state",
         login_id.as_bytes().as_slice(),
         purpose.as_str(),
     )
@@ -79,7 +79,7 @@ pub async fn take(
 }
 
 pub async fn delete_expired(conn: &mut PgConnection) -> sqlx::Result<u64> {
-    let result = sqlx::query!("DELETE FROM login_states WHERE expires_at <= now()")
+    let result = sqlx::query!("delete from login_states where expires_at <= now()")
         .execute(conn)
         .await?;
 
@@ -231,8 +231,8 @@ mod tests {
     async fn state_of_another_purpose_is_not_taken(db: PgPool) {
         let login_id = LoginId::random();
         sqlx::query(
-            "INSERT INTO login_states (id, purpose, state, expires_at)
-             VALUES ($1, 'step_up', $2, now() + interval '1 minute')",
+            "insert into login_states (id, purpose, state, expires_at)
+             values ($1, 'step_up', $2, now() + interval '1 minute')",
         )
         .bind(login_id.as_bytes().as_slice())
         .bind(server_login().to_bytes().as_slice())
@@ -254,8 +254,8 @@ mod tests {
     async fn undecodable_state_is_corrupt(db: PgPool) {
         let login_id = LoginId::random();
         sqlx::query(
-            "INSERT INTO login_states (id, purpose, state, expires_at)
-             VALUES ($1, 'login', '\\x00', now() + interval '1 minute')",
+            "insert into login_states (id, purpose, state, expires_at)
+             values ($1, 'login', '\\x00', now() + interval '1 minute')",
         )
         .bind(login_id.as_bytes().as_slice())
         .execute(&db)

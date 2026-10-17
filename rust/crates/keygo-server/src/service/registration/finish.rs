@@ -93,7 +93,7 @@ mod tests {
 
         assert_eq!(finished.username, username("ada"));
         assert_eq!(user_count(&db).await, (1, 1, 0));
-        let stored: (Uuid, String) = sqlx::query_as("SELECT id, username FROM users")
+        let stored: (Uuid, String) = sqlx::query_as("select id, username from users")
             .fetch_one(&db)
             .await
             .unwrap();
@@ -147,7 +147,7 @@ mod tests {
     async fn failed_finish_keeps_the_reservation(db: PgPool) {
         let user_id = Uuid::new_v4();
         let input = started(&db, user_id, "ada").await;
-        sqlx::query("INSERT INTO users (id, username) VALUES ($1, 'squatter')")
+        sqlx::query("insert into users (id, username) values ($1, 'squatter')")
             .bind(user_id)
             .execute(&db)
             .await
