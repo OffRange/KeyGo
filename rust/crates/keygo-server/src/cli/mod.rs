@@ -1,5 +1,6 @@
 mod commands;
 
+use crate::cli::commands::invite::InviteCommands;
 use crate::cli::commands::serve::ServeArgs;
 use crate::config::Config;
 use clap::{Parser, Subcommand};
@@ -19,6 +20,8 @@ enum Commands {
     Init,
     Check,
     Serve(ServeArgs),
+    #[command(subcommand)]
+    Invite(InviteCommands),
 }
 
 impl Cli {
@@ -29,6 +32,7 @@ impl Cli {
             Commands::Init => commands::init::run(&cli.config),
             Commands::Check => commands::check::run(&cli.config),
             Commands::Serve(args) => commands::serve::run(&cli.config, &args),
+            Commands::Invite(commands) => commands::invite::run(&cli.config, commands),
         }
     }
 }

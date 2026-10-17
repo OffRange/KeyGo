@@ -27,6 +27,9 @@ tower-http = { version = "0.7.1", features = ["trace"] }
 uuid = { workspace = true, features = ["v4"] }
 sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "postgres", "migrate", "macros", "uuid"] }
 unicode-normalization = "0.1.25"
+humantime = "2.4.0"
+hmac = "0.13.0"
+sha2 = { version = "0.11.0", features = ["zeroize"] }
 
 [dev-dependencies]
 http-body-util = "0.1.5"

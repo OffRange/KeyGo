@@ -1,3 +1,4 @@
+use crate::domain::InvitePepper;
 use anyhow::{Context, anyhow, ensure};
 use keygo_opaque::server::ServerSetup;
 use secrecy::{ExposeSecret, SecretString};
@@ -100,9 +101,27 @@ impl TypedSecret for OpaqueSetup {
     }
 }
 
+impl TypedSecret for InvitePepper {
+    const NAME: &'static str = "invite_pepper";
+    type Value = Self;
+
+    fn generate() -> anyhow::Result<SecretString> {
+        let mut raw = Zeroizing::new([0u8; 32]);
+        getrandom::fill(raw.as_mut_slice()).map_err(|e| anyhow!("getrandom: {}", e))?;
+        Ok(hex::encode(raw.as_slice()).into())
+    }
+
+    fn decode(stored: &str) -> anyhow::Result<Self> {
+        let raw = Zeroizing::new(hex::decode(stored).context("not hex")?);
+        let bytes: [u8; 32] = raw.as_slice().try_into().context("not 32 bytes")?;
+        Ok(Self::new(bytes))
+    }
+}
+
 secrets! {
     DbPassword,
     OpaqueSetup,
+    InvitePepper,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -268,6 +287,26 @@ mod tests {
     fn non_hex_opaque_setup_is_rejected() {
         assert!(OpaqueSetup::decode("not hex at all").is_err());
         assert!(OpaqueSetup::decode("").is_err());
+    }
+
+    #[test]
+    fn generated_invite_pepper_is_valid() {
+        let value = Secret::InvitePepper.generate().unwrap();
+
+        assert!(InvitePepper::decode(value.expose_secret()).is_ok());
+    }
+
+    #[test]
+    fn invite_pepper_must_be_32_bytes() {
+        assert!(InvitePepper::decode(VALID).is_ok());
+        assert!(InvitePepper::decode(&VALID[2..]).is_err());
+        assert!(InvitePepper::decode(&format!("{VALID}00")).is_err());
+    }
+
+    #[test]
+    fn non_hex_invite_pepper_is_rejected() {
+        assert!(InvitePepper::decode("not hex at all").is_err());
+        assert!(InvitePepper::decode("").is_err());
     }
 
     #[test]

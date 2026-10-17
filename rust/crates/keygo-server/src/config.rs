@@ -1,3 +1,4 @@
+use crate::domain::InvitePepper;
 use crate::secrets::{DbPassword, OpaqueSetup, SecretStore};
 use clap::{Args, ValueEnum};
 use keygo_opaque::server::ServerSetup;
@@ -102,11 +103,15 @@ impl Environment {
     }
 }
 
+// TODO: maybe find better API structure
 impl Config {
     pub(crate) fn opaque_setup(&self) -> anyhow::Result<ServerSetup> {
         SecretStore::new(&self.secrets_dir).read::<OpaqueSetup>()
     }
     pub(crate) fn db_password(&self) -> anyhow::Result<SecretString> {
         SecretStore::new(&self.secrets_dir).read::<DbPassword>()
+    }
+    pub(crate) fn invite_pepper(&self) -> anyhow::Result<InvitePepper> {
+        SecretStore::new(&self.secrets_dir).read::<InvitePepper>()
     }
 }
