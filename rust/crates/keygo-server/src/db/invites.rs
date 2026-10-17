@@ -33,6 +33,14 @@ pub async fn insert(
     })
 }
 
+pub async fn delete_expired(conn: &mut PgConnection) -> sqlx::Result<u64> {
+    let result = sqlx::query!("delete from invites where expires_at <= now()")
+        .execute(conn)
+        .await?;
+
+    Ok(result.rows_affected())
+}
+
 pub async fn list(conn: &mut PgConnection) -> sqlx::Result<Vec<OpenInvite>> {
     let rows = sqlx::query!(
         "select code_hash, created_at, expires_at from invites
@@ -100,6 +108,35 @@ mod tests {
         let err = insert(&mut conn, &hash(7), TTL).await.unwrap_err();
 
         assert!(err.as_database_error().unwrap().is_unique_violation());
+        assert_eq!(count(&db, "invites").await, 1);
+    }
+
+    #[sqlx::test]
+    async fn delete_expired_keeps_open_invites(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        insert(&mut conn, &hash(1), TTL).await.unwrap();
+        expire(&db, "invites").await;
+        insert(&mut conn, &hash(2), TTL).await.unwrap();
+
+        assert_eq!(delete_expired(&mut conn).await.unwrap(), 1);
+        assert_eq!(count(&db, "invites").await, 1);
+        let open: Vec<_> = list(&mut conn)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|invite| invite.code_hash)
+            .collect();
+        assert_eq!(open, [hash(2)]);
+    }
+
+    #[sqlx::test]
+    async fn list_keeps_expired_rows_in_the_table(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        insert(&mut conn, &hash(7), TTL).await.unwrap();
+        expire(&db, "invites").await;
+
+        list(&mut conn).await.unwrap();
+
         assert_eq!(count(&db, "invites").await, 1);
     }
 

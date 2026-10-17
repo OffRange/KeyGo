@@ -1,4 +1,5 @@
 pub mod create;
+pub mod list;
 
 use crate::cli::commands::invite::create::CreateInviteArgs;
 use crate::config::Config;
@@ -15,10 +16,31 @@ const UTC_MINUTES: &[BorrowedFormatItem] =
 #[derive(Subcommand)]
 pub enum InviteCommands {
     Create(CreateInviteArgs),
+    List,
 }
 
 pub fn run(config: &Config, commands: InviteCommands) -> anyhow::Result<()> {
     match commands {
         InviteCommands::Create(args) => create::run(config, &args),
+        InviteCommands::List => list::run(config),
     }
+}
+
+fn format_utc(at: OffsetDateTime) -> String {
+    at.to_offset(UtcOffset::UTC)
+        .format(UTC_MINUTES)
+        .expect("an OffsetDateTime has every component the format needs")
+}
+
+fn with_db<T>(
+    config: &Config,
+    task: impl AsyncFnOnce(&PgPool) -> anyhow::Result<T>,
+) -> anyhow::Result<T> {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?
+        .block_on(async {
+            let db = db::connect(config).await?;
+            task(&db).await
+        })
 }
