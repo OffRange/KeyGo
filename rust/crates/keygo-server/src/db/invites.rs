@@ -1,5 +1,5 @@
 use super::corrupt;
-use crate::domain::InviteHash;
+use crate::domain::{InviteHash, InviteId};
 use sqlx::PgConnection;
 use std::time::Duration;
 use time::OffsetDateTime;
@@ -9,6 +9,28 @@ pub struct OpenInvite {
     pub code_hash: InviteHash,
     pub created_at: OffsetDateTime,
     pub expires_at: OffsetDateTime,
+}
+
+struct InviteRow {
+    code_hash: Vec<u8>,
+    created_at: OffsetDateTime,
+    expires_at: OffsetDateTime,
+}
+
+impl TryFrom<InviteRow> for OpenInvite {
+    type Error = sqlx::Error;
+
+    fn try_from(row: InviteRow) -> sqlx::Result<Self> {
+        Ok(Self {
+            code_hash: row.code_hash.as_slice().try_into().map_err(corrupt)?,
+            created_at: row.created_at,
+            expires_at: row.expires_at,
+        })
+    }
+}
+
+fn open_invites(rows: Vec<InviteRow>) -> sqlx::Result<Vec<OpenInvite>> {
+    rows.into_iter().map(OpenInvite::try_from).collect()
 }
 
 pub async fn insert(
@@ -41,8 +63,20 @@ pub async fn delete_expired(conn: &mut PgConnection) -> sqlx::Result<u64> {
     Ok(result.rows_affected())
 }
 
+pub async fn delete(conn: &mut PgConnection, hash: &InviteHash) -> sqlx::Result<u64> {
+    let result = sqlx::query!(
+        "delete from invites where code_hash = $1",
+        hash.as_bytes().as_slice(),
+    )
+    .execute(conn)
+    .await?;
+
+    Ok(result.rows_affected())
+}
+
 pub async fn list(conn: &mut PgConnection) -> sqlx::Result<Vec<OpenInvite>> {
-    let rows = sqlx::query!(
+    let rows = sqlx::query_as!(
+        InviteRow,
         "select code_hash, created_at, expires_at from invites
          where expires_at > now()
          order by created_at, code_hash",
@@ -50,15 +84,23 @@ pub async fn list(conn: &mut PgConnection) -> sqlx::Result<Vec<OpenInvite>> {
     .fetch_all(conn)
     .await?;
 
-    rows.into_iter()
-        .map(|row| {
-            Ok(OpenInvite {
-                code_hash: row.code_hash.as_slice().try_into().map_err(corrupt)?,
-                created_at: row.created_at,
-                expires_at: row.expires_at,
-            })
-        })
-        .collect()
+    open_invites(rows)
+}
+
+pub async fn find_by_id(conn: &mut PgConnection, id: &InviteId) -> sqlx::Result<Vec<OpenInvite>> {
+    let rows = sqlx::query_as!(
+        InviteRow,
+        "select code_hash, created_at, expires_at
+         from invites
+         where expires_at > now() and starts_with(encode(code_hash, 'hex'), $1)
+         order by created_at, code_hash
+         for update",
+        id.as_str(),
+    )
+    .fetch_all(conn)
+    .await?;
+
+    open_invites(rows)
 }
 
 #[cfg(test)]

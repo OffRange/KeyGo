@@ -5,32 +5,13 @@ use sqlx::PgPool;
 pub async fn list(db: &PgPool) -> sqlx::Result<Vec<Invite>> {
     let mut conn = db.acquire().await?;
     let open = invites::list(&mut conn).await?;
-    let hashes: Vec<_> = open.iter().map(|invite| invite.code_hash).collect();
-
-    Ok(open
-        .into_iter()
-        .map(|invite| Invite::new(invite, &hashes))
-        .collect())
+    Ok(Invite::all(&open))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::InviteHash;
-    use std::time::Duration;
-
-    const TTL: Duration = Duration::from_hours(24);
-
-    fn hash(prefix: &[u8]) -> InviteHash {
-        let mut hash = [0; 32];
-        hash[..prefix.len()].copy_from_slice(prefix);
-        hash.into()
-    }
-
-    async fn insert(db: &PgPool, hash: InviteHash) {
-        let mut conn = db.acquire().await.unwrap();
-        invites::insert(&mut conn, &hash, TTL).await.unwrap();
-    }
+    use crate::testing::{insert_invite as insert, invite_hash as hash};
 
     fn ids(invites: &[Invite]) -> Vec<String> {
         invites.iter().map(|invite| invite.id.to_string()).collect()

@@ -22,7 +22,7 @@ pub async fn create(db: &PgPool, pepper: &InvitePepper, ttl: Duration) -> sqlx::
 
     Ok(Created {
         code,
-        invite: Invite::new(stored, &open),
+        invite: Invite::new(&stored, &open),
     })
 }
 

@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select code_hash, created_at, expires_at\n         from invites\n         where expires_at > now() and starts_with(encode(code_hash, 'hex'), $1)\n         order by created_at, code_hash\n         for update",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "code_hash",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "invites",
+            "name": "code_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "invites",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "expires_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "invites",
+            "name": "expires_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0ecd651215f1d57e78d41540fcb56496517c056cae271415399ea589624db619"
+}

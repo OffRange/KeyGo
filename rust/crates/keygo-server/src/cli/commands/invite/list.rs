@@ -1,6 +1,7 @@
-use super::{format_utc, with_db};
+use super::{format_utc, id_width, with_db};
 use crate::config::Config;
 use crate::service::invite::{self, Invite};
+use std::iter;
 
 pub fn run(config: &Config) -> anyhow::Result<()> {
     let invites = with_db(config, async |db| Ok(invite::list(db).await?))?;
@@ -13,37 +14,30 @@ fn table(invites: &[Invite]) -> String {
         return "No open invites".into();
     }
 
-    let ids: Vec<_> = invites.iter().map(|invite| invite.id.to_string()).collect();
-    let width = ids
-        .iter()
-        .map(String::len)
-        .chain(["ID".len()])
-        .max()
-        .unwrap_or(0);
-
-    let mut table = format!("{:<width$}  {:<20}  EXPIRES", "ID", "CREATED");
-    for (id, invite) in ids.iter().zip(invites) {
-        table += &format!(
-            "\n{id:<width$}  {}  {}",
+    let width = id_width(invites).max("ID".len());
+    let header = format!("{:<width$}  {:<20}  EXPIRES", "ID", "CREATED");
+    let rows = invites.iter().map(|invite| {
+        format!(
+            "{:<width$}  {}  {}",
+            invite.id.as_str(),
             format_utc(invite.created_at),
             format_utc(invite.expires_at),
-        );
-    }
-    table
+        )
+    });
+
+    iter::once(header)
+        .chain(rows)
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::domain::{InviteHash, InviteId};
+    use crate::testing::invite_hash as hash;
     use time::OffsetDateTime;
     use time::macros::datetime;
-
-    fn hash(prefix: &[u8]) -> InviteHash {
-        let mut hash = [0; 32];
-        hash[..prefix.len()].copy_from_slice(prefix);
-        hash.into()
-    }
 
     fn invite(
         hash: InviteHash,

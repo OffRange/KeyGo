@@ -1,5 +1,6 @@
 use crate::api::{AppState, router};
-use crate::domain::Username;
+use crate::db::invites;
+use crate::domain::{InviteHash, Username};
 use crate::service::login::{self, FinishLogin, StartLogin};
 use crate::service::registration::{self, FinishRegistration, StartRegistration};
 use axum::body::Body;
@@ -9,6 +10,7 @@ use keygo_opaque::client::{ClientLogin, ClientRegistration};
 use keygo_opaque::server::ServerSetup;
 use serde_json::Value;
 use sqlx::{AssertSqlSafe, PgPool};
+use std::time::Duration;
 use tower::ServiceExt;
 use uuid::Uuid;
 
@@ -59,6 +61,18 @@ pub fn finish_login(client: ClientLogin, started: login::Started) -> FinishLogin
         login_id: started.login_id,
         credential_finalization: finish.finalization,
     }
+}
+
+pub fn invite_hash(prefix: &[u8]) -> InviteHash {
+    let mut hash = [0; 32];
+    hash[..prefix.len()].copy_from_slice(prefix);
+    hash.into()
+}
+pub async fn insert_invite(db: &PgPool, hash: InviteHash) {
+    let mut conn = db.acquire().await.unwrap();
+    invites::insert(&mut conn, &hash, Duration::from_hours(24))
+        .await
+        .unwrap();
 }
 
 pub async fn count(db: &PgPool, table: &str) -> i64 {

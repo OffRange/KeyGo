@@ -1,4 +1,5 @@
 use crate::cli::Cli;
+use std::process::ExitCode;
 
 mod api;
 mod cli;
@@ -11,6 +12,12 @@ mod service;
 #[cfg(test)]
 mod testing;
 
-fn main() -> anyhow::Result<()> {
-    Cli::start()
+fn main() -> ExitCode {
+    match Cli::start() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(err) => {
+            eprintln!("error: {err:?}");
+            ExitCode::FAILURE
+        }
+    }
 }
