@@ -1,4 +1,4 @@
-use crate::config::Config;
+use crate::config::DeploymentConfig;
 use crate::service::registration::Signup;
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -11,14 +11,15 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(config: &Config, db: PgPool) -> anyhow::Result<Self> {
+    pub fn new(config: &DeploymentConfig, db: PgPool) -> anyhow::Result<Self> {
+        let secrets = &config.secrets;
         Ok(Self {
-            signup: if config.allow_signups {
+            signup: if config.server.allow_signups {
                 Signup::Open
             } else {
-                Signup::InviteOnly(Arc::new(config.invite_pepper()?))
+                Signup::InviteOnly(Arc::new(secrets.invite_pepper()?))
             },
-            opaque_state: config.opaque_setup()?,
+            opaque_state: secrets.opaque_setup()?,
             db,
         })
     }

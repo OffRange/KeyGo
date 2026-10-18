@@ -1,5 +1,5 @@
 use crate::api::{self, AppState};
-use crate::config::Config;
+use crate::config::DeploymentConfig;
 use crate::db;
 use anyhow::Context;
 use std::net::SocketAddr;
@@ -8,8 +8,8 @@ use tokio::signal::unix::{SignalKind, signal};
 
 mod sweeper;
 
-pub async fn start(config: &Config, listen: SocketAddr) -> anyhow::Result<()> {
-    let db = db::connect(config).await?;
+pub async fn start(config: &DeploymentConfig, listen: SocketAddr) -> anyhow::Result<()> {
+    let db = db::connect(&config.database, &config.secrets).await?;
     db::migrate(&db).await?;
 
     let sweeper = tokio::spawn(sweeper::run(db.clone()));

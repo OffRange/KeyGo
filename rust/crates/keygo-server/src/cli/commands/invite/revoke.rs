@@ -1,5 +1,4 @@
-use super::{format_utc, id_width, with_db};
-use crate::config::Config;
+use super::{Connection, format_utc, id_width, with_db};
 use crate::domain::InviteId;
 use crate::service::invite::{self, Invite, RevokeError};
 use anyhow::anyhow;
@@ -9,10 +8,12 @@ use clap::Args;
 pub struct RevokeInviteArgs {
     /// Any prefix of the invite's hash, 5 to 64 hex characters, such as the id `invite list` prints.
     id: InviteId,
+    #[command(flatten)]
+    connection: Connection,
 }
 
-pub fn run(config: &Config, args: &RevokeInviteArgs) -> anyhow::Result<()> {
-    with_db(config, async |db| {
+pub fn run(args: &RevokeInviteArgs) -> anyhow::Result<()> {
+    with_db(&args.connection, async |db| {
         invite::revoke(db, &args.id).await.map_err(|err| match err {
             RevokeError::Ambiguous { ref matches, .. } => {
                 anyhow!("{err}:\n{}", candidates(matches))

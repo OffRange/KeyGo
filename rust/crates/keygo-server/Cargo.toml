@@ -1,5 +1,6 @@
 [package]
 name = "keygo-server"
+description = "KeyGo self-hostable sync server."
 version.workspace = true
 edition.workspace = true
 

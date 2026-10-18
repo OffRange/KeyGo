@@ -1,17 +1,25 @@
-use crate::config::{Config, DatabaseConfig, Environment};
+use crate::config::{DatabaseConfig, DeploymentConfig, Environment};
 use crate::secrets::{DbPassword, Secret, SecretStore, TypedSecret};
 use anstream::println;
 use anstyle::{AnsiColor, Style};
+use clap::Args;
 use secrecy::{ExposeSecret, SecretString};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use url::Url;
 
-pub fn run(config: &Config) -> anyhow::Result<()> {
+#[derive(Args)]
+pub struct CheckArgs {
+    #[command(flatten)]
+    config: DeploymentConfig,
+}
+
+pub fn run(args: &CheckArgs) -> anyhow::Result<()> {
+    let config = &args.config;
     let sections = [
         check_config(config),
-        check_secrets(&config.secrets_dir, config.database.url.is_some()),
+        check_secrets(&config.secrets.dir, config.database.url.is_some()),
     ];
     print_report(&sections);
 
@@ -75,13 +83,14 @@ impl Section {
     }
 }
 
-fn check_config(config: &Config) -> Section {
+fn check_config(config: &DeploymentConfig) -> Section {
+    let server = &config.server;
     Section {
         title: "Config".into(),
         checks: vec![
-            check_environment(config.environment),
-            check_public_url(&config.public_url, config.environment),
-            check_signups(config.allow_signups, config.environment),
+            check_environment(server.environment),
+            check_public_url(&server.public_url, server.environment),
+            check_signups(server.allow_signups, server.environment),
             check_database(&config.database),
         ],
     }

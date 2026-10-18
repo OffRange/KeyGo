@@ -3,11 +3,12 @@ pub mod list;
 pub mod revoke;
 
 use crate::cli::commands::invite::create::CreateInviteArgs;
+use crate::cli::commands::invite::list::ListInviteArgs;
 use crate::cli::commands::invite::revoke::RevokeInviteArgs;
-use crate::config::Config;
+use crate::config::{DatabaseConfig, SecretsConfig};
 use crate::db;
 use crate::service::invite::Invite;
-use clap::Subcommand;
+use clap::{Args, Subcommand};
 use sqlx::PgPool;
 use time::format_description::BorrowedFormatItem;
 use time::macros::format_description;
@@ -18,16 +19,29 @@ const UTC_MINUTES: &[BorrowedFormatItem] =
 
 #[derive(Subcommand)]
 pub enum InviteCommands {
+    /// Create an invite code that one registration can redeem.
     Create(CreateInviteArgs),
-    List,
+    /// List the open invites.
+    #[command(visible_alias = "ls")]
+    List(ListInviteArgs),
+    /// Revoke an open invite so its code no longer works.
     Revoke(RevokeInviteArgs),
 }
 
-pub fn run(config: &Config, commands: InviteCommands) -> anyhow::Result<()> {
+/// What every invite command needs to reach the database.
+#[derive(Args)]
+pub struct Connection {
+    #[command(flatten)]
+    secrets: SecretsConfig,
+    #[command(flatten)]
+    database: DatabaseConfig,
+}
+
+pub fn run(commands: InviteCommands) -> anyhow::Result<()> {
     match commands {
-        InviteCommands::Create(args) => create::run(config, &args),
-        InviteCommands::List => list::run(config),
-        InviteCommands::Revoke(args) => revoke::run(config, &args),
+        InviteCommands::Create(args) => create::run(&args),
+        InviteCommands::List(args) => list::run(&args),
+        InviteCommands::Revoke(args) => revoke::run(&args),
     }
 }
 
@@ -46,14 +60,14 @@ fn id_width(invites: &[Invite]) -> usize {
 }
 
 fn with_db<T>(
-    config: &Config,
+    connection: &Connection,
     task: impl AsyncFnOnce(&PgPool) -> anyhow::Result<T>,
 ) -> anyhow::Result<T> {
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?
         .block_on(async {
-            let db = db::connect(config).await?;
+            let db = db::connect(&connection.database, &connection.secrets).await?;
             task(&db).await
         })
 }

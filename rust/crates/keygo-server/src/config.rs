@@ -5,82 +5,69 @@ use keygo_opaque::server::ServerSetup;
 use secrecy::SecretString;
 use std::path::PathBuf;
 
+/// Everything `serve` reads, so `check` validates exactly what the server will run with.
 #[derive(Args)]
-pub struct Config {
-    #[arg(
-        long,
-        env = "KEYGO_ENVIRONMENT",
-        value_enum,
-        default_value_t,
-        global = true
-    )]
-    pub environment: Environment,
-
-    #[arg(
-        long,
-        env = "KEYGO_PUBLIC_URL",
-        default_value = "http://localhost",
-        global = true
-    )]
-    pub public_url: String,
-
-    #[arg(long, env = "KEYGO_ALLOW_SIGNUPS", global = true)]
-    pub allow_signups: bool,
-
-    /// Directory with one file per secret. Compose mounts its secrets at /run/secrets.
-    #[arg(
-        long,
-        env = "KEYGO_SECRETS_DIR",
-        default_value = "/run/secrets",
-        global = true
-    )]
-    pub secrets_dir: PathBuf,
-
-    #[command(flatten, next_help_heading = "Database")]
+pub struct DeploymentConfig {
+    #[command(flatten)]
+    pub server: ServerConfig,
+    #[command(flatten)]
+    pub secrets: SecretsConfig,
+    #[command(flatten)]
     pub database: DatabaseConfig,
 }
 
 #[derive(Args)]
-pub struct DatabaseConfig {
-    /// Full connection URL. When set, it replaces the options below and the db_password secret.
-    /// Meant for local development, where `make serve` sets it.
-    #[arg(
-        long = "db-url",
-        env = "KEYGO_DATABASE_URL",
-        hide_env_values = true,
-        global = true
-    )]
-    pub url: Option<SecretString>,
+#[command(next_help_heading = "Server")]
+pub struct ServerConfig {
+    /// Deployment environment.
+    #[arg(long, env = "KEYGO_ENVIRONMENT", value_enum, default_value_t)]
+    pub environment: Environment,
+    /// URL that clients reach the server at.
+    #[arg(long, env = "KEYGO_PUBLIC_URL", default_value = "http://localhost")]
+    pub public_url: String,
+    /// Let anyone register without an invite.
+    #[arg(long, env = "KEYGO_ALLOW_SIGNUPS")]
+    pub allow_signups: bool,
+}
 
+#[derive(Args)]
+#[command(next_help_heading = "Secrets")]
+pub struct SecretsConfig {
+    /// Directory with one file per secret.
+    #[arg(
+        long = "secrets-dir",
+        value_name = "DIR",
+        env = "KEYGO_SECRETS_DIR",
+        default_value = "/run/secrets"
+    )]
+    pub dir: PathBuf,
+}
+
+#[derive(Args)]
+#[command(next_help_heading = "Database")]
+pub struct DatabaseConfig {
+    /// Connection URL. Replaces the options below and the db_password secret.
+    #[arg(long = "db-url", env = "KEYGO_DATABASE_URL", hide_env_values = true)]
+    pub url: Option<SecretString>,
+    /// Postgres host.
     #[arg(
         long = "db-host",
         env = "KEYGO_DATABASE_HOST",
-        default_value = "postgres",
-        global = true
+        default_value = "postgres"
     )]
     pub host: String,
-
-    #[arg(
-        long = "db-port",
-        env = "KEYGO_DATABASE_PORT",
-        default_value_t = 5432,
-        global = true
-    )]
+    /// Postgres port.
+    #[arg(long = "db-port", env = "KEYGO_DATABASE_PORT", default_value_t = 5432)]
     pub port: u16,
-
-    #[arg(
-        long = "db-name",
-        env = "KEYGO_DATABASE_NAME",
-        default_value = "keygo",
-        global = true
-    )]
+    /// Database name.
+    #[arg(long = "db-name", env = "KEYGO_DATABASE_NAME", default_value = "keygo")]
     pub name: String,
-
+    /// Database user. Its password is the db_password secret.
     #[arg(
         long = "db-user",
+        value_name = "USER",
         env = "KEYGO_DATABASE_USERNAME",
-        default_value = "keygo",
-        global = true
+        default_value = "keygo"
     )]
     pub username: String,
 }
@@ -103,15 +90,20 @@ impl Environment {
     }
 }
 
-// TODO: maybe find better API structure
-impl Config {
+impl SecretsConfig {
+    pub(crate) fn store(&self) -> SecretStore {
+        SecretStore::new(&self.dir)
+    }
+
     pub(crate) fn opaque_setup(&self) -> anyhow::Result<ServerSetup> {
-        SecretStore::new(&self.secrets_dir).read::<OpaqueSetup>()
+        self.store().read::<OpaqueSetup>()
     }
+
     pub(crate) fn db_password(&self) -> anyhow::Result<SecretString> {
-        SecretStore::new(&self.secrets_dir).read::<DbPassword>()
+        self.store().read::<DbPassword>()
     }
+
     pub(crate) fn invite_pepper(&self) -> anyhow::Result<InvitePepper> {
-        SecretStore::new(&self.secrets_dir).read::<InvitePepper>()
+        self.store().read::<InvitePepper>()
     }
 }

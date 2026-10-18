@@ -1,10 +1,16 @@
-use super::{format_utc, id_width, with_db};
-use crate::config::Config;
+use super::{Connection, format_utc, id_width, with_db};
 use crate::service::invite::{self, Invite};
+use clap::Args;
 use std::iter;
 
-pub fn run(config: &Config) -> anyhow::Result<()> {
-    let invites = with_db(config, async |db| Ok(invite::list(db).await?))?;
+#[derive(Args)]
+pub struct ListInviteArgs {
+    #[command(flatten)]
+    connection: Connection,
+}
+
+pub fn run(args: &ListInviteArgs) -> anyhow::Result<()> {
+    let invites = with_db(&args.connection, async |db| Ok(invite::list(db).await?))?;
     println!("{}", table(&invites));
     Ok(())
 }

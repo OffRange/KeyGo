@@ -1,9 +1,16 @@
-use crate::config::Config;
-use crate::secrets::{CreateOutcome, Secret, SecretStore};
+use crate::config::SecretsConfig;
+use crate::secrets::{CreateOutcome, Secret};
 use anyhow::Context;
+use clap::Args;
 
-pub fn run(config: &Config) -> anyhow::Result<()> {
-    let store = SecretStore::new(&config.secrets_dir);
+#[derive(Args)]
+pub struct InitArgs {
+    #[command(flatten)]
+    secrets: SecretsConfig,
+}
+
+pub fn run(args: &InitArgs) -> anyhow::Result<()> {
+    let store = args.secrets.store();
     store.create_dir()?;
 
     for &secret in Secret::ALL {
@@ -18,5 +25,6 @@ pub fn run(config: &Config) -> anyhow::Result<()> {
         };
         println!("{:<20} {status}", secret.name());
     }
+
     Ok(())
 }

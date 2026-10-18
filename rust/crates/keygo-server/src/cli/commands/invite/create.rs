@@ -1,5 +1,4 @@
-use super::{format_utc, with_db};
-use crate::config::Config;
+use super::{Connection, format_utc, with_db};
 use crate::service::invite::{self, Created};
 use anyhow::ensure;
 use clap::Args;
@@ -11,8 +10,10 @@ const MAX_TTL: Duration = Duration::from_hours(30 * 24);
 #[derive(Args)]
 pub struct CreateInviteArgs {
     /// How long the invite stays redeemable, from 1 to 30 days, e.g. "72h" or "2weeks".
-    #[arg(long, default_value = "1d", value_parser = parse_ttl)]
+    #[arg(short, long, default_value = "1d", value_parser = parse_ttl)]
     ttl: Duration,
+    #[command(flatten)]
+    connection: Connection,
 }
 
 fn parse_ttl(s: &str) -> anyhow::Result<Duration> {
@@ -30,14 +31,10 @@ fn parse_ttl(s: &str) -> anyhow::Result<Duration> {
     Ok(ttl)
 }
 
-pub fn run(config: &Config, args: &CreateInviteArgs) -> anyhow::Result<()> {
-    let pepper = config.invite_pepper()?;
+pub fn run(args: &CreateInviteArgs) -> anyhow::Result<()> {
+    let pepper = args.connection.secrets.invite_pepper()?;
 
-    if config.allow_signups {
-        eprintln!("warning: sign-up is open, so registration will not ask for this invite");
-    }
-
-    let created = with_db(config, async |db| {
+    let created = with_db(&args.connection, async |db| {
         Ok(invite::create(db, &pepper, args.ttl).await?)
     })?;
 
