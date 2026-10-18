@@ -1,4 +1,5 @@
 use crate::api::{AppState, router};
+use crate::cache::LoginStates;
 use crate::db::invites;
 use crate::domain::{InviteHash, InvitePepper, Username};
 use crate::service::invite;
@@ -48,6 +49,7 @@ pub async fn register(db: &PgPool, setup: &ServerSetup, name: &str) -> Uuid {
 }
 pub async fn start_login(
     db: &PgPool,
+    login_states: &LoginStates,
     setup: &ServerSetup,
     name: &str,
 ) -> (ClientLogin, login::Started) {
@@ -56,7 +58,10 @@ pub async fn start_login(
         username: username(name),
         credential_request,
     };
-    (client, login::start(db, setup, input).await.unwrap())
+    (
+        client,
+        login::start(db, login_states, setup, input).await.unwrap(),
+    )
 }
 pub fn finish_login(client: ClientLogin, started: login::Started) -> FinishLogin {
     let finish = client
@@ -116,13 +121,17 @@ pub async fn expires_in_secs(db: &PgPool, table: &str) -> f64 {
     .unwrap()
 }
 
-pub async fn post(db: &PgPool, setup: &ServerSetup, uri: &str, body: Value) -> (StatusCode, Value) {
-    let state = AppState {
+/// Requests that must see each other's login states share one `AppState` through `post_to`.
+pub fn app_state(db: &PgPool, setup: &ServerSetup) -> AppState {
+    AppState {
         signup: Signup::Open,
         opaque_state: setup.clone(),
         db: db.clone(),
-    };
-    post_to(state, uri, body).await
+        login_states: LoginStates::new(),
+    }
+}
+pub async fn post(db: &PgPool, setup: &ServerSetup, uri: &str, body: Value) -> (StatusCode, Value) {
+    post_to(app_state(db, setup), uri, body).await
 }
 pub async fn post_to(state: AppState, uri: &str, body: Value) -> (StatusCode, Value) {
     let request = Request::post(uri)

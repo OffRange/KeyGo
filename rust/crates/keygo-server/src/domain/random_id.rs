@@ -25,10 +25,6 @@ macro_rules! random_id {
                 Self(bytes)
             }
 
-            pub fn as_bytes(&self) -> &[u8; LEN] {
-                &self.0
-            }
-
             pub fn to_base64(self) -> String {
                 URL_SAFE_NO_PAD.encode(self.0)
             }
@@ -61,6 +57,12 @@ random_id! {
 
     /// Handle for a login handshake, between `login/start` and `login/finish`.
     LoginId as "login_id";
+}
+
+impl RegistrationId {
+    pub const fn as_bytes(&self) -> &[u8; LEN] {
+        &self.0
+    }
 }
 
 #[cfg(test)]

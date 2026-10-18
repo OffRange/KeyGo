@@ -2,6 +2,7 @@ use crate::cli::Cli;
 use std::process::ExitCode;
 
 mod api;
+mod cache;
 mod cli;
 mod config;
 mod db;

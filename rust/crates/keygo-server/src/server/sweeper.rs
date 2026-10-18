@@ -1,4 +1,4 @@
-use crate::db::{invites, login_states, registrations};
+use crate::db::{invites, registrations};
 use sqlx::PgPool;
 use std::time::Duration;
 use tokio::time::MissedTickBehavior;
@@ -25,9 +25,8 @@ pub async fn run(db: PgPool) {
 async fn sweep(db: &PgPool) -> sqlx::Result<()> {
     let mut conn = db.acquire().await?;
     let registrations = registrations::delete_expired(&mut conn).await?;
-    let logins = login_states::delete_expired(&mut conn).await?;
     let invites = invites::delete_expired(&mut conn).await?;
-    tracing::debug!(registrations, logins, invites, "swept expired rows");
+    tracing::debug!(registrations, invites, "swept expired rows");
     Ok(())
 }
 
@@ -36,7 +35,7 @@ mod tests {
     use super::*;
     use crate::domain::InviteHash;
     use crate::service::registration::{self, Signup, StartRegistration};
-    use crate::testing::{count, expire, start_login};
+    use crate::testing::{count, expire};
     use keygo_opaque::client::ClientRegistration;
     use keygo_opaque::server::ServerSetup;
     use uuid::Uuid;
@@ -69,19 +68,15 @@ mod tests {
     async fn sweep_deletes_only_expired_rows(db: PgPool) {
         let setup = ServerSetup::generate();
         start_registration(&db, &setup, "ada").await;
-        start_login(&db, &setup, "ada").await;
         create_invite(&db, 1).await;
         expire(&db, "pending_registrations").await;
-        expire(&db, "login_states").await;
         expire(&db, "invites").await;
         start_registration(&db, &setup, "bob").await;
-        start_login(&db, &setup, "bob").await;
         create_invite(&db, 2).await;
 
         sweep(&db).await.unwrap();
 
         assert_eq!(count(&db, "pending_registrations").await, 1);
-        assert_eq!(count(&db, "login_states").await, 1);
         assert_eq!(count(&db, "invites").await, 1);
     }
 
@@ -90,7 +85,6 @@ mod tests {
         sweep(&db).await.unwrap();
 
         assert_eq!(count(&db, "pending_registrations").await, 0);
-        assert_eq!(count(&db, "login_states").await, 0);
         assert_eq!(count(&db, "invites").await, 0);
     }
 }

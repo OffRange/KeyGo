@@ -14,6 +14,7 @@ opaque_newtype! {
     ServerSetup(ServerSetup) as Zeroizing<Vec<u8>>;
 
     /// Server state held between KE2 and KE3.
+    #[derive(Clone)]
     ServerLogin(ServerLogin) as Zeroizing<Vec<u8>>;
 }
 

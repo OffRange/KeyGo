@@ -106,7 +106,7 @@ async fn finish(
 mod tests {
     use super::*;
     use crate::api::error::render;
-    use crate::testing::{count, create_invite, invite_only, post, post_to, register};
+    use crate::testing::{app_state, count, create_invite, invite_only, post, post_to, register};
     use keygo_opaque::client::ClientRegistration;
     use keygo_opaque::server::ServerSetup;
     use serde_json::{Value, json};
@@ -173,8 +173,7 @@ mod tests {
     fn invite_only_state(db: &PgPool, setup: &ServerSetup) -> AppState {
         AppState {
             signup: invite_only(),
-            opaque_state: setup.clone(),
-            db: db.clone(),
+            ..app_state(db, setup)
         }
     }
 

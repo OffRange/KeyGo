@@ -1,3 +1,4 @@
+use crate::cache::LoginStates;
 use crate::config::DeploymentConfig;
 use crate::service::registration::Signup;
 use sqlx::PgPool;
@@ -8,6 +9,7 @@ pub struct AppState {
     pub signup: Signup,
     pub opaque_state: keygo_opaque::server::ServerSetup,
     pub db: PgPool,
+    pub login_states: LoginStates,
 }
 
 impl AppState {
@@ -21,6 +23,7 @@ impl AppState {
             },
             opaque_state: secrets.opaque_setup()?,
             db,
+            login_states: LoginStates::new(),
         })
     }
 }

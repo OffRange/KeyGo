@@ -32,6 +32,7 @@ async fn not_found() -> ServerError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cache::LoginStates;
     use crate::domain::InvitePepper;
     use crate::service::registration::Signup;
     use axum::body::Body;
@@ -67,6 +68,7 @@ mod tests {
             // Lazy pools never connect until queried, so routes without a query need no database.
             db: sqlx::postgres::PgPoolOptions::new()
                 .connect_lazy_with(sqlx::postgres::PgConnectOptions::new()),
+            login_states: LoginStates::new(),
         }
     }
 
