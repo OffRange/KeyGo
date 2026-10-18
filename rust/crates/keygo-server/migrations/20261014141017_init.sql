@@ -22,11 +22,11 @@ create table opaque_records
 
 create unlogged table pending_registrations
 (
-    id         bytea primary key,           -- registration_id, 16 random bytes
-    user_id    uuid        not null unique,
-    username   text        not null unique, -- the reservation
-    -- invite_id  text references invites,
-    expires_at timestamptz not null
+    id          bytea primary key,           -- registration_id, 16 random bytes
+    user_id     uuid        not null unique,
+    username    text        not null unique, -- the reservation
+    invite_hash bytea,
+    expires_at  timestamptz not null
 );
 create index pending_registrations_expires_at_idx on pending_registrations (expires_at);
 

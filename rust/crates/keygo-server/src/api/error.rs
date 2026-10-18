@@ -21,6 +21,7 @@ pub enum ErrorCode {
     InvalidCredentials,
     UsernameTaken,
     UserIdTaken,
+    InviteRequired,
     InviteInvalid,
     RegistrationExpired,
     LoginExpired,

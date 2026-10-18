@@ -63,6 +63,31 @@ pub async fn delete_expired(conn: &mut PgConnection) -> sqlx::Result<u64> {
     Ok(result.rows_affected())
 }
 
+pub async fn is_open(conn: &mut PgConnection, hash: &InviteHash) -> sqlx::Result<bool> {
+    let open = sqlx::query_scalar!(
+        r#"select exists(
+             select 1 from invites where code_hash = $1 and expires_at > now()
+           ) as "open!""#,
+        hash.as_bytes().as_slice(),
+    )
+    .fetch_one(conn)
+    .await?;
+
+    Ok(open)
+}
+
+/// Deletes the invite if it is still open, so it can create at most one account.
+pub async fn spend(conn: &mut PgConnection, hash: &InviteHash) -> sqlx::Result<bool> {
+    let result = sqlx::query!(
+        "delete from invites where code_hash = $1 and expires_at > now()",
+        hash.as_bytes().as_slice(),
+    )
+    .execute(conn)
+    .await?;
+
+    Ok(result.rows_affected() == 1)
+}
+
 pub async fn delete(conn: &mut PgConnection, hash: &InviteHash) -> sqlx::Result<u64> {
     let result = sqlx::query!(
         "delete from invites where code_hash = $1",
@@ -203,6 +228,37 @@ mod tests {
             .collect();
 
         assert_eq!(hashes, [hash(2), hash(1)]);
+    }
+
+    #[sqlx::test]
+    async fn open_invite_is_open_until_it_expires(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        insert(&mut conn, &hash(7), TTL).await.unwrap();
+
+        assert!(is_open(&mut conn, &hash(7)).await.unwrap());
+        assert!(!is_open(&mut conn, &hash(8)).await.unwrap());
+        expire(&db, "invites").await;
+        assert!(!is_open(&mut conn, &hash(7)).await.unwrap());
+    }
+
+    #[sqlx::test]
+    async fn invite_is_spent_once(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        insert(&mut conn, &hash(7), TTL).await.unwrap();
+
+        assert!(spend(&mut conn, &hash(7)).await.unwrap());
+        assert!(!spend(&mut conn, &hash(7)).await.unwrap());
+        assert_eq!(count(&db, "invites").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn expired_invite_cannot_be_spent(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        insert(&mut conn, &hash(7), TTL).await.unwrap();
+        expire(&db, "invites").await;
+
+        assert!(!spend(&mut conn, &hash(7)).await.unwrap());
+        assert_eq!(count(&db, "invites").await, 1);
     }
 
     #[sqlx::test]

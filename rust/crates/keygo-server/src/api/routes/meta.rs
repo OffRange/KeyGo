@@ -1,4 +1,5 @@
 use crate::api::AppState;
+use crate::service::registration::Signup;
 use axum::extract::State;
 use axum::routing::get;
 use axum::{Json, Router};
@@ -18,6 +19,6 @@ struct ServerInfo {
 async fn info(State(state): State<AppState>) -> Json<ServerInfo> {
     Json(ServerInfo {
         version: env!("CARGO_PKG_VERSION"),
-        allow_signups: state.allow_signups,
+        allow_signups: matches!(state.signup, Signup::Open),
     })
 }

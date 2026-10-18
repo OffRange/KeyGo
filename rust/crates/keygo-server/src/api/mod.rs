@@ -32,10 +32,13 @@ async fn not_found() -> ServerError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::InvitePepper;
+    use crate::service::registration::Signup;
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use http_body_util::BodyExt;
     use serde_json::{Value, json};
+    use std::sync::Arc;
     use tower::ServiceExt;
 
     async fn get(state: AppState, uri: &str) -> (StatusCode, Vec<u8>) {
@@ -59,7 +62,7 @@ mod tests {
 
     fn state() -> AppState {
         AppState {
-            allow_signups: false,
+            signup: Signup::InviteOnly(Arc::new(InvitePepper::new([0; 32]))),
             opaque_state: keygo_opaque::server::ServerSetup::generate(),
             // Lazy pools never connect until queried, so routes without a query need no database.
             db: sqlx::postgres::PgPoolOptions::new()
@@ -77,7 +80,7 @@ mod tests {
     #[tokio::test]
     async fn server_info_reports_version_and_signups() {
         let state = AppState {
-            allow_signups: true,
+            signup: Signup::Open,
             ..state()
         };
 

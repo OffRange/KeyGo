@@ -1,5 +1,5 @@
 use super::corrupt;
-use crate::domain::{RegistrationId, Username};
+use crate::domain::{InviteHash, RegistrationId, Username};
 use sqlx::PgConnection;
 use std::time::Duration;
 use thiserror::Error;
@@ -35,6 +35,7 @@ pub async fn reserve(
     registration_id: &RegistrationId,
     user_id: Uuid,
     username: &Username,
+    invite_hash: Option<&InviteHash>,
     ttl: Duration,
 ) -> Result<(), ReserveError> {
     sqlx::query!(
@@ -49,13 +50,15 @@ pub async fn reserve(
     // A concurrent reserve that wins between the sweep and here surfaces as a unique violation on
     // username, or as a takeover on user_id, so the two statements need no surrounding transaction.
     sqlx::query!(
-        "insert into pending_registrations (id, user_id, username, expires_at)
-         values ($1, $2, $3, now() + make_interval(secs => $4))
+        "insert into pending_registrations (id, user_id, username, invite_hash, expires_at)
+         values ($1, $2, $3, $4, now() + make_interval(secs => $5))
          on conflict (user_id) do update
-         set id = excluded.id, username = excluded.username, expires_at = excluded.expires_at",
+         set id = excluded.id, username = excluded.username,
+             invite_hash = excluded.invite_hash, expires_at = excluded.expires_at",
         registration_id.as_bytes().as_slice(),
         user_id,
         username.as_str(),
+        invite_hash.map(|hash| hash.as_bytes().as_slice()),
         ttl.as_secs_f64(),
     )
     .execute(conn)
@@ -67,6 +70,7 @@ pub async fn reserve(
 pub struct Pending {
     pub user_id: Uuid,
     pub username: Username,
+    pub invite_hash: Option<InviteHash>,
 }
 
 /// Deletes the reservation as it reads it, so a registration can be finished at most once. Returns
@@ -78,7 +82,7 @@ pub async fn take(
     let Some(row) = sqlx::query!(
         "delete from pending_registrations
          where id = $1 and expires_at > now()
-         returning user_id, username",
+         returning user_id, username, invite_hash",
         registration_id.as_bytes().as_slice(),
     )
     .fetch_optional(conn)
@@ -88,10 +92,16 @@ pub async fn take(
     };
 
     let username = Username::parse(&row.username).map_err(corrupt)?;
+    let invite_hash = row
+        .invite_hash
+        .map(|hash| hash.as_slice().try_into())
+        .transpose()
+        .map_err(corrupt)?;
 
     Ok(Some(Pending {
         user_id: row.user_id,
         username,
+        invite_hash,
     }))
 }
 
@@ -117,7 +127,7 @@ mod tests {
         name: &str,
     ) -> Result<RegistrationId, ReserveError> {
         let registration_id = RegistrationId::random();
-        reserve(conn, &registration_id, user_id, &username(name), TTL).await?;
+        reserve(conn, &registration_id, user_id, &username(name), None, TTL).await?;
         Ok(registration_id)
     }
 
@@ -131,8 +141,30 @@ mod tests {
 
         assert_eq!(pending.user_id, user_id);
         assert_eq!(pending.username, username("ada"));
+        assert_eq!(pending.invite_hash, None);
         assert!(take(&mut conn, &registration_id).await.unwrap().is_none());
         assert_eq!(count(&db, "pending_registrations").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn reservation_carries_its_invite(db: PgPool) {
+        let mut conn = db.acquire().await.unwrap();
+        let registration_id = RegistrationId::random();
+        let invite = InviteHash::from([7; 32]);
+        reserve(
+            &mut conn,
+            &registration_id,
+            Uuid::new_v4(),
+            &username("ada"),
+            Some(&invite),
+            TTL,
+        )
+        .await
+        .unwrap();
+
+        let pending = take(&mut conn, &registration_id).await.unwrap().unwrap();
+
+        assert_eq!(pending.invite_hash, Some(invite));
     }
 
     #[sqlx::test]

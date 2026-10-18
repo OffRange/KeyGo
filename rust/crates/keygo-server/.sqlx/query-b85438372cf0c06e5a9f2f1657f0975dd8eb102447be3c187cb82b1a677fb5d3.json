@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "delete from pending_registrations\n         where id = $1 and expires_at > now()\n         returning user_id, username",
+  "query": "delete from pending_registrations\n         where id = $1 and expires_at > now()\n         returning user_id, username, invite_hash",
   "describe": {
     "columns": [
       {
@@ -24,6 +24,17 @@
             "name": "username"
           }
         }
+      },
+      {
+        "ordinal": 2,
+        "name": "invite_hash",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "pending_registrations",
+            "name": "invite_hash"
+          }
+        }
       }
     ],
     "parameters": {
@@ -33,8 +44,9 @@
     },
     "nullable": [
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "5ac9a52348e7466479ac7371eff01c68fc7ec51caaefa2eae62db88f6e851acf"
+  "hash": "b85438372cf0c06e5a9f2f1657f0975dd8eb102447be3c187cb82b1a677fb5d3"
 }

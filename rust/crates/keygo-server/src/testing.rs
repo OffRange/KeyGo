@@ -1,8 +1,9 @@
 use crate::api::{AppState, router};
 use crate::db::invites;
-use crate::domain::{InviteHash, Username};
+use crate::domain::{InviteHash, InvitePepper, Username};
+use crate::service::invite;
 use crate::service::login::{self, FinishLogin, StartLogin};
-use crate::service::registration::{self, FinishRegistration, StartRegistration};
+use crate::service::registration::{self, FinishRegistration, Signup, StartRegistration};
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use http_body_util::BodyExt;
@@ -10,6 +11,7 @@ use keygo_opaque::client::{ClientLogin, ClientRegistration};
 use keygo_opaque::server::ServerSetup;
 use serde_json::Value;
 use sqlx::{AssertSqlSafe, PgPool};
+use std::sync::Arc;
 use std::time::Duration;
 use tower::ServiceExt;
 use uuid::Uuid;
@@ -26,9 +28,12 @@ pub async fn register(db: &PgPool, setup: &ServerSetup, name: &str) -> Uuid {
     let input = StartRegistration {
         username: username(name),
         user_id,
+        invite: None,
         registration_request,
     };
-    let started = registration::start(db, setup, input).await.unwrap();
+    let started = registration::start(db, setup, &Signup::Open, input)
+        .await
+        .unwrap();
 
     let finish = client
         .finish(PASSWORD, started.registration_response)
@@ -75,6 +80,19 @@ pub async fn insert_invite(db: &PgPool, hash: InviteHash) {
         .unwrap();
 }
 
+const INVITE_PEPPER: [u8; 32] = [1; 32];
+
+pub fn invite_only() -> Signup {
+    Signup::InviteOnly(Arc::new(InvitePepper::new(INVITE_PEPPER)))
+}
+pub async fn create_invite(db: &PgPool) -> String {
+    let pepper = InvitePepper::new(INVITE_PEPPER);
+    let created = invite::create(db, &pepper, Duration::from_hours(24))
+        .await
+        .unwrap();
+    created.code.to_string()
+}
+
 pub async fn count(db: &PgPool, table: &str) -> i64 {
     sqlx::query_scalar(AssertSqlSafe(format!("select count(*) from {table}")))
         .fetch_one(db)
@@ -100,10 +118,13 @@ pub async fn expires_in_secs(db: &PgPool, table: &str) -> f64 {
 
 pub async fn post(db: &PgPool, setup: &ServerSetup, uri: &str, body: Value) -> (StatusCode, Value) {
     let state = AppState {
-        allow_signups: true,
+        signup: Signup::Open,
         opaque_state: setup.clone(),
         db: db.clone(),
     };
+    post_to(state, uri, body).await
+}
+pub async fn post_to(state: AppState, uri: &str, body: Value) -> (StatusCode, Value) {
     let request = Request::post(uri)
         .header("content-type", "application/json")
         .body(Body::from(body.to_string()))

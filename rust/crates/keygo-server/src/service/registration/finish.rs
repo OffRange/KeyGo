@@ -1,4 +1,4 @@
-use crate::db::{opaque_records, registrations, users};
+use crate::db::{invites, opaque_records, registrations, users};
 use crate::domain::{RegistrationId, Username};
 use keygo_opaque::{RegistrationUpload, server};
 use sqlx::PgPool;
@@ -8,6 +8,8 @@ use thiserror::Error;
 pub enum FinishError {
     #[error("registration expired or unknown")]
     Expired,
+    #[error("invite is not valid or has expired")]
+    InviteInvalid,
     #[error("database error: {0}")]
     Db(#[from] sqlx::Error),
 }
@@ -36,6 +38,12 @@ pub async fn finish(db: &PgPool, input: FinishRegistration) -> Result<Finished, 
     let pending = registrations::take(&mut tx, &registration_id)
         .await?
         .ok_or(FinishError::Expired)?;
+    if let Some(invite_hash) = &pending.invite_hash
+        && !invites::spend(&mut tx, invite_hash).await?
+    {
+        return Err(FinishError::InviteInvalid);
+    }
+
     users::insert(&mut tx, pending.user_id, &pending.username).await?;
     opaque_records::insert(&mut tx, pending.user_id, &password_file).await?;
     tx.commit().await?;
@@ -48,24 +56,35 @@ pub async fn finish(db: &PgPool, input: FinishRegistration) -> Result<Finished, 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::service::registration::{self, StartRegistration, Started};
-    use crate::testing::{PASSWORD, count, expire, username};
+    use crate::service::registration::{self, Signup, StartRegistration, Started};
+    use crate::testing::{PASSWORD, count, create_invite, expire, invite_only, username};
     use keygo_opaque::client::ClientRegistration;
     use keygo_opaque::server::ServerSetup;
     use uuid::Uuid;
 
     async fn started(db: &PgPool, user_id: Uuid, name: &str) -> FinishRegistration {
+        started_with(db, &Signup::Open, None, user_id, name).await
+    }
+
+    async fn started_with(
+        db: &PgPool,
+        signup: &Signup,
+        invite: Option<&str>,
+        user_id: Uuid,
+        name: &str,
+    ) -> FinishRegistration {
         let (client, registration_request) = ClientRegistration::start(PASSWORD).unwrap();
         let input = StartRegistration {
             username: username(name),
             user_id,
+            invite: invite.map(str::to_owned),
             registration_request,
         };
         let Started {
             registration_id,
             registration_response,
             ..
-        } = registration::start(db, &ServerSetup::generate(), input)
+        } = registration::start(db, &ServerSetup::generate(), signup, input)
             .await
             .unwrap();
         let finish = client.finish(PASSWORD, registration_response).unwrap();
@@ -157,5 +176,59 @@ mod tests {
 
         assert!(matches!(err, FinishError::Db(_)), "{err:?}");
         assert_eq!(user_count(&db).await, (1, 0, 1));
+    }
+
+    #[sqlx::test]
+    async fn finish_spends_the_invite(db: PgPool) {
+        let code = create_invite(&db).await;
+        let input = started_with(&db, &invite_only(), Some(&code), Uuid::new_v4(), "ada").await;
+
+        finish(&db, input).await.unwrap();
+
+        assert_eq!(user_count(&db).await, (1, 1, 0));
+        assert_eq!(count(&db, "invites").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn one_invite_creates_one_account(db: PgPool) {
+        let code = create_invite(&db).await;
+        let ada = started_with(&db, &invite_only(), Some(&code), Uuid::new_v4(), "ada").await;
+        let bob = started_with(&db, &invite_only(), Some(&code), Uuid::new_v4(), "bob").await;
+        finish(&db, ada).await.unwrap();
+
+        let err = finish(&db, bob).await.err().unwrap();
+
+        assert!(matches!(err, FinishError::InviteInvalid), "{err:?}");
+        assert_eq!(user_count(&db).await, (1, 1, 1));
+    }
+
+    #[sqlx::test]
+    async fn invite_expired_since_start_creates_nothing(db: PgPool) {
+        let code = create_invite(&db).await;
+        let input = started_with(&db, &invite_only(), Some(&code), Uuid::new_v4(), "ada").await;
+        expire(&db, "invites").await;
+
+        let err = finish(&db, input).await.err().unwrap();
+
+        assert!(matches!(err, FinishError::InviteInvalid), "{err:?}");
+        assert_eq!(user_count(&db).await, (0, 0, 1));
+        assert_eq!(count(&db, "invites").await, 1);
+    }
+
+    #[sqlx::test]
+    async fn failed_finish_keeps_the_invite(db: PgPool) {
+        let code = create_invite(&db).await;
+        let user_id = Uuid::new_v4();
+        let input = started_with(&db, &invite_only(), Some(&code), user_id, "ada").await;
+        sqlx::query("insert into users (id, username) values ($1, 'squatter')")
+            .bind(user_id)
+            .execute(&db)
+            .await
+            .unwrap();
+
+        let err = finish(&db, input).await.err().unwrap();
+
+        assert!(matches!(err, FinishError::Db(_)), "{err:?}");
+        assert_eq!(count(&db, "invites").await, 1);
     }
 }

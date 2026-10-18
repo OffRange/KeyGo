@@ -35,6 +35,8 @@ impl HttpError for registration::StartError {
     fn status_and_code(&self) -> (StatusCode, ErrorCode) {
         match self {
             Self::InvalidUserId => (StatusCode::BAD_REQUEST, ErrorCode::InvalidRequest),
+            Self::InviteRequired => (StatusCode::FORBIDDEN, ErrorCode::InviteRequired),
+            Self::InviteInvalid => (StatusCode::FORBIDDEN, ErrorCode::InviteInvalid),
             Self::UsernameTaken => (StatusCode::CONFLICT, ErrorCode::UsernameTaken),
             Self::UserIdTaken => (StatusCode::CONFLICT, ErrorCode::UserIdTaken),
             Self::Opaque(err) => err.status_and_code(),
@@ -50,10 +52,11 @@ async fn start(
     let input = StartRegistration {
         username: Username::parse(&request.username)?,
         user_id: request.user_id,
+        invite: request.invite,
         registration_request: request.registration_request,
     };
 
-    let started = registration::start(&state.db, &state.opaque_state, input).await?;
+    let started = registration::start(&state.db, &state.opaque_state, &state.signup, input).await?;
 
     Ok(Json(StartResponse {
         registration_id: started.registration_id,
@@ -77,6 +80,7 @@ impl HttpError for registration::FinishError {
     fn status_and_code(&self) -> (StatusCode, ErrorCode) {
         match self {
             Self::Expired => (StatusCode::BAD_REQUEST, ErrorCode::RegistrationExpired),
+            Self::InviteInvalid => (StatusCode::FORBIDDEN, ErrorCode::InviteInvalid),
             Self::Db(err) => err.status_and_code(),
         }
     }
@@ -102,7 +106,7 @@ async fn finish(
 mod tests {
     use super::*;
     use crate::api::error::render;
-    use crate::testing::{count, post, register};
+    use crate::testing::{count, create_invite, invite_only, post, post_to, register};
     use keygo_opaque::client::ClientRegistration;
     use keygo_opaque::server::ServerSetup;
     use serde_json::{Value, json};
@@ -164,6 +168,81 @@ mod tests {
         assert_eq!(status, StatusCode::OK);
         assert_eq!(finished, json!({ "username": "ada" }));
         assert_eq!(count(&db, "users").await, 1);
+    }
+
+    fn invite_only_state(db: &PgPool, setup: &ServerSetup) -> AppState {
+        AppState {
+            signup: invite_only(),
+            opaque_state: setup.clone(),
+            db: db.clone(),
+        }
+    }
+
+    #[sqlx::test]
+    async fn registers_with_an_invite_over_http(db: PgPool) {
+        let setup = ServerSetup::generate();
+        let (client, mut body) = start_body("ada", Uuid::new_v4());
+        body["invite"] = create_invite(&db).await.into();
+
+        let (status, started) = post_to(invite_only_state(&db, &setup), START, body).await;
+
+        assert_eq!(status, StatusCode::OK);
+        let response =
+            RegistrationResponse::from_base64(started["registration_response"].as_str().unwrap())
+                .unwrap();
+        let upload = client
+            .finish(crate::testing::PASSWORD, response)
+            .unwrap()
+            .upload;
+        let body = json!({
+            "registration_id": started["registration_id"],
+            "registration_upload": upload.to_base64(),
+        });
+
+        let (status, _) = post_to(invite_only_state(&db, &setup), FINISH, body).await;
+
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(count(&db, "users").await, 1);
+        assert_eq!(count(&db, "invites").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn invite_only_start_without_an_invite_is_forbidden(db: PgPool) {
+        let (_, body) = start_body("ada", Uuid::new_v4());
+
+        let (status, body) = post_to(
+            invite_only_state(&db, &ServerSetup::generate()),
+            START,
+            body,
+        )
+        .await;
+
+        assert_eq!(status, StatusCode::FORBIDDEN);
+        assert_eq!(body["code"], "invite_required");
+    }
+
+    #[sqlx::test]
+    async fn invite_only_start_with_an_unknown_invite_is_forbidden(db: PgPool) {
+        let (_, mut body) = start_body("ada", Uuid::new_v4());
+        body["invite"] = "7KQ2M9XD4HPA".into();
+
+        let (status, body) = post_to(
+            invite_only_state(&db, &ServerSetup::generate()),
+            START,
+            body,
+        )
+        .await;
+
+        assert_eq!(status, StatusCode::FORBIDDEN);
+        assert_eq!(body["code"], "invite_invalid");
+    }
+
+    #[tokio::test]
+    async fn invite_spent_meanwhile_is_forbidden_at_finish() {
+        let (status, body) = render(registration::FinishError::InviteInvalid).await;
+
+        assert_eq!(status, StatusCode::FORBIDDEN);
+        assert_eq!(body["code"], "invite_invalid");
     }
 
     #[sqlx::test]
