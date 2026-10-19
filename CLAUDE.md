@@ -15,8 +15,12 @@ repository.
 ## Build & Test
 
 ```bash
-make -C rust test                      # Rust unit tests
+make -C rust test                      # Rust workspace tests (server tests need Postgres, see below)
 make -C rust bindgen                   # Generate uniffi bindings
+make -C rust db                        # Dev Postgres (docker) + migrations + dev secrets
+make -C rust serve                     # Run keygo-server against the dev Postgres
+make -C rust prepare                   # Refresh committed .sqlx data after changing a query
+make -C rust migration name=<desc>     # Add a sqlx migration
 ./gradlew build                        # Full build
 ./gradlew test                         # All unit tests
 ./gradlew :app:test                    # Module-specific tests (preferred for small changes)
@@ -55,6 +59,16 @@ Android password manager using Clean Architecture per module:
 | `:automation-processor`  | KSP processor generating code from `@VaultItem`                          |
 | `:legacy-migration`      | The whole v1 to v2 migration: main password, item import (high risk)     |
 | `:core:rust`             | Rust crypto/passkey ops via UniFFI-generated Kotlin bindings; Rust sources in `rust/crates/` |
+
+Rust workspace (`rust/`, toolchain pinned in `rust-toolchain.toml`, edition 2024):
+
+| Crate           | Purpose                                                                       |
+|-----------------|-------------------------------------------------------------------------------|
+| `keygo-core`    | Crypto, ARK session, passkeys, TOTP, backup, card formatting used by the app  |
+| `keygo-uniffi`  | UniFFI bindings exposing `keygo-core` to Kotlin (`libkeygo_bindings.so`)      |
+| `keygo-opaque`  | OPAQUE (opaque-ke, ristretto255 + Argon2) client/server wrapper, `forbid(unsafe_code)` |
+| `keygo-server`  | Self-hostable sync server (axum + sqlx/Postgres + clap CLI), see Sync Server  |
+| `tools/uniffi-bindgen` | Bindgen runner used by `make bindgen`                                  |
 
 ## Key Patterns
 
@@ -133,6 +147,34 @@ carries its own rules:
 - Do not widen the escrow's lifetime, its auth policy, or the set of callers that can read it
   without explicit instruction.
 
+## Sync Server
+
+`rust/crates/keygo-server` (work in progress on `feat/backend`). Deployment lives in `deploy/`
+(Docker Compose: `init` profile generates secrets, `postgres` on an internal network, `api`,
+Caddy as TLS proxy; `.env.example` sets `DOMAIN` and signups).
+
+- **Layers** — `cli/` (clap: `init`, `check`, `serve`, `invite create|list|revoke`) → `api/`
+  (axum routes, `ServerError` JSON errors with snake_case `ErrorCode`) → `service/` (registration,
+  login, invite use cases) → `db/` (sqlx `query!` per table) / `cache/` (in-memory moka state) →
+  `domain/` (validated newtypes: `Username`, `InviteCode`, `InviteHash`, ids).
+  `server/` boots the pool, runs migrations, and spawns the `sweeper` that deletes expired rows.
+- **Config** — `config::DeploymentConfig` is the single source for `serve` and `check`; every
+  option has a `KEYGO_*` env var. Secrets are one file each in `KEYGO_SECRETS_DIR`
+  (`/run/secrets`): `db_password`, `opaque_setup`, `invite_pepper`, read through typed decoders
+  in `secrets.rs`. `init` creates missing ones and never overwrites.
+- **API** — `/health/live`, `/api/v1/meta`, `/api/v1/auth/{register,login}/{start,finish}`.
+  JSON is snake_case. Auth bodies are capped at `MAX_BODY_BYTES` (16 KiB).
+- **Registration** — two-step OPAQUE; `start` reserves username/user_id in the unlogged
+  `pending_registrations` table (5 min TTL). `user_id` is client-generated (UUID v4) and equals the
+  local user id. Unless `KEYGO_ALLOW_SIGNUPS`, an invite is required; invite codes are stored only
+  as an HMAC-SHA256 under `invite_pepper`.
+- **Login** — two-step OPAQUE; per-login `ServerLogin` state lives in `cache::LoginStates`
+  (1 min TTL, taken at most once). Unknown usernames run against a fake record so responses never
+  reveal whether an account exists — keep that property.
+- **Schema** — `migrations/` is applied by `serve` on startup (`sqlx::migrate!`). Never edit a
+  shipped migration; add a new one. After changing any query run `make -C rust prepare` and commit
+  the `.sqlx/` data (plain builds and CI use it offline via `SQLX_OFFLINE`).
+
 ## Sensitive Areas
 
 - **Migration** (`legacy-migration`) — preserve backward compat, smallest safe change. The v1 main
@@ -144,6 +186,10 @@ carries its own rules:
 - **Autofill** (`feature/autofill/`) — constrained by Android framework, keep conservative
 - **UniFFI** — preserve memory and type safety across the FFI boundary.
 - **Room schema** — check migration implications before changing entities
+- **Server auth** (`keygo-opaque`, `keygo-server` secrets, OPAQUE flows, invite hashing) — treat as
+  security-sensitive. `opaque_setup` and `invite_pepper` cannot be rotated without invalidating
+  every account/invite; the OPAQUE suite constants (`SUITE_ID`, KSF params, `LOGIN_CONTEXT`) are
+  wire/storage identity.
 
 ## Code Style
 
@@ -177,6 +223,9 @@ carries its own rules:
   (`SessionImpl` wraps the UniFFI `ArkSessionInterface`). Its fakes live in `:core:security`
   testFixtures (`de.davis.keygo.core.security`): `FakeSession`, `FakeArkCredential`, and
   `FakeSessionFactory` for code that opens a throwaway session through `SessionFactory`.
+- **Server tests** — `keygo-server` DB tests use `#[sqlx::test]` (a throwaway database per test via
+  `DATABASE_URL`); run `make -C rust db` first locally. CI provides a Postgres service. Shared
+  helpers live in `src/testing.rs`; API tests drive `api::router` with `tower::ServiceExt::oneshot`.
 - **testFixtures + Compose plugin** — Any module with `kotlin.compose` that enables testFixtures
   must add `testFixturesImplementation(libs.androidx.compose.runtime)` to avoid "Compose Runtime
   not on classpath" compile errors. See `:core:item` for the canonical pattern.
