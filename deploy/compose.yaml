@@ -4,9 +4,9 @@ x-app: &app
   build:
     context: ../rust
     dockerfile: crates/keygo-server/Dockerfile
-  environment: &app-env
+  environment:
     KEYGO_PUBLIC_URL: https://${DOMAIN:?Set DOMAIN in .env (copy .env.example)}
-    KEYGO_ALLOW_SIGNUPS: ${KEYGO_ALLOW_SIGNUP:-false}
+    KEYGO_ALLOW_SIGNUPS: ${KEYGO_ALLOW_SIGNUPS:-false}
     KEYGO_DATABASE_USERNAME: ${KEYGO_DATABASE_USER:-keygo}
     KEYGO_DATABASE_NAME: ${KEYGO_DATABASE_NAME:-keygo}
 
@@ -40,15 +40,10 @@ services:
       timeout: 3s
       retries: 10
 
-  # Needs `keygo-server serve`, which does not exist yet: start with `--profile server`.
   api:
     <<: *app
     command: [ "keygo-server", "serve" ]
     restart: unless-stopped
-    environment:
-      <<: *app-env
-      # The proxy subnet: only Caddy reaches api there, so trust its X-Forwarded-*.
-      FORWARDED_ALLOW_IPS: 172.31.0.0/24
     networks:
       - backend
       - proxy
@@ -86,6 +81,4 @@ networks:
     internal: true
   proxy:
     internal: true
-    ipam:
-      config: [ { subnet: 172.31.0.0/24 } ]
   web: { }
