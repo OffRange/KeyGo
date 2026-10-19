@@ -74,9 +74,9 @@ pub struct DatabaseConfig {
 
 #[derive(ValueEnum, Clone, Copy, Default, Debug, PartialEq, Eq)]
 pub enum Environment {
+    #[default]
     #[value(alias = "prod")]
     Production,
-    #[default]
     #[value(alias = "dev")]
     Development,
 }

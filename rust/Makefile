@@ -96,6 +96,7 @@ DEV_TARGETS := db serve server-check prepare
 $(DEV_TARGETS): export KEYGO_DATABASE_URL := $(DB_URL)
 $(DEV_TARGETS): export KEYGO_SECRETS_DIR := $(DEV_SECRETS)
 $(DEV_TARGETS): export DATABASE_URL := $(DB_URL)
+$(DEV_TARGETS): export KEYGO_ENVIRONMENT := development
 
 dev-tools: ## Verify docker and sqlx-cli are installed
 	@command -v docker >/dev/null || { echo "docker not found" >&2; exit 1; }
