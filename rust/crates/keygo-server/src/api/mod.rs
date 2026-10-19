@@ -38,6 +38,7 @@ mod tests {
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use http_body_util::BodyExt;
+    use routes::auth::MAX_BODY_BYTES;
     use serde_json::{Value, json};
     use std::sync::Arc;
     use tower::ServiceExt;
@@ -118,6 +119,35 @@ mod tests {
         let body: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(body["code"], "invalid_request");
         assert!(body["message"].as_str().is_some_and(|m| !m.is_empty()));
+    }
+
+    #[tokio::test]
+    async fn oversized_body_is_rejected_as_json() {
+        let padding = "a".repeat(MAX_BODY_BYTES);
+        let (status, body) = post_json(
+            state(),
+            "/api/v1/auth/register/start",
+            json!({ "username": padding }),
+        )
+        .await;
+
+        assert_eq!(status, StatusCode::PAYLOAD_TOO_LARGE);
+        let body: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body["code"], "invalid_request");
+    }
+
+    #[tokio::test]
+    async fn body_at_the_limit_is_parsed() {
+        let body = json!({ "username": "" }).to_string();
+        let padded = format!("{body:<width$}", width = MAX_BODY_BYTES);
+        let request = Request::post("/api/v1/auth/register/start")
+            .header("content-type", "application/json")
+            .body(Body::from(padded))
+            .unwrap();
+        let response = router(state()).oneshot(request).await.unwrap();
+
+        // Gets past the limit and fails on the missing fields instead.
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 
     #[tokio::test]

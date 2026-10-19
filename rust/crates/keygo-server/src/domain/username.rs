@@ -5,6 +5,33 @@ use unicode_normalization::UnicodeNormalization;
 
 const SEPARATORS: [char; 3] = ['.', '-', '_'];
 
+/// Names that read as speaking for the server or the project. Kept out of `parse` on purpose: a
+/// name added here later must not turn an existing account's stored username into a decode error.
+const RESERVED: &[&str] = &[
+    "abuse",
+    "admin",
+    "administrator",
+    "anonymous",
+    "api",
+    "help",
+    "hostmaster",
+    "info",
+    "keygo",
+    "moderator",
+    "no-reply",
+    "noreply",
+    "official",
+    "operator",
+    "owner",
+    "postmaster",
+    "root",
+    "security",
+    "staff",
+    "support",
+    "system",
+    "webmaster",
+];
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
 pub enum UsernameError {
     #[error("username must be at least {} characters", Username::MIN_LEN)]
@@ -48,6 +75,10 @@ impl Username {
 
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    pub fn is_reserved(&self) -> bool {
+        RESERVED.contains(&self.as_str())
     }
 }
 
@@ -191,6 +222,20 @@ mod tests {
         assert_eq!(rejected("123"), UsernameError::OnlyDigits);
         assert_eq!(parsed("123a"), "123a");
         assert_eq!(parsed("1.2.3a"), "1.2.3a");
+    }
+
+    #[test]
+    fn reserved_names_parse_but_are_reserved() {
+        assert!(Username::parse("Admin").unwrap().is_reserved());
+        assert!(Username::parse("ｒｏｏｔ").unwrap().is_reserved());
+        assert!(!Username::parse("admin2").unwrap().is_reserved());
+    }
+
+    #[test]
+    fn reserved_names_are_valid_usernames() {
+        for name in RESERVED {
+            assert_eq!(parsed(name), *name);
+        }
     }
 
     #[test]

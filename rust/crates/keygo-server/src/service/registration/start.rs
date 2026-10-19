@@ -13,6 +13,8 @@ use uuid::{Uuid, Variant};
 pub enum StartError {
     #[error("user_id must be a random (version 4) UUID")]
     InvalidUserId,
+    #[error("username is reserved")]
+    ReservedUsername,
     #[error("this server needs an invite to register")]
     InviteRequired,
     #[error("invite is not valid or has expired")]
@@ -70,6 +72,10 @@ pub async fn start(
     // Before any username check, so only invite holders can probe usernames.
     let invite_hash = check_invite(db, signup, invite.as_deref()).await?;
 
+    if username.is_reserved() {
+        return Err(StartError::ReservedUsername);
+    }
+
     // Pure computation, so it runs before the transaction to keep the reservation's lock short.
     let registration_response =
         server::registration_start(setup, registration_request, user_id.as_bytes())?;
@@ -89,12 +95,17 @@ pub async fn start(
     // Checked after reserving on purpose. A finish that consumed the previous reservation for
     // this name or id still holds its row (or index entry), so reserve waits for it to commit,
     // and these reads, each with a fresh snapshot, then see the user it created.
-    if users::username_exists(&mut tx, &username).await? {
-        return Err(StartError::UsernameTaken);
-    }
-
+    //
+    // The id goes first: a client whose finish committed but whose 201 was lost retries with the
+    // same id and name, and must learn that its id is taken so it signs in. Answering
+    // `username_taken` would send it back to the username field instead. The id is 122 random
+    // bits, so checking it first gives nobody a way to probe for accounts.
     if users::id_exists(&mut tx, user_id).await? {
         return Err(StartError::UserIdTaken);
+    }
+
+    if users::username_exists(&mut tx, &username).await? {
+        return Err(StartError::UsernameTaken);
     }
 
     tx.commit().await?;
@@ -308,6 +319,34 @@ mod tests {
 
         assert!(matches!(err, StartError::UserIdTaken), "{err:?}");
         assert_eq!(count(&db, "pending_registrations").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn retry_after_a_committed_finish_is_user_id_taken(db: PgPool) {
+        let user_id = register(&db, &ServerSetup::generate(), "ada").await;
+
+        let err = start_as(&db, user_id, "ada").await.err().unwrap();
+
+        assert!(matches!(err, StartError::UserIdTaken), "{err:?}");
+        assert_eq!(count(&db, "pending_registrations").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn start_rejects_a_reserved_username(db: PgPool) {
+        let err = start_as(&db, Uuid::new_v4(), "Admin").await.err().unwrap();
+
+        assert!(matches!(err, StartError::ReservedUsername), "{err:?}");
+        assert_eq!(count(&db, "pending_registrations").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn invite_is_checked_before_the_reserved_list(db: PgPool) {
+        let err = start_with(&db, &invite_only(), None, Uuid::new_v4(), "admin")
+            .await
+            .err()
+            .unwrap();
+
+        assert!(matches!(err, StartError::InviteRequired), "{err:?}");
     }
 
     #[sqlx::test]

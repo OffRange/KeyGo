@@ -35,6 +35,7 @@ impl HttpError for registration::StartError {
     fn status_and_code(&self) -> (StatusCode, ErrorCode) {
         match self {
             Self::InvalidUserId => (StatusCode::BAD_REQUEST, ErrorCode::InvalidRequest),
+            Self::ReservedUsername => (StatusCode::BAD_REQUEST, ErrorCode::InvalidUsername),
             Self::InviteRequired => (StatusCode::FORBIDDEN, ErrorCode::InviteRequired),
             Self::InviteInvalid => (StatusCode::FORBIDDEN, ErrorCode::InviteInvalid),
             Self::UsernameTaken => (StatusCode::CONFLICT, ErrorCode::UsernameTaken),
@@ -89,7 +90,7 @@ impl HttpError for registration::FinishError {
 async fn finish(
     State(state): State<AppState>,
     Json(request): Json<FinishRequest>,
-) -> ServerResult<Json<FinishResponse>> {
+) -> ServerResult<(StatusCode, Json<FinishResponse>)> {
     let input = FinishRegistration {
         registration_id: request.registration_id,
         registration_upload: request.registration_upload,
@@ -97,9 +98,13 @@ async fn finish(
 
     let finished = registration::finish(&state.db, input).await?;
 
-    Ok(Json(FinishResponse {
-        username: finished.username,
-    }))
+    // 201 is the client's commit point (§8): only then does it write anything locally.
+    Ok((
+        StatusCode::CREATED,
+        Json(FinishResponse {
+            username: finished.username,
+        }),
+    ))
 }
 
 #[cfg(test)]
@@ -165,7 +170,7 @@ mod tests {
 
         let (status, finished) = post(&db, &setup, FINISH, body).await;
 
-        assert_eq!(status, StatusCode::OK);
+        assert_eq!(status, StatusCode::CREATED);
         assert_eq!(finished, json!({ "username": "ada" }));
         assert_eq!(count(&db, "users").await, 1);
     }
@@ -200,7 +205,7 @@ mod tests {
 
         let (status, _) = post_to(invite_only_state(&db, &setup), FINISH, body).await;
 
-        assert_eq!(status, StatusCode::OK);
+        assert_eq!(status, StatusCode::CREATED);
         assert_eq!(count(&db, "users").await, 1);
         assert_eq!(count(&db, "invites").await, 0);
     }
@@ -255,6 +260,16 @@ mod tests {
     }
 
     #[sqlx::test]
+    async fn start_rejects_a_reserved_username(db: PgPool) {
+        let (_, body) = start_body("admin", Uuid::new_v4());
+
+        let (status, body) = post(&db, &ServerSetup::generate(), START, body).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["code"], "invalid_username");
+    }
+
+    #[sqlx::test]
     async fn start_rejects_a_structured_user_id(db: PgPool) {
         let (_, body) = start_body("ada", Uuid::nil());
 
@@ -288,6 +303,18 @@ mod tests {
 
         assert_eq!(status, StatusCode::CONFLICT);
         assert_eq!(body["code"], "username_taken");
+    }
+
+    #[sqlx::test]
+    async fn retry_after_a_lost_201_conflicts_on_the_user_id(db: PgPool) {
+        let setup = ServerSetup::generate();
+        let user_id = register(&db, &setup, "ada").await;
+        let (_, body) = start_body("ada", user_id);
+
+        let (status, body) = post(&db, &setup, START, body).await;
+
+        assert_eq!(status, StatusCode::CONFLICT);
+        assert_eq!(body["code"], "user_id_taken");
     }
 
     #[sqlx::test]

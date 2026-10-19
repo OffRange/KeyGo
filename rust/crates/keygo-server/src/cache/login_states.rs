@@ -1,5 +1,6 @@
 use crate::domain::LoginId;
 use keygo_opaque::server::ServerLogin;
+use moka::ops::compute::{CompResult, Op};
 use moka::sync::Cache;
 use std::time::Duration;
 use uuid::Uuid;
@@ -36,7 +37,20 @@ impl LoginStates {
     }
 
     pub fn take(&self, key: &LoginId) -> Option<Pending> {
-        self.0.remove(key)
+        // Not `Cache::remove`: that returns an entry even after it expired, until maintenance drops
+        // it. `and_compute_with` reads the entry the way `get` does, so it never sees an expired one,
+        // and it runs calls on the same key one at a time, so a state can be taken only once.
+        let result = self
+            .0
+            .entry_by_ref(key)
+            .and_compute_with(|entry| match entry {
+                Some(_) => Op::Remove,
+                None => Op::Nop,
+            });
+        match result {
+            CompResult::Removed(entry) => Some(entry.into_value()),
+            _ => None,
+        }
     }
 
     #[cfg(test)]
@@ -70,6 +84,26 @@ mod tests {
 
         assert!(states.take(&id).is_some());
         assert!(states.take(&id).is_none());
+    }
+
+    #[test]
+    fn concurrent_takes_get_the_state_once() {
+        let states = LoginStates::new();
+        let id = LoginId::random();
+        states.insert(id, pending());
+
+        let taken = std::thread::scope(|scope| {
+            let handles: Vec<_> = (0..8)
+                .map(|_| scope.spawn(|| states.take(&id).is_some()))
+                .collect();
+            handles
+                .into_iter()
+                .map(|handle| handle.join().unwrap())
+                .filter(|&taken| taken)
+                .count()
+        });
+
+        assert_eq!(taken, 1);
     }
 
     #[test]
