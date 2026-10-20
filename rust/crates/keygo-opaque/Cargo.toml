@@ -6,8 +6,8 @@ edition.workspace = true
 [dependencies]
 thiserror.workspace = true
 zeroize.workspace = true
+base64.workspace = true
 
-base64 = "0.23.1"
 serde = "1.0.229"
 
 opaque-ke = { version = "4.0.1", default-features = false, features = ["argon2", "ristretto255"] }
