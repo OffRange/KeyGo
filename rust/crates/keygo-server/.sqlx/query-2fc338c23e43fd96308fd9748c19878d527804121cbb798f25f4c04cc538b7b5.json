@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into opaque_records (user_id, suite, record, updated_at)\n         values ($1, $2, $3, now())",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2fc338c23e43fd96308fd9748c19878d527804121cbb798f25f4c04cc538b7b5"
+}

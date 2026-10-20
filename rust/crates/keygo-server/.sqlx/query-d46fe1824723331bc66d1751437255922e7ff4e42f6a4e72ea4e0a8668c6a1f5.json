@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into pending_registrations (id, user_id, username, invite_hash, expires_at)\n         values ($1, $2, $3, $4, now() + make_interval(secs => $5))\n         on conflict (user_id) do update\n         set id = excluded.id, username = excluded.username,\n             invite_hash = excluded.invite_hash, expires_at = excluded.expires_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bytea",
+        "Uuid",
+        "Text",
+        "Bytea",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d46fe1824723331bc66d1751437255922e7ff4e42f6a4e72ea4e0a8668c6a1f5"
+}

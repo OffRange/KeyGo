@@ -66,24 +66,59 @@ jobs:
     if: needs.detect-changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
 
+    # keygo-server's #[sqlx::test]s create a throwaway database per test through DATABASE_URL.
+    # SQLX_OFFLINE keeps the query! macros on the committed .sqlx data instead of this empty server.
+    services:
+      postgres:
+        image: postgres:18-trixie
+        env:
+          POSTGRES_USER: keygo
+          POSTGRES_PASSWORD: keygo
+          POSTGRES_DB: keygo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U keygo -d keygo"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+
+    env:
+      DATABASE_URL: postgres://keygo:keygo@localhost:5432/keygo
+      SQLX_OFFLINE: "true"
+
     defaults:
       run:
         working-directory: ./rust
 
     steps:
       - uses: actions/checkout@v6
+      # Own key: sharing rust-lint's would never save this job's build or the installed sqlx-cli.
       - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
+            ~/.cargo/bin/sqlx
+            ~/.cargo/bin/cargo-sqlx
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
             rust/target
-          key: ${{ runner.os }}-cargo-host-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-host-
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-test-
       - name: Build
         run: cargo build --workspace --all-targets --verbose
       - name: Run tests
         run: cargo test --workspace --verbose
+      # Offline builds never see the schema, so a migration that changes a queried column would
+      # still compile against stale .sqlx data. Recompute it against the migrated database instead.
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli@0.9.0 --locked --no-default-features --features postgres
+      - name: Check committed sqlx query data
+        working-directory: ./rust/crates/keygo-server
+        run: |
+          sqlx migrate run
+          cargo sqlx prepare --check
 
   # Android unit tests. Waits for rust-lint when rust changed, so NDK cross-compilation isn't
   # triggered on code that already fails fmt/clippy.

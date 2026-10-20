@@ -259,3 +259,10 @@ docs/superpowers/
 
 graphify-out/
 .gitattributes
+
+.docker/
+# Docker Compose
+.env
+
+# Local dev secrets (`make -C rust db`)
+rust/dev-secrets/

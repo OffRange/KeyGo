@@ -1,0 +1,21 @@
+[package]
+name = "keygo-opaque"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+zeroize.workspace = true
+
+base64 = "0.23.1"
+serde = "1.0.229"
+
+opaque-ke = { version = "4.0.1", default-features = false, features = ["argon2", "ristretto255"] }
+# opaque-ke 4 is built on digest 0.10 / rand_core 0.6; newer majors do not satisfy its trait bounds.
+rand_core = { version = "0.6.4", features = ["getrandom"] }
+sha2 = "0.10.9"
+# Only to classify the OPRF errors opaque-ke passes through.
+voprf = { version = "0.5.0", default-features = false }
+
+[dev-dependencies]
+serde_json = "1.0.154"

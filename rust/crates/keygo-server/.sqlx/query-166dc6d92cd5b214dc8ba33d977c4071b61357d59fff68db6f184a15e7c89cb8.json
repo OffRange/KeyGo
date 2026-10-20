@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into invites (code_hash, expires_at)\n         values ($1, now() + make_interval(secs => $2))\n         returning created_at, expires_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "invites",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "expires_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "invites",
+            "name": "expires_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "166dc6d92cd5b214dc8ba33d977c4071b61357d59fff68db6f184a15e7c89cb8"
+}

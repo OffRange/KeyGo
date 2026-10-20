@@ -1,0 +1,2 @@
+[alias]
+serve = "run --bin keygo-server -- serve"

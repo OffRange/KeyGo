@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select r.user_id, r.suite, r.record\n         from opaque_records r join users u on u.id = r.user_id\n         where u.username = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "opaque_records",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "suite",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "opaque_records",
+            "name": "suite"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "record",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "opaque_records",
+            "name": "record"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "999c8acaa631c7ad524ff789e28cc81fe691a8ea66b24a19fdd918aacc525196"
+}
