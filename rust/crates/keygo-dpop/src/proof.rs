@@ -1,11 +1,11 @@
+use crate::Htm;
+use crate::jwk::Jwk;
+use crate::wire::{self, Alg, Claims, Header, Typ};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use p256::ecdsa::{Signature, VerifyingKey};
-use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::time::{SystemTime, UNIX_EPOCH};
-
-use crate::jwk::Jwk;
 
 pub trait DpopSigner {
     type Error: std::error::Error;
@@ -16,21 +16,6 @@ pub trait DpopSigner {
     fn sign(&self, msg: &[u8]) -> Result<Signature, Self::Error>;
 }
 
-#[derive(Serialize)]
-struct Header<'a> {
-    typ: &'static str,
-    alg: &'static str,
-    jwk: &'a Jwk,
-}
-
-#[derive(Debug, Clone, Copy, Serialize)]
-#[serde(rename_all = "UPPERCASE")]
-pub enum Htm {
-    Get,
-    Post,
-    Delete,
-}
-
 pub struct ProofRequest<'a> {
     pub htm: Htm,
     pub htu: &'a str,
@@ -38,21 +23,9 @@ pub struct ProofRequest<'a> {
     pub nonce: Option<&'a str>,
 }
 
-#[derive(Serialize)]
-struct Claims<'a> {
-    jti: &'a str,
-    htm: Htm,
-    htu: &'a str,
-    iat: u64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    ath: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    nonce: Option<&'a str>,
-}
-
 pub struct DpopProver<S> {
     signer: S,
-    jwk: Jwk,
+    encoded_header: String,
     jkt: [u8; 32],
 }
 
@@ -60,7 +33,17 @@ impl<S: DpopSigner> DpopProver<S> {
     pub fn new(signer: S) -> Self {
         let jwk: Jwk = signer.verifying_key().into();
         let jkt = jwk.thumbprint();
-        Self { signer, jwk, jkt }
+        let encoded_header = wire::encode(&Header {
+            typ: Typ::DpopJwt,
+            alg: Alg::Es256,
+            jwk,
+        });
+
+        Self {
+            signer,
+            encoded_header,
+            jkt,
+        }
     }
 
     pub fn jkt(&self) -> &[u8; 32] {
@@ -72,29 +55,24 @@ impl<S: DpopSigner> DpopProver<S> {
             .map_err(DpopError::Signer)
     }
 
-    fn proof_at(&self, req: &ProofRequest<'_>, iat: u64, jti: &str) -> Result<String, S::Error> {
-        let header = Header {
-            typ: "dpop+jwt",
-            alg: "ES256",
-            jwk: &self.jwk,
-        };
-
+    pub(crate) fn proof_at(
+        &self,
+        req: &ProofRequest<'_>,
+        iat: u64,
+        jti: &str,
+    ) -> Result<String, S::Error> {
         let claims = Claims {
-            jti,
+            jti: jti.to_owned(),
             htm: req.htm,
-            htu: req.htu,
+            htu: req.htu.to_owned(),
             iat,
             ath: req
                 .access_token
                 .map(|t| URL_SAFE_NO_PAD.encode(Sha256::digest(t))),
-            nonce: req.nonce,
+            nonce: req.nonce.map(str::to_owned),
         };
 
-        let header =
-            URL_SAFE_NO_PAD.encode(serde_json::to_vec(&header).expect("Header serializes"));
-        let claims =
-            URL_SAFE_NO_PAD.encode(serde_json::to_vec(&claims).expect("Claims serializes"));
-        let input = format!("{header}.{claims}");
+        let input = format!("{}.{}", self.encoded_header, wire::encode(&claims));
 
         let sig = self.signer.sign(input.as_bytes())?;
         Ok(format!(
@@ -128,35 +106,10 @@ fn unix_now() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use p256::ecdsa::SigningKey;
-    use p256::ecdsa::signature::{Signer, Verifier};
+    use crate::Htm;
+    use crate::testing::TestSigner;
+    use p256::ecdsa::signature::Verifier;
     use serde_json::Value;
-    use std::convert::Infallible;
-
-    struct TestSigner {
-        key: SigningKey,
-        verifying: VerifyingKey,
-    }
-
-    impl TestSigner {
-        fn new() -> Self {
-            let key = SigningKey::from_slice(&[7u8; 32]).unwrap();
-            let verifying = *key.verifying_key();
-            Self { key, verifying }
-        }
-    }
-
-    impl DpopSigner for TestSigner {
-        type Error = Infallible;
-
-        fn verifying_key(&self) -> &VerifyingKey {
-            &self.verifying
-        }
-
-        fn sign(&self, msg: &[u8]) -> Result<Signature, Infallible> {
-            Ok(self.key.sign(msg))
-        }
-    }
 
     const HTU: &str = "https://sync.example/api/v1/items";
 

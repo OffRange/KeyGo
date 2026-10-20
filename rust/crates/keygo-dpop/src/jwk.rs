@@ -1,18 +1,38 @@
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use p256::ecdsa::VerifyingKey;
-use serde::Serialize;
+use p256::{FieldBytes, Sec1Point};
+use serde::de::IgnoredAny;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use thiserror::Error;
 
 /// Public P-256 key as a JWK.
 ///
 /// Field order is load-bearing: RFC 7638 hashes the required members in lexicographic order.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Jwk {
-    crv: &'static str,
-    kty: &'static str,
+    crv: Crv,
+    kty: Kty,
     x: String,
     y: String,
+
+    // Only read so a received private key can be rejected; never serialized, so it cannot leak
+    // into a header or change the thumbprint.
+    #[serde(default, skip_serializing)]
+    d: Option<IgnoredAny>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+enum Crv {
+    #[serde(rename = "P-256")]
+    P256,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+enum Kty {
+    #[serde(rename = "EC")]
+    Ec,
 }
 
 impl Jwk {
@@ -30,11 +50,46 @@ impl From<&VerifyingKey> for Jwk {
         let y = URL_SAFE_NO_PAD.encode(point.y().expect("y coordinate"));
 
         Self {
-            crv: "P-256",
-            kty: "EC",
+            crv: Crv::P256,
+            kty: Kty::Ec,
             x,
             y,
+            d: None,
         }
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum JwkError {
+    #[error("jwk contains a private key")]
+    PrivateKey,
+    #[error("invalid base64url in coordinate")]
+    Base64(#[from] base64::DecodeError),
+    #[error("coordinate must be 32 bytes")]
+    CoordinateLength,
+    #[error("point is not on the P-256 curve")]
+    InvalidPoint,
+}
+
+impl Jwk {
+    pub(crate) fn verifying_key(&self) -> Result<VerifyingKey, JwkError> {
+        if self.d.is_some() {
+            return Err(JwkError::PrivateKey);
+        }
+
+        let x = URL_SAFE_NO_PAD.decode(&self.x)?;
+        let y = URL_SAFE_NO_PAD.decode(&self.y)?;
+        let x: &FieldBytes = x
+            .as_slice()
+            .try_into()
+            .map_err(|_| JwkError::CoordinateLength)?;
+        let y: &FieldBytes = y
+            .as_slice()
+            .try_into()
+            .map_err(|_| JwkError::CoordinateLength)?;
+
+        let point = Sec1Point::from_affine_coordinates(x, y, false);
+        VerifyingKey::from_sec1_point(&point).map_err(|_| JwkError::InvalidPoint)
     }
 }
 
