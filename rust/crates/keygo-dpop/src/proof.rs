@@ -1,11 +1,10 @@
-use crate::Htm;
 use crate::jwk::Jwk;
 use crate::wire::{self, Alg, Claims, Header, Typ};
+use crate::{Htm, htu, unix_now};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use p256::ecdsa::{Signature, VerifyingKey};
 use sha2::{Digest, Sha256};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 pub trait DpopSigner {
     type Error: std::error::Error;
@@ -18,6 +17,7 @@ pub trait DpopSigner {
 
 pub struct ProofRequest<'a> {
     pub htm: Htm,
+    /// The request URL. Query and fragment are dropped before it goes into the proof.
     pub htu: &'a str,
     pub access_token: Option<&'a str>,
     pub nonce: Option<&'a str>,
@@ -37,6 +37,7 @@ impl<S: DpopSigner> DpopProver<S> {
             typ: Typ::DpopJwt,
             alg: Alg::Es256,
             jwk,
+            crit: None,
         });
 
         Self {
@@ -52,7 +53,6 @@ impl<S: DpopSigner> DpopProver<S> {
 
     pub fn proof(&self, req: &ProofRequest<'_>) -> Result<String, DpopError<S::Error>> {
         self.proof_at(req, unix_now(), &random_jti()?)
-            .map_err(DpopError::Signer)
     }
 
     pub(crate) fn proof_at(
@@ -60,11 +60,11 @@ impl<S: DpopSigner> DpopProver<S> {
         req: &ProofRequest<'_>,
         iat: u64,
         jti: &str,
-    ) -> Result<String, S::Error> {
+    ) -> Result<String, DpopError<S::Error>> {
         let claims = Claims {
             jti: jti.to_owned(),
             htm: req.htm,
-            htu: req.htu.to_owned(),
+            htu: htu::canonical(req.htu).ok_or(DpopError::Htu)?,
             iat,
             ath: req
                 .access_token
@@ -74,7 +74,10 @@ impl<S: DpopSigner> DpopProver<S> {
 
         let input = format!("{}.{}", self.encoded_header, wire::encode(&claims));
 
-        let sig = self.signer.sign(input.as_bytes())?;
+        let sig = self
+            .signer
+            .sign(input.as_bytes())
+            .map_err(DpopError::Signer)?;
         Ok(format!(
             "{input}.{}",
             URL_SAFE_NO_PAD.encode(sig.to_bytes())
@@ -88,6 +91,8 @@ pub enum DpopError<E: std::error::Error> {
     Signer(#[source] E),
     #[error("random number generator failed")]
     Rng(#[from] getrandom::Error),
+    #[error("htu is not an absolute URI")]
+    Htu,
 }
 
 fn random_jti<E: std::error::Error>() -> Result<String, DpopError<E>> {
@@ -96,17 +101,9 @@ fn random_jti<E: std::error::Error>() -> Result<String, DpopError<E>> {
     Ok(URL_SAFE_NO_PAD.encode(buf))
 }
 
-fn unix_now() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("system clock is set before the Unix epoch")
-        .as_secs()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Htm;
     use crate::testing::TestSigner;
     use p256::ecdsa::signature::Verifier;
     use serde_json::Value;
@@ -193,6 +190,29 @@ mod tests {
         assert_eq!(parts.claims["htm"], "POST");
         assert_eq!(parts.claims["htu"], HTU);
         assert_eq!(parts.claims["iat"], 1_700_000_000);
+    }
+
+    #[test]
+    fn htu_drops_query_and_fragment() {
+        let dpop = DpopProver::new(TestSigner::new());
+        let req = ProofRequest {
+            htu: "HTTPS://Sync.Example:443/api/v1/items?page=2#top",
+            ..request(None, None)
+        };
+        let parts = split(&dpop.proof_at(&req, 0, "jti").unwrap());
+
+        assert_eq!(parts.claims["htu"], HTU);
+    }
+
+    #[test]
+    fn rejects_relative_htu() {
+        let dpop = DpopProver::new(TestSigner::new());
+        let req = ProofRequest {
+            htu: "/api/v1/items",
+            ..request(None, None)
+        };
+
+        assert!(matches!(dpop.proof_at(&req, 0, "jti"), Err(DpopError::Htu)));
     }
 
     #[test]

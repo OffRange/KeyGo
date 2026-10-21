@@ -1,7 +1,7 @@
 use crate::jwk::Jwk;
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-use serde::de::DeserializeOwned;
+use serde::de::{DeserializeOwned, IgnoredAny};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -10,6 +10,11 @@ pub(crate) struct Header {
     pub(crate) typ: Typ,
     pub(crate) alg: Alg,
     pub(crate) jwk: Jwk,
+
+    // RFC 7515 §4.1.11: extensions listed in `crit` must be understood. This verifier understands
+    // none, so only read it to reject it; never serialized.
+    #[serde(default, skip_serializing)]
+    pub(crate) crit: Option<IgnoredAny>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -103,6 +108,17 @@ mod tests {
         let json = header_json("dpop+jwt", "ES256", &jwk);
 
         assert!(serde_json::from_str::<Header>(&json).is_err());
+    }
+
+    #[test]
+    fn header_reads_crit() {
+        let json = format!(
+            r#"{{"typ":"dpop+jwt","alg":"ES256","jwk":{},"crit":["exp"]}}"#,
+            jwk_json()
+        );
+        let header: Header = serde_json::from_str(&json).unwrap();
+
+        assert!(header.crit.is_some());
     }
 
     #[test]

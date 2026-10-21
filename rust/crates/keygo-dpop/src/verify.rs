@@ -1,80 +1,177 @@
+use crate::nonce::{Nonce, NonceKey};
+use crate::seen_jtis::{Record, SeenJtis};
 use crate::wire::{Claims, Header};
-use crate::{Htm, jwk, wire};
+use crate::{Htm, htu, jwk, unix_now, wire};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use p256::ecdsa::Signature;
 use p256::ecdsa::signature::Verifier;
 use sha2::{Digest, Sha256};
+use std::time::Duration;
 use thiserror::Error;
 
 pub struct Expected<'a> {
     pub htm: Htm,
     pub htu: &'a str,
     pub access_token: Option<&'a str>,
+    /// The session's bound key. `None` on the token-issuing `*/finish` endpoints, where the proof's
+    /// key becomes the bound one.
+    pub jkt: Option<&'a [u8; 32]>,
 }
 
-pub struct VerifiedProof {
-    pub jkt: [u8; 32],
-    pub jti: String,
-    pub iat: u64,
+/// What went wrong, grouped by how the server answers (spec §10, §15). The 400/401 split is the
+/// endpoint's, not the error's: token-issuing endpoints answer 400, everything else 401 with a
+/// `WWW-Authenticate: DPoP` challenge.
+#[derive(Debug, Error)]
+pub enum VerifyError {
+    /// Answer `invalid_dpop_proof`. The reason is for logs only; the client reacts to every one
+    /// the same way.
+    #[error("invalid dpop proof: {0}")]
+    Invalid(#[from] InvalidProof),
+    /// Answer `use_dpop_nonce` and send this nonce in the `DPoP-Nonce` header.
+    #[error("dpop nonce required")]
+    UseNonce(Nonce),
+    /// The replay cache is full. Answer `429 rate_limited`: the proof itself may be fine.
+    #[error("too many recent proofs")]
+    Busy,
 }
 
 #[derive(Debug, Error)]
-pub enum VerifyError {
-    #[error("proof malformed")]
+pub enum InvalidProof {
+    #[error("not a compact JWS")]
     Malformed,
     #[error(transparent)]
-    DecodeError(#[from] wire::DecodeError),
+    Decode(#[from] wire::DecodeError),
+    #[error("header lists critical extensions")]
+    Critical,
     #[error(transparent)]
-    JwkError(#[from] jwk::JwkError),
-    #[error("Signature verification failed")]
+    Jwk(#[from] jwk::JwkError),
+    #[error("signature does not verify")]
     Signature,
-    #[error("invalid request")]
+    #[error("htm or htu does not match the request")]
     Request,
-    #[error("invalid access token")]
+    #[error("ath does not match the access token")]
     AccessTokenHash,
+    #[error("proof key is not the bound key")]
+    KeyMismatch,
+    #[error("jti already used")]
+    Replay,
+}
+
+impl From<wire::DecodeError> for VerifyError {
+    fn from(e: wire::DecodeError) -> Self {
+        InvalidProof::from(e).into()
+    }
+}
+
+impl From<jwk::JwkError> for VerifyError {
+    fn from(e: jwk::JwkError) -> Self {
+        InvalidProof::from(e).into()
+    }
 }
 
 type VerifyResult<T> = Result<T, VerifyError>;
 
-pub fn verify(proof: &str, expected: Expected) -> VerifyResult<VerifiedProof> {
-    let (input, sign) = proof.rsplit_once('.').ok_or(VerifyError::Malformed)?;
-    let (header, claims) = input.split_once('.').ok_or(VerifyError::Malformed)?;
+const IAT_WINDOW: u64 = 60;
+/// A proof without a nonce is accepted while the server's clock is within `IAT_WINDOW` of its
+/// `iat`, so its `jti` must be remembered for the whole span.
+const JTI_TTL: u64 = 2 * IAT_WINDOW;
 
-    let header = wire::decode::<Header>(header)?;
+pub struct DpopVerifier {
+    nonce_key: NonceKey,
+    started_at: u64,
+    seen_jtis: SeenJtis,
+}
+
+impl DpopVerifier {
+    pub fn new(nonce_key: NonceKey) -> Self {
+        Self::started_at(nonce_key, unix_now())
+    }
+
+    pub(crate) fn started_at(nonce_key: NonceKey, started_at: u64) -> Self {
+        Self {
+            nonce_key,
+            started_at,
+            seen_jtis: SeenJtis::new(),
+        }
+    }
+
+    pub fn verify(&self, proof: &str, expected: Expected) -> VerifyResult<[u8; 32]> {
+        self.verify_at(proof, expected, unix_now())
+    }
+
+    fn verify_at(&self, proof: &str, expected: Expected, now: u64) -> VerifyResult<[u8; 32]> {
+        let (input, sign) = proof.rsplit_once('.').ok_or(InvalidProof::Malformed)?;
+        let (header, claims) = input.split_once('.').ok_or(InvalidProof::Malformed)?;
+
+        // Alg + Typ allowlist is checked during wire::decode, as they are typed enums
+        let header = wire::decode::<Header>(header)?;
+        if header.crit.is_some() {
+            return Err(InvalidProof::Critical.into());
+        }
+        verify_signature(input, &header, sign)?;
+
+        let Claims {
+            jti,
+            htm,
+            htu,
+            iat,
+            ath,
+            nonce,
+        } = wire::decode(claims)?;
+
+        if htm != expected.htm || !htu::matches(&htu, expected.htu) {
+            return Err(InvalidProof::Request.into());
+        }
+
+        let expected_ath = expected
+            .access_token
+            .map(|t| URL_SAFE_NO_PAD.encode(Sha256::digest(t)));
+        if ath != expected_ath {
+            return Err(InvalidProof::AccessTokenHash.into());
+        }
+
+        let jkt = header.jwk.thumbprint();
+        if expected.jkt.is_some_and(|bound| bound != &jkt) {
+            return Err(InvalidProof::KeyMismatch.into());
+        }
+
+        // A proof with a nonce is judged by the nonce alone, one without by its `iat` (spec §10).
+        // Neither may predate the start: the `jti`s seen before it are gone.
+        let jti_ttl = match nonce {
+            Some(nonce) => self
+                .nonce_key
+                .open(&nonce)
+                .filter(|nonce| nonce.created_at() >= self.started_at && now <= nonce.expires_at())
+                .map(|nonce| JTI_TTL.max(nonce.expires_at() - now)),
+            None => (now.abs_diff(iat) <= IAT_WINDOW && iat >= self.started_at + IAT_WINDOW)
+                .then_some(JTI_TTL),
+        };
+        let Some(jti_ttl) = jti_ttl else {
+            return Err(VerifyError::UseNonce(self.nonce_key.issue(now)));
+        };
+
+        // Recorded last: a proof that fails any check above never takes an entry (spec §10).
+        match self
+            .seen_jtis
+            .record(&jkt, &jti, Duration::from_secs(jti_ttl))
+        {
+            Record::New => Ok(jkt),
+            Record::Replay => Err(InvalidProof::Replay.into()),
+            Record::Full => Err(VerifyError::Busy),
+        }
+    }
+}
+
+fn verify_signature(input: &str, header: &Header, sign: &str) -> Result<(), InvalidProof> {
     let key = header.jwk.verifying_key()?;
     let sign = URL_SAFE_NO_PAD
         .decode(sign)
-        .map_err(|_| VerifyError::Signature)?;
-    let sign = Signature::from_slice(&sign).map_err(|_| VerifyError::Signature)?;
+        .map_err(|_| InvalidProof::Signature)?;
+    let sign = Signature::from_slice(&sign).map_err(|_| InvalidProof::Signature)?;
     key.verify(input.as_bytes(), &sign)
-        .map_err(|_| VerifyError::Signature)?;
-
-    let Claims {
-        jti,
-        htm,
-        htu,
-        iat,
-        ath,
-        nonce: _,
-    } = wire::decode(claims)?;
-
-    if htm != expected.htm || htu != expected.htu {
-        return Err(VerifyError::Request);
-    }
-
-    let expected_ath = expected
-        .access_token
-        .map(|t| URL_SAFE_NO_PAD.encode(Sha256::digest(t)));
-    if ath != expected_ath {
-        return Err(VerifyError::AccessTokenHash);
-    }
-
-    Ok(VerifiedProof {
-        jkt: header.jwk.thumbprint(),
-        jti,
-        iat,
-    })
+        .map_err(|_| InvalidProof::Signature)?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -85,17 +182,40 @@ mod tests {
 
     const HTU: &str = "https://sync.example/api/v1/items";
     const NOW: u64 = 1_700_000_000;
+    const WINDOW: u64 = IAT_WINDOW;
+    const NONCE_LIFETIME: u64 = 5 * 60;
+
+    fn verifier_started_at(started_at: u64) -> DpopVerifier {
+        DpopVerifier::started_at(NonceKey::new([3; 32]), started_at)
+    }
+
+    /// Verifies at `NOW` against a server that has been up long enough to accept nonce-less proofs.
+    fn verify(proof: &str, expected: Expected) -> VerifyResult<[u8; 32]> {
+        verifier_started_at(NOW - WINDOW).verify_at(proof, expected, NOW)
+    }
 
     fn proof(iat: u64, access_token: Option<&str>) -> String {
+        proof_with_nonce(iat, access_token, None)
+    }
+
+    fn proof_with_nonce(iat: u64, access_token: Option<&str>, nonce: Option<&str>) -> String {
         let req = ProofRequest {
             htm: Htm::Post,
             htu: HTU,
             access_token,
-            nonce: None,
+            nonce,
         };
         DpopProver::new(TestSigner::new())
             .proof_at(&req, iat, "jti")
             .unwrap()
+    }
+
+    fn required_nonce(result: VerifyResult<[u8; 32]>) -> Nonce {
+        match result {
+            Err(VerifyError::UseNonce(nonce)) => nonce,
+            Err(e) => panic!("expected a nonce challenge, got {e:?}"),
+            Ok(_) => panic!("expected a nonce challenge, got a verified proof"),
+        }
     }
 
     fn expected(access_token: Option<&str>) -> Expected<'_> {
@@ -103,6 +223,7 @@ mod tests {
             htm: Htm::Post,
             htu: HTU,
             access_token,
+            jkt: None,
         }
     }
 
@@ -115,11 +236,9 @@ mod tests {
 
     #[test]
     fn accepts_own_proof() {
-        let verified = verify(&proof(NOW, None), expected(None)).unwrap();
+        let jkt = verify(&proof(NOW, None), expected(None)).unwrap();
 
-        assert_eq!(&verified.jkt, DpopProver::new(TestSigner::new()).jkt());
-        assert_eq!(verified.jti, "jti");
-        assert_eq!(verified.iat, NOW);
+        assert_eq!(&jkt, DpopProver::new(TestSigner::new()).jkt());
     }
 
     #[test]
@@ -131,21 +250,30 @@ mod tests {
     fn rejects_wrong_access_token() {
         let result = verify(&proof(NOW, Some("token")), expected(Some("other")));
 
-        assert!(matches!(result, Err(VerifyError::AccessTokenHash)));
+        assert!(matches!(
+            result,
+            Err(VerifyError::Invalid(InvalidProof::AccessTokenHash))
+        ));
     }
 
     #[test]
     fn rejects_missing_ath_when_token_present() {
         let result = verify(&proof(NOW, None), expected(Some("token")));
 
-        assert!(matches!(result, Err(VerifyError::AccessTokenHash)));
+        assert!(matches!(
+            result,
+            Err(VerifyError::Invalid(InvalidProof::AccessTokenHash))
+        ));
     }
 
     #[test]
     fn rejects_unexpected_ath() {
         let result = verify(&proof(NOW, Some("token")), expected(None));
 
-        assert!(matches!(result, Err(VerifyError::AccessTokenHash)));
+        assert!(matches!(
+            result,
+            Err(VerifyError::Invalid(InvalidProof::AccessTokenHash))
+        ));
     }
 
     #[test]
@@ -157,11 +285,11 @@ mod tests {
 
         assert!(matches!(
             verify(&proof(NOW, None), wrong_htm),
-            Err(VerifyError::Request)
+            Err(VerifyError::Invalid(InvalidProof::Request))
         ));
         assert!(matches!(
             verify(&proof(NOW, None), wrong_htu),
-            Err(VerifyError::Request)
+            Err(VerifyError::Invalid(InvalidProof::Request))
         ));
     }
 
@@ -173,7 +301,7 @@ mod tests {
 
         assert!(matches!(
             verify(&tampered, expected(None)),
-            Err(VerifyError::Signature)
+            Err(VerifyError::Invalid(InvalidProof::Signature))
         ));
     }
 
@@ -196,7 +324,7 @@ mod tests {
 
         assert!(matches!(
             verify(&forged, expected(None)),
-            Err(VerifyError::Signature)
+            Err(VerifyError::Invalid(InvalidProof::Signature))
         ));
     }
 
@@ -211,7 +339,9 @@ mod tests {
 
         assert!(matches!(
             verify(&leaked, expected(None)),
-            Err(VerifyError::JwkError(jwk::JwkError::PrivateKey)),
+            Err(VerifyError::Invalid(InvalidProof::Jwk(
+                jwk::JwkError::PrivateKey
+            ))),
         ));
     }
 
@@ -226,7 +356,9 @@ mod tests {
 
         assert!(matches!(
             verify(&broken, expected(None)),
-            Err(VerifyError::JwkError(jwk::JwkError::Base64(_))),
+            Err(VerifyError::Invalid(InvalidProof::Jwk(
+                jwk::JwkError::Base64(_)
+            ))),
         ));
     }
 
@@ -234,11 +366,172 @@ mod tests {
     fn rejects_missing_segments() {
         assert!(matches!(
             verify("abc", expected(None)),
-            Err(VerifyError::Malformed)
+            Err(VerifyError::Invalid(InvalidProof::Malformed))
         ));
         assert!(matches!(
             verify("abc.def", expected(None)),
-            Err(VerifyError::Malformed)
+            Err(VerifyError::Invalid(InvalidProof::Malformed))
         ));
+    }
+
+    #[test]
+    fn rejects_crit_header() {
+        let header = proof(NOW, None).split('.').next().unwrap().to_owned();
+        let mut json: serde_json::Value =
+            serde_json::from_slice(&URL_SAFE_NO_PAD.decode(header).unwrap()).unwrap();
+        json["crit"] = serde_json::json!(["exp"]);
+        let header = URL_SAFE_NO_PAD.encode(serde_json::to_vec(&json).unwrap());
+        let critical = replace_segment(&proof(NOW, None), 0, &header);
+
+        assert!(matches!(
+            verify(&critical, expected(None)),
+            Err(VerifyError::Invalid(InvalidProof::Critical))
+        ));
+    }
+
+    #[test]
+    fn requires_nonce_until_a_window_after_start() {
+        let verifier = verifier_started_at(NOW);
+
+        required_nonce(verifier.verify_at(&proof(NOW, None), expected(None), NOW));
+        required_nonce(verifier.verify_at(
+            &proof(NOW + WINDOW - 1, None),
+            expected(None),
+            NOW + WINDOW - 1,
+        ));
+        assert!(
+            verifier
+                .verify_at(&proof(NOW + WINDOW, None), expected(None), NOW + WINDOW)
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn requires_nonce_for_iat_outside_window() {
+        let verifier = verifier_started_at(NOW - 10 * WINDOW);
+
+        required_nonce(verifier.verify_at(&proof(NOW - WINDOW - 1, None), expected(None), NOW));
+        required_nonce(verifier.verify_at(&proof(NOW + WINDOW + 1, None), expected(None), NOW));
+    }
+
+    #[test]
+    fn accepts_iat_at_window_edges() {
+        // One verifier per proof: both carry the same jti.
+        for iat in [NOW - WINDOW, NOW + WINDOW] {
+            let verifier = verifier_started_at(NOW - 10 * WINDOW);
+
+            assert!(
+                verifier
+                    .verify_at(&proof(iat, None), expected(None), NOW)
+                    .is_ok()
+            );
+        }
+    }
+
+    #[test]
+    fn accepts_proof_carrying_issued_nonce() {
+        let verifier = verifier_started_at(NOW);
+        let nonce = required_nonce(verifier.verify_at(&proof(NOW, None), expected(None), NOW));
+
+        // The nonce replaces the iat check, so even a broken client clock passes.
+        let proof = proof_with_nonce(0, None, Some(&nonce.to_string()));
+        assert!(verifier.verify_at(&proof, expected(None), NOW).is_ok());
+    }
+
+    #[test]
+    fn accepts_nonce_until_it_expires() {
+        let verifier = verifier_started_at(NOW);
+        let nonce =
+            required_nonce(verifier.verify_at(&proof(NOW, None), expected(None), NOW)).to_string();
+        let proof = |iat| proof_with_nonce(iat, None, Some(&nonce));
+        let expires_at = NOW + NONCE_LIFETIME;
+
+        assert!(
+            verifier
+                .verify_at(&proof(1), expected(None), expires_at)
+                .is_ok()
+        );
+        required_nonce(verifier.verify_at(&proof(2), expected(None), expires_at + 1));
+    }
+
+    #[test]
+    fn rejects_nonce_from_previous_run() {
+        let previous = verifier_started_at(NOW);
+        let nonce = required_nonce(previous.verify_at(&proof(NOW, None), expected(None), NOW));
+        let restarted = verifier_started_at(NOW + 1);
+
+        required_nonce(restarted.verify_at(
+            &proof_with_nonce(NOW, None, Some(&nonce.to_string())),
+            expected(None),
+            NOW + 1,
+        ));
+    }
+
+    #[test]
+    fn rejects_forged_nonce() {
+        let verifier = verifier_started_at(NOW);
+
+        required_nonce(verifier.verify_at(
+            &proof_with_nonce(NOW, None, Some("forged")),
+            expected(None),
+            NOW,
+        ));
+    }
+
+    #[test]
+    fn accepts_proof_from_bound_key() {
+        let jkt = *DpopProver::new(TestSigner::new()).jkt();
+        let mut bound = expected(None);
+        bound.jkt = Some(&jkt);
+
+        assert!(verify(&proof(NOW, None), bound).is_ok());
+    }
+
+    #[test]
+    fn rejects_proof_from_other_than_bound_key() {
+        let mut bound = expected(None);
+        bound.jkt = Some(&[0; 32]);
+
+        assert!(matches!(
+            verify(&proof(NOW, None), bound),
+            Err(VerifyError::Invalid(InvalidProof::KeyMismatch))
+        ));
+    }
+
+    #[test]
+    fn rejects_replayed_proof() {
+        let verifier = verifier_started_at(NOW - WINDOW);
+        let proof = proof(NOW, None);
+
+        assert!(verifier.verify_at(&proof, expected(None), NOW).is_ok());
+        assert!(matches!(
+            verifier.verify_at(&proof, expected(None), NOW),
+            Err(VerifyError::Invalid(InvalidProof::Replay))
+        ));
+    }
+
+    #[test]
+    fn rejects_replayed_proof_carrying_nonce() {
+        let verifier = verifier_started_at(NOW);
+        let nonce = required_nonce(verifier.verify_at(&proof(NOW, None), expected(None), NOW));
+        let proof = proof_with_nonce(NOW, None, Some(&nonce.to_string()));
+
+        assert!(verifier.verify_at(&proof, expected(None), NOW).is_ok());
+        assert!(matches!(
+            verifier.verify_at(&proof, expected(None), NOW),
+            Err(VerifyError::Invalid(InvalidProof::Replay))
+        ));
+    }
+
+    #[test]
+    fn rejected_proof_does_not_take_its_jti() {
+        let verifier = verifier_started_at(NOW - WINDOW);
+        let proof = proof(NOW, None);
+
+        assert!(matches!(
+            verifier.verify_at(&proof, expected(Some("token")), NOW),
+            Err(VerifyError::Invalid(InvalidProof::AccessTokenHash))
+        ));
+        assert!(verifier.verify_at(&proof, expected(None), NOW).is_ok());
     }
 }
