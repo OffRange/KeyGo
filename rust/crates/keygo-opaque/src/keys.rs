@@ -4,12 +4,14 @@ use zeroize::{Zeroize, Zeroizing};
 
 pub const KEY_LEN: usize = 64;
 
+/// `$as_bytes` is the accessor's visibility: keep it crate-private for keys whose derivations
+/// live in this crate.
 macro_rules! secret_key {
-    ($name:ident) => {
+    ($name:ident, as_bytes = $as_bytes:vis) => {
         pub struct $name(Zeroizing<[u8; KEY_LEN]>);
 
         impl $name {
-            pub fn as_bytes(&self) -> &[u8; KEY_LEN] {
+            $as_bytes fn as_bytes(&self) -> &[u8; KEY_LEN] {
                 &self.0
             }
 
@@ -29,5 +31,5 @@ macro_rules! secret_key {
     };
 }
 
-secret_key!(SessionKey);
-secret_key!(ExportKey);
+secret_key!(SessionKey, as_bytes = pub(crate));
+secret_key!(ExportKey, as_bytes = pub);

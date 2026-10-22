@@ -1644,6 +1644,7 @@ name = "keygo-opaque"
 version = "0.1.0"
 dependencies = [
  "base64 0.23.1",
+ "hkdf 0.12.4",
  "opaque-ke",
  "rand_core 0.6.4",
  "serde",

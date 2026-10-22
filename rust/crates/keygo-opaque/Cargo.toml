@@ -17,5 +17,7 @@ sha2 = "0.10.9"
 # Only to classify the OPRF errors opaque-ke passes through.
 voprf = { version = "0.5.0", default-features = false }
 
+hkdf = "0.12.4"
+
 [dev-dependencies]
 serde_json = "1.0.154"
