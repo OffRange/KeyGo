@@ -1,6 +1,7 @@
 use crate::cache::LoginStates;
 use crate::config::DeploymentConfig;
 use crate::service::registration::Signup;
+use keygo_dpop::verify::DpopVerifier;
 use sqlx::PgPool;
 use std::sync::Arc;
 
@@ -10,6 +11,7 @@ pub struct AppState {
     pub opaque_state: keygo_opaque::server::ServerSetup,
     pub db: PgPool,
     pub login_states: LoginStates,
+    pub dpop_verifier: Arc<DpopVerifier>,
 }
 
 impl AppState {
@@ -24,6 +26,7 @@ impl AppState {
             opaque_state: secrets.opaque_setup()?,
             db,
             login_states: LoginStates::new(),
+            dpop_verifier: Arc::new(DpopVerifier::new(secrets.dpop_nonce_key()?)),
         })
     }
 }

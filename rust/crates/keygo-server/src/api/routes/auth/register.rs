@@ -98,7 +98,6 @@ async fn finish(
 
     let finished = registration::finish(&state.db, input).await?;
 
-    // 201 is the client's commit point (§8): only then does it write anything locally.
     Ok((
         StatusCode::CREATED,
         Json(FinishResponse {

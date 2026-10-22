@@ -8,6 +8,8 @@ use crate::service::registration::{self, FinishRegistration, Signup, StartRegist
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use http_body_util::BodyExt;
+use keygo_dpop::NonceKey;
+use keygo_dpop::verify::DpopVerifier;
 use keygo_opaque::client::{ClientLogin, ClientRegistration};
 use keygo_opaque::server::ServerSetup;
 use serde_json::Value;
@@ -128,6 +130,7 @@ pub fn app_state(db: &PgPool, setup: &ServerSetup) -> AppState {
         opaque_state: setup.clone(),
         db: db.clone(),
         login_states: LoginStates::new(),
+        dpop_verifier: Arc::new(DpopVerifier::new(NonceKey::new([0; 32]))),
     }
 }
 pub async fn post(db: &PgPool, setup: &ServerSetup, uri: &str, body: Value) -> (StatusCode, Value) {

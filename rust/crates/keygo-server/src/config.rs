@@ -1,6 +1,7 @@
 use crate::domain::InvitePepper;
-use crate::secrets::{DbPassword, OpaqueSetup, SecretStore};
+use crate::secrets::{DbPassword, DpopNonceKey, OpaqueSetup, SecretStore};
 use clap::{Args, ValueEnum};
+use keygo_dpop::NonceKey;
 use keygo_opaque::server::ServerSetup;
 use secrecy::SecretString;
 use std::path::PathBuf;
@@ -105,5 +106,9 @@ impl SecretsConfig {
 
     pub(crate) fn invite_pepper(&self) -> anyhow::Result<InvitePepper> {
         self.store().read::<InvitePepper>()
+    }
+
+    pub(crate) fn dpop_nonce_key(&self) -> anyhow::Result<NonceKey> {
+        self.store().read::<DpopNonceKey>()
     }
 }

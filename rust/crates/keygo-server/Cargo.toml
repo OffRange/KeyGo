@@ -6,6 +6,8 @@ edition.workspace = true
 
 [dependencies]
 keygo-opaque = { path = "../keygo-opaque" }
+keygo-dpop = { path = "../keygo-dpop" }
+
 zeroize.workspace = true
 thiserror.workspace = true
 base64.workspace = true

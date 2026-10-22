@@ -1,5 +1,6 @@
 use crate::domain::InvitePepper;
 use anyhow::{Context, anyhow, ensure};
+use keygo_dpop::NonceKey;
 use keygo_opaque::server::ServerSetup;
 use secrecy::{ExposeSecret, SecretString};
 use std::fs::{self, DirBuilder, File, Permissions};
@@ -106,22 +107,46 @@ impl TypedSecret for InvitePepper {
     type Value = Self;
 
     fn generate() -> anyhow::Result<SecretString> {
-        let mut raw = Zeroizing::new([0u8; 32]);
-        getrandom::fill(raw.as_mut_slice()).map_err(|e| anyhow!("getrandom: {}", e))?;
-        Ok(hex::encode(raw.as_slice()).into())
+        random_key()
     }
 
     fn decode(stored: &str) -> anyhow::Result<Self> {
-        let raw = Zeroizing::new(hex::decode(stored).context("not hex")?);
-        let bytes: [u8; 32] = raw.as_slice().try_into().context("not 32 bytes")?;
-        Ok(Self::new(bytes))
+        Ok(Self::new(decode(stored)?))
     }
+}
+
+pub struct DpopNonceKey;
+
+impl TypedSecret for DpopNonceKey {
+    const NAME: &'static str = "dpop_nonce_key";
+    type Value = NonceKey;
+
+    fn generate() -> anyhow::Result<SecretString> {
+        random_key()
+    }
+
+    fn decode(stored: &str) -> anyhow::Result<Self::Value> {
+        Ok(NonceKey::new(decode(stored)?))
+    }
+}
+
+fn random_key() -> anyhow::Result<SecretString> {
+    let mut raw = Zeroizing::new([0u8; 32]);
+    getrandom::fill(raw.as_mut_slice()).map_err(|e| anyhow!("getrandom: {}", e))?;
+    Ok(hex::encode(raw.as_slice()).into())
+}
+
+fn decode(stored: &str) -> anyhow::Result<[u8; 32]> {
+    let raw = Zeroizing::new(hex::decode(stored).context("not hex")?);
+    let bytes = raw.as_slice().try_into().context("not 32 bytes")?;
+    Ok(bytes)
 }
 
 secrets! {
     DbPassword,
     OpaqueSetup,
     InvitePepper,
+    DpopNonceKey,
 }
 
 #[derive(Debug, PartialEq, Eq)]
