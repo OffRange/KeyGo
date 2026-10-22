@@ -7,7 +7,6 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use p256::ecdsa::Signature;
 use p256::ecdsa::signature::Verifier;
 use sha2::{Digest, Sha256};
-use std::time::Duration;
 use thiserror::Error;
 
 pub struct Expected<'a> {
@@ -73,9 +72,6 @@ impl From<jwk::JwkError> for VerifyError {
 type VerifyResult<T> = Result<T, VerifyError>;
 
 const IAT_WINDOW: u64 = 60;
-/// A proof without a nonce is accepted while the server's clock is within `IAT_WINDOW` of its
-/// `iat`, so its `jti` must be remembered for the whole span.
-const JTI_TTL: u64 = 2 * IAT_WINDOW;
 
 pub struct DpopVerifier {
     nonce_key: NonceKey,
@@ -136,26 +132,20 @@ impl DpopVerifier {
             return Err(InvalidProof::KeyMismatch.into());
         }
 
-        // A proof with a nonce is judged by the nonce alone, one without by its `iat` (spec §10).
-        // Neither may predate the start: the `jti`s seen before it are gone.
-        let jti_ttl = match nonce {
+        let deadline = match nonce {
             Some(nonce) => self
                 .nonce_key
                 .open(&nonce)
                 .filter(|nonce| nonce.created_at() >= self.started_at && now <= nonce.expires_at())
-                .map(|nonce| JTI_TTL.max(nonce.expires_at() - now)),
+                .map(|nonce| nonce.expires_at()),
             None => (now.abs_diff(iat) <= IAT_WINDOW && iat >= self.started_at + IAT_WINDOW)
-                .then_some(JTI_TTL),
+                .then(|| iat + IAT_WINDOW),
         };
-        let Some(jti_ttl) = jti_ttl else {
+        let Some(deadline) = deadline else {
             return Err(VerifyError::UseNonce(self.nonce_key.issue(now)));
         };
 
-        // Recorded last: a proof that fails any check above never takes an entry (spec §10).
-        match self
-            .seen_jtis
-            .record(&jkt, &jti, Duration::from_secs(jti_ttl))
-        {
+        match self.seen_jtis.record(&jkt, &jti, deadline, now) {
             Record::New => Ok(jkt),
             Record::Replay => Err(InvalidProof::Replay.into()),
             Record::Full => Err(VerifyError::Busy),
@@ -520,6 +510,32 @@ mod tests {
         assert!(matches!(
             verifier.verify_at(&proof, expected(None), NOW),
             Err(VerifyError::Invalid(InvalidProof::Replay))
+        ));
+    }
+
+    #[test]
+    fn replay_is_refused_for_as_long_as_the_proof_is_acceptable() {
+        let verifier = verifier_started_at(NOW - WINDOW);
+        let proof = proof(NOW, None);
+        verifier.verify_at(&proof, expected(None), NOW).unwrap();
+
+        assert!(matches!(
+            verifier.verify_at(&proof, expected(None), NOW + WINDOW),
+            Err(VerifyError::Invalid(InvalidProof::Replay))
+        ));
+        required_nonce(verifier.verify_at(&proof, expected(None), NOW + WINDOW + 1));
+    }
+
+    #[test]
+    fn full_replay_store_is_busy() {
+        let verifier = DpopVerifier {
+            seen_jtis: SeenJtis::with_capacity(0),
+            ..verifier_started_at(NOW - WINDOW)
+        };
+
+        assert!(matches!(
+            verifier.verify_at(&proof(NOW, None), expected(None), NOW),
+            Err(VerifyError::Busy)
         ));
     }
 
