@@ -25,7 +25,7 @@ pub struct Expected<'a> {
 pub enum VerifyError {
     /// Answer `invalid_dpop_proof`. The reason is for logs only; the client reacts to every one
     /// the same way.
-    #[error("invalid dpop proof: {0}")]
+    #[error("invalid dpop proof")]
     Invalid(#[from] InvalidProof),
     /// Answer `use_dpop_nonce` and send this nonce in the `DPoP-Nonce` header.
     #[error("dpop nonce required")]

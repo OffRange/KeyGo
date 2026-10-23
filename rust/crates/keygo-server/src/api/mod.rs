@@ -1,3 +1,4 @@
+mod dpop;
 mod error;
 mod extract;
 mod routes;
@@ -64,8 +65,9 @@ mod tests {
         (status, body.to_vec())
     }
 
-    fn state() -> AppState {
+    pub(super) fn state() -> AppState {
         AppState {
+            public_url: url::Url::parse("http://localhost").unwrap(),
             signup: Signup::InviteOnly(Arc::new(InvitePepper::new([0; 32]))),
             opaque_state: keygo_opaque::server::ServerSetup::generate(),
             // Lazy pools never connect until queried, so routes without a query need no database.

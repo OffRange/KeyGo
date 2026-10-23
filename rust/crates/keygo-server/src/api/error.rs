@@ -1,6 +1,6 @@
 use crate::domain::UsernameError;
 use axum::extract::rejection::JsonRejection;
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use keygo_opaque::OpaqueError;
 use serde::Serialize;
@@ -16,6 +16,7 @@ pub enum ErrorCode {
     Internal,
     InvalidRequest,
     NotFound,
+    RateLimited,
     // auth
     InvalidUsername,
     InvalidCredentials,
@@ -25,16 +26,24 @@ pub enum ErrorCode {
     InviteInvalid,
     RegistrationExpired,
     LoginExpired,
+    // dpop
+    InvalidDpopProof,
+    UseDpopNonce,
 }
 
 pub trait HttpError: std::error::Error + Send + Sync + 'static {
     fn status_and_code(&self) -> (StatusCode, ErrorCode);
+
+    fn headers(&self) -> HeaderMap {
+        HeaderMap::new()
+    }
 }
 
 pub struct ServerError {
     status: StatusCode,
     code: ErrorCode,
     message: String,
+    headers: HeaderMap,
     source: Option<anyhow::Error>,
 }
 
@@ -46,6 +55,7 @@ impl ServerError {
             status,
             code,
             message: message.into(),
+            headers: HeaderMap::new(),
             source: None,
         }
     }
@@ -63,6 +73,7 @@ impl ServerError {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             code: ErrorCode::Internal,
             message: "internal server error".to_owned(),
+            headers: HeaderMap::new(),
             source: Some(source),
         }
     }
@@ -71,15 +82,20 @@ impl ServerError {
 impl<E: HttpError> From<E> for ServerError {
     fn from(err: E) -> Self {
         let (status, code) = err.status_and_code();
+        let headers = err.headers();
         if status.is_server_error() {
             return Self {
                 status,
                 code,
+                headers,
                 ..Self::internal(err.into())
             };
         }
 
-        Self::new(status, code, err.to_string())
+        Self {
+            headers,
+            ..Self::new(status, code, err.to_string())
+        }
     }
 }
 
@@ -97,6 +113,7 @@ impl IntoResponse for ServerError {
 
         (
             self.status,
+            self.headers,
             axum::Json(json!({"code": self.code, "message": self.message})),
         )
             .into_response()
@@ -224,5 +241,30 @@ mod tests {
             body,
             json!({ "code": "not_found", "message": "resource not found" }),
         );
+    }
+
+    #[derive(Debug, thiserror::Error)]
+    #[error("challenge")]
+    struct Challenge;
+
+    impl HttpError for Challenge {
+        fn status_and_code(&self) -> (StatusCode, ErrorCode) {
+            (StatusCode::UNAUTHORIZED, ErrorCode::InvalidCredentials)
+        }
+
+        fn headers(&self) -> HeaderMap {
+            HeaderMap::from_iter([(
+                axum::http::header::WWW_AUTHENTICATE,
+                "DPoP".parse().unwrap(),
+            )])
+        }
+    }
+
+    #[tokio::test]
+    async fn error_headers_reach_the_response() {
+        let response = ServerError::from(Challenge).into_response();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(response.headers()["www-authenticate"], "DPoP");
     }
 }

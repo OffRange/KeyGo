@@ -126,6 +126,7 @@ pub async fn expires_in_secs(db: &PgPool, table: &str) -> f64 {
 /// Requests that must see each other's login states share one `AppState` through `post_to`.
 pub fn app_state(db: &PgPool, setup: &ServerSetup) -> AppState {
     AppState {
+        public_url: url::Url::parse("http://localhost").unwrap(),
         signup: Signup::Open,
         opaque_state: setup.clone(),
         db: db.clone(),
