@@ -38,6 +38,8 @@ time = { version = "0.3.55", features = ["formatting", "macros"] }
 moka = { version = "0.12.16", features = ["sync"] }
 
 [dev-dependencies]
+keygo-dpop = { path = "../keygo-dpop", features = ["test-support"] }
+
 http-body-util = "0.1.5"
 serde_json = "1.0.154"
 tower = { version = "0.5.3", features = ["util"] }

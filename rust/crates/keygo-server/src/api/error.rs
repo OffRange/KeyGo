@@ -39,7 +39,9 @@ pub trait HttpError: std::error::Error + Send + Sync + 'static {
     }
 }
 
-pub struct ServerError {
+pub struct ServerError(Box<Inner>);
+
+struct Inner {
     status: StatusCode,
     code: ErrorCode,
     message: String,
@@ -51,13 +53,13 @@ pub type ServerResult<T> = Result<T, ServerError>;
 
 impl ServerError {
     pub fn new(status: StatusCode, code: ErrorCode, message: impl Into<String>) -> Self {
-        Self {
+        Self(Box::new(Inner {
             status,
             code,
             message: message.into(),
             headers: HeaderMap::new(),
             source: None,
-        }
+        }))
     }
 
     pub fn not_found() -> Self {
@@ -67,7 +69,9 @@ impl ServerError {
             "resource not found",
         )
     }
+}
 
+impl Inner {
     fn internal(source: anyhow::Error) -> Self {
         Self {
             status: StatusCode::INTERNAL_SERVER_ERROR,
@@ -83,38 +87,43 @@ impl<E: HttpError> From<E> for ServerError {
     fn from(err: E) -> Self {
         let (status, code) = err.status_and_code();
         let headers = err.headers();
-        if status.is_server_error() {
-            return Self {
+        let inner = if status.is_server_error() {
+            Inner {
                 status,
                 code,
                 headers,
-                ..Self::internal(err.into())
-            };
-        }
-
-        Self {
-            headers,
-            ..Self::new(status, code, err.to_string())
-        }
+                ..Inner::internal(err.into())
+            }
+        } else {
+            Inner {
+                status,
+                code,
+                message: err.to_string(),
+                headers,
+                source: None,
+            }
+        };
+        Self(Box::new(inner))
     }
 }
 
 impl From<anyhow::Error> for ServerError {
     fn from(err: anyhow::Error) -> Self {
-        Self::internal(err)
+        Self(Box::new(Inner::internal(err)))
     }
 }
 
 impl IntoResponse for ServerError {
     fn into_response(self) -> Response {
-        if let Some(source) = &self.source {
-            tracing::error!(code = ?self.code, "request failed: {source:#}");
+        let err = *self.0;
+        if let Some(source) = &err.source {
+            tracing::error!(code = ?err.code, "request failed: {source:#}");
         }
 
         (
-            self.status,
-            self.headers,
-            axum::Json(json!({"code": self.code, "message": self.message})),
+            err.status,
+            err.headers,
+            axum::Json(json!({"code": err.code, "message": err.message})),
         )
             .into_response()
     }

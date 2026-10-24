@@ -6,10 +6,11 @@ use crate::service::invite;
 use crate::service::login::{self, FinishLogin, StartLogin};
 use crate::service::registration::{self, FinishRegistration, Signup, StartRegistration};
 use axum::body::Body;
-use axum::http::{Request, StatusCode};
+use axum::http::{HeaderMap, Request, StatusCode};
 use http_body_util::BodyExt;
-use keygo_dpop::NonceKey;
+use keygo_dpop::testing::TestSigner;
 use keygo_dpop::verify::DpopVerifier;
+use keygo_dpop::{DpopProver, Htm, NonceKey, ProofRequest};
 use keygo_opaque::client::{ClientLogin, ClientRegistration};
 use keygo_opaque::server::ServerSetup;
 use serde_json::Value;
@@ -20,6 +21,7 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 pub const PASSWORD: &[u8] = b"correct horse battery staple";
+const JKT: [u8; 32] = [7; 32];
 
 pub fn username(raw: &str) -> Username {
     Username::parse(raw).unwrap()
@@ -72,6 +74,8 @@ pub fn finish_login(client: ClientLogin, started: login::Started) -> FinishLogin
     FinishLogin {
         login_id: started.login_id,
         credential_finalization: finish.finalization,
+        binding: finish.session_key.dpop_binding(&JKT),
+        jkt: JKT,
     }
 }
 
@@ -138,12 +142,62 @@ pub async fn post(db: &PgPool, setup: &ServerSetup, uri: &str, body: Value) -> (
     post_to(app_state(db, setup), uri, body).await
 }
 pub async fn post_to(state: AppState, uri: &str, body: Value) -> (StatusCode, Value) {
-    let request = Request::post(uri)
+    let (status, _, body) = send(&state, json_post(uri, &body)).await;
+    (status, body)
+}
+
+pub fn prover() -> DpopProver<TestSigner> {
+    DpopProver::new(TestSigner::new())
+}
+
+/// Posts with a fresh proof and answers a nonce challenge once, the way a real client would.
+pub async fn post_with_proof(
+    state: &AppState,
+    prover: &DpopProver<TestSigner>,
+    uri: &str,
+    body: Value,
+) -> (StatusCode, Value) {
+    let request = proof_post(state, prover, uri, &body, None);
+    let (status, headers, response) = send(state, request).await;
+    if response["code"] != "use_dpop_nonce" {
+        return (status, response);
+    }
+
+    let nonce = headers["dpop-nonce"].to_str().unwrap();
+    let request = proof_post(state, prover, uri, &body, Some(nonce));
+    let (status, _, response) = send(state, request).await;
+    (status, response)
+}
+pub fn proof_post(
+    state: &AppState,
+    prover: &DpopProver<TestSigner>,
+    uri: &str,
+    body: &Value,
+    nonce: Option<&str>,
+) -> Request<Body> {
+    let htu = state.public_url.join(uri).unwrap();
+    let proof = prover
+        .proof(&ProofRequest {
+            htm: Htm::Post,
+            htu: htu.as_str(),
+            access_token: None,
+            nonce,
+        })
+        .unwrap();
+    let mut request = json_post(uri, body);
+    request.headers_mut().insert("dpop", proof.parse().unwrap());
+    request
+}
+pub async fn send(state: &AppState, request: Request<Body>) -> (StatusCode, HeaderMap, Value) {
+    let response = router(state.clone()).oneshot(request).await.unwrap();
+    let status = response.status();
+    let headers = response.headers().clone();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    (status, headers, serde_json::from_slice(&body).unwrap())
+}
+fn json_post(uri: &str, body: &Value) -> Request<Body> {
+    Request::post(uri)
         .header("content-type", "application/json")
         .body(Body::from(body.to_string()))
-        .unwrap();
-    let response = router(state).oneshot(request).await.unwrap();
-    let status = response.status();
-    let body = response.into_body().collect().await.unwrap().to_bytes();
-    (status, serde_json::from_slice(&body).unwrap())
+        .unwrap()
 }

@@ -1,7 +1,7 @@
 use crate::cache::LoginStates;
 use crate::db::users;
 use crate::domain::{LoginId, Username};
-use keygo_opaque::{CredentialFinalization, OpaqueError};
+use keygo_opaque::{CredentialFinalization, DpopBinding, OpaqueError};
 use sqlx::PgPool;
 use thiserror::Error;
 use uuid::Uuid;
@@ -19,6 +19,8 @@ pub enum FinishError {
 pub struct FinishLogin {
     pub login_id: LoginId,
     pub credential_finalization: CredentialFinalization,
+    pub binding: DpopBinding,
+    pub jkt: [u8; 32],
 }
 
 pub struct Finished {
@@ -37,11 +39,13 @@ pub async fn finish(
     let FinishLogin {
         login_id,
         credential_finalization,
+        binding,
+        jkt,
     } = input;
 
     let pending = login_states.take(&login_id).ok_or(FinishError::Expired)?;
-    // TODO: derive the session from the session key once sessions exist.
-    let _session_key = pending.state.finish(credential_finalization)?;
+    let session_key = pending.state.finish(credential_finalization)?;
+    session_key.verify_dpop_binding(&jkt, &binding)?;
 
     // The fake path cannot produce a valid finalization, and an account deleted since `start` has
     // no user left to log into; both answer exactly like a wrong password.
@@ -61,6 +65,18 @@ mod tests {
     use crate::testing::{PASSWORD, finish_login, register, start_login, username};
     use keygo_opaque::server::ServerSetup;
     use std::time::Duration;
+
+    fn copy(input: &FinishLogin) -> FinishLogin {
+        FinishLogin {
+            login_id: input.login_id,
+            credential_finalization: CredentialFinalization::from_bytes(
+                &input.credential_finalization.to_bytes(),
+            )
+            .unwrap(),
+            binding: DpopBinding::from_bytes(&input.binding.to_bytes()).unwrap(),
+            jkt: input.jkt,
+        }
+    }
 
     #[sqlx::test]
     async fn right_password_logs_in(db: PgPool) {
@@ -85,13 +101,7 @@ mod tests {
         register(&db, &setup, "ada").await;
         let (client, started) = start_login(&db, &login_states, &setup, "ada").await;
         let input = finish_login(client, started);
-        let replay = FinishLogin {
-            login_id: input.login_id,
-            credential_finalization: CredentialFinalization::from_bytes(
-                &input.credential_finalization.to_bytes(),
-            )
-            .unwrap(),
-        };
+        let replay = copy(&input);
         finish(&db, &login_states, input).await.unwrap();
 
         let err = finish(&db, &login_states, replay).await.err().unwrap();
@@ -110,13 +120,7 @@ mod tests {
             login_id: target.login_id,
             ..finish_login(client, other)
         };
-        let retry = FinishLogin {
-            login_id: forged.login_id,
-            credential_finalization: CredentialFinalization::from_bytes(
-                &forged.credential_finalization.to_bytes(),
-            )
-            .unwrap(),
-        };
+        let retry = copy(&forged);
 
         let err = finish(&db, &login_states, forged).await.err().unwrap();
         let retried = finish(&db, &login_states, retry).await.err().unwrap();
@@ -126,6 +130,26 @@ mod tests {
             "{err:?}"
         );
         assert!(matches!(retried, FinishError::Expired), "{retried:?}");
+    }
+
+    #[sqlx::test]
+    async fn binding_for_another_key_is_invalid_and_consumes_the_login(db: PgPool) {
+        let login_states = LoginStates::new();
+        let setup = ServerSetup::generate();
+        register(&db, &setup, "ada").await;
+        let (client, started) = start_login(&db, &login_states, &setup, "ada").await;
+        let input = FinishLogin {
+            jkt: [0x41; 32],
+            ..finish_login(client, started)
+        };
+
+        let err = finish(&db, &login_states, input).await.err().unwrap();
+
+        assert!(
+            matches!(err, FinishError::Opaque(OpaqueError::InvalidLogin)),
+            "{err:?}"
+        );
+        assert_eq!(login_states.count(), 0);
     }
 
     #[sqlx::test]

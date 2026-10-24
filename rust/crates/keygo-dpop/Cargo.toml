@@ -3,6 +3,10 @@ name = "keygo-dpop"
 version.workspace = true
 edition.workspace = true
 
+[features]
+# Exposes `testing::TestSigner` so other crates' tests can sign proofs.
+test-support = []
+
 [dependencies]
 thiserror.workspace = true
 zeroize.workspace = true
