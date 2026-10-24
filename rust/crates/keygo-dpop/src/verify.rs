@@ -18,9 +18,9 @@ pub struct Expected<'a> {
     pub jkt: Option<&'a [u8; 32]>,
 }
 
-/// What went wrong, grouped by how the server answers (spec §10, §15). The 400/401 split is the
-/// endpoint's, not the error's: token-issuing endpoints answer 400, everything else 401 with a
-/// `WWW-Authenticate: DPoP` challenge.
+/// What went wrong, grouped by how the server answers. The 400/401 split is the endpoint's, not the
+/// error's: token-issuing endpoints answer 400, everything else 401 with a `WWW-Authenticate: DPoP`
+/// challenge.
 #[derive(Debug, Error)]
 pub enum VerifyError {
     /// Answer `invalid_dpop_proof`. The reason is for logs only; the client reacts to every one

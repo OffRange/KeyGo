@@ -9,7 +9,7 @@ use zeroize::Zeroizing;
 const NONCE_LIFETIME: Duration = Duration::from_mins(5);
 
 const TIMESTAMP_LEN: usize = size_of::<u64>();
-/// HMAC-SHA256 truncated to its leftmost 16 bytes (spec §10).
+/// HMAC-SHA256 truncated to its leftmost 16 bytes.
 const TAG_LEN: usize = 16;
 const NONCE_LEN: usize = TIMESTAMP_LEN + TAG_LEN;
 

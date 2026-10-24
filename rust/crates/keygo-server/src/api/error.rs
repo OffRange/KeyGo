@@ -114,8 +114,8 @@ impl HttpError for JsonRejection {
 
     fn status(&self) -> StatusCode {
         match self {
-            // Malformed or mistyped JSON is a bad request like any other (§15); a missing content
-            // type or an oversized body keeps its own HTTP status.
+            // Malformed or mistyped JSON is a bad request like any other; a missing content type or
+            // an oversized body keeps its own HTTP status.
             Self::JsonDataError(_) | Self::JsonSyntaxError(_) => StatusCode::BAD_REQUEST,
             _ => JsonRejection::status(self),
         }
