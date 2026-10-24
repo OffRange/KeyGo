@@ -4,7 +4,7 @@ mod extract;
 mod routes;
 mod state;
 
-pub use error::{ErrorCode, HttpError, ServerError, ServerResult};
+pub use error::{ErrorCode, HttpError, NotFound, ServerError, ServerResult};
 pub use extract::Json;
 pub use state::AppState;
 
@@ -27,7 +27,7 @@ fn v1() -> Router<AppState> {
 }
 
 async fn not_found() -> ServerError {
-    ServerError::not_found()
+    NotFound.into()
 }
 
 #[cfg(test)]

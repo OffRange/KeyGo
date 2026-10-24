@@ -32,16 +32,16 @@ struct StartResponse {
 }
 
 impl HttpError for registration::StartError {
-    fn status_and_code(&self) -> (StatusCode, ErrorCode) {
+    fn code(&self) -> ErrorCode {
         match self {
-            Self::InvalidUserId => (StatusCode::BAD_REQUEST, ErrorCode::InvalidRequest),
-            Self::ReservedUsername => (StatusCode::BAD_REQUEST, ErrorCode::InvalidUsername),
-            Self::InviteRequired => (StatusCode::FORBIDDEN, ErrorCode::InviteRequired),
-            Self::InviteInvalid => (StatusCode::FORBIDDEN, ErrorCode::InviteInvalid),
-            Self::UsernameTaken => (StatusCode::CONFLICT, ErrorCode::UsernameTaken),
-            Self::UserIdTaken => (StatusCode::CONFLICT, ErrorCode::UserIdTaken),
-            Self::Opaque(err) => err.status_and_code(),
-            Self::Db(err) => err.status_and_code(),
+            Self::InvalidUserId => ErrorCode::InvalidRequest,
+            Self::ReservedUsername => ErrorCode::InvalidUsername,
+            Self::InviteRequired => ErrorCode::InviteRequired,
+            Self::InviteInvalid => ErrorCode::InviteInvalid,
+            Self::UsernameTaken => ErrorCode::UsernameTaken,
+            Self::UserIdTaken => ErrorCode::UserIdTaken,
+            Self::Opaque(err) => err.code(),
+            Self::Db(_) => ErrorCode::Internal,
         }
     }
 }
@@ -78,11 +78,11 @@ struct FinishResponse {
 }
 
 impl HttpError for registration::FinishError {
-    fn status_and_code(&self) -> (StatusCode, ErrorCode) {
+    fn code(&self) -> ErrorCode {
         match self {
-            Self::Expired => (StatusCode::BAD_REQUEST, ErrorCode::RegistrationExpired),
-            Self::InviteInvalid => (StatusCode::FORBIDDEN, ErrorCode::InviteInvalid),
-            Self::Db(err) => err.status_and_code(),
+            Self::Expired => ErrorCode::RegistrationExpired,
+            Self::InviteInvalid => ErrorCode::InviteInvalid,
+            Self::Db(_) => ErrorCode::Internal,
         }
     }
 }

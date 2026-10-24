@@ -4,7 +4,6 @@ use crate::domain::{LoginId, Username};
 use crate::service::login::{self, FinishLogin, StartLogin};
 use axum::Router;
 use axum::extract::State;
-use axum::http::StatusCode;
 use axum::routing::post;
 use keygo_opaque::{CredentialFinalization, CredentialRequest, CredentialResponse, DpopBinding};
 use serde::{Deserialize, Serialize};
@@ -14,6 +13,16 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/start", post(start))
         .route("/finish", post(finish))
+}
+
+impl HttpError for login::Error {
+    fn code(&self) -> ErrorCode {
+        match self {
+            Self::Expired => ErrorCode::LoginExpired,
+            Self::Opaque(err) => err.code(),
+            Self::Db(_) => ErrorCode::Internal,
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -28,15 +37,6 @@ struct StartResponse {
     login_id: LoginId,
     credential_response: CredentialResponse,
     expires_in: u64,
-}
-
-impl HttpError for login::StartError {
-    fn status_and_code(&self) -> (StatusCode, ErrorCode) {
-        match self {
-            Self::Opaque(err) => err.status_and_code(),
-            Self::Db(err) => err.status_and_code(),
-        }
-    }
 }
 
 async fn start(
@@ -70,16 +70,6 @@ struct FinishResponse {
     username: Username,
 }
 
-impl HttpError for login::FinishError {
-    fn status_and_code(&self) -> (StatusCode, ErrorCode) {
-        match self {
-            Self::Expired => (StatusCode::BAD_REQUEST, ErrorCode::LoginExpired),
-            Self::Opaque(err) => err.status_and_code(),
-            Self::Db(err) => err.status_and_code(),
-        }
-    }
-}
-
 async fn finish(
     State(state): State<AppState>,
     proof: DpopProof,
@@ -107,6 +97,7 @@ mod tests {
     use crate::testing::{
         PASSWORD, app_state, post_to, post_with_proof, proof_post, prover, register, send,
     };
+    use axum::http::StatusCode;
     use keygo_opaque::OpaqueError;
     use keygo_opaque::client::ClientLogin;
     use keygo_opaque::server::ServerSetup;
@@ -143,7 +134,7 @@ mod tests {
 
     #[tokio::test]
     async fn expired_logins_are_bad_requests() {
-        let (status, body) = render(login::FinishError::Expired).await;
+        let (status, body) = render(login::Error::Expired).await;
 
         assert_eq!(status, StatusCode::BAD_REQUEST);
         assert_eq!(body["code"], "login_expired");
@@ -151,7 +142,7 @@ mod tests {
 
     #[tokio::test]
     async fn failed_login_finish_matches_failed_start() {
-        let (status, body) = render(login::FinishError::Opaque(OpaqueError::InvalidLogin)).await;
+        let (status, body) = render(login::Error::Opaque(OpaqueError::InvalidLogin)).await;
 
         assert_eq!(status, StatusCode::UNAUTHORIZED);
         assert_eq!(body["code"], "invalid_credentials");

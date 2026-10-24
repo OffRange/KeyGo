@@ -35,9 +35,9 @@ pub(crate) fn encode<T: Serialize>(value: &T) -> String {
 
 #[derive(Debug, Error)]
 pub enum DecodeError {
-    #[error("invalid base64: {0}")]
+    #[error("invalid base64")]
     Base64(#[from] base64::DecodeError),
-    #[error("invalid json: {0}")]
+    #[error("invalid json")]
     Json(#[from] serde_json::Error),
 }
 

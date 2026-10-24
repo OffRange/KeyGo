@@ -10,7 +10,7 @@ pub enum FinishError {
     Expired,
     #[error("invite is not valid or has expired")]
     InviteInvalid,
-    #[error("database error: {0}")]
+    #[error("database error")]
     Db(#[from] sqlx::Error),
 }
 

@@ -1,7 +1,7 @@
 use crate::api::{AppState, ErrorCode, HttpError, ServerError};
 use axum::extract::{FromRequestParts, OriginalUri};
 use axum::http::request::Parts;
-use axum::http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
+use axum::http::{HeaderMap, HeaderName, HeaderValue, Method};
 use keygo_dpop::Htm;
 use keygo_dpop::verify::{Expected, InvalidProof, VerifyError};
 use url::Url;
@@ -41,11 +41,11 @@ impl FromRequestParts<AppState> for DpopProof {
 }
 
 impl HttpError for VerifyError {
-    fn status_and_code(&self) -> (StatusCode, ErrorCode) {
+    fn code(&self) -> ErrorCode {
         match self {
-            Self::Invalid(_) => (StatusCode::BAD_REQUEST, ErrorCode::InvalidDpopProof),
-            Self::UseNonce(_) => (StatusCode::BAD_REQUEST, ErrorCode::UseDpopNonce),
-            Self::Busy => (StatusCode::TOO_MANY_REQUESTS, ErrorCode::RateLimited),
+            Self::Invalid(_) => ErrorCode::InvalidDpopProof,
+            Self::UseNonce(_) => ErrorCode::UseDpopNonce,
+            Self::Busy => ErrorCode::RateLimited,
         }
     }
 
@@ -96,7 +96,7 @@ mod tests {
     use crate::api::error::render;
     use axum::Router;
     use axum::body::Body;
-    use axum::http::Request;
+    use axum::http::{Request, StatusCode};
     use axum::routing::post;
     use serde_json::json;
     use tower::ServiceExt;

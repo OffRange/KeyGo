@@ -1,20 +1,10 @@
 use crate::cache::LoginStates;
 use crate::db::users;
 use crate::domain::{LoginId, Username};
+use crate::service::login::Error;
 use keygo_opaque::{CredentialFinalization, DpopBinding, OpaqueError};
 use sqlx::PgPool;
-use thiserror::Error;
 use uuid::Uuid;
-
-#[derive(Debug, Error)]
-pub enum FinishError {
-    #[error("login expired or unknown")]
-    Expired,
-    #[error(transparent)]
-    Opaque(#[from] OpaqueError),
-    #[error("database error: {0}")]
-    Db(#[from] sqlx::Error),
-}
 
 pub struct FinishLogin {
     pub login_id: LoginId,
@@ -35,7 +25,7 @@ pub async fn finish(
     db: &PgPool,
     login_states: &LoginStates,
     input: FinishLogin,
-) -> Result<Finished, FinishError> {
+) -> Result<Finished, Error> {
     let FinishLogin {
         login_id,
         credential_finalization,
@@ -43,7 +33,7 @@ pub async fn finish(
         jkt,
     } = input;
 
-    let pending = login_states.take(&login_id).ok_or(FinishError::Expired)?;
+    let pending = login_states.take(&login_id).ok_or(Error::Expired)?;
     let session_key = pending.state.finish(credential_finalization)?;
     session_key.verify_dpop_binding(&jkt, &binding)?;
 
@@ -106,7 +96,7 @@ mod tests {
 
         let err = finish(&db, &login_states, replay).await.err().unwrap();
 
-        assert!(matches!(err, FinishError::Expired), "{err:?}");
+        assert!(matches!(err, Error::Expired), "{err:?}");
     }
 
     #[sqlx::test]
@@ -126,10 +116,10 @@ mod tests {
         let retried = finish(&db, &login_states, retry).await.err().unwrap();
 
         assert!(
-            matches!(err, FinishError::Opaque(OpaqueError::InvalidLogin)),
+            matches!(err, Error::Opaque(OpaqueError::InvalidLogin)),
             "{err:?}"
         );
-        assert!(matches!(retried, FinishError::Expired), "{retried:?}");
+        assert!(matches!(retried, Error::Expired), "{retried:?}");
     }
 
     #[sqlx::test]
@@ -146,7 +136,7 @@ mod tests {
         let err = finish(&db, &login_states, input).await.err().unwrap();
 
         assert!(
-            matches!(err, FinishError::Opaque(OpaqueError::InvalidLogin)),
+            matches!(err, Error::Opaque(OpaqueError::InvalidLogin)),
             "{err:?}"
         );
         assert_eq!(login_states.count(), 0);
@@ -197,7 +187,7 @@ mod tests {
         let err = finish(&db, &login_states, input).await.err().unwrap();
 
         assert!(
-            matches!(err, FinishError::Opaque(OpaqueError::InvalidLogin)),
+            matches!(err, Error::Opaque(OpaqueError::InvalidLogin)),
             "{err:?}"
         );
     }
@@ -220,7 +210,7 @@ mod tests {
             .unwrap();
 
         assert!(
-            matches!(err, FinishError::Opaque(OpaqueError::InvalidLogin)),
+            matches!(err, Error::Opaque(OpaqueError::InvalidLogin)),
             "{err:?}"
         );
     }
@@ -238,7 +228,7 @@ mod tests {
 
         let err = finish(&db, &login_states, input).await.err().unwrap();
 
-        assert!(matches!(err, FinishError::Expired), "{err:?}");
+        assert!(matches!(err, Error::Expired), "{err:?}");
         assert_eq!(login_states.count(), 1);
     }
 
@@ -255,6 +245,6 @@ mod tests {
             .err()
             .unwrap();
 
-        assert!(matches!(err, FinishError::Expired), "{err:?}");
+        assert!(matches!(err, Error::Expired), "{err:?}");
     }
 }
