@@ -1,5 +1,5 @@
-use crate::db::{invites, opaque_records, registrations, users};
-use crate::domain::{RegistrationId, Username};
+use crate::db::{devices, invites, opaque_records, registrations, users};
+use crate::domain::{DeviceId, DeviceInfo, RegistrationId, Username};
 use keygo_opaque::{RegistrationUpload, server};
 use sqlx::PgPool;
 use thiserror::Error;
@@ -17,7 +17,8 @@ pub enum FinishError {
 pub struct FinishRegistration {
     pub registration_id: RegistrationId,
     pub registration_upload: RegistrationUpload,
-    // TODO: key bundle + device info
+    pub device_info: DeviceInfo,
+    // TODO: key bundle
 }
 
 pub struct Finished {
@@ -29,6 +30,7 @@ pub async fn finish(db: &PgPool, input: FinishRegistration) -> Result<Finished, 
     let FinishRegistration {
         registration_id,
         registration_upload,
+        device_info,
     } = input;
 
     // Pure computation, so it runs before the transaction to keep the reservation's lock short.
@@ -46,6 +48,9 @@ pub async fn finish(db: &PgPool, input: FinishRegistration) -> Result<Finished, 
 
     users::insert(&mut tx, pending.user_id, &pending.username).await?;
     opaque_records::insert(&mut tx, pending.user_id, &password_file).await?;
+
+    let device_id = DeviceId::random();
+    devices::insert(&mut tx, device_id, pending.user_id, &device_info).await?;
     tx.commit().await?;
 
     Ok(Finished {
@@ -57,7 +62,9 @@ pub async fn finish(db: &PgPool, input: FinishRegistration) -> Result<Finished, 
 mod tests {
     use super::*;
     use crate::service::registration::{self, Signup, StartRegistration, Started};
-    use crate::testing::{PASSWORD, count, create_invite, expire, invite_only, username};
+    use crate::testing::{
+        PASSWORD, count, create_invite, device_info, expire, invite_only, username,
+    };
     use keygo_opaque::client::ClientRegistration;
     use keygo_opaque::server::ServerSetup;
     use uuid::Uuid;
@@ -92,13 +99,15 @@ mod tests {
         FinishRegistration {
             registration_id,
             registration_upload: finish.upload,
+            device_info: device_info(),
         }
     }
 
-    async fn user_count(db: &PgPool) -> (i64, i64, i64) {
+    async fn user_count(db: &PgPool) -> (i64, i64, i64, i64) {
         (
             count(db, "users").await,
             count(db, "opaque_records").await,
+            count(db, "devices").await,
             count(db, "pending_registrations").await,
         )
     }
@@ -111,12 +120,20 @@ mod tests {
         let finished = finish(&db, input).await.unwrap();
 
         assert_eq!(finished.username, username("ada"));
-        assert_eq!(user_count(&db).await, (1, 1, 0));
+        assert_eq!(user_count(&db).await, (1, 1, 1, 0));
         let stored: (Uuid, String) = sqlx::query_as("select id, username from users")
             .fetch_one(&db)
             .await
             .unwrap();
         assert_eq!(stored, (user_id, "ada".to_owned()));
+        let device: (Uuid, String, String, String) =
+            sqlx::query_as("select user_id, name, platform, app_version from devices")
+                .fetch_one(&db)
+                .await
+                .unwrap();
+        let expected = ["Pixel 9", "android", "2.3.0"].map(str::to_owned);
+        assert_eq!((device.1, device.2, device.3), expected.into());
+        assert_eq!(device.0, user_id);
     }
 
     #[sqlx::test]
@@ -128,13 +145,14 @@ mod tests {
                 &input.registration_upload.to_bytes(),
             )
             .unwrap(),
+            device_info: device_info(),
         };
         finish(&db, input).await.unwrap();
 
         let err = finish(&db, replay).await.err().unwrap();
 
         assert!(matches!(err, FinishError::Expired), "{err:?}");
-        assert_eq!(user_count(&db).await, (1, 1, 0));
+        assert_eq!(user_count(&db).await, (1, 1, 1, 0));
     }
 
     #[sqlx::test]
@@ -148,7 +166,7 @@ mod tests {
         let err = finish(&db, unknown).await.err().unwrap();
 
         assert!(matches!(err, FinishError::Expired), "{err:?}");
-        assert_eq!(user_count(&db).await, (0, 0, 1));
+        assert_eq!(user_count(&db).await, (0, 0, 0, 1));
     }
 
     #[sqlx::test]
@@ -159,7 +177,7 @@ mod tests {
         let err = finish(&db, input).await.err().unwrap();
 
         assert!(matches!(err, FinishError::Expired), "{err:?}");
-        assert_eq!(user_count(&db).await, (0, 0, 1));
+        assert_eq!(user_count(&db).await, (0, 0, 0, 1));
     }
 
     #[sqlx::test]
@@ -175,7 +193,7 @@ mod tests {
         let err = finish(&db, input).await.err().unwrap();
 
         assert!(matches!(err, FinishError::Db(_)), "{err:?}");
-        assert_eq!(user_count(&db).await, (1, 0, 1));
+        assert_eq!(user_count(&db).await, (1, 0, 0, 1));
     }
 
     #[sqlx::test]
@@ -185,7 +203,7 @@ mod tests {
 
         finish(&db, input).await.unwrap();
 
-        assert_eq!(user_count(&db).await, (1, 1, 0));
+        assert_eq!(user_count(&db).await, (1, 1, 1, 0));
         assert_eq!(count(&db, "invites").await, 0);
     }
 
@@ -199,7 +217,7 @@ mod tests {
         let err = finish(&db, bob).await.err().unwrap();
 
         assert!(matches!(err, FinishError::InviteInvalid), "{err:?}");
-        assert_eq!(user_count(&db).await, (1, 1, 1));
+        assert_eq!(user_count(&db).await, (1, 1, 1, 1));
     }
 
     #[sqlx::test]
@@ -211,7 +229,7 @@ mod tests {
         let err = finish(&db, input).await.err().unwrap();
 
         assert!(matches!(err, FinishError::InviteInvalid), "{err:?}");
-        assert_eq!(user_count(&db).await, (0, 0, 1));
+        assert_eq!(user_count(&db).await, (0, 0, 0, 1));
         assert_eq!(count(&db, "invites").await, 1);
     }
 

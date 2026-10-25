@@ -1,5 +1,6 @@
+use crate::api::dpop::DpopProof;
 use crate::api::{AppState, ErrorCode, HttpError, Json, ServerResult};
-use crate::domain::{RegistrationId, Username};
+use crate::domain::{DeviceInfo, RegistrationId, Username};
 use crate::service::registration::{self, FinishRegistration, StartRegistration};
 use axum::Router;
 use axum::extract::State;
@@ -70,6 +71,7 @@ async fn start(
 struct FinishRequest {
     registration_id: RegistrationId,
     registration_upload: RegistrationUpload,
+    device: DeviceInfo,
 }
 
 #[derive(Serialize)]
@@ -89,11 +91,14 @@ impl HttpError for registration::FinishError {
 
 async fn finish(
     State(state): State<AppState>,
+    // TODO: bind the new session to `proof.jkt`
+    _proof: DpopProof,
     Json(request): Json<FinishRequest>,
 ) -> ServerResult<(StatusCode, Json<FinishResponse>)> {
     let input = FinishRegistration {
         registration_id: request.registration_id,
         registration_upload: request.registration_upload,
+        device_info: request.device,
     };
 
     let finished = registration::finish(&state.db, input).await?;
@@ -110,7 +115,10 @@ async fn finish(
 mod tests {
     use super::*;
     use crate::api::error::render;
-    use crate::testing::{app_state, count, create_invite, invite_only, post, post_to, register};
+    use crate::testing::{
+        app_state, count, create_invite, device_json, invite_only, post, post_to, post_with_proof,
+        proof_post, prover, register, send,
+    };
     use keygo_opaque::client::ClientRegistration;
     use keygo_opaque::server::ServerSetup;
     use serde_json::{Value, json};
@@ -127,6 +135,21 @@ mod tests {
             "registration_request": request.to_base64(),
         });
         (client, body)
+    }
+
+    fn finish_body(client: ClientRegistration, started: &Value) -> Value {
+        let response =
+            RegistrationResponse::from_base64(started["registration_response"].as_str().unwrap())
+                .unwrap();
+        let upload = client
+            .finish(crate::testing::PASSWORD, response)
+            .unwrap()
+            .upload;
+        json!({
+            "registration_id": started["registration_id"],
+            "registration_upload": upload.to_base64(),
+            "device": device_json(),
+        })
     }
 
     #[tokio::test]
@@ -147,31 +170,21 @@ mod tests {
 
     #[sqlx::test]
     async fn registers_over_http(db: PgPool) {
-        let setup = ServerSetup::generate();
-        let user_id = Uuid::new_v4();
-        let (client, body) = start_body("Ada", user_id);
+        let state = app_state(&db, &ServerSetup::generate());
+        let (client, body) = start_body("Ada", Uuid::new_v4());
 
-        let (status, started) = post(&db, &setup, START, body).await;
+        let (status, started) = post_to(state.clone(), START, body).await;
 
         assert_eq!(status, StatusCode::OK);
         assert_eq!(started["expires_in"], registration::TTL.as_secs());
-        let response =
-            RegistrationResponse::from_base64(started["registration_response"].as_str().unwrap())
-                .unwrap();
-        let upload = client
-            .finish(crate::testing::PASSWORD, response)
-            .unwrap()
-            .upload;
-        let body = json!({
-            "registration_id": started["registration_id"],
-            "registration_upload": upload.to_base64(),
-        });
+        let body = finish_body(client, &started);
 
-        let (status, finished) = post(&db, &setup, FINISH, body).await;
+        let (status, finished) = post_with_proof(&state, &prover(), FINISH, body).await;
 
         assert_eq!(status, StatusCode::CREATED);
         assert_eq!(finished, json!({ "username": "ada" }));
         assert_eq!(count(&db, "users").await, 1);
+        assert_eq!(count(&db, "devices").await, 1);
     }
 
     fn invite_only_state(db: &PgPool, setup: &ServerSetup) -> AppState {
@@ -183,26 +196,17 @@ mod tests {
 
     #[sqlx::test]
     async fn registers_with_an_invite_over_http(db: PgPool) {
-        let setup = ServerSetup::generate();
         let (client, mut body) = start_body("ada", Uuid::new_v4());
         body["invite"] = create_invite(&db).await.into();
 
-        let (status, started) = post_to(invite_only_state(&db, &setup), START, body).await;
+        let state = invite_only_state(&db, &ServerSetup::generate());
+
+        let (status, started) = post_to(state.clone(), START, body).await;
 
         assert_eq!(status, StatusCode::OK);
-        let response =
-            RegistrationResponse::from_base64(started["registration_response"].as_str().unwrap())
-                .unwrap();
-        let upload = client
-            .finish(crate::testing::PASSWORD, response)
-            .unwrap()
-            .upload;
-        let body = json!({
-            "registration_id": started["registration_id"],
-            "registration_upload": upload.to_base64(),
-        });
+        let body = finish_body(client, &started);
 
-        let (status, _) = post_to(invite_only_state(&db, &setup), FINISH, body).await;
+        let (status, _) = post_with_proof(&state, &prover(), FINISH, body).await;
 
         assert_eq!(status, StatusCode::CREATED);
         assert_eq!(count(&db, "users").await, 1);
@@ -330,25 +334,72 @@ mod tests {
 
     #[sqlx::test]
     async fn finish_rejects_an_unknown_registration(db: PgPool) {
-        let setup = ServerSetup::generate();
+        let state = app_state(&db, &ServerSetup::generate());
         let (client, body) = start_body("ada", Uuid::new_v4());
-        let (_, started) = post(&db, &setup, START, body).await;
-        let response =
-            RegistrationResponse::from_base64(started["registration_response"].as_str().unwrap())
-                .unwrap();
-        let upload = client
-            .finish(crate::testing::PASSWORD, response)
-            .unwrap()
-            .upload;
-        let body = json!({
-            "registration_id": RegistrationId::random(),
-            "registration_upload": upload.to_base64(),
-        });
+        let (_, started) = post_to(state.clone(), START, body).await;
+        let mut body = finish_body(client, &started);
+        body["registration_id"] = json!(RegistrationId::random());
 
-        let (status, body) = post(&db, &setup, FINISH, body).await;
+        let (status, body) = post_with_proof(&state, &prover(), FINISH, body).await;
 
         assert_eq!(status, StatusCode::BAD_REQUEST);
         assert_eq!(body["code"], "registration_expired");
         assert_eq!(count(&db, "users").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn finish_rejects_a_spoofing_device_name(db: PgPool) {
+        let state = app_state(&db, &ServerSetup::generate());
+        let (client, body) = start_body("ada", Uuid::new_v4());
+        let (_, started) = post_to(state.clone(), START, body).await;
+        let mut body = finish_body(client, &started);
+        body["device"]["name"] = "Pixel\u{202E}9".into();
+
+        let (status, body) = post_with_proof(&state, &prover(), FINISH, body).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["code"], "invalid_request");
+        assert_eq!(count(&db, "pending_registrations").await, 1);
+    }
+
+    #[sqlx::test]
+    async fn finish_without_a_proof_keeps_the_registration(db: PgPool) {
+        let state = app_state(&db, &ServerSetup::generate());
+        let (client, body) = start_body("ada", Uuid::new_v4());
+        let (_, started) = post_to(state.clone(), START, body).await;
+        let body = finish_body(client, &started);
+
+        let (status, response) = post_to(state.clone(), FINISH, body.clone()).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(response["code"], "invalid_dpop_proof");
+        assert_eq!(count(&db, "pending_registrations").await, 1);
+
+        let (status, _) = post_with_proof(&state, &prover(), FINISH, body).await;
+
+        assert_eq!(status, StatusCode::CREATED);
+    }
+
+    #[sqlx::test]
+    async fn nonce_challenge_keeps_the_registration(db: PgPool) {
+        let state = app_state(&db, &ServerSetup::generate());
+        let (client, body) = start_body("ada", Uuid::new_v4());
+        let (_, started) = post_to(state.clone(), START, body).await;
+        let body = finish_body(client, &started);
+        let prover = prover();
+
+        // A verifier that just started accepts no proof without one of its own nonces.
+        let request = proof_post(&state, &prover, FINISH, &body, None);
+        let (status, headers, challenge) = send(&state, request).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(challenge["code"], "use_dpop_nonce");
+        assert!(headers.contains_key("dpop-nonce"));
+        assert_eq!(count(&db, "pending_registrations").await, 1);
+
+        let (status, _) = post_with_proof(&state, &prover, FINISH, body).await;
+
+        assert_eq!(status, StatusCode::CREATED);
+        assert_eq!(count(&db, "users").await, 1);
     }
 }

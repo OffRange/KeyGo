@@ -1,7 +1,7 @@
 use crate::api::{AppState, router};
 use crate::cache::LoginStates;
 use crate::db::invites;
-use crate::domain::{InviteHash, InvitePepper, Username};
+use crate::domain::{DeviceInfo, InviteHash, InvitePepper, Username};
 use crate::service::invite;
 use crate::service::login::{self, FinishLogin, StartLogin};
 use crate::service::registration::{self, FinishRegistration, Signup, StartRegistration};
@@ -13,7 +13,7 @@ use keygo_dpop::verify::DpopVerifier;
 use keygo_dpop::{DpopProver, Htm, NonceKey, ProofRequest};
 use keygo_opaque::client::{ClientLogin, ClientRegistration};
 use keygo_opaque::server::ServerSetup;
-use serde_json::Value;
+use serde_json::{Value, json};
 use sqlx::{AssertSqlSafe, PgPool};
 use std::sync::Arc;
 use std::time::Duration;
@@ -25,6 +25,12 @@ const JKT: [u8; 32] = [7; 32];
 
 pub fn username(raw: &str) -> Username {
     Username::parse(raw).unwrap()
+}
+pub fn device_json() -> Value {
+    json!({ "name": "Pixel 9", "platform": "android", "app_version": "2.3.0" })
+}
+pub fn device_info() -> DeviceInfo {
+    serde_json::from_value(device_json()).unwrap()
 }
 pub async fn register(db: &PgPool, setup: &ServerSetup, name: &str) -> Uuid {
     let user_id = Uuid::new_v4();
@@ -46,6 +52,7 @@ pub async fn register(db: &PgPool, setup: &ServerSetup, name: &str) -> Uuid {
     let input = FinishRegistration {
         registration_id: started.registration_id,
         registration_upload: finish.upload,
+        device_info: device_info(),
     };
     registration::finish(db, input).await.unwrap();
 

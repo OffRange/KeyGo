@@ -1,3 +1,4 @@
+pub mod devices;
 pub mod invites;
 pub mod opaque_records;
 pub mod registrations;

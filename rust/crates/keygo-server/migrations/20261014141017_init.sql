@@ -5,6 +5,17 @@ create table users
     created_at timestamptz not null default now()
 );
 
+create table devices
+(
+    id           uuid primary key,
+    user_id      uuid        not null references users on delete cascade,
+    name         text        not null,
+    platform     text        not null,
+    app_version  text        not null,
+    created_at   timestamptz not null default now(),
+    last_seen_at timestamptz not null default now()
+);
+
 create table invites
 (
     code_hash  bytea primary key,
