@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "insert into devices (id, user_id, name, platform, app_version)\n                  values ($1, $2, $3, $4, $5)",
+  "query": "insert into devices (id, user_id, name, platform, app_version)\n         values ($1, $2, $3, $4, $5)",
   "describe": {
     "columns": [],
     "parameters": {
@@ -14,5 +14,5 @@
     },
     "nullable": []
   },
-  "hash": "b023eba0b2d892728dcf8e7e618db2379782897daa733902917e64f3e811c940"
+  "hash": "fe7cc39f3f5ac35261f000ad298f26f11cb76275d9fe14b92654d10dfa82d0f6"
 }

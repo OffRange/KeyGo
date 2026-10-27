@@ -4,6 +4,7 @@ use axum::extract::DefaultBodyLimit;
 
 mod login;
 mod register;
+mod session;
 
 /// The largest legitimate body is a key bundle of a few hundred bytes. Every auth endpoint is
 /// reachable without a token, so anything larger is refused before it is buffered and parsed.

@@ -1,4 +1,5 @@
 use crate::api::dpop::DpopProof;
+use crate::api::routes::auth::session::Session;
 use crate::api::{AppState, ErrorCode, HttpError, Json, ServerResult};
 use crate::domain::{DeviceInfo, RegistrationId, Username};
 use crate::service::registration::{self, FinishRegistration, StartRegistration};
@@ -77,6 +78,7 @@ struct FinishRequest {
 #[derive(Serialize)]
 struct FinishResponse {
     username: Username,
+    session: Session,
 }
 
 impl HttpError for registration::FinishError {
@@ -91,22 +93,23 @@ impl HttpError for registration::FinishError {
 
 async fn finish(
     State(state): State<AppState>,
-    // TODO: bind the new session to `proof.jkt`
-    _proof: DpopProof,
+    proof: DpopProof,
     Json(request): Json<FinishRequest>,
 ) -> ServerResult<(StatusCode, Json<FinishResponse>)> {
     let input = FinishRegistration {
         registration_id: request.registration_id,
         registration_upload: request.registration_upload,
         device_info: request.device,
+        jkt: proof.jkt,
     };
 
-    let finished = registration::finish(&state.db, input).await?;
+    let finished = registration::finish(&state.db, &state.token_issuer, input).await?;
 
     Ok((
         StatusCode::CREATED,
         Json(FinishResponse {
             username: finished.username,
+            session: finished.session.into(),
         }),
     ))
 }
@@ -182,9 +185,50 @@ mod tests {
         let (status, finished) = post_with_proof(&state, &prover(), FINISH, body).await;
 
         assert_eq!(status, StatusCode::CREATED);
-        assert_eq!(finished, json!({ "username": "ada" }));
+        assert_eq!(finished["username"], "ada");
         assert_eq!(count(&db, "users").await, 1);
         assert_eq!(count(&db, "devices").await, 1);
+        assert_eq!(count(&db, "sessions").await, 1);
+    }
+
+    #[sqlx::test]
+    async fn finish_returns_a_session_bound_to_the_proof_key(db: PgPool) {
+        let state = app_state(&db, &ServerSetup::generate());
+        let prover = prover();
+        let (client, body) = start_body("ada", Uuid::new_v4());
+        let (_, started) = post_to(state.clone(), START, body).await;
+
+        let (status, finished) =
+            post_with_proof(&state, &prover, FINISH, finish_body(client, &started)).await;
+
+        assert_eq!(status, StatusCode::CREATED);
+        let session = &finished["session"];
+        let device_id: Uuid = sqlx::query_scalar("select id from devices")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        assert_eq!(session["device_id"], device_id.to_string());
+        assert_eq!(
+            session["refresh_expires_in"],
+            crate::service::session::REFRESH_TTL.as_secs(),
+        );
+        let token = session["refresh_token"].as_str().unwrap();
+        assert!(token.starts_with("kgr_"), "{token}");
+        assert_eq!(token.len(), "kgr_".len() + 43);
+        let jkt: Vec<u8> = sqlx::query_scalar("select dpop_jkt from sessions")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        assert_eq!(jkt, prover.jkt());
+        assert_eq!(
+            session["access_expires_in"],
+            crate::domain::ACCESS_TOKEN_LIFETIME.as_secs(),
+        );
+        let claims = state
+            .token_issuer
+            .verify(session["access_token"].as_str().unwrap())
+            .unwrap();
+        assert_eq!(claims.jkt(), prover.jkt());
     }
 
     fn invite_only_state(db: &PgPool, setup: &ServerSetup) -> AppState {

@@ -176,7 +176,7 @@ mod tests {
     const NONCE_LIFETIME: u64 = 5 * 60;
 
     fn verifier_started_at(started_at: u64) -> DpopVerifier {
-        DpopVerifier::started_at(NonceKey::new([3; 32]), started_at)
+        DpopVerifier::started_at(NonceKey::new(&[3; 32]), started_at)
     }
 
     /// Verifies at `NOW` against a server that has been up long enough to accept nonce-less proofs.

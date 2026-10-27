@@ -1,4 +1,4 @@
-use crate::domain::InvitePepper;
+use crate::domain::{AccessTokenKey, InvitePepper};
 use crate::secrets::{DbPassword, DpopNonceKey, OpaqueSetup, SecretStore};
 use clap::{Args, ValueEnum};
 use keygo_dpop::NonceKey;
@@ -110,5 +110,9 @@ impl SecretsConfig {
 
     pub(crate) fn dpop_nonce_key(&self) -> anyhow::Result<NonceKey> {
         self.store().read::<DpopNonceKey>()
+    }
+
+    pub(crate) fn access_token_key(&self) -> anyhow::Result<AccessTokenKey> {
+        self.store().read::<AccessTokenKey>()
     }
 }

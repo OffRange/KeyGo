@@ -1,7 +1,9 @@
 use crate::api::{AppState, router};
 use crate::cache::LoginStates;
-use crate::db::invites;
-use crate::domain::{DeviceInfo, InviteHash, InvitePepper, Username};
+use crate::db::{devices, invites, users};
+use crate::domain::{
+    AccessTokenKey, Device, DeviceId, DeviceInfo, InviteHash, InvitePepper, TokenIssuer, Username,
+};
 use crate::service::invite;
 use crate::service::login::{self, FinishLogin, StartLogin};
 use crate::service::registration::{self, FinishRegistration, Signup, StartRegistration};
@@ -21,7 +23,12 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 pub const PASSWORD: &[u8] = b"correct horse battery staple";
-const JKT: [u8; 32] = [7; 32];
+pub const JKT: [u8; 32] = [7; 32];
+pub const ISS: &str = "http://localhost";
+
+pub fn token_issuer() -> TokenIssuer {
+    TokenIssuer::new(AccessTokenKey::new(&[0; 32]), ISS)
+}
 
 pub fn username(raw: &str) -> Username {
     Username::parse(raw).unwrap()
@@ -32,6 +39,13 @@ pub fn device_json() -> Value {
 pub fn device_info() -> DeviceInfo {
     serde_json::from_value(device_json()).unwrap()
 }
+pub fn device(id: Option<DeviceId>) -> Device {
+    Device {
+        id,
+        info: device_info(),
+    }
+}
+
 pub async fn register(db: &PgPool, setup: &ServerSetup, name: &str) -> Uuid {
     let user_id = Uuid::new_v4();
     let (client, registration_request) = ClientRegistration::start(PASSWORD).unwrap();
@@ -53,10 +67,25 @@ pub async fn register(db: &PgPool, setup: &ServerSetup, name: &str) -> Uuid {
         registration_id: started.registration_id,
         registration_upload: finish.upload,
         device_info: device_info(),
+        jkt: JKT,
     };
-    registration::finish(db, input).await.unwrap();
+    registration::finish(db, &token_issuer(), input)
+        .await
+        .unwrap();
 
     user_id
+}
+pub async fn insert_device(db: &PgPool) -> (Uuid, DeviceId) {
+    let user_id = Uuid::new_v4();
+    let device_id = DeviceId::random();
+    let mut conn = db.acquire().await.unwrap();
+    users::insert(&mut conn, user_id, &username("ada"))
+        .await
+        .unwrap();
+    devices::insert(&mut conn, device_id, user_id, &device_info())
+        .await
+        .unwrap();
+    (user_id, device_id)
 }
 pub async fn start_login(
     db: &PgPool,
@@ -74,13 +103,18 @@ pub async fn start_login(
         login::start(db, login_states, setup, input).await.unwrap(),
     )
 }
-pub fn finish_login(client: ClientLogin, started: login::Started) -> FinishLogin {
+pub fn finish_login(
+    client: ClientLogin,
+    started: login::Started,
+    device_id: Option<DeviceId>,
+) -> FinishLogin {
     let finish = client
         .finish(PASSWORD, started.credential_response)
         .unwrap();
     FinishLogin {
         login_id: started.login_id,
         credential_finalization: finish.finalization,
+        device: device(device_id),
         binding: finish.session_key.dpop_binding(&JKT),
         jkt: JKT,
     }
@@ -101,10 +135,10 @@ pub async fn insert_invite(db: &PgPool, hash: InviteHash) {
 const INVITE_PEPPER: [u8; 32] = [1; 32];
 
 pub fn invite_only() -> Signup {
-    Signup::InviteOnly(Arc::new(InvitePepper::new(INVITE_PEPPER)))
+    Signup::InviteOnly(Arc::new(InvitePepper::new(&INVITE_PEPPER)))
 }
 pub async fn create_invite(db: &PgPool) -> String {
-    let pepper = InvitePepper::new(INVITE_PEPPER);
+    let pepper = InvitePepper::new(&INVITE_PEPPER);
     let created = invite::create(db, &pepper, Duration::from_hours(24))
         .await
         .unwrap();
@@ -137,12 +171,13 @@ pub async fn expires_in_secs(db: &PgPool, table: &str) -> f64 {
 /// Requests that must see each other's login states share one `AppState` through `post_to`.
 pub fn app_state(db: &PgPool, setup: &ServerSetup) -> AppState {
     AppState {
-        public_url: url::Url::parse("http://localhost").unwrap(),
+        public_url: url::Url::parse(ISS).unwrap(),
         signup: Signup::Open,
         opaque_state: setup.clone(),
         db: db.clone(),
         login_states: LoginStates::new(),
-        dpop_verifier: Arc::new(DpopVerifier::new(NonceKey::new([0; 32]))),
+        dpop_verifier: Arc::new(DpopVerifier::new(NonceKey::new(&[0; 32]))),
+        token_issuer: Arc::new(token_issuer()),
     }
 }
 pub async fn post(db: &PgPool, setup: &ServerSetup, uri: &str, body: Value) -> (StatusCode, Value) {

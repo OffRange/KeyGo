@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into refresh_tokens (token_hash, session_id, expires_at)\n         values ($1, $2, now() + make_interval(secs => $3))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bytea",
+        "Uuid",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7e72ddd24d19ed2e6e1b602f9302e9d47ad15b0c02943c181293f3092c2483a7"
+}

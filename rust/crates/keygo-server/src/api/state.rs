@@ -1,5 +1,6 @@
 use crate::cache::LoginStates;
 use crate::config::DeploymentConfig;
+use crate::domain::TokenIssuer;
 use crate::service::registration::Signup;
 use anyhow::Context;
 use keygo_dpop::verify::DpopVerifier;
@@ -15,13 +16,16 @@ pub struct AppState {
     pub db: PgPool,
     pub login_states: LoginStates,
     pub dpop_verifier: Arc<DpopVerifier>,
+    pub token_issuer: Arc<TokenIssuer>,
 }
 
 impl AppState {
     pub fn new(config: &DeploymentConfig, db: PgPool) -> anyhow::Result<Self> {
         let secrets = &config.secrets;
+        let public_url = Url::parse(&config.server.public_url).context("invalid public url")?;
+        let issuer = public_url.as_str().trim_end_matches('/').to_owned();
         Ok(Self {
-            public_url: Url::parse(&config.server.public_url).context("invalid public url")?,
+            public_url,
             signup: if config.server.allow_signups {
                 Signup::Open
             } else {
@@ -31,6 +35,7 @@ impl AppState {
             db,
             login_states: LoginStates::new(),
             dpop_verifier: Arc::new(DpopVerifier::new(secrets.dpop_nonce_key()?)),
+            token_issuer: Arc::new(TokenIssuer::new(secrets.access_token_key()?, issuer)),
         })
     }
 }

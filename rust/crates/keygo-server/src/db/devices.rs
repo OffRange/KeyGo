@@ -22,3 +22,25 @@ pub async fn insert(
 
     Ok(())
 }
+
+pub async fn attach(
+    conn: &mut PgConnection,
+    id: DeviceId,
+    user_id: Uuid,
+    device_info: &DeviceInfo,
+) -> sqlx::Result<bool> {
+    let result = sqlx::query!(
+        "update devices
+         set name = $3, platform = $4, app_version = $5, last_seen_at = now()
+         where id = $1 and user_id = $2",
+        id.as_uuid(),
+        user_id,
+        device_info.name.as_str(),
+        device_info.platform.as_str(),
+        device_info.app_version.as_str(),
+    )
+    .execute(conn)
+    .await?;
+
+    Ok(result.rows_affected() == 1)
+}

@@ -1,4 +1,4 @@
-use crate::domain::InvitePepper;
+use crate::domain::{AccessTokenKey, InvitePepper};
 use anyhow::{Context, anyhow, ensure};
 use keygo_dpop::NonceKey;
 use keygo_opaque::server::ServerSetup;
@@ -111,7 +111,7 @@ impl TypedSecret for InvitePepper {
     }
 
     fn decode(stored: &str) -> anyhow::Result<Self> {
-        Ok(Self::new(decode(stored)?))
+        Ok(Self::new(&*decode(stored)?))
     }
 }
 
@@ -126,7 +126,20 @@ impl TypedSecret for DpopNonceKey {
     }
 
     fn decode(stored: &str) -> anyhow::Result<Self::Value> {
-        Ok(NonceKey::new(decode(stored)?))
+        Ok(NonceKey::new(&*decode(stored)?))
+    }
+}
+
+impl TypedSecret for AccessTokenKey {
+    const NAME: &'static str = "access_token_key";
+    type Value = Self;
+
+    fn generate() -> anyhow::Result<SecretString> {
+        random_key()
+    }
+
+    fn decode(stored: &str) -> anyhow::Result<Self::Value> {
+        Ok(AccessTokenKey::new(&*decode(stored)?))
     }
 }
 
@@ -136,9 +149,11 @@ fn random_key() -> anyhow::Result<SecretString> {
     Ok(hex::encode(raw.as_slice()).into())
 }
 
-fn decode(stored: &str) -> anyhow::Result<[u8; 32]> {
+fn decode(stored: &str) -> anyhow::Result<Zeroizing<[u8; 32]>> {
     let raw = Zeroizing::new(hex::decode(stored).context("not hex")?);
-    let bytes = raw.as_slice().try_into().context("not 32 bytes")?;
+    ensure!(raw.len() == 32, "not 32 bytes");
+    let mut bytes = Zeroizing::new([0u8; 32]);
+    bytes.copy_from_slice(&raw);
     Ok(bytes)
 }
 
@@ -147,6 +162,7 @@ secrets! {
     OpaqueSetup,
     InvitePepper,
     DpopNonceKey,
+    AccessTokenKey,
 }
 
 #[derive(Debug, PartialEq, Eq)]

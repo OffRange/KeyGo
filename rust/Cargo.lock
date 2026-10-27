@@ -1665,6 +1665,7 @@ dependencies = [
  "axum",
  "base64 0.23.1",
  "clap",
+ "ed25519-dalek",
  "getrandom 0.4.3",
  "hex",
  "hmac 0.13.0",

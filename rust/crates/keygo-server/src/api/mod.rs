@@ -68,13 +68,14 @@ mod tests {
     pub(super) fn state() -> AppState {
         AppState {
             public_url: url::Url::parse("http://localhost").unwrap(),
-            signup: Signup::InviteOnly(Arc::new(InvitePepper::new([0; 32]))),
+            signup: Signup::InviteOnly(Arc::new(InvitePepper::new(&[0; 32]))),
             opaque_state: keygo_opaque::server::ServerSetup::generate(),
             // Lazy pools never connect until queried, so routes without a query need no database.
             db: sqlx::postgres::PgPoolOptions::new()
                 .connect_lazy_with(sqlx::postgres::PgConnectOptions::new()),
             login_states: LoginStates::new(),
-            dpop_verifier: Arc::new(DpopVerifier::new(NonceKey::new([0; 32]))),
+            dpop_verifier: Arc::new(DpopVerifier::new(NonceKey::new(&[0; 32]))),
+            token_issuer: Arc::new(crate::testing::token_issuer()),
         }
     }
 

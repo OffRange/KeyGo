@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update devices\n         set name = $3, platform = $4, app_version = $5, last_seen_at = now()\n         where id = $1 and user_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c4ee662f47c4aff1ebb955475f17632489942012f1e4f3eb128ed078b6b66d70"
+}

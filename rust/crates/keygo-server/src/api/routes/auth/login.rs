@@ -1,6 +1,7 @@
 use crate::api::dpop::DpopProof;
+use crate::api::routes::auth::session::Session;
 use crate::api::{AppState, ErrorCode, HttpError, Json, ServerResult};
-use crate::domain::{LoginId, Username};
+use crate::domain::{Device, LoginId, Username};
 use crate::service::login::{self, FinishLogin, StartLogin};
 use axum::Router;
 use axum::extract::State;
@@ -61,6 +62,7 @@ async fn start(
 struct FinishRequest {
     login_id: LoginId,
     credential_finalization: CredentialFinalization,
+    device: Device,
     dpop_binding: DpopBinding,
 }
 
@@ -68,6 +70,7 @@ struct FinishRequest {
 struct FinishResponse {
     user_id: Uuid,
     username: Username,
+    session: Session,
 }
 
 async fn finish(
@@ -78,15 +81,18 @@ async fn finish(
     let input = FinishLogin {
         login_id: request.login_id,
         credential_finalization: request.credential_finalization,
+        device: request.device,
         binding: request.dpop_binding,
         jkt: proof.jkt,
     };
 
-    let finished = login::finish(&state.db, &state.login_states, input).await?;
+    let finished =
+        login::finish(&state.db, &state.token_issuer, &state.login_states, input).await?;
 
     Ok(Json(FinishResponse {
         user_id: finished.user_id,
         username: finished.username,
+        session: finished.session.into(),
     }))
 }
 
@@ -95,7 +101,8 @@ mod tests {
     use super::*;
     use crate::api::error::render;
     use crate::testing::{
-        PASSWORD, app_state, post_to, post_with_proof, proof_post, prover, register, send,
+        PASSWORD, app_state, device_json, post_to, post_with_proof, proof_post, prover, register,
+        send,
     };
     use axum::http::StatusCode;
     use keygo_opaque::OpaqueError;
@@ -129,6 +136,7 @@ mod tests {
             "login_id": login_id,
             "credential_finalization": finish.finalization.to_base64(),
             "dpop_binding": finish.session_key.dpop_binding(jkt).to_base64(),
+            "device": device_json(),
         })
     }
 
@@ -162,8 +170,89 @@ mod tests {
         let (status, finished) = post_with_proof(&state, &prover, FINISH, body).await;
 
         assert_eq!(status, StatusCode::OK);
-        assert_eq!(finished, json!({ "user_id": user_id, "username": "ada" }));
+        assert_eq!(finished["user_id"], user_id.to_string());
+        assert_eq!(finished["username"], "ada");
         assert_eq!(state.login_states.count(), 0);
+    }
+
+    #[sqlx::test]
+    async fn finish_returns_a_session_bound_to_the_proof_key(db: PgPool) {
+        let setup = ServerSetup::generate();
+        let state = app_state(&db, &setup);
+        let user_id = register(&db, &setup, "ada").await;
+        let (client, started) = start_over_http(&state, "ada").await;
+        let prover = prover();
+        let body = finish_body(&started["login_id"], client, &started, prover.jkt());
+
+        let (_, finished) = post_with_proof(&state, &prover, FINISH, body).await;
+
+        let session = &finished["session"];
+        assert!(
+            session["refresh_token"]
+                .as_str()
+                .unwrap()
+                .starts_with("kgr_")
+        );
+        let claims = state
+            .token_issuer
+            .verify(session["access_token"].as_str().unwrap())
+            .unwrap();
+        assert_eq!(claims.user_id(), user_id);
+        assert_eq!(claims.jkt(), prover.jkt());
+        let (device_id, jkt): (Uuid, Vec<u8>) = sqlx::query_as(
+            "select device_id, dpop_jkt from sessions where id = $1 and revoked_at is null",
+        )
+        .bind(claims.session_id())
+        .fetch_one(&db)
+        .await
+        .unwrap();
+        assert_eq!(session["device_id"], device_id.to_string());
+        assert_eq!(jkt, prover.jkt());
+    }
+
+    #[sqlx::test]
+    async fn returned_device_id_is_kept_across_sign_ins(db: PgPool) {
+        let setup = ServerSetup::generate();
+        let state = app_state(&db, &setup);
+        register(&db, &setup, "ada").await;
+        let prover = prover();
+        let (client, started) = start_over_http(&state, "ada").await;
+        let body = finish_body(&started["login_id"], client, &started, prover.jkt());
+        let (_, first) = post_with_proof(&state, &prover, FINISH, body).await;
+        let device_id = &first["session"]["device_id"];
+
+        let (client, started) = start_over_http(&state, "ada").await;
+        let mut body = finish_body(&started["login_id"], client, &started, prover.jkt());
+        body["device"]["device_id"] = device_id.clone();
+        let (status, second) = post_with_proof(&state, &prover, FINISH, body).await;
+
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(&second["session"]["device_id"], device_id);
+        let reasons: Vec<Option<String>> = sqlx::query_scalar(
+            "select revoke_reason from sessions where device_id = $1 order by created_at",
+        )
+        .bind(Uuid::parse_str(device_id.as_str().unwrap()).unwrap())
+        .fetch_all(&db)
+        .await
+        .unwrap();
+        assert_eq!(reasons, [Some("replaced".to_owned()), None]);
+    }
+
+    #[sqlx::test]
+    async fn finish_requires_a_device(db: PgPool) {
+        let setup = ServerSetup::generate();
+        let state = app_state(&db, &setup);
+        register(&db, &setup, "ada").await;
+        let (client, started) = start_over_http(&state, "ada").await;
+        let prover = prover();
+        let mut body = finish_body(&started["login_id"], client, &started, prover.jkt());
+        body.as_object_mut().unwrap().remove("device");
+
+        let (status, body) = post_with_proof(&state, &prover, FINISH, body).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["code"], "invalid_request");
+        assert_eq!(state.login_states.count(), 1);
     }
 
     #[sqlx::test]
