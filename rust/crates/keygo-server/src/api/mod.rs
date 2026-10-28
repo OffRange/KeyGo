@@ -1,9 +1,12 @@
+mod authenticated;
 mod dpop;
 mod error;
 mod extract;
 mod routes;
 mod state;
 
+use axum::http::header::AsHeaderName;
+use axum::http::{HeaderMap, HeaderValue};
 pub use error::{ErrorCode, HttpError, NotFound, ServerError, ServerResult};
 pub use extract::Json;
 pub use state::AppState;
@@ -28,6 +31,14 @@ fn v1() -> Router<AppState> {
 
 async fn not_found() -> ServerError {
     NotFound.into()
+}
+
+fn single_header<A: AsHeaderName>(headers: &HeaderMap, name: A) -> Option<&HeaderValue> {
+    let mut values = headers.get_all(name).iter();
+    match (values.next(), values.next()) {
+        (Some(value), None) => Some(value),
+        _ => None,
+    }
 }
 
 #[cfg(test)]

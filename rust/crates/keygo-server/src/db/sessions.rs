@@ -1,3 +1,4 @@
+use crate::db::corrupt;
 use crate::domain::{DeviceId, RevokeReason, SessionId};
 use sqlx::PgConnection;
 use std::time::Duration;
@@ -59,6 +60,45 @@ pub async fn revoke(
     .await?;
 
     Ok(())
+}
+
+pub enum SessionState {
+    Live,
+    Expired,
+    Revoked(Option<RevokeReason>),
+}
+
+pub async fn state(conn: &mut PgConnection, session_id: SessionId) -> sqlx::Result<SessionState> {
+    let Some(record) = sqlx::query!(
+        r#"select revoked_at is not null as "revoked!",
+           revoke_reason,
+           expires_at <= now() as "expired!"
+           from sessions
+           where id = $1"#,
+        session_id
+    )
+    .fetch_optional(conn)
+    .await?
+    else {
+        return Ok(SessionState::Revoked(None));
+    };
+
+    if !record.revoked {
+        return Ok(if record.expired {
+            SessionState::Expired
+        } else {
+            SessionState::Live
+        });
+    }
+
+    let reason = record
+        .revoke_reason
+        .as_deref()
+        .map(str::parse)
+        .transpose()
+        .map_err(corrupt)?;
+
+    Ok(SessionState::Revoked(reason))
 }
 
 pub async fn delete_ended(conn: &mut PgConnection, retention: Duration) -> sqlx::Result<u64> {
@@ -279,5 +319,56 @@ mod tests {
 
         assert_eq!(delete_ended(&mut conn, RETENTION).await.unwrap(), 0);
         assert_eq!(count(&db, "sessions").await, 2);
+    }
+
+    async fn state_of(db: &PgPool, id: SessionId) -> SessionState {
+        let mut conn = db.acquire().await.unwrap();
+        state(&mut conn, id).await.unwrap()
+    }
+
+    async fn open_one(db: &PgPool) -> SessionId {
+        let (_, device_id) = insert_device(db).await;
+        let id = SessionId::new_v4();
+        let mut conn = db.acquire().await.unwrap();
+        insert(&mut conn, id, device_id, &JKT, AUTH_TIME, TTL)
+            .await
+            .unwrap();
+        id
+    }
+
+    #[sqlx::test]
+    async fn state_of_a_fresh_session_is_live(db: PgPool) {
+        let id = open_one(&db).await;
+
+        assert!(matches!(state_of(&db, id).await, SessionState::Live));
+    }
+
+    #[sqlx::test]
+    async fn state_past_the_cap_is_expired(db: PgPool) {
+        let id = open_one(&db).await;
+        crate::testing::expire(&db, "sessions").await;
+
+        assert!(matches!(state_of(&db, id).await, SessionState::Expired));
+    }
+
+    #[sqlx::test]
+    async fn revocation_wins_over_expiry(db: PgPool) {
+        let id = open_one(&db).await;
+        let mut conn = db.acquire().await.unwrap();
+        revoke(&mut conn, id, RevokeReason::Replaced).await.unwrap();
+        crate::testing::expire(&db, "sessions").await;
+
+        assert!(matches!(
+            state_of(&db, id).await,
+            SessionState::Revoked(Some(RevokeReason::Replaced))
+        ));
+    }
+
+    #[sqlx::test]
+    async fn state_of_a_missing_session_is_revoked_without_a_reason(db: PgPool) {
+        assert!(matches!(
+            state_of(&db, SessionId::new_v4()).await,
+            SessionState::Revoked(None)
+        ));
     }
 }

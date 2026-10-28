@@ -26,6 +26,8 @@ pub enum ErrorCode {
     RegistrationExpired,
     LoginExpired,
     // session
+    FreshAuthRequired,
+    InvalidToken,
     RefreshExpired,
     SessionRevoked,
     // dpop
@@ -43,10 +45,13 @@ impl ErrorCode {
             | Self::LoginExpired
             | Self::InvalidDpopProof
             | Self::UseDpopNonce => StatusCode::BAD_REQUEST,
-            Self::InvalidCredentials | Self::RefreshExpired | Self::SessionRevoked => {
-                StatusCode::UNAUTHORIZED
+            Self::InvalidCredentials
+            | Self::InvalidToken
+            | Self::RefreshExpired
+            | Self::SessionRevoked => StatusCode::UNAUTHORIZED,
+            Self::InviteRequired | Self::InviteInvalid | Self::FreshAuthRequired => {
+                StatusCode::FORBIDDEN
             }
-            Self::InviteRequired | Self::InviteInvalid => StatusCode::FORBIDDEN,
             Self::NotFound => StatusCode::NOT_FOUND,
             Self::UsernameTaken | Self::UserIdTaken => StatusCode::CONFLICT,
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,

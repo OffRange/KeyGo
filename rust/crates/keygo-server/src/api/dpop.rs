@@ -1,4 +1,4 @@
-use crate::api::{AppState, ErrorCode, HttpError, ServerError};
+use crate::api::{AppState, ErrorCode, HttpError, ServerError, single_header};
 use axum::extract::{FromRequestParts, OriginalUri};
 use axum::http::request::Parts;
 use axum::http::{HeaderMap, HeaderName, HeaderValue, Method};
@@ -20,24 +20,33 @@ impl FromRequestParts<AppState> for DpopProof {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let proof = single_header(&parts.headers, &DPOP)
-            .and_then(|value| value.to_str().ok())
-            .ok_or(VerifyError::Invalid(InvalidProof::Malformed))?;
-        let htm = htm(&parts.method).ok_or(VerifyError::Invalid(InvalidProof::Request))?;
-        let htu = expected_htu(parts, &state.public_url);
-
-        let expected = Expected {
-            htm,
-            htu: htu.as_str(),
-            access_token: None,
-            jkt: None,
-        };
-        let jkt = state
-            .dpop_verifier
-            .verify(proof, expected)
-            .inspect_err(|err| tracing::debug!(?err, "dpop proof rejected"))?;
+        let jkt = verify_dpop(parts, state, None, None)?;
         Ok(DpopProof { jkt })
     }
+}
+
+pub(super) fn verify_dpop(
+    parts: &Parts,
+    state: &AppState,
+    access_token: Option<&str>,
+    jkt: Option<&[u8; 32]>,
+) -> Result<[u8; 32], VerifyError> {
+    let proof = single_header(&parts.headers, DPOP)
+        .and_then(|value| value.to_str().ok())
+        .ok_or(VerifyError::Invalid(InvalidProof::Malformed))?;
+    let htm = htm(&parts.method).ok_or(VerifyError::Invalid(InvalidProof::Request))?;
+    let htu = expected_htu(parts, &state.public_url);
+
+    let expected = Expected {
+        htm,
+        htu: htu.as_str(),
+        access_token,
+        jkt,
+    };
+    state
+        .dpop_verifier
+        .verify(proof, expected)
+        .inspect_err(|err| tracing::debug!(?err, "dpop proof rejected"))
 }
 
 impl HttpError for VerifyError {
@@ -57,14 +66,6 @@ impl HttpError for VerifyError {
             }
             Self::Invalid(_) | Self::Busy => HeaderMap::new(),
         }
-    }
-}
-
-fn single_header<'a>(headers: &'a HeaderMap, name: &HeaderName) -> Option<&'a HeaderValue> {
-    let mut values = headers.get_all(name).iter();
-    match (values.next(), values.next()) {
-        (Some(value), None) => Some(value),
-        _ => None,
     }
 }
 
