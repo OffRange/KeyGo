@@ -12,7 +12,7 @@ pub async fn claim(
     if let Some(id) = requested.id
         && devices::attach(tx, id, user_id, info).await?
     {
-        sessions::revoke(tx, id, RevokeReason::Replaced).await?;
+        sessions::revoke_by_device(tx, id, RevokeReason::Replaced).await?;
         return Ok(id);
     }
 

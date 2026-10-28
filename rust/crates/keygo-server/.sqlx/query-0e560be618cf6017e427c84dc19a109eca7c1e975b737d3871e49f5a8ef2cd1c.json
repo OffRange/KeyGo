@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "with claimed as (\n            update refresh_tokens set rotated_at = now()\n            where token_hash = $1 and rotated_at is null\n            returning session_id\n         )\n         insert into refresh_tokens (token_hash, session_id, expires_at)\n         select $2, s.id, least(now() + make_interval(secs => $3), s.expires_at)\n         from claimed c\n         join sessions s on s.id = c.session_id\n         returning extract(epoch from expires_at - now())::int8 as \"expires_in!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "expires_in!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea",
+        "Bytea",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "0e560be618cf6017e427c84dc19a109eca7c1e975b737d3871e49f5a8ef2cd1c"
+}

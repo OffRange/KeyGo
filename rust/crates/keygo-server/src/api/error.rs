@@ -25,6 +25,9 @@ pub enum ErrorCode {
     InviteInvalid,
     RegistrationExpired,
     LoginExpired,
+    // session
+    RefreshExpired,
+    SessionRevoked,
     // dpop
     InvalidDpopProof,
     UseDpopNonce,
@@ -40,7 +43,9 @@ impl ErrorCode {
             | Self::LoginExpired
             | Self::InvalidDpopProof
             | Self::UseDpopNonce => StatusCode::BAD_REQUEST,
-            Self::InvalidCredentials => StatusCode::UNAUTHORIZED,
+            Self::InvalidCredentials | Self::RefreshExpired | Self::SessionRevoked => {
+                StatusCode::UNAUTHORIZED
+            }
             Self::InviteRequired | Self::InviteInvalid => StatusCode::FORBIDDEN,
             Self::NotFound => StatusCode::NOT_FOUND,
             Self::UsernameTaken | Self::UserIdTaken => StatusCode::CONFLICT,
@@ -59,6 +64,10 @@ pub trait HttpError: std::error::Error + Send + Sync + 'static {
     fn headers(&self) -> HeaderMap {
         HeaderMap::new()
     }
+
+    fn reason(&self) -> Option<&'static str> {
+        None
+    }
 }
 
 pub struct ServerError(Box<dyn HttpError>);
@@ -74,6 +83,7 @@ impl<E: HttpError> From<E> for ServerError {
 impl IntoResponse for ServerError {
     fn into_response(self) -> Response {
         let (code, status, headers) = (self.0.code(), self.0.status(), self.0.headers());
+        let reason = self.0.reason();
         let message = if status.is_server_error() {
             let source = anyhow::Error::from_boxed(self.0);
             tracing::error!(?code, "request failed: {source:#}");
@@ -82,12 +92,12 @@ impl IntoResponse for ServerError {
             self.0.to_string()
         };
 
-        (
-            status,
-            headers,
-            axum::Json(json!({"code": code, "message": message})),
-        )
-            .into_response()
+        let mut body = json!({"code": code, "message": message});
+        if let Some(reason) = reason {
+            body["reason"] = reason.into();
+        }
+
+        (status, headers, axum::Json(body)).into_response()
     }
 }
 
@@ -233,6 +243,38 @@ mod tests {
                 "DPoP".parse().unwrap(),
             )])
         }
+    }
+
+    #[derive(Debug, thiserror::Error)]
+    #[error("revoked")]
+    struct Revoked;
+
+    impl HttpError for Revoked {
+        fn code(&self) -> ErrorCode {
+            ErrorCode::SessionRevoked
+        }
+
+        fn reason(&self) -> Option<&'static str> {
+            Some("replaced")
+        }
+    }
+
+    #[tokio::test]
+    async fn error_reason_reaches_the_body() {
+        let (status, body) = render(Revoked).await;
+
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            body,
+            json!({ "code": "session_revoked", "message": "revoked", "reason": "replaced" }),
+        );
+    }
+
+    #[tokio::test]
+    async fn errors_without_a_reason_omit_it() {
+        let (_, body) = render(NotFound).await;
+
+        assert!(body.get("reason").is_none());
     }
 
     #[tokio::test]

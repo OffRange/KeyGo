@@ -1,13 +1,17 @@
+use crate::db::refresh_tokens::TokenStatus;
 use crate::db::{refresh_tokens, sessions};
 use crate::domain::{
-    ACCESS_TOKEN_LIFETIME, AccessToken, DeviceId, RefreshToken, SessionId, TokenIssuer, unix_now,
+    ACCESS_TOKEN_LIFETIME, AccessToken, DeviceId, RefreshToken, RevokeReason, SessionId,
+    TokenIssuer, unix_now,
 };
-use sqlx::{Connection, PgConnection};
+use sqlx::{Connection, PgConnection, PgPool, PgTransaction};
 use std::time::Duration;
+use thiserror::Error;
 use uuid::Uuid;
 
 pub const SESSION_LIFETIME: Duration = Duration::from_hours(180 * 24);
 pub const REFRESH_TTL: Duration = Duration::from_hours(30 * 24);
+pub const SESSION_RETENTION: Duration = Duration::from_hours(30 * 24);
 
 pub struct Issued {
     pub device_id: DeviceId,
@@ -31,7 +35,6 @@ pub async fn issue(
     sessions::insert(
         &mut tx,
         session_id,
-        user_id,
         device_id,
         jkt,
         auth_time,
@@ -52,11 +55,78 @@ pub async fn issue(
     })
 }
 
+#[derive(Debug, Error)]
+pub enum RefreshError {
+    #[error("session revoked")]
+    Revoked(Option<RevokeReason>),
+    #[error("refresh token expired")]
+    Expired,
+    #[error("proof key is not the session's key")]
+    WrongKey,
+    #[error("database error")]
+    Db(#[from] sqlx::Error),
+}
+
+pub async fn refresh(
+    db: &PgPool,
+    token_issuer: &TokenIssuer,
+    refresh_token: &RefreshToken,
+    jkt: &[u8; 32],
+) -> Result<Issued, RefreshError> {
+    let mut tx = db.begin().await?;
+    let digest = refresh_token.digest();
+    let Some(presented) = refresh_tokens::find(&mut tx, &digest).await? else {
+        return Err(RefreshError::Revoked(None));
+    };
+
+    match presented.status {
+        TokenStatus::Revoked(reason) => return Err(RefreshError::Revoked(reason)),
+        TokenStatus::Expired => return Err(RefreshError::Expired),
+        TokenStatus::Rotated => return reuse_detected(tx, presented.session_id).await,
+        TokenStatus::Live => {}
+    }
+
+    // Checked only for a live token: a rotated one revokes its session whichever key presents it.
+    if presented.dpop_jkt != *jkt {
+        return Err(RefreshError::WrongKey);
+    }
+
+    let new_refresh_token = RefreshToken::generate();
+    let rotated =
+        refresh_tokens::rotate(&mut tx, &digest, &new_refresh_token.digest(), REFRESH_TTL).await?;
+    let Some(refresh_expires_in) = rotated else {
+        return reuse_detected(tx, presented.session_id).await;
+    };
+    tx.commit().await?;
+
+    Ok(Issued {
+        device_id: presented.device_id,
+        access_token: token_issuer.issue(
+            presented.user_id,
+            presented.session_id,
+            presented.auth_time,
+            jkt,
+        ),
+        access_expires_in: ACCESS_TOKEN_LIFETIME,
+        refresh_token: new_refresh_token,
+        refresh_expires_in,
+    })
+}
+
+async fn reuse_detected<T>(
+    mut tx: PgTransaction<'_>,
+    session_id: SessionId,
+) -> Result<T, RefreshError> {
+    sessions::revoke(&mut tx, session_id, RevokeReason::ReuseDetected).await?;
+    tx.commit().await?;
+    Err(RefreshError::Revoked(Some(RevokeReason::ReuseDetected)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::domain::RevokeReason;
-    use crate::testing::{JKT, count, expires_in_secs, insert_device, token_issuer};
+    use crate::testing::{JKT, count, expire, expires_in_secs, insert_device, token_issuer};
     use sqlx::PgPool;
 
     fn assert_expires_after(remaining: f64, ttl: Duration) {
@@ -77,12 +147,11 @@ mod tests {
 
         assert_eq!(issued.device_id, device_id);
         assert_eq!(issued.refresh_expires_in, REFRESH_TTL);
-        let stored: (Uuid, Uuid, Vec<u8>) =
-            sqlx::query_as("select device_id, user_id, dpop_jkt from sessions")
-                .fetch_one(&db)
-                .await
-                .unwrap();
-        assert_eq!(stored, (device_id.as_uuid(), user_id, JKT.to_vec()));
+        let stored: (Uuid, Vec<u8>) = sqlx::query_as("select device_id, dpop_jkt from sessions")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        assert_eq!(stored, (device_id.as_uuid(), JKT.to_vec()));
         assert_expires_after(expires_in_secs(&db, "sessions").await, SESSION_LIFETIME);
     }
 
@@ -134,7 +203,7 @@ mod tests {
         let first = issue(&mut conn, &token_issuer(), user_id, device_id, &JKT)
             .await
             .unwrap();
-        sessions::revoke(&mut conn, device_id, RevokeReason::Replaced)
+        sessions::revoke_by_device(&mut conn, device_id, RevokeReason::Replaced)
             .await
             .unwrap();
         let second = issue(&mut conn, &token_issuer(), user_id, device_id, &JKT)
@@ -197,5 +266,169 @@ mod tests {
         assert!(err.as_database_error().unwrap().is_foreign_key_violation());
         assert_eq!(count(&db, "sessions").await, 0);
         assert_eq!(count(&db, "refresh_tokens").await, 0);
+    }
+
+    async fn issued(db: &PgPool) -> Issued {
+        let (user_id, device_id) = insert_device(db).await;
+        let mut conn = db.acquire().await.unwrap();
+        issue(&mut conn, &token_issuer(), user_id, device_id, &JKT)
+            .await
+            .unwrap()
+    }
+
+    async fn revoke_reason(db: &PgPool) -> Option<String> {
+        sqlx::query_scalar("select revoke_reason from sessions")
+            .fetch_one(db)
+            .await
+            .unwrap()
+    }
+
+    #[sqlx::test]
+    async fn refresh_rotates_within_the_same_session(db: PgPool) {
+        let first = issued(&db).await;
+        sqlx::query("update sessions set auth_time = to_timestamp(1791504000)")
+            .execute(&db)
+            .await
+            .unwrap();
+
+        let refreshed = refresh(&db, &token_issuer(), &first.refresh_token, &JKT)
+            .await
+            .unwrap();
+
+        let before = token_issuer().verify(first.access_token.expose()).unwrap();
+        let after = token_issuer()
+            .verify(refreshed.access_token.expose())
+            .unwrap();
+        assert_eq!(after.session_id(), before.session_id());
+        assert_eq!(after.user_id(), before.user_id());
+        assert_eq!(after.jkt(), &JKT);
+        assert_eq!(after.auth_time(), 1_791_504_000);
+        assert_eq!(refreshed.device_id, first.device_id);
+        assert_ne!(
+            refreshed.refresh_token.digest(),
+            first.refresh_token.digest()
+        );
+        assert!(REFRESH_TTL - refreshed.refresh_expires_in <= Duration::from_secs(5));
+        assert_eq!(count(&db, "refresh_tokens").await, 2);
+    }
+
+    #[sqlx::test]
+    async fn refreshed_token_can_be_refreshed_again(db: PgPool) {
+        let first = issued(&db).await;
+        let second = refresh(&db, &token_issuer(), &first.refresh_token, &JKT)
+            .await
+            .unwrap();
+
+        let third = refresh(&db, &token_issuer(), &second.refresh_token, &JKT).await;
+
+        assert!(third.is_ok());
+    }
+
+    #[sqlx::test]
+    async fn reusing_a_rotated_token_revokes_the_session(db: PgPool) {
+        let first = issued(&db).await;
+        let second = refresh(&db, &token_issuer(), &first.refresh_token, &JKT)
+            .await
+            .unwrap();
+
+        let reused = refresh(&db, &token_issuer(), &first.refresh_token, &JKT).await;
+
+        assert!(matches!(
+            reused,
+            Err(RefreshError::Revoked(Some(RevokeReason::ReuseDetected))),
+        ));
+        assert_eq!(revoke_reason(&db).await.as_deref(), Some("reuse_detected"));
+        let child = refresh(&db, &token_issuer(), &second.refresh_token, &JKT).await;
+        assert!(matches!(
+            child,
+            Err(RefreshError::Revoked(Some(RevokeReason::ReuseDetected))),
+        ));
+    }
+
+    #[sqlx::test]
+    async fn reuse_from_another_key_revokes_the_session_too(db: PgPool) {
+        let first = issued(&db).await;
+        refresh(&db, &token_issuer(), &first.refresh_token, &JKT)
+            .await
+            .unwrap();
+
+        let reused = refresh(&db, &token_issuer(), &first.refresh_token, &[0x41; 32]).await;
+
+        assert!(matches!(
+            reused,
+            Err(RefreshError::Revoked(Some(RevokeReason::ReuseDetected))),
+        ));
+        assert_eq!(revoke_reason(&db).await.as_deref(), Some("reuse_detected"));
+    }
+
+    #[sqlx::test]
+    async fn a_live_token_from_another_key_stays_live(db: PgPool) {
+        let first = issued(&db).await;
+
+        let wrong = refresh(&db, &token_issuer(), &first.refresh_token, &[0x41; 32]).await;
+
+        assert!(matches!(wrong, Err(RefreshError::WrongKey)));
+        assert_eq!(revoke_reason(&db).await, None);
+        assert!(
+            refresh(&db, &token_issuer(), &first.refresh_token, &JKT)
+                .await
+                .is_ok()
+        );
+    }
+
+    #[sqlx::test]
+    async fn concurrent_refreshes_with_one_token_revoke_the_session(db: PgPool) {
+        let first = issued(&db).await;
+        let issuer = token_issuer();
+
+        let (a, b) = tokio::join!(
+            refresh(&db, &issuer, &first.refresh_token, &JKT),
+            refresh(&db, &issuer, &first.refresh_token, &JKT),
+        );
+
+        let reused = |result: &Result<Issued, RefreshError>| {
+            matches!(
+                result,
+                Err(RefreshError::Revoked(Some(RevokeReason::ReuseDetected)))
+            )
+        };
+        assert!(a.is_ok() != b.is_ok(), "exactly one refresh succeeds");
+        assert!(reused(&a) || reused(&b));
+        assert_eq!(count(&db, "refresh_tokens").await, 2);
+        assert_eq!(revoke_reason(&db).await.as_deref(), Some("reuse_detected"));
+    }
+
+    #[sqlx::test]
+    async fn expired_token_is_refused_without_revoking(db: PgPool) {
+        let first = issued(&db).await;
+        expire(&db, "refresh_tokens").await;
+
+        let result = refresh(&db, &token_issuer(), &first.refresh_token, &JKT).await;
+
+        assert!(matches!(result, Err(RefreshError::Expired)));
+        assert_eq!(revoke_reason(&db).await, None);
+    }
+
+    #[sqlx::test]
+    async fn token_of_a_revoked_session_answers_its_reason(db: PgPool) {
+        let first = issued(&db).await;
+        let mut conn = db.acquire().await.unwrap();
+        sessions::revoke_by_device(&mut conn, first.device_id, RevokeReason::Replaced)
+            .await
+            .unwrap();
+
+        let result = refresh(&db, &token_issuer(), &first.refresh_token, &JKT).await;
+
+        assert!(matches!(
+            result,
+            Err(RefreshError::Revoked(Some(RevokeReason::Replaced))),
+        ));
+    }
+
+    #[sqlx::test]
+    async fn unknown_token_is_revoked_without_a_reason(db: PgPool) {
+        let result = refresh(&db, &token_issuer(), &RefreshToken::generate(), &JKT).await;
+
+        assert!(matches!(result, Err(RefreshError::Revoked(None))));
     }
 }

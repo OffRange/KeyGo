@@ -20,7 +20,6 @@ create table sessions
 (
     id            uuid primary key,
     device_id     uuid        not null references devices on delete cascade,
-    user_id       uuid        not null references users on delete cascade,
     dpop_jkt      bytea       not null,
     auth_time     timestamptz not null,
     created_at    timestamptz not null default now(),
@@ -36,7 +35,7 @@ create table refresh_tokens
     session_id uuid        not null references sessions on delete cascade,
     issued_at  timestamptz not null default now(),
     expires_at timestamptz not null,
-    used_at    timestamptz
+    rotated_at timestamptz
 );
 
 create table invites

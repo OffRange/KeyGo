@@ -30,6 +30,12 @@ impl DeviceId {
     }
 }
 
+impl From<Uuid> for DeviceId {
+    fn from(value: Uuid) -> Self {
+        Self(value)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
 pub enum DeviceNameError {
     #[error("device name must not be blank")]

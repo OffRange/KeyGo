@@ -162,11 +162,13 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(finished.session.device_id.as_uuid(), device_id);
-        let session: (Uuid, Uuid, Vec<u8>) =
-            sqlx::query_as("select device_id, user_id, dpop_jkt from sessions")
-                .fetch_one(&db)
-                .await
-                .unwrap();
+        let session: (Uuid, Uuid, Vec<u8>) = sqlx::query_as(
+            "select s.device_id, d.user_id, s.dpop_jkt
+                 from sessions s join devices d on d.id = s.device_id",
+        )
+        .fetch_one(&db)
+        .await
+        .unwrap();
         assert_eq!(session, (device_id, user_id, JKT.to_vec()));
         let token_hash: Vec<u8> = sqlx::query_scalar("select token_hash from refresh_tokens")
             .fetch_one(&db)

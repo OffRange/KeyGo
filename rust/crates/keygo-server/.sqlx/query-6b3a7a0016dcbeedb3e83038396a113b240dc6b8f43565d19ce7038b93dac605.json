@@ -1,0 +1,104 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select rt.session_id,\n           d.user_id,\n           s.device_id,\n           s.dpop_jkt,\n           extract(epoch from s.auth_time)::int8             as \"auth_time!\",\n           s.revoked_at is not null                          as \"revoked!\",\n           s.revoke_reason,\n           rt.rotated_at is not null                         as \"rotated!\",\n           (rt.expires_at <= now() or s.expires_at <= now()) as \"expired!\"\n           from refresh_tokens rt\n           join sessions s on s.id = rt.session_id\n           join devices d on d.id = s.device_id\n           where rt.token_hash = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "session_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "refresh_tokens",
+            "name": "session_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "device_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "device_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "dpop_jkt",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "dpop_jkt"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "auth_time!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "revoked!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "revoke_reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "revoke_reason"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "rotated!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "expired!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      null,
+      true,
+      null,
+      null
+    ]
+  },
+  "hash": "6b3a7a0016dcbeedb3e83038396a113b240dc6b8f43565d19ce7038b93dac605"
+}
