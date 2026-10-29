@@ -3,6 +3,7 @@ use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use serde::de::{DeserializeOwned, IgnoredAny};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use thiserror::Error;
 
 #[derive(Serialize, Deserialize)]
@@ -11,8 +12,7 @@ pub(crate) struct Header {
     pub(crate) alg: Alg,
     pub(crate) jwk: Jwk,
 
-    // RFC 7515 §4.1.11: extensions listed in `crit` must be understood. This verifier understands
-    // none, so only read it to reject it; never serialized.
+    // RFC 7515 §4.1.11: read only to reject it, as this verifier understands no extension.
     #[serde(default, skip_serializing)]
     pub(crate) crit: Option<IgnoredAny>,
 }
@@ -39,6 +39,10 @@ pub enum DecodeError {
     Base64(#[from] base64::DecodeError),
     #[error("invalid json")]
     Json(#[from] serde_json::Error),
+}
+
+pub(crate) fn ath(access_token: &str) -> String {
+    URL_SAFE_NO_PAD.encode(Sha256::digest(access_token))
 }
 
 pub(crate) fn decode<T: DeserializeOwned>(value: &str) -> Result<T, DecodeError> {

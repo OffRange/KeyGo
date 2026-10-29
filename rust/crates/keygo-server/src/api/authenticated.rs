@@ -7,7 +7,7 @@ use axum::extract::FromRequestParts;
 use axum::http::header::{AUTHORIZATION, WWW_AUTHENTICATE};
 use axum::http::request::Parts;
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
-use keygo_dpop::verify::VerifyError;
+use keygo_dpop::{Bound, VerifyError};
 use thiserror::Error;
 
 /// Every rejection answers like a protected resource (RFC 9449 §7.1): `401` with a `DPoP`
@@ -36,27 +36,25 @@ impl HttpError for AuthError {
     fn status(&self) -> StatusCode {
         match self {
             // A full replay cache is not the client's fault, so it keeps its 429.
-            Self::Dpop(VerifyError::Busy { .. }) => StatusCode::TOO_MANY_REQUESTS,
+            Self::Dpop(err @ VerifyError::Busy { .. }) => err.status(),
             _ => StatusCode::UNAUTHORIZED,
         }
     }
 
     fn headers(&self) -> HeaderMap {
-        let error = match self {
+        let (mut headers, error) = match self {
             // A full replay cache is not an authentication failure: no challenge.
             Self::Dpop(err @ VerifyError::Busy { .. }) => return err.headers(),
             // No credentials at all: the bare challenge (RFC 6750 §3.1).
-            Self::Missing => None,
+            Self::Missing => (HeaderMap::new(), None),
             // RFC 9449 has no code for a revoked session; to it the token is just invalid.
-            Self::Invalid | Self::Revoked(_) => Some("invalid_token"),
-            Self::Dpop(VerifyError::Invalid(_)) => Some("invalid_dpop_proof"),
-            Self::Dpop(VerifyError::UseNonce(_)) => Some("use_dpop_nonce"),
+            Self::Invalid | Self::Revoked(_) => (HeaderMap::new(), Some("invalid_token")),
+            Self::Dpop(err @ VerifyError::Invalid(_)) => {
+                (err.headers(), Some("invalid_dpop_proof"))
+            }
+            Self::Dpop(err @ VerifyError::UseNonce(_)) => (err.headers(), Some("use_dpop_nonce")),
         };
 
-        let mut headers = match self {
-            Self::Dpop(err) => err.headers(), // keeps DPoP-Nonce
-            _ => HeaderMap::new(),
-        };
         let challenge = match error {
             Some(error) => format!(r#"DPoP algs="ES256", error="{error}""#),
             None => r#"DPoP algs="ES256""#.to_owned(),
@@ -70,7 +68,7 @@ impl HttpError for AuthError {
 
     fn reason(&self) -> Option<&'static str> {
         match self {
-            Self::Revoked(reason) => reason.as_ref().map(RevokeReason::as_str),
+            Self::Revoked(reason) => reason.map(RevokeReason::as_str),
             _ => None,
         }
     }
@@ -97,8 +95,11 @@ impl FromRequestParts<AppState> for Authenticated {
             .verify(access_token)
             .map_err(|_| AuthError::Invalid)?;
 
-        let checked = check_dpop(parts, state, Some(access_token), Some(claims.jkt()))
-            .map_err(AuthError::from)?;
+        let bound = Bound {
+            access_token,
+            jkt: claims.jkt(),
+        };
+        let checked = check_dpop(parts, state, Some(bound)).map_err(AuthError::from)?;
 
         let mut conn = state.db.acquire().await?;
         match sessions::state(&mut conn, claims.session_id()).await? {
@@ -165,7 +166,7 @@ mod tests {
     use super::*;
     use crate::domain::FRESH_AUTH_WINDOW;
     use crate::service::session;
-    use crate::testing::{app_state, insert_device, prover};
+    use crate::testing::{app_state, insert_device, issue_session, prover};
     use axum::Router;
     use axum::body::Body;
     use axum::http::Request;
@@ -283,18 +284,7 @@ mod tests {
 
     async fn signed_in(db: &PgPool, prover: &DpopProver<TestSigner>) -> session::Issued {
         let (user_id, device_id) = insert_device(db).await;
-        let mut tx = db.begin().await.unwrap();
-        let issued = session::issue(
-            &mut tx,
-            &crate::testing::token_issuer(),
-            user_id,
-            device_id,
-            prover.jkt(),
-        )
-        .await
-        .unwrap();
-        tx.commit().await.unwrap();
-        issued
+        issue_session(db, user_id, device_id, prover.jkt()).await
     }
 
     fn challenge(headers: &HeaderMap) -> &str {

@@ -24,7 +24,7 @@ impl HttpError for RefreshError {
 
     fn reason(&self) -> Option<&'static str> {
         match self {
-            Self::Revoked(reason) => reason.as_ref().map(RevokeReason::as_str),
+            Self::Revoked(reason) => reason.map(RevokeReason::as_str),
             _ => None,
         }
     }

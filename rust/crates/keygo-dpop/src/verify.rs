@@ -6,17 +6,19 @@ use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use p256::ecdsa::Signature;
 use p256::ecdsa::signature::Verifier;
-use sha2::{Digest, Sha256};
 use std::time::Duration;
 use thiserror::Error;
 
 pub struct Expected<'a> {
     pub htm: Htm,
     pub htu: &'a str,
-    pub access_token: Option<&'a str>,
-    /// The session's bound key. `None` on the token-issuing `*/finish` endpoints, where the proof's
-    /// key becomes the bound one.
-    pub jkt: Option<&'a [u8; 32]>,
+    pub bound: Option<Bound<'a>>,
+}
+
+#[derive(Clone, Copy)]
+pub struct Bound<'a> {
+    pub access_token: &'a str,
+    pub jkt: &'a [u8; 32],
 }
 
 /// A proof that passed every check that needs no state. A request whose replay could repeat its
@@ -136,15 +138,12 @@ impl DpopVerifier {
             return Err(InvalidProof::Request.into());
         }
 
-        let expected_ath = expected
-            .access_token
-            .map(|t| URL_SAFE_NO_PAD.encode(Sha256::digest(t)));
-        if ath != expected_ath {
+        if ath != expected.bound.map(|bound| wire::ath(bound.access_token)) {
             return Err(InvalidProof::AccessTokenHash.into());
         }
 
         let jkt = header.jwk.thumbprint();
-        if expected.jkt.is_some_and(|bound| bound != &jkt) {
+        if expected.bound.is_some_and(|bound| bound.jkt != &jkt) {
             return Err(InvalidProof::KeyMismatch.into());
         }
 
@@ -213,11 +212,15 @@ mod tests {
     use super::*;
     use crate::testing::TestSigner;
     use crate::{DpopProver, ProofRequest};
+    use std::sync::LazyLock;
 
     const HTU: &str = "https://sync.example/api/v1/items";
     const NOW: u64 = 1_700_000_000;
     const WINDOW: u64 = IAT_WINDOW;
     const NONCE_LIFETIME: u64 = 5 * 60;
+
+    static SIGNER_JKT: LazyLock<[u8; 32]> =
+        LazyLock::new(|| *DpopProver::new(TestSigner::new()).jkt());
 
     fn verifier_started_at(started_at: u64) -> DpopVerifier {
         DpopVerifier::started_at(NonceKey::new([3; 32]), started_at)
@@ -265,8 +268,10 @@ mod tests {
         Expected {
             htm: Htm::Post,
             htu: HTU,
-            access_token,
-            jkt: None,
+            bound: access_token.map(|access_token| Bound {
+                access_token,
+                jkt: &SIGNER_JKT,
+            }),
         }
     }
 
@@ -523,20 +528,21 @@ mod tests {
 
     #[test]
     fn accepts_proof_from_bound_key() {
-        let jkt = *DpopProver::new(TestSigner::new()).jkt();
-        let mut bound = expected(None);
-        bound.jkt = Some(&jkt);
-
-        assert!(verify(&proof(NOW, None), bound).is_ok());
+        assert!(verify(&proof(NOW, Some("token")), expected(Some("token"))).is_ok());
     }
 
     #[test]
     fn rejects_proof_from_other_than_bound_key() {
-        let mut bound = expected(None);
-        bound.jkt = Some(&[0; 32]);
+        let bound = Expected {
+            bound: Some(Bound {
+                access_token: "token",
+                jkt: &[0; 32],
+            }),
+            ..expected(None)
+        };
 
         assert!(matches!(
-            verify(&proof(NOW, None), bound),
+            verify(&proof(NOW, Some("token")), bound),
             Err(VerifyError::Invalid(InvalidProof::KeyMismatch))
         ));
     }

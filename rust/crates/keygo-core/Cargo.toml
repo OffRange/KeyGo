@@ -8,6 +8,9 @@ thiserror.workspace = true
 uuid.workspace = true
 zeroize.workspace = true
 base64.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sha2.workspace = true
 
 aead = "0.6.0"
 aes-gcm-siv = "0.12.1"
@@ -24,9 +27,6 @@ bcs = "0.2.0"
 csv = "1.4.0"
 email_address = "0.2.9"
 hkdf = "0.13.0"
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.149"
-sha2 = "0.11.0"
 subtle = "2.6"
 totp-rs = { version = "6.0.0", features = ["otpauth", "zeroize"] }
 url = "2.5.8"

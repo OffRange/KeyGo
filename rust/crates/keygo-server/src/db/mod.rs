@@ -7,6 +7,7 @@ pub mod sessions;
 pub mod users;
 
 use crate::config::{DatabaseConfig, SecretsConfig};
+use crate::domain::RevokeReason;
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions, PgSslMode};
@@ -50,4 +51,12 @@ pub async fn migrate(pool: &PgPool) -> anyhow::Result<()> {
 /// means a corrupted row.
 fn corrupt(err: impl Into<sqlx::error::BoxDynError>) -> sqlx::Error {
     sqlx::Error::Decode(err.into())
+}
+
+fn revoke_reason(stored: Option<String>) -> sqlx::Result<Option<RevokeReason>> {
+    stored
+        .as_deref()
+        .map(str::parse)
+        .transpose()
+        .map_err(corrupt)
 }

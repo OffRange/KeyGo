@@ -1,17 +1,19 @@
 use crate::api::{AppState, router};
 use crate::cache::LoginStates;
-use crate::db::{devices, invites, users};
+use crate::db::{devices, invites, sessions, users};
 use crate::domain::{
-    AccessTokenKey, Device, DeviceId, DeviceInfo, InviteHash, InvitePepper, TokenIssuer, Username,
+    AccessTokenKey, Device, DeviceId, DeviceInfo, InviteHash, InvitePepper, SessionId, TokenIssuer,
+    Username,
 };
 use crate::service::invite;
 use crate::service::login::{self, FinishLogin, StartLogin};
 use crate::service::registration::{self, FinishRegistration, Signup, StartRegistration};
+use crate::service::session::{self, Issued};
 use axum::body::Body;
 use axum::http::{HeaderMap, Request, StatusCode};
 use http_body_util::BodyExt;
+use keygo_dpop::DpopVerifier;
 use keygo_dpop::testing::TestSigner;
-use keygo_dpop::verify::DpopVerifier;
 use keygo_dpop::{DpopProver, Htm, ProofRequest};
 use keygo_opaque::client::{ClientLogin, ClientRegistration};
 use keygo_opaque::server::ServerSetup;
@@ -86,6 +88,38 @@ pub async fn insert_device(db: &PgPool) -> (Uuid, DeviceId) {
         .await
         .unwrap();
     (user_id, device_id)
+}
+pub async fn insert_session(db: &PgPool) -> (DeviceId, SessionId) {
+    let (_, device_id) = insert_device(db).await;
+    (device_id, open_session(db, device_id).await)
+}
+pub async fn open_session(db: &PgPool, device_id: DeviceId) -> SessionId {
+    let session_id = SessionId::random();
+    let mut conn = db.acquire().await.unwrap();
+    sessions::insert(
+        &mut conn,
+        session_id,
+        device_id,
+        &JKT,
+        0,
+        Duration::from_hours(24),
+    )
+    .await
+    .unwrap();
+    session_id
+}
+pub async fn issue_session(
+    db: &PgPool,
+    user_id: Uuid,
+    device_id: DeviceId,
+    jkt: &[u8; 32],
+) -> Issued {
+    let mut tx = db.begin().await.unwrap();
+    let issued = session::issue(&mut tx, &token_issuer(), user_id, device_id, jkt)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    issued
 }
 pub async fn start_login(
     db: &PgPool,
@@ -166,6 +200,13 @@ pub async fn expires_in_secs(db: &PgPool, table: &str) -> f64 {
     .fetch_one(db)
     .await
     .unwrap()
+}
+
+pub fn assert_expires_after(remaining: f64, ttl: Duration) {
+    assert!(
+        (ttl.as_secs_f64() - 5.0..=ttl.as_secs_f64()).contains(&remaining),
+        "{remaining}"
+    );
 }
 
 /// Requests that must see each other's login states share one `AppState` through `post_to`.

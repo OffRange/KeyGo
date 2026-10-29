@@ -210,7 +210,7 @@ mod tests {
         assert_eq!(session["device_id"], device_id.to_string());
         assert_eq!(
             session["refresh_expires_in"],
-            crate::service::session::REFRESH_TTL.as_secs(),
+            crate::domain::REFRESH_TTL.as_secs(),
         );
         let token = session["refresh_token"].as_str().unwrap();
         assert!(token.starts_with("kgr_"), "{token}");

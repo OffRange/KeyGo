@@ -3,7 +3,7 @@ use thiserror::Error;
 use unicode_properties::{GeneralCategory, UnicodeGeneralCategory};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Platform {
     Android,
@@ -46,7 +46,7 @@ pub enum DeviceNameError {
     InvalidCharacter(char),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(try_from = "String")]
 pub struct DeviceName(String);
 
@@ -99,7 +99,7 @@ pub enum AppVersionError {
     InvalidCharacter(char),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(try_from = "String")]
 pub struct AppVersion(String);
 
@@ -132,16 +132,16 @@ impl TryFrom<String> for AppVersion {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct DeviceInfo {
     pub name: DeviceName,
     pub platform: Platform,
     pub app_version: AppVersion,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Device {
-    #[serde(rename = "device_id", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "device_id")]
     pub id: Option<DeviceId>,
     #[serde(flatten)]
     pub info: DeviceInfo,

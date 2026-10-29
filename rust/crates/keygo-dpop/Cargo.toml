@@ -11,11 +11,11 @@ test-support = []
 thiserror.workspace = true
 zeroize.workspace = true
 base64.workspace = true
+hmac.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sha2.workspace = true
+getrandom.workspace = true
 
 fluent-uri = "0.4.1"
-hmac = "0.13.0"
 p256 = { version = "0.14.0", default-features = false, features = ["ecdsa", "getrandom"] }
-serde = { version = "1.0.229", features = ["derive"] }
-serde_json = "1.0.154"
-sha2 = "0.11.1"
-getrandom = "0.4.3"

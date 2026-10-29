@@ -1,5 +1,5 @@
 use crate::db::{invites, registrations, sessions};
-use crate::service::session::SESSION_RETENTION;
+use crate::domain::SESSION_RETENTION;
 use sqlx::PgPool;
 use std::time::Duration;
 use tokio::time::MissedTickBehavior;
@@ -8,10 +8,9 @@ use tokio::time::MissedTickBehavior;
 /// `expires_at`, so this bounds only how long they occupy the table, not how long they are valid.
 const INTERVAL: Duration = Duration::from_mins(1);
 
-/// Deletes expired registrations and invites, and sessions past their retention, until the task is
-/// aborted. A start that is never finished (a wrong password fails at the client, which then never
-/// calls `finish`) leaves its row behind, and every refresh adds a token row, so without this the
-/// tables would only grow.
+/// Deletes expired registrations, invites and ended sessions until the task is aborted. A start that
+/// is never finished (a wrong password fails at the client, which then never calls `finish`) leaves
+/// its row behind, so without this the tables would only grow.
 pub async fn run(db: PgPool) {
     let mut interval = tokio::time::interval(INTERVAL);
     interval.set_missed_tick_behavior(MissedTickBehavior::Delay);

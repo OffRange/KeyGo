@@ -1,7 +1,6 @@
 use crate::db::{invites, opaque_records, registrations, users};
-use crate::domain::{Device, DeviceInfo, RegistrationId, TokenIssuer, Username};
+use crate::domain::{DeviceInfo, RegistrationId, TokenIssuer, Username};
 use crate::service;
-use crate::service::device;
 use crate::service::session::Issued;
 use keygo_opaque::{RegistrationUpload, server};
 use sqlx::PgPool;
@@ -58,15 +57,7 @@ pub async fn finish(
     users::insert(&mut tx, pending.user_id, &pending.username).await?;
     opaque_records::insert(&mut tx, pending.user_id, &password_file).await?;
 
-    let device_id = device::attach_or_create(
-        &mut tx,
-        pending.user_id,
-        Device {
-            id: None,
-            info: device_info,
-        },
-    )
-    .await?;
+    let device_id = service::device::create(&mut tx, pending.user_id, &device_info).await?;
 
     let session =
         service::session::issue(&mut tx, token_issuer, pending.user_id, device_id, &jkt).await?;

@@ -1,18 +1,20 @@
 mod htu;
-pub mod jwk;
+mod jwk;
 mod nonce;
 mod proof;
 mod seen_jtis;
 #[cfg(any(test, feature = "test-support"))]
 pub mod testing;
-pub mod verify;
-pub mod wire;
+mod verify;
+mod wire;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub use nonce::{Nonce, NonceKey};
+pub use jwk::JwkError;
+pub use nonce::Nonce;
 pub use proof::{DpopError, DpopProver, DpopSigner, ProofRequest};
-pub use wire::Htm;
+pub use verify::{Bound, Checked, DpopVerifier, Expected, InvalidProof, VerifyError};
+pub use wire::{DecodeError, Htm};
 
 fn unix_now() -> u64 {
     SystemTime::now()

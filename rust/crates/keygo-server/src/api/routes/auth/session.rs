@@ -1,4 +1,4 @@
-use crate::domain::{AccessToken, DeviceId, RefreshToken};
+use crate::domain::{ACCESS_TOKEN_LIFETIME, AccessToken, DeviceId, RefreshToken};
 use crate::service::session::Issued;
 use serde::Serialize;
 
@@ -16,7 +16,7 @@ impl From<Issued> for Session {
         Self {
             device_id: value.device_id,
             access_token: value.access_token,
-            access_expires_in: value.access_expires_in.as_secs(),
+            access_expires_in: ACCESS_TOKEN_LIFETIME.as_secs(),
             refresh_token: value.refresh_token,
             refresh_expires_in: value.refresh_expires_in.as_secs(),
         }

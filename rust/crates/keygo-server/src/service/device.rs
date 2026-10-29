@@ -1,5 +1,5 @@
 use crate::db::{devices, sessions};
-use crate::domain::{Device, DeviceId, RevokeReason};
+use crate::domain::{Device, DeviceId, DeviceInfo, RevokeReason};
 use sqlx::PgTransaction;
 use uuid::Uuid;
 
@@ -8,14 +8,21 @@ pub async fn attach_or_create(
     user_id: Uuid,
     requested: Device,
 ) -> sqlx::Result<DeviceId> {
-    let info = &requested.info;
     if let Some(id) = requested.id
-        && devices::attach(tx, id, user_id, info).await?
+        && devices::attach(tx, id, user_id, &requested.info).await?
     {
         sessions::revoke_by_device(tx, id, RevokeReason::Replaced).await?;
         return Ok(id);
     }
 
+    create(tx, user_id, &requested.info).await
+}
+
+pub async fn create(
+    tx: &mut PgTransaction<'_>,
+    user_id: Uuid,
+    info: &DeviceInfo,
+) -> sqlx::Result<DeviceId> {
     let device_id = DeviceId::random();
     devices::insert(tx, device_id, user_id, info).await?;
 
@@ -26,9 +33,7 @@ pub async fn attach_or_create(
 mod tests {
     use super::*;
     use crate::db::users;
-    use crate::domain::DeviceInfo;
-    use crate::service::session;
-    use crate::testing::{JKT, count, device, insert_device, token_issuer, username};
+    use crate::testing::{JKT, count, device, insert_device, issue_session, username};
     use serde_json::json;
     use sqlx::PgPool;
 
@@ -37,14 +42,6 @@ mod tests {
         let device_id = attach_or_create(&mut tx, user_id, requested).await.unwrap();
         tx.commit().await.unwrap();
         device_id
-    }
-
-    async fn open_session(db: &PgPool, user_id: Uuid, device_id: DeviceId) {
-        let mut tx = db.begin().await.unwrap();
-        session::issue(&mut tx, &token_issuer(), user_id, device_id, &JKT)
-            .await
-            .unwrap();
-        tx.commit().await.unwrap();
     }
 
     async fn revoke_reasons(db: &PgPool, device_id: DeviceId) -> Vec<Option<String>> {
@@ -91,7 +88,7 @@ mod tests {
     #[sqlx::test]
     async fn attaching_revokes_the_live_session_as_replaced(db: PgPool) {
         let (user_id, existing) = insert_device(&db).await;
-        open_session(&db, user_id, existing).await;
+        issue_session(&db, user_id, existing, &JKT).await;
 
         claim_once(&db, user_id, device(Some(existing))).await;
 
@@ -104,7 +101,7 @@ mod tests {
     #[sqlx::test]
     async fn revoked_sessions_keep_their_reason(db: PgPool) {
         let (user_id, existing) = insert_device(&db).await;
-        open_session(&db, user_id, existing).await;
+        issue_session(&db, user_id, existing, &JKT).await;
         sqlx::query("update sessions set revoked_at = now(), revoke_reason = 'logout'")
             .execute(&db)
             .await
@@ -121,7 +118,7 @@ mod tests {
     #[sqlx::test]
     async fn another_users_device_is_not_attached(db: PgPool) {
         let (owner, foreign) = insert_device(&db).await;
-        open_session(&db, owner, foreign).await;
+        issue_session(&db, owner, foreign, &JKT).await;
         let user_id = Uuid::new_v4();
         let mut conn = db.acquire().await.unwrap();
         users::insert(&mut conn, user_id, &username("bob"))

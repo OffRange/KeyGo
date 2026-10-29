@@ -9,9 +9,8 @@ mod register;
 mod session;
 mod token;
 
-/// The largest legitimate body is a key bundle of a few hundred bytes. Every auth endpoint is
-/// reachable without a token, so anything larger is refused before it is buffered and parsed.
-/// Scoped to `/auth` so routes with larger payloads set their own limit.
+/// Every auth endpoint is reachable without a token, so a body beyond the largest legitimate one (a
+/// key bundle of a few hundred bytes) is refused before it is buffered.
 pub const MAX_BODY_BYTES: usize = 16 * 1024;
 
 pub fn router() -> Router<AppState> {

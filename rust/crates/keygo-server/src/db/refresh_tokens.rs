@@ -1,5 +1,4 @@
-use crate::db::corrupt;
-use crate::db::sessions::revoke_reason;
+use crate::db::{corrupt, revoke_reason};
 use crate::domain::{DeviceId, RevokeReason, SessionId};
 use sqlx::PgConnection;
 use std::time::Duration;
@@ -15,7 +14,7 @@ pub async fn insert(
         "insert into refresh_tokens (token_hash, session_id, expires_at)
          values ($1, $2, now() + make_interval(secs => $3))",
         token_hash,
-        session_id,
+        session_id.as_uuid(),
         ttl.as_secs_f64(),
     )
     .execute(conn)
@@ -66,8 +65,7 @@ pub async fn find(conn: &mut PgConnection, hash: &[u8; 32]) -> sqlx::Result<Opti
     };
 
     let status = if row.revoked {
-        let reason = revoke_reason(row.revoke_reason)?;
-        TokenStatus::Revoked(reason)
+        TokenStatus::Revoked(revoke_reason(row.revoke_reason)?)
     } else if row.rotated {
         TokenStatus::Rotated
     } else if row.expired {
@@ -77,7 +75,7 @@ pub async fn find(conn: &mut PgConnection, hash: &[u8; 32]) -> sqlx::Result<Opti
     };
 
     Ok(Some(Presented {
-        session_id: row.session_id,
+        session_id: row.session_id.into(),
         user_id: row.user_id,
         device_id: row.device_id.into(),
         dpop_jkt: row.dpop_jkt.as_slice().try_into().map_err(corrupt)?,
@@ -123,55 +121,43 @@ pub async fn rotate(
 mod tests {
     use super::*;
     use crate::db::sessions;
-    use crate::testing::{JKT, count, expires_in_secs, insert_device};
+    use crate::testing::{
+        JKT, assert_expires_after, count, expire, expires_in_secs, insert_session,
+    };
     use sqlx::PgPool;
 
     const TTL: Duration = Duration::from_hours(24);
     const HASH: [u8; 32] = [9; 32];
     const CHILD: [u8; 32] = [10; 32];
 
-    async fn insert_session(db: &PgPool) -> SessionId {
-        let (_, device_id) = insert_device(db).await;
-        let session_id = SessionId::new_v4();
-        let mut conn = db.acquire().await.unwrap();
-        sessions::insert(&mut conn, session_id, device_id, &JKT, 0, TTL)
-            .await
-            .unwrap();
-        session_id
-    }
-
     #[sqlx::test]
     async fn token_is_stored_unrotated_under_its_hash(db: PgPool) {
-        let session_id = insert_session(&db).await;
+        let (_, session_id) = insert_session(&db).await;
         let mut conn = db.acquire().await.unwrap();
 
         insert(&mut conn, session_id, &HASH, TTL).await.unwrap();
 
-        let stored: (Vec<u8>, SessionId, bool) =
+        let stored: (Vec<u8>, Uuid, bool) =
             sqlx::query_as("select token_hash, session_id, rotated_at is null from refresh_tokens")
                 .fetch_one(&db)
                 .await
                 .unwrap();
-        assert_eq!(stored, (HASH.to_vec(), session_id, true));
+        assert_eq!(stored, (HASH.to_vec(), session_id.as_uuid(), true));
     }
 
     #[sqlx::test]
     async fn token_expires_after_ttl(db: PgPool) {
-        let session_id = insert_session(&db).await;
+        let (_, session_id) = insert_session(&db).await;
         let mut conn = db.acquire().await.unwrap();
 
         insert(&mut conn, session_id, &HASH, TTL).await.unwrap();
 
-        let remaining = expires_in_secs(&db, "refresh_tokens").await;
-        assert!(
-            (TTL.as_secs_f64() - 5.0..=TTL.as_secs_f64()).contains(&remaining),
-            "{remaining}"
-        );
+        assert_expires_after(expires_in_secs(&db, "refresh_tokens").await, TTL);
     }
 
     #[sqlx::test]
     async fn duplicate_hash_is_rejected(db: PgPool) {
-        let session_id = insert_session(&db).await;
+        let (_, session_id) = insert_session(&db).await;
         let mut conn = db.acquire().await.unwrap();
         insert(&mut conn, session_id, &HASH, TTL).await.unwrap();
 
@@ -184,7 +170,7 @@ mod tests {
     async fn token_requires_a_session(db: PgPool) {
         let mut conn = db.acquire().await.unwrap();
 
-        let err = insert(&mut conn, SessionId::new_v4(), &HASH, TTL)
+        let err = insert(&mut conn, SessionId::random(), &HASH, TTL)
             .await
             .unwrap_err();
 
@@ -193,12 +179,12 @@ mod tests {
 
     #[sqlx::test]
     async fn token_is_deleted_with_its_session(db: PgPool) {
-        let session_id = insert_session(&db).await;
+        let (_, session_id) = insert_session(&db).await;
         let mut conn = db.acquire().await.unwrap();
         insert(&mut conn, session_id, &HASH, TTL).await.unwrap();
 
         sqlx::query("delete from sessions where id = $1")
-            .bind(session_id)
+            .bind(session_id.as_uuid())
             .execute(&db)
             .await
             .unwrap();
@@ -220,7 +206,7 @@ mod tests {
 
     #[sqlx::test]
     async fn find_returns_the_session_of_a_live_token(db: PgPool) {
-        let session_id = insert_session(&db).await;
+        let (_, session_id) = insert_session(&db).await;
         let mut conn = db.acquire().await.unwrap();
         insert(&mut conn, session_id, &HASH, TTL).await.unwrap();
 
@@ -246,18 +232,14 @@ mod tests {
 
     #[sqlx::test]
     async fn revocation_decides_before_anything_else(db: PgPool) {
-        let session_id = insert_session(&db).await;
+        let (_, session_id) = insert_session(&db).await;
         let mut conn = db.acquire().await.unwrap();
         insert(&mut conn, session_id, &HASH, TTL).await.unwrap();
         rotate(&mut conn, &HASH, &CHILD, TTL).await.unwrap();
         sessions::revoke(&mut conn, session_id, RevokeReason::Replaced)
             .await
             .unwrap();
-        set(
-            &db,
-            "update sessions set expires_at = now() - interval '1 second'",
-        )
-        .await;
+        expire(&db, "sessions").await;
 
         assert_eq!(
             status(&db, &HASH).await,
@@ -267,15 +249,11 @@ mod tests {
 
     #[sqlx::test]
     async fn an_expired_session_expires_its_live_token(db: PgPool) {
-        let session_id = insert_session(&db).await;
+        let (_, session_id) = insert_session(&db).await;
         let mut conn = db.acquire().await.unwrap();
         insert(&mut conn, session_id, &HASH, TTL).await.unwrap();
         rotate(&mut conn, &HASH, &CHILD, TTL).await.unwrap();
-        set(
-            &db,
-            "update sessions set expires_at = now() - interval '1 second'",
-        )
-        .await;
+        expire(&db, "sessions").await;
 
         assert_eq!(status(&db, &HASH).await, TokenStatus::Rotated);
         assert_eq!(status(&db, &CHILD).await, TokenStatus::Expired);
@@ -283,15 +261,11 @@ mod tests {
 
     #[sqlx::test]
     async fn a_rotated_token_stays_rotated_after_it_expires(db: PgPool) {
-        let session_id = insert_session(&db).await;
+        let (_, session_id) = insert_session(&db).await;
         let mut conn = db.acquire().await.unwrap();
         insert(&mut conn, session_id, &HASH, TTL).await.unwrap();
         rotate(&mut conn, &HASH, &CHILD, TTL).await.unwrap();
-        set(
-            &db,
-            "update refresh_tokens set expires_at = now() - interval '1 second'",
-        )
-        .await;
+        expire(&db, "refresh_tokens").await;
 
         assert_eq!(status(&db, &HASH).await, TokenStatus::Rotated);
         assert_eq!(status(&db, &CHILD).await, TokenStatus::Expired);
@@ -299,7 +273,7 @@ mod tests {
 
     #[sqlx::test]
     async fn stored_unknown_revoke_reason_is_corrupt(db: PgPool) {
-        let session_id = insert_session(&db).await;
+        let (_, session_id) = insert_session(&db).await;
         let mut conn = db.acquire().await.unwrap();
         insert(&mut conn, session_id, &HASH, TTL).await.unwrap();
         set(
@@ -315,7 +289,7 @@ mod tests {
 
     #[sqlx::test]
     async fn rotate_marks_the_token_and_stores_its_child(db: PgPool) {
-        let session_id = insert_session(&db).await;
+        let (_, session_id) = insert_session(&db).await;
         let mut conn = db.acquire().await.unwrap();
         insert(&mut conn, session_id, &HASH, TTL).await.unwrap();
 
@@ -327,18 +301,18 @@ mod tests {
         assert!(TTL - expires_in <= Duration::from_secs(5), "{expires_in:?}");
         assert_eq!(status(&db, &HASH).await, TokenStatus::Rotated);
         assert_eq!(status(&db, &CHILD).await, TokenStatus::Live);
-        let child_session: SessionId =
+        let child_session: Uuid =
             sqlx::query_scalar("select session_id from refresh_tokens where token_hash = $1")
                 .bind(CHILD.as_slice())
                 .fetch_one(&db)
                 .await
                 .unwrap();
-        assert_eq!(child_session, session_id);
+        assert_eq!(child_session, session_id.as_uuid());
     }
 
     #[sqlx::test]
     async fn rotate_caps_the_child_at_the_session_expiry(db: PgPool) {
-        let session_id = insert_session(&db).await;
+        let (_, session_id) = insert_session(&db).await;
         let mut conn = db.acquire().await.unwrap();
         insert(&mut conn, session_id, &HASH, TTL).await.unwrap();
         set(
@@ -357,7 +331,7 @@ mod tests {
 
     #[sqlx::test]
     async fn rotate_claims_a_token_only_once(db: PgPool) {
-        let session_id = insert_session(&db).await;
+        let (_, session_id) = insert_session(&db).await;
         let mut conn = db.acquire().await.unwrap();
         insert(&mut conn, session_id, &HASH, TTL).await.unwrap();
         rotate(&mut conn, &HASH, &CHILD, TTL).await.unwrap();

@@ -3,8 +3,7 @@ use axum::extract::{FromRequestParts, OriginalUri};
 use axum::http::header::RETRY_AFTER;
 use axum::http::request::Parts;
 use axum::http::{HeaderMap, HeaderName, HeaderValue, Method};
-use keygo_dpop::Htm;
-use keygo_dpop::verify::{Checked, Expected, InvalidProof, VerifyError};
+use keygo_dpop::{Bound, Checked, Expected, Htm, InvalidProof, VerifyError};
 use url::Url;
 
 const DPOP: HeaderName = HeaderName::from_static("dpop");
@@ -21,7 +20,7 @@ impl FromRequestParts<AppState> for SingleUseDpopProof {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let jkt = check_dpop(parts, state, None, None)?.skip_replay_check();
+        let jkt = check_dpop(parts, state, None)?.skip_replay_check();
         Ok(SingleUseDpopProof { jkt })
     }
 }
@@ -29,8 +28,7 @@ impl FromRequestParts<AppState> for SingleUseDpopProof {
 pub(super) fn check_dpop<'a>(
     parts: &Parts,
     state: &'a AppState,
-    access_token: Option<&str>,
-    jkt: Option<&[u8; 32]>,
+    bound: Option<Bound>,
 ) -> Result<Checked<'a>, VerifyError> {
     let proof = single_header(&parts.headers, DPOP)
         .and_then(|value| value.to_str().ok())
@@ -41,8 +39,7 @@ pub(super) fn check_dpop<'a>(
     let expected = Expected {
         htm,
         htu: htu.as_str(),
-        access_token,
-        jkt,
+        bound,
     };
 
     state
@@ -91,8 +88,6 @@ fn expected_htu(parts: &Parts, public_url: &Url) -> Url {
 
     let mut url = public_url.clone();
     url.set_path(path);
-    url.set_query(None);
-    url.set_fragment(None);
     url
 }
 

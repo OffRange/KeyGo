@@ -3,7 +3,7 @@ use crate::config::DeploymentConfig;
 use crate::domain::TokenIssuer;
 use crate::service::registration::Signup;
 use anyhow::Context;
-use keygo_dpop::verify::DpopVerifier;
+use keygo_dpop::DpopVerifier;
 use sqlx::PgPool;
 use std::sync::Arc;
 use url::Url;

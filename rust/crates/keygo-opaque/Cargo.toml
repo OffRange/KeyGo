@@ -7,8 +7,7 @@ edition.workspace = true
 thiserror.workspace = true
 zeroize.workspace = true
 base64.workspace = true
-
-serde = "1.0.229"
+serde.workspace = true
 
 opaque-ke = { version = "4.0.1", default-features = false, features = ["argon2", "ristretto255"] }
 # opaque-ke 4 is built on digest 0.10 / rand_core 0.6; newer majors do not satisfy its trait bounds.
@@ -20,4 +19,4 @@ voprf = { version = "0.5.0", default-features = false }
 hkdf = "0.12.4"
 
 [dev-dependencies]
-serde_json = "1.0.154"
+serde_json.workspace = true

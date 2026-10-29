@@ -56,7 +56,7 @@ mod tests {
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use http_body_util::BodyExt;
-    use keygo_dpop::verify::DpopVerifier;
+    use keygo_dpop::DpopVerifier;
     use routes::auth::MAX_BODY_BYTES;
     use serde_json::{Value, json};
     use std::sync::Arc;

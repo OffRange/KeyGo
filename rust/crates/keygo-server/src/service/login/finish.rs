@@ -341,7 +341,7 @@ mod tests {
             .fetch_one(&db)
             .await
             .unwrap();
-        assert_eq!(claims.session_id(), live);
+        assert_eq!(claims.session_id().as_uuid(), live);
     }
 
     #[sqlx::test]
@@ -418,7 +418,7 @@ mod tests {
                     .verify(finished.session.access_token.expose())
                     .unwrap()
             })
-            .map(|claims| claims.session_id());
+            .map(|claims| claims.session_id().as_uuid());
         assert_eq!(
             sessions_by_state(&db).await,
             [

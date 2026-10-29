@@ -59,18 +59,12 @@ pub trait TypedSecret {
 
 pub struct DbPassword;
 
-impl DbPassword {
-    const GENERATED_BITS: usize = 256;
-}
-
 impl TypedSecret for DbPassword {
     const NAME: &'static str = "db_password";
     type Value = SecretString;
 
     fn generate() -> anyhow::Result<SecretString> {
-        let mut raw = Zeroizing::new(vec![0u8; Self::GENERATED_BITS / 8]);
-        getrandom::fill(raw.as_mut_slice()).map_err(|e| anyhow!("getrandom: {}", e))?;
-        Ok(hex::encode(raw.as_slice()).into())
+        random_key()
     }
 
     fn decode(stored: &str) -> anyhow::Result<SecretString> {

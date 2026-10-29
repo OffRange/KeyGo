@@ -17,8 +17,7 @@ pub struct Jwk {
     x: String,
     y: String,
 
-    // Only read so a received private key can be rejected; never serialized, so it cannot leak
-    // into a header or change the thumbprint.
+    // Read only to reject a received private key; never serialized, so it cannot reach a thumbprint.
     #[serde(default, skip_serializing)]
     d: Option<IgnoredAny>,
 }
@@ -39,6 +38,26 @@ impl Jwk {
     pub fn thumbprint(&self) -> [u8; 32] {
         let canonical = serde_json::to_vec(self).expect("Jwk always serializes");
         Sha256::digest(canonical).into()
+    }
+
+    pub(crate) fn verifying_key(&self) -> Result<VerifyingKey, JwkError> {
+        if self.d.is_some() {
+            return Err(JwkError::PrivateKey);
+        }
+
+        let x = URL_SAFE_NO_PAD.decode(&self.x)?;
+        let y = URL_SAFE_NO_PAD.decode(&self.y)?;
+        let x: &FieldBytes = x
+            .as_slice()
+            .try_into()
+            .map_err(|_| JwkError::CoordinateLength)?;
+        let y: &FieldBytes = y
+            .as_slice()
+            .try_into()
+            .map_err(|_| JwkError::CoordinateLength)?;
+
+        let point = Sec1Point::from_affine_coordinates(x, y, false);
+        VerifyingKey::from_sec1_point(&point).map_err(|_| JwkError::InvalidPoint)
     }
 }
 
@@ -69,28 +88,6 @@ pub enum JwkError {
     CoordinateLength,
     #[error("point is not on the P-256 curve")]
     InvalidPoint,
-}
-
-impl Jwk {
-    pub(crate) fn verifying_key(&self) -> Result<VerifyingKey, JwkError> {
-        if self.d.is_some() {
-            return Err(JwkError::PrivateKey);
-        }
-
-        let x = URL_SAFE_NO_PAD.decode(&self.x)?;
-        let y = URL_SAFE_NO_PAD.decode(&self.y)?;
-        let x: &FieldBytes = x
-            .as_slice()
-            .try_into()
-            .map_err(|_| JwkError::CoordinateLength)?;
-        let y: &FieldBytes = y
-            .as_slice()
-            .try_into()
-            .map_err(|_| JwkError::CoordinateLength)?;
-
-        let point = Sec1Point::from_affine_coordinates(x, y, false);
-        VerifyingKey::from_sec1_point(&point).map_err(|_| JwkError::InvalidPoint)
-    }
 }
 
 #[cfg(test)]

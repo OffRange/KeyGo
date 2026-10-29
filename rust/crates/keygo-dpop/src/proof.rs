@@ -4,7 +4,6 @@ use crate::{Htm, htu, unix_now};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use p256::ecdsa::{Signature, VerifyingKey};
-use sha2::{Digest, Sha256};
 
 pub trait DpopSigner {
     type Error: std::error::Error;
@@ -66,9 +65,7 @@ impl<S: DpopSigner> DpopProver<S> {
             htm: req.htm,
             htu: htu::canonical(req.htu).ok_or(DpopError::Htu)?,
             iat,
-            ath: req
-                .access_token
-                .map(|t| URL_SAFE_NO_PAD.encode(Sha256::digest(t))),
+            ath: req.access_token.map(wire::ath),
             nonce: req.nonce.map(str::to_owned),
         };
 
@@ -152,7 +149,7 @@ mod tests {
         assert_eq!(parts.header["alg"], "ES256");
         assert_eq!(
             parts.header["jwk"],
-            serde_json::to_value(Jwk::from(&TestSigner::new().verifying)).unwrap(),
+            serde_json::to_value(Jwk::from(TestSigner::new().verifying_key())).unwrap(),
         );
         assert_eq!(parts.header.as_object().unwrap().len(), 3);
     }
@@ -160,7 +157,7 @@ mod tests {
     #[test]
     fn signature_is_raw_r_s_and_verifies_against_embedded_key() {
         let signer = TestSigner::new();
-        let verifying = signer.verifying;
+        let verifying = *signer.verifying_key();
         let dpop = DpopProver::new(signer);
         let parts = split(
             &dpop
@@ -248,7 +245,7 @@ mod tests {
 
         assert_eq!(
             dpop.jkt(),
-            &Jwk::from(&TestSigner::new().verifying).thumbprint()
+            &Jwk::from(TestSigner::new().verifying_key()).thumbprint()
         );
     }
 

@@ -202,7 +202,7 @@ mod tests {
         let (device_id, jkt): (Uuid, Vec<u8>) = sqlx::query_as(
             "select device_id, dpop_jkt from sessions where id = $1 and revoked_at is null",
         )
-        .bind(claims.session_id())
+        .bind(claims.session_id().as_uuid())
         .fetch_one(&db)
         .await
         .unwrap();

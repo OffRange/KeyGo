@@ -3,10 +3,7 @@ use p256::ecdsa::signature::Signer;
 use p256::ecdsa::{Signature, SigningKey, VerifyingKey};
 use std::convert::Infallible;
 
-pub struct TestSigner {
-    key: SigningKey,
-    pub(crate) verifying: VerifyingKey,
-}
+pub struct TestSigner(SigningKey);
 
 impl TestSigner {
     pub fn new() -> Self {
@@ -14,9 +11,7 @@ impl TestSigner {
     }
 
     pub fn from_seed(seed: u8) -> Self {
-        let key = SigningKey::from_slice(&[seed; 32]).unwrap();
-        let verifying = *key.verifying_key();
-        Self { key, verifying }
+        Self(SigningKey::from_slice(&[seed; 32]).unwrap())
     }
 }
 
@@ -30,10 +25,10 @@ impl DpopSigner for TestSigner {
     type Error = Infallible;
 
     fn verifying_key(&self) -> &VerifyingKey {
-        &self.verifying
+        self.0.verifying_key()
     }
 
     fn sign(&self, msg: &[u8]) -> Result<Signature, Infallible> {
-        Ok(self.key.sign(msg))
+        Ok(self.0.sign(msg))
     }
 }

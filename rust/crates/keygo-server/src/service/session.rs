@@ -1,7 +1,7 @@
 use crate::db::refresh_tokens::TokenStatus;
 use crate::db::{refresh_tokens, sessions};
 use crate::domain::{
-    ACCESS_TOKEN_LIFETIME, AccessToken, DeviceId, RefreshToken, RevokeReason, SessionId,
+    AccessToken, DeviceId, REFRESH_TTL, RefreshToken, RevokeReason, SESSION_LIFETIME, SessionId,
     TokenIssuer, unix_now,
 };
 use sqlx::{PgPool, PgTransaction};
@@ -9,14 +9,9 @@ use std::time::Duration;
 use thiserror::Error;
 use uuid::Uuid;
 
-pub const SESSION_LIFETIME: Duration = Duration::from_hours(180 * 24);
-pub const REFRESH_TTL: Duration = Duration::from_hours(30 * 24);
-pub const SESSION_RETENTION: Duration = Duration::from_hours(30 * 24);
-
 pub struct Issued {
     pub device_id: DeviceId,
     pub access_token: AccessToken,
-    pub access_expires_in: Duration,
     pub refresh_token: RefreshToken,
     pub refresh_expires_in: Duration,
 }
@@ -30,7 +25,7 @@ pub async fn issue(
 ) -> sqlx::Result<Issued> {
     let auth_time = unix_now();
 
-    let session_id = SessionId::new_v4();
+    let session_id = SessionId::random();
     sessions::insert(tx, session_id, device_id, jkt, auth_time, SESSION_LIFETIME).await?;
 
     let refresh_token = RefreshToken::generate();
@@ -39,7 +34,6 @@ pub async fn issue(
     Ok(Issued {
         device_id,
         access_token: token_issuer.issue(user_id, session_id, auth_time, jkt),
-        access_expires_in: ACCESS_TOKEN_LIFETIME,
         refresh_token,
         refresh_expires_in: REFRESH_TTL,
     })
@@ -97,7 +91,6 @@ pub async fn refresh(
             presented.auth_time,
             jkt,
         ),
-        access_expires_in: ACCESS_TOKEN_LIFETIME,
         refresh_token: new_refresh_token,
         refresh_expires_in,
     })
@@ -116,15 +109,11 @@ async fn reuse_detected<T>(
 mod tests {
     use super::*;
     use crate::domain::RevokeReason;
-    use crate::testing::{JKT, count, expire, expires_in_secs, insert_device, token_issuer};
+    use crate::testing::{
+        JKT, assert_expires_after, count, expire, expires_in_secs, insert_device, issue_session,
+        token_issuer,
+    };
     use sqlx::PgPool;
-
-    fn assert_expires_after(remaining: f64, ttl: Duration) {
-        assert!(
-            (ttl.as_secs_f64() - 5.0..=ttl.as_secs_f64()).contains(&remaining),
-            "{remaining}"
-        );
-    }
 
     #[sqlx::test]
     async fn issue_binds_a_session_to_the_device_and_key(db: PgPool) {
@@ -163,11 +152,10 @@ mod tests {
                 .await
                 .unwrap();
         assert_eq!(claims.user_id(), user_id);
-        assert_eq!(claims.session_id(), session_id);
+        assert_eq!(claims.session_id().as_uuid(), session_id);
         assert_eq!(claims.jkt(), &JKT);
         assert_eq!(claims.auth_time(), auth_time as u64);
         assert!(claims.is_fresh());
-        assert_eq!(issued.access_expires_in, ACCESS_TOKEN_LIFETIME);
     }
 
     #[sqlx::test]
@@ -260,12 +248,7 @@ mod tests {
 
     async fn issued(db: &PgPool) -> Issued {
         let (user_id, device_id) = insert_device(db).await;
-        let mut tx = db.begin().await.unwrap();
-        let issued = issue(&mut tx, &token_issuer(), user_id, device_id, &JKT)
-            .await
-            .unwrap();
-        tx.commit().await.unwrap();
-        issued
+        issue_session(db, user_id, device_id, &JKT).await
     }
 
     async fn revoke_reason(db: &PgPool) -> Option<String> {
