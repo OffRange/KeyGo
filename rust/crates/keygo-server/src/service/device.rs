@@ -3,7 +3,7 @@ use crate::domain::{Device, DeviceId, RevokeReason};
 use sqlx::PgTransaction;
 use uuid::Uuid;
 
-pub async fn claim(
+pub async fn attach_or_create(
     tx: &mut PgTransaction<'_>,
     user_id: Uuid,
     requested: Device,
@@ -34,7 +34,7 @@ mod tests {
 
     async fn claim_once(db: &PgPool, user_id: Uuid, requested: Device) -> DeviceId {
         let mut tx = db.begin().await.unwrap();
-        let device_id = claim(&mut tx, user_id, requested).await.unwrap();
+        let device_id = attach_or_create(&mut tx, user_id, requested).await.unwrap();
         tx.commit().await.unwrap();
         device_id
     }

@@ -51,7 +51,7 @@ pub async fn finish(
         .await?
         .ok_or(OpaqueError::InvalidLogin)?;
 
-    let device_id = service::device::claim(&mut tx, user_id, device).await?;
+    let device_id = service::device::attach_or_create(&mut tx, user_id, device).await?;
     let issued = service::session::issue(&mut tx, token_issuer, user_id, device_id, &jkt).await?;
 
     tx.commit().await?;
