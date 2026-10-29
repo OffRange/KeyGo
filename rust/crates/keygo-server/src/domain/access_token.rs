@@ -119,7 +119,7 @@ pub enum TokenError {
 }
 
 impl Claims {
-    pub fn new(
+    fn new(
         iss: String,
         user_id: Uuid,
         session_id: SessionId,
@@ -193,7 +193,7 @@ impl AccessTokenKey {
         Self { signing, kid }
     }
 
-    pub fn sign(&self, claims: &Claims) -> AccessToken {
+    fn sign(&self, claims: &Claims) -> AccessToken {
         let header = Header {
             alg: Alg::EdDSA,
             typ: Typ::AtJwt,
@@ -209,7 +209,7 @@ impl AccessTokenKey {
         ))
     }
 
-    pub fn verify(&self, token: &str, iss: &str) -> Result<Claims, TokenError> {
+    fn verify(&self, token: &str, iss: &str) -> Result<Claims, TokenError> {
         self.verify_at(token, iss, unix_now())
     }
 
