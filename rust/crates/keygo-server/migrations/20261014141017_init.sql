@@ -15,6 +15,7 @@ create table devices
     created_at   timestamptz not null default now(),
     last_seen_at timestamptz not null default now()
 );
+create index devices_user_id_idx on devices (user_id);
 
 create table sessions
 (
@@ -27,6 +28,7 @@ create table sessions
     revoked_at    timestamptz,
     revoke_reason text
 );
+create index sessions_device_id_idx on sessions (device_id);
 create unique index sessions_one_live_per_device on sessions (device_id) where revoked_at is null;
 
 create table refresh_tokens
@@ -37,6 +39,7 @@ create table refresh_tokens
     expires_at timestamptz not null,
     rotated_at timestamptz
 );
+create index refresh_tokens_session_id_idx on refresh_tokens (session_id);
 
 create table invites
 (
