@@ -1,4 +1,5 @@
 use crate::db::corrupt;
+use crate::db::sessions::revoke_reason;
 use crate::domain::{DeviceId, RevokeReason, SessionId};
 use sqlx::PgConnection;
 use std::time::Duration;
@@ -65,8 +66,8 @@ pub async fn find(conn: &mut PgConnection, hash: &[u8; 32]) -> sqlx::Result<Opti
     };
 
     let status = if row.revoked {
-        let reason = row.revoke_reason.as_deref().map(str::parse).transpose();
-        TokenStatus::Revoked(reason.map_err(corrupt)?)
+        let reason = revoke_reason(row.revoke_reason)?;
+        TokenStatus::Revoked(reason)
     } else if row.rotated {
         TokenStatus::Rotated
     } else if row.expired {

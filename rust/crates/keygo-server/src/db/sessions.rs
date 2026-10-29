@@ -91,14 +91,17 @@ pub async fn state(conn: &mut PgConnection, session_id: SessionId) -> sqlx::Resu
         });
     }
 
-    let reason = record
-        .revoke_reason
+    let reason = revoke_reason(record.revoke_reason)?;
+
+    Ok(SessionState::Revoked(reason))
+}
+
+pub(super) fn revoke_reason(stored: Option<String>) -> sqlx::Result<Option<RevokeReason>> {
+    stored
         .as_deref()
         .map(str::parse)
         .transpose()
-        .map_err(corrupt)?;
-
-    Ok(SessionState::Revoked(reason))
+        .map_err(corrupt)
 }
 
 pub async fn delete_ended(conn: &mut PgConnection, retention: Duration) -> sqlx::Result<u64> {
