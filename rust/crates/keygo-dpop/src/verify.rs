@@ -92,6 +92,10 @@ pub struct DpopVerifier {
 }
 
 impl DpopVerifier {
+    #[expect(
+        clippy::new_without_default,
+        reason = "a verifier owns a random nonce key and a start time, not a neutral default"
+    )]
     pub fn new() -> Self {
         Self::started_at(NonceKey::random(), unix_now())
     }
