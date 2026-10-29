@@ -1,4 +1,4 @@
-use crate::api::dpop::DpopProof;
+use crate::api::dpop::SingleUseDpopProof;
 use crate::api::routes::auth::session::Session;
 use crate::api::{AppState, ErrorCode, HttpError, Json, ServerResult};
 use crate::domain::{Device, LoginId, Username};
@@ -75,7 +75,7 @@ struct FinishResponse {
 
 async fn finish(
     State(state): State<AppState>,
-    proof: DpopProof,
+    proof: SingleUseDpopProof,
     Json(request): Json<FinishRequest>,
 ) -> ServerResult<Json<FinishResponse>> {
     let input = FinishLogin {
@@ -101,8 +101,8 @@ mod tests {
     use super::*;
     use crate::api::error::render;
     use crate::testing::{
-        PASSWORD, app_state, device_json, post_to, post_with_proof, proof_post, prover, register,
-        send,
+        PASSWORD, app_state, count, device_json, post_to, post_with_proof, proof_post, prover,
+        register, replayable_post, send,
     };
     use axum::http::StatusCode;
     use keygo_opaque::OpaqueError;
@@ -291,6 +291,27 @@ mod tests {
         let (status, _) = post_with_proof(&state, &prover, FINISH, body).await;
 
         assert_eq!(status, StatusCode::OK);
+    }
+
+    /// Finish skips the jti check: the taken login state already turns a replay away.
+    #[sqlx::test]
+    async fn replayed_finish_is_expired(db: PgPool) {
+        let setup = ServerSetup::generate();
+        let state = app_state(&db, &setup);
+        register(&db, &setup, "ada").await;
+        let (client, started) = start_over_http(&state, "ada").await;
+        let prover = prover();
+        let body = finish_body(&started["login_id"], client, &started, prover.jkt());
+        let replay = replayable_post(&state, &prover, FINISH, &body).await;
+        let sessions = count(&db, "sessions").await;
+
+        let (accepted, _, _) = send(&state, replay()).await;
+        let (status, _, body) = send(&state, replay()).await;
+
+        assert_eq!(accepted, StatusCode::OK);
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["code"], "login_expired");
+        assert_eq!(count(&db, "sessions").await, sessions + 1);
     }
 
     #[sqlx::test]

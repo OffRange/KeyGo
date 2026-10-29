@@ -3,34 +3,34 @@ use axum::extract::{FromRequestParts, OriginalUri};
 use axum::http::request::Parts;
 use axum::http::{HeaderMap, HeaderName, HeaderValue, Method};
 use keygo_dpop::Htm;
-use keygo_dpop::verify::{Expected, InvalidProof, VerifyError};
+use keygo_dpop::verify::{Checked, Expected, InvalidProof, VerifyError};
 use url::Url;
 
 const DPOP: HeaderName = HeaderName::from_static("dpop");
 const DPOP_NONCE: HeaderName = HeaderName::from_static("dpop-nonce");
 
-pub struct DpopProof {
+pub struct SingleUseDpopProof {
     pub jkt: [u8; 32],
 }
 
-impl FromRequestParts<AppState> for DpopProof {
+impl FromRequestParts<AppState> for SingleUseDpopProof {
     type Rejection = ServerError;
 
     async fn from_request_parts(
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let jkt = verify_dpop(parts, state, None, None)?;
-        Ok(DpopProof { jkt })
+        let jkt = check_dpop(parts, state, None, None)?.skip_replay_check();
+        Ok(SingleUseDpopProof { jkt })
     }
 }
 
-pub(super) fn verify_dpop(
+pub(super) fn check_dpop<'a>(
     parts: &Parts,
-    state: &AppState,
+    state: &'a AppState,
     access_token: Option<&str>,
     jkt: Option<&[u8; 32]>,
-) -> Result<[u8; 32], VerifyError> {
+) -> Result<Checked<'a>, VerifyError> {
     let proof = single_header(&parts.headers, DPOP)
         .and_then(|value| value.to_str().ok())
         .ok_or(VerifyError::Invalid(InvalidProof::Malformed))?;
@@ -43,9 +43,10 @@ pub(super) fn verify_dpop(
         access_token,
         jkt,
     };
+
     state
         .dpop_verifier
-        .verify(proof, expected)
+        .check(proof, expected)
         .inspect_err(|err| tracing::debug!(?err, "dpop proof rejected"))
 }
 
@@ -114,7 +115,7 @@ mod tests {
         let app = Router::new()
             .nest(
                 "/auth",
-                Router::new().route("/finish", post(|_: DpopProof| async {})),
+                Router::new().route("/finish", post(|_: SingleUseDpopProof| async {})),
             )
             .with_state(state);
         app.oneshot(request).await.unwrap().status()

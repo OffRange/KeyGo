@@ -230,6 +230,28 @@ pub fn proof_post(
     request.headers_mut().insert("dpop", proof.parse().unwrap());
     request
 }
+
+/// Signs one proof carrying the verifier's nonce and builds identical requests around it, the way
+/// an attacker replays a captured request. Fetching the nonce takes a challenge, which keeps state.
+pub async fn replayable_post(
+    state: &AppState,
+    prover: &DpopProver<TestSigner>,
+    uri: &str,
+    body: &Value,
+) -> impl Fn() -> Request<Body> + use<> {
+    let (_, headers, challenge) = send(state, proof_post(state, prover, uri, body, None)).await;
+    assert_eq!(challenge["code"], "use_dpop_nonce");
+    let nonce = headers["dpop-nonce"].to_str().unwrap();
+    let proof = proof_post(state, prover, uri, body, Some(nonce)).headers()["dpop"].clone();
+    let (uri, body) = (uri.to_owned(), body.clone());
+
+    move || {
+        let mut request = json_post(&uri, &body);
+        request.headers_mut().insert("dpop", proof.clone());
+        request
+    }
+}
+
 pub async fn send(state: &AppState, request: Request<Body>) -> (StatusCode, HeaderMap, Value) {
     let response = router(state.clone()).oneshot(request).await.unwrap();
     let status = response.status();

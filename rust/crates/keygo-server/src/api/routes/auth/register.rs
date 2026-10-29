@@ -1,4 +1,4 @@
-use crate::api::dpop::DpopProof;
+use crate::api::dpop::SingleUseDpopProof;
 use crate::api::routes::auth::session::Session;
 use crate::api::{AppState, ErrorCode, HttpError, Json, ServerResult};
 use crate::domain::{DeviceInfo, RegistrationId, Username};
@@ -93,7 +93,7 @@ impl HttpError for registration::FinishError {
 
 async fn finish(
     State(state): State<AppState>,
-    proof: DpopProof,
+    proof: SingleUseDpopProof,
     Json(request): Json<FinishRequest>,
 ) -> ServerResult<(StatusCode, Json<FinishResponse>)> {
     let input = FinishRegistration {
@@ -120,7 +120,7 @@ mod tests {
     use crate::api::error::render;
     use crate::testing::{
         app_state, count, create_invite, device_json, invite_only, post, post_to, post_with_proof,
-        proof_post, prover, register, send,
+        proof_post, prover, register, replayable_post, send,
     };
     use keygo_opaque::client::ClientRegistration;
     use keygo_opaque::server::ServerSetup;
@@ -422,6 +422,25 @@ mod tests {
         let (status, _) = post_with_proof(&state, &prover(), FINISH, body).await;
 
         assert_eq!(status, StatusCode::CREATED);
+    }
+
+    /// Finish skips the jti check: the taken reservation already turns a replay away.
+    #[sqlx::test]
+    async fn replayed_finish_is_expired(db: PgPool) {
+        let state = app_state(&db, &ServerSetup::generate());
+        let (client, body) = start_body("ada", Uuid::new_v4());
+        let (_, started) = post_to(state.clone(), START, body).await;
+        let body = finish_body(client, &started);
+        let replay = replayable_post(&state, &prover(), FINISH, &body).await;
+
+        let (accepted, _, _) = send(&state, replay()).await;
+        let (status, _, body) = send(&state, replay()).await;
+
+        assert_eq!(accepted, StatusCode::CREATED);
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["code"], "registration_expired");
+        assert_eq!(count(&db, "users").await, 1);
+        assert_eq!(count(&db, "sessions").await, 1);
     }
 
     #[sqlx::test]

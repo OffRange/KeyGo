@@ -18,6 +18,17 @@ pub struct Expected<'a> {
     pub jkt: Option<&'a [u8; 32]>,
 }
 
+/// A proof that passed every check that needs no state. A request whose replay could repeat its
+/// action must [`record`](Self::record) it before acting.
+#[must_use]
+pub struct Checked<'a> {
+    verifier: &'a DpopVerifier,
+    jkt: [u8; 32],
+    jti: String,
+    deadline: u64,
+    now: u64,
+}
+
 /// What went wrong, grouped by how the server answers. The 400/401 split is the endpoint's, not the
 /// error's: token-issuing endpoints answer 400, everything else 401 with a `WWW-Authenticate: DPoP`
 /// challenge.
@@ -92,11 +103,11 @@ impl DpopVerifier {
         }
     }
 
-    pub fn verify(&self, proof: &str, expected: Expected) -> VerifyResult<[u8; 32]> {
-        self.verify_at(proof, expected, unix_now())
+    pub fn check(&self, proof: &str, expected: Expected) -> VerifyResult<Checked<'_>> {
+        self.check_at(proof, expected, unix_now())
     }
 
-    fn verify_at(&self, proof: &str, expected: Expected, now: u64) -> VerifyResult<[u8; 32]> {
+    fn check_at(&self, proof: &str, expected: Expected, now: u64) -> VerifyResult<Checked<'_>> {
         let (input, sign) = proof.rsplit_once('.').ok_or(InvalidProof::Malformed)?;
         let (header, claims) = input.split_once('.').ok_or(InvalidProof::Malformed)?;
 
@@ -145,11 +156,37 @@ impl DpopVerifier {
             return Err(VerifyError::UseNonce(self.nonce_key.issue(now)));
         };
 
-        match self.seen_jtis.record(&jkt, &jti, deadline, now) {
+        Ok(Checked {
+            verifier: self,
+            jkt,
+            jti,
+            deadline,
+            now,
+        })
+    }
+}
+
+impl Checked<'_> {
+    /// Records the jti until the proof's deadline; a proof carrying it again is refused.
+    pub fn record(self) -> VerifyResult<[u8; 32]> {
+        let Self {
+            verifier,
+            jkt,
+            jti,
+            deadline,
+            now,
+        } = self;
+        match verifier.seen_jtis.record(&jkt, &jti, deadline, now) {
             Record::New => Ok(jkt),
             Record::Replay => Err(InvalidProof::Replay.into()),
             Record::Full => Err(VerifyError::Busy),
         }
+    }
+
+    /// Accepts the proof without storing its jti. Only for a request that consumes single-use
+    /// state, so a replayed proof can't do anything twice.
+    pub fn skip_replay_check(self) -> [u8; 32] {
+        self.jkt
     }
 }
 
@@ -181,7 +218,16 @@ mod tests {
 
     /// Verifies at `NOW` against a server that has been up long enough to accept nonce-less proofs.
     fn verify(proof: &str, expected: Expected) -> VerifyResult<[u8; 32]> {
-        verifier_started_at(NOW - WINDOW).verify_at(proof, expected, NOW)
+        verifier_started_at(NOW - WINDOW)
+            .check_at(proof, expected, NOW)
+            .and_then(Checked::record)
+    }
+
+    /// Checks and records a proof carrying no access token on `verifier`, at `now`.
+    fn record_at(verifier: &DpopVerifier, proof: &str, now: u64) -> VerifyResult<[u8; 32]> {
+        verifier
+            .check_at(proof, expected(None), now)
+            .and_then(Checked::record)
     }
 
     fn proof(iat: u64, access_token: Option<&str>) -> String {
@@ -200,7 +246,7 @@ mod tests {
             .unwrap()
     }
 
-    fn required_nonce(result: VerifyResult<[u8; 32]>) -> Nonce {
+    fn required_nonce(result: VerifyResult<Checked<'_>>) -> Nonce {
         match result {
             Err(VerifyError::UseNonce(nonce)) => nonce,
             Err(e) => panic!("expected a nonce challenge, got {e:?}"),
@@ -383,15 +429,15 @@ mod tests {
     fn requires_nonce_until_a_window_after_start() {
         let verifier = verifier_started_at(NOW);
 
-        required_nonce(verifier.verify_at(&proof(NOW, None), expected(None), NOW));
-        required_nonce(verifier.verify_at(
+        required_nonce(verifier.check_at(&proof(NOW, None), expected(None), NOW));
+        required_nonce(verifier.check_at(
             &proof(NOW + WINDOW - 1, None),
             expected(None),
             NOW + WINDOW - 1,
         ));
         assert!(
             verifier
-                .verify_at(&proof(NOW + WINDOW, None), expected(None), NOW + WINDOW)
+                .check_at(&proof(NOW + WINDOW, None), expected(None), NOW + WINDOW)
                 .is_ok()
         );
     }
@@ -400,8 +446,8 @@ mod tests {
     fn requires_nonce_for_iat_outside_window() {
         let verifier = verifier_started_at(NOW - 10 * WINDOW);
 
-        required_nonce(verifier.verify_at(&proof(NOW - WINDOW - 1, None), expected(None), NOW));
-        required_nonce(verifier.verify_at(&proof(NOW + WINDOW + 1, None), expected(None), NOW));
+        required_nonce(verifier.check_at(&proof(NOW - WINDOW - 1, None), expected(None), NOW));
+        required_nonce(verifier.check_at(&proof(NOW + WINDOW + 1, None), expected(None), NOW));
     }
 
     #[test]
@@ -412,7 +458,7 @@ mod tests {
 
             assert!(
                 verifier
-                    .verify_at(&proof(iat, None), expected(None), NOW)
+                    .check_at(&proof(iat, None), expected(None), NOW)
                     .is_ok()
             );
         }
@@ -421,36 +467,36 @@ mod tests {
     #[test]
     fn accepts_proof_carrying_issued_nonce() {
         let verifier = verifier_started_at(NOW);
-        let nonce = required_nonce(verifier.verify_at(&proof(NOW, None), expected(None), NOW));
+        let nonce = required_nonce(verifier.check_at(&proof(NOW, None), expected(None), NOW));
 
         // The nonce replaces the iat check, so even a broken client clock passes.
         let proof = proof_with_nonce(0, None, Some(&nonce.to_string()));
-        assert!(verifier.verify_at(&proof, expected(None), NOW).is_ok());
+        assert!(verifier.check_at(&proof, expected(None), NOW).is_ok());
     }
 
     #[test]
     fn accepts_nonce_until_it_expires() {
         let verifier = verifier_started_at(NOW);
         let nonce =
-            required_nonce(verifier.verify_at(&proof(NOW, None), expected(None), NOW)).to_string();
+            required_nonce(verifier.check_at(&proof(NOW, None), expected(None), NOW)).to_string();
         let proof = |iat| proof_with_nonce(iat, None, Some(&nonce));
         let expires_at = NOW + NONCE_LIFETIME;
 
         assert!(
             verifier
-                .verify_at(&proof(1), expected(None), expires_at)
+                .check_at(&proof(1), expected(None), expires_at)
                 .is_ok()
         );
-        required_nonce(verifier.verify_at(&proof(2), expected(None), expires_at + 1));
+        required_nonce(verifier.check_at(&proof(2), expected(None), expires_at + 1));
     }
 
     #[test]
     fn rejects_nonce_from_previous_run() {
         let previous = verifier_started_at(NOW);
-        let nonce = required_nonce(previous.verify_at(&proof(NOW, None), expected(None), NOW));
+        let nonce = required_nonce(previous.check_at(&proof(NOW, None), expected(None), NOW));
         let restarted = verifier_started_at(NOW + 1);
 
-        required_nonce(restarted.verify_at(
+        required_nonce(restarted.check_at(
             &proof_with_nonce(NOW, None, Some(&nonce.to_string())),
             expected(None),
             NOW + 1,
@@ -461,7 +507,7 @@ mod tests {
     fn rejects_forged_nonce() {
         let verifier = verifier_started_at(NOW);
 
-        required_nonce(verifier.verify_at(
+        required_nonce(verifier.check_at(
             &proof_with_nonce(NOW, None, Some("forged")),
             expected(None),
             NOW,
@@ -493,9 +539,9 @@ mod tests {
         let verifier = verifier_started_at(NOW - WINDOW);
         let proof = proof(NOW, None);
 
-        assert!(verifier.verify_at(&proof, expected(None), NOW).is_ok());
+        assert!(record_at(&verifier, &proof, NOW).is_ok());
         assert!(matches!(
-            verifier.verify_at(&proof, expected(None), NOW),
+            record_at(&verifier, &proof, NOW),
             Err(VerifyError::Invalid(InvalidProof::Replay))
         ));
     }
@@ -503,12 +549,12 @@ mod tests {
     #[test]
     fn rejects_replayed_proof_carrying_nonce() {
         let verifier = verifier_started_at(NOW);
-        let nonce = required_nonce(verifier.verify_at(&proof(NOW, None), expected(None), NOW));
+        let nonce = required_nonce(verifier.check_at(&proof(NOW, None), expected(None), NOW));
         let proof = proof_with_nonce(NOW, None, Some(&nonce.to_string()));
 
-        assert!(verifier.verify_at(&proof, expected(None), NOW).is_ok());
+        assert!(record_at(&verifier, &proof, NOW).is_ok());
         assert!(matches!(
-            verifier.verify_at(&proof, expected(None), NOW),
+            record_at(&verifier, &proof, NOW),
             Err(VerifyError::Invalid(InvalidProof::Replay))
         ));
     }
@@ -517,13 +563,26 @@ mod tests {
     fn replay_is_refused_for_as_long_as_the_proof_is_acceptable() {
         let verifier = verifier_started_at(NOW - WINDOW);
         let proof = proof(NOW, None);
-        verifier.verify_at(&proof, expected(None), NOW).unwrap();
+        record_at(&verifier, &proof, NOW).unwrap();
 
         assert!(matches!(
-            verifier.verify_at(&proof, expected(None), NOW + WINDOW),
+            record_at(&verifier, &proof, NOW + WINDOW),
             Err(VerifyError::Invalid(InvalidProof::Replay))
         ));
-        required_nonce(verifier.verify_at(&proof, expected(None), NOW + WINDOW + 1));
+        required_nonce(verifier.check_at(&proof, expected(None), NOW + WINDOW + 1));
+    }
+
+    #[test]
+    fn single_use_proof_does_not_take_its_jti() {
+        let verifier = verifier_started_at(NOW - WINDOW);
+        let proof = proof(NOW, None);
+
+        verifier
+            .check_at(&proof, expected(None), NOW)
+            .unwrap()
+            .skip_replay_check();
+
+        assert!(record_at(&verifier, &proof, NOW).is_ok());
     }
 
     #[test]
@@ -534,7 +593,7 @@ mod tests {
         };
 
         assert!(matches!(
-            verifier.verify_at(&proof(NOW, None), expected(None), NOW),
+            record_at(&verifier, &proof(NOW, None), NOW),
             Err(VerifyError::Busy)
         ));
     }
@@ -545,9 +604,9 @@ mod tests {
         let proof = proof(NOW, None);
 
         assert!(matches!(
-            verifier.verify_at(&proof, expected(Some("token")), NOW),
+            verifier.check_at(&proof, expected(Some("token")), NOW),
             Err(VerifyError::Invalid(InvalidProof::AccessTokenHash))
         ));
-        assert!(verifier.verify_at(&proof, expected(None), NOW).is_ok());
+        assert!(record_at(&verifier, &proof, NOW).is_ok());
     }
 }

@@ -1,4 +1,4 @@
-use crate::api::dpop::verify_dpop;
+use crate::api::dpop::check_dpop;
 use crate::api::{AppState, ErrorCode, HttpError, ServerError, single_header};
 use crate::db::sessions;
 use crate::db::sessions::SessionState;
@@ -97,12 +97,15 @@ impl FromRequestParts<AppState> for Authenticated {
             .verify(access_token)
             .map_err(|_| AuthError::Invalid)?;
 
-        verify_dpop(parts, state, Some(access_token), Some(claims.jkt()))
+        let checked = check_dpop(parts, state, Some(access_token), Some(claims.jkt()))
             .map_err(AuthError::from)?;
 
         let mut conn = state.db.acquire().await?;
         match sessions::state(&mut conn, claims.session_id()).await? {
-            SessionState::Live => Ok(Self(claims)),
+            SessionState::Live => {
+                checked.record().map_err(AuthError::from)?;
+                Ok(Self(claims))
+            }
             SessionState::Expired => Err(AuthError::Invalid.into()),
             SessionState::Revoked(reason) => Err(AuthError::Revoked(reason).into()),
         }
@@ -359,6 +362,45 @@ mod tests {
 
         let (status, headers, body) = call(&state, &other, issued.access_token.expose()).await;
 
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        assert_eq!(body["code"], "invalid_dpop_proof");
+        assert_eq!(
+            challenge(&headers),
+            r#"DPoP algs="ES256", error="invalid_dpop_proof""#
+        );
+    }
+
+    #[sqlx::test]
+    async fn replayed_proof_is_unauthorized(db: PgPool) {
+        let state = app_state(&db, &ServerSetup::generate());
+        let prover = prover();
+        let issued = signed_in(&db, &prover).await;
+        let token = issued.access_token.expose();
+        let authorization = format!("DPoP {token}");
+
+        let first = request(&state, &prover, &authorization, token, None);
+        let (_, headers, _) = send(&state, first).await;
+        let nonce = headers["dpop-nonce"].to_str().unwrap();
+        let proof = prover
+            .proof(&ProofRequest {
+                htm: Htm::Get,
+                htu: state.public_url.join(URI).unwrap().as_str(),
+                access_token: Some(token),
+                nonce: Some(nonce),
+            })
+            .unwrap();
+        let replay = || {
+            Request::get(URI)
+                .header(AUTHORIZATION, &authorization)
+                .header("dpop", &proof)
+                .body(Body::empty())
+                .unwrap()
+        };
+
+        let (accepted, _, _) = send(&state, replay()).await;
+        let (status, headers, body) = send(&state, replay()).await;
+
+        assert_eq!(accepted, StatusCode::OK);
         assert_eq!(status, StatusCode::UNAUTHORIZED);
         assert_eq!(body["code"], "invalid_dpop_proof");
         assert_eq!(

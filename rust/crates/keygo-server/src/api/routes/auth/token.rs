@@ -1,4 +1,4 @@
-use crate::api::dpop::DpopProof;
+use crate::api::dpop::SingleUseDpopProof;
 use crate::api::routes::auth::session::Session;
 use crate::api::{AppState, ErrorCode, HttpError, Json, ServerResult};
 use crate::domain::{RefreshToken, RevokeReason};
@@ -32,7 +32,7 @@ impl HttpError for RefreshError {
 
 pub async fn token(
     State(state): State<AppState>,
-    proof: DpopProof,
+    proof: SingleUseDpopProof,
     Json(request): Json<TokenRequest>,
 ) -> ServerResult<Json<Session>> {
     let issued = session::refresh(
@@ -50,6 +50,7 @@ pub async fn token(
 mod tests {
     use crate::testing::{
         PASSWORD, app_state, device_json, post_to, post_with_proof, prover, register,
+        replayable_post, send,
     };
     use axum::http::StatusCode;
     use keygo_dpop::DpopProver;
@@ -117,6 +118,29 @@ mod tests {
         assert_eq!(status, StatusCode::UNAUTHORIZED);
         assert_eq!(body["code"], "session_revoked");
         assert_eq!(body["reason"], "reuse_detected");
+    }
+
+    /// The endpoint skips the jti check: the rotated token already turns a replay away, and as a
+    /// reuse it revokes the session.
+    #[sqlx::test]
+    async fn replayed_refresh_revokes_the_session(db: PgPool) {
+        let setup = ServerSetup::generate();
+        let state = app_state(&db, &setup);
+        register(&db, &setup, "ada").await;
+        let prover = prover();
+        let session = sign_in(&state, &prover).await;
+        let replay = replayable_post(&state, &prover, TOKEN, &token_body(&session)).await;
+
+        let (accepted, _, refreshed) = send(&state, replay()).await;
+        let (status, _, body) = send(&state, replay()).await;
+
+        assert_eq!(accepted, StatusCode::OK);
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        assert_eq!(body["code"], "session_revoked");
+        assert_eq!(body["reason"], "reuse_detected");
+        let (status, body) = post_with_proof(&state, &prover, TOKEN, token_body(&refreshed)).await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        assert_eq!(body["code"], "session_revoked");
     }
 
     #[sqlx::test]
