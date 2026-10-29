@@ -53,6 +53,7 @@ mod tests {
         replayable_post, send,
     };
     use axum::http::StatusCode;
+    use axum::http::header::CACHE_CONTROL;
     use keygo_dpop::DpopProver;
     use keygo_dpop::testing::TestSigner;
     use keygo_opaque::CredentialResponse;
@@ -102,6 +103,21 @@ mod tests {
         assert_eq!(status, StatusCode::OK);
         assert_eq!(refreshed["device_id"], session["device_id"]);
         assert_ne!(refreshed["refresh_token"], session["refresh_token"]);
+    }
+
+    #[sqlx::test]
+    async fn issued_tokens_are_not_stored(db: PgPool) {
+        let setup = ServerSetup::generate();
+        let state = app_state(&db, &setup);
+        register(&db, &setup, "ada").await;
+        let prover = prover();
+        let session = sign_in(&state, &prover).await;
+        let request = replayable_post(&state, &prover, TOKEN, &token_body(&session)).await;
+
+        let (status, headers, _) = send(&state, request()).await;
+
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(headers[CACHE_CONTROL], "no-store");
     }
 
     #[sqlx::test]

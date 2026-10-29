@@ -12,6 +12,8 @@ pub use extract::Json;
 pub use state::AppState;
 
 use axum::Router;
+use axum::http::header::CACHE_CONTROL;
+use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 
 pub fn router(state: AppState) -> Router {
@@ -19,6 +21,10 @@ pub fn router(state: AppState) -> Router {
         .nest("/health", routes::health::router())
         .nest("/api/v1", v1())
         .fallback(not_found)
+        .layer(SetResponseHeaderLayer::if_not_present(
+            CACHE_CONTROL,
+            HeaderValue::from_static("no-store"),
+        ))
         .layer(TraceLayer::new_for_http())
         .with_state(state)
 }
@@ -136,6 +142,21 @@ mod tests {
         let body: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(body["code"], "invalid_request");
         assert!(body["message"].as_str().is_some_and(|m| !m.is_empty()));
+    }
+
+    #[tokio::test]
+    async fn error_responses_are_not_stored() {
+        for request in [
+            Request::get("/api/v1/nope").body(Body::empty()).unwrap(),
+            Request::post("/api/v1/auth/register/start")
+                .body(Body::from("{}"))
+                .unwrap(),
+        ] {
+            let response = router(state()).oneshot(request).await.unwrap();
+
+            assert!(response.status().is_client_error());
+            assert_eq!(response.headers()[CACHE_CONTROL], "no-store");
+        }
     }
 
     #[tokio::test]
