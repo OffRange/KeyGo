@@ -16,8 +16,15 @@ const NONCE_LEN: usize = TIMESTAMP_LEN + TAG_LEN;
 pub struct NonceKey(Zeroizing<[u8; 32]>);
 
 impl NonceKey {
-    pub fn new(bytes: &[u8; 32]) -> Self {
-        Self(Zeroizing::new(*bytes))
+    pub fn random() -> Self {
+        let mut key = Zeroizing::new([0u8; 32]);
+        getrandom::fill(key.as_mut_slice()).expect("OS random number generator unavailable");
+        Self(key)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn new(bytes: [u8; 32]) -> Self {
+        Self(Zeroizing::new(bytes))
     }
 
     fn mac(&self, created_at: u64) -> Hmac<Sha256> {
@@ -67,10 +74,6 @@ pub struct Nonce {
 }
 
 impl Nonce {
-    pub(crate) fn created_at(&self) -> u64 {
-        self.created_at
-    }
-
     pub(crate) fn expires_at(&self) -> u64 {
         self.created_at + NONCE_LIFETIME.as_secs()
     }
@@ -93,7 +96,7 @@ mod tests {
     const NOW: u64 = 1_700_000_000;
 
     fn key() -> NonceKey {
-        NonceKey::new(&[1; 32])
+        NonceKey::new([1; 32])
     }
 
     #[test]
@@ -123,7 +126,7 @@ mod tests {
 
     #[test]
     fn rejects_nonce_from_another_key() {
-        let foreign = NonceKey::new(&[2; 32]).issue(NOW).to_string();
+        let foreign = NonceKey::new([2; 32]).issue(NOW).to_string();
 
         assert_eq!(key().open(&foreign), None);
     }

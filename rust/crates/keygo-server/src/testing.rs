@@ -12,7 +12,7 @@ use axum::http::{HeaderMap, Request, StatusCode};
 use http_body_util::BodyExt;
 use keygo_dpop::testing::TestSigner;
 use keygo_dpop::verify::DpopVerifier;
-use keygo_dpop::{DpopProver, Htm, NonceKey, ProofRequest};
+use keygo_dpop::{DpopProver, Htm, ProofRequest};
 use keygo_opaque::client::{ClientLogin, ClientRegistration};
 use keygo_opaque::server::ServerSetup;
 use serde_json::{Value, json};
@@ -176,7 +176,7 @@ pub fn app_state(db: &PgPool, setup: &ServerSetup) -> AppState {
         opaque_state: setup.clone(),
         db: db.clone(),
         login_states: LoginStates::new(),
-        dpop_verifier: Arc::new(DpopVerifier::new(NonceKey::new(&[0; 32]))),
+        dpop_verifier: Arc::new(DpopVerifier::new()),
         token_issuer: Arc::new(token_issuer()),
     }
 }

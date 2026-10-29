@@ -1,6 +1,5 @@
 use crate::domain::{AccessTokenKey, InvitePepper};
 use anyhow::{Context, anyhow, ensure};
-use keygo_dpop::NonceKey;
 use keygo_opaque::server::ServerSetup;
 use secrecy::{ExposeSecret, SecretString};
 use std::fs::{self, DirBuilder, File, Permissions};
@@ -115,21 +114,6 @@ impl TypedSecret for InvitePepper {
     }
 }
 
-pub struct DpopNonceKey;
-
-impl TypedSecret for DpopNonceKey {
-    const NAME: &'static str = "dpop_nonce_key";
-    type Value = NonceKey;
-
-    fn generate() -> anyhow::Result<SecretString> {
-        random_key()
-    }
-
-    fn decode(stored: &str) -> anyhow::Result<Self::Value> {
-        Ok(NonceKey::new(&*decode(stored)?))
-    }
-}
-
 impl TypedSecret for AccessTokenKey {
     const NAME: &'static str = "access_token_key";
     type Value = Self;
@@ -161,7 +145,6 @@ secrets! {
     DbPassword,
     OpaqueSetup,
     InvitePepper,
-    DpopNonceKey,
     AccessTokenKey,
 }
 

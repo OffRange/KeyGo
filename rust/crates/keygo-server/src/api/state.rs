@@ -34,7 +34,7 @@ impl AppState {
             opaque_state: secrets.opaque_setup()?,
             db,
             login_states: LoginStates::new(),
-            dpop_verifier: Arc::new(DpopVerifier::new(secrets.dpop_nonce_key()?)),
+            dpop_verifier: Arc::new(DpopVerifier::new()),
             token_issuer: Arc::new(TokenIssuer::new(secrets.access_token_key()?, issuer)),
         })
     }

@@ -56,7 +56,6 @@ mod tests {
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use http_body_util::BodyExt;
-    use keygo_dpop::NonceKey;
     use keygo_dpop::verify::DpopVerifier;
     use routes::auth::MAX_BODY_BYTES;
     use serde_json::{Value, json};
@@ -91,7 +90,7 @@ mod tests {
             db: sqlx::postgres::PgPoolOptions::new()
                 .connect_lazy_with(sqlx::postgres::PgConnectOptions::new()),
             login_states: LoginStates::new(),
-            dpop_verifier: Arc::new(DpopVerifier::new(NonceKey::new(&[0; 32]))),
+            dpop_verifier: Arc::new(DpopVerifier::new()),
             token_issuer: Arc::new(crate::testing::token_issuer()),
         }
     }

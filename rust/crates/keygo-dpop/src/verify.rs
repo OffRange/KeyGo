@@ -92,8 +92,8 @@ pub struct DpopVerifier {
 }
 
 impl DpopVerifier {
-    pub fn new(nonce_key: NonceKey) -> Self {
-        Self::started_at(nonce_key, unix_now())
+    pub fn new() -> Self {
+        Self::started_at(NonceKey::random(), unix_now())
     }
 
     pub(crate) fn started_at(nonce_key: NonceKey, started_at: u64) -> Self {
@@ -148,7 +148,7 @@ impl DpopVerifier {
             Some(nonce) => self
                 .nonce_key
                 .open(&nonce)
-                .filter(|nonce| nonce.created_at() >= self.started_at && now <= nonce.expires_at())
+                .filter(|nonce| now <= nonce.expires_at())
                 .map(|nonce| nonce.expires_at()),
             None => (now.abs_diff(iat) <= IAT_WINDOW && iat >= self.started_at + IAT_WINDOW)
                 .then(|| iat + IAT_WINDOW),
@@ -216,7 +216,7 @@ mod tests {
     const NONCE_LIFETIME: u64 = 5 * 60;
 
     fn verifier_started_at(started_at: u64) -> DpopVerifier {
-        DpopVerifier::started_at(NonceKey::new(&[3; 32]), started_at)
+        DpopVerifier::started_at(NonceKey::new([3; 32]), started_at)
     }
 
     /// Verifies at `NOW` against a server that has been up long enough to accept nonce-less proofs.
@@ -497,7 +497,7 @@ mod tests {
     fn rejects_nonce_from_previous_run() {
         let previous = verifier_started_at(NOW);
         let nonce = required_nonce(previous.check_at(&proof(NOW, None), expected(None), NOW));
-        let restarted = verifier_started_at(NOW + 1);
+        let restarted = DpopVerifier::started_at(NonceKey::random(), NOW + 1);
 
         required_nonce(restarted.check_at(
             &proof_with_nonce(NOW, None, Some(&nonce.to_string())),
