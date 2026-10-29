@@ -10,8 +10,9 @@ use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 pub type SessionId = Uuid;
 
 const PREFIX: &str = "kgr_";
-// 32 --> 43 if encoded using b64urlsafe
-const ENCODED_LEN: usize = PREFIX.len() + 43;
+const TOKEN_BYTES: usize = 32;
+const ENCODED_LEN: usize = PREFIX.len()
+    + base64::encoded_len(TOKEN_BYTES, false).expect("encoded length can be represented by usize");
 
 macro_rules! revoke_reasons {
     ($($name:ident => $str:literal),+ $(,)?) => {
@@ -54,11 +55,11 @@ revoke_reasons! {
 }
 
 #[derive(Zeroize, ZeroizeOnDrop)]
-pub struct RefreshToken([u8; 32]);
+pub struct RefreshToken([u8; TOKEN_BYTES]);
 
 impl RefreshToken {
     pub fn generate() -> Self {
-        let mut token = [0u8; 32];
+        let mut token = [0u8; TOKEN_BYTES];
         getrandom::fill(token.as_mut_slice()).expect("OS random number generator unavailable");
         Self(token)
     }
@@ -70,7 +71,7 @@ impl RefreshToken {
         out
     }
 
-    pub fn digest(&self) -> [u8; 32] {
+    pub fn digest(&self) -> [u8; TOKEN_BYTES] {
         Sha256::digest(self.0).into()
     }
 }
@@ -104,7 +105,7 @@ impl FromStr for RefreshToken {
             return Err(ParseRefreshTokenError::InvalidToken);
         }
 
-        let mut out = RefreshToken([0; 32]);
+        let mut out = RefreshToken([0; TOKEN_BYTES]);
         URL_SAFE_NO_PAD
             .decode_slice(token, &mut out.0)
             .map_err(|_| ParseRefreshTokenError::InvalidToken)?;
@@ -134,7 +135,7 @@ mod tests {
 
     #[test]
     fn encodes_as_prefixed_unpadded_base64url() {
-        let encoded = RefreshToken([0xff; 32]).expose_encoded();
+        let encoded = RefreshToken([0xff; TOKEN_BYTES]).expose_encoded();
 
         assert_eq!(
             encoded.as_str(),
@@ -246,13 +247,16 @@ mod tests {
     #[test]
     fn deserialize_rejects_a_malformed_token() {
         assert!(serde_json::from_str::<RefreshToken>(r#""kgr_short""#).is_err());
-        assert!(serde_json::from_value::<RefreshToken>(serde_json::json!(vec![0u8; 32])).is_err());
+        assert!(
+            serde_json::from_value::<RefreshToken>(serde_json::json!(vec![0u8; TOKEN_BYTES]))
+                .is_err()
+        );
     }
 
     #[test]
     fn digest_is_sha256_of_the_raw_secret() {
         assert_eq!(
-            hex::encode(RefreshToken([0; 32]).digest()),
+            hex::encode(RefreshToken([0; TOKEN_BYTES]).digest()),
             "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925",
         );
     }
