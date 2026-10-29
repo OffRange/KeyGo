@@ -6,13 +6,16 @@ edition.workspace = true
 
 [dependencies]
 keygo-opaque = { path = "../keygo-opaque" }
+keygo-dpop = { path = "../keygo-dpop" }
+
 zeroize.workspace = true
 thiserror.workspace = true
+base64.workspace = true
+
 anstream = "1.0.0"
 anstyle = "1.0.14"
 anyhow = "1.0.104"
 clap = { version = "4.6.7", features = ["derive", "env"] }
-base64 = "0.23.1"
 getrandom = "0.4.3"
 hex = "0.4.3"
 secrecy = "0.10.3"
@@ -24,17 +27,21 @@ serde_json = "1.0.154"
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "signal", "time"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
-tower-http = { version = "0.7.1", features = ["trace"] }
+tower-http = { version = "0.7.1", features = ["set-header", "trace"] }
 uuid = { workspace = true, features = ["v4"] }
 sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "postgres", "migrate", "macros", "uuid", "time"] }
 unicode-normalization = "0.1.25"
+unicode-properties = { version = "0.1.4", default-features = false, features = ["general-category"] }
 humantime = "2.4.0"
 hmac = "0.13.0"
 sha2 = { version = "0.11.0", features = ["zeroize"] }
 time = { version = "0.3.55", features = ["formatting", "macros"] }
 moka = { version = "0.12.16", features = ["sync"] }
+ed25519-dalek = "3.0.0"
 
 [dev-dependencies]
+keygo-dpop = { path = "../keygo-dpop", features = ["test-support"] }
+
 http-body-util = "0.1.5"
 serde_json = "1.0.154"
 tower = { version = "0.5.3", features = ["util"] }

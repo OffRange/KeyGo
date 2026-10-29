@@ -1,12 +1,11 @@
 use crate::domain::UsernameError;
 use axum::extract::rejection::JsonRejection;
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use keygo_opaque::OpaqueError;
 use serde::Serialize;
 use serde_json::json;
-
-const INTERNAL: (StatusCode, ErrorCode) = (StatusCode::INTERNAL_SERVER_ERROR, ErrorCode::Internal);
+use thiserror::Error;
 
 /// Every `code` the API answers with; clients match on the serialized name.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -16,6 +15,7 @@ pub enum ErrorCode {
     Internal,
     InvalidRequest,
     NotFound,
+    RateLimited,
     // auth
     InvalidUsername,
     InvalidCredentials,
@@ -25,118 +25,134 @@ pub enum ErrorCode {
     InviteInvalid,
     RegistrationExpired,
     LoginExpired,
+    // session
+    FreshAuthRequired,
+    InvalidToken,
+    RefreshExpired,
+    SessionRevoked,
+    // dpop
+    InvalidDpopProof,
+    UseDpopNonce,
+}
+
+impl ErrorCode {
+    pub fn status(self) -> StatusCode {
+        match self {
+            Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::InvalidRequest
+            | Self::InvalidUsername
+            | Self::RegistrationExpired
+            | Self::LoginExpired
+            | Self::InvalidDpopProof
+            | Self::UseDpopNonce => StatusCode::BAD_REQUEST,
+            Self::InvalidCredentials
+            | Self::InvalidToken
+            | Self::RefreshExpired
+            | Self::SessionRevoked => StatusCode::UNAUTHORIZED,
+            Self::InviteRequired | Self::InviteInvalid | Self::FreshAuthRequired => {
+                StatusCode::FORBIDDEN
+            }
+            Self::NotFound => StatusCode::NOT_FOUND,
+            Self::UsernameTaken | Self::UserIdTaken => StatusCode::CONFLICT,
+            Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
+        }
+    }
 }
 
 pub trait HttpError: std::error::Error + Send + Sync + 'static {
-    fn status_and_code(&self) -> (StatusCode, ErrorCode);
+    fn code(&self) -> ErrorCode;
+
+    fn status(&self) -> StatusCode {
+        self.code().status()
+    }
+
+    fn headers(&self) -> HeaderMap {
+        HeaderMap::new()
+    }
+
+    fn reason(&self) -> Option<&'static str> {
+        None
+    }
 }
 
-pub struct ServerError {
-    status: StatusCode,
-    code: ErrorCode,
-    message: String,
-    source: Option<anyhow::Error>,
-}
+pub struct ServerError(Box<dyn HttpError>);
 
 pub type ServerResult<T> = Result<T, ServerError>;
 
-impl ServerError {
-    pub fn new(status: StatusCode, code: ErrorCode, message: impl Into<String>) -> Self {
-        Self {
-            status,
-            code,
-            message: message.into(),
-            source: None,
-        }
-    }
-
-    pub fn not_found() -> Self {
-        Self::new(
-            StatusCode::NOT_FOUND,
-            ErrorCode::NotFound,
-            "resource not found",
-        )
-    }
-
-    fn internal(source: anyhow::Error) -> Self {
-        Self {
-            status: StatusCode::INTERNAL_SERVER_ERROR,
-            code: ErrorCode::Internal,
-            message: "internal server error".to_owned(),
-            source: Some(source),
-        }
-    }
-}
-
 impl<E: HttpError> From<E> for ServerError {
     fn from(err: E) -> Self {
-        let (status, code) = err.status_and_code();
-        if status.is_server_error() {
-            return Self {
-                status,
-                code,
-                ..Self::internal(err.into())
-            };
-        }
-
-        Self::new(status, code, err.to_string())
-    }
-}
-
-impl From<anyhow::Error> for ServerError {
-    fn from(err: anyhow::Error) -> Self {
-        Self::internal(err)
+        Self(Box::new(err))
     }
 }
 
 impl IntoResponse for ServerError {
     fn into_response(self) -> Response {
-        if let Some(source) = &self.source {
-            tracing::error!(code = ?self.code, "request failed: {source:#}");
+        let (code, status, headers) = (self.0.code(), self.0.status(), self.0.headers());
+        let reason = self.0.reason();
+        let message = if status.is_server_error() {
+            let source = anyhow::Error::from_boxed(self.0);
+            tracing::error!(?code, "request failed: {source:#}");
+            "internal server error".to_owned()
+        } else {
+            self.0.to_string()
+        };
+
+        let mut body = json!({"code": code, "message": message});
+        if let Some(reason) = reason {
+            body["reason"] = reason.into();
         }
 
-        (
-            self.status,
-            axum::Json(json!({"code": self.code, "message": self.message})),
-        )
-            .into_response()
+        (status, headers, axum::Json(body)).into_response()
+    }
+}
+
+#[derive(Debug, Error)]
+#[error("resource not found")]
+pub struct NotFound;
+
+impl HttpError for NotFound {
+    fn code(&self) -> ErrorCode {
+        ErrorCode::NotFound
     }
 }
 
 impl HttpError for sqlx::Error {
-    fn status_and_code(&self) -> (StatusCode, ErrorCode) {
-        INTERNAL
+    fn code(&self) -> ErrorCode {
+        ErrorCode::Internal
     }
 }
 
 impl HttpError for JsonRejection {
-    fn status_and_code(&self) -> (StatusCode, ErrorCode) {
-        let status = match self {
-            // Malformed or mistyped JSON is a bad request like any other (§15); a missing content
-            // type or an oversized body keeps its own HTTP status.
+    fn code(&self) -> ErrorCode {
+        ErrorCode::InvalidRequest
+    }
+
+    fn status(&self) -> StatusCode {
+        match self {
+            // Malformed or mistyped JSON is a bad request like any other; a missing content type or
+            // an oversized body keeps its own HTTP status.
             Self::JsonDataError(_) | Self::JsonSyntaxError(_) => StatusCode::BAD_REQUEST,
-            _ => self.status(),
-        };
-        (status, ErrorCode::InvalidRequest)
+            _ => JsonRejection::status(self),
+        }
     }
 }
 
 impl HttpError for UsernameError {
-    fn status_and_code(&self) -> (StatusCode, ErrorCode) {
-        (StatusCode::BAD_REQUEST, ErrorCode::InvalidUsername)
+    fn code(&self) -> ErrorCode {
+        ErrorCode::InvalidUsername
     }
 }
 
 impl HttpError for OpaqueError {
-    fn status_and_code(&self) -> (StatusCode, ErrorCode) {
+    fn code(&self) -> ErrorCode {
         match self {
             // One code for wrong password and unknown account, so a username's existence never
             // leaks.
-            Self::InvalidLogin => (StatusCode::UNAUTHORIZED, ErrorCode::InvalidCredentials),
-            Self::Malformed => (StatusCode::BAD_REQUEST, ErrorCode::InvalidRequest),
+            Self::InvalidLogin => ErrorCode::InvalidCredentials,
+            Self::Malformed => ErrorCode::InvalidRequest,
             // `ReflectedValue` and `EmptyPassword` are only raised by the client half of the
             // protocol; seeing one here means server code called a client function.
-            Self::ReflectedValue | Self::EmptyPassword | Self::Protocol(_) => INTERNAL,
+            Self::ReflectedValue | Self::EmptyPassword | Self::Protocol(_) => ErrorCode::Internal,
         }
     }
 }
@@ -199,15 +215,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn anyhow_errors_are_internal() {
-        let (status, body) = render(anyhow::anyhow!("secret detail").context("loading")).await;
-
-        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
-        assert_eq!(body["code"], "internal");
-        assert_eq!(body["message"], "internal server error");
-    }
-
-    #[tokio::test]
     async fn database_errors_are_internal() {
         let (status, body) = render(sqlx::Error::RowNotFound).await;
 
@@ -216,13 +223,70 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn ad_hoc_errors_keep_status_code_and_message() {
-        let (status, body) = render(ServerError::not_found()).await;
+    async fn not_found_keeps_its_message() {
+        let (status, body) = render(NotFound).await;
 
         assert_eq!(status, StatusCode::NOT_FOUND);
         assert_eq!(
             body,
             json!({ "code": "not_found", "message": "resource not found" }),
         );
+    }
+
+    #[derive(Debug, thiserror::Error)]
+    #[error("challenge")]
+    struct Challenge;
+
+    impl HttpError for Challenge {
+        fn code(&self) -> ErrorCode {
+            ErrorCode::InvalidCredentials
+        }
+
+        fn headers(&self) -> HeaderMap {
+            HeaderMap::from_iter([(
+                axum::http::header::WWW_AUTHENTICATE,
+                "DPoP".parse().unwrap(),
+            )])
+        }
+    }
+
+    #[derive(Debug, thiserror::Error)]
+    #[error("revoked")]
+    struct Revoked;
+
+    impl HttpError for Revoked {
+        fn code(&self) -> ErrorCode {
+            ErrorCode::SessionRevoked
+        }
+
+        fn reason(&self) -> Option<&'static str> {
+            Some("replaced")
+        }
+    }
+
+    #[tokio::test]
+    async fn error_reason_reaches_the_body() {
+        let (status, body) = render(Revoked).await;
+
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            body,
+            json!({ "code": "session_revoked", "message": "revoked", "reason": "replaced" }),
+        );
+    }
+
+    #[tokio::test]
+    async fn errors_without_a_reason_omit_it() {
+        let (_, body) = render(NotFound).await;
+
+        assert!(body.get("reason").is_none());
+    }
+
+    #[tokio::test]
+    async fn error_headers_reach_the_response() {
+        let response = ServerError::from(Challenge).into_response();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(response.headers()["www-authenticate"], "DPoP");
     }
 }

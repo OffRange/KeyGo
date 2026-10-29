@@ -5,6 +5,42 @@ create table users
     created_at timestamptz not null default now()
 );
 
+create table devices
+(
+    id           uuid primary key,
+    user_id      uuid        not null references users on delete cascade,
+    name         text        not null,
+    platform     text        not null,
+    app_version  text        not null,
+    created_at   timestamptz not null default now(),
+    last_seen_at timestamptz not null default now()
+);
+create index devices_user_id_idx on devices (user_id);
+
+create table sessions
+(
+    id            uuid primary key,
+    device_id     uuid        not null references devices on delete cascade,
+    dpop_jkt      bytea       not null,
+    auth_time     timestamptz not null,
+    created_at    timestamptz not null default now(),
+    expires_at    timestamptz not null,
+    revoked_at    timestamptz,
+    revoke_reason text
+);
+create index sessions_device_id_idx on sessions (device_id);
+create unique index sessions_one_live_per_device on sessions (device_id) where revoked_at is null;
+
+create table refresh_tokens
+(
+    token_hash bytea primary key,
+    session_id uuid        not null references sessions on delete cascade,
+    issued_at  timestamptz not null default now(),
+    expires_at timestamptz not null,
+    rotated_at timestamptz
+);
+create index refresh_tokens_session_id_idx on refresh_tokens (session_id);
+
 create table invites
 (
     code_hash  bytea primary key,

@@ -395,6 +395,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "borrow-or-share"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc0b364ead1874514c8c2855ab558056ebfeb775653e7ae45ff72f28f8f3166c"
+
+[[package]]
 name = "bumpalo"
 version = "3.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1049,6 +1055,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "64cd1e32ddd350061ae6edb1b082d7c54915b5c672c389143b9a63403a109f24"
 
 [[package]]
+name = "fluent-uri"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc74ac4d8359ae70623506d512209619e5cf8f347124910440dbc221714b328e"
+dependencies = [
+ "borrow-or-share",
+ "ref-cast",
+ "serde",
+]
+
+[[package]]
 name = "flume"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1607,10 +1624,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "keygo-dpop"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "fluent-uri",
+ "getrandom 0.4.3",
+ "hmac 0.13.0",
+ "p256",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "thiserror",
+ "zeroize",
+]
+
+[[package]]
 name = "keygo-opaque"
 version = "0.1.0"
 dependencies = [
  "base64 0.23.1",
+ "hkdf 0.12.4",
  "opaque-ke",
  "rand_core 0.6.4",
  "serde",
@@ -1631,11 +1665,13 @@ dependencies = [
  "axum",
  "base64 0.23.1",
  "clap",
+ "ed25519-dalek",
  "getrandom 0.4.3",
  "hex",
  "hmac 0.13.0",
  "http-body-util",
  "humantime",
+ "keygo-dpop",
  "keygo-opaque",
  "moka",
  "secrecy",
@@ -1652,6 +1688,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "unicode-normalization",
+ "unicode-properties",
  "url",
  "uuid",
  "zeroize",
@@ -2218,6 +2255,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed2bf2547551a7053d6fdfafda3f938979645c44812fbfcda098faae3f1a362d"
 dependencies = [
  "bitflags",
+]
+
+[[package]]
+name = "ref-cast"
+version = "1.0.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e440fb4e4b4147295338efb76001ab9e4efc0e5839df2c47fc5ac2381d365c3"
+dependencies = [
+ "ref-cast-impl",
+]
+
+[[package]]
+name = "ref-cast-impl"
+version = "1.0.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92ecd8964f8453721699a1ed72037b0db49ce2f5a5138486ee89bed6f67cdf3a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.7",
 ]
 
 [[package]]

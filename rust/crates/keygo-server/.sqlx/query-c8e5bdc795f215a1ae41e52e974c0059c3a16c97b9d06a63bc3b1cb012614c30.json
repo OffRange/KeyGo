@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into sessions (id, device_id, dpop_jkt, auth_time, expires_at)\n         values ($1, $2, $3, to_timestamp($4::int8), now() + make_interval(secs => $5))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Bytea",
+        "Int8",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c8e5bdc795f215a1ae41e52e974c0059c3a16c97b9d06a63bc3b1cb012614c30"
+}

@@ -25,7 +25,7 @@ pub enum StartError {
     UserIdTaken,
     #[error(transparent)]
     Opaque(#[from] OpaqueError),
-    #[error("database error: {0}")]
+    #[error("database error")]
     Db(#[from] sqlx::Error),
 }
 

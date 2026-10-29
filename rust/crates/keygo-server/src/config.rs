@@ -1,4 +1,4 @@
-use crate::domain::InvitePepper;
+use crate::domain::{AccessTokenKey, InvitePepper};
 use crate::secrets::{DbPassword, OpaqueSetup, SecretStore};
 use clap::{Args, ValueEnum};
 use keygo_opaque::server::ServerSetup;
@@ -105,5 +105,9 @@ impl SecretsConfig {
 
     pub(crate) fn invite_pepper(&self) -> anyhow::Result<InvitePepper> {
         self.store().read::<InvitePepper>()
+    }
+
+    pub(crate) fn access_token_key(&self) -> anyhow::Result<AccessTokenKey> {
+        self.store().read::<AccessTokenKey>()
     }
 }

@@ -1,0 +1,180 @@
+use crate::api::{AppState, ErrorCode, HttpError, ServerError, single_header};
+use axum::extract::{FromRequestParts, OriginalUri};
+use axum::http::header::RETRY_AFTER;
+use axum::http::request::Parts;
+use axum::http::{HeaderMap, HeaderName, HeaderValue, Method};
+use keygo_dpop::Htm;
+use keygo_dpop::verify::{Checked, Expected, InvalidProof, VerifyError};
+use url::Url;
+
+const DPOP: HeaderName = HeaderName::from_static("dpop");
+const DPOP_NONCE: HeaderName = HeaderName::from_static("dpop-nonce");
+
+pub struct SingleUseDpopProof {
+    pub jkt: [u8; 32],
+}
+
+impl FromRequestParts<AppState> for SingleUseDpopProof {
+    type Rejection = ServerError;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let jkt = check_dpop(parts, state, None, None)?.skip_replay_check();
+        Ok(SingleUseDpopProof { jkt })
+    }
+}
+
+pub(super) fn check_dpop<'a>(
+    parts: &Parts,
+    state: &'a AppState,
+    access_token: Option<&str>,
+    jkt: Option<&[u8; 32]>,
+) -> Result<Checked<'a>, VerifyError> {
+    let proof = single_header(&parts.headers, DPOP)
+        .and_then(|value| value.to_str().ok())
+        .ok_or(VerifyError::Invalid(InvalidProof::Malformed))?;
+    let htm = htm(&parts.method).ok_or(VerifyError::Invalid(InvalidProof::Request))?;
+    let htu = expected_htu(parts, &state.public_url);
+
+    let expected = Expected {
+        htm,
+        htu: htu.as_str(),
+        access_token,
+        jkt,
+    };
+
+    state
+        .dpop_verifier
+        .check(proof, expected)
+        .inspect_err(|err| tracing::debug!(?err, "dpop proof rejected"))
+}
+
+impl HttpError for VerifyError {
+    fn code(&self) -> ErrorCode {
+        match self {
+            Self::Invalid(_) => ErrorCode::InvalidDpopProof,
+            Self::UseNonce(_) => ErrorCode::UseDpopNonce,
+            Self::Busy { .. } => ErrorCode::RateLimited,
+        }
+    }
+
+    fn headers(&self) -> HeaderMap {
+        match self {
+            Self::UseNonce(nonce) => {
+                let nonce = HeaderValue::try_from(nonce.to_string()).expect("nonces are base64url");
+                HeaderMap::from_iter([(DPOP_NONCE, nonce)])
+            }
+            Self::Busy { retry_after } => {
+                HeaderMap::from_iter([(RETRY_AFTER, HeaderValue::from(retry_after.as_secs()))])
+            }
+            Self::Invalid(_) => HeaderMap::new(),
+        }
+    }
+}
+
+fn htm(method: &Method) -> Option<Htm> {
+    match *method {
+        Method::GET => Some(Htm::Get),
+        Method::POST => Some(Htm::Post),
+        Method::DELETE => Some(Htm::Delete),
+        _ => None,
+    }
+}
+
+fn expected_htu(parts: &Parts, public_url: &Url) -> Url {
+    let path = parts
+        .extensions
+        .get::<OriginalUri>()
+        .map_or(parts.uri.path(), |OriginalUri(uri)| uri.path());
+
+    let mut url = public_url.clone();
+    url.set_path(path);
+    url.set_query(None);
+    url.set_fragment(None);
+    url
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::api::error::render;
+    use axum::Router;
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use axum::routing::post;
+    use serde_json::json;
+    use std::time::Duration;
+    use tower::ServiceExt;
+
+    fn public_url() -> Url {
+        Url::parse("https://sync.example").unwrap()
+    }
+
+    async fn finish(request: Request<Body>) -> StatusCode {
+        let state = AppState {
+            public_url: public_url(),
+            ..crate::api::tests::state()
+        };
+        let app = Router::new()
+            .nest(
+                "/auth",
+                Router::new().route("/finish", post(|_: SingleUseDpopProof| async {})),
+            )
+            .with_state(state);
+        app.oneshot(request).await.unwrap().status()
+    }
+
+    #[test]
+    fn htu_uses_public_url_and_the_unnested_path() {
+        let (parts, ()) = Request::post("/finish")
+            .extension(OriginalUri(
+                "/api/v1/auth/login/finish?a=b".parse().unwrap(),
+            ))
+            .body(())
+            .unwrap()
+            .into_parts();
+
+        assert_eq!(
+            expected_htu(&parts, &public_url()).as_str(),
+            "https://sync.example/api/v1/auth/login/finish",
+        );
+    }
+
+    #[tokio::test]
+    async fn missing_or_repeated_header_is_an_invalid_proof() {
+        let missing = Request::post("/auth/finish").body(Body::empty()).unwrap();
+        let repeated = Request::post("/auth/finish")
+            .header(DPOP, "a.b.c")
+            .header(DPOP, "a.b.c")
+            .body(Body::empty())
+            .unwrap();
+
+        assert_eq!(finish(missing).await, StatusCode::BAD_REQUEST);
+        assert_eq!(finish(repeated).await, StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn invalid_proof_hides_its_reason() {
+        let (status, body) = render(VerifyError::from(InvalidProof::Replay)).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(
+            body,
+            json!({ "code": "invalid_dpop_proof", "message": "invalid dpop proof" }),
+        );
+    }
+
+    #[tokio::test]
+    async fn full_replay_cache_is_rate_limited() {
+        let busy = VerifyError::Busy {
+            retry_after: Duration::from_secs(7),
+        };
+
+        assert_eq!(busy.headers()[RETRY_AFTER], "7");
+        let (status, body) = render(busy).await;
+        assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(body["code"], "rate_limited");
+    }
+}

@@ -1,20 +1,11 @@
 use crate::cache::{LoginStates, Pending};
 use crate::db::opaque_records;
 use crate::domain::{LoginId, Username};
-use crate::service::login::TTL;
+use crate::service::login::{Error, TTL};
 use keygo_opaque::server::{ServerLogin, ServerSetup};
-use keygo_opaque::{CredentialRequest, CredentialResponse, OpaqueError};
+use keygo_opaque::{CredentialRequest, CredentialResponse};
 use sqlx::PgPool;
 use std::time::Duration;
-use thiserror::Error;
-
-#[derive(Debug, Error)]
-pub enum StartError {
-    #[error(transparent)]
-    Opaque(#[from] OpaqueError),
-    #[error("database error: {0}")]
-    Db(#[from] sqlx::Error),
-}
 
 pub struct StartLogin {
     pub username: Username,
@@ -37,7 +28,7 @@ pub async fn start(
     login_states: &LoginStates,
     setup: &ServerSetup,
     input: StartLogin,
-) -> Result<Started, StartError> {
+) -> Result<Started, Error> {
     let StartLogin {
         username,
         credential_request,

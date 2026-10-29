@@ -11,8 +11,8 @@ const ALPHABET: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ"; // no I, L, O, 
 pub struct InvitePepper(Zeroizing<[u8; 32]>);
 
 impl InvitePepper {
-    pub fn new(bytes: [u8; 32]) -> Self {
-        Self(Zeroizing::new(bytes))
+    pub fn new(bytes: &[u8; 32]) -> Self {
+        Self(Zeroizing::new(*bytes))
     }
 
     pub fn hash(&self, code: &InviteCode) -> InviteHash {
@@ -94,7 +94,7 @@ mod tests {
     use super::*;
 
     fn pepper(byte: u8) -> InvitePepper {
-        InvitePepper::new([byte; 32])
+        InvitePepper::new(&[byte; 32])
     }
 
     #[test]

@@ -10,7 +10,7 @@ pub enum RevokeError {
     NotFound(InviteId),
     #[error("{id} matches {} open invites, nothing revoked", matches.len())]
     Ambiguous { id: InviteId, matches: Vec<Invite> },
-    #[error("database error: {0}")]
+    #[error("database error")]
     Db(#[from] sqlx::Error),
 }
 

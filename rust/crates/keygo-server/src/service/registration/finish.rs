@@ -1,5 +1,8 @@
 use crate::db::{invites, opaque_records, registrations, users};
-use crate::domain::{RegistrationId, Username};
+use crate::domain::{Device, DeviceInfo, RegistrationId, TokenIssuer, Username};
+use crate::service;
+use crate::service::device;
+use crate::service::session::Issued;
 use keygo_opaque::{RegistrationUpload, server};
 use sqlx::PgPool;
 use thiserror::Error;
@@ -10,25 +13,33 @@ pub enum FinishError {
     Expired,
     #[error("invite is not valid or has expired")]
     InviteInvalid,
-    #[error("database error: {0}")]
+    #[error("database error")]
     Db(#[from] sqlx::Error),
 }
 
 pub struct FinishRegistration {
     pub registration_id: RegistrationId,
     pub registration_upload: RegistrationUpload,
-    // TODO: key bundle + device info
+    pub device_info: DeviceInfo,
+    pub jkt: [u8; 32],
+    // TODO: key bundle
 }
 
 pub struct Finished {
     pub username: Username,
-    // TODO: session
+    pub session: Issued,
 }
 
-pub async fn finish(db: &PgPool, input: FinishRegistration) -> Result<Finished, FinishError> {
+pub async fn finish(
+    db: &PgPool,
+    token_issuer: &TokenIssuer,
+    input: FinishRegistration,
+) -> Result<Finished, FinishError> {
     let FinishRegistration {
         registration_id,
         registration_upload,
+        device_info,
+        jkt,
     } = input;
 
     // Pure computation, so it runs before the transaction to keep the reservation's lock short.
@@ -46,10 +57,24 @@ pub async fn finish(db: &PgPool, input: FinishRegistration) -> Result<Finished, 
 
     users::insert(&mut tx, pending.user_id, &pending.username).await?;
     opaque_records::insert(&mut tx, pending.user_id, &password_file).await?;
+
+    let device_id = device::attach_or_create(
+        &mut tx,
+        pending.user_id,
+        Device {
+            id: None,
+            info: device_info,
+        },
+    )
+    .await?;
+
+    let session =
+        service::session::issue(&mut tx, token_issuer, pending.user_id, device_id, &jkt).await?;
     tx.commit().await?;
 
     Ok(Finished {
         username: pending.username,
+        session,
     })
 }
 
@@ -57,7 +82,10 @@ pub async fn finish(db: &PgPool, input: FinishRegistration) -> Result<Finished, 
 mod tests {
     use super::*;
     use crate::service::registration::{self, Signup, StartRegistration, Started};
-    use crate::testing::{PASSWORD, count, create_invite, expire, invite_only, username};
+    use crate::testing::{
+        JKT, PASSWORD, count, create_invite, device_info, expire, invite_only, token_issuer,
+        username,
+    };
     use keygo_opaque::client::ClientRegistration;
     use keygo_opaque::server::ServerSetup;
     use uuid::Uuid;
@@ -92,13 +120,16 @@ mod tests {
         FinishRegistration {
             registration_id,
             registration_upload: finish.upload,
+            device_info: device_info(),
+            jkt: JKT,
         }
     }
 
-    async fn user_count(db: &PgPool) -> (i64, i64, i64) {
+    async fn user_count(db: &PgPool) -> (i64, i64, i64, i64) {
         (
             count(db, "users").await,
             count(db, "opaque_records").await,
+            count(db, "devices").await,
             count(db, "pending_registrations").await,
         )
     }
@@ -108,15 +139,50 @@ mod tests {
         let user_id = Uuid::new_v4();
         let input = started(&db, user_id, "Ada").await;
 
-        let finished = finish(&db, input).await.unwrap();
+        let finished = finish(&db, &token_issuer(), input).await.unwrap();
 
         assert_eq!(finished.username, username("ada"));
-        assert_eq!(user_count(&db).await, (1, 1, 0));
+        assert_eq!(user_count(&db).await, (1, 1, 1, 0));
         let stored: (Uuid, String) = sqlx::query_as("select id, username from users")
             .fetch_one(&db)
             .await
             .unwrap();
         assert_eq!(stored, (user_id, "ada".to_owned()));
+        let device: (Uuid, String, String, String) =
+            sqlx::query_as("select user_id, name, platform, app_version from devices")
+                .fetch_one(&db)
+                .await
+                .unwrap();
+        let expected = ["Pixel 9", "android", "2.3.0"].map(str::to_owned);
+        assert_eq!((device.1, device.2, device.3), expected.into());
+        assert_eq!(device.0, user_id);
+    }
+
+    #[sqlx::test]
+    async fn finish_issues_a_session_for_the_new_device(db: PgPool) {
+        let user_id = Uuid::new_v4();
+        let input = started(&db, user_id, "ada").await;
+
+        let finished = finish(&db, &token_issuer(), input).await.unwrap();
+
+        let device_id: Uuid = sqlx::query_scalar("select id from devices")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        assert_eq!(finished.session.device_id.as_uuid(), device_id);
+        let session: (Uuid, Uuid, Vec<u8>) = sqlx::query_as(
+            "select s.device_id, d.user_id, s.dpop_jkt
+                 from sessions s join devices d on d.id = s.device_id",
+        )
+        .fetch_one(&db)
+        .await
+        .unwrap();
+        assert_eq!(session, (device_id, user_id, JKT.to_vec()));
+        let token_hash: Vec<u8> = sqlx::query_scalar("select token_hash from refresh_tokens")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        assert_eq!(token_hash, finished.session.refresh_token.digest());
     }
 
     #[sqlx::test]
@@ -128,13 +194,16 @@ mod tests {
                 &input.registration_upload.to_bytes(),
             )
             .unwrap(),
+            device_info: device_info(),
+            jkt: JKT,
         };
-        finish(&db, input).await.unwrap();
+        finish(&db, &token_issuer(), input).await.unwrap();
 
-        let err = finish(&db, replay).await.err().unwrap();
+        let err = finish(&db, &token_issuer(), replay).await.err().unwrap();
 
         assert!(matches!(err, FinishError::Expired), "{err:?}");
-        assert_eq!(user_count(&db).await, (1, 1, 0));
+        assert_eq!(user_count(&db).await, (1, 1, 1, 0));
+        assert_eq!(count(&db, "sessions").await, 1);
     }
 
     #[sqlx::test]
@@ -145,10 +214,10 @@ mod tests {
             ..input
         };
 
-        let err = finish(&db, unknown).await.err().unwrap();
+        let err = finish(&db, &token_issuer(), unknown).await.err().unwrap();
 
         assert!(matches!(err, FinishError::Expired), "{err:?}");
-        assert_eq!(user_count(&db).await, (0, 0, 1));
+        assert_eq!(user_count(&db).await, (0, 0, 0, 1));
     }
 
     #[sqlx::test]
@@ -156,10 +225,10 @@ mod tests {
         let input = started(&db, Uuid::new_v4(), "ada").await;
         expire(&db, "pending_registrations").await;
 
-        let err = finish(&db, input).await.err().unwrap();
+        let err = finish(&db, &token_issuer(), input).await.err().unwrap();
 
         assert!(matches!(err, FinishError::Expired), "{err:?}");
-        assert_eq!(user_count(&db).await, (0, 0, 1));
+        assert_eq!(user_count(&db).await, (0, 0, 0, 1));
     }
 
     #[sqlx::test]
@@ -172,10 +241,11 @@ mod tests {
             .await
             .unwrap();
 
-        let err = finish(&db, input).await.err().unwrap();
+        let err = finish(&db, &token_issuer(), input).await.err().unwrap();
 
         assert!(matches!(err, FinishError::Db(_)), "{err:?}");
-        assert_eq!(user_count(&db).await, (1, 0, 1));
+        assert_eq!(user_count(&db).await, (1, 0, 0, 1));
+        assert_eq!(count(&db, "sessions").await, 0);
     }
 
     #[sqlx::test]
@@ -183,9 +253,9 @@ mod tests {
         let code = create_invite(&db).await;
         let input = started_with(&db, &invite_only(), Some(&code), Uuid::new_v4(), "ada").await;
 
-        finish(&db, input).await.unwrap();
+        finish(&db, &token_issuer(), input).await.unwrap();
 
-        assert_eq!(user_count(&db).await, (1, 1, 0));
+        assert_eq!(user_count(&db).await, (1, 1, 1, 0));
         assert_eq!(count(&db, "invites").await, 0);
     }
 
@@ -194,12 +264,12 @@ mod tests {
         let code = create_invite(&db).await;
         let ada = started_with(&db, &invite_only(), Some(&code), Uuid::new_v4(), "ada").await;
         let bob = started_with(&db, &invite_only(), Some(&code), Uuid::new_v4(), "bob").await;
-        finish(&db, ada).await.unwrap();
+        finish(&db, &token_issuer(), ada).await.unwrap();
 
-        let err = finish(&db, bob).await.err().unwrap();
+        let err = finish(&db, &token_issuer(), bob).await.err().unwrap();
 
         assert!(matches!(err, FinishError::InviteInvalid), "{err:?}");
-        assert_eq!(user_count(&db).await, (1, 1, 1));
+        assert_eq!(user_count(&db).await, (1, 1, 1, 1));
     }
 
     #[sqlx::test]
@@ -208,10 +278,10 @@ mod tests {
         let input = started_with(&db, &invite_only(), Some(&code), Uuid::new_v4(), "ada").await;
         expire(&db, "invites").await;
 
-        let err = finish(&db, input).await.err().unwrap();
+        let err = finish(&db, &token_issuer(), input).await.err().unwrap();
 
         assert!(matches!(err, FinishError::InviteInvalid), "{err:?}");
-        assert_eq!(user_count(&db).await, (0, 0, 1));
+        assert_eq!(user_count(&db).await, (0, 0, 0, 1));
         assert_eq!(count(&db, "invites").await, 1);
     }
 
@@ -226,7 +296,7 @@ mod tests {
             .await
             .unwrap();
 
-        let err = finish(&db, input).await.err().unwrap();
+        let err = finish(&db, &token_issuer(), input).await.err().unwrap();
 
         assert!(matches!(err, FinishError::Db(_)), "{err:?}");
         assert_eq!(count(&db, "invites").await, 1);

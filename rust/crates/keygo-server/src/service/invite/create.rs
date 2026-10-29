@@ -34,7 +34,7 @@ mod tests {
     const TTL: Duration = Duration::from_hours(24);
 
     fn pepper() -> InvitePepper {
-        InvitePepper::new([1; 32])
+        InvitePepper::new(&[1; 32])
     }
 
     #[sqlx::test]

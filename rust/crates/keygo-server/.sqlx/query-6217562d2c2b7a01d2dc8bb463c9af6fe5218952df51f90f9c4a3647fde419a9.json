@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select revoked_at is not null as \"revoked!\",\n           revoke_reason,\n           expires_at <= now() as \"expired!\"\n           from sessions\n           where id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "revoked!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "revoke_reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "revoke_reason"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "expired!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      true,
+      null
+    ]
+  },
+  "hash": "6217562d2c2b7a01d2dc8bb463c9af6fe5218952df51f90f9c4a3647fde419a9"
+}

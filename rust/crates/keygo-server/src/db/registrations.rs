@@ -11,7 +11,7 @@ pub enum ReserveError {
     UserIdTaken,
     #[error("username is already in use")]
     UsernameTaken,
-    #[error("database error: {0}")]
+    #[error("database error")]
     Db(#[source] sqlx::Error),
 }
 

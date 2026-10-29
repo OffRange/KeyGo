@@ -6,11 +6,13 @@ mod macros;
 pub mod client;
 pub mod server;
 
+mod dpop_binding;
 mod error;
 mod keys;
 mod messages;
 mod suite;
 
+pub use dpop_binding::DpopBinding;
 pub use error::{OpaqueError, OpaqueResult};
 pub use keys::{ExportKey, KEY_LEN, SessionKey};
 pub use messages::{

@@ -1,13 +1,19 @@
+mod authenticated;
+mod dpop;
 mod error;
 mod extract;
 mod routes;
 mod state;
 
-pub use error::{ErrorCode, HttpError, ServerError, ServerResult};
+use axum::http::header::AsHeaderName;
+use axum::http::{HeaderMap, HeaderValue};
+pub use error::{ErrorCode, HttpError, NotFound, ServerError, ServerResult};
 pub use extract::Json;
 pub use state::AppState;
 
 use axum::Router;
+use axum::http::header::CACHE_CONTROL;
+use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 
 pub fn router(state: AppState) -> Router {
@@ -15,6 +21,10 @@ pub fn router(state: AppState) -> Router {
         .nest("/health", routes::health::router())
         .nest("/api/v1", v1())
         .fallback(not_found)
+        .layer(SetResponseHeaderLayer::if_not_present(
+            CACHE_CONTROL,
+            HeaderValue::from_static("no-store"),
+        ))
         .layer(TraceLayer::new_for_http())
         .with_state(state)
 }
@@ -26,7 +36,15 @@ fn v1() -> Router<AppState> {
 }
 
 async fn not_found() -> ServerError {
-    ServerError::not_found()
+    NotFound.into()
+}
+
+fn single_header<A: AsHeaderName>(headers: &HeaderMap, name: A) -> Option<&HeaderValue> {
+    let mut values = headers.get_all(name).iter();
+    match (values.next(), values.next()) {
+        (Some(value), None) => Some(value),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -38,6 +56,7 @@ mod tests {
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use http_body_util::BodyExt;
+    use keygo_dpop::verify::DpopVerifier;
     use routes::auth::MAX_BODY_BYTES;
     use serde_json::{Value, json};
     use std::sync::Arc;
@@ -62,14 +81,17 @@ mod tests {
         (status, body.to_vec())
     }
 
-    fn state() -> AppState {
+    pub(super) fn state() -> AppState {
         AppState {
-            signup: Signup::InviteOnly(Arc::new(InvitePepper::new([0; 32]))),
+            public_url: url::Url::parse("http://localhost").unwrap(),
+            signup: Signup::InviteOnly(Arc::new(InvitePepper::new(&[0; 32]))),
             opaque_state: keygo_opaque::server::ServerSetup::generate(),
             // Lazy pools never connect until queried, so routes without a query need no database.
             db: sqlx::postgres::PgPoolOptions::new()
                 .connect_lazy_with(sqlx::postgres::PgConnectOptions::new()),
             login_states: LoginStates::new(),
+            dpop_verifier: Arc::new(DpopVerifier::new()),
+            token_issuer: Arc::new(crate::testing::token_issuer()),
         }
     }
 
@@ -119,6 +141,21 @@ mod tests {
         let body: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(body["code"], "invalid_request");
         assert!(body["message"].as_str().is_some_and(|m| !m.is_empty()));
+    }
+
+    #[tokio::test]
+    async fn error_responses_are_not_stored() {
+        for request in [
+            Request::get("/api/v1/nope").body(Body::empty()).unwrap(),
+            Request::post("/api/v1/auth/register/start")
+                .body(Body::from("{}"))
+                .unwrap(),
+        ] {
+            let response = router(state()).oneshot(request).await.unwrap();
+
+            assert!(response.status().is_client_error());
+            assert_eq!(response.headers()[CACHE_CONTROL], "no-store");
+        }
     }
 
     #[tokio::test]

@@ -1,12 +1,13 @@
 use keygo_opaque::client::{ClientLogin, ClientRegistration, LoginFinish};
 use keygo_opaque::server::{self, ServerLogin, ServerSetup};
 use keygo_opaque::{
-    CredentialFinalization, CredentialRequest, CredentialResponse, OpaqueError, PasswordFile,
-    RegistrationRequest,
+    CredentialFinalization, CredentialRequest, CredentialResponse, DpopBinding, OpaqueError,
+    PasswordFile, RegistrationRequest,
 };
 
 const ID: &[u8] = b"account-1";
 const PASSWORD: &[u8] = b"correct horse battery staple";
+const JKT: [u8; 32] = [0x40; 32];
 
 fn register(setup: &ServerSetup, password: &[u8]) -> (PasswordFile, Vec<u8>) {
     let (client, request) = ClientRegistration::start(password).unwrap();
@@ -39,13 +40,44 @@ fn register_then_login_agrees_on_keys() {
     let (client, server) = login(&setup, Some(file), PASSWORD).unwrap();
     let finalization = CredentialFinalization::from_bytes(&client.finalization.to_bytes()).unwrap();
     let server_session_key = server.finish(finalization).unwrap();
+    let binding = client.session_key.dpop_binding(&JKT);
+    let binding = DpopBinding::from_base64(&binding.to_base64()).unwrap();
 
-    assert_eq!(client.session_key.as_bytes(), server_session_key.as_bytes());
+    assert_eq!(
+        server_session_key.verify_dpop_binding(&JKT, &binding),
+        Ok(())
+    );
     assert_eq!(
         client.export_key.as_bytes().as_slice(),
         registration_export_key
     );
     assert_eq!(client.server_public_key, setup.public_key());
+}
+
+/// A relay that forwards one run's KE3 cannot pair it with a binding from another run.
+#[test]
+fn dpop_binding_from_another_login_is_rejected() {
+    let setup = ServerSetup::generate();
+    let (file, _) = register(&setup, PASSWORD);
+    let file_bytes = file.to_bytes();
+
+    let (client, server) = login(&setup, Some(file), PASSWORD).unwrap();
+    let (other, _) = login(
+        &setup,
+        Some(PasswordFile::from_bytes(&file_bytes).unwrap()),
+        PASSWORD,
+    )
+    .unwrap();
+    let server_session_key = server.finish(client.finalization).unwrap();
+
+    assert_eq!(
+        server_session_key.verify_dpop_binding(&JKT, &other.session_key.dpop_binding(&JKT)),
+        Err(OpaqueError::InvalidLogin),
+    );
+    assert_eq!(
+        server_session_key.verify_dpop_binding(&[0x41; 32], &client.session_key.dpop_binding(&JKT)),
+        Err(OpaqueError::InvalidLogin),
+    );
 }
 
 #[test]

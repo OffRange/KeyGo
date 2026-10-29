@@ -1,6 +1,9 @@
+pub mod devices;
 pub mod invites;
 pub mod opaque_records;
+pub mod refresh_tokens;
 pub mod registrations;
+pub mod sessions;
 pub mod users;
 
 use crate::config::{DatabaseConfig, SecretsConfig};

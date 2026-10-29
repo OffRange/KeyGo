@@ -1,4 +1,4 @@
-use crate::domain::InvitePepper;
+use crate::domain::{AccessTokenKey, InvitePepper};
 use anyhow::{Context, anyhow, ensure};
 use keygo_opaque::server::ServerSetup;
 use secrecy::{ExposeSecret, SecretString};
@@ -106,22 +106,46 @@ impl TypedSecret for InvitePepper {
     type Value = Self;
 
     fn generate() -> anyhow::Result<SecretString> {
-        let mut raw = Zeroizing::new([0u8; 32]);
-        getrandom::fill(raw.as_mut_slice()).map_err(|e| anyhow!("getrandom: {}", e))?;
-        Ok(hex::encode(raw.as_slice()).into())
+        random_key()
     }
 
     fn decode(stored: &str) -> anyhow::Result<Self> {
-        let raw = Zeroizing::new(hex::decode(stored).context("not hex")?);
-        let bytes: [u8; 32] = raw.as_slice().try_into().context("not 32 bytes")?;
-        Ok(Self::new(bytes))
+        Ok(Self::new(&*decode(stored)?))
     }
+}
+
+impl TypedSecret for AccessTokenKey {
+    const NAME: &'static str = "access_token_key";
+    type Value = Self;
+
+    fn generate() -> anyhow::Result<SecretString> {
+        random_key()
+    }
+
+    fn decode(stored: &str) -> anyhow::Result<Self::Value> {
+        Ok(AccessTokenKey::new(&*decode(stored)?))
+    }
+}
+
+fn random_key() -> anyhow::Result<SecretString> {
+    let mut raw = Zeroizing::new([0u8; 32]);
+    getrandom::fill(raw.as_mut_slice()).map_err(|e| anyhow!("getrandom: {}", e))?;
+    Ok(hex::encode(raw.as_slice()).into())
+}
+
+fn decode(stored: &str) -> anyhow::Result<Zeroizing<[u8; 32]>> {
+    let raw = Zeroizing::new(hex::decode(stored).context("not hex")?);
+    ensure!(raw.len() == 32, "not 32 bytes");
+    let mut bytes = Zeroizing::new([0u8; 32]);
+    bytes.copy_from_slice(&raw);
+    Ok(bytes)
 }
 
 secrets! {
     DbPassword,
     OpaqueSetup,
     InvitePepper,
+    AccessTokenKey,
 }
 
 #[derive(Debug, PartialEq, Eq)]

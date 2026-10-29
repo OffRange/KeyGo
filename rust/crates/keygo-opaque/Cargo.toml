@@ -6,8 +6,8 @@ edition.workspace = true
 [dependencies]
 thiserror.workspace = true
 zeroize.workspace = true
+base64.workspace = true
 
-base64 = "0.23.1"
 serde = "1.0.229"
 
 opaque-ke = { version = "4.0.1", default-features = false, features = ["argon2", "ristretto255"] }
@@ -16,6 +16,8 @@ rand_core = { version = "0.6.4", features = ["getrandom"] }
 sha2 = "0.10.9"
 # Only to classify the OPRF errors opaque-ke passes through.
 voprf = { version = "0.5.0", default-features = false }
+
+hkdf = "0.12.4"
 
 [dev-dependencies]
 serde_json = "1.0.154"
