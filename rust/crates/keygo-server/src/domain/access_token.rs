@@ -179,6 +179,7 @@ impl Claims {
 }
 
 impl AccessToken {
+    #[cfg(test)]
     pub(crate) fn expose(&self) -> &str {
         &self.0
     }
