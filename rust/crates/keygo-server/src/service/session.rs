@@ -4,7 +4,7 @@ use crate::domain::{
     ACCESS_TOKEN_LIFETIME, AccessToken, DeviceId, RefreshToken, RevokeReason, SessionId,
     TokenIssuer, unix_now,
 };
-use sqlx::{Connection, PgConnection, PgPool, PgTransaction};
+use sqlx::{PgPool, PgTransaction};
 use std::time::Duration;
 use thiserror::Error;
 use uuid::Uuid;
@@ -22,7 +22,7 @@ pub struct Issued {
 }
 
 pub async fn issue(
-    conn: &mut PgConnection,
+    tx: &mut PgTransaction<'_>,
     token_issuer: &TokenIssuer,
     user_id: Uuid,
     device_id: DeviceId,
@@ -30,21 +30,11 @@ pub async fn issue(
 ) -> sqlx::Result<Issued> {
     let auth_time = unix_now();
 
-    let mut tx = conn.begin().await?;
     let session_id = SessionId::new_v4();
-    sessions::insert(
-        &mut tx,
-        session_id,
-        device_id,
-        jkt,
-        auth_time,
-        SESSION_LIFETIME,
-    )
-    .await?;
+    sessions::insert(tx, session_id, device_id, jkt, auth_time, SESSION_LIFETIME).await?;
 
     let refresh_token = RefreshToken::generate();
-    refresh_tokens::insert(&mut tx, session_id, &refresh_token.digest(), REFRESH_TTL).await?;
-    tx.commit().await?;
+    refresh_tokens::insert(tx, session_id, &refresh_token.digest(), REFRESH_TTL).await?;
 
     Ok(Issued {
         device_id,
@@ -139,11 +129,12 @@ mod tests {
     #[sqlx::test]
     async fn issue_binds_a_session_to_the_device_and_key(db: PgPool) {
         let (user_id, device_id) = insert_device(&db).await;
-        let mut conn = db.acquire().await.unwrap();
+        let mut tx = db.begin().await.unwrap();
 
-        let issued = issue(&mut conn, &token_issuer(), user_id, device_id, &JKT)
+        let issued = issue(&mut tx, &token_issuer(), user_id, device_id, &JKT)
             .await
             .unwrap();
+        tx.commit().await.unwrap();
 
         assert_eq!(issued.device_id, device_id);
         assert_eq!(issued.refresh_expires_in, REFRESH_TTL);
@@ -158,11 +149,12 @@ mod tests {
     #[sqlx::test]
     async fn issue_signs_an_access_token_for_the_stored_session(db: PgPool) {
         let (user_id, device_id) = insert_device(&db).await;
-        let mut conn = db.acquire().await.unwrap();
+        let mut tx = db.begin().await.unwrap();
 
-        let issued = issue(&mut conn, &token_issuer(), user_id, device_id, &JKT)
+        let issued = issue(&mut tx, &token_issuer(), user_id, device_id, &JKT)
             .await
             .unwrap();
+        tx.commit().await.unwrap();
 
         let claims = token_issuer().verify(issued.access_token.expose()).unwrap();
         let (session_id, auth_time): (Uuid, i64) =
@@ -181,11 +173,12 @@ mod tests {
     #[sqlx::test]
     async fn issue_stores_only_the_refresh_token_hash(db: PgPool) {
         let (user_id, device_id) = insert_device(&db).await;
-        let mut conn = db.acquire().await.unwrap();
+        let mut tx = db.begin().await.unwrap();
 
-        let issued = issue(&mut conn, &token_issuer(), user_id, device_id, &JKT)
+        let issued = issue(&mut tx, &token_issuer(), user_id, device_id, &JKT)
             .await
             .unwrap();
+        tx.commit().await.unwrap();
 
         let stored: Vec<u8> = sqlx::query_scalar("select token_hash from refresh_tokens")
             .fetch_one(&db)
@@ -198,17 +191,18 @@ mod tests {
     #[sqlx::test]
     async fn each_issue_opens_its_own_session(db: PgPool) {
         let (user_id, device_id) = insert_device(&db).await;
-        let mut conn = db.acquire().await.unwrap();
+        let mut tx = db.begin().await.unwrap();
 
-        let first = issue(&mut conn, &token_issuer(), user_id, device_id, &JKT)
+        let first = issue(&mut tx, &token_issuer(), user_id, device_id, &JKT)
             .await
             .unwrap();
-        sessions::revoke_by_device(&mut conn, device_id, RevokeReason::Replaced)
+        sessions::revoke_by_device(&mut tx, device_id, RevokeReason::Replaced)
             .await
             .unwrap();
-        let second = issue(&mut conn, &token_issuer(), user_id, device_id, &JKT)
+        let second = issue(&mut tx, &token_issuer(), user_id, device_id, &JKT)
             .await
             .unwrap();
+        tx.commit().await.unwrap();
 
         assert_ne!(first.refresh_token.digest(), second.refresh_token.digest());
         assert_eq!(count(&db, "sessions").await, 2);
@@ -218,12 +212,14 @@ mod tests {
     #[sqlx::test]
     async fn a_device_has_at_most_one_live_session(db: PgPool) {
         let (user_id, device_id) = insert_device(&db).await;
-        let mut conn = db.acquire().await.unwrap();
-        issue(&mut conn, &token_issuer(), user_id, device_id, &JKT)
+        let mut tx = db.begin().await.unwrap();
+        issue(&mut tx, &token_issuer(), user_id, device_id, &JKT)
             .await
             .unwrap();
+        tx.commit().await.unwrap();
 
-        let err = issue(&mut conn, &token_issuer(), user_id, device_id, &JKT)
+        let mut tx = db.begin().await.unwrap();
+        let err = issue(&mut tx, &token_issuer(), user_id, device_id, &JKT)
             .await
             .err()
             .unwrap();
@@ -250,18 +246,12 @@ mod tests {
     #[sqlx::test]
     async fn issue_for_an_unknown_device_stores_nothing(db: PgPool) {
         let (user_id, _) = insert_device(&db).await;
-        let mut conn = db.acquire().await.unwrap();
+        let mut tx = db.begin().await.unwrap();
 
-        let err = issue(
-            &mut conn,
-            &token_issuer(),
-            user_id,
-            DeviceId::random(),
-            &JKT,
-        )
-        .await
-        .err()
-        .unwrap();
+        let err = issue(&mut tx, &token_issuer(), user_id, DeviceId::random(), &JKT)
+            .await
+            .err()
+            .unwrap();
 
         assert!(err.as_database_error().unwrap().is_foreign_key_violation());
         assert_eq!(count(&db, "sessions").await, 0);
@@ -270,10 +260,12 @@ mod tests {
 
     async fn issued(db: &PgPool) -> Issued {
         let (user_id, device_id) = insert_device(db).await;
-        let mut conn = db.acquire().await.unwrap();
-        issue(&mut conn, &token_issuer(), user_id, device_id, &JKT)
+        let mut tx = db.begin().await.unwrap();
+        let issued = issue(&mut tx, &token_issuer(), user_id, device_id, &JKT)
             .await
-            .unwrap()
+            .unwrap();
+        tx.commit().await.unwrap();
+        issued
     }
 
     async fn revoke_reason(db: &PgPool) -> Option<String> {

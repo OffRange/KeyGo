@@ -283,16 +283,18 @@ mod tests {
 
     async fn signed_in(db: &PgPool, prover: &DpopProver<TestSigner>) -> session::Issued {
         let (user_id, device_id) = insert_device(db).await;
-        let mut conn = db.acquire().await.unwrap();
-        session::issue(
-            &mut conn,
+        let mut tx = db.begin().await.unwrap();
+        let issued = session::issue(
+            &mut tx,
             &crate::testing::token_issuer(),
             user_id,
             device_id,
             prover.jkt(),
         )
         .await
-        .unwrap()
+        .unwrap();
+        tx.commit().await.unwrap();
+        issued
     }
 
     fn challenge(headers: &HeaderMap) -> &str {

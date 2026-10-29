@@ -40,10 +40,11 @@ mod tests {
     }
 
     async fn open_session(db: &PgPool, user_id: Uuid, device_id: DeviceId) {
-        let mut conn = db.acquire().await.unwrap();
-        session::issue(&mut conn, &token_issuer(), user_id, device_id, &JKT)
+        let mut tx = db.begin().await.unwrap();
+        session::issue(&mut tx, &token_issuer(), user_id, device_id, &JKT)
             .await
             .unwrap();
+        tx.commit().await.unwrap();
     }
 
     async fn revoke_reasons(db: &PgPool, device_id: DeviceId) -> Vec<Option<String>> {
