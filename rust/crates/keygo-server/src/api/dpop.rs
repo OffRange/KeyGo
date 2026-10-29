@@ -1,5 +1,6 @@
 use crate::api::{AppState, ErrorCode, HttpError, ServerError, single_header};
 use axum::extract::{FromRequestParts, OriginalUri};
+use axum::http::header::RETRY_AFTER;
 use axum::http::request::Parts;
 use axum::http::{HeaderMap, HeaderName, HeaderValue, Method};
 use keygo_dpop::Htm;
@@ -55,7 +56,7 @@ impl HttpError for VerifyError {
         match self {
             Self::Invalid(_) => ErrorCode::InvalidDpopProof,
             Self::UseNonce(_) => ErrorCode::UseDpopNonce,
-            Self::Busy => ErrorCode::RateLimited,
+            Self::Busy { .. } => ErrorCode::RateLimited,
         }
     }
 
@@ -65,7 +66,10 @@ impl HttpError for VerifyError {
                 let nonce = HeaderValue::try_from(nonce.to_string()).expect("nonces are base64url");
                 HeaderMap::from_iter([(DPOP_NONCE, nonce)])
             }
-            Self::Invalid(_) | Self::Busy => HeaderMap::new(),
+            Self::Busy { retry_after } => {
+                HeaderMap::from_iter([(RETRY_AFTER, HeaderValue::from(retry_after.as_secs()))])
+            }
+            Self::Invalid(_) => HeaderMap::new(),
         }
     }
 }
@@ -101,6 +105,7 @@ mod tests {
     use axum::http::{Request, StatusCode};
     use axum::routing::post;
     use serde_json::json;
+    use std::time::Duration;
     use tower::ServiceExt;
 
     fn public_url() -> Url {
@@ -163,8 +168,12 @@ mod tests {
 
     #[tokio::test]
     async fn full_replay_cache_is_rate_limited() {
-        let (status, body) = render(VerifyError::Busy).await;
+        let busy = VerifyError::Busy {
+            retry_after: Duration::from_secs(7),
+        };
 
+        assert_eq!(busy.headers()[RETRY_AFTER], "7");
+        let (status, body) = render(busy).await;
         assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
         assert_eq!(body["code"], "rate_limited");
     }

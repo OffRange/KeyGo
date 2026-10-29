@@ -8,7 +8,7 @@ const CAPACITY: usize = 100_000;
 pub(crate) enum Record {
     New,
     Replay,
-    Full,
+    Full { free_at: u64 },
 }
 
 /// The `jti` of every accepted proof, kept until that proof could no longer be accepted.
@@ -61,7 +61,9 @@ impl SeenJtis {
         if state.deadlines.len() >= self.capacity {
             state.remove_expired(now);
             if state.deadlines.len() >= self.capacity {
-                return Record::Full;
+                return Record::Full {
+                    free_at: state.earliest_deadline.saturating_add(1),
+                };
             }
         }
 
@@ -145,7 +147,10 @@ mod tests {
         seen.record(&KEY, "a", NOW, NOW);
         seen.record(&KEY, "b", NOW, NOW);
 
-        assert_eq!(seen.record(&KEY, "c", NOW, NOW), Record::Full);
+        assert_eq!(
+            seen.record(&KEY, "c", NOW, NOW),
+            Record::Full { free_at: NOW + 1 }
+        );
         assert_eq!(seen.record(&KEY, "a", NOW, NOW), Record::Replay);
     }
 
@@ -154,7 +159,10 @@ mod tests {
         let seen = SeenJtis::with_capacity(1);
         seen.record(&KEY, "a", NOW, NOW);
 
-        assert_eq!(seen.record(&KEY, "b", NOW, NOW), Record::Full);
+        assert_eq!(
+            seen.record(&KEY, "b", NOW, NOW),
+            Record::Full { free_at: NOW + 1 }
+        );
         assert_eq!(seen.record(&KEY, "b", NOW + 1, NOW + 1), Record::New);
     }
 

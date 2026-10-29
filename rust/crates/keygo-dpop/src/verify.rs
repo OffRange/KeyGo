@@ -7,6 +7,7 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use p256::ecdsa::Signature;
 use p256::ecdsa::signature::Verifier;
 use sha2::{Digest, Sha256};
+use std::time::Duration;
 use thiserror::Error;
 
 pub struct Expected<'a> {
@@ -43,7 +44,7 @@ pub enum VerifyError {
     UseNonce(Nonce),
     /// The replay cache is full. Answer `429 rate_limited`: the proof itself may be fine.
     #[error("too many recent proofs")]
-    Busy,
+    Busy { retry_after: Duration },
 }
 
 #[derive(Debug, Error)]
@@ -179,7 +180,9 @@ impl Checked<'_> {
         match verifier.seen_jtis.record(&jkt, &jti, deadline, now) {
             Record::New => Ok(jkt),
             Record::Replay => Err(InvalidProof::Replay.into()),
-            Record::Full => Err(VerifyError::Busy),
+            Record::Full { free_at } => Err(VerifyError::Busy {
+                retry_after: Duration::from_secs(free_at.saturating_sub(now)),
+            }),
         }
     }
 
@@ -594,7 +597,7 @@ mod tests {
 
         assert!(matches!(
             record_at(&verifier, &proof(NOW, None), NOW),
-            Err(VerifyError::Busy)
+            Err(VerifyError::Busy { .. })
         ));
     }
 

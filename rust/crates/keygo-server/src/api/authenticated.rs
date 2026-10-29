@@ -36,7 +36,7 @@ impl HttpError for AuthError {
     fn status(&self) -> StatusCode {
         match self {
             // A full replay cache is not the client's fault, so it keeps its 429.
-            Self::Dpop(VerifyError::Busy) => StatusCode::TOO_MANY_REQUESTS,
+            Self::Dpop(VerifyError::Busy { .. }) => StatusCode::TOO_MANY_REQUESTS,
             _ => StatusCode::UNAUTHORIZED,
         }
     }
@@ -44,7 +44,7 @@ impl HttpError for AuthError {
     fn headers(&self) -> HeaderMap {
         let error = match self {
             // A full replay cache is not an authentication failure: no challenge.
-            Self::Dpop(VerifyError::Busy) => return HeaderMap::new(),
+            Self::Dpop(err @ VerifyError::Busy { .. }) => return err.headers(),
             // No credentials at all: the bare challenge (RFC 6750 §3.1).
             Self::Missing => None,
             // RFC 9449 has no code for a revoked session; to it the token is just invalid.
@@ -176,6 +176,7 @@ mod tests {
     use keygo_opaque::server::ServerSetup;
     use serde_json::Value;
     use sqlx::PgPool;
+    use std::time::Duration;
     use tower::ServiceExt;
 
     const URI: &str = "/protected";
@@ -469,8 +470,14 @@ mod tests {
 
     #[tokio::test]
     async fn full_replay_cache_keeps_its_429() {
-        let (status, body) = crate::api::error::render(AuthError::Dpop(VerifyError::Busy)).await;
+        let busy = AuthError::Dpop(VerifyError::Busy {
+            retry_after: Duration::from_secs(7),
+        });
 
+        let headers = busy.headers();
+        assert_eq!(headers[axum::http::header::RETRY_AFTER], "7");
+        assert!(!headers.contains_key(WWW_AUTHENTICATE));
+        let (status, body) = crate::api::error::render(busy).await;
         assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
         assert_eq!(body["code"], "rate_limited");
     }
