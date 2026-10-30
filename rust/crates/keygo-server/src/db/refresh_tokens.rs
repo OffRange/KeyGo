@@ -1,8 +1,7 @@
 use crate::db::{corrupt, revoke_reason};
-use crate::domain::{DeviceId, RevokeReason, SessionId};
+use crate::domain::{DeviceId, RevokeReason, SessionId, UserId};
 use sqlx::PgConnection;
 use std::time::Duration;
-use uuid::Uuid;
 
 pub async fn insert(
     conn: &mut PgConnection,
@@ -33,7 +32,7 @@ pub enum TokenStatus {
 
 pub struct Presented {
     pub session_id: SessionId,
-    pub user_id: Uuid,
+    pub user_id: UserId,
     pub device_id: DeviceId,
     pub dpop_jkt: [u8; 32],
     pub auth_time: u64,
@@ -76,7 +75,7 @@ pub async fn find(conn: &mut PgConnection, hash: &[u8; 32]) -> sqlx::Result<Opti
 
     Ok(Some(Presented {
         session_id: row.session_id.into(),
-        user_id: row.user_id,
+        user_id: row.user_id.into(),
         device_id: row.device_id.into(),
         dpop_jkt: row.dpop_jkt.as_slice().try_into().map_err(corrupt)?,
         auth_time: u64::try_from(row.auth_time).map_err(corrupt)?,
@@ -125,6 +124,7 @@ mod tests {
         JKT, assert_expires_after, count, expire, expires_in_secs, insert_session,
     };
     use sqlx::PgPool;
+    use uuid::Uuid;
 
     const TTL: Duration = Duration::from_hours(24);
     const HASH: [u8; 32] = [9; 32];
@@ -217,7 +217,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(presented.session_id, session_id);
-        assert_eq!(presented.user_id, user_id);
+        assert_eq!(presented.user_id.as_uuid(), user_id);
         assert_eq!(presented.device_id.as_uuid(), device_id);
         assert_eq!(presented.dpop_jkt, JKT);
         assert_eq!(presented.status, TokenStatus::Live);

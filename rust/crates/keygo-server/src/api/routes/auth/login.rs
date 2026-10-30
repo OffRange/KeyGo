@@ -1,14 +1,13 @@
 use crate::api::dpop::SingleUseDpopProof;
 use crate::api::routes::auth::session::Session;
 use crate::api::{AppState, ErrorCode, HttpError, Json, ServerResult};
-use crate::domain::{Device, LoginId, Username};
+use crate::domain::{Device, LoginId, UserId, Username};
 use crate::service::login::{self, FinishLogin, StartLogin};
 use axum::Router;
 use axum::extract::State;
 use axum::routing::post;
 use keygo_opaque::{CredentialFinalization, CredentialRequest, CredentialResponse, DpopBinding};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -68,7 +67,7 @@ struct FinishRequest {
 
 #[derive(Serialize)]
 struct FinishResponse {
-    user_id: Uuid,
+    user_id: UserId,
     username: Username,
     session: Session,
 }
@@ -110,6 +109,7 @@ mod tests {
     use keygo_opaque::server::ServerSetup;
     use serde_json::{Value, json};
     use sqlx::PgPool;
+    use uuid::Uuid;
 
     const START: &str = "/api/v1/auth/login/start";
     const FINISH: &str = "/api/v1/auth/login/finish";
@@ -170,7 +170,7 @@ mod tests {
         let (status, finished) = post_with_proof(&state, &prover, FINISH, body).await;
 
         assert_eq!(status, StatusCode::OK);
-        assert_eq!(finished["user_id"], user_id.to_string());
+        assert_eq!(finished["user_id"], user_id.as_uuid().to_string());
         assert_eq!(finished["username"], "ada");
         assert_eq!(state.login_states.count(), 0);
     }

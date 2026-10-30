@@ -2,12 +2,11 @@ use crate::db::refresh_tokens::TokenStatus;
 use crate::db::{refresh_tokens, sessions};
 use crate::domain::{
     AccessToken, DeviceId, REFRESH_TTL, RefreshToken, RevokeReason, SESSION_LIFETIME, SessionId,
-    TokenIssuer, unix_now,
+    TokenIssuer, UserId, unix_now,
 };
 use sqlx::{PgPool, PgTransaction};
 use std::time::Duration;
 use thiserror::Error;
-use uuid::Uuid;
 
 pub struct Issued {
     pub device_id: DeviceId,
@@ -19,7 +18,7 @@ pub struct Issued {
 pub async fn issue(
     tx: &mut PgTransaction<'_>,
     token_issuer: &TokenIssuer,
-    user_id: Uuid,
+    user_id: UserId,
     device_id: DeviceId,
     jkt: &[u8; 32],
 ) -> sqlx::Result<Issued> {
@@ -114,6 +113,7 @@ mod tests {
         token_issuer,
     };
     use sqlx::PgPool;
+    use uuid::Uuid;
 
     #[sqlx::test]
     async fn issue_binds_a_session_to_the_device_and_key(db: PgPool) {

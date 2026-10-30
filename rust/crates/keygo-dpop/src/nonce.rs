@@ -4,7 +4,7 @@ use hmac::{Hmac, KeyInit, Mac};
 use sha2::Sha256;
 use std::fmt::{Display, Formatter};
 use std::time::Duration;
-use zeroize::Zeroizing;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 const NONCE_LIFETIME: Duration = Duration::from_mins(5);
 
@@ -13,23 +13,23 @@ const TIMESTAMP_LEN: usize = size_of::<u64>();
 const TAG_LEN: usize = 16;
 const NONCE_LEN: usize = TIMESTAMP_LEN + TAG_LEN;
 
-pub struct NonceKey(Zeroizing<[u8; 32]>);
+#[derive(Zeroize, ZeroizeOnDrop)]
+pub struct NonceKey([u8; 32]);
 
 impl NonceKey {
-    pub fn random() -> Self {
-        let mut key = Zeroizing::new([0u8; 32]);
-        getrandom::fill(key.as_mut_slice()).expect("OS random number generator unavailable");
-        Self(key)
+    pub fn generate() -> Self {
+        let mut key = Self([0u8; 32]);
+        getrandom::fill(key.0.as_mut_slice()).expect("OS random number generator unavailable");
+        key
     }
 
     #[cfg(test)]
     pub(crate) fn new(bytes: [u8; 32]) -> Self {
-        Self(Zeroizing::new(bytes))
+        Self(bytes)
     }
 
     fn mac(&self, created_at: u64) -> Hmac<Sha256> {
-        let mut mac =
-            Hmac::<Sha256>::new_from_slice(self.0.as_slice()).expect("HMAC accepts any key length");
+        let mut mac = Hmac::<Sha256>::new_from_slice(&self.0).expect("HMAC accepts any key length");
         mac.update(&created_at.to_be_bytes());
         mac
     }

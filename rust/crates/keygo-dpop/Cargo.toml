@@ -9,7 +9,7 @@ test-support = []
 
 [dependencies]
 thiserror.workspace = true
-zeroize.workspace = true
+zeroize = { workspace = true, features = ["derive"] }
 base64.workspace = true
 hmac.workspace = true
 serde = { workspace = true, features = ["derive"] }

@@ -70,8 +70,8 @@ impl ArkSession {
     }
 
     pub fn create_account(&self, password: &str) -> ArkSessionResult<NewAccount> {
-        let user_id = UserId::new_v4();
-        let vault_id = VaultId::new_v4();
+        let user_id = UserId::random();
+        let vault_id = VaultId::random();
         let ark = AccountRootKey::generate();
         let vault_key = VaultKey::generate();
 
@@ -271,7 +271,7 @@ mod tests {
         session.end();
 
         let result =
-            session.unlock_with_password(PASSWORD, &account.password_wrapped_ark, UserId::new_v4());
+            session.unlock_with_password(PASSWORD, &account.password_wrapped_ark, UserId::random());
 
         assert!(matches!(result, Err(ArkSessionError::WrongPassword)));
         assert!(!session.is_active());
@@ -424,7 +424,7 @@ mod tests {
         let session = ArkSession::new();
 
         assert!(matches!(
-            session.rewrap_for_new_password("new-password", UserId::new_v4()),
+            session.rewrap_for_new_password("new-password", UserId::random()),
             Err(ArkSessionError::Locked)
         ));
     }
@@ -465,7 +465,7 @@ mod tests {
         let record = session.seal_record(NAMESPACE, KIND, b"report").unwrap();
 
         assert!(matches!(
-            session.open_record(NamespaceId::new_v4(), KIND, &record),
+            session.open_record(NamespaceId::random(), KIND, &record),
             Err(ArkSessionError::KeyWrap(CryptoError::KeyUnwrapFailed))
         ));
     }

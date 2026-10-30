@@ -5,36 +5,11 @@ use sha2::{Digest, Sha256};
 use std::str::FromStr;
 use std::time::Duration;
 use thiserror::Error;
-use uuid::Uuid;
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 pub const SESSION_LIFETIME: Duration = Duration::from_hours(180 * 24);
 pub const REFRESH_TTL: Duration = Duration::from_hours(30 * 24);
 pub const SESSION_RETENTION: Duration = Duration::from_hours(30 * 24);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct SessionId(Uuid);
-
-impl SessionId {
-    pub fn random() -> Self {
-        Self(Uuid::new_v4())
-    }
-
-    #[cfg(test)]
-    pub const fn nil() -> Self {
-        Self(Uuid::nil())
-    }
-
-    pub const fn as_uuid(self) -> Uuid {
-        self.0
-    }
-}
-
-impl From<Uuid> for SessionId {
-    fn from(value: Uuid) -> Self {
-        Self(value)
-    }
-}
 
 const PREFIX: &str = "kgr_";
 const TOKEN_BYTES: usize = 32;

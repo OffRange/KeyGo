@@ -99,7 +99,7 @@ impl DpopVerifier {
         reason = "a verifier owns a random nonce key and a start time, not a neutral default"
     )]
     pub fn new() -> Self {
-        Self::started_at(NonceKey::random(), unix_now())
+        Self::started_at(NonceKey::generate(), unix_now())
     }
 
     pub(crate) fn started_at(nonce_key: NonceKey, started_at: u64) -> Self {
@@ -506,7 +506,7 @@ mod tests {
     fn rejects_nonce_from_previous_run() {
         let previous = verifier_started_at(NOW);
         let nonce = required_nonce(previous.check_at(&proof(NOW, None), expected(None), NOW));
-        let restarted = DpopVerifier::started_at(NonceKey::random(), NOW + 1);
+        let restarted = DpopVerifier::started_at(NonceKey::generate(), NOW + 1);
 
         required_nonce(restarted.check_at(
             &proof_with_nonce(NOW, None, Some(&nonce.to_string())),

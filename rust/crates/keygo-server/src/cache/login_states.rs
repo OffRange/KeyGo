@@ -1,9 +1,8 @@
-use crate::domain::LoginId;
+use crate::domain::{LoginId, UserId};
 use keygo_opaque::server::ServerLogin;
 use moka::ops::compute::{CompResult, Op};
 use moka::sync::Cache;
 use std::time::Duration;
-use uuid::Uuid;
 
 const TTL: Duration = Duration::from_mins(1);
 const MAX_ENTRIES: u64 = 10_000;
@@ -11,7 +10,7 @@ const MAX_ENTRIES: u64 = 10_000;
 #[derive(Clone)]
 pub struct Pending {
     /// `None` on the fake path for an unknown username.
-    pub user_id: Option<Uuid>,
+    pub user_id: Option<UserId>,
     pub state: ServerLogin,
 }
 

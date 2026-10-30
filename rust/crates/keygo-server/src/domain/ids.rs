@@ -2,6 +2,7 @@ use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
+use uuid::Uuid;
 
 const LEN: usize = 16;
 
@@ -51,12 +52,55 @@ macro_rules! random_id {
     )+};
 }
 
+/// Declares a UUID-backed id that travels as the UUID's string form.
+macro_rules! uuid_id {
+    ($($(#[$attr:meta])* $name:ident;)+) => {$(
+        $(#[$attr])*
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+        pub struct $name(Uuid);
+
+        impl $name {
+            #[allow(dead_code, reason = "user ids are client-generated, so only tests mint one")]
+            pub fn random() -> Self {
+                Self(Uuid::new_v4())
+            }
+
+            #[cfg(test)]
+            #[allow(dead_code, reason = "not every id needs a fixed value in tests")]
+            pub const fn nil() -> Self {
+                Self(Uuid::nil())
+            }
+
+            pub const fn as_uuid(self) -> Uuid {
+                self.0
+            }
+        }
+
+        impl From<Uuid> for $name {
+            fn from(value: Uuid) -> Self {
+                Self(value)
+            }
+        }
+    )+};
+}
+
 random_id! {
     /// Handle for a pending registration, between `register/start` and `register/finish`.
     RegistrationId as "registration_id";
 
     /// Handle for a login handshake, between `login/start` and `login/finish`.
     LoginId as "login_id";
+}
+
+uuid_id! {
+    /// A login session; the refresh-token family hangs off it.
+    SessionId;
+
+    /// A device registered to an account.
+    DeviceId;
+
+    /// An account. Client-generated at registration and equal to the app's local user id.
+    UserId;
 }
 
 impl RegistrationId {

@@ -1,7 +1,7 @@
 use crate::api::dpop::SingleUseDpopProof;
 use crate::api::routes::auth::session::Session;
 use crate::api::{AppState, ErrorCode, HttpError, Json, ServerResult};
-use crate::domain::{DeviceInfo, RegistrationId, Username};
+use crate::domain::{DeviceInfo, RegistrationId, UserId, Username};
 use crate::service::registration::{self, FinishRegistration, StartRegistration};
 use axum::Router;
 use axum::extract::State;
@@ -9,7 +9,6 @@ use axum::http::StatusCode;
 use axum::routing::post;
 use keygo_opaque::{RegistrationRequest, RegistrationResponse, RegistrationUpload};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -21,7 +20,7 @@ pub fn router() -> Router<AppState> {
 struct StartRequest {
     /// Parsed in the handler so a bad name answers `invalid_username`, not `invalid_request`.
     username: String,
-    user_id: Uuid,
+    user_id: UserId,
     invite: Option<String>,
     registration_request: RegistrationRequest,
 }
@@ -126,11 +125,12 @@ mod tests {
     use keygo_opaque::server::ServerSetup;
     use serde_json::{Value, json};
     use sqlx::PgPool;
+    use uuid::Uuid;
 
     const START: &str = "/api/v1/auth/register/start";
     const FINISH: &str = "/api/v1/auth/register/finish";
 
-    fn start_body(username: &str, user_id: Uuid) -> (ClientRegistration, Value) {
+    fn start_body(username: &str, user_id: UserId) -> (ClientRegistration, Value) {
         let (client, request) = ClientRegistration::start(crate::testing::PASSWORD).unwrap();
         let body = json!({
             "username": username,
@@ -174,7 +174,7 @@ mod tests {
     #[sqlx::test]
     async fn registers_over_http(db: PgPool) {
         let state = app_state(&db, &ServerSetup::generate());
-        let (client, body) = start_body("Ada", Uuid::new_v4());
+        let (client, body) = start_body("Ada", UserId::random());
 
         let (status, started) = post_to(state.clone(), START, body).await;
 
@@ -195,7 +195,7 @@ mod tests {
     async fn finish_returns_a_session_bound_to_the_proof_key(db: PgPool) {
         let state = app_state(&db, &ServerSetup::generate());
         let prover = prover();
-        let (client, body) = start_body("ada", Uuid::new_v4());
+        let (client, body) = start_body("ada", UserId::random());
         let (_, started) = post_to(state.clone(), START, body).await;
 
         let (status, finished) =
@@ -240,7 +240,7 @@ mod tests {
 
     #[sqlx::test]
     async fn registers_with_an_invite_over_http(db: PgPool) {
-        let (client, mut body) = start_body("ada", Uuid::new_v4());
+        let (client, mut body) = start_body("ada", UserId::random());
         body["invite"] = create_invite(&db).await.into();
 
         let state = invite_only_state(&db, &ServerSetup::generate());
@@ -259,7 +259,7 @@ mod tests {
 
     #[sqlx::test]
     async fn invite_only_start_without_an_invite_is_forbidden(db: PgPool) {
-        let (_, body) = start_body("ada", Uuid::new_v4());
+        let (_, body) = start_body("ada", UserId::random());
 
         let (status, body) = post_to(
             invite_only_state(&db, &ServerSetup::generate()),
@@ -274,7 +274,7 @@ mod tests {
 
     #[sqlx::test]
     async fn invite_only_start_with_an_unknown_invite_is_forbidden(db: PgPool) {
-        let (_, mut body) = start_body("ada", Uuid::new_v4());
+        let (_, mut body) = start_body("ada", UserId::random());
         body["invite"] = "7KQ2M9XD4HPA".into();
 
         let (status, body) = post_to(
@@ -298,7 +298,7 @@ mod tests {
 
     #[sqlx::test]
     async fn start_rejects_an_invalid_username(db: PgPool) {
-        let (_, body) = start_body("a", Uuid::new_v4());
+        let (_, body) = start_body("a", UserId::random());
 
         let (status, body) = post(&db, &ServerSetup::generate(), START, body).await;
 
@@ -308,7 +308,7 @@ mod tests {
 
     #[sqlx::test]
     async fn start_rejects_a_reserved_username(db: PgPool) {
-        let (_, body) = start_body("admin", Uuid::new_v4());
+        let (_, body) = start_body("admin", UserId::random());
 
         let (status, body) = post(&db, &ServerSetup::generate(), START, body).await;
 
@@ -318,7 +318,7 @@ mod tests {
 
     #[sqlx::test]
     async fn start_rejects_a_structured_user_id(db: PgPool) {
-        let (_, body) = start_body("ada", Uuid::nil());
+        let (_, body) = start_body("ada", UserId::nil());
 
         let (status, body) = post(&db, &ServerSetup::generate(), START, body).await;
 
@@ -344,7 +344,7 @@ mod tests {
     async fn start_conflicts_on_a_taken_username(db: PgPool) {
         let setup = ServerSetup::generate();
         register(&db, &setup, "ada").await;
-        let (_, body) = start_body("ADA", Uuid::new_v4());
+        let (_, body) = start_body("ADA", UserId::random());
 
         let (status, body) = post(&db, &setup, START, body).await;
 
@@ -379,7 +379,7 @@ mod tests {
     #[sqlx::test]
     async fn finish_rejects_an_unknown_registration(db: PgPool) {
         let state = app_state(&db, &ServerSetup::generate());
-        let (client, body) = start_body("ada", Uuid::new_v4());
+        let (client, body) = start_body("ada", UserId::random());
         let (_, started) = post_to(state.clone(), START, body).await;
         let mut body = finish_body(client, &started);
         body["registration_id"] = json!(RegistrationId::random());
@@ -394,7 +394,7 @@ mod tests {
     #[sqlx::test]
     async fn finish_rejects_a_spoofing_device_name(db: PgPool) {
         let state = app_state(&db, &ServerSetup::generate());
-        let (client, body) = start_body("ada", Uuid::new_v4());
+        let (client, body) = start_body("ada", UserId::random());
         let (_, started) = post_to(state.clone(), START, body).await;
         let mut body = finish_body(client, &started);
         body["device"]["name"] = "Pixel\u{202E}9".into();
@@ -409,7 +409,7 @@ mod tests {
     #[sqlx::test]
     async fn finish_without_a_proof_keeps_the_registration(db: PgPool) {
         let state = app_state(&db, &ServerSetup::generate());
-        let (client, body) = start_body("ada", Uuid::new_v4());
+        let (client, body) = start_body("ada", UserId::random());
         let (_, started) = post_to(state.clone(), START, body).await;
         let body = finish_body(client, &started);
 
@@ -428,7 +428,7 @@ mod tests {
     #[sqlx::test]
     async fn replayed_finish_is_expired(db: PgPool) {
         let state = app_state(&db, &ServerSetup::generate());
-        let (client, body) = start_body("ada", Uuid::new_v4());
+        let (client, body) = start_body("ada", UserId::random());
         let (_, started) = post_to(state.clone(), START, body).await;
         let body = finish_body(client, &started);
         let replay = replayable_post(&state, &prover(), FINISH, &body).await;
@@ -446,7 +446,7 @@ mod tests {
     #[sqlx::test]
     async fn nonce_challenge_keeps_the_registration(db: PgPool) {
         let state = app_state(&db, &ServerSetup::generate());
-        let (client, body) = start_body("ada", Uuid::new_v4());
+        let (client, body) = start_body("ada", UserId::random());
         let (_, started) = post_to(state.clone(), START, body).await;
         let body = finish_body(client, &started);
         let prover = prover();

@@ -197,6 +197,8 @@ Caddy as TLS proxy; `.env.example` sets `DOMAIN` and signups).
   lines (e.g. a `viewModelScope.launch { … }` block). Only use braces when a branch contains
   multiple statements.
 - **Trailing commas** on multi-line parameter lists and collection literals.
+- **Rust constructors** — ids are made with `random()`, secret material (keys, tokens, codes) with
+  `generate()`. Server ids come from the `random_id!`/`uuid_id!` macros in `domain/ids.rs`.
 
 ## Testing
 

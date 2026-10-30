@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
+use super::DeviceId;
+use serde::Deserialize;
 use thiserror::Error;
 use unicode_properties::{GeneralCategory, UnicodeGeneralCategory};
-use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -14,25 +14,6 @@ impl Platform {
         match self {
             Self::Android => "android",
         }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct DeviceId(Uuid);
-
-impl DeviceId {
-    pub fn random() -> Self {
-        Self(Uuid::new_v4())
-    }
-
-    pub const fn as_uuid(self) -> Uuid {
-        self.0
-    }
-}
-
-impl From<Uuid> for DeviceId {
-    fn from(value: Uuid) -> Self {
-        Self(value)
     }
 }
 

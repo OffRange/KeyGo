@@ -1,6 +1,6 @@
 use crate::db::registrations::{self, ReserveError};
 use crate::db::{invites, users};
-use crate::domain::{InviteCode, InviteHash, RegistrationId, Username};
+use crate::domain::{InviteCode, InviteHash, RegistrationId, UserId, Username};
 use crate::service::registration::{Signup, TTL};
 use keygo_opaque::server::ServerSetup;
 use keygo_opaque::{OpaqueError, RegistrationRequest, RegistrationResponse, server};
@@ -41,7 +41,7 @@ impl From<ReserveError> for StartError {
 
 pub struct StartRegistration {
     pub username: Username,
-    pub user_id: Uuid,
+    pub user_id: UserId,
     pub invite: Option<String>,
     pub registration_request: RegistrationRequest,
 }
@@ -65,7 +65,7 @@ pub async fn start(
         registration_request,
     } = input;
 
-    if !is_random_uuid(user_id) {
+    if !is_random_uuid(user_id.as_uuid()) {
         return Err(StartError::InvalidUserId);
     }
 
@@ -78,7 +78,7 @@ pub async fn start(
 
     // Pure computation, so it runs before the transaction to keep the reservation's lock short.
     let registration_response =
-        server::registration_start(setup, registration_request, user_id.as_bytes())?;
+        server::registration_start(setup, registration_request, user_id.as_uuid().as_bytes())?;
 
     let mut tx = db.begin().await?;
     let registration_id = RegistrationId::random();
@@ -173,7 +173,7 @@ mod tests {
         ));
     }
 
-    async fn start_as(db: &PgPool, user_id: Uuid, name: &str) -> Result<Started, StartError> {
+    async fn start_as(db: &PgPool, user_id: UserId, name: &str) -> Result<Started, StartError> {
         start_with(db, &Signup::Open, None, user_id, name).await
     }
 
@@ -181,7 +181,7 @@ mod tests {
         db: &PgPool,
         signup: &Signup,
         invite: Option<&str>,
-        user_id: Uuid,
+        user_id: UserId,
         name: &str,
     ) -> Result<Started, StartError> {
         let (_, registration_request) = ClientRegistration::start(b"password").unwrap();
@@ -205,7 +205,7 @@ mod tests {
     async fn invite_only_start_carries_the_invite_without_spending_it(db: PgPool) {
         let code = create_invite(&db).await;
 
-        start_with(&db, &invite_only(), Some(&code), Uuid::new_v4(), "ada")
+        start_with(&db, &invite_only(), Some(&code), UserId::random(), "ada")
             .await
             .unwrap();
 
@@ -217,10 +217,10 @@ mod tests {
     async fn one_invite_can_start_two_registrations(db: PgPool) {
         let code = create_invite(&db).await;
 
-        start_with(&db, &invite_only(), Some(&code), Uuid::new_v4(), "ada")
+        start_with(&db, &invite_only(), Some(&code), UserId::random(), "ada")
             .await
             .unwrap();
-        start_with(&db, &invite_only(), Some(&code), Uuid::new_v4(), "bob")
+        start_with(&db, &invite_only(), Some(&code), UserId::random(), "bob")
             .await
             .unwrap();
 
@@ -229,7 +229,7 @@ mod tests {
 
     #[sqlx::test]
     async fn invite_only_start_requires_an_invite(db: PgPool) {
-        let err = start_with(&db, &invite_only(), None, Uuid::new_v4(), "ada")
+        let err = start_with(&db, &invite_only(), None, UserId::random(), "ada")
             .await
             .err()
             .unwrap();
@@ -243,7 +243,7 @@ mod tests {
         create_invite(&db).await;
 
         for invite in ["7KQ2M9XD4HPA", "not a code"] {
-            let err = start_with(&db, &invite_only(), Some(invite), Uuid::new_v4(), "ada")
+            let err = start_with(&db, &invite_only(), Some(invite), UserId::random(), "ada")
                 .await
                 .err()
                 .unwrap();
@@ -260,7 +260,7 @@ mod tests {
     async fn invite_is_checked_before_the_username(db: PgPool) {
         register(&db, &ServerSetup::generate(), "ada").await;
 
-        let err = start_with(&db, &invite_only(), None, Uuid::new_v4(), "ada")
+        let err = start_with(&db, &invite_only(), None, UserId::random(), "ada")
             .await
             .err()
             .unwrap();
@@ -274,7 +274,7 @@ mod tests {
             &db,
             &Signup::Open,
             Some("not a code"),
-            Uuid::new_v4(),
+            UserId::random(),
             "ada",
         )
         .await
@@ -285,17 +285,17 @@ mod tests {
 
     #[sqlx::test]
     async fn start_reserves_the_username(db: PgPool) {
-        let started = start_as(&db, Uuid::new_v4(), "ada").await.unwrap();
+        let started = start_as(&db, UserId::random(), "ada").await.unwrap();
 
         assert_eq!(started.expires_in, TTL);
         assert_eq!(count(&db, "pending_registrations").await, 1);
-        let err = start_as(&db, Uuid::new_v4(), "ada").await.err().unwrap();
+        let err = start_as(&db, UserId::random(), "ada").await.err().unwrap();
         assert!(matches!(err, StartError::UsernameTaken), "{err:?}");
     }
 
     #[sqlx::test]
     async fn start_rejects_structured_user_ids(db: PgPool) {
-        let err = start_as(&db, Uuid::nil(), "ada").await.err().unwrap();
+        let err = start_as(&db, UserId::nil(), "ada").await.err().unwrap();
 
         assert!(matches!(err, StartError::InvalidUserId), "{err:?}");
         assert_eq!(count(&db, "pending_registrations").await, 0);
@@ -305,7 +305,7 @@ mod tests {
     async fn start_rejects_a_registered_username(db: PgPool) {
         register(&db, &ServerSetup::generate(), "ada").await;
 
-        let err = start_as(&db, Uuid::new_v4(), "ada").await.err().unwrap();
+        let err = start_as(&db, UserId::random(), "ada").await.err().unwrap();
 
         assert!(matches!(err, StartError::UsernameTaken), "{err:?}");
         assert_eq!(count(&db, "pending_registrations").await, 0);
@@ -333,7 +333,10 @@ mod tests {
 
     #[sqlx::test]
     async fn start_rejects_a_reserved_username(db: PgPool) {
-        let err = start_as(&db, Uuid::new_v4(), "Admin").await.err().unwrap();
+        let err = start_as(&db, UserId::random(), "Admin")
+            .await
+            .err()
+            .unwrap();
 
         assert!(matches!(err, StartError::ReservedUsername), "{err:?}");
         assert_eq!(count(&db, "pending_registrations").await, 0);
@@ -341,7 +344,7 @@ mod tests {
 
     #[sqlx::test]
     async fn invite_is_checked_before_the_reserved_list(db: PgPool) {
-        let err = start_with(&db, &invite_only(), None, Uuid::new_v4(), "admin")
+        let err = start_with(&db, &invite_only(), None, UserId::random(), "admin")
             .await
             .err()
             .unwrap();
@@ -351,12 +354,12 @@ mod tests {
 
     #[sqlx::test]
     async fn restart_with_the_same_user_id_replaces_the_reservation(db: PgPool) {
-        let user_id = Uuid::new_v4();
+        let user_id = UserId::random();
         start_as(&db, user_id, "ada").await.unwrap();
 
         start_as(&db, user_id, "bob").await.unwrap();
 
         assert_eq!(count(&db, "pending_registrations").await, 1);
-        start_as(&db, Uuid::new_v4(), "ada").await.unwrap();
+        start_as(&db, UserId::random(), "ada").await.unwrap();
     }
 }

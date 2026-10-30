@@ -1,11 +1,10 @@
 use crate::db::{devices, sessions};
-use crate::domain::{Device, DeviceId, DeviceInfo, RevokeReason};
+use crate::domain::{Device, DeviceId, DeviceInfo, RevokeReason, UserId};
 use sqlx::PgTransaction;
-use uuid::Uuid;
 
 pub async fn attach_or_create(
     tx: &mut PgTransaction<'_>,
-    user_id: Uuid,
+    user_id: UserId,
     requested: Device,
 ) -> sqlx::Result<DeviceId> {
     if let Some(id) = requested.id
@@ -20,7 +19,7 @@ pub async fn attach_or_create(
 
 pub async fn create(
     tx: &mut PgTransaction<'_>,
-    user_id: Uuid,
+    user_id: UserId,
     info: &DeviceInfo,
 ) -> sqlx::Result<DeviceId> {
     let device_id = DeviceId::random();
@@ -36,8 +35,9 @@ mod tests {
     use crate::testing::{JKT, count, device, insert_device, issue_session, username};
     use serde_json::json;
     use sqlx::PgPool;
+    use uuid::Uuid;
 
-    async fn claim_once(db: &PgPool, user_id: Uuid, requested: Device) -> DeviceId {
+    async fn claim_once(db: &PgPool, user_id: UserId, requested: Device) -> DeviceId {
         let mut tx = db.begin().await.unwrap();
         let device_id = attach_or_create(&mut tx, user_id, requested).await.unwrap();
         tx.commit().await.unwrap();
@@ -119,7 +119,7 @@ mod tests {
     async fn another_users_device_is_not_attached(db: PgPool) {
         let (owner, foreign) = insert_device(&db).await;
         issue_session(&db, owner, foreign, &JKT).await;
-        let user_id = Uuid::new_v4();
+        let user_id = UserId::random();
         let mut conn = db.acquire().await.unwrap();
         users::insert(&mut conn, user_id, &username("bob"))
             .await
@@ -131,11 +131,11 @@ mod tests {
         assert_eq!(revoke_reasons(&db, foreign).await, [None]);
         let owners: Vec<Uuid> =
             sqlx::query_scalar("select user_id from devices order by user_id = $1")
-                .bind(owner)
+                .bind(owner.as_uuid())
                 .fetch_all(&db)
                 .await
                 .unwrap();
-        assert_eq!(owners, [user_id, owner]);
+        assert_eq!(owners, [user_id.as_uuid(), owner.as_uuid()]);
     }
 
     #[sqlx::test]

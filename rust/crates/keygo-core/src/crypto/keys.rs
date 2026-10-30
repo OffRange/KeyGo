@@ -226,7 +226,7 @@ mod tests {
 
     #[test]
     fn item_data_aad_encodes_like_the_hand_built_bytes() {
-        let item_id = ItemId::new_v4();
+        let item_id = ItemId::random();
         let mut hand_built = item_id.0.as_bytes().to_vec();
         hand_built.extend_from_slice(b"totp_secret");
 

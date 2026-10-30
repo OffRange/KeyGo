@@ -8,7 +8,7 @@ macro_rules! id {
         pub struct $name(pub Uuid);
 
         impl $name {
-            pub fn new_v4() -> Self {
+            pub fn random() -> Self {
                 Self(Uuid::new_v4())
             }
         })+

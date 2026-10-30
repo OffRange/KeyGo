@@ -1,4 +1,4 @@
-use crate::domain::{SessionId, unix_now};
+use crate::domain::{SessionId, UserId, unix_now};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use ed25519_dalek::{Signature, Signer, SigningKey};
@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::time::Duration;
 use thiserror::Error;
-use uuid::Uuid;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 pub const ACCESS_TOKEN_LIFETIME: Duration = Duration::from_mins(10);
@@ -35,7 +34,7 @@ impl TokenIssuer {
 
     pub fn issue(
         &self,
-        user_id: Uuid,
+        user_id: UserId,
         session_id: SessionId,
         auth_time: u64,
         jkt: &[u8; 32],
@@ -73,7 +72,7 @@ pub struct Claims {
     iss: String,
     aud: Aud,
     #[serde(rename = "sub")]
-    user_id: Uuid,
+    user_id: UserId,
     #[serde(rename = "sid")]
     session_id: SessionId,
     iat: u64,
@@ -122,7 +121,7 @@ pub enum TokenError {
 impl Claims {
     fn new_at(
         iss: String,
-        user_id: Uuid,
+        user_id: UserId,
         session_id: SessionId,
         auth_time: u64,
         jkt: &[u8; 32],
@@ -144,7 +143,7 @@ impl Claims {
         }
     }
 
-    pub fn user_id(&self) -> Uuid {
+    pub fn user_id(&self) -> UserId {
         self.user_id
     }
 
@@ -276,6 +275,7 @@ mod tests {
     use super::*;
     use ed25519_dalek::Verifier;
     use serde_json::{Value, json};
+    use uuid::Uuid;
 
     const SEED: [u8; 32] = [0x07; 32];
     const JKT: [u8; 32] = [0x41; 32];
@@ -287,7 +287,7 @@ mod tests {
             jti: [0x42; JTI_BYTES],
             ..Claims::new_at(
                 ISS.into(),
-                Uuid::from_u128(1),
+                UserId::from(Uuid::from_u128(1)),
                 SessionId::from(Uuid::from_u128(2)),
                 1_791_503_940,
                 &JKT,
@@ -367,7 +367,14 @@ mod tests {
 
     #[test]
     fn expires_after_lifetime() {
-        let claims = Claims::new_at(String::new(), Uuid::nil(), SessionId::nil(), 0, &JKT, 1_000);
+        let claims = Claims::new_at(
+            String::new(),
+            UserId::nil(),
+            SessionId::nil(),
+            0,
+            &JKT,
+            1_000,
+        );
 
         assert_eq!(claims.iat, 1_000);
         assert_eq!(claims.exp, 1_000 + ACCESS_TOKEN_LIFETIME.as_secs());
@@ -375,7 +382,7 @@ mod tests {
 
     #[test]
     fn generated_jtis_differ() {
-        let new = || Claims::new_at(String::new(), Uuid::nil(), SessionId::nil(), 0, &JKT, 0).jti;
+        let new = || Claims::new_at(String::new(), UserId::nil(), SessionId::nil(), 0, &JKT, 0).jti;
 
         assert_ne!(new(), new());
     }
@@ -394,7 +401,7 @@ mod tests {
 
         let claims = key.verify_at(token.expose(), ISS, NOW).unwrap();
 
-        assert_eq!(claims.user_id(), Uuid::from_u128(1));
+        assert_eq!(claims.user_id(), UserId::from(Uuid::from_u128(1)));
         assert_eq!(claims.session_id(), SessionId::from(Uuid::from_u128(2)));
         assert_eq!(claims.auth_time(), 1_791_503_940);
         assert_eq!(claims.jkt(), &JKT);
@@ -532,7 +539,7 @@ mod tests {
     fn fresh_within_window_after_auth_time() {
         let claims = Claims::new_at(
             String::new(),
-            Uuid::nil(),
+            UserId::nil(),
             SessionId::nil(),
             1_000,
             &JKT,
@@ -549,7 +556,7 @@ mod tests {
         let key = AccessTokenKey::new(&SEED);
         let token = key.sign(&Claims::new_at(
             ISS.into(),
-            Uuid::nil(),
+            UserId::nil(),
             SessionId::nil(),
             unix_now(),
             &JKT,
@@ -563,14 +570,14 @@ mod tests {
     fn issuer_round_trips_its_own_tokens() {
         let issuer = TokenIssuer::new(AccessTokenKey::new(&SEED), ISS);
         let token = issuer.issue(
-            Uuid::from_u128(1),
+            UserId::from(Uuid::from_u128(1)),
             SessionId::from(Uuid::from_u128(2)),
             NOW,
             &JKT,
         );
         let claims = issuer.verify(token.expose()).unwrap();
 
-        assert_eq!(claims.user_id(), Uuid::from_u128(1));
+        assert_eq!(claims.user_id(), UserId::from(Uuid::from_u128(1)));
         assert_eq!(claims.session_id(), SessionId::from(Uuid::from_u128(2)));
         assert_eq!(claims.auth_time(), NOW);
         assert_eq!(claims.jkt(), &JKT);
@@ -580,7 +587,7 @@ mod tests {
     fn issuer_rejects_tokens_for_another_issuer() {
         let key = || AccessTokenKey::new(&SEED);
         let token = TokenIssuer::new(key(), "https://other.example").issue(
-            Uuid::nil(),
+            UserId::nil(),
             SessionId::nil(),
             unix_now(),
             &JKT,
@@ -597,7 +604,7 @@ mod tests {
         let issuer = TokenIssuer::new(AccessTokenKey::new(&SEED), ISS);
         let auth_time = unix_now() - FRESH_AUTH_WINDOW.as_secs() - 1;
 
-        let token = issuer.issue(Uuid::nil(), SessionId::nil(), auth_time, &JKT);
+        let token = issuer.issue(UserId::nil(), SessionId::nil(), auth_time, &JKT);
         let claims = issuer.verify(token.expose()).unwrap();
 
         assert!(!claims.is_fresh());

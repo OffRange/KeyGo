@@ -3,7 +3,7 @@ use crate::cache::LoginStates;
 use crate::db::{devices, invites, sessions, users};
 use crate::domain::{
     AccessTokenKey, Device, DeviceId, DeviceInfo, InviteHash, InvitePepper, SessionId, TokenIssuer,
-    Username,
+    UserId, Username,
 };
 use crate::service::invite;
 use crate::service::login::{self, FinishLogin, StartLogin};
@@ -22,7 +22,6 @@ use sqlx::{AssertSqlSafe, PgPool};
 use std::sync::Arc;
 use std::time::Duration;
 use tower::ServiceExt;
-use uuid::Uuid;
 
 pub const PASSWORD: &[u8] = b"correct horse battery staple";
 pub const JKT: [u8; 32] = [7; 32];
@@ -48,8 +47,8 @@ pub fn device(id: Option<DeviceId>) -> Device {
     }
 }
 
-pub async fn register(db: &PgPool, setup: &ServerSetup, name: &str) -> Uuid {
-    let user_id = Uuid::new_v4();
+pub async fn register(db: &PgPool, setup: &ServerSetup, name: &str) -> UserId {
+    let user_id = UserId::random();
     let (client, registration_request) = ClientRegistration::start(PASSWORD).unwrap();
 
     let input = StartRegistration {
@@ -77,8 +76,8 @@ pub async fn register(db: &PgPool, setup: &ServerSetup, name: &str) -> Uuid {
 
     user_id
 }
-pub async fn insert_device(db: &PgPool) -> (Uuid, DeviceId) {
-    let user_id = Uuid::new_v4();
+pub async fn insert_device(db: &PgPool) -> (UserId, DeviceId) {
+    let user_id = UserId::random();
     let device_id = DeviceId::random();
     let mut conn = db.acquire().await.unwrap();
     users::insert(&mut conn, user_id, &username("ada"))
@@ -110,7 +109,7 @@ pub async fn open_session(db: &PgPool, device_id: DeviceId) -> SessionId {
 }
 pub async fn issue_session(
     db: &PgPool,
-    user_id: Uuid,
+    user_id: UserId,
     device_id: DeviceId,
     jkt: &[u8; 32],
 ) -> Issued {

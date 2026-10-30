@@ -72,6 +72,7 @@ pub async fn finish(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::UserId;
     use crate::service::registration::{self, Signup, StartRegistration, Started};
     use crate::testing::{
         JKT, PASSWORD, count, create_invite, device_info, expire, invite_only, token_issuer,
@@ -81,7 +82,7 @@ mod tests {
     use keygo_opaque::server::ServerSetup;
     use uuid::Uuid;
 
-    async fn started(db: &PgPool, user_id: Uuid, name: &str) -> FinishRegistration {
+    async fn started(db: &PgPool, user_id: UserId, name: &str) -> FinishRegistration {
         started_with(db, &Signup::Open, None, user_id, name).await
     }
 
@@ -89,7 +90,7 @@ mod tests {
         db: &PgPool,
         signup: &Signup,
         invite: Option<&str>,
-        user_id: Uuid,
+        user_id: UserId,
         name: &str,
     ) -> FinishRegistration {
         let (client, registration_request) = ClientRegistration::start(PASSWORD).unwrap();
@@ -127,7 +128,7 @@ mod tests {
 
     #[sqlx::test]
     async fn finish_creates_the_user_and_record(db: PgPool) {
-        let user_id = Uuid::new_v4();
+        let user_id = UserId::random();
         let input = started(&db, user_id, "Ada").await;
 
         let finished = finish(&db, &token_issuer(), input).await.unwrap();
@@ -138,7 +139,7 @@ mod tests {
             .fetch_one(&db)
             .await
             .unwrap();
-        assert_eq!(stored, (user_id, "ada".to_owned()));
+        assert_eq!(stored, (user_id.as_uuid(), "ada".to_owned()));
         let device: (Uuid, String, String, String) =
             sqlx::query_as("select user_id, name, platform, app_version from devices")
                 .fetch_one(&db)
@@ -146,12 +147,12 @@ mod tests {
                 .unwrap();
         let expected = ["Pixel 9", "android", "2.3.0"].map(str::to_owned);
         assert_eq!((device.1, device.2, device.3), expected.into());
-        assert_eq!(device.0, user_id);
+        assert_eq!(device.0, user_id.as_uuid());
     }
 
     #[sqlx::test]
     async fn finish_issues_a_session_for_the_new_device(db: PgPool) {
-        let user_id = Uuid::new_v4();
+        let user_id = UserId::random();
         let input = started(&db, user_id, "ada").await;
 
         let finished = finish(&db, &token_issuer(), input).await.unwrap();
@@ -168,7 +169,7 @@ mod tests {
         .fetch_one(&db)
         .await
         .unwrap();
-        assert_eq!(session, (device_id, user_id, JKT.to_vec()));
+        assert_eq!(session, (device_id, user_id.as_uuid(), JKT.to_vec()));
         let token_hash: Vec<u8> = sqlx::query_scalar("select token_hash from refresh_tokens")
             .fetch_one(&db)
             .await
@@ -178,7 +179,7 @@ mod tests {
 
     #[sqlx::test]
     async fn finish_consumes_the_registration(db: PgPool) {
-        let input = started(&db, Uuid::new_v4(), "ada").await;
+        let input = started(&db, UserId::random(), "ada").await;
         let replay = FinishRegistration {
             registration_id: input.registration_id,
             registration_upload: RegistrationUpload::from_bytes(
@@ -199,7 +200,7 @@ mod tests {
 
     #[sqlx::test]
     async fn finish_rejects_an_unknown_registration(db: PgPool) {
-        let input = started(&db, Uuid::new_v4(), "ada").await;
+        let input = started(&db, UserId::random(), "ada").await;
         let unknown = FinishRegistration {
             registration_id: RegistrationId::random(),
             ..input
@@ -213,7 +214,7 @@ mod tests {
 
     #[sqlx::test]
     async fn finish_rejects_an_expired_registration(db: PgPool) {
-        let input = started(&db, Uuid::new_v4(), "ada").await;
+        let input = started(&db, UserId::random(), "ada").await;
         expire(&db, "pending_registrations").await;
 
         let err = finish(&db, &token_issuer(), input).await.err().unwrap();
@@ -224,10 +225,10 @@ mod tests {
 
     #[sqlx::test]
     async fn failed_finish_keeps_the_reservation(db: PgPool) {
-        let user_id = Uuid::new_v4();
+        let user_id = UserId::random();
         let input = started(&db, user_id, "ada").await;
         sqlx::query("insert into users (id, username) values ($1, 'squatter')")
-            .bind(user_id)
+            .bind(user_id.as_uuid())
             .execute(&db)
             .await
             .unwrap();
@@ -242,7 +243,7 @@ mod tests {
     #[sqlx::test]
     async fn finish_spends_the_invite(db: PgPool) {
         let code = create_invite(&db).await;
-        let input = started_with(&db, &invite_only(), Some(&code), Uuid::new_v4(), "ada").await;
+        let input = started_with(&db, &invite_only(), Some(&code), UserId::random(), "ada").await;
 
         finish(&db, &token_issuer(), input).await.unwrap();
 
@@ -253,8 +254,8 @@ mod tests {
     #[sqlx::test]
     async fn one_invite_creates_one_account(db: PgPool) {
         let code = create_invite(&db).await;
-        let ada = started_with(&db, &invite_only(), Some(&code), Uuid::new_v4(), "ada").await;
-        let bob = started_with(&db, &invite_only(), Some(&code), Uuid::new_v4(), "bob").await;
+        let ada = started_with(&db, &invite_only(), Some(&code), UserId::random(), "ada").await;
+        let bob = started_with(&db, &invite_only(), Some(&code), UserId::random(), "bob").await;
         finish(&db, &token_issuer(), ada).await.unwrap();
 
         let err = finish(&db, &token_issuer(), bob).await.err().unwrap();
@@ -266,7 +267,7 @@ mod tests {
     #[sqlx::test]
     async fn invite_expired_since_start_creates_nothing(db: PgPool) {
         let code = create_invite(&db).await;
-        let input = started_with(&db, &invite_only(), Some(&code), Uuid::new_v4(), "ada").await;
+        let input = started_with(&db, &invite_only(), Some(&code), UserId::random(), "ada").await;
         expire(&db, "invites").await;
 
         let err = finish(&db, &token_issuer(), input).await.err().unwrap();
@@ -279,10 +280,10 @@ mod tests {
     #[sqlx::test]
     async fn failed_finish_keeps_the_invite(db: PgPool) {
         let code = create_invite(&db).await;
-        let user_id = Uuid::new_v4();
+        let user_id = UserId::random();
         let input = started_with(&db, &invite_only(), Some(&code), user_id, "ada").await;
         sqlx::query("insert into users (id, username) values ($1, 'squatter')")
-            .bind(user_id)
+            .bind(user_id.as_uuid())
             .execute(&db)
             .await
             .unwrap();

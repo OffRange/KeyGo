@@ -1,12 +1,11 @@
 use crate::cache::LoginStates;
 use crate::db::users;
-use crate::domain::{Device, LoginId, TokenIssuer, Username};
+use crate::domain::{Device, LoginId, TokenIssuer, UserId, Username};
 use crate::service;
 use crate::service::login::Error;
 use crate::service::session::Issued;
 use keygo_opaque::{CredentialFinalization, DpopBinding, OpaqueError};
 use sqlx::PgPool;
-use uuid::Uuid;
 
 pub struct FinishLogin {
     pub login_id: LoginId,
@@ -17,7 +16,7 @@ pub struct FinishLogin {
 }
 
 pub struct Finished {
-    pub user_id: Uuid,
+    pub user_id: UserId,
     pub username: Username,
     pub session: Issued,
 }
@@ -72,6 +71,7 @@ mod tests {
     };
     use keygo_opaque::server::ServerSetup;
     use std::time::Duration;
+    use uuid::Uuid;
 
     fn copy(input: &FinishLogin) -> FinishLogin {
         FinishLogin {
@@ -239,7 +239,7 @@ mod tests {
         let user_id = register(&db, &setup, "ada").await;
         let (client, started) = start_login(&db, &login_states, &setup, "ada").await;
         sqlx::query("delete from users where id = $1")
-            .bind(user_id)
+            .bind(user_id.as_uuid())
             .execute(&db)
             .await
             .unwrap();

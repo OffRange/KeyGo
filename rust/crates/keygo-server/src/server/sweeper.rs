@@ -36,17 +36,17 @@ async fn sweep(db: &PgPool) -> sqlx::Result<()> {
 mod tests {
     use super::*;
     use crate::domain::InviteHash;
+    use crate::domain::UserId;
     use crate::service::registration::{self, Signup, StartRegistration};
     use crate::testing::{count, expire};
     use keygo_opaque::client::ClientRegistration;
     use keygo_opaque::server::ServerSetup;
-    use uuid::Uuid;
 
     async fn start_registration(db: &PgPool, setup: &ServerSetup, name: &str) {
         let (_, registration_request) = ClientRegistration::start(b"password").unwrap();
         let input = StartRegistration {
             username: crate::testing::username(name),
-            user_id: Uuid::new_v4(),
+            user_id: UserId::random(),
             invite: None,
             registration_request,
         };

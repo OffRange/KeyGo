@@ -43,7 +43,7 @@ pub async fn start(
         Some(record) => (
             Some(record.user_id),
             Some(record.file),
-            record.user_id.as_bytes().to_vec(),
+            record.user_id.as_uuid().as_bytes().to_vec(),
         ),
         None => (None, None, fake_identifier(&username)),
     };

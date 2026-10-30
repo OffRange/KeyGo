@@ -4,20 +4,20 @@ use sha2::Sha256;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use thiserror::Error;
-use zeroize::Zeroizing;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 const ALPHABET: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ"; // no I, L, O, U
 
-pub struct InvitePepper(Zeroizing<[u8; 32]>);
+#[derive(Zeroize, ZeroizeOnDrop)]
+pub struct InvitePepper([u8; 32]);
 
 impl InvitePepper {
     pub fn new(bytes: &[u8; 32]) -> Self {
-        Self(Zeroizing::new(*bytes))
+        Self(*bytes)
     }
 
     pub fn hash(&self, code: &InviteCode) -> InviteHash {
-        let mut mac =
-            Hmac::<Sha256>::new_from_slice(self.0.as_slice()).expect("HMAC accepts any key length");
+        let mut mac = Hmac::<Sha256>::new_from_slice(&self.0).expect("HMAC accepts any key length");
         mac.update(&code.0);
         <[u8; 32]>::from(mac.finalize().into_bytes()).into()
     }

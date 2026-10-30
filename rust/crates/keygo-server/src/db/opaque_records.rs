@@ -1,20 +1,19 @@
 use super::corrupt;
-use crate::domain::Username;
+use crate::domain::{UserId, Username};
 use keygo_opaque::{PasswordFile, SUITE_ID};
 use sqlx::PgConnection;
-use uuid::Uuid;
 use zeroize::Zeroizing;
 
 pub async fn insert(
     conn: &mut PgConnection,
-    user_id: Uuid,
+    user_id: UserId,
     file: &PasswordFile,
 ) -> sqlx::Result<()> {
     let record = file.to_bytes();
     sqlx::query!(
         "insert into opaque_records (user_id, suite, record, updated_at)
          values ($1, $2, $3, now())",
-        user_id,
+        user_id.as_uuid(),
         SUITE_ID,
         record.as_slice(),
     )
@@ -25,7 +24,7 @@ pub async fn insert(
 }
 
 pub struct Record {
-    pub user_id: Uuid,
+    pub user_id: UserId,
     pub file: PasswordFile,
 }
 
@@ -56,7 +55,7 @@ pub async fn find_by_username(
     let file = PasswordFile::from_bytes(&record).map_err(corrupt)?;
 
     Ok(Some(Record {
-        user_id: row.user_id,
+        user_id: row.user_id.into(),
         file,
     }))
 }
@@ -70,16 +69,17 @@ mod tests {
     use keygo_opaque::server::{self, ServerSetup};
     use sqlx::PgPool;
 
-    fn password_file(user_id: Uuid) -> PasswordFile {
+    fn password_file(user_id: UserId) -> PasswordFile {
         let setup = ServerSetup::generate();
         let (client, request) = ClientRegistration::start(PASSWORD).unwrap();
-        let response = server::registration_start(&setup, request, user_id.as_bytes()).unwrap();
+        let response =
+            server::registration_start(&setup, request, user_id.as_uuid().as_bytes()).unwrap();
         let finish = client.finish(PASSWORD, response).unwrap();
         server::registration_finish(finish.upload)
     }
 
-    async fn insert_user(db: &PgPool, name: &str) -> Uuid {
-        let user_id = Uuid::new_v4();
+    async fn insert_user(db: &PgPool, name: &str) -> UserId {
+        let user_id = UserId::random();
         let mut conn = db.acquire().await.unwrap();
         users::insert(&mut conn, user_id, &username(name))
             .await
@@ -87,12 +87,12 @@ mod tests {
         user_id
     }
 
-    async fn insert_raw(db: &PgPool, user_id: Uuid, suite: &str, record: &[u8]) {
+    async fn insert_raw(db: &PgPool, user_id: UserId, suite: &str, record: &[u8]) {
         sqlx::query(
             "insert into opaque_records (user_id, suite, record, updated_at)
              values ($1, $2, $3, now())",
         )
-        .bind(user_id)
+        .bind(user_id.as_uuid())
         .bind(suite)
         .bind(record)
         .execute(db)
@@ -145,7 +145,7 @@ mod tests {
 
     #[sqlx::test]
     async fn record_requires_a_user(db: PgPool) {
-        let user_id = Uuid::new_v4();
+        let user_id = UserId::random();
         let mut conn = db.acquire().await.unwrap();
 
         let err = insert(&mut conn, user_id, &password_file(user_id))
@@ -164,7 +164,7 @@ mod tests {
             .unwrap();
 
         sqlx::query("delete from users where id = $1")
-            .bind(user_id)
+            .bind(user_id.as_uuid())
             .execute(&db)
             .await
             .unwrap();

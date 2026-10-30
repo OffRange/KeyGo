@@ -1,6 +1,6 @@
 use opaque_ke::generic_array::GenericArray;
 use opaque_ke::generic_array::typenum::U64;
-use zeroize::{Zeroize, Zeroizing};
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 pub const KEY_LEN: usize = 64;
 
@@ -8,7 +8,8 @@ pub const KEY_LEN: usize = 64;
 /// live in this crate.
 macro_rules! secret_key {
     ($name:ident, as_bytes = $as_bytes:vis) => {
-        pub struct $name(Zeroizing<[u8; KEY_LEN]>);
+        #[derive(Zeroize, ZeroizeOnDrop)]
+        pub struct $name([u8; KEY_LEN]);
 
         impl $name {
             $as_bytes fn as_bytes(&self) -> &[u8; KEY_LEN] {
@@ -16,10 +17,10 @@ macro_rules! secret_key {
             }
 
             pub(crate) fn take(mut out: GenericArray<u8, U64>) -> Self {
-                let mut key = Zeroizing::new([0u8; KEY_LEN]);
-                key.copy_from_slice(&out);
+                let mut key = Self([0u8; KEY_LEN]);
+                key.0.copy_from_slice(&out);
                 out.as_mut_slice().zeroize();
-                Self(key)
+                key
             }
         }
 
