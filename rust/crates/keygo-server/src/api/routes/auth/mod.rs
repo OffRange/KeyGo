@@ -1,10 +1,12 @@
 use crate::api::AppState;
+use crate::api::routes::auth::logout::logout;
 use crate::api::routes::auth::token::token;
 use axum::Router;
 use axum::extract::DefaultBodyLimit;
 use axum::routing::post;
 
 mod login;
+mod logout;
 mod register;
 mod session;
 mod token;
@@ -18,5 +20,6 @@ pub fn router() -> Router<AppState> {
         .nest("/register", register::router())
         .nest("/login", login::router())
         .route("/token", post(token))
+        .route("/logout", post(logout))
         .layer(DefaultBodyLimit::max(MAX_BODY_BYTES))
 }

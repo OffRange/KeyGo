@@ -38,6 +38,11 @@ pub async fn issue(
     })
 }
 
+pub async fn logout(db: &PgPool, session_id: SessionId) -> sqlx::Result<()> {
+    let mut conn = db.acquire().await?;
+    sessions::revoke(&mut conn, session_id, RevokeReason::Logout).await
+}
+
 #[derive(Debug, Error)]
 pub enum RefreshError {
     #[error("session revoked")]
