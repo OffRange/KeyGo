@@ -12,6 +12,7 @@ pub fn router() -> Router<AppState> {
 #[derive(Serialize)]
 struct ServerInfo {
     version: &'static str,
+    public_url: String,
     allow_signups: bool,
 }
 
@@ -19,6 +20,7 @@ struct ServerInfo {
 async fn info(State(state): State<AppState>) -> Json<ServerInfo> {
     Json(ServerInfo {
         version: env!("CARGO_PKG_VERSION"),
+        public_url: state.public_url.to_string(),
         allow_signups: matches!(state.signup, Signup::Open),
     })
 }
