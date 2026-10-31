@@ -1,5 +1,5 @@
 use crate::api::{AppState, router};
-use crate::cache::LoginStates;
+use crate::cache::{LoginStates, StepUpStates};
 use crate::db::{devices, invites, sessions, users};
 use crate::domain::{
     AccessTokenKey, Device, DeviceId, DeviceInfo, InviteHash, InvitePepper, SessionId, TokenIssuer,
@@ -216,6 +216,7 @@ pub fn app_state(db: &PgPool, setup: &ServerSetup) -> AppState {
         opaque_state: setup.clone(),
         db: db.clone(),
         login_states: LoginStates::new(),
+        step_up_states: StepUpStates::new(),
         dpop_verifier: Arc::new(DpopVerifier::new()),
         token_issuer: Arc::new(token_issuer()),
     }
@@ -268,6 +269,53 @@ pub fn proof_post(
         .unwrap();
     let mut request = json_post(uri, body);
     request.headers_mut().insert("dpop", proof.parse().unwrap());
+    request
+}
+
+/// Posts as the session behind `access_token` and answers a nonce challenge once, like
+/// `post_with_proof`.
+pub async fn post_with_token(
+    state: &AppState,
+    prover: &DpopProver<TestSigner>,
+    uri: &str,
+    access_token: &str,
+    body: Value,
+) -> (StatusCode, Value) {
+    let request = token_post(state, prover, uri, access_token, &body, None);
+    let (status, headers, response) = send(state, request).await;
+    if response["code"] != "use_dpop_nonce" {
+        return (status, response);
+    }
+
+    let nonce = headers["dpop-nonce"].to_str().unwrap();
+    let request = token_post(state, prover, uri, access_token, &body, Some(nonce));
+    let (status, _, response) = send(state, request).await;
+    (status, response)
+}
+fn token_post(
+    state: &AppState,
+    prover: &DpopProver<TestSigner>,
+    uri: &str,
+    access_token: &str,
+    body: &Value,
+    nonce: Option<&str>,
+) -> Request<Body> {
+    let htu = state.public_url.join(uri).unwrap();
+    let proof = prover
+        .proof(&ProofRequest {
+            htm: Htm::Post,
+            htu: htu.as_str(),
+            access_token: Some(access_token),
+            nonce,
+        })
+        .unwrap();
+    let mut request = json_post(uri, body);
+    let headers = request.headers_mut();
+    headers.insert("dpop", proof.parse().unwrap());
+    headers.insert(
+        "authorization",
+        format!("DPoP {access_token}").parse().unwrap(),
+    );
     request
 }
 

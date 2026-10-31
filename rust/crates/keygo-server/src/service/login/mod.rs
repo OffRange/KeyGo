@@ -5,9 +5,6 @@ pub use finish::*;
 pub use start::*;
 
 use keygo_opaque::OpaqueError;
-use std::time::Duration;
-
-pub const TTL: Duration = Duration::from_mins(1);
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

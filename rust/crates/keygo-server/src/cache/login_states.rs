@@ -8,39 +8,54 @@ const TTL: Duration = Duration::from_mins(1);
 const MAX_ENTRIES: u64 = 10_000;
 
 #[derive(Clone)]
-pub struct Pending {
-    /// `None` on the fake path for an unknown username.
-    pub user_id: Option<UserId>,
+pub struct Pending<U> {
+    pub user_id: U,
     pub state: ServerLogin,
 }
 
+/// Server halves of OPAQUE logins waiting for their `finish`. Sign-in and step-up each get their
+/// own store, so a `login_id` from one flow can never be finished through the other.
 #[derive(Clone)]
-pub struct LoginStates(Cache<LoginId, Pending>);
+pub struct LoginStore<U> {
+    states: Cache<LoginId, Pending<U>>,
+    ttl: Duration,
+}
 
-impl LoginStates {
+/// The user id is `None` on the fake path for an unknown username.
+pub type LoginStates = LoginStore<Option<UserId>>;
+
+/// The user from the access token: step-up has no fake path.
+pub type StepUpStates = LoginStore<UserId>;
+
+impl<U: Clone + Send + Sync + 'static> LoginStore<U> {
     pub fn new() -> Self {
         Self::with_ttl(TTL)
     }
 
     pub fn with_ttl(ttl: Duration) -> Self {
-        Self(
-            Cache::builder()
+        Self {
+            states: Cache::builder()
                 .max_capacity(MAX_ENTRIES)
                 .time_to_live(ttl)
                 .build(),
-        )
+            ttl,
+        }
     }
 
-    pub fn insert(&self, key: LoginId, value: Pending) {
-        self.0.insert(key, value);
+    pub fn ttl(&self) -> Duration {
+        self.ttl
     }
 
-    pub fn take(&self, key: &LoginId) -> Option<Pending> {
+    pub fn insert(&self, key: LoginId, value: Pending<U>) {
+        self.states.insert(key, value);
+    }
+
+    pub fn take(&self, key: &LoginId) -> Option<Pending<U>> {
         // Not `Cache::remove`: that returns an entry even after it expired, until maintenance drops
         // it. `and_compute_with` reads the entry the way `get` does, so it never sees an expired one,
         // and it runs calls on the same key one at a time, so a state can be taken only once.
         let result = self
-            .0
+            .states
             .entry_by_ref(key)
             .and_compute_with(|entry| match entry {
                 Some(_) => Op::Remove,
@@ -54,8 +69,8 @@ impl LoginStates {
 
     #[cfg(test)]
     pub fn count(&self) -> u64 {
-        self.0.run_pending_tasks();
-        self.0.entry_count()
+        self.states.run_pending_tasks();
+        self.states.entry_count()
     }
 }
 
@@ -65,7 +80,7 @@ mod tests {
     use keygo_opaque::client::ClientLogin;
     use keygo_opaque::server::ServerSetup;
 
-    fn pending() -> Pending {
+    fn pending() -> Pending<Option<UserId>> {
         let (_, request) = ClientLogin::start(b"password").unwrap();
         let (state, _) =
             ServerLogin::start(&ServerSetup::generate(), None, request, b"identifier").unwrap();
@@ -73,6 +88,12 @@ mod tests {
             user_id: None,
             state,
         }
+    }
+
+    #[test]
+    fn logins_live_a_minute() {
+        assert_eq!(LoginStates::new().ttl(), Duration::from_secs(60));
+        assert_eq!(StepUpStates::new().ttl(), Duration::from_secs(60));
     }
 
     #[test]

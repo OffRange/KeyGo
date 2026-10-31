@@ -1,4 +1,4 @@
-use crate::cache::LoginStates;
+use crate::cache::{LoginStates, StepUpStates};
 use crate::config::DeploymentConfig;
 use crate::domain::TokenIssuer;
 use crate::service::registration::Signup;
@@ -15,6 +15,7 @@ pub struct AppState {
     pub opaque_state: keygo_opaque::server::ServerSetup,
     pub db: PgPool,
     pub login_states: LoginStates,
+    pub step_up_states: StepUpStates,
     pub dpop_verifier: Arc<DpopVerifier>,
     pub token_issuer: Arc<TokenIssuer>,
 }
@@ -34,6 +35,7 @@ impl AppState {
             opaque_state: secrets.opaque_setup()?,
             db,
             login_states: LoginStates::new(),
+            step_up_states: StepUpStates::new(),
             dpop_verifier: Arc::new(DpopVerifier::new()),
             token_issuer: Arc::new(TokenIssuer::new(secrets.access_token_key()?, issuer)),
         })

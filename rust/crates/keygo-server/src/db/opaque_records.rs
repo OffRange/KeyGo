@@ -44,20 +44,35 @@ pub async fn find_by_username(
         return Ok(None);
     };
 
-    if row.suite != SUITE_ID {
+    Ok(Some(Record {
+        user_id: row.user_id.into(),
+        file: decode(&row.suite, row.record)?,
+    }))
+}
+
+pub async fn find_by_user_id(
+    conn: &mut PgConnection,
+    user_id: UserId,
+) -> sqlx::Result<Option<PasswordFile>> {
+    let row = sqlx::query!(
+        "select suite, record from opaque_records where user_id = $1",
+        user_id.as_uuid(),
+    )
+    .fetch_optional(conn)
+    .await?;
+
+    row.map(|row| decode(&row.suite, row.record)).transpose()
+}
+
+fn decode(suite: &str, record: Vec<u8>) -> sqlx::Result<PasswordFile> {
+    if suite != SUITE_ID {
         return Err(corrupt(format!(
-            "opaque record uses unknown suite {:?}",
-            row.suite
+            "opaque record uses unknown suite {suite:?}"
         )));
     }
 
-    let record = Zeroizing::new(row.record);
-    let file = PasswordFile::from_bytes(&record).map_err(corrupt)?;
-
-    Ok(Some(Record {
-        user_id: row.user_id.into(),
-        file,
-    }))
+    let record = Zeroizing::new(record);
+    PasswordFile::from_bytes(&record).map_err(corrupt)
 }
 
 #[cfg(test)]
@@ -114,6 +129,39 @@ mod tests {
 
         assert_eq!(record.user_id, user_id);
         assert_eq!(*record.file.to_bytes(), *file.to_bytes());
+    }
+
+    #[sqlx::test]
+    async fn record_is_found_by_user_id(db: PgPool) {
+        let user_id = insert_user(&db, "ada").await;
+        let file = password_file(user_id);
+        let mut conn = db.acquire().await.unwrap();
+        insert(&mut conn, user_id, &file).await.unwrap();
+
+        let found = find_by_user_id(&mut conn, user_id).await.unwrap().unwrap();
+
+        assert_eq!(*found.to_bytes(), *file.to_bytes());
+    }
+
+    #[sqlx::test]
+    async fn user_without_a_record_has_none(db: PgPool) {
+        let user_id = insert_user(&db, "ada").await;
+        let mut conn = db.acquire().await.unwrap();
+
+        for id in [user_id, UserId::random()] {
+            assert!(find_by_user_id(&mut conn, id).await.unwrap().is_none());
+        }
+    }
+
+    #[sqlx::test]
+    async fn undecodable_record_by_user_id_is_corrupt(db: PgPool) {
+        let user_id = insert_user(&db, "ada").await;
+        insert_raw(&db, user_id, SUITE_ID, &[0]).await;
+        let mut conn = db.acquire().await.unwrap();
+
+        let err = find_by_user_id(&mut conn, user_id).await.err().unwrap();
+
+        assert!(matches!(err, sqlx::Error::Decode(_)));
     }
 
     #[sqlx::test]
