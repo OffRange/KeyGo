@@ -297,7 +297,13 @@ pub async fn send(state: &AppState, request: Request<Body>) -> (StatusCode, Head
     let status = response.status();
     let headers = response.headers().clone();
     let body = response.into_body().collect().await.unwrap().to_bytes();
-    (status, headers, serde_json::from_slice(&body).unwrap())
+    // Responses without content have an empty body, which is not JSON.
+    let body = if body.is_empty() {
+        Value::Null
+    } else {
+        serde_json::from_slice(&body).unwrap()
+    };
+    (status, headers, body)
 }
 fn json_post(uri: &str, body: &Value) -> Request<Body> {
     Request::post(uri)

@@ -54,6 +54,7 @@ macro_rules! revoke_reasons {
 revoke_reasons! {
     Replaced => "replaced",
     ReuseDetected => "reuse_detected",
+    Logout => "logout",
 }
 
 #[derive(Zeroize, ZeroizeOnDrop)]
