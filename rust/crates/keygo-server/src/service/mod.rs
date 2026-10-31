@@ -1,4 +1,5 @@
 pub mod device;
+pub mod handshake;
 pub mod invite;
 pub mod login;
 pub mod registration;

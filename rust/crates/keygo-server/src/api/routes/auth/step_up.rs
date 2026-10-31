@@ -35,16 +35,11 @@ async fn start(
 
 #[cfg(test)]
 mod tests {
-    use crate::api::AppState;
-    use crate::db::devices;
-    use crate::domain::DeviceId;
     use crate::testing::{
-        PASSWORD, app_state, device_info, device_json, issue_session, post_to, post_with_proof,
-        post_with_token, prover, register,
+        PASSWORD, app_state, device_json, post_to, post_with_proof, post_with_token, prover,
+        signed_in,
     };
     use axum::http::StatusCode;
-    use keygo_dpop::DpopProver;
-    use keygo_dpop::testing::TestSigner;
     use keygo_opaque::CredentialResponse;
     use keygo_opaque::client::ClientLogin;
     use keygo_opaque::server::ServerSetup;
@@ -52,20 +47,6 @@ mod tests {
     use sqlx::PgPool;
 
     const START: &str = "/api/v1/auth/step-up/start";
-
-    /// A registered user signed in on a second device, bound to the prover's key.
-    async fn signed_in(db: &PgPool, prover: &DpopProver<TestSigner>) -> (AppState, String) {
-        let setup = ServerSetup::generate();
-        let state = app_state(db, &setup);
-        let user_id = register(db, &setup, "ada").await;
-        let device_id = DeviceId::random();
-        let mut conn = db.acquire().await.unwrap();
-        devices::insert(&mut conn, device_id, user_id, &device_info())
-            .await
-            .unwrap();
-        let issued = issue_session(db, user_id, device_id, prover.jkt()).await;
-        (state, issued.access_token.expose().to_owned())
-    }
 
     fn start_body() -> (ClientLogin, Value) {
         let (client, request) = ClientLogin::start(PASSWORD).unwrap();
@@ -75,10 +56,11 @@ mod tests {
     #[sqlx::test]
     async fn starts_a_step_up_over_http(db: PgPool) {
         let prover = prover();
-        let (state, access_token) = signed_in(&db, &prover).await;
+        let (state, issued) = signed_in(&db, &prover).await;
         let (client, body) = start_body();
 
-        let (status, started) = post_with_token(&state, &prover, START, &access_token, body).await;
+        let (status, started) =
+            post_with_token(&state, &prover, START, issued.access_token.expose(), body).await;
 
         assert_eq!(status, StatusCode::OK);
         assert_eq!(started["expires_in"], state.step_up_states.ttl().as_secs());
@@ -104,9 +86,10 @@ mod tests {
     #[sqlx::test]
     async fn a_step_up_cannot_be_finished_as_a_sign_in(db: PgPool) {
         let prover = prover();
-        let (state, access_token) = signed_in(&db, &prover).await;
+        let (state, issued) = signed_in(&db, &prover).await;
         let (client, body) = start_body();
-        let (_, started) = post_with_token(&state, &prover, START, &access_token, body).await;
+        let (_, started) =
+            post_with_token(&state, &prover, START, issued.access_token.expose(), body).await;
         let response =
             CredentialResponse::from_base64(started["credential_response"].as_str().unwrap())
                 .unwrap();

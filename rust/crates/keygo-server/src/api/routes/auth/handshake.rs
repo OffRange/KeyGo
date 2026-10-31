@@ -1,11 +1,11 @@
 use crate::api::{ErrorCode, HttpError};
 use crate::domain::LoginId;
-use crate::service::login;
+use crate::service::handshake;
 use keygo_opaque::CredentialResponse;
 use serde::Serialize;
 
 // Sign-in and step-up run the same OPAQUE login, so they share its error codes and bodies.
-impl HttpError for login::Error {
+impl HttpError for handshake::Error {
     fn code(&self) -> ErrorCode {
         match self {
             Self::Expired => ErrorCode::LoginExpired,
@@ -22,8 +22,8 @@ pub struct StartResponse {
     expires_in: u64,
 }
 
-impl From<login::Started> for StartResponse {
-    fn from(started: login::Started) -> Self {
+impl From<handshake::Started> for StartResponse {
+    fn from(started: handshake::Started) -> Self {
         Self {
             login_id: started.login_id,
             credential_response: started.credential_response,
@@ -41,7 +41,7 @@ mod tests {
 
     #[tokio::test]
     async fn expired_logins_are_bad_requests() {
-        let (status, body) = render(login::Error::Expired).await;
+        let (status, body) = render(handshake::Error::Expired).await;
 
         assert_eq!(status, StatusCode::BAD_REQUEST);
         assert_eq!(body["code"], "login_expired");
@@ -49,7 +49,7 @@ mod tests {
 
     #[tokio::test]
     async fn failed_login_finish_matches_failed_start() {
-        let (status, body) = render(login::Error::Opaque(OpaqueError::InvalidLogin)).await;
+        let (status, body) = render(handshake::Error::Opaque(OpaqueError::InvalidLogin)).await;
 
         assert_eq!(status, StatusCode::UNAUTHORIZED);
         assert_eq!(body["code"], "invalid_credentials");

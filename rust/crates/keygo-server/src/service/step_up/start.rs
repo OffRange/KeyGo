@@ -1,7 +1,7 @@
 use crate::cache::StepUpStates;
 use crate::db::opaque_records;
 use crate::domain::UserId;
-use crate::service::login::{self, Error, Started};
+use crate::service::handshake::{self, Error, Started};
 use keygo_opaque::server::ServerSetup;
 use keygo_opaque::{CredentialRequest, OpaqueError};
 use sqlx::PgPool;
@@ -28,12 +28,12 @@ pub async fn start(
         .await?
         .ok_or(OpaqueError::InvalidLogin)?;
 
-    login::respond(
+    handshake::begin(
         step_up_states,
         setup,
         user_id,
         Some(password_file),
-        user_id.as_uuid().as_bytes(),
+        user_id.opaque_identifier(),
         credential_request,
     )
 }

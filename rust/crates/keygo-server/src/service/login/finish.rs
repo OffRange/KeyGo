@@ -2,7 +2,7 @@ use crate::cache::LoginStates;
 use crate::db::users;
 use crate::domain::{Device, LoginId, TokenIssuer, UserId, Username};
 use crate::service;
-use crate::service::login::Error;
+use crate::service::handshake::Error;
 use crate::service::session::Issued;
 use keygo_opaque::{CredentialFinalization, DpopBinding, OpaqueError};
 use sqlx::PgPool;
