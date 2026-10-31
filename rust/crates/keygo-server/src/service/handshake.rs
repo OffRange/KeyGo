@@ -1,7 +1,10 @@
 use crate::cache::{LoginStore, Pending};
 use crate::domain::LoginId;
 use keygo_opaque::server::{ServerLogin, ServerSetup};
-use keygo_opaque::{CredentialRequest, CredentialResponse, OpaqueError, PasswordFile};
+use keygo_opaque::{
+    CredentialFinalization, CredentialRequest, CredentialResponse, DpopBinding, OpaqueError,
+    PasswordFile,
+};
 use std::time::Duration;
 
 #[derive(Debug, thiserror::Error)]
@@ -39,4 +42,17 @@ pub(super) fn begin<U: Clone + Send + Sync + 'static>(
         credential_response,
         expires_in: states.ttl(),
     })
+}
+
+pub(super) fn complete<U: Clone + Send + Sync + 'static>(
+    states: &LoginStore<U>,
+    login_id: &LoginId,
+    credential_finalization: CredentialFinalization,
+    binding: &DpopBinding,
+    jkt: &[u8; 32],
+) -> Result<U, Error> {
+    let pending = states.take(login_id).ok_or(Error::Expired)?;
+    let session_key = pending.state.finish(credential_finalization)?;
+    session_key.verify_dpop_binding(jkt, binding)?;
+    Ok(pending.user_id)
 }

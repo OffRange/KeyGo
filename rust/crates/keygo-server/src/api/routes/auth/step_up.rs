@@ -1,13 +1,31 @@
-use crate::api::authenticated::Authenticated;
+use crate::api::authenticated::{AuthError, Authenticated};
 use crate::api::routes::auth::handshake::StartResponse;
-use crate::api::{AppState, Json, ServerResult};
-use crate::domain::{ACCESS_TOKEN_LIFETIME, AccessToken, LoginId};
-use crate::service::step_up::{self, FinishStepUp, StartStepUp};
+use crate::api::routes::auth::session::Access;
+use crate::api::{AppState, ErrorCode, HttpError, Json, ServerResult};
+use crate::domain::LoginId;
+use crate::service::step_up::{self, FinishError, FinishStepUp, StartStepUp};
 use axum::Router;
 use axum::extract::State;
+use axum::http::HeaderMap;
 use axum::routing::post;
 use keygo_opaque::{CredentialFinalization, CredentialRequest, DpopBinding};
 use serde::{Deserialize, Serialize};
+
+impl HttpError for FinishError {
+    fn code(&self) -> ErrorCode {
+        match self {
+            Self::Handshake(err) => err.code(),
+            Self::SessionEnded => AuthError::Revoked(None).code(),
+        }
+    }
+
+    fn headers(&self) -> HeaderMap {
+        match self {
+            Self::Handshake(err) => err.headers(),
+            Self::SessionEnded => AuthError::Revoked(None).headers(),
+        }
+    }
+}
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -29,8 +47,8 @@ struct FinishRequest {
 
 #[derive(Serialize)]
 struct FinishResponse {
-    access_token: AccessToken,
-    access_expires_in: u64,
+    #[serde(flatten)]
+    access: Access,
     auth_time: u64,
 }
 
@@ -68,8 +86,7 @@ async fn finish(
         step_up::finish(&state.db, &state.step_up_states, &state.token_issuer, input).await?;
 
     Ok(Json(FinishResponse {
-        access_token: finished.access_token,
-        access_expires_in: ACCESS_TOKEN_LIFETIME.as_secs(),
+        access: finished.access_token.into(),
         auth_time: finished.auth_time,
     }))
 }
@@ -77,10 +94,12 @@ async fn finish(
 #[cfg(test)]
 mod tests {
     use crate::api::AppState;
+    use crate::api::error::render;
     use crate::db::devices;
     use crate::domain::{
         ACCESS_TOKEN_LIFETIME, AccessToken, DeviceId, FRESH_AUTH_WINDOW, SessionId, unix_now,
     };
+    use crate::service::step_up::FinishError;
     use crate::testing::{
         PASSWORD, app_state, count, device_info, device_json, issue_session, post_to,
         post_with_proof, post_with_token, prover, signed_in,
@@ -345,5 +364,14 @@ mod tests {
 
         assert_eq!(status, StatusCode::UNAUTHORIZED);
         assert_eq!(response["code"], "invalid_token");
+    }
+
+    #[tokio::test]
+    async fn a_session_ended_meanwhile_answers_like_a_revoked_one() {
+        let (status, body) = render(FinishError::SessionEnded).await;
+
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        assert_eq!(body["code"], "session_revoked");
+        assert!(body.get("reason").is_none());
     }
 }
