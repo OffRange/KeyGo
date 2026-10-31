@@ -26,6 +26,21 @@ pub async fn insert(
     Ok(())
 }
 
+pub async fn touch_auth_time(
+    conn: &mut PgConnection,
+    session_id: SessionId,
+    auth_time: u64,
+) -> sqlx::Result<()> {
+    sqlx::query!(
+        "update sessions set auth_time = to_timestamp($1::int8) where id = $2",
+        i64::try_from(auth_time).expect("auth_time fits a timestamptz"),
+        session_id.as_uuid(),
+    )
+    .execute(conn)
+    .await?;
+    Ok(())
+}
+
 pub async fn revoke_by_device(
     conn: &mut PgConnection,
     device_id: DeviceId,
