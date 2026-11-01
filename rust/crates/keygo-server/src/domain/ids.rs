@@ -109,6 +109,13 @@ impl RegistrationId {
     }
 }
 
+impl UserId {
+    /// What OPAQUE binds the password file to: registration, login and step-up must all agree on it.
+    pub const fn opaque_identifier(&self) -> &[u8] {
+        self.0.as_bytes()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -138,6 +145,13 @@ mod tests {
         assert!(RegistrationId::from_base64(&URL_SAFE_NO_PAD.encode([0; 17])).is_err());
         assert!(RegistrationId::from_base64("+++++++++++++++++++++w").is_err());
         assert!(RegistrationId::from_base64("_____________________w==").is_err());
+    }
+
+    #[test]
+    fn opaque_identifier_is_pinned() {
+        let user_id = UserId::from(Uuid::from_bytes([7; LEN]));
+
+        assert_eq!(user_id.opaque_identifier(), [7; LEN]);
     }
 
     #[test]

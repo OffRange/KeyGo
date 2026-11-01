@@ -1,15 +1,16 @@
 use crate::api::{AppState, router};
-use crate::cache::LoginStates;
+use crate::cache::{LoginStates, StepUpStates};
 use crate::db::{devices, invites, sessions, users};
 use crate::domain::{
     AccessTokenKey, DeviceClaim, DeviceId, DeviceInfo, InviteHash, InvitePepper, SessionId,
     TokenIssuer, UserId, Username,
 };
-use crate::service::invite;
 use crate::service::login::{self, FinishLogin, StartLogin};
 use crate::service::registration::{self, FinishRegistration, Signup, StartRegistration};
 use crate::service::session::{self, Issued};
+use crate::service::{handshake, invite};
 use axum::body::Body;
+use axum::http::header::AUTHORIZATION;
 use axum::http::{HeaderMap, Request, StatusCode};
 use http_body_util::BodyExt;
 use keygo_dpop::DpopVerifier;
@@ -120,12 +121,24 @@ pub async fn issue_session(
     tx.commit().await.unwrap();
     issued
 }
+/// A registered user signed in on a device bound to the prover's key.
+pub async fn signed_in(db: &PgPool, prover: &DpopProver<TestSigner>) -> (AppState, Issued) {
+    let setup = ServerSetup::generate();
+    let user_id = register(db, &setup, "ada").await;
+    let device_id = DeviceId::random();
+    let mut conn = db.acquire().await.unwrap();
+    devices::insert(&mut conn, device_id, user_id, &device_info())
+        .await
+        .unwrap();
+    let issued = issue_session(db, user_id, device_id, prover.jkt()).await;
+    (app_state(db, &setup), issued)
+}
 pub async fn start_login(
     db: &PgPool,
     login_states: &LoginStates,
     setup: &ServerSetup,
     name: &str,
-) -> (ClientLogin, login::Started) {
+) -> (ClientLogin, handshake::Started) {
     let (client, credential_request) = ClientLogin::start(PASSWORD).unwrap();
     let input = StartLogin {
         username: username(name),
@@ -138,7 +151,7 @@ pub async fn start_login(
 }
 pub fn finish_login(
     client: ClientLogin,
-    started: login::Started,
+    started: handshake::Started,
     device_id: Option<DeviceId>,
 ) -> FinishLogin {
     let finish = client
@@ -216,6 +229,7 @@ pub fn app_state(db: &PgPool, setup: &ServerSetup) -> AppState {
         opaque_state: setup.clone(),
         db: db.clone(),
         login_states: LoginStates::new(),
+        step_up_states: StepUpStates::new(),
         dpop_verifier: Arc::new(DpopVerifier::new()),
         token_issuer: Arc::new(token_issuer()),
     }
@@ -232,23 +246,42 @@ pub fn prover() -> DpopProver<TestSigner> {
     DpopProver::new(TestSigner::new())
 }
 
-/// Posts with a fresh proof and answers a nonce challenge once, the way a real client would.
+/// Sends the request `build` makes and, on a nonce challenge, once more with the nonce, the way a
+/// real client would.
+pub async fn send_with_nonce(
+    state: &AppState,
+    build: impl Fn(Option<&str>) -> Request<Body>,
+) -> (StatusCode, Value) {
+    let (status, headers, body) = send(state, build(None)).await;
+    if body["code"] != "use_dpop_nonce" {
+        return (status, body);
+    }
+
+    let nonce = headers["dpop-nonce"].to_str().unwrap();
+    let (status, _, body) = send(state, build(Some(nonce))).await;
+    (status, body)
+}
 pub async fn post_with_proof(
     state: &AppState,
     prover: &DpopProver<TestSigner>,
     uri: &str,
     body: Value,
 ) -> (StatusCode, Value) {
-    let request = proof_post(state, prover, uri, &body, None);
-    let (status, headers, response) = send(state, request).await;
-    if response["code"] != "use_dpop_nonce" {
-        return (status, response);
-    }
-
-    let nonce = headers["dpop-nonce"].to_str().unwrap();
-    let request = proof_post(state, prover, uri, &body, Some(nonce));
-    let (status, _, response) = send(state, request).await;
-    (status, response)
+    send_with_nonce(state, |nonce| proof_post(state, prover, uri, &body, nonce)).await
+}
+/// Posts as the session behind `access_token`.
+pub async fn post_with_token(
+    state: &AppState,
+    prover: &DpopProver<TestSigner>,
+    uri: &str,
+    access_token: &str,
+    body: Value,
+) -> (StatusCode, Value) {
+    send_with_nonce(state, |nonce| {
+        let request = json_post(uri, &body);
+        with_proof(state, prover, request, Some(access_token), nonce)
+    })
+    .await
 }
 pub fn proof_post(
     state: &AppState,
@@ -257,17 +290,34 @@ pub fn proof_post(
     body: &Value,
     nonce: Option<&str>,
 ) -> Request<Body> {
-    let htu = state.public_url.join(uri).unwrap();
+    with_proof(state, prover, json_post(uri, body), None, nonce)
+}
+/// Signs a proof for the POST `request` makes and attaches it, with the access token it is bound
+/// to when one is given.
+pub fn with_proof(
+    state: &AppState,
+    prover: &DpopProver<TestSigner>,
+    mut request: Request<Body>,
+    access_token: Option<&str>,
+    nonce: Option<&str>,
+) -> Request<Body> {
+    let htu = state.public_url.join(request.uri().path()).unwrap();
     let proof = prover
         .proof(&ProofRequest {
             htm: Htm::Post,
             htu: htu.as_str(),
-            access_token: None,
+            access_token,
             nonce,
         })
         .unwrap();
-    let mut request = json_post(uri, body);
-    request.headers_mut().insert("dpop", proof.parse().unwrap());
+    let headers = request.headers_mut();
+    headers.insert("dpop", proof.parse().unwrap());
+    if let Some(access_token) = access_token {
+        headers.insert(
+            AUTHORIZATION,
+            format!("DPoP {access_token}").parse().unwrap(),
+        );
+    }
     request
 }
 

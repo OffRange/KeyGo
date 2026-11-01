@@ -26,6 +26,23 @@ pub async fn insert(
     Ok(())
 }
 
+pub async fn touch_auth_time(
+    conn: &mut PgConnection,
+    session_id: SessionId,
+    auth_time: u64,
+) -> sqlx::Result<bool> {
+    let result = sqlx::query!(
+        "update sessions set auth_time = to_timestamp($1::int8)
+         where id = $2 and revoked_at is null and expires_at > now()",
+        i64::try_from(auth_time).expect("auth_time fits a timestamptz"),
+        session_id.as_uuid(),
+    )
+    .execute(conn)
+    .await?;
+
+    Ok(result.rows_affected() == 1)
+}
+
 pub async fn revoke_by_device(
     conn: &mut PgConnection,
     device_id: DeviceId,
@@ -207,6 +224,42 @@ mod tests {
             .unwrap();
 
         assert_eq!(count(&db, "sessions").await, 0);
+    }
+
+    async fn auth_time_of(db: &PgPool) -> i64 {
+        sqlx::query_scalar("select extract(epoch from auth_time)::int8 from sessions")
+            .fetch_one(db)
+            .await
+            .unwrap()
+    }
+
+    #[sqlx::test]
+    async fn touch_auth_time_restarts_a_live_session(db: PgPool) {
+        let (_, id) = insert_session(&db).await;
+        let mut conn = db.acquire().await.unwrap();
+
+        assert!(touch_auth_time(&mut conn, id, AUTH_TIME).await.unwrap());
+        assert_eq!(auth_time_of(&db).await, AUTH_TIME as i64);
+    }
+
+    #[sqlx::test]
+    async fn touch_auth_time_leaves_a_revoked_session_alone(db: PgPool) {
+        let (_, id) = insert_session(&db).await;
+        let mut conn = db.acquire().await.unwrap();
+        revoke(&mut conn, id, RevokeReason::Logout).await.unwrap();
+
+        assert!(!touch_auth_time(&mut conn, id, AUTH_TIME).await.unwrap());
+        assert_eq!(auth_time_of(&db).await, 0);
+    }
+
+    #[sqlx::test]
+    async fn touch_auth_time_leaves_an_expired_session_alone(db: PgPool) {
+        let (_, id) = insert_session(&db).await;
+        expire(&db, "sessions").await;
+        let mut conn = db.acquire().await.unwrap();
+
+        assert!(!touch_auth_time(&mut conn, id, AUTH_TIME).await.unwrap());
+        assert_eq!(auth_time_of(&db).await, 0);
     }
 
     #[sqlx::test]

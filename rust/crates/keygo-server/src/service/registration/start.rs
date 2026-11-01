@@ -78,7 +78,7 @@ pub async fn start(
 
     // Pure computation, so it runs before the transaction to keep the reservation's lock short.
     let registration_response =
-        server::registration_start(setup, registration_request, user_id.as_uuid().as_bytes())?;
+        server::registration_start(setup, registration_request, user_id.opaque_identifier())?;
 
     let mut tx = db.begin().await?;
     let registration_id = RegistrationId::random();

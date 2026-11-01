@@ -38,6 +38,30 @@ pub async fn issue(
     })
 }
 
+pub struct Freshened {
+    pub access_token: AccessToken,
+    pub auth_time: u64,
+}
+
+pub async fn freshen(
+    db: &PgPool,
+    token_issuer: &TokenIssuer,
+    user_id: UserId,
+    session_id: SessionId,
+    jkt: &[u8; 32],
+) -> sqlx::Result<Option<Freshened>> {
+    let auth_time = unix_now();
+    let mut conn = db.acquire().await?;
+    if !sessions::touch_auth_time(&mut conn, session_id, auth_time).await? {
+        return Ok(None);
+    }
+
+    Ok(Some(Freshened {
+        access_token: token_issuer.issue(user_id, session_id, auth_time, jkt),
+        auth_time,
+    }))
+}
+
 pub async fn logout(db: &PgPool, session_id: SessionId) -> sqlx::Result<()> {
     let mut conn = db.acquire().await?;
     sessions::revoke(&mut conn, session_id, RevokeReason::Logout).await

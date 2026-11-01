@@ -22,66 +22,29 @@ async fn logout(
 mod tests {
     use crate::api::AppState;
     use crate::domain::RefreshToken;
-    use crate::service::session::Issued;
-    use crate::testing::{app_state, insert_device, issue_session, post_with_proof, prover, send};
+    use crate::testing::{
+        app_state, post_with_proof, prover, send_with_nonce, signed_in, with_proof,
+    };
     use axum::body::Body;
-    use axum::http::header::AUTHORIZATION;
     use axum::http::{Request, StatusCode};
+    use keygo_dpop::DpopProver;
     use keygo_dpop::testing::TestSigner;
-    use keygo_dpop::{DpopProver, Htm, ProofRequest};
     use keygo_opaque::server::ServerSetup;
     use serde_json::{Value, json};
     use sqlx::PgPool;
 
     const LOGOUT: &str = "/api/v1/auth/logout";
 
-    async fn signed_in(db: &PgPool, prover: &DpopProver<TestSigner>) -> (AppState, Issued) {
-        let state = app_state(db, &ServerSetup::generate());
-        let (user_id, device_id) = insert_device(db).await;
-        let issued = issue_session(db, user_id, device_id, prover.jkt()).await;
-        (state, issued)
-    }
-
-    fn logout_request(
-        state: &AppState,
-        prover: &DpopProver<TestSigner>,
-        access_token: &str,
-        nonce: Option<&str>,
-    ) -> Request<Body> {
-        let htu = state.public_url.join(LOGOUT).unwrap();
-        let proof = prover
-            .proof(&ProofRequest {
-                htm: Htm::Post,
-                htu: htu.as_str(),
-                access_token: Some(access_token),
-                nonce,
-            })
-            .unwrap();
-        Request::post(LOGOUT)
-            .header(AUTHORIZATION, format!("DPoP {access_token}"))
-            .header("dpop", proof)
-            .body(Body::empty())
-            .unwrap()
-    }
-
-    /// Logs out with a fresh proof and answers a nonce challenge once, like a real client.
     async fn logout(
         state: &AppState,
         prover: &DpopProver<TestSigner>,
         access_token: &str,
     ) -> (StatusCode, Value) {
-        let (status, headers, body) =
-            send(state, logout_request(state, prover, access_token, None)).await;
-        if body["code"] != "use_dpop_nonce" {
-            return (status, body);
-        }
-        let nonce = headers["dpop-nonce"].to_str().unwrap();
-        let (status, _, body) = send(
-            state,
-            logout_request(state, prover, access_token, Some(nonce)),
-        )
-        .await;
-        (status, body)
+        send_with_nonce(state, |nonce| {
+            let request = Request::post(LOGOUT).body(Body::empty()).unwrap();
+            with_proof(state, prover, request, Some(access_token), nonce)
+        })
+        .await
     }
 
     fn token_body(refresh_token: &RefreshToken) -> Value {

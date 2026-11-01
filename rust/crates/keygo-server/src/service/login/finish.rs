@@ -2,7 +2,7 @@ use crate::cache::LoginStates;
 use crate::db::users;
 use crate::domain::{DeviceClaim, LoginId, TokenIssuer, UserId, Username};
 use crate::service;
-use crate::service::login::Error;
+use crate::service::handshake::{self, Error};
 use crate::service::session::Issued;
 use keygo_opaque::{CredentialFinalization, DpopBinding, OpaqueError};
 use sqlx::PgPool;
@@ -21,8 +21,6 @@ pub struct Finished {
     pub session: Issued,
 }
 
-/// The state is consumed before verifying, so a failed finish cannot be retried with the same
-/// `login_id`: every password guess costs a fresh `start`.
 pub async fn finish(
     db: &PgPool,
     token_issuer: &TokenIssuer,
@@ -37,13 +35,17 @@ pub async fn finish(
         jkt,
     } = input;
 
-    let pending = login_states.take(&login_id).ok_or(Error::Expired)?;
-    let session_key = pending.state.finish(credential_finalization)?;
-    session_key.verify_dpop_binding(&jkt, &binding)?;
+    let user_id = handshake::complete(
+        login_states,
+        &login_id,
+        credential_finalization,
+        &binding,
+        &jkt,
+    )?;
 
     // The fake path cannot produce a valid finalization, and an account deleted since `start` has
     // no user left to log into; both answer exactly like a wrong password.
-    let user_id = pending.user_id.ok_or(OpaqueError::InvalidLogin)?;
+    let user_id = user_id.ok_or(OpaqueError::InvalidLogin)?;
 
     let mut tx = db.begin().await?;
     let username = users::find_username(&mut tx, user_id)
