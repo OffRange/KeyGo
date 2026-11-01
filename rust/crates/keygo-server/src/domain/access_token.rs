@@ -163,10 +163,6 @@ impl Claims {
         &self.cnf.jkt
     }
 
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "no route requires a fresh sign-in yet")
-    )]
     pub fn is_fresh(&self) -> bool {
         self.is_fresh_at(unix_now())
     }

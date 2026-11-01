@@ -1,3 +1,4 @@
+use super::string_enum::string_enum;
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -16,45 +17,12 @@ const TOKEN_BYTES: usize = 32;
 const ENCODED_LEN: usize = PREFIX.len()
     + base64::encoded_len(TOKEN_BYTES, false).expect("encoded length can be represented by usize");
 
-macro_rules! revoke_reasons {
-    ($($name:ident => $str:literal),+ $(,)?) => {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-        pub enum RevokeReason {
-            $($name,)+
-        }
-
-        impl RevokeReason {
-            #[cfg(test)]
-            pub const ALL: &[Self] = &[$(Self::$name,)+];
-
-            pub const fn as_str(self) -> &'static str {
-                match self {
-                    $(Self::$name => $str,)+
-                }
-            }
-        }
-
-        #[derive(Debug, Error)]
-        #[error("unknown revoke reason {0:?}")]
-        pub struct UnknownRevokeReason(String);
-
-        impl FromStr for RevokeReason {
-            type Err = UnknownRevokeReason;
-
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
-                match s {
-                    $($str => Ok(Self::$name),)+
-                    _ => Err(UnknownRevokeReason(s.to_owned())),
-                }
-            }
-        }
-    };
-}
-
-revoke_reasons! {
-    Replaced => "replaced",
-    ReuseDetected => "reuse_detected",
-    Logout => "logout",
+string_enum! {
+    pub enum RevokeReason {
+        Replaced => "replaced",
+        ReuseDetected => "reuse_detected",
+        Logout => "logout",
+    }
 }
 
 #[derive(Zeroize, ZeroizeOnDrop)]

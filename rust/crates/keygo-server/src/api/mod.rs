@@ -33,6 +33,7 @@ fn v1() -> Router<AppState> {
     Router::new()
         .nest("/meta", routes::meta::router())
         .nest("/auth", routes::auth::router())
+        .nest("/devices", routes::devices::router())
 }
 
 async fn not_found() -> ServerError {

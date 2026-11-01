@@ -2,7 +2,7 @@ use crate::api::dpop::SingleUseDpopProof;
 use crate::api::routes::auth::handshake::StartResponse;
 use crate::api::routes::auth::session::Session;
 use crate::api::{AppState, Json, ServerResult};
-use crate::domain::{Device, LoginId, UserId, Username};
+use crate::domain::{DeviceClaim, LoginId, UserId, Username};
 use crate::service::login::{self, FinishLogin, StartLogin};
 use axum::Router;
 use axum::extract::State;
@@ -41,7 +41,7 @@ async fn start(
 struct FinishRequest {
     login_id: LoginId,
     credential_finalization: CredentialFinalization,
-    device: Device,
+    device: DeviceClaim,
     dpop_binding: DpopBinding,
 }
 

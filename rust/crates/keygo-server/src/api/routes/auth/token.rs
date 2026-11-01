@@ -4,7 +4,9 @@ use crate::api::{AppState, ErrorCode, HttpError, Json, ServerResult};
 use crate::domain::{RefreshToken, RevokeReason};
 use crate::service::session;
 use crate::service::session::RefreshError;
+use axum::Router;
 use axum::extract::State;
+use axum::routing::post;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -30,7 +32,11 @@ impl HttpError for RefreshError {
     }
 }
 
-pub async fn token(
+pub fn router() -> Router<AppState> {
+    Router::new().route("/", post(token))
+}
+
+async fn token(
     State(state): State<AppState>,
     proof: SingleUseDpopProof,
     Json(request): Json<TokenRequest>,

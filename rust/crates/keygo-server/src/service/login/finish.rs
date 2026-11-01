@@ -1,6 +1,6 @@
 use crate::cache::LoginStates;
 use crate::db::users;
-use crate::domain::{Device, LoginId, TokenIssuer, UserId, Username};
+use crate::domain::{DeviceClaim, LoginId, TokenIssuer, UserId, Username};
 use crate::service;
 use crate::service::handshake::{self, Error};
 use crate::service::session::Issued;
@@ -10,7 +10,7 @@ use sqlx::PgPool;
 pub struct FinishLogin {
     pub login_id: LoginId,
     pub credential_finalization: CredentialFinalization,
-    pub device: Device,
+    pub device: DeviceClaim,
     pub binding: DpopBinding,
     pub jkt: [u8; 32],
 }
@@ -69,7 +69,7 @@ mod tests {
     use super::*;
     use crate::domain::DeviceId;
     use crate::testing::{
-        PASSWORD, device, finish_login, register, start_login, token_issuer, username,
+        PASSWORD, device_claim, finish_login, register, start_login, token_issuer, username,
     };
     use keygo_opaque::server::ServerSetup;
     use std::time::Duration;
@@ -82,7 +82,7 @@ mod tests {
                 &input.credential_finalization.to_bytes(),
             )
             .unwrap(),
-            device: device(None),
+            device: device_claim(None),
             binding: DpopBinding::from_bytes(&input.binding.to_bytes()).unwrap(),
             jkt: input.jkt,
         }

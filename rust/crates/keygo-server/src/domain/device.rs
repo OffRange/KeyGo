@@ -1,19 +1,12 @@
 use super::DeviceId;
-use serde::Deserialize;
+use super::string_enum::string_enum;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use unicode_properties::{GeneralCategory, UnicodeGeneralCategory};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Platform {
-    Android,
-}
-
-impl Platform {
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Android => "android",
-        }
+string_enum! {
+    pub enum Platform {
+        Android => "android",
     }
 }
 
@@ -27,7 +20,7 @@ pub enum DeviceNameError {
     InvalidCharacter(char),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "String")]
 pub struct DeviceName(String);
 
@@ -80,7 +73,7 @@ pub enum AppVersionError {
     InvalidCharacter(char),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "String")]
 pub struct AppVersion(String);
 
@@ -113,7 +106,7 @@ impl TryFrom<String> for AppVersion {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DeviceInfo {
     pub name: DeviceName,
     pub platform: Platform,
@@ -121,11 +114,22 @@ pub struct DeviceInfo {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Device {
+pub struct DeviceClaim {
     #[serde(rename = "device_id")]
     pub id: Option<DeviceId>,
     #[serde(flatten)]
     pub info: DeviceInfo,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Device {
+    pub id: DeviceId,
+    #[serde(flatten)]
+    pub info: DeviceInfo,
+    pub created_at: u64,
+    pub last_seen_at: u64,
+    pub auth_time: Option<u64>,
+    pub logged_in: bool,
 }
 
 #[cfg(test)]
@@ -216,5 +220,35 @@ mod tests {
 
         assert!(serde_json::from_value::<DeviceInfo>(bad_name).is_err());
         assert!(serde_json::from_value::<DeviceInfo>(bad_platform).is_err());
+    }
+
+    #[test]
+    fn device_serializes_flat() {
+        let id = DeviceId::random();
+        let device = Device {
+            id,
+            info: serde_json::from_value(
+                json!({ "name": "Pixel 9", "platform": "android", "app_version": "2.3.0" }),
+            )
+            .unwrap(),
+            created_at: 1_700_000_000,
+            last_seen_at: 1_800_000_000,
+            auth_time: None,
+            logged_in: false,
+        };
+
+        assert_eq!(
+            serde_json::to_value(device).unwrap(),
+            json!({
+                "id": id,
+                "name": "Pixel 9",
+                "platform": "android",
+                "app_version": "2.3.0",
+                "created_at": 1_700_000_000,
+                "last_seen_at": 1_800_000_000,
+                "auth_time": null,
+                "logged_in": false,
+            }),
+        );
     }
 }

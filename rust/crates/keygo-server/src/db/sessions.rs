@@ -109,6 +109,20 @@ pub async fn state(conn: &mut PgConnection, session_id: SessionId) -> sqlx::Resu
     })
 }
 
+pub async fn device_id(
+    conn: &mut PgConnection,
+    session_id: SessionId,
+) -> sqlx::Result<Option<DeviceId>> {
+    let device_id = sqlx::query_scalar!(
+        "select device_id from sessions where id = $1",
+        session_id.as_uuid(),
+    )
+    .fetch_optional(conn)
+    .await?;
+
+    Ok(device_id.map(DeviceId::from))
+}
+
 pub async fn delete_ended(conn: &mut PgConnection, retention: Duration) -> sqlx::Result<u64> {
     let result = sqlx::query!(
         "delete from sessions
