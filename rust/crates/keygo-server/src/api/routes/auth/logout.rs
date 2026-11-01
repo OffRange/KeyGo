@@ -1,10 +1,16 @@
 use crate::api::authenticated::Authenticated;
 use crate::api::{AppState, ServerResult};
 use crate::service::session;
+use axum::Router;
 use axum::extract::State;
 use axum::http::StatusCode;
+use axum::routing::post;
 
-pub async fn logout(
+pub fn router() -> Router<AppState> {
+    Router::new().route("/", post(logout))
+}
+
+async fn logout(
     State(state): State<AppState>,
     authenticated: Authenticated,
 ) -> ServerResult<StatusCode> {
