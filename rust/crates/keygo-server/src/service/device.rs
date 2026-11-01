@@ -1,11 +1,11 @@
 use crate::db::{devices, sessions};
-use crate::domain::{Device, DeviceId, DeviceInfo, RevokeReason, UserId};
-use sqlx::PgTransaction;
+use crate::domain::{Device, DeviceClaim, DeviceId, DeviceInfo, RevokeReason, UserId};
+use sqlx::{PgPool, PgTransaction};
 
 pub async fn attach_or_create(
     tx: &mut PgTransaction<'_>,
     user_id: UserId,
-    requested: Device,
+    requested: DeviceClaim,
 ) -> sqlx::Result<DeviceId> {
     if let Some(id) = requested.id
         && devices::attach(tx, id, user_id, &requested.info).await?
@@ -28,16 +28,21 @@ pub async fn create(
     Ok(device_id)
 }
 
+pub async fn get_devices(db: &PgPool, user_id: UserId) -> sqlx::Result<Vec<Device>> {
+    let mut conn = db.acquire().await?;
+    devices::list(&mut conn, user_id).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::db::users;
-    use crate::testing::{JKT, count, device, insert_device, issue_session, username};
+    use crate::testing::{JKT, count, device_claim, insert_device, issue_session, username};
     use serde_json::json;
     use sqlx::PgPool;
     use uuid::Uuid;
 
-    async fn claim_once(db: &PgPool, user_id: UserId, requested: Device) -> DeviceId {
+    async fn claim_once(db: &PgPool, user_id: UserId, requested: DeviceClaim) -> DeviceId {
         let mut tx = db.begin().await.unwrap();
         let device_id = attach_or_create(&mut tx, user_id, requested).await.unwrap();
         tx.commit().await.unwrap();
@@ -56,7 +61,7 @@ mod tests {
     async fn no_id_creates_a_device(db: PgPool) {
         let (user_id, existing) = insert_device(&db).await;
 
-        let device_id = claim_once(&db, user_id, device(None)).await;
+        let device_id = claim_once(&db, user_id, device_claim(None)).await;
 
         assert_ne!(device_id, existing);
         assert_eq!(count(&db, "devices").await, 2);
@@ -69,7 +74,7 @@ mod tests {
             json!({ "name": "Pixel 10", "platform": "android", "app_version": "2.4.0" }),
         )
         .unwrap();
-        let requested = Device {
+        let requested = DeviceClaim {
             id: Some(existing),
             info,
         };
@@ -90,7 +95,7 @@ mod tests {
         let (user_id, existing) = insert_device(&db).await;
         issue_session(&db, user_id, existing, &JKT).await;
 
-        claim_once(&db, user_id, device(Some(existing))).await;
+        claim_once(&db, user_id, device_claim(Some(existing))).await;
 
         assert_eq!(
             revoke_reasons(&db, existing).await,
@@ -107,7 +112,7 @@ mod tests {
             .await
             .unwrap();
 
-        claim_once(&db, user_id, device(Some(existing))).await;
+        claim_once(&db, user_id, device_claim(Some(existing))).await;
 
         assert_eq!(
             revoke_reasons(&db, existing).await,
@@ -125,7 +130,7 @@ mod tests {
             .await
             .unwrap();
 
-        let device_id = claim_once(&db, user_id, device(Some(foreign))).await;
+        let device_id = claim_once(&db, user_id, device_claim(Some(foreign))).await;
 
         assert_ne!(device_id, foreign);
         assert_eq!(revoke_reasons(&db, foreign).await, [None]);
@@ -143,9 +148,39 @@ mod tests {
         let (user_id, _) = insert_device(&db).await;
         let unknown = DeviceId::random();
 
-        let device_id = claim_once(&db, user_id, device(Some(unknown))).await;
+        let device_id = claim_once(&db, user_id, device_claim(Some(unknown))).await;
 
         assert_ne!(device_id, unknown);
         assert_eq!(count(&db, "devices").await, 2);
+    }
+
+    #[sqlx::test]
+    async fn listed_device_reflects_only_its_live_session(db: PgPool) {
+        let (user_id, existing) = insert_device(&db).await;
+        issue_session(&db, user_id, existing, &JKT).await;
+        claim_once(&db, user_id, device_claim(Some(existing))).await;
+        issue_session(&db, user_id, existing, &JKT).await;
+
+        let listed = get_devices(&db, user_id).await.unwrap();
+
+        assert_eq!(listed.len(), 1);
+        assert!(listed[0].logged_in);
+        assert!(listed[0].auth_time.is_some());
+    }
+
+    #[sqlx::test]
+    async fn logged_out_device_is_still_listed(db: PgPool) {
+        let (user_id, existing) = insert_device(&db).await;
+        issue_session(&db, user_id, existing, &JKT).await;
+        sqlx::query("update sessions set revoked_at = now(), revoke_reason = 'logout'")
+            .execute(&db)
+            .await
+            .unwrap();
+
+        let listed = get_devices(&db, user_id).await.unwrap();
+
+        assert_eq!(listed.len(), 1);
+        assert!(!listed[0].logged_in);
+        assert_eq!(listed[0].auth_time, None);
     }
 }

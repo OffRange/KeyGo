@@ -2,8 +2,8 @@ use crate::api::{AppState, router};
 use crate::cache::LoginStates;
 use crate::db::{devices, invites, sessions, users};
 use crate::domain::{
-    AccessTokenKey, Device, DeviceId, DeviceInfo, InviteHash, InvitePepper, SessionId, TokenIssuer,
-    UserId, Username,
+    AccessTokenKey, DeviceClaim, DeviceId, DeviceInfo, InviteHash, InvitePepper, SessionId,
+    TokenIssuer, UserId, Username,
 };
 use crate::service::invite;
 use crate::service::login::{self, FinishLogin, StartLogin};
@@ -40,8 +40,8 @@ pub fn device_json() -> Value {
 pub fn device_info() -> DeviceInfo {
     serde_json::from_value(device_json()).unwrap()
 }
-pub fn device(id: Option<DeviceId>) -> Device {
-    Device {
+pub fn device_claim(id: Option<DeviceId>) -> DeviceClaim {
+    DeviceClaim {
         id,
         info: device_info(),
     }
@@ -147,7 +147,7 @@ pub fn finish_login(
     FinishLogin {
         login_id: started.login_id,
         credential_finalization: finish.finalization,
-        device: device(device_id),
+        device: device_claim(device_id),
         binding: finish.session_key.dpop_binding(&JKT),
         jkt: JKT,
     }

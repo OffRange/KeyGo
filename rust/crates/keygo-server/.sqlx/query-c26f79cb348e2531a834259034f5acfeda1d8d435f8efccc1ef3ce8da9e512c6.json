@@ -1,0 +1,92 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select d.id,\n           d.name,\n           d.platform,\n           d.app_version,\n           extract(epoch from d.created_at)::int8   as \"created_at!\",\n           extract(epoch from d.last_seen_at)::int8 as \"last_seen_at!\",\n           extract(epoch from s.auth_time)::int8    as \"auth_time?\",\n           s.id is not null                         as \"logged_in!\"\n           from devices d\n           left join sessions s on s.device_id = d.id and s.revoked_at is null and s.expires_at > now()\n           where d.user_id = $1\n           order by d.created_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "platform",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "platform"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "app_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "app_version"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "last_seen_at!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "auth_time?",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "logged_in!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "c26f79cb348e2531a834259034f5acfeda1d8d435f8efccc1ef3ce8da9e512c6"
+}
