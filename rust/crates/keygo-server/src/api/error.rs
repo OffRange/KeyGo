@@ -26,10 +26,6 @@ pub enum ErrorCode {
     RegistrationExpired,
     LoginExpired,
     // session
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "no route requires a fresh sign-in yet")
-    )]
     FreshAuthRequired,
     InvalidToken,
     RefreshExpired,
