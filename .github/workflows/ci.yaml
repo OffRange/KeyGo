@@ -62,7 +62,7 @@ jobs:
 
   # Rust-native tests (no NDK). Runs in parallel with android-test once lint passes.
   rust-test:
-    needs: [ detect-changes, rust-lint ]
+    needs: [ detect-changes ]
     if: needs.detect-changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
 
