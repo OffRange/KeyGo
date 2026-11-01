@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select suite, record from opaque_records where user_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "suite",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "opaque_records",
+            "name": "suite"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "record",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "opaque_records",
+            "name": "record"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "3c45f38b931d7a3af76c65b65123ee22ba61bd30c9b052781a085c9be8c5dbe0"
+}

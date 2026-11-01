@@ -1,12 +1,13 @@
 use crate::api::dpop::SingleUseDpopProof;
+use crate::api::routes::auth::handshake::StartResponse;
 use crate::api::routes::auth::session::Session;
-use crate::api::{AppState, ErrorCode, HttpError, Json, ServerResult};
+use crate::api::{AppState, Json, ServerResult};
 use crate::domain::{Device, LoginId, UserId, Username};
 use crate::service::login::{self, FinishLogin, StartLogin};
 use axum::Router;
 use axum::extract::State;
 use axum::routing::post;
-use keygo_opaque::{CredentialFinalization, CredentialRequest, CredentialResponse, DpopBinding};
+use keygo_opaque::{CredentialFinalization, CredentialRequest, DpopBinding};
 use serde::{Deserialize, Serialize};
 
 pub fn router() -> Router<AppState> {
@@ -15,28 +16,11 @@ pub fn router() -> Router<AppState> {
         .route("/finish", post(finish))
 }
 
-impl HttpError for login::Error {
-    fn code(&self) -> ErrorCode {
-        match self {
-            Self::Expired => ErrorCode::LoginExpired,
-            Self::Opaque(err) => err.code(),
-            Self::Db(_) => ErrorCode::Internal,
-        }
-    }
-}
-
 #[derive(Deserialize)]
 struct StartRequest {
     /// Parsed in the handler so a bad name answers `invalid_username`, not `invalid_request`.
     username: String,
     credential_request: CredentialRequest,
-}
-
-#[derive(Serialize)]
-struct StartResponse {
-    login_id: LoginId,
-    credential_response: CredentialResponse,
-    expires_in: u64,
 }
 
 async fn start(
@@ -50,11 +34,7 @@ async fn start(
 
     let started = login::start(&state.db, &state.login_states, &state.opaque_state, input).await?;
 
-    Ok(Json(StartResponse {
-        login_id: started.login_id,
-        credential_response: started.credential_response,
-        expires_in: started.expires_in.as_secs(),
-    }))
+    Ok(Json(started.into()))
 }
 
 #[derive(Deserialize)]
@@ -98,13 +78,12 @@ async fn finish(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::api::error::render;
     use crate::testing::{
         PASSWORD, app_state, count, device_json, post_to, post_with_proof, proof_post, prover,
         register, replayable_post, send,
     };
     use axum::http::StatusCode;
-    use keygo_opaque::OpaqueError;
+    use keygo_opaque::CredentialResponse;
     use keygo_opaque::client::ClientLogin;
     use keygo_opaque::server::ServerSetup;
     use serde_json::{Value, json};
@@ -140,22 +119,6 @@ mod tests {
         })
     }
 
-    #[tokio::test]
-    async fn expired_logins_are_bad_requests() {
-        let (status, body) = render(login::Error::Expired).await;
-
-        assert_eq!(status, StatusCode::BAD_REQUEST);
-        assert_eq!(body["code"], "login_expired");
-    }
-
-    #[tokio::test]
-    async fn failed_login_finish_matches_failed_start() {
-        let (status, body) = render(login::Error::Opaque(OpaqueError::InvalidLogin)).await;
-
-        assert_eq!(status, StatusCode::UNAUTHORIZED);
-        assert_eq!(body["code"], "invalid_credentials");
-    }
-
     #[sqlx::test]
     async fn logs_in_over_http(db: PgPool) {
         let setup = ServerSetup::generate();
@@ -163,7 +126,7 @@ mod tests {
         let user_id = register(&db, &setup, "ada").await;
         let (client, started) = start_over_http(&state, "Ada").await;
 
-        assert_eq!(started["expires_in"], login::TTL.as_secs());
+        assert_eq!(started["expires_in"], state.login_states.ttl().as_secs());
         let prover = prover();
         let body = finish_body(&started["login_id"], client, &started, prover.jkt());
 

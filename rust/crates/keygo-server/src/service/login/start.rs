@@ -1,21 +1,14 @@
-use crate::cache::{LoginStates, Pending};
+use crate::cache::LoginStates;
 use crate::db::opaque_records;
-use crate::domain::{LoginId, Username};
-use crate::service::login::{Error, TTL};
-use keygo_opaque::server::{ServerLogin, ServerSetup};
-use keygo_opaque::{CredentialRequest, CredentialResponse};
+use crate::domain::Username;
+use crate::service::handshake::{self, Error, Started};
+use keygo_opaque::CredentialRequest;
+use keygo_opaque::server::ServerSetup;
 use sqlx::PgPool;
-use std::time::Duration;
 
 pub struct StartLogin {
     pub username: Username,
     pub credential_request: CredentialRequest,
-}
-
-pub struct Started {
-    pub login_id: LoginId,
-    pub credential_response: CredentialResponse,
-    pub expires_in: Duration,
 }
 
 /// Answers known and unknown usernames alike: an unknown one runs OPAQUE against a fake record
@@ -43,22 +36,19 @@ pub async fn start(
         Some(record) => (
             Some(record.user_id),
             Some(record.file),
-            record.user_id.as_uuid().as_bytes().to_vec(),
+            record.user_id.opaque_identifier().to_vec(),
         ),
         None => (None, None, fake_identifier(&username)),
     };
 
-    let (state, credential_response) =
-        ServerLogin::start(setup, password_file, credential_request, &identifier)?;
-
-    let login_id = LoginId::random();
-    login_states.insert(login_id, Pending { user_id, state });
-
-    Ok(Started {
-        login_id,
-        credential_response,
-        expires_in: TTL,
-    })
+    handshake::begin(
+        login_states,
+        setup,
+        user_id,
+        password_file,
+        &identifier,
+        credential_request,
+    )
 }
 
 /// The domain tag keeps a fake identifier from ever encoding like a real one, a 16-byte user id.
@@ -95,7 +85,7 @@ mod tests {
 
         let (_, started) = start_login(&db, &login_states, &setup, "ada").await;
 
-        assert_eq!(started.expires_in, TTL);
+        assert_eq!(started.expires_in, login_states.ttl());
         let pending = login_states.take(&started.login_id).unwrap();
         assert_eq!(pending.user_id, Some(user_id));
     }
@@ -106,7 +96,7 @@ mod tests {
 
         let (_, started) = start_login(&db, &login_states, &ServerSetup::generate(), "ada").await;
 
-        assert_eq!(started.expires_in, TTL);
+        assert_eq!(started.expires_in, login_states.ttl());
         let pending = login_states.take(&started.login_id).unwrap();
         assert_eq!(pending.user_id, None);
     }

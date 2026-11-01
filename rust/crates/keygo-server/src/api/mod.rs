@@ -50,7 +50,7 @@ fn single_header<A: AsHeaderName>(headers: &HeaderMap, name: A) -> Option<&Heade
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cache::LoginStates;
+    use crate::cache::{LoginStates, StepUpStates};
     use crate::domain::InvitePepper;
     use crate::service::registration::Signup;
     use axum::body::Body;
@@ -90,6 +90,7 @@ mod tests {
             db: sqlx::postgres::PgPoolOptions::new()
                 .connect_lazy_with(sqlx::postgres::PgConnectOptions::new()),
             login_states: LoginStates::new(),
+            step_up_states: StepUpStates::new(),
             dpop_verifier: Arc::new(DpopVerifier::new()),
             token_issuer: Arc::new(crate::testing::token_issuer()),
         }
