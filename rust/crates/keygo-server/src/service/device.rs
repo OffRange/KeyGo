@@ -1,6 +1,7 @@
 use crate::db::{devices, sessions};
-use crate::domain::{Device, DeviceClaim, DeviceId, DeviceInfo, RevokeReason, UserId};
+use crate::domain::{Claims, Device, DeviceClaim, DeviceId, DeviceInfo, RevokeReason, UserId};
 use sqlx::{PgPool, PgTransaction};
+use thiserror::Error;
 
 pub async fn attach_or_create(
     tx: &mut PgTransaction<'_>,
@@ -33,11 +34,38 @@ pub async fn get_devices(db: &PgPool, user_id: UserId) -> sqlx::Result<Vec<Devic
     devices::list(&mut conn, user_id).await
 }
 
+#[derive(Debug, Error)]
+pub enum DeleteDeviceError {
+    #[error("recent sign-in required")]
+    FreshAuthRequired,
+    #[error("database error")]
+    Db(#[from] sqlx::Error),
+}
+
+pub async fn delete_device(
+    db: &PgPool,
+    device_id: DeviceId,
+    claims: &Claims,
+) -> Result<(), DeleteDeviceError> {
+    let mut conn = db.acquire().await?;
+    let own = sessions::device_id(&mut conn, claims.session_id()).await?;
+    if own != Some(device_id) && !claims.is_fresh() {
+        return Err(DeleteDeviceError::FreshAuthRequired);
+    }
+
+    devices::delete(&mut conn, device_id, claims.user_id()).await?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::db::users;
-    use crate::testing::{JKT, count, device_claim, insert_device, issue_session, username};
+    use crate::domain::{FRESH_AUTH_WINDOW, unix_now};
+    use crate::service::session::Issued;
+    use crate::testing::{
+        JKT, count, device_claim, device_info, insert_device, issue_session, token_issuer, username,
+    };
     use serde_json::json;
     use sqlx::PgPool;
     use uuid::Uuid;
@@ -182,5 +210,92 @@ mod tests {
         assert_eq!(listed.len(), 1);
         assert!(!listed[0].logged_in);
         assert_eq!(listed[0].auth_time, None);
+    }
+
+    fn fresh_claims(issued: &Issued) -> Claims {
+        token_issuer().verify(issued.access_token.expose()).unwrap()
+    }
+
+    fn stale_claims(issued: &Issued) -> Claims {
+        let issuer = token_issuer();
+        let claims = fresh_claims(issued);
+        let auth_time = unix_now() - FRESH_AUTH_WINDOW.as_secs() - 1;
+        let token = issuer.issue(claims.user_id(), claims.session_id(), auth_time, &JKT);
+        issuer.verify(token.expose()).unwrap()
+    }
+
+    /// A signed-in device and a second device of the same user.
+    async fn two_devices(db: &PgPool) -> (Issued, DeviceId) {
+        let (user_id, own) = insert_device(db).await;
+        let issued = issue_session(db, user_id, own, &JKT).await;
+        let other = DeviceId::random();
+        let mut conn = db.acquire().await.unwrap();
+        devices::insert(&mut conn, other, user_id, &device_info())
+            .await
+            .unwrap();
+        (issued, other)
+    }
+
+    async fn device_exists(db: &PgPool, device_id: DeviceId) -> bool {
+        sqlx::query_scalar("select exists (select 1 from devices where id = $1)")
+            .bind(device_id.as_uuid())
+            .fetch_one(db)
+            .await
+            .unwrap()
+    }
+
+    #[sqlx::test]
+    async fn stale_session_removes_its_own_device(db: PgPool) {
+        let (issued, _) = two_devices(&db).await;
+
+        delete_device(&db, issued.device_id, &stale_claims(&issued))
+            .await
+            .unwrap();
+
+        assert!(!device_exists(&db, issued.device_id).await);
+        assert_eq!(count(&db, "sessions").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn stale_session_cannot_remove_another_device(db: PgPool) {
+        let (issued, other) = two_devices(&db).await;
+
+        let result = delete_device(&db, other, &stale_claims(&issued)).await;
+
+        assert!(matches!(result, Err(DeleteDeviceError::FreshAuthRequired)));
+        assert!(device_exists(&db, other).await);
+    }
+
+    #[sqlx::test]
+    async fn fresh_session_removes_another_device(db: PgPool) {
+        let (issued, other) = two_devices(&db).await;
+
+        delete_device(&db, other, &fresh_claims(&issued))
+            .await
+            .unwrap();
+
+        assert!(!device_exists(&db, other).await);
+        assert!(device_exists(&db, issued.device_id).await);
+    }
+
+    #[sqlx::test]
+    async fn another_users_device_is_not_removed(db: PgPool) {
+        let (_, foreign) = insert_device(&db).await;
+        let user_id = UserId::random();
+        let mut conn = db.acquire().await.unwrap();
+        users::insert(&mut conn, user_id, &username("bob"))
+            .await
+            .unwrap();
+        let own = DeviceId::random();
+        devices::insert(&mut conn, own, user_id, &device_info())
+            .await
+            .unwrap();
+        let issued = issue_session(&db, user_id, own, &JKT).await;
+
+        delete_device(&db, foreign, &fresh_claims(&issued))
+            .await
+            .unwrap();
+
+        assert!(device_exists(&db, foreign).await);
     }
 }

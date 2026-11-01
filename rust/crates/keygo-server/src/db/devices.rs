@@ -103,3 +103,15 @@ pub async fn list(conn: &mut PgConnection, user_id: UserId) -> sqlx::Result<Vec<
         .map(Device::try_from)
         .collect()
 }
+
+pub async fn delete(conn: &mut PgConnection, id: DeviceId, user_id: UserId) -> sqlx::Result<()> {
+    sqlx::query!(
+        "delete from devices where id = $1 and user_id = $2",
+        id.as_uuid(),
+        user_id.as_uuid(),
+    )
+    .execute(conn)
+    .await?;
+
+    Ok(())
+}

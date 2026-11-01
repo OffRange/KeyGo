@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select device_id from sessions where id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "device_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "device_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c8589b2275ef641393706157d4968692b1c998f782a23621877eb835b186f003"
+}
