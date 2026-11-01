@@ -116,7 +116,11 @@ mod tests {
         let body: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(
             body,
-            json!({ "version": env!("CARGO_PKG_VERSION"), "allow_signups": true }),
+            json!({
+                "version": env!("CARGO_PKG_VERSION"),
+                "allow_signups": true,
+                "public_url": "http://localhost/",
+            }),
         );
     }
 
