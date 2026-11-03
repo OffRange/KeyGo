@@ -1,31 +1,33 @@
 [package]
 name = "keygo-core"
+description = "KeyGo ids, key types and sealed blobs, shared by the client and the server."
 version.workspace = true
 edition.workspace = true
 
-[dependencies]
-keygo-keys = { path = "../keygo-keys", features = ["crypto"] }
+[features]
+# Everything that can touch key material. The server stores sealed blobs and leaves this off.
+crypto = [
+    "dep:aead",
+    "dep:aes-gcm-siv",
+    "dep:argon2",
+    "dep:bcs",
+    "dep:hkdf",
+    "dep:sha2",
+    "dep:zeroize",
+]
 
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
 uuid.workspace = true
-zeroize.workspace = true
-base64.workspace = true
-serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
 
-async-trait = "0.1.89"
-ciborium = "0.2.2"
-coset = "0.4.2"
-passkey = "0.6.0"
-passkey-authenticator = { version = "0.6.0", features = ["tokio"] }
-# Needed so passkey JSON responses are serialized into base64 strings
-passkey-types = { version = "0.6.0", features = ["serialize_bytes_as_base64_string"] }
-
-csv = "1.4.0"
-email_address = "0.2.9"
-subtle = "2.6"
-totp-rs = { version = "6.0.0", features = ["otpauth", "zeroize"] }
-url = "2.5.8"
+aead = { version = "0.6.0", optional = true }
+aes-gcm-siv = { version = "0.12.1", optional = true }
+argon2 = { version = "0.6.0", optional = true }
+bcs = { version = "0.2.0", optional = true }
+hkdf = { version = "0.13.0", optional = true }
+sha2 = { workspace = true, optional = true }
+zeroize = { workspace = true, features = ["derive"], optional = true }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["rt", "macros"] }
+base64.workspace = true

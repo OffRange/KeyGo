@@ -1,4 +1,4 @@
-use keygo_core::crypto::{
+use keygo_client::crypto::{
     CryptoError, Encrypts, ItemAad, ItemDataAad, ItemId, ItemKey, Sealed, SecretKind, VaultId,
 };
 use std::sync::Arc;

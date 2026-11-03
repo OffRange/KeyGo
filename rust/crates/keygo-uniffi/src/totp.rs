@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use keygo_core::totp::{self as core, TotpInfo as CoreTotpInfo, TotpParams};
+use keygo_client::totp::{self as core, TotpInfo as CoreTotpInfo, TotpParams};
 use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, uniffi::Enum)]
@@ -10,25 +10,25 @@ pub enum Algorithm {
     Sha512,
 }
 
-impl From<Algorithm> for keygo_core::totp::Algorithm {
+impl From<Algorithm> for keygo_client::totp::Algorithm {
     fn from(value: Algorithm) -> Self {
         match value {
-            Algorithm::Sha1 => keygo_core::totp::Algorithm::SHA1,
-            Algorithm::Sha256 => keygo_core::totp::Algorithm::SHA256,
-            Algorithm::Sha512 => keygo_core::totp::Algorithm::SHA512,
+            Algorithm::Sha1 => keygo_client::totp::Algorithm::SHA1,
+            Algorithm::Sha256 => keygo_client::totp::Algorithm::SHA256,
+            Algorithm::Sha512 => keygo_client::totp::Algorithm::SHA512,
         }
     }
 }
 
-impl TryFrom<keygo_core::totp::Algorithm> for Algorithm {
+impl TryFrom<keygo_client::totp::Algorithm> for Algorithm {
     type Error = TotpError;
 
     /// `Algorithm` is non-exhaustive; an unknown variant is an error, not a panic across FFI.
-    fn try_from(value: keygo_core::totp::Algorithm) -> Result<Self, Self::Error> {
+    fn try_from(value: keygo_client::totp::Algorithm) -> Result<Self, Self::Error> {
         match value {
-            keygo_core::totp::Algorithm::SHA1 => Ok(Algorithm::Sha1),
-            keygo_core::totp::Algorithm::SHA256 => Ok(Algorithm::Sha256),
-            keygo_core::totp::Algorithm::SHA512 => Ok(Algorithm::Sha512),
+            keygo_client::totp::Algorithm::SHA1 => Ok(Algorithm::Sha1),
+            keygo_client::totp::Algorithm::SHA256 => Ok(Algorithm::Sha256),
+            keygo_client::totp::Algorithm::SHA512 => Ok(Algorithm::Sha512),
             _ => Err(TotpError::InvalidInput),
         }
     }
@@ -68,8 +68,8 @@ pub enum TotpError {
     InvalidInput,
 }
 
-impl From<keygo_core::totp::TotpError> for TotpError {
-    fn from(err: keygo_core::totp::TotpError) -> Self {
+impl From<keygo_client::totp::TotpError> for TotpError {
+    fn from(err: keygo_client::totp::TotpError) -> Self {
         Self::Generic(err.to_string())
     }
 }

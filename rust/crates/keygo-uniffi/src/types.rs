@@ -1,4 +1,4 @@
-use keygo_core::crypto::{ItemId, ItemKey, KeyMaterial, NamespaceId, UserId, VaultId, VaultKey};
+use keygo_client::crypto::{ItemId, ItemKey, KeyMaterial, NamespaceId, UserId, VaultId, VaultKey};
 use uuid::Uuid;
 
 uniffi::custom_type!(Uuid, String, {

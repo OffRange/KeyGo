@@ -1,10 +1,10 @@
 use crate::item::EncryptedItemBlob;
 use crate::key_wrap::{KeyWrapError, WrappedKeyBlob};
-use keygo_core::ark_session::{
+use keygo_client::ark_session::{
     AccountRecord as CoreAccountRecord, ArkSession as CoreArkSession,
     ArkSessionError as CoreArkSessionError, NewAccount as CoreNewAccount, PasswordWrappedArk,
 };
-use keygo_core::crypto::{CryptoError, NamespaceId, SecretKind, UserId, VaultId, VaultKey};
+use keygo_client::crypto::{CryptoError, NamespaceId, SecretKind, UserId, VaultId, VaultKey};
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]

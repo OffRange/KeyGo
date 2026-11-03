@@ -1594,7 +1594,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "keygo-core"
+name = "keygo-client"
 version = "0.1.0"
 dependencies = [
  "async-trait",
@@ -1603,7 +1603,7 @@ dependencies = [
  "coset",
  "csv",
  "email_address",
- "keygo-keys",
+ "keygo-core",
  "passkey",
  "passkey-authenticator",
  "passkey-types",
@@ -1614,6 +1614,23 @@ dependencies = [
  "tokio",
  "totp-rs",
  "url",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
+name = "keygo-core"
+version = "0.1.0"
+dependencies = [
+ "aead",
+ "aes-gcm-siv",
+ "argon2 0.6.0",
+ "base64 0.23.1",
+ "bcs",
+ "hkdf 0.13.0",
+ "serde",
+ "sha2 0.11.1",
+ "thiserror",
  "uuid",
  "zeroize",
 ]
@@ -1631,23 +1648,6 @@ dependencies = [
  "serde_json",
  "sha2 0.11.1",
  "thiserror",
- "zeroize",
-]
-
-[[package]]
-name = "keygo-keys"
-version = "0.1.0"
-dependencies = [
- "aead",
- "aes-gcm-siv",
- "argon2 0.6.0",
- "base64 0.23.1",
- "bcs",
- "hkdf 0.13.0",
- "serde",
- "sha2 0.11.1",
- "thiserror",
- "uuid",
  "zeroize",
 ]
 
@@ -1710,7 +1710,7 @@ dependencies = [
 name = "keygo-uniffi"
 version = "0.1.0"
 dependencies = [
- "keygo-core",
+ "keygo-client",
  "thiserror",
  "tokio",
  "uniffi",

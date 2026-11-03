@@ -1,4 +1,4 @@
-use keygo_core::passkey::{
+use keygo_client::passkey::{
     self as core, CreationInfo, PasskeyError as CorePasskeyError, Registration,
 };
 use std::sync::Arc;
