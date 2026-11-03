@@ -1,4 +1,5 @@
-use crate::crypto::{CryptoResult, UserId, VaultId};
+use crate::error::CryptoResult;
+use crate::{UserId, VaultId};
 use serde::Serialize;
 
 /// AADs are BCS-encoded; the encoding is part of the stored format.

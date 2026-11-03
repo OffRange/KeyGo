@@ -6,10 +6,12 @@
 //!                                     --NamespaceKeyAad--> NamespaceKey --NamespaceDataAad--> account record
 //! ```
 
+use crate::crypto::aad::{Aad, aad};
 use crate::crypto::kdf::argon2::{Argon2Params, derive_argon2id};
-use crate::crypto::{
-    Aad, CipherKey, CryptoResult, Encrypts, ItemId, KeyMaterial, NamespaceId, UserId, VaultId,
-    Wraps, aad, symmetric_key,
+use crate::crypto::{CipherKey, Encrypts, KeyMaterial, Wraps};
+use crate::{
+    AccountRootKey, CryptoResult, ItemId, ItemKey, NamespaceId, NamespaceKey, RootKek, UserId,
+    VaultId, VaultKey,
 };
 use aead::Generate;
 use serde::{Serialize, Serializer};
@@ -22,27 +24,6 @@ const NAMESPACE_KEY_DOMAIN: &str = "v1:ns/key";
 
 /// Part of every account-record AAD; must never change.
 const NAMESPACE_DATA_DOMAIN: &str = "v1:ns/data";
-
-symmetric_key! {
-    pub struct RootKek;
-}
-
-symmetric_key! {
-    pub struct AccountRootKey;
-}
-
-symmetric_key! {
-    pub struct VaultKey;
-}
-
-symmetric_key! {
-    pub struct ItemKey;
-}
-
-symmetric_key! {
-    /// Seals one account-wide record that belongs to no vault.
-    pub struct NamespaceKey;
-}
 
 aad! {
     pub struct ItemAad {
@@ -118,24 +99,25 @@ impl SecretKind {
     }
 }
 
-impl Wraps<AccountRootKey> for RootKek {
-    type Aad = UserId; // TODO: bind the credential epoch
+macro_rules! wraps {
+    ($($parent:ident -> $child:ident with $aad:ident),+ $(,)?) => {
+        $(
+            impl Wraps<$child> for $parent {
+                type Aad = $aad;
+            }
+        )+
+    };
 }
 
-impl Wraps<VaultKey> for AccountRootKey {
-    type Aad = VaultId; // TODO: bind vault_key_epoch
-}
-
-impl Wraps<ItemKey> for VaultKey {
-    type Aad = ItemAad;
+wraps! {
+    RootKek        -> AccountRootKey with UserId, // TODO: bind the credential epoch
+    AccountRootKey -> VaultKey       with VaultId, // TODO: bind vault_key_epoch
+    AccountRootKey -> NamespaceKey   with NamespaceKeyAad,
+    VaultKey       -> ItemKey        with ItemAad,
 }
 
 impl Encrypts for ItemKey {
     type Aad = ItemDataAad;
-}
-
-impl Wraps<NamespaceKey> for AccountRootKey {
-    type Aad = NamespaceKeyAad;
 }
 
 impl Encrypts for NamespaceKey {
@@ -153,7 +135,7 @@ macro_rules! impl_generate {
     ($($key:ident),+) => {
         $(impl $key {
             pub fn generate() -> Self {
-                Self(CipherKey::generate())
+                Self { key: CipherKey::generate() }
             }
         })+
     };
@@ -164,7 +146,7 @@ impl_generate!(AccountRootKey, VaultKey, ItemKey, NamespaceKey);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crypto::Sealed;
+    use crate::Sealed;
 
     const SALT: &[u8] = &[6; 16];
 

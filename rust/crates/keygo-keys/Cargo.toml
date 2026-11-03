@@ -1,0 +1,33 @@
+[package]
+name = "keygo-keys"
+description = "KeyGo key types, ids and sealed blobs, shared by the app and the server."
+version.workspace = true
+edition.workspace = true
+
+[features]
+# Everything that can touch key material. The server stores sealed blobs and leaves this off.
+crypto = [
+    "dep:aead",
+    "dep:aes-gcm-siv",
+    "dep:argon2",
+    "dep:bcs",
+    "dep:hkdf",
+    "dep:sha2",
+    "dep:zeroize",
+]
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+thiserror.workspace = true
+uuid.workspace = true
+
+aead = { version = "0.6.0", optional = true }
+aes-gcm-siv = { version = "0.12.1", optional = true }
+argon2 = { version = "0.6.0", optional = true }
+bcs = { version = "0.2.0", optional = true }
+hkdf = { version = "0.13.0", optional = true }
+sha2 = { workspace = true, optional = true }
+zeroize = { workspace = true, features = ["derive"], optional = true }
+
+[dev-dependencies]
+base64.workspace = true

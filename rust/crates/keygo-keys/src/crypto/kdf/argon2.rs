@@ -1,13 +1,13 @@
-use crate::crypto::{CryptoError, CryptoResult, KEY_LEN};
+use crate::{CryptoError, CryptoResult, KEY_LEN};
 use argon2::{Algorithm, Argon2, Params, Version};
 use zeroize::Zeroizing;
 
 pub(crate) const MIN_SALT_LEN: usize = 16;
-pub(crate) const MAX_ARGON2_MEM_KIB: u32 = 256 * 1024;
-pub(crate) const MAX_ARGON2_ITERS: u32 = 16;
+pub const MAX_ARGON2_MEM_KIB: u32 = 256 * 1024;
+pub const MAX_ARGON2_ITERS: u32 = 16;
 
 #[derive(Clone, Copy)]
-pub(crate) struct Argon2Params {
+pub struct Argon2Params {
     /// Memory cost in KiB
     pub mem_kib: u32,
     pub iters: u32,

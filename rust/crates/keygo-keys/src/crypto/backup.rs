@@ -1,16 +1,35 @@
+use crate::crypto::Encrypts;
+use crate::crypto::KeyMaterial;
+use crate::crypto::aad::aad;
 use crate::crypto::kdf::argon2::{Argon2Params, derive_argon2id};
 use crate::crypto::kdf::hkdf::derive_hkdf_sha256;
-use crate::crypto::{AccountRootKey, CryptoResult, KeyMaterial, symmetric_key};
+use crate::{AccountRootKey, BackupKey, CryptoResult};
+use serde::{Deserialize, Serialize};
 
 const DOMAIN_PASSPHRASE: &[u8] = b"v1:backup/passphrase";
 const DOMAIN_ARK: &[u8] = b"v1:backup/ark";
 
-symmetric_key! {
-    pub struct BackupKey;
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum KeySource {
+    Passphrase,
+    Ark,
+}
+
+aad! {
+    /// Wire format: change only with a version bump.
+    pub struct BackupAad {
+        pub version: u32,
+        pub source: KeySource,
+    }
+}
+
+impl Encrypts for BackupKey {
+    type Aad = BackupAad;
 }
 
 impl BackupKey {
-    pub(crate) fn from_passphrase(
+    pub fn from_passphrase(
         passphrase: &[u8],
         salt: &[u8],
         params: Argon2Params,
@@ -19,7 +38,7 @@ impl BackupKey {
         Self::from_bytes(derived.as_slice())
     }
 
-    pub(crate) fn from_ark(ark: &AccountRootKey, salt: &[u8]) -> CryptoResult<Self> {
+    pub fn from_ark(ark: &AccountRootKey, salt: &[u8]) -> CryptoResult<Self> {
         Self::from_bytes(derive_hkdf_sha256(ark.as_bytes(), salt, DOMAIN_ARK).as_slice())
     }
 }

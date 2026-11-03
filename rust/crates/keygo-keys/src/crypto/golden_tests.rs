@@ -1,10 +1,12 @@
 //! Shipped ciphertexts under fixed keys. They must keep opening; regenerate only with a migration.
 
-use crate::crypto::{
+use crate::{
     AccountRootKey, Encrypts, ItemAad, ItemDataAad, ItemId, ItemKey, KeyMaterial, NamespaceDataAad,
     NamespaceId, NamespaceKey, NamespaceKeyAad, RootKek, Sealed, SecretKind, UserId, VaultId,
     VaultKey, Wraps,
 };
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
 use uuid::Uuid;
 
 const USER_ID: UserId = UserId(Uuid::from_u128(0x1111_1111_1111_4111_8111_1111_1111_1111));
@@ -50,8 +52,8 @@ const ACCOUNT_RECORD_PLAINTEXT: &[u8] = b"secret account record";
 
 fn sealed<T: ?Sized>((nonce, ciphertext): (&str, &str)) -> Sealed<T> {
     Sealed::from_parts(
-        &crate::b64::decode(nonce).unwrap(),
-        crate::b64::decode(ciphertext).unwrap(),
+        &STANDARD.decode(nonce).unwrap(),
+        STANDARD.decode(ciphertext).unwrap(),
     )
     .unwrap()
 }

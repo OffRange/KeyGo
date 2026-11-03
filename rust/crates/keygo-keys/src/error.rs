@@ -17,9 +17,6 @@ pub enum CryptoError {
     #[error("Invalid nonce length: expected {expected} bytes, got {got} bytes")]
     InvalidNonceLength { expected: usize, got: usize },
 
-    #[error("AAD encoding failed: {0}")]
-    AadEncoding(#[from] bcs::Error),
-
     #[error("Password must not be empty")]
     EmptyPassword,
     #[error("Salt too short: expected at least {min} bytes, got {got} bytes")]
@@ -28,6 +25,11 @@ pub enum CryptoError {
     Argon2MemoryTooHigh { max: u32, got: u32 },
     #[error("Argon2 iteration count too high: {got} exceeds the {max} limit")]
     Argon2ItersTooHigh { max: u32, got: u32 },
+
+    #[cfg(feature = "crypto")]
+    #[error("AAD encoding failed: {0}")]
+    AadEncoding(#[from] bcs::Error),
+    #[cfg(feature = "crypto")]
     #[error("Argon2 failed: {0}")]
     Argon2(argon2::Error),
 }

@@ -1,5 +1,7 @@
-use crate::crypto::aad::encode_aad;
-use crate::crypto::{Aad, CipherKey, CryptoError, CryptoResult, Sealed};
+use crate::Sealed;
+use crate::crypto::CipherKey;
+use crate::crypto::aad::{Aad, encode_aad};
+use crate::error::{CryptoError, CryptoResult};
 use zeroize::{ZeroizeOnDrop, Zeroizing};
 
 /// Anything that can be sealed under a wrapping key.
@@ -46,46 +48,15 @@ pub trait Encrypts: SymmetricKey {
     }
 }
 
-macro_rules! symmetric_key {
-    ($(#[$meta:meta])* $vis:vis struct $name:ident;) => {
-        $(#[$meta])*
-        #[derive(::zeroize::Zeroize, ::zeroize::ZeroizeOnDrop)]
-        $vis struct $name($crate::crypto::CipherKey);
-
-        impl $crate::crypto::KeyMaterial for $name {
-            fn from_bytes(bytes: &[u8]) -> $crate::crypto::CryptoResult<Self> {
-                $crate::crypto::CipherKey::try_from(bytes).map(Self).map_err(|_| {
-                    $crate::crypto::CryptoError::InvalidKeyLength {
-                        expected: $crate::crypto::KEY_LEN,
-                        got: bytes.len(),
-                    }
-                })
-            }
-
-            fn as_bytes(&self) -> &[u8] {
-                self.0.as_slice()
-            }
-        }
-
-        impl $crate::crypto::SymmetricKey for $name {
-            fn cipher_key(&self) -> &$crate::crypto::CipherKey {
-                &self.0
-            }
-        }
-    };
-}
-pub(crate) use symmetric_key;
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crypto::aad;
+    use crate::crypto::aad::aad;
+    use crate::keys::symmetric_key;
 
     symmetric_key! {
-        struct TestWrappingKey;
-    }
-    symmetric_key! {
-        struct TestKey;
+        struct TestWrappingKey,
+        struct TestKey,
     }
 
     aad! {

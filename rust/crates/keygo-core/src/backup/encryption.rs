@@ -1,9 +1,9 @@
 use crate::b64;
 use crate::backup::BackupError;
-use crate::backup::BackupKey;
+pub use crate::crypto::KeySource;
 use crate::crypto::kdf::argon2::Argon2Params;
 use crate::crypto::kdf::new_salt;
-use crate::crypto::{AccountRootKey, Encrypts, Sealed, aad};
+use crate::crypto::{AccountRootKey, BackupAad, BackupKey, Encrypts, Sealed};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -12,13 +12,6 @@ pub struct EncryptionHeader {
     pub kdf: Kdf,
     #[serde(with = "b64")]
     pub nonce: Vec<u8>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
-#[serde(rename_all = "snake_case")]
-pub enum KeySource {
-    Passphrase,
-    Ark,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -50,18 +43,6 @@ impl Kdf {
     fn hkdf_sha256(salt: Vec<u8>) -> Self {
         Kdf::HkdfSha256 { salt }
     }
-}
-
-aad! {
-    /// Wire format: change only with a version bump.
-    pub struct BackupAad {
-        pub version: u32,
-        pub source: KeySource,
-    }
-}
-
-impl Encrypts for BackupKey {
-    type Aad = BackupAad;
 }
 
 #[derive(Clone, Copy)]

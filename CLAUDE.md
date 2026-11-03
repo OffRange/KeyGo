@@ -64,7 +64,8 @@ Rust workspace (`rust/`, toolchain pinned in `rust-toolchain.toml`, edition 2024
 
 | Crate           | Purpose                                                                       |
 |-----------------|-------------------------------------------------------------------------------|
-| `keygo-core`    | Crypto, ARK session, passkeys, TOTP, backup, card formatting used by the app  |
+| `keygo-keys`    | Key hierarchy, ids, `Sealed<T>`, shared by app and server. Crypto sits behind the `crypto` feature; the server must leave it off, so it can store wrapped keys but never hold one |
+| `keygo-core`    | App-only: ARK session, passkeys, TOTP, backup format, card formatting. The server must not depend on it. `keygo_core::crypto` re-exports `keygo-keys` |
 | `keygo-uniffi`  | UniFFI bindings exposing `keygo-core` to Kotlin (`libkeygo_bindings.so`)      |
 | `keygo-opaque`  | OPAQUE (opaque-ke, ristretto255 + Argon2) client/server wrapper, `forbid(unsafe_code)` |
 | `keygo-server`  | Self-hostable sync server (axum + sqlx/Postgres + clap CLI), see Sync Server  |

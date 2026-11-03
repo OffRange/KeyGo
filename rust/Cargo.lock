@@ -1597,23 +1597,18 @@ dependencies = [
 name = "keygo-core"
 version = "0.1.0"
 dependencies = [
- "aead",
- "aes-gcm-siv",
- "argon2 0.6.0",
  "async-trait",
  "base64 0.23.1",
- "bcs",
  "ciborium",
  "coset",
  "csv",
  "email_address",
- "hkdf 0.13.0",
+ "keygo-keys",
  "passkey",
  "passkey-authenticator",
  "passkey-types",
  "serde",
  "serde_json",
- "sha2 0.11.1",
  "subtle",
  "thiserror",
  "tokio",
@@ -1636,6 +1631,23 @@ dependencies = [
  "serde_json",
  "sha2 0.11.1",
  "thiserror",
+ "zeroize",
+]
+
+[[package]]
+name = "keygo-keys"
+version = "0.1.0"
+dependencies = [
+ "aead",
+ "aes-gcm-siv",
+ "argon2 0.6.0",
+ "base64 0.23.1",
+ "bcs",
+ "hkdf 0.13.0",
+ "serde",
+ "sha2 0.11.1",
+ "thiserror",
+ "uuid",
  "zeroize",
 ]
 
