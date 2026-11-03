@@ -161,7 +161,7 @@ mod tests {
     use super::*;
     use crate::backup::CURRENT_VERSION;
     use crate::crypto::kdf::argon2::MAX_ARGON2_MEM_KIB;
-    use crate::crypto::{CryptoError, SymmetricKey};
+    use crate::crypto::{CryptoError, KeyMaterial};
 
     #[test]
     fn key_source_serialization() {

@@ -1,8 +1,8 @@
 //! Shipped ciphertexts under fixed keys. They must keep opening; regenerate only with a migration.
 
 use crate::crypto::{
-    AccountRootKey, Encrypts, ItemAad, ItemDataAad, ItemId, ItemKey, NamespaceDataAad, NamespaceId,
-    NamespaceKey, NamespaceKeyAad, RootKEK, Sealed, SecretKind, SymmetricKey, UserId, VaultId,
+    AccountRootKey, Encrypts, ItemAad, ItemDataAad, ItemId, ItemKey, KeyMaterial, NamespaceDataAad,
+    NamespaceId, NamespaceKey, NamespaceKeyAad, RootKek, Sealed, SecretKind, UserId, VaultId,
     VaultKey, Wraps,
 };
 use uuid::Uuid;
@@ -58,7 +58,7 @@ fn sealed<T: ?Sized>((nonce, ciphertext): (&str, &str)) -> Sealed<T> {
 
 #[test]
 fn password_wrapped_ark_still_unwraps() {
-    let kek = RootKEK::from_bytes(&KEK).unwrap();
+    let kek = RootKek::from_bytes(&KEK).unwrap();
     let ark = kek.unwrap_key(&sealed(WRAPPED_ARK), &USER_ID).unwrap();
     assert_eq!(ark.as_bytes(), ARK);
 }

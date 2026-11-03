@@ -145,7 +145,7 @@ impl CsvBackupManager {
 
 #[cfg(test)]
 mod tests {
-    use keygo_core::crypto::SymmetricKey;
+    use keygo_core::crypto::KeyMaterial;
 
     use super::*;
     use crate::ark_session::ArkSession;

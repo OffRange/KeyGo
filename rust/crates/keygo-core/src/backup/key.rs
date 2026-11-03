@@ -1,6 +1,6 @@
 use crate::crypto::kdf::argon2::{Argon2Params, derive_argon2id};
 use crate::crypto::kdf::hkdf::derive_hkdf_sha256;
-use crate::crypto::{AccountRootKey, CryptoResult, SymmetricKey, symmetric_key};
+use crate::crypto::{AccountRootKey, CryptoResult, KeyMaterial, symmetric_key};
 
 const DOMAIN_PASSPHRASE: &[u8] = b"v1:backup/passphrase";
 const DOMAIN_ARK: &[u8] = b"v1:backup/ark";

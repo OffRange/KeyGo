@@ -45,7 +45,7 @@ mod tests {
     use super::*;
     use crate::backup::encryption::{Kdf, KeySource};
     use crate::backup::{Card, Login, Passkey, Vault};
-    use crate::crypto::{AccountRootKey, CryptoError, SymmetricKey};
+    use crate::crypto::{AccountRootKey, CryptoError, KeyMaterial};
 
     fn sample_backup() -> Backup {
         Backup {

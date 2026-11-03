@@ -2,18 +2,19 @@ use crate::crypto::aad::encode_aad;
 use crate::crypto::{Aad, CipherKey, CryptoError, CryptoResult, Sealed};
 use zeroize::{ZeroizeOnDrop, Zeroizing};
 
-pub trait SymmetricKey: Sized + ZeroizeOnDrop {
+/// Anything that can be sealed under a wrapping key.
+pub trait KeyMaterial: Sized + ZeroizeOnDrop {
     fn from_bytes(bytes: &[u8]) -> CryptoResult<Self>;
+    fn as_bytes(&self) -> &[u8];
+}
 
-    fn as_bytes(&self) -> &[u8] {
-        self.cipher_key().as_slice()
-    }
-
+/// A key that can seal things itself.
+pub trait SymmetricKey: KeyMaterial {
     #[doc(hidden)]
     fn cipher_key(&self) -> &CipherKey;
 }
 
-pub trait Wraps<K: SymmetricKey>: SymmetricKey {
+pub trait Wraps<K: KeyMaterial>: SymmetricKey {
     type Aad: Aad;
 
     fn wrap_key(&self, key: &K, aad: &Self::Aad) -> CryptoResult<Sealed<K>> {
@@ -51,7 +52,7 @@ macro_rules! symmetric_key {
         #[derive(::zeroize::Zeroize, ::zeroize::ZeroizeOnDrop)]
         $vis struct $name($crate::crypto::CipherKey);
 
-        impl $crate::crypto::SymmetricKey for $name {
+        impl $crate::crypto::KeyMaterial for $name {
             fn from_bytes(bytes: &[u8]) -> $crate::crypto::CryptoResult<Self> {
                 $crate::crypto::CipherKey::try_from(bytes).map(Self).map_err(|_| {
                     $crate::crypto::CryptoError::InvalidKeyLength {
@@ -61,6 +62,12 @@ macro_rules! symmetric_key {
                 })
             }
 
+            fn as_bytes(&self) -> &[u8] {
+                self.0.as_slice()
+            }
+        }
+
+        impl $crate::crypto::SymmetricKey for $name {
             fn cipher_key(&self) -> &$crate::crypto::CipherKey {
                 &self.0
             }
