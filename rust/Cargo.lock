@@ -1683,6 +1683,7 @@ dependencies = [
  "hmac 0.13.0",
  "http-body-util",
  "humantime",
+ "keygo-core",
  "keygo-dpop",
  "keygo-opaque",
  "moka",

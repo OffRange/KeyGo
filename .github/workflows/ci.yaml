@@ -64,6 +64,10 @@ jobs:
         run: |
           cargo clippy -p keygo-core --all-targets -- -D warnings
           ! cargo tree -p keygo-core -e normal --prefix none | grep -E '^(aead|aes-gcm-siv|argon2|bcs|hkdf|zeroize) '
+      - name: keygo-server builds without crypto or client code
+        run: |
+          cargo clippy -p keygo-server --all-targets -- -D warnings
+          ! cargo tree -p keygo-server -e features | grep -E 'keygo-client|keygo-core feature "crypto"'
 
   # Rust-native tests (no NDK). Runs in parallel with android-test once lint passes.
   rust-test:
