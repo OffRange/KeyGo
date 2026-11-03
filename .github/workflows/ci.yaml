@@ -59,6 +59,11 @@ jobs:
         run: cargo fmt --check --all
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
+      # A workspace build unifies features, so only a build of its own shows this crate without them.
+      - name: keygo-keys holds no crypto without its feature
+        run: |
+          cargo clippy -p keygo-keys --all-targets -- -D warnings
+          ! cargo tree -p keygo-keys -e normal --prefix none | grep -E '^(aead|aes-gcm-siv|argon2|bcs|hkdf|zeroize) '
 
   # Rust-native tests (no NDK). Runs in parallel with android-test once lint passes.
   rust-test:
