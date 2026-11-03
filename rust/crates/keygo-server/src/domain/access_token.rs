@@ -373,7 +373,7 @@ mod tests {
     fn expires_after_lifetime() {
         let claims = Claims::new_at(
             String::new(),
-            UserId::nil(),
+            UserId::from(uuid::Uuid::nil()),
             SessionId::nil(),
             0,
             &JKT,
@@ -386,7 +386,17 @@ mod tests {
 
     #[test]
     fn generated_jtis_differ() {
-        let new = || Claims::new_at(String::new(), UserId::nil(), SessionId::nil(), 0, &JKT, 0).jti;
+        let new = || {
+            Claims::new_at(
+                String::new(),
+                UserId::from(uuid::Uuid::nil()),
+                SessionId::nil(),
+                0,
+                &JKT,
+                0,
+            )
+            .jti
+        };
 
         assert_ne!(new(), new());
     }
@@ -543,7 +553,7 @@ mod tests {
     fn fresh_within_window_after_auth_time() {
         let claims = Claims::new_at(
             String::new(),
-            UserId::nil(),
+            UserId::from(uuid::Uuid::nil()),
             SessionId::nil(),
             1_000,
             &JKT,
@@ -560,7 +570,7 @@ mod tests {
         let key = AccessTokenKey::new(&SEED);
         let token = key.sign(&Claims::new_at(
             ISS.into(),
-            UserId::nil(),
+            UserId::from(uuid::Uuid::nil()),
             SessionId::nil(),
             unix_now(),
             &JKT,
@@ -591,7 +601,7 @@ mod tests {
     fn issuer_rejects_tokens_for_another_issuer() {
         let key = || AccessTokenKey::new(&SEED);
         let token = TokenIssuer::new(key(), "https://other.example").issue(
-            UserId::nil(),
+            UserId::from(uuid::Uuid::nil()),
             SessionId::nil(),
             unix_now(),
             &JKT,
@@ -608,7 +618,12 @@ mod tests {
         let issuer = TokenIssuer::new(AccessTokenKey::new(&SEED), ISS);
         let auth_time = unix_now() - FRESH_AUTH_WINDOW.as_secs() - 1;
 
-        let token = issuer.issue(UserId::nil(), SessionId::nil(), auth_time, &JKT);
+        let token = issuer.issue(
+            UserId::from(uuid::Uuid::nil()),
+            SessionId::nil(),
+            auth_time,
+            &JKT,
+        );
         let claims = issuer.verify(token.expose()).unwrap();
 
         assert!(!claims.is_fresh());

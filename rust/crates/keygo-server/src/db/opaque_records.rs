@@ -88,7 +88,8 @@ mod tests {
         let setup = ServerSetup::generate();
         let (client, request) = ClientRegistration::start(PASSWORD).unwrap();
         let response =
-            server::registration_start(&setup, request, user_id.opaque_identifier()).unwrap();
+            server::registration_start(&setup, request, crate::domain::opaque_identifier(&user_id))
+                .unwrap();
         let finish = client.finish(PASSWORD, response).unwrap();
         server::registration_finish(finish.upload)
     }

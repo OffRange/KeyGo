@@ -1,6 +1,6 @@
 use crate::cache::StepUpStates;
 use crate::db::opaque_records;
-use crate::domain::UserId;
+use crate::domain::{UserId, opaque_identifier};
 use crate::service::handshake::{self, Error, Started};
 use keygo_opaque::server::ServerSetup;
 use keygo_opaque::{CredentialRequest, OpaqueError};
@@ -33,7 +33,7 @@ pub async fn start(
         setup,
         user_id,
         Some(password_file),
-        user_id.opaque_identifier(),
+        opaque_identifier(&user_id),
         credential_request,
     )
 }

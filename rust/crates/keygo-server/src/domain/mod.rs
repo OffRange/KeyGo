@@ -13,7 +13,7 @@ mod username;
 pub use access_token::FRESH_AUTH_WINDOW;
 pub use access_token::{ACCESS_TOKEN_LIFETIME, AccessToken, AccessTokenKey, Claims, TokenIssuer};
 pub use device::{Device, DeviceClaim, DeviceInfo};
-pub use ids::{DeviceId, LoginId, RegistrationId, SessionId, UserId};
+pub use ids::{DeviceId, LoginId, RegistrationId, SessionId, UserId, opaque_identifier};
 pub use invite_code::{InviteCode, InvitePepper};
 pub use invite_hash::InviteHash;
 pub use invite_id::InviteId;
