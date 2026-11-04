@@ -17,4 +17,4 @@ pub use crypto::*;
 pub use error::{CryptoError, CryptoResult};
 pub use ids::{ItemId, NamespaceId, UserId, VaultId};
 pub use keys::{AccountRootKey, BackupKey, ItemKey, NamespaceKey, RootKek, VaultKey};
-pub use sealed::{KEY_LEN, NONCE_LEN, Sealed};
+pub use sealed::{KEY_LEN, NONCE_LEN, Sealed, TAG_LEN};

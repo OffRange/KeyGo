@@ -8,7 +8,7 @@ create table users
 create table key_bundles
 (
     user_id     uuid primary key references users on delete cascade,
-    wrapped_ark bytea, --  nonce ‖ ct, 60 B
+    wrapped_ark bytea,
     updated_at  timestamptz not null default now()
 );
 create index key_bundles_user_id_idx on key_bundles (user_id);

@@ -4,6 +4,7 @@ mod ids;
 mod invite_code;
 mod invite_hash;
 mod invite_id;
+mod sealed_blob;
 mod session;
 mod string_enum;
 mod time;
@@ -17,6 +18,9 @@ pub use ids::{DeviceId, LoginId, RegistrationId, SessionId, UserId, opaque_ident
 pub use invite_code::{InviteCode, InvitePepper};
 pub use invite_hash::InviteHash;
 pub use invite_id::InviteId;
+pub use sealed_blob::InvalidBlob;
+#[allow(unused_imports)]
+pub use sealed_blob::{SealedBlob, check_wrapped_ark, check_wrapped_private_keys};
 pub use session::{REFRESH_TTL, RefreshToken, RevokeReason, SESSION_LIFETIME, SESSION_RETENTION};
 pub use time::unix_now;
 pub use username::{Username, UsernameError};
