@@ -4,7 +4,7 @@ use crate::crypto::aad::{Aad, encode_aad};
 use crate::error::{CryptoError, CryptoResult};
 use zeroize::{ZeroizeOnDrop, Zeroizing};
 
-/// Anything that can be sealed under a wrapping key.
+/// Represents a raw key.
 pub trait KeyMaterial: Sized + ZeroizeOnDrop {
     fn from_bytes(bytes: &[u8]) -> CryptoResult<Self>;
     fn as_bytes(&self) -> &[u8];
