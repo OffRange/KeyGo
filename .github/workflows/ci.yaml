@@ -63,15 +63,19 @@ jobs:
       - name: keygo-core holds no crypto without its feature
         run: |
           cargo clippy -p keygo-core --all-targets -- -D warnings
-          ! cargo tree -p keygo-core -e normal --prefix none | grep -E '^(aead|aes-gcm-siv|argon2|bcs|hkdf|zeroize) '
-      - name: keygo-server builds without crypto or client code
+          deps=$(cargo tree -p keygo-core -e normal --depth 1 --prefix none | tail -n +2 | cut -d' ' -f1 | sort | xargs)
+          [ "$deps" = "serde thiserror uuid" ] || { echo "unexpected keygo-core deps: $deps" >&2; exit 1; }
+      - name: keygo-server holds no crypto or client code
         run: |
-          cargo clippy -p keygo-server --all-targets -- -D warnings
-          ! cargo tree -p keygo-server -e features | grep -E 'keygo-client|keygo-core feature "crypto"'
+          # Proves the pattern below still matches, so renaming the feature can't silently disable it.
+          client=$(cargo tree -p keygo-client -e features)
+          grep -q 'keygo-core feature "crypto"' <<<"$client"
+          server=$(cargo tree -p keygo-server -e features)
+          if grep -E 'keygo-client|keygo-core feature "crypto"' <<<"$server"; then exit 1; fi
 
   # Rust-native tests (no NDK). Runs in parallel with android-test once lint passes.
   rust-test:
-    needs: [ detect-changes ]
+    needs: [ detect-changes, rust-lint ]
     if: needs.detect-changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
 
@@ -117,8 +121,14 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-test-
       - name: Build
         run: cargo build --workspace --all-targets --verbose
+      # A workspace build unifies features, so keygo-client's "crypto" reaches every crate in it.
+      # keygo-core and keygo-server are also tested alone, in the form the server ships them.
       - name: Run tests
-        run: cargo test --workspace --verbose
+        run: cargo test --workspace --exclude keygo-server --verbose
+      - name: Run keygo-core tests without crypto
+        run: cargo test -p keygo-core --verbose
+      - name: Run keygo-server tests
+        run: cargo test -p keygo-server --verbose
       # Offline builds never see the schema, so a migration that changes a queried column would
       # still compile against stale .sqlx data. Recompute it against the migrated database instead.
       - name: Install sqlx-cli

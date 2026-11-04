@@ -80,8 +80,10 @@ check: ## cargo check the workspace
 fmt: ## Format Rust code with cargo fmt
 	cargo fmt --all
 
-test: ## cargo test the workspace
-	cargo test --workspace
+test: ## cargo test the workspace, with keygo-core and keygo-server also built without crypto
+	cargo test --workspace --exclude keygo-server
+	cargo test -p keygo-core
+	cargo test -p keygo-server
 
 clean: ## Remove build artifacts and generated jniLibs
 	cargo clean
