@@ -1,2 +1,3 @@
 [alias]
-serve = "run --bin keygo-server -- serve"
+# `-p`, not `--bin`: `--bin` selects the whole workspace, which turns on keygo-core's crypto feature.
+serve = "run -p keygo-server -- serve"

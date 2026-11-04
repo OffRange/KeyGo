@@ -1594,31 +1594,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "keygo-client"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "base64 0.23.1",
+ "ciborium",
+ "coset",
+ "csv",
+ "email_address",
+ "keygo-core",
+ "passkey",
+ "passkey-authenticator",
+ "passkey-types",
+ "serde",
+ "serde_json",
+ "subtle",
+ "thiserror",
+ "tokio",
+ "totp-rs",
+ "url",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
 name = "keygo-core"
 version = "0.1.0"
 dependencies = [
  "aead",
  "aes-gcm-siv",
  "argon2 0.6.0",
- "async-trait",
  "base64 0.23.1",
  "bcs",
- "ciborium",
- "coset",
- "csv",
- "email_address",
  "hkdf 0.13.0",
- "passkey",
- "passkey-authenticator",
- "passkey-types",
  "serde",
- "serde_json",
  "sha2 0.11.1",
- "subtle",
  "thiserror",
- "tokio",
- "totp-rs",
- "url",
  "uuid",
  "zeroize",
 ]
@@ -1671,6 +1683,7 @@ dependencies = [
  "hmac 0.13.0",
  "http-body-util",
  "humantime",
+ "keygo-core",
  "keygo-dpop",
  "keygo-opaque",
  "moka",
@@ -1698,7 +1711,7 @@ dependencies = [
 name = "keygo-uniffi"
 version = "0.1.0"
 dependencies = [
- "keygo-core",
+ "keygo-client",
  "thiserror",
  "tokio",
  "uniffi",

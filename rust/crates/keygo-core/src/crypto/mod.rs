@@ -1,22 +1,15 @@
-pub(crate) mod aad;
+mod aad;
+mod backup;
 mod cipher;
-mod error;
-mod ids;
-pub(crate) mod kdf;
-mod key;
-mod keys;
+mod hierarchy;
+pub mod kdf;
+mod traits;
 
 pub use aad::Aad;
-pub(crate) use aad::aad;
-pub use cipher::{Cipher, CipherKey, KEY_LEN, NONCE_LEN, Sealed};
-pub use error::{CryptoError, CryptoResult};
-pub use ids::{ItemId, NamespaceId, UserId, VaultId};
-pub(crate) use key::symmetric_key;
-pub use key::{Encrypts, SymmetricKey, Wraps};
-pub use keys::{
-    AccountRootKey, ItemAad, ItemDataAad, ItemKey, NamespaceDataAad, NamespaceKey, NamespaceKeyAad,
-    RootKEK, SecretKind, VaultKey,
-};
+pub use backup::{BackupAad, KeySource};
+pub use cipher::{Cipher, CipherKey};
+pub use hierarchy::{ItemAad, ItemDataAad, NamespaceDataAad, NamespaceKeyAad, SecretKind};
+pub use traits::{Encrypts, KeyMaterial, SymmetricKey, Wraps};
 
 #[cfg(test)]
 mod golden_tests;

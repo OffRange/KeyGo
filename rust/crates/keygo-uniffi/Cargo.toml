@@ -8,7 +8,7 @@ name = "keygo_bindings"
 crate-type = ["cdylib"]
 
 [dependencies]
-keygo-core = { path = "../keygo-core" }
+keygo-client = { path = "../keygo-client" }
 thiserror.workspace = true
 uuid.workspace = true
 

@@ -3,8 +3,8 @@ mod model;
 
 use std::sync::Arc;
 
-use keygo_core::ark_session::ArkSessionError;
-use keygo_core::backup::{
+use keygo_client::ark_session::ArkSessionError;
+use keygo_client::backup::{
     Backup, BackupCredential as CoreCredential, BackupError as CoreError, ColumnMapping,
     CsvAnalysis, ExportPreset, KeySource, csv as core_csv, json as core_json,
 };
@@ -145,7 +145,7 @@ impl CsvBackupManager {
 
 #[cfg(test)]
 mod tests {
-    use keygo_core::crypto::SymmetricKey;
+    use keygo_client::crypto::KeyMaterial;
 
     use super::*;
     use crate::ark_session::ArkSession;

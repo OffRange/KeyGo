@@ -1,4 +1,4 @@
-use keygo_core::crypto::{CryptoError, ItemAad, ItemKey, Sealed, VaultKey, Wraps};
+use keygo_client::crypto::{CryptoError, ItemAad, ItemKey, Sealed, VaultKey, Wraps};
 use std::sync::Arc;
 
 #[derive(uniffi::Record)]

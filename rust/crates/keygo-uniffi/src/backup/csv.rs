@@ -1,4 +1,4 @@
-use keygo_core::backup::{
+use keygo_client::backup::{
     Backup, ColumnMapping, Confidence, CsvAnalysis, CsvColumn, ExportPreset, FieldConfidence,
     ImportReport,
 };

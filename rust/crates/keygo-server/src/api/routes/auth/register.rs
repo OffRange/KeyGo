@@ -318,7 +318,7 @@ mod tests {
 
     #[sqlx::test]
     async fn start_rejects_a_structured_user_id(db: PgPool) {
-        let (_, body) = start_body("ada", UserId::nil());
+        let (_, body) = start_body("ada", UserId::from(Uuid::nil()));
 
         let (status, body) = post(&db, &ServerSetup::generate(), START, body).await;
 

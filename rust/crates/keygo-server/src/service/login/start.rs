@@ -1,6 +1,6 @@
 use crate::cache::LoginStates;
 use crate::db::opaque_records;
-use crate::domain::Username;
+use crate::domain::{Username, opaque_identifier};
 use crate::service::handshake::{self, Error, Started};
 use keygo_opaque::CredentialRequest;
 use keygo_opaque::server::ServerSetup;
@@ -36,7 +36,7 @@ pub async fn start(
         Some(record) => (
             Some(record.user_id),
             Some(record.file),
-            record.user_id.opaque_identifier().to_vec(),
+            opaque_identifier(&record.user_id).to_vec(),
         ),
         None => (None, None, fake_identifier(&username)),
     };

@@ -64,8 +64,9 @@ Rust workspace (`rust/`, toolchain pinned in `rust-toolchain.toml`, edition 2024
 
 | Crate           | Purpose                                                                       |
 |-----------------|-------------------------------------------------------------------------------|
-| `keygo-core`    | Crypto, ARK session, passkeys, TOTP, backup, card formatting used by the app  |
-| `keygo-uniffi`  | UniFFI bindings exposing `keygo-core` to Kotlin (`libkeygo_bindings.so`)      |
+| `keygo-core`    | Key hierarchy, ids, `Sealed<T>`, shared by client and server. Crypto sits behind the `crypto` feature; the server must leave it off, so it can store wrapped keys but never hold one |
+| `keygo-client`  | App-only: ARK session, passkeys, TOTP, backup format, card formatting. The server must not depend on it. `keygo_client::crypto` re-exports `keygo-core` |
+| `keygo-uniffi`  | UniFFI bindings exposing `keygo-client` to Kotlin (`libkeygo_bindings.so`)    |
 | `keygo-opaque`  | OPAQUE (opaque-ke, ristretto255 + Argon2) client/server wrapper, `forbid(unsafe_code)` |
 | `keygo-server`  | Self-hostable sync server (axum + sqlx/Postgres + clap CLI), see Sync Server  |
 | `tools/uniffi-bindgen` | Bindgen runner used by `make bindgen`                                  |
@@ -198,7 +199,8 @@ Caddy as TLS proxy; `.env.example` sets `DOMAIN` and signups).
   multiple statements.
 - **Trailing commas** on multi-line parameter lists and collection literals.
 - **Rust constructors** — ids are made with `random()`, secret material (keys, tokens, codes) with
-  `generate()`. Server ids come from the `random_id!`/`uuid_id!` macros in `domain/ids.rs`.
+  `generate()`. Ids the client and server share live in `keygo-core`; server-only ids come from the
+  `random_id!`/`uuid_id!` macros in `domain/ids.rs`.
 
 ## Testing
 

@@ -1,6 +1,6 @@
 use crate::db::registrations::{self, ReserveError};
 use crate::db::{invites, users};
-use crate::domain::{InviteCode, InviteHash, RegistrationId, UserId, Username};
+use crate::domain::{InviteCode, InviteHash, RegistrationId, UserId, Username, opaque_identifier};
 use crate::service::registration::{Signup, TTL};
 use keygo_opaque::server::ServerSetup;
 use keygo_opaque::{OpaqueError, RegistrationRequest, RegistrationResponse, server};
@@ -78,7 +78,7 @@ pub async fn start(
 
     // Pure computation, so it runs before the transaction to keep the reservation's lock short.
     let registration_response =
-        server::registration_start(setup, registration_request, user_id.opaque_identifier())?;
+        server::registration_start(setup, registration_request, opaque_identifier(&user_id))?;
 
     let mut tx = db.begin().await?;
     let registration_id = RegistrationId::random();
@@ -295,7 +295,10 @@ mod tests {
 
     #[sqlx::test]
     async fn start_rejects_structured_user_ids(db: PgPool) {
-        let err = start_as(&db, UserId::nil(), "ada").await.err().unwrap();
+        let err = start_as(&db, UserId::from(Uuid::nil()), "ada")
+            .await
+            .err()
+            .unwrap();
 
         assert!(matches!(err, StartError::InvalidUserId), "{err:?}");
         assert_eq!(count(&db, "pending_registrations").await, 0);

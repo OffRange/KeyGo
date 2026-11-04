@@ -1,4 +1,4 @@
-use crate::crypto::KEY_LEN;
+use crate::KEY_LEN;
 use hkdf::Hkdf;
 use sha2::Sha256;
 use zeroize::Zeroizing;

@@ -1,4 +1,4 @@
-use keygo_core::backup::{Backup, Card, Login, Passkey, Vault};
+use keygo_client::backup::{Backup, Card, Login, Passkey, Vault};
 
 #[uniffi::remote(Record)]
 #[uniffi(name = "BackupPasskey")]

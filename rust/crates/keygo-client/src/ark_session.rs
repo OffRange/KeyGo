@@ -1,7 +1,7 @@
 use crate::crypto::kdf::new_salt;
 use crate::crypto::{
-    AccountRootKey, CryptoError, Encrypts, NamespaceDataAad, NamespaceId, NamespaceKey,
-    NamespaceKeyAad, RootKEK, Sealed, SecretKind, SymmetricKey, UserId, VaultId, VaultKey, Wraps,
+    AccountRootKey, CryptoError, Encrypts, KeyMaterial, NamespaceDataAad, NamespaceId,
+    NamespaceKey, NamespaceKeyAad, RootKek, Sealed, SecretKind, UserId, VaultId, VaultKey, Wraps,
 };
 use std::sync::{Mutex, MutexGuard};
 use subtle::ConstantTimeEq;
@@ -208,8 +208,8 @@ impl ArkSession {
     }
 }
 
-fn derive_kek(password: &str, salt: &[u8]) -> ArkSessionResult<RootKEK> {
-    RootKEK::from_password(password.as_bytes(), salt).map_err(ArkSessionError::Derivation)
+fn derive_kek(password: &str, salt: &[u8]) -> ArkSessionResult<RootKek> {
+    RootKek::from_password(password.as_bytes(), salt).map_err(ArkSessionError::Derivation)
 }
 
 #[cfg(test)]

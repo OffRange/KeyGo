@@ -1,15 +1,17 @@
 //! Key hierarchy and the AAD of each wrap:
 //!
 //! ```text
-//! RootKEK --UserId--> AccountRootKey --VaultId--> VaultKey --ItemAad--> ItemKey --ItemDataAad--> item data
+//! RootKek --UserId--> AccountRootKey --VaultId--> VaultKey --ItemAad--> ItemKey --ItemDataAad--> item data
 //!                                    \
 //!                                     --NamespaceKeyAad--> NamespaceKey --NamespaceDataAad--> account record
 //! ```
 
+use crate::crypto::aad::{Aad, aad};
 use crate::crypto::kdf::argon2::{Argon2Params, derive_argon2id};
-use crate::crypto::{
-    Aad, CipherKey, CryptoResult, Encrypts, ItemId, NamespaceId, SymmetricKey, UserId, VaultId,
-    Wraps, aad, symmetric_key,
+use crate::crypto::{CipherKey, Encrypts, KeyMaterial, Wraps};
+use crate::{
+    AccountRootKey, CryptoResult, ItemId, ItemKey, NamespaceId, NamespaceKey, RootKek, UserId,
+    VaultId, VaultKey,
 };
 use aead::Generate;
 use serde::{Serialize, Serializer};
@@ -22,27 +24,6 @@ const NAMESPACE_KEY_DOMAIN: &str = "v1:ns/key";
 
 /// Part of every account-record AAD; must never change.
 const NAMESPACE_DATA_DOMAIN: &str = "v1:ns/data";
-
-symmetric_key! {
-    pub struct RootKEK;
-}
-
-symmetric_key! {
-    pub struct AccountRootKey;
-}
-
-symmetric_key! {
-    pub struct VaultKey;
-}
-
-symmetric_key! {
-    pub struct ItemKey;
-}
-
-symmetric_key! {
-    /// Seals one account-wide record that belongs to no vault.
-    pub struct NamespaceKey;
-}
 
 aad! {
     pub struct ItemAad {
@@ -118,31 +99,32 @@ impl SecretKind {
     }
 }
 
-impl Wraps<AccountRootKey> for RootKEK {
-    type Aad = UserId; // TODO: bind the credential epoch
+macro_rules! wraps {
+    ($($parent:ident -> $child:ident with $aad:ident),+ $(,)?) => {
+        $(
+            impl Wraps<$child> for $parent {
+                type Aad = $aad;
+            }
+        )+
+    };
 }
 
-impl Wraps<VaultKey> for AccountRootKey {
-    type Aad = VaultId; // TODO: bind vault_key_epoch
-}
-
-impl Wraps<ItemKey> for VaultKey {
-    type Aad = ItemAad;
+wraps! {
+    RootKek        -> AccountRootKey with UserId, // TODO: bind the credential epoch
+    AccountRootKey -> VaultKey       with VaultId, // TODO: bind vault_key_epoch
+    AccountRootKey -> NamespaceKey   with NamespaceKeyAad,
+    VaultKey       -> ItemKey        with ItemAad,
 }
 
 impl Encrypts for ItemKey {
     type Aad = ItemDataAad;
 }
 
-impl Wraps<NamespaceKey> for AccountRootKey {
-    type Aad = NamespaceKeyAad;
-}
-
 impl Encrypts for NamespaceKey {
     type Aad = NamespaceDataAad;
 }
 
-impl RootKEK {
+impl RootKek {
     pub fn from_password(password: &[u8], salt: &[u8]) -> CryptoResult<Self> {
         let derived = derive_argon2id(password, salt, PASSWORD_DOMAIN, Argon2Params::default())?;
         Self::from_bytes(derived.as_slice())
@@ -153,7 +135,7 @@ macro_rules! impl_generate {
     ($($key:ident),+) => {
         $(impl $key {
             pub fn generate() -> Self {
-                Self(CipherKey::generate())
+                Self { key: CipherKey::generate() }
             }
         })+
     };
@@ -164,21 +146,21 @@ impl_generate!(AccountRootKey, VaultKey, ItemKey, NamespaceKey);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crypto::Sealed;
+    use crate::Sealed;
 
     const SALT: &[u8] = &[6; 16];
 
     #[test]
     fn same_password_and_salt_give_the_same_kek() {
-        let a = RootKEK::from_password(b"hunter2", SALT).unwrap();
-        let b = RootKEK::from_password(b"hunter2", SALT).unwrap();
+        let a = RootKek::from_password(b"hunter2", SALT).unwrap();
+        let b = RootKek::from_password(b"hunter2", SALT).unwrap();
         assert_eq!(a.as_bytes(), b.as_bytes());
     }
 
     #[test]
     fn different_salts_give_different_keks() {
-        let a = RootKEK::from_password(b"hunter2", &[7; 16]).unwrap();
-        let b = RootKEK::from_password(b"hunter2", SALT).unwrap();
+        let a = RootKek::from_password(b"hunter2", &[7; 16]).unwrap();
+        let b = RootKek::from_password(b"hunter2", SALT).unwrap();
         assert_ne!(a.as_bytes(), b.as_bytes());
     }
 
@@ -187,7 +169,7 @@ mod tests {
     fn password_domain_is_pinned() {
         assert_eq!(PASSWORD_DOMAIN, b"v1:kek/pwd");
 
-        let kek = RootKEK::from_password(b"hunter2", &[7; 16]).unwrap();
+        let kek = RootKek::from_password(b"hunter2", &[7; 16]).unwrap();
 
         assert_eq!(
             kek.as_bytes(),

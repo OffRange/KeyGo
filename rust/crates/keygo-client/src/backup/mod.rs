@@ -1,7 +1,6 @@
 mod encryption;
 mod error;
 mod format;
-mod key;
 mod model;
 
 pub use encryption::{BackupCredential, KeySource};
@@ -10,7 +9,6 @@ pub use format::csv::{
     ColumnMapping, Confidence, CsvAnalysis, CsvColumn, ExportPreset, FieldConfidence, ImportReport,
 };
 pub use format::{csv, json};
-pub use key::BackupKey;
 pub use model::{Backup, Card, Login, Passkey, Vault};
 
 pub const CURRENT_VERSION: u32 = 1;
