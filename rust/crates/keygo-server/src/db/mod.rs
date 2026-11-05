@@ -1,5 +1,6 @@
 pub mod devices;
 pub mod invites;
+pub mod key_bundles;
 pub mod opaque_records;
 pub mod refresh_tokens;
 pub mod registrations;

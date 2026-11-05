@@ -2,8 +2,8 @@ use crate::api::{AppState, router};
 use crate::cache::{LoginStates, StepUpStates};
 use crate::db::{devices, invites, sessions, users};
 use crate::domain::{
-    AccessTokenKey, DeviceClaim, DeviceId, DeviceInfo, InviteHash, InvitePepper, SessionId,
-    TokenIssuer, UserId, Username,
+    AccessTokenKey, DeviceClaim, DeviceId, DeviceInfo, InviteHash, InvitePepper, KeyBundle,
+    SealedBlob, SessionId, TokenIssuer, UserId, Username,
 };
 use crate::service::login::{self, FinishLogin, StartLogin};
 use crate::service::registration::{self, FinishRegistration, Signup, StartRegistration};
@@ -27,6 +27,8 @@ use tower::ServiceExt;
 pub const PASSWORD: &[u8] = b"correct horse battery staple";
 pub const JKT: [u8; 32] = [7; 32];
 pub const ISS: &str = "http://localhost";
+/// A well-formed wrapped ARK: nonce ‖ 32 B key ‖ tag. Only its length means anything to the server.
+pub const WRAPPED_ARK: [u8; 60] = [7; 60];
 
 pub fn token_issuer() -> TokenIssuer {
     TokenIssuer::new(AccessTokenKey::new(&[0; 32]), ISS)
@@ -46,6 +48,13 @@ pub fn device_claim(id: Option<DeviceId>) -> DeviceClaim {
         id,
         info: device_info(),
     }
+}
+
+pub fn key_bundle_json() -> Value {
+    json!({ "wrapped_ark": SealedBlob::from_bytes(&WRAPPED_ARK).unwrap() })
+}
+pub fn key_bundle() -> KeyBundle {
+    serde_json::from_value(key_bundle_json()).unwrap()
 }
 
 pub async fn register(db: &PgPool, setup: &ServerSetup, name: &str) -> UserId {
@@ -70,6 +79,7 @@ pub async fn register(db: &PgPool, setup: &ServerSetup, name: &str) -> UserId {
         registration_upload: finish.upload,
         device_info: device_info(),
         jkt: JKT,
+        key_bundle: key_bundle(),
     };
     registration::finish(db, &token_issuer(), input)
         .await

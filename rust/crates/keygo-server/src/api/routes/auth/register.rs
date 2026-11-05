@@ -1,7 +1,7 @@
 use crate::api::dpop::SingleUseDpopProof;
 use crate::api::routes::auth::session::Session;
 use crate::api::{AppState, ErrorCode, HttpError, Json, ServerResult};
-use crate::domain::{DeviceInfo, RegistrationId, UserId, Username};
+use crate::domain::{DeviceInfo, KeyBundle, RegistrationId, UserId, Username};
 use crate::service::registration::{self, FinishRegistration, StartRegistration};
 use axum::Router;
 use axum::extract::State;
@@ -71,6 +71,7 @@ async fn start(
 struct FinishRequest {
     registration_id: RegistrationId,
     registration_upload: RegistrationUpload,
+    key_bundle: KeyBundle,
     device: DeviceInfo,
 }
 
@@ -85,6 +86,7 @@ impl HttpError for registration::FinishError {
         match self {
             Self::Expired => ErrorCode::RegistrationExpired,
             Self::InviteInvalid => ErrorCode::InviteInvalid,
+            Self::InvalidKeyBundle(_) => ErrorCode::InvalidRequest,
             Self::Db(_) => ErrorCode::Internal,
         }
     }
@@ -100,6 +102,7 @@ async fn finish(
         registration_upload: request.registration_upload,
         device_info: request.device,
         jkt: proof.jkt,
+        key_bundle: request.key_bundle,
     };
 
     let finished = registration::finish(&state.db, &state.token_issuer, input).await?;
@@ -118,9 +121,11 @@ mod tests {
     use super::*;
     use crate::api::error::render;
     use crate::testing::{
-        app_state, count, create_invite, device_json, invite_only, post, post_to, post_with_proof,
-        proof_post, prover, register, replayable_post, send,
+        WRAPPED_ARK, app_state, count, create_invite, device_json, invite_only, key_bundle_json,
+        post, post_to, post_with_proof, proof_post, prover, register, replayable_post, send,
     };
+    use base64::Engine;
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
     use keygo_opaque::client::ClientRegistration;
     use keygo_opaque::server::ServerSetup;
     use serde_json::{Value, json};
@@ -151,8 +156,147 @@ mod tests {
         json!({
             "registration_id": started["registration_id"],
             "registration_upload": upload.to_base64(),
+            "key_bundle": key_bundle_json(),
             "device": device_json(),
         })
+    }
+
+    async fn stored_bundle(db: &PgPool, user_id: UserId) -> Option<Vec<u8>> {
+        sqlx::query_scalar("select wrapped_ark from key_bundles where user_id = $1")
+            .bind(user_id.as_uuid())
+            .fetch_optional(db)
+            .await
+            .unwrap()
+    }
+
+    #[sqlx::test]
+    async fn finish_stores_the_key_bundle_byte_for_byte(db: PgPool) {
+        let state = app_state(&db, &ServerSetup::generate());
+        let user_id = UserId::random();
+        let (client, body) = start_body("ada", user_id);
+        let (_, started) = post_to(state.clone(), START, body).await;
+
+        let (status, _) =
+            post_with_proof(&state, &prover(), FINISH, finish_body(client, &started)).await;
+
+        assert_eq!(status, StatusCode::CREATED);
+        assert_eq!(
+            stored_bundle(&db, user_id).await,
+            Some(WRAPPED_ARK.to_vec()),
+        );
+    }
+
+    #[sqlx::test]
+    async fn finish_without_a_key_bundle_keeps_the_registration(db: PgPool) {
+        let state = app_state(&db, &ServerSetup::generate());
+        let (client, body) = start_body("ada", UserId::random());
+        let (_, started) = post_to(state.clone(), START, body).await;
+        let mut body = finish_body(client, &started);
+        body.as_object_mut().unwrap().remove("key_bundle");
+
+        let (status, body) = post_with_proof(&state, &prover(), FINISH, body).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["code"], "invalid_request");
+        assert_eq!(count(&db, "users").await, 0);
+        assert_eq!(count(&db, "pending_registrations").await, 1);
+    }
+
+    #[sqlx::test]
+    async fn finish_rejects_a_wrapped_ark_that_is_not_a_blob(db: PgPool) {
+        let state = app_state(&db, &ServerSetup::generate());
+        let (client, body) = start_body("ada", UserId::random());
+        let (_, started) = post_to(state.clone(), START, body).await;
+        let valid = finish_body(client, &started);
+
+        let not_base64url = "+".repeat(80);
+        let too_short_for_a_nonce = URL_SAFE_NO_PAD.encode([7; 11]);
+        for bad in [not_base64url.as_str(), too_short_for_a_nonce.as_str()] {
+            let mut body = valid.clone();
+            body["key_bundle"]["wrapped_ark"] = bad.into();
+
+            let (status, body) = post_with_proof(&state, &prover(), FINISH, body).await;
+
+            assert_eq!(status, StatusCode::BAD_REQUEST, "{bad}");
+            assert_eq!(body["code"], "invalid_request", "{bad}");
+        }
+        assert_eq!(count(&db, "users").await, 0);
+        assert_eq!(count(&db, "pending_registrations").await, 1);
+    }
+
+    /// Spec §4: a wrapped ARK is exactly 60 B, so a bad upload fails now and not at a later sign-in.
+    #[sqlx::test]
+    async fn finish_rejects_a_wrapped_ark_of_the_wrong_length(db: PgPool) {
+        let state = app_state(&db, &ServerSetup::generate());
+        let (client, body) = start_body("ada", UserId::random());
+        let (_, started) = post_to(state.clone(), START, body).await;
+        let valid = finish_body(client, &started);
+
+        for len in [12, 59, 61] {
+            let mut body = valid.clone();
+            body["key_bundle"]["wrapped_ark"] = URL_SAFE_NO_PAD.encode(vec![7; len]).into();
+
+            let (status, body) = post_with_proof(&state, &prover(), FINISH, body).await;
+
+            assert_eq!(status, StatusCode::BAD_REQUEST, "{len} B");
+            assert_eq!(body["code"], "invalid_request", "{len} B");
+            assert_eq!(count(&db, "key_bundles").await, 0, "{len} B");
+            assert_eq!(count(&db, "users").await, 0, "{len} B");
+        }
+        assert_eq!(count(&db, "pending_registrations").await, 1);
+    }
+
+    /// Spec §14: the server takes `user_id` from the registration state, not from this body.
+    #[sqlx::test]
+    async fn the_bundle_belongs_to_the_registered_user_whatever_the_body_says(db: PgPool) {
+        let state = app_state(&db, &ServerSetup::generate());
+        let user_id = UserId::random();
+        let (client, body) = start_body("ada", user_id);
+        let (_, started) = post_to(state.clone(), START, body).await;
+        let mut body = finish_body(client, &started);
+        body["key_bundle"]["user_id"] = json!(UserId::random());
+
+        let (status, _) = post_with_proof(&state, &prover(), FINISH, body).await;
+
+        assert_eq!(status, StatusCode::CREATED);
+        assert_eq!(
+            stored_bundle(&db, user_id).await,
+            Some(WRAPPED_ARK.to_vec()),
+        );
+    }
+
+    #[sqlx::test]
+    async fn finish_cannot_plant_a_bundle_on_an_account_without_one(db: PgPool) {
+        let victim = UserId::random();
+        let mut conn = db.acquire().await.unwrap();
+        crate::db::users::insert(&mut conn, victim, &crate::testing::username("victim"))
+            .await
+            .unwrap();
+        let state = app_state(&db, &ServerSetup::generate());
+        let (client, body) = start_body("mallory", UserId::random());
+        let (_, started) = post_to(state.clone(), START, body).await;
+        let mut body = finish_body(client, &started);
+        body["key_bundle"]["user_id"] = json!(victim);
+
+        post_with_proof(&state, &prover(), FINISH, body).await;
+
+        assert_eq!(stored_bundle(&db, victim).await, None);
+    }
+
+    #[sqlx::test]
+    async fn finish_cannot_overwrite_another_users_bundle(db: PgPool) {
+        let setup = ServerSetup::generate();
+        let victim = register(&db, &setup, "victim").await;
+        let state = app_state(&db, &setup);
+        let (client, body) = start_body("mallory", UserId::random());
+        let (_, started) = post_to(state.clone(), START, body).await;
+        let mut body = finish_body(client, &started);
+        body["key_bundle"]["user_id"] = json!(victim);
+        body["key_bundle"]["wrapped_ark"] = URL_SAFE_NO_PAD.encode([9; 60]).into();
+
+        post_with_proof(&state, &prover(), FINISH, body).await;
+
+        assert_eq!(stored_bundle(&db, victim).await, Some(WRAPPED_ARK.to_vec()));
     }
 
     #[tokio::test]
