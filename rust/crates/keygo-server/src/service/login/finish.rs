@@ -1,6 +1,6 @@
 use crate::cache::LoginStates;
-use crate::db::users;
-use crate::domain::{DeviceClaim, LoginId, TokenIssuer, UserId, Username};
+use crate::db::{key_bundles, users};
+use crate::domain::{DeviceClaim, LoginId, StoredKeyBundle, TokenIssuer, UserId, Username};
 use crate::service;
 use crate::service::handshake::{self, Error};
 use crate::service::session::Issued;
@@ -18,6 +18,7 @@ pub struct FinishLogin {
 pub struct Finished {
     pub user_id: UserId,
     pub username: Username,
+    pub key_bundle: StoredKeyBundle,
     pub session: Issued,
 }
 
@@ -51,6 +52,11 @@ pub async fn finish(
     let username = users::find_username(&mut tx, user_id)
         .await?
         .ok_or(OpaqueError::InvalidLogin)?;
+    // Registration stores the bundle together with the user, so a missing one is a broken account.
+    // The caller has proven the password, so it must not answer like a wrong one.
+    let key_bundle = key_bundles::find(&mut tx, user_id)
+        .await?
+        .ok_or(sqlx::Error::RowNotFound)?;
 
     let device_id = service::device::attach_or_create(&mut tx, user_id, device).await?;
     let issued = service::session::issue(&mut tx, token_issuer, user_id, device_id, &jkt).await?;
@@ -60,6 +66,7 @@ pub async fn finish(
     Ok(Finished {
         user_id,
         username,
+        key_bundle,
         session: issued,
     })
 }
@@ -67,9 +74,10 @@ pub async fn finish(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::DeviceId;
+    use crate::domain::{DeviceId, unix_now};
     use crate::testing::{
-        PASSWORD, device_claim, finish_login, register, start_login, token_issuer, username,
+        PASSWORD, WRAPPED_ARK, count, device_claim, finish_login, register, start_login,
+        token_issuer, username,
     };
     use keygo_opaque::server::ServerSetup;
     use std::time::Duration;
@@ -106,7 +114,38 @@ mod tests {
 
         assert_eq!(finished.user_id, user_id);
         assert_eq!(finished.username, username("ada"));
+        assert_eq!(
+            finished.key_bundle.bundle.wrapped_ark.to_bytes(),
+            WRAPPED_ARK
+        );
+        assert!(unix_now().abs_diff(finished.key_bundle.updated_at) < 60);
         assert_eq!(login_states.count(), 0);
+    }
+
+    #[sqlx::test]
+    async fn missing_bundle_fails_without_issuing_a_session(db: PgPool) {
+        let login_states = LoginStates::new();
+        let setup = ServerSetup::generate();
+        register(&db, &setup, "ada").await;
+        let (client, started) = start_login(&db, &login_states, &setup, "ada").await;
+        let sessions = count(&db, "sessions").await;
+        sqlx::query("delete from key_bundles")
+            .execute(&db)
+            .await
+            .unwrap();
+
+        let err = finish(
+            &db,
+            &token_issuer(),
+            &login_states,
+            finish_login(client, started, None),
+        )
+        .await
+        .err()
+        .unwrap();
+
+        assert!(matches!(err, Error::Db(_)), "{err:?}");
+        assert_eq!(count(&db, "sessions").await, sessions);
     }
 
     #[sqlx::test]

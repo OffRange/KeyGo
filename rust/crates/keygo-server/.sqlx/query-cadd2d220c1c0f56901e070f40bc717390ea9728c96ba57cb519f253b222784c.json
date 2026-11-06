@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select wrapped_ark, extract(epoch from updated_at)::int8 as \"updated_at!\"\n           from key_bundles\n           where user_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "wrapped_ark",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "key_bundles",
+            "name": "wrapped_ark"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "updated_at!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "cadd2d220c1c0f56901e070f40bc717390ea9728c96ba57cb519f253b222784c"
+}

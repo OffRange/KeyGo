@@ -1,4 +1,5 @@
-use crate::domain::{KeyBundle, UserId};
+use super::corrupt;
+use crate::domain::{KeyBundle, SealedBlob, StoredKeyBundle, UserId, check_wrapped_ark};
 use sqlx::PgConnection;
 
 pub async fn insert(
@@ -16,11 +17,36 @@ pub async fn insert(
     Ok(())
 }
 
+pub async fn find(
+    conn: &mut PgConnection,
+    user_id: UserId,
+) -> sqlx::Result<Option<StoredKeyBundle>> {
+    let Some(row) = sqlx::query!(
+        r#"select wrapped_ark, extract(epoch from updated_at)::int8 as "updated_at!"
+           from key_bundles
+           where user_id = $1"#,
+        user_id.as_uuid(),
+    )
+    .fetch_optional(conn)
+    .await?
+    else {
+        return Ok(None);
+    };
+
+    // Registration admits only a well-sized wrap, so any other length is a corrupted row.
+    let wrapped_ark = SealedBlob::from_bytes(&row.wrapped_ark).map_err(corrupt)?;
+    check_wrapped_ark(&wrapped_ark).map_err(corrupt)?;
+
+    Ok(Some(StoredKeyBundle {
+        bundle: KeyBundle { wrapped_ark },
+        updated_at: u64::try_from(row.updated_at).map_err(corrupt)?,
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::db::users;
-    use crate::domain::SealedBlob;
     use crate::testing::{WRAPPED_ARK, count, key_bundle, username};
     use sqlx::PgPool;
 
@@ -129,5 +155,50 @@ mod tests {
             .unwrap();
 
         assert_eq!(count(&db, "key_bundles").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn find_returns_the_stored_bundle(db: PgPool) {
+        let user_id = insert_user(&db, "ada").await;
+        let mut conn = db.acquire().await.unwrap();
+        insert(&mut conn, user_id, &key_bundle()).await.unwrap();
+        sqlx::query("update key_bundles set updated_at = to_timestamp(1700000000)")
+            .execute(&db)
+            .await
+            .unwrap();
+
+        let found = find(&mut conn, user_id).await.unwrap().unwrap();
+
+        assert_eq!(found.bundle.wrapped_ark.to_bytes(), WRAPPED_ARK);
+        assert_eq!(found.updated_at, 1_700_000_000);
+    }
+
+    #[sqlx::test]
+    async fn find_ignores_other_users_bundles(db: PgPool) {
+        let ada = insert_user(&db, "ada").await;
+        let bob = insert_user(&db, "bob").await;
+        let mut conn = db.acquire().await.unwrap();
+        insert(&mut conn, ada, &key_bundle()).await.unwrap();
+
+        assert!(find(&mut conn, bob).await.unwrap().is_none());
+    }
+
+    #[sqlx::test]
+    async fn missized_bundle_is_corrupt(db: PgPool) {
+        // 11 B is too short for a nonce, 59 B and 61 B are a sealed blob but not a wrapped ARK.
+        for len in [11, 59, 61] {
+            let user_id = insert_user(&db, &format!("ada{len}")).await;
+            sqlx::query("insert into key_bundles (user_id, wrapped_ark) values ($1, $2)")
+                .bind(user_id.as_uuid())
+                .bind(vec![7u8; len])
+                .execute(&db)
+                .await
+                .unwrap();
+            let mut conn = db.acquire().await.unwrap();
+
+            let err = find(&mut conn, user_id).await.err().unwrap();
+
+            assert!(matches!(err, sqlx::Error::Decode(_)), "{len} B");
+        }
     }
 }
