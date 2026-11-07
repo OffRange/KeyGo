@@ -19,7 +19,7 @@ pub use ids::{DeviceId, LoginId, RegistrationId, SessionId, UserId, opaque_ident
 pub use invite_code::{InviteCode, InvitePepper};
 pub use invite_hash::InviteHash;
 pub use invite_id::InviteId;
-pub use key_bundle::{KeyBundle, StoredKeyBundle};
+pub use key_bundle::KeyBundle;
 pub use sealed_blob::InvalidBlob;
 pub use sealed_blob::{SealedBlob, check_wrapped_ark};
 pub use session::{REFRESH_TTL, RefreshToken, RevokeReason, SESSION_LIFETIME, SESSION_RETENTION};

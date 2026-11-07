@@ -1,5 +1,5 @@
 use super::corrupt;
-use crate::domain::{KeyBundle, SealedBlob, StoredKeyBundle, UserId, check_wrapped_ark};
+use crate::domain::{KeyBundle, SealedBlob, UserId, check_wrapped_ark};
 use sqlx::PgConnection;
 
 pub async fn insert(
@@ -17,14 +17,9 @@ pub async fn insert(
     Ok(())
 }
 
-pub async fn find(
-    conn: &mut PgConnection,
-    user_id: UserId,
-) -> sqlx::Result<Option<StoredKeyBundle>> {
-    let Some(row) = sqlx::query!(
-        r#"select wrapped_ark, extract(epoch from updated_at)::int8 as "updated_at!"
-           from key_bundles
-           where user_id = $1"#,
+pub async fn find(conn: &mut PgConnection, user_id: UserId) -> sqlx::Result<Option<KeyBundle>> {
+    let Some(stored) = sqlx::query_scalar!(
+        "select wrapped_ark from key_bundles where user_id = $1",
         user_id.as_uuid(),
     )
     .fetch_optional(conn)
@@ -34,13 +29,10 @@ pub async fn find(
     };
 
     // Registration admits only a well-sized wrap, so any other length is a corrupted row.
-    let wrapped_ark = SealedBlob::from_bytes(&row.wrapped_ark).map_err(corrupt)?;
+    let wrapped_ark = SealedBlob::from_bytes(&stored).map_err(corrupt)?;
     check_wrapped_ark(&wrapped_ark).map_err(corrupt)?;
 
-    Ok(Some(StoredKeyBundle {
-        bundle: KeyBundle { wrapped_ark },
-        updated_at: u64::try_from(row.updated_at).map_err(corrupt)?,
-    }))
+    Ok(Some(KeyBundle { wrapped_ark }))
 }
 
 #[cfg(test)]
@@ -162,15 +154,10 @@ mod tests {
         let user_id = insert_user(&db, "ada").await;
         let mut conn = db.acquire().await.unwrap();
         insert(&mut conn, user_id, &key_bundle()).await.unwrap();
-        sqlx::query("update key_bundles set updated_at = to_timestamp(1700000000)")
-            .execute(&db)
-            .await
-            .unwrap();
 
         let found = find(&mut conn, user_id).await.unwrap().unwrap();
 
-        assert_eq!(found.bundle.wrapped_ark.to_bytes(), WRAPPED_ARK);
-        assert_eq!(found.updated_at, 1_700_000_000);
+        assert_eq!(found.wrapped_ark.to_bytes(), WRAPPED_ARK);
     }
 
     #[sqlx::test]

@@ -12,7 +12,6 @@ create table key_bundles
     updated_at  timestamptz not null default now()
 );
 
-
 create table devices
 (
     id           uuid primary key,

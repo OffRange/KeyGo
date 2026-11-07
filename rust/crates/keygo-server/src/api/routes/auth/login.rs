@@ -2,7 +2,7 @@ use crate::api::dpop::SingleUseDpopProof;
 use crate::api::routes::auth::handshake::StartResponse;
 use crate::api::routes::auth::session::Session;
 use crate::api::{AppState, Json, ServerResult};
-use crate::domain::{DeviceClaim, LoginId, StoredKeyBundle, UserId, Username};
+use crate::domain::{DeviceClaim, KeyBundle, LoginId, UserId, Username};
 use crate::service::login::{self, FinishLogin, StartLogin};
 use axum::Router;
 use axum::extract::State;
@@ -49,7 +49,7 @@ struct FinishRequest {
 struct FinishResponse {
     user_id: UserId,
     username: Username,
-    key_bundle: StoredKeyBundle,
+    key_bundle: KeyBundle,
     session: Session,
 }
 
@@ -137,11 +137,7 @@ mod tests {
         assert_eq!(status, StatusCode::OK);
         assert_eq!(finished["user_id"], user_id.as_uuid().to_string());
         assert_eq!(finished["username"], "ada");
-        assert_eq!(
-            finished["key_bundle"]["wrapped_ark"],
-            key_bundle_json()["wrapped_ark"]
-        );
-        assert!(finished["key_bundle"]["updated_at"].is_u64());
+        assert_eq!(finished["key_bundle"], key_bundle_json());
         assert_eq!(state.login_states.count(), 0);
     }
 

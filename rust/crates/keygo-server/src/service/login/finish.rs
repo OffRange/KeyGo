@@ -1,6 +1,6 @@
 use crate::cache::LoginStates;
 use crate::db::{key_bundles, users};
-use crate::domain::{DeviceClaim, LoginId, StoredKeyBundle, TokenIssuer, UserId, Username};
+use crate::domain::{DeviceClaim, KeyBundle, LoginId, TokenIssuer, UserId, Username};
 use crate::service;
 use crate::service::handshake::{self, Error};
 use crate::service::session::Issued;
@@ -18,7 +18,7 @@ pub struct FinishLogin {
 pub struct Finished {
     pub user_id: UserId,
     pub username: Username,
-    pub key_bundle: StoredKeyBundle,
+    pub key_bundle: KeyBundle,
     pub session: Issued,
 }
 
@@ -74,7 +74,7 @@ pub async fn finish(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::{DeviceId, unix_now};
+    use crate::domain::DeviceId;
     use crate::testing::{
         PASSWORD, WRAPPED_ARK, count, device_claim, finish_login, register, start_login,
         token_issuer, username,
@@ -114,11 +114,7 @@ mod tests {
 
         assert_eq!(finished.user_id, user_id);
         assert_eq!(finished.username, username("ada"));
-        assert_eq!(
-            finished.key_bundle.bundle.wrapped_ark.to_bytes(),
-            WRAPPED_ARK
-        );
-        assert!(unix_now().abs_diff(finished.key_bundle.updated_at) < 60);
+        assert_eq!(finished.key_bundle.wrapped_ark.to_bytes(), WRAPPED_ARK);
         assert_eq!(login_states.count(), 0);
     }
 

@@ -64,7 +64,7 @@ jobs:
         run: |
           cargo clippy -p keygo-core --all-targets -- -D warnings
           deps=$(cargo tree -p keygo-core -e normal --depth 1 --prefix none | tail -n +2 | cut -d' ' -f1 | sort | xargs)
-          [ "$deps" = "serde thiserror uuid" ] || { echo "unexpected keygo-core deps: $deps" >&2; exit 1; }
+          [ "$deps" = "base64 serde thiserror uuid" ] || { echo "unexpected keygo-core deps: $deps" >&2; exit 1; }
       - name: keygo-server holds no crypto or client code
         run: |
           # Proves the pattern below still matches, so renaming the feature can't silently disable it.
