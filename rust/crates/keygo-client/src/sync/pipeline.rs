@@ -87,7 +87,7 @@ fn sign_out_error(response: &HttpResponse) -> Option<SyncError> {
     })
 }
 
-fn store_failure(error: TokenStoreError) -> SyncError {
+pub(super) fn store_failure(error: TokenStoreError) -> SyncError {
     SyncError::Client {
         message: format!("token store failed: {error}"),
     }
@@ -174,11 +174,12 @@ impl SyncClient {
     /// Forgets the session, in memory and in the store. The caller holds the `AuthState` lock, so
     /// a refresh that is still running cannot save a token after this.
     ///
-    /// A store that fails to clear changes nothing about what the caller is told; the stale entry
-    /// is cleared again the next time the server refuses it.
-    pub(super) async fn end_session(&self, state: &mut AuthState) {
+    /// `AuthState` is reset even when the store fails. What that failure means is the caller's to
+    /// decide: an entry the server has already killed is only refused and cleared again, but one
+    /// it still accepts would bring the session back on the next call.
+    pub(super) async fn end_session(&self, state: &mut AuthState) -> Result<(), TokenStoreError> {
         state.reset();
-        let _ = self.tokens.clear().await;
+        self.tokens.clear().await
     }
 
     /// Spends the stored refresh token on a new session and returns the new access token. `state`
@@ -218,7 +219,8 @@ impl SyncClient {
 
         if !is_success(&response) {
             if let Some(signed_out) = sign_out_error(&response) {
-                self.end_session(state).await;
+                // The server has killed this token, so an entry left behind is only refused again.
+                let _ = self.end_session(state).await;
                 return Err(signed_out);
             }
             return Err(from_response(response.status, &response.body));
@@ -336,7 +338,8 @@ impl SyncClient {
         }
         if let Some(signed_out) = sign_out_error(&response) {
             let mut state = self.auth.lock().await;
-            self.end_session(&mut state).await;
+            // The server has killed this token, so an entry left behind is only refused again.
+            let _ = self.end_session(&mut state).await;
             return Err(signed_out);
         }
         Err(from_response(response.status, &response.body))
@@ -942,6 +945,31 @@ mod tests {
 
         assert!(matches!(error, SyncError::Network { .. }));
         h.assert_signed_out_locally().await;
+    }
+
+    #[tokio::test]
+    async fn offline_logout_reports_a_failed_clear() {
+        let h = fresh().await;
+        h.store.fail_clears();
+        h.transport.push_network_error("offline");
+
+        let error = h.client.logout().await.unwrap_err();
+
+        assert!(matches!(error, SyncError::Client { .. }));
+        assert!(h.client.auth.lock().await.access.is_none());
+        // Why this cannot pass as an offline logout: the server still accepts this token.
+        assert_eq!(h.stored_refresh_token().as_deref(), Some(ROTATED_REFRESH));
+    }
+
+    #[tokio::test]
+    async fn sent_logout_ignores_a_failed_clear() {
+        let h = fresh().await;
+        h.store.fail_clears();
+        h.transport.push(204, &[], b"");
+
+        h.client.logout().await.unwrap();
+
+        assert!(h.client.auth.lock().await.access.is_none());
     }
 
     #[tokio::test]

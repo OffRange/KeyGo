@@ -1,4 +1,5 @@
 use super::error::SyncResult;
+use super::pipeline::store_failure;
 use super::signer::{DpopKey, ForeignSigner};
 use super::state::{AuthState, Clock, SystemClock};
 use super::tokens::TokenStore;
@@ -57,11 +58,17 @@ impl SyncClient {
     }
 
     /// Ends the session here even if the server cannot be told, and reports whether it was.
+    ///
+    /// When the server could not be told and the store could not be cleared either, a token the
+    /// server still accepts stays on disk, so the store failure is returned instead.
     pub async fn logout(&self) -> SyncResult<()> {
         let sent = self.call(&Logout, &()).await;
         let mut state = self.auth.lock().await;
-        self.end_session(&mut state).await;
-        sent
+        let cleared = self.end_session(&mut state).await;
+        match (sent, cleared) {
+            (Err(_), Err(error)) => Err(store_failure(error)),
+            (sent, _) => sent,
+        }
     }
 }
 

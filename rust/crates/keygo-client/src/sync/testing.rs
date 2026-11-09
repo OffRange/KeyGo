@@ -67,6 +67,7 @@ impl Transport for FakeTransport {
 pub struct FakeTokenStore {
     stored: Mutex<Option<(keygo_core::DeviceId, String, u64)>>,
     fail_saves: AtomicBool,
+    fail_clears: AtomicBool,
 }
 
 impl FakeTokenStore {
@@ -74,6 +75,7 @@ impl FakeTokenStore {
         Self {
             stored: Mutex::new(None),
             fail_saves: AtomicBool::new(false),
+            fail_clears: AtomicBool::new(false),
         }
     }
 
@@ -88,6 +90,10 @@ impl FakeTokenStore {
 
     pub fn fail_saves(&self) {
         self.fail_saves.store(true, Ordering::SeqCst);
+    }
+
+    pub fn fail_clears(&self) {
+        self.fail_clears.store(true, Ordering::SeqCst);
     }
 }
 
@@ -131,6 +137,11 @@ impl TokenStore for FakeTokenStore {
     }
 
     async fn clear(&self) -> Result<(), TokenStoreError> {
+        if self.fail_clears.load(Ordering::SeqCst) {
+            return Err(TokenStoreError {
+                message: "clear failed".into(),
+            });
+        }
         *self.stored.lock().unwrap() = None;
         Ok(())
     }
