@@ -8,6 +8,7 @@ edition.workspace = true
 test-support = ["dep:http-body-util", "dep:tower", "keygo-dpop/test-support"]
 
 [dependencies]
+keygo-api = { path = "../keygo-api" }
 keygo-core = { path = "../keygo-core" }
 keygo-opaque = { path = "../keygo-opaque" }
 keygo-dpop = { path = "../keygo-dpop" }

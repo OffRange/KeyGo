@@ -1,0 +1,11 @@
+[package]
+name = "keygo-api"
+description = "KeyGo sync API wire types, shared by the server and the client."
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
+serde_json.workspace = true
