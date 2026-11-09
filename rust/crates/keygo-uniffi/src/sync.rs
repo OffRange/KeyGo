@@ -272,7 +272,7 @@ pub trait HttpTransport: Send + Sync {
 #[uniffi::export(with_foreign)]
 pub trait DpopKey: Send + Sync {
     /// The 65-byte uncompressed P-256 point.
-    fn public_key(&self) -> Vec<u8>;
+    fn public_key(&self) -> Result<Vec<u8>, SignError>;
     /// SHA256withECDSA over `message`, DER encoded.
     fn sign(&self, message: Vec<u8>) -> Result<Vec<u8>, SignError>;
 }
@@ -295,15 +295,19 @@ impl CoreTransport for TransportAdapter {
     }
 }
 
-struct KeyAdapter(Arc<dyn DpopKey>);
+/// Holds the public key `SyncClient::new` read, because the core trait's `public_key` cannot fail.
+struct KeyAdapter {
+    key: Arc<dyn DpopKey>,
+    public_key: Vec<u8>,
+}
 
 impl CoreDpopKey for KeyAdapter {
     fn public_key(&self) -> Vec<u8> {
-        self.0.public_key()
+        self.public_key.clone()
     }
 
     fn sign(&self, message: Vec<u8>) -> Result<Vec<u8>, CoreSignError> {
-        Ok(self.0.sign(message)?)
+        Ok(self.key.sign(message)?)
     }
 }
 
@@ -373,10 +377,16 @@ impl SyncClient {
         let base_url = Url::parse(&base_url).map_err(|e| SyncError::Client {
             reason: format!("invalid server url: {e}"),
         })?;
+        let public_key = dpop_key.public_key().map_err(|e| SyncError::Client {
+            reason: format!("could not read the DPoP public key: {e}"),
+        })?;
         let inner = CoreSyncClient::new(
             base_url,
             Arc::new(TransportAdapter(transport)),
-            Arc::new(KeyAdapter(dpop_key)),
+            Arc::new(KeyAdapter {
+                key: dpop_key,
+                public_key,
+            }),
             Arc::new(StoreAdapter(tokens)),
         )?;
         Ok(Arc::new(Self {
@@ -580,12 +590,26 @@ mod tests {
     struct TestKey(FakeDpopKey);
 
     impl DpopKey for TestKey {
-        fn public_key(&self) -> Vec<u8> {
-            CoreDpopKey::public_key(&self.0)
+        fn public_key(&self) -> Result<Vec<u8>, SignError> {
+            Ok(CoreDpopKey::public_key(&self.0))
         }
 
         fn sign(&self, message: Vec<u8>) -> Result<Vec<u8>, SignError> {
             CoreDpopKey::sign(&self.0, message).map_err(|e| SignError::Failed { reason: e.message })
+        }
+    }
+
+    struct ThrowingKey;
+
+    impl DpopKey for ThrowingKey {
+        fn public_key(&self) -> Result<Vec<u8>, SignError> {
+            Err(SignError::Failed {
+                reason: "the keystore is locked".into(),
+            })
+        }
+
+        fn sign(&self, _: Vec<u8>) -> Result<Vec<u8>, SignError> {
+            unreachable!()
         }
     }
 
@@ -699,5 +723,17 @@ mod tests {
             client.devices().await,
             Err(SyncError::Client { .. }),
         ));
+    }
+
+    #[test]
+    fn a_throwing_public_key_is_a_client_error() {
+        let result = SyncClient::new(
+            "https://kg.example".into(),
+            Arc::new(RecordingTransport::default()),
+            Arc::new(ThrowingKey),
+            Arc::new(MemoryStore::default()),
+        );
+
+        assert!(matches!(result, Err(SyncError::Client { .. })));
     }
 }
