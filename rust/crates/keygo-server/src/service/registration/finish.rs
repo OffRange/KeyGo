@@ -1,5 +1,7 @@
-use crate::db::{invites, opaque_records, registrations, users};
-use crate::domain::{DeviceInfo, RegistrationId, TokenIssuer, Username};
+use crate::db::{invites, key_bundles, opaque_records, registrations, users};
+use crate::domain::{
+    DeviceInfo, InvalidBlob, KeyBundle, RegistrationId, TokenIssuer, Username, check_wrapped_ark,
+};
 use crate::service;
 use crate::service::session::Issued;
 use keygo_opaque::{RegistrationUpload, server};
@@ -12,6 +14,8 @@ pub enum FinishError {
     Expired,
     #[error("invite is not valid or has expired")]
     InviteInvalid,
+    #[error(transparent)]
+    InvalidKeyBundle(#[from] InvalidBlob),
     #[error("database error")]
     Db(#[from] sqlx::Error),
 }
@@ -21,7 +25,7 @@ pub struct FinishRegistration {
     pub registration_upload: RegistrationUpload,
     pub device_info: DeviceInfo,
     pub jkt: [u8; 32],
-    // TODO: key bundle
+    pub key_bundle: KeyBundle,
 }
 
 pub struct Finished {
@@ -39,7 +43,10 @@ pub async fn finish(
         registration_upload,
         device_info,
         jkt,
+        key_bundle,
     } = input;
+
+    check_wrapped_ark(&key_bundle.wrapped_ark)?;
 
     // Pure computation, so it runs before the transaction to keep the reservation's lock short.
     let password_file = server::registration_finish(registration_upload);
@@ -56,6 +63,7 @@ pub async fn finish(
 
     users::insert(&mut tx, pending.user_id, &pending.username).await?;
     opaque_records::insert(&mut tx, pending.user_id, &password_file).await?;
+    key_bundles::insert(&mut tx, pending.user_id, &key_bundle).await?;
 
     let device_id = service::device::create(&mut tx, pending.user_id, &device_info).await?;
 
@@ -72,11 +80,11 @@ pub async fn finish(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::UserId;
+    use crate::domain::{SealedBlob, UserId};
     use crate::service::registration::{self, Signup, StartRegistration, Started};
     use crate::testing::{
-        JKT, PASSWORD, count, create_invite, device_info, expire, invite_only, token_issuer,
-        username,
+        JKT, PASSWORD, WRAPPED_ARK, count, create_invite, device_info, expire, invite_only,
+        key_bundle, token_issuer, username,
     };
     use keygo_opaque::client::ClientRegistration;
     use keygo_opaque::server::ServerSetup;
@@ -114,7 +122,18 @@ mod tests {
             registration_upload: finish.upload,
             device_info: device_info(),
             jkt: JKT,
+            key_bundle: key_bundle(),
         }
+    }
+
+    /// Makes every bundle write fail, after the user and the OPAQUE record went in.
+    async fn reject_bundle_writes(db: &PgPool) {
+        sqlx::query(
+            "alter table key_bundles add constraint test_no_writes check (false) not valid",
+        )
+        .execute(db)
+        .await
+        .unwrap();
     }
 
     async fn user_count(db: &PgPool) -> (i64, i64, i64, i64) {
@@ -148,6 +167,56 @@ mod tests {
         let expected = ["Pixel 9", "android", "2.3.0"].map(str::to_owned);
         assert_eq!((device.1, device.2, device.3), expected.into());
         assert_eq!(device.0, user_id.as_uuid());
+    }
+
+    #[sqlx::test]
+    async fn finish_stores_the_key_bundle(db: PgPool) {
+        let user_id = UserId::random();
+        let input = started(&db, user_id, "ada").await;
+
+        finish(&db, &token_issuer(), input).await.unwrap();
+
+        let stored: (Uuid, Vec<u8>) =
+            sqlx::query_as("select user_id, wrapped_ark from key_bundles")
+                .fetch_one(&db)
+                .await
+                .unwrap();
+        assert_eq!(stored, (user_id.as_uuid(), WRAPPED_ARK.to_vec()));
+    }
+
+    #[sqlx::test]
+    async fn malformed_bundle_creates_nothing_and_keeps_the_invite(db: PgPool) {
+        let code = create_invite(&db).await;
+        let input = started_with(&db, &invite_only(), Some(&code), UserId::random(), "ada").await;
+        let input = FinishRegistration {
+            key_bundle: KeyBundle {
+                wrapped_ark: SealedBlob::from_bytes(&[7; 59]).unwrap(),
+            },
+            ..input
+        };
+
+        let err = finish(&db, &token_issuer(), input).await.err().unwrap();
+
+        assert!(matches!(err, FinishError::InvalidKeyBundle(_)), "{err:?}");
+        assert_eq!(user_count(&db).await, (0, 0, 0, 1));
+        assert_eq!(count(&db, "key_bundles").await, 0);
+        assert_eq!(count(&db, "invites").await, 1);
+    }
+
+    /// Spec §14: "If any step fails, nothing commits and the invite stays open."
+    #[sqlx::test]
+    async fn failed_bundle_write_commits_nothing(db: PgPool) {
+        let code = create_invite(&db).await;
+        let input = started_with(&db, &invite_only(), Some(&code), UserId::random(), "ada").await;
+        reject_bundle_writes(&db).await;
+
+        let err = finish(&db, &token_issuer(), input).await.err().unwrap();
+
+        assert!(matches!(err, FinishError::Db(_)), "{err:?}");
+        assert_eq!(user_count(&db).await, (0, 0, 0, 1));
+        assert_eq!(count(&db, "key_bundles").await, 0);
+        assert_eq!(count(&db, "sessions").await, 0);
+        assert_eq!(count(&db, "invites").await, 1);
     }
 
     #[sqlx::test]
@@ -188,6 +257,7 @@ mod tests {
             .unwrap(),
             device_info: device_info(),
             jkt: JKT,
+            key_bundle: key_bundle(),
         };
         finish(&db, &token_issuer(), input).await.unwrap();
 
@@ -196,6 +266,7 @@ mod tests {
         assert!(matches!(err, FinishError::Expired), "{err:?}");
         assert_eq!(user_count(&db).await, (1, 1, 1, 0));
         assert_eq!(count(&db, "sessions").await, 1);
+        assert_eq!(count(&db, "key_bundles").await, 1);
     }
 
     #[sqlx::test]

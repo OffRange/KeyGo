@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into key_bundles (user_id, wrapped_ark) values ($1, $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "afec0fb1d3468cc2db852ddb984ef5a6d3556ea91ceb8974b2b5219c1463f30f"
+}

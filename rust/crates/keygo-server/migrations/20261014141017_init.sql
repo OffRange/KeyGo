@@ -5,6 +5,13 @@ create table users
     created_at timestamptz not null default now()
 );
 
+create table key_bundles
+(
+    user_id     uuid primary key references users on delete cascade,
+    wrapped_ark bytea       not null, -- nonce ‖ ct, 60 B
+    updated_at  timestamptz not null default now()
+);
+
 create table devices
 (
     id           uuid primary key,

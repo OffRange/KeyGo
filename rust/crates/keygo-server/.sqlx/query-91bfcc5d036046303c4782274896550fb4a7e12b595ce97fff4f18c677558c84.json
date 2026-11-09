@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select wrapped_ark from key_bundles where user_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "wrapped_ark",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "key_bundles",
+            "name": "wrapped_ark"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "91bfcc5d036046303c4782274896550fb4a7e12b595ce97fff4f18c677558c84"
+}

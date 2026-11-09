@@ -2,7 +2,7 @@ use crate::api::dpop::SingleUseDpopProof;
 use crate::api::routes::auth::handshake::StartResponse;
 use crate::api::routes::auth::session::Session;
 use crate::api::{AppState, Json, ServerResult};
-use crate::domain::{DeviceClaim, LoginId, UserId, Username};
+use crate::domain::{DeviceClaim, KeyBundle, LoginId, UserId, Username};
 use crate::service::login::{self, FinishLogin, StartLogin};
 use axum::Router;
 use axum::extract::State;
@@ -49,6 +49,7 @@ struct FinishRequest {
 struct FinishResponse {
     user_id: UserId,
     username: Username,
+    key_bundle: KeyBundle,
     session: Session,
 }
 
@@ -71,6 +72,7 @@ async fn finish(
     Ok(Json(FinishResponse {
         user_id: finished.user_id,
         username: finished.username,
+        key_bundle: finished.key_bundle,
         session: finished.session.into(),
     }))
 }
@@ -79,8 +81,8 @@ async fn finish(
 mod tests {
     use super::*;
     use crate::testing::{
-        PASSWORD, app_state, count, device_json, post_to, post_with_proof, proof_post, prover,
-        register, replayable_post, send,
+        PASSWORD, app_state, count, device_json, key_bundle_json, post_to, post_with_proof,
+        proof_post, prover, register, replayable_post, send,
     };
     use axum::http::StatusCode;
     use keygo_opaque::CredentialResponse;
@@ -135,6 +137,7 @@ mod tests {
         assert_eq!(status, StatusCode::OK);
         assert_eq!(finished["user_id"], user_id.as_uuid().to_string());
         assert_eq!(finished["username"], "ada");
+        assert_eq!(finished["key_bundle"], key_bundle_json());
         assert_eq!(state.login_states.count(), 0);
     }
 

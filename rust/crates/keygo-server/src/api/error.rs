@@ -1,4 +1,4 @@
-use crate::domain::UsernameError;
+use crate::domain::{InvalidBlob, UsernameError};
 use axum::extract::rejection::JsonRejection;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
@@ -137,6 +137,12 @@ impl HttpError for JsonRejection {
     }
 }
 
+impl HttpError for InvalidBlob {
+    fn code(&self) -> ErrorCode {
+        ErrorCode::InvalidRequest
+    }
+}
+
 impl HttpError for UsernameError {
     fn code(&self) -> ErrorCode {
         ErrorCode::InvalidUsername
@@ -190,6 +196,14 @@ mod tests {
     #[tokio::test]
     async fn malformed_opaque_messages_are_invalid_requests() {
         let (status, body) = render(OpaqueError::Malformed).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["code"], "invalid_request");
+    }
+
+    #[tokio::test]
+    async fn invalid_blobs_are_invalid_requests() {
+        let (status, body) = render(InvalidBlob).await;
 
         assert_eq!(status, StatusCode::BAD_REQUEST);
         assert_eq!(body["code"], "invalid_request");

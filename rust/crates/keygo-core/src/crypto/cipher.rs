@@ -1,4 +1,4 @@
-use crate::{KEY_LEN, NONCE_LEN, Sealed};
+use crate::{KEY_LEN, NONCE_LEN, Sealed, TAG_LEN};
 use aead::array::typenum::Unsigned;
 use aead::{Aead, AeadCore, Generate, KeyInit, KeySizeUser, Nonce, Payload};
 use aes_gcm_siv::Aes256GcmSiv;
@@ -10,6 +10,7 @@ pub type CipherKey = aead::Key<Cipher>;
 // `sealed.rs` is compiled without the cipher, so it cannot ask it for these.
 const _: () = assert!(KEY_LEN == <<Cipher as KeySizeUser>::KeySize as Unsigned>::USIZE);
 const _: () = assert!(NONCE_LEN == <<Cipher as AeadCore>::NonceSize as Unsigned>::USIZE);
+const _: () = assert!(TAG_LEN == <<Cipher as AeadCore>::TagSize as Unsigned>::USIZE);
 
 impl<T: ?Sized> Sealed<T> {
     pub(crate) fn seal(key: &CipherKey, plaintext: &[u8], aad: &[u8]) -> Result<Self, aead::Error> {
