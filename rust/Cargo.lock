@@ -1599,13 +1599,17 @@ version = "0.1.0"
 dependencies = [
  "base64 0.23.1",
  "getrandom 0.4.3",
+ "hex",
+ "keygo-api",
  "keygo-core",
  "serde",
  "serde_json",
+ "sha2 0.11.1",
  "thiserror",
  "unicode-normalization",
  "unicode-properties",
  "uuid",
+ "zeroize",
 ]
 
 [[package]]

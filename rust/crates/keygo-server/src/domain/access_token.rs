@@ -1,4 +1,4 @@
-use crate::domain::{SessionId, UserId, unix_now};
+use crate::domain::{AccessToken, SessionId, UserId, unix_now};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use ed25519_dalek::{Signature, Signer, SigningKey};
@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::time::Duration;
 use thiserror::Error;
-use zeroize::{Zeroize, ZeroizeOnDrop};
 
 pub const ACCESS_TOKEN_LIFETIME: Duration = Duration::from_mins(10);
 pub const FRESH_AUTH_WINDOW: Duration = Duration::from_mins(5);
@@ -101,9 +100,6 @@ struct Header {
     kid: String,
 }
 
-#[derive(Serialize, Zeroize, ZeroizeOnDrop)]
-pub struct AccessToken(String);
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
 pub enum TokenError {
     #[error("token is not a well-formed access token")]
@@ -168,13 +164,6 @@ impl Claims {
     }
 }
 
-impl AccessToken {
-    #[cfg(test)]
-    pub(crate) fn expose(&self) -> &str {
-        &self.0
-    }
-}
-
 impl AccessTokenKey {
     pub fn new(seed: &[u8; 32]) -> Self {
         let signing = SigningKey::from_bytes(seed);
@@ -194,7 +183,7 @@ impl AccessTokenKey {
         let input = format!("{}.{}", encode(&header), encode(claims));
         let signature = self.signing.sign(input.as_bytes());
 
-        AccessToken(format!(
+        AccessToken::from_signed(format!(
             "{input}.{}",
             URL_SAFE_NO_PAD.encode(signature.to_bytes())
         ))
