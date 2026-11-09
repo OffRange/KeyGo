@@ -8,9 +8,17 @@ name = "keygo_bindings"
 crate-type = ["cdylib"]
 
 [dependencies]
+keygo-api = { path = "../keygo-api" }
 keygo-client = { path = "../keygo-client" }
 thiserror.workspace = true
 uuid.workspace = true
+zeroize.workspace = true
 
+async-trait = "0.1.89"
 tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
 uniffi = { workspace = true, features = ["tokio"] }
+url = "2.5.8"
+
+[dev-dependencies]
+keygo-client = { path = "../keygo-client", features = ["test-support"] }
+tokio = { workspace = true, features = ["macros", "sync", "time"] }
