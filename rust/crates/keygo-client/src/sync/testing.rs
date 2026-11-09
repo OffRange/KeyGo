@@ -92,6 +92,10 @@ impl FakeTokenStore {
         self.fail_saves.store(true, Ordering::SeqCst);
     }
 
+    pub fn allow_saves(&self) {
+        self.fail_saves.store(false, Ordering::SeqCst);
+    }
+
     pub fn fail_clears(&self) {
         self.fail_clears.store(true, Ordering::SeqCst);
     }

@@ -255,3 +255,15 @@ async fn client_logout_ends_the_session_on_the_server(db: PgPool) {
     .await;
     assert!(!status.is_success(), "{status}");
 }
+
+#[sqlx::test(migrations = "../keygo-server/migrations")]
+async fn refused_save_does_not_trip_reuse_detection(db: PgPool) {
+    let h = harness(&db).await;
+    h.store.fail_saves();
+
+    h.client.devices().await.unwrap();
+    h.clock.advance(601);
+    h.client.devices().await.unwrap();
+
+    assert_eq!(h.store.current_refresh_token().unwrap(), h.seed_token);
+}

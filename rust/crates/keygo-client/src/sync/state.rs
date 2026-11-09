@@ -1,3 +1,4 @@
+use super::tokens::StoredSession;
 use keygo_api::domain::AccessToken;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -16,6 +17,9 @@ pub(super) struct AuthState {
     /// Changes whenever `access` does. A call remembers the value its token came with, so when
     /// that token is rejected it can tell whether someone has already replaced it.
     pub(super) generation: u64,
+    /// A rotated session the store has not accepted yet. While this is set the store still holds
+    /// the spent token, which the server would treat as reuse, so this copy wins over the store.
+    pub(super) unsaved: Option<StoredSession>,
 }
 
 impl AuthState {
@@ -34,6 +38,7 @@ impl AuthState {
     pub(super) fn reset(&mut self) {
         self.access = None;
         self.nonce = None;
+        self.unsaved = None;
         self.generation += 1;
     }
 }

@@ -182,24 +182,37 @@ impl SyncClient {
         self.tokens.clear().await
     }
 
-    /// Spends the stored refresh token on a new session and returns the new access token. `state`
+    /// Writes a rotated session the store refused. Another refusal is not the caller's failure:
+    /// the copy in `state` stays the live one, and the next call writes it again.
+    async fn flush_unsaved(&self, state: &mut AuthState) {
+        let Some(unsaved) = &state.unsaved else {
+            return;
+        };
+        if self.tokens.save(unsaved.duplicate()).await.is_ok() {
+            state.unsaved = None;
+        }
+    }
+
+    /// Spends the live refresh token on a new session and returns the new access token. `state`
     /// is the locked `AuthState`, held for the whole refresh so concurrent callers share its
     /// result. It goes straight to `exchange`, because `call` would take the lock again.
     ///
-    /// The rotated token is saved before the access token is kept. Nothing is kept if that save
-    /// fails, or if the caller is dropped before it returns: `access` and `generation` change
-    /// only after the last `await`.
+    /// The rotated session goes into `state` before it is written, so neither a refused save nor
+    /// a caller dropped during the write can lose the only copy of the live token.
     async fn refresh_locked(&self, state: &mut AuthState) -> SyncResult<Zeroizing<String>> {
-        let stored = self
-            .tokens
-            .load()
-            .await
-            .map_err(store_failure)?
-            .ok_or(SyncError::SignedOut { reason: None })?;
-
-        let request = TokenRequest {
-            refresh_token: stored.refresh_token,
+        let refresh_token = match &state.unsaved {
+            Some(unsaved) => unsaved.duplicate().refresh_token,
+            None => {
+                self.tokens
+                    .load()
+                    .await
+                    .map_err(store_failure)?
+                    .ok_or(SyncError::SignedOut { reason: None })?
+                    .refresh_token
+            }
         };
+
+        let request = TokenRequest { refresh_token };
         // Not `encode_body`: this body is a secret and should not linger in a `Value`.
         let body = Zeroizing::new(serde_json::to_vec(&request).map_err(|e| SyncError::Client {
             message: format!("request does not serialize: {e}"),
@@ -229,14 +242,12 @@ impl SyncClient {
         let body = Zeroizing::new(response.body);
         let session: Session = decode_body(&body)?;
 
-        self.tokens
-            .save(StoredSession {
-                device_id: session.device_id,
-                refresh_token: session.refresh_token,
-                refresh_expires_at: now.saturating_add(session.refresh_expires_in),
-            })
-            .await
-            .map_err(store_failure)?;
+        state.unsaved = Some(StoredSession {
+            device_id: session.device_id,
+            refresh_token: session.refresh_token,
+            refresh_expires_at: now.saturating_add(session.refresh_expires_in),
+        });
+        self.flush_unsaved(state).await;
 
         let token = Zeroizing::new(session.access.access_token.expose().to_owned());
         state.replace_access(AccessState {
@@ -251,6 +262,7 @@ impl SyncClient {
     /// network, never the request itself.
     async fn access_token(&self) -> SyncResult<(Zeroizing<String>, u64, Option<String>)> {
         let mut state = self.auth.lock().await;
+        self.flush_unsaved(&mut state).await;
         let now = self.clock.now_secs();
         let live = state.access().filter(|access| now < access.expires_at);
         let token = match live {
@@ -783,23 +795,82 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn failed_save_is_returned_and_the_token_is_not_used() {
+    async fn failed_save_still_uses_the_rotated_token() {
         let h = seeded();
         h.store.fail_saves();
         h.transport.push(200, &[], &session("a.b.c"));
+        h.transport.push(200, &[], DEVICES);
 
-        let error = h.client.devices().await.unwrap_err();
+        h.client.devices().await.unwrap();
 
-        assert!(matches!(error, SyncError::Client { .. }));
-        assert_eq!(h.transport.requests().len(), 1);
+        let requests = h.transport.requests();
+        assert_eq!(requests.len(), 2);
+        assert_eq!(header(&requests[1], "authorization"), Some("DPoP a.b.c"));
+        assert_eq!(h.stored_refresh_token().as_deref(), Some(OLD_REFRESH));
+    }
 
-        // The token was not kept for later either: the next call has to refresh again.
+    #[tokio::test]
+    async fn failed_save_is_retried_on_the_next_call() {
+        let h = seeded();
+        h.store.fail_saves();
         h.transport.push(200, &[], &session("a.b.c"));
-        let error = h.client.devices().await.unwrap_err();
+        h.transport.push(200, &[], DEVICES);
+        h.client.devices().await.unwrap();
 
-        assert!(matches!(error, SyncError::Client { .. }));
-        assert_eq!(h.token_requests(), 2);
-        assert_eq!(h.transport.requests().len(), 2);
+        h.store.allow_saves();
+        h.transport.push(200, &[], DEVICES);
+        h.client.devices().await.unwrap();
+
+        assert_eq!(h.token_requests(), 1);
+        assert_eq!(h.stored_refresh_token().as_deref(), Some(ROTATED_REFRESH));
+    }
+
+    #[tokio::test]
+    async fn refresh_after_a_failed_save_spends_the_rotated_token() {
+        let h = seeded();
+        h.store.fail_saves();
+        h.transport.push(200, &[], &session("a.b.c"));
+        h.transport.push(200, &[], DEVICES);
+        h.client.devices().await.unwrap();
+
+        h.clock.advance(601);
+        h.transport.push(200, &[], &session("d.e.f"));
+        h.transport.push(200, &[], DEVICES);
+        h.client.devices().await.unwrap();
+
+        let requests = h.transport.requests();
+        let body: Value = serde_json::from_slice(&requests[2].body).unwrap();
+        assert_eq!(body, json!({"refresh_token": ROTATED_REFRESH}));
+        assert_eq!(header(&requests[3], "authorization"), Some("DPoP d.e.f"));
+    }
+
+    #[tokio::test]
+    async fn concurrent_callers_share_a_token_the_store_refused() {
+        let h = seeded();
+        h.store.fail_saves();
+        h.transport.push(200, &[], &session("a.b.c"));
+        h.transport.push(200, &[], DEVICES);
+        h.transport.push(200, &[], DEVICES);
+
+        let (first, second) = tokio::join!(h.client.devices(), h.client.devices());
+
+        first.unwrap();
+        second.unwrap();
+        assert_eq!(h.token_requests(), 1);
+    }
+
+    #[tokio::test]
+    async fn signing_out_forgets_a_token_the_store_refused() {
+        let h = seeded();
+        h.store.fail_saves();
+        h.transport.push(200, &[], &session("a.b.c"));
+        h.transport.push(200, &[], DEVICES);
+        h.client.devices().await.unwrap();
+
+        h.transport.push(401, &[], &revoked_body("reuse_detected"));
+        h.client.devices().await.unwrap_err();
+
+        h.assert_signed_out_locally().await;
     }
 
     #[tokio::test]
