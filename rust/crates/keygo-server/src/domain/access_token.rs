@@ -370,7 +370,7 @@ mod tests {
         let claims = Claims::new_at(
             String::new(),
             UserId::from(uuid::Uuid::nil()),
-            SessionId::nil(),
+            SessionId::from(uuid::Uuid::nil()),
             0,
             &JKT,
             1_000,
@@ -386,7 +386,7 @@ mod tests {
             Claims::new_at(
                 String::new(),
                 UserId::from(uuid::Uuid::nil()),
-                SessionId::nil(),
+                SessionId::from(uuid::Uuid::nil()),
                 0,
                 &JKT,
                 0,
@@ -550,7 +550,7 @@ mod tests {
         let claims = Claims::new_at(
             String::new(),
             UserId::from(uuid::Uuid::nil()),
-            SessionId::nil(),
+            SessionId::from(uuid::Uuid::nil()),
             1_000,
             &JKT,
             1_000,
@@ -567,7 +567,7 @@ mod tests {
         let token = key.sign(&Claims::new_at(
             ISS.into(),
             UserId::from(uuid::Uuid::nil()),
-            SessionId::nil(),
+            SessionId::from(uuid::Uuid::nil()),
             unix_now(),
             &JKT,
             unix_now(),
@@ -598,7 +598,7 @@ mod tests {
         let key = || AccessTokenKey::new(&SEED);
         let token = TokenIssuer::new(key(), "https://other.example").issue(
             UserId::from(uuid::Uuid::nil()),
-            SessionId::nil(),
+            SessionId::from(uuid::Uuid::nil()),
             unix_now(),
             &JKT,
         );
@@ -616,7 +616,7 @@ mod tests {
 
         let token = issuer.issue(
             UserId::from(uuid::Uuid::nil()),
-            SessionId::nil(),
+            SessionId::from(uuid::Uuid::nil()),
             auth_time,
             &JKT,
         );

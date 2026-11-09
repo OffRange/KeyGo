@@ -1597,8 +1597,15 @@ dependencies = [
 name = "keygo-api"
 version = "0.1.0"
 dependencies = [
+ "base64 0.23.1",
+ "getrandom 0.4.3",
+ "keygo-core",
  "serde",
  "serde_json",
+ "thiserror",
+ "unicode-normalization",
+ "unicode-properties",
+ "uuid",
 ]
 
 [[package]]
@@ -1710,8 +1717,6 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
- "unicode-normalization",
- "unicode-properties",
  "url",
  "uuid",
  "zeroize",

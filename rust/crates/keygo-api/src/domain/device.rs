@@ -1,5 +1,5 @@
-use super::DeviceId;
 use super::string_enum::string_enum;
+use keygo_core::DeviceId;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use unicode_properties::{GeneralCategory, UnicodeGeneralCategory};
@@ -113,7 +113,7 @@ pub struct DeviceInfo {
     pub app_version: AppVersion,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DeviceClaim {
     #[serde(rename = "device_id")]
     pub id: Option<DeviceId>,
@@ -121,7 +121,7 @@ pub struct DeviceClaim {
     pub info: DeviceInfo,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Device {
     pub id: DeviceId,
     #[serde(flatten)]

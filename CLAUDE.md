@@ -199,8 +199,9 @@ Caddy as TLS proxy; `.env.example` sets `DOMAIN` and signups).
   multiple statements.
 - **Trailing commas** on multi-line parameter lists and collection literals.
 - **Rust constructors** — ids are made with `random()`, secret material (keys, tokens, codes) with
-  `generate()`. Ids the client and server share live in `keygo-core`; server-only ids come from the
-  `random_id!`/`uuid_id!` macros in `domain/ids.rs`.
+  `generate()`. Ids the client and server share live in `keygo-core`; the wire handles `LoginId`
+  and `RegistrationId` come from `random_id!` in `keygo-api`, and their `random()` needs its
+  `server` feature. Server-only ids stay in `keygo-server`.
 
 ## Testing
 

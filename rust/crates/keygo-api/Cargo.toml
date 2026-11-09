@@ -4,8 +4,20 @@ description = "KeyGo sync API wire types, shared by the server and the client."
 version.workspace = true
 edition.workspace = true
 
+[features]
+server = ["dep:getrandom"]
+
 [dependencies]
+keygo-core = { path = "../keygo-core" }
+
 serde = { workspace = true, features = ["derive"] }
+thiserror.workspace = true
+uuid.workspace = true
+base64.workspace = true
+getrandom = { workspace = true, optional = true }
+unicode-normalization = "0.1.25"
+unicode-properties = { version = "0.1.4", default-features = false, features = ["general-category"] }
 
 [dev-dependencies]
+getrandom.workspace = true
 serde_json.workspace = true

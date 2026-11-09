@@ -25,4 +25,19 @@ macro_rules! id {
     };
 }
 
-id!(UserId, VaultId, ItemId, NamespaceId);
+id!(UserId, VaultId, ItemId, NamespaceId, DeviceId, SessionId);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn device_id_travels_as_the_uuids_string_form() {
+        let id = DeviceId::from(Uuid::nil());
+
+        assert_eq!(
+            serde_json::to_value(id).unwrap(),
+            "00000000-0000-0000-0000-000000000000"
+        );
+    }
+}

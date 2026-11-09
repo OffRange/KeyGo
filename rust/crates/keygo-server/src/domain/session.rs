@@ -1,4 +1,3 @@
-use super::string_enum::string_enum;
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -16,14 +15,6 @@ const PREFIX: &str = "kgr_";
 const TOKEN_BYTES: usize = 32;
 const ENCODED_LEN: usize = PREFIX.len()
     + base64::encoded_len(TOKEN_BYTES, false).expect("encoded length can be represented by usize");
-
-string_enum! {
-    pub enum RevokeReason {
-        Replaced => "replaced",
-        ReuseDetected => "reuse_detected",
-        Logout => "logout",
-    }
-}
 
 #[derive(Zeroize, ZeroizeOnDrop)]
 pub struct RefreshToken([u8; TOKEN_BYTES]);
@@ -135,14 +126,6 @@ mod tests {
             serde_json::to_value(&token).unwrap(),
             token.expose_encoded().as_str(),
         );
-    }
-
-    #[test]
-    fn revoke_reason_round_trips_its_stored_name() {
-        for &reason in RevokeReason::ALL {
-            assert_eq!(reason.as_str().parse::<RevokeReason>().unwrap(), reason);
-        }
-        assert!("logout_typo".parse::<RevokeReason>().is_err());
     }
 
     #[test]
