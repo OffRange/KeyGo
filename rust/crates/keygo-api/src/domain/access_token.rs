@@ -9,7 +9,7 @@ impl AccessToken {
         &self.0
     }
 
-    #[cfg(feature = "server")]
+    #[cfg(any(test, feature = "server"))]
     pub fn from_signed(token: String) -> Self {
         Self(token)
     }

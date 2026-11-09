@@ -21,7 +21,6 @@ unicode-normalization = "0.1.25"
 unicode-properties = { version = "0.1.4", default-features = false, features = ["general-category"] }
 
 [dev-dependencies]
-keygo-api = { path = ".", features = ["server"] }
 getrandom.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

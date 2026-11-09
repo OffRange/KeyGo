@@ -2,7 +2,7 @@ use super::string_enum::string_enum;
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-#[cfg(feature = "server")]
+#[cfg(any(test, feature = "server"))]
 use sha2::{Digest, Sha256};
 use std::str::FromStr;
 use thiserror::Error;
@@ -25,7 +25,7 @@ const ENCODED_LEN: usize = PREFIX.len()
 pub struct RefreshToken([u8; TOKEN_BYTES]);
 
 impl RefreshToken {
-    #[cfg(feature = "server")]
+    #[cfg(any(test, feature = "server"))]
     pub fn generate() -> Self {
         let mut token = [0u8; TOKEN_BYTES];
         getrandom::fill(token.as_mut_slice()).expect("OS random number generator unavailable");
@@ -39,7 +39,7 @@ impl RefreshToken {
         out
     }
 
-    #[cfg(feature = "server")]
+    #[cfg(any(test, feature = "server"))]
     pub fn digest(&self) -> [u8; TOKEN_BYTES] {
         Sha256::digest(self.0).into()
     }

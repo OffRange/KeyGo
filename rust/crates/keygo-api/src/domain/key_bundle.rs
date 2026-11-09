@@ -1,4 +1,4 @@
-use super::SealedBlob;
+use crate::domain::SealedBlob;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
