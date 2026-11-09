@@ -65,6 +65,7 @@ Rust workspace (`rust/`, toolchain pinned in `rust-toolchain.toml`, edition 2024
 | Crate           | Purpose                                                                       |
 |-----------------|-------------------------------------------------------------------------------|
 | `keygo-core`    | Key hierarchy, ids, `Sealed<T>`, shared by client and server. Crypto sits behind the `crypto` feature; the server must leave it off, so it can store wrapped keys but never hold one |
+| `keygo-api`     | Sync API wire types (requests, responses, ids, tokens, `ErrorCode`) and the endpoint table, shared by server and client; no HTTP stack. JSON shapes are wire identity, pinned by `tests/wire.rs` |
 | `keygo-client`  | App-only: ARK session, passkeys, TOTP, backup format, card formatting. The server must not depend on it. `keygo_client::crypto` re-exports `keygo-core` |
 | `keygo-uniffi`  | UniFFI bindings exposing `keygo-client` to Kotlin (`libkeygo_bindings.so`)    |
 | `keygo-opaque`  | OPAQUE (opaque-ke, ristretto255 + Argon2) client/server wrapper, `forbid(unsafe_code)` |
