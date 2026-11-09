@@ -115,6 +115,7 @@ squareup-kotlinpoet = { group = "com.squareup", name = "kotlinpoet-ksp", version
 
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okhttp-jvm = { group = "com.squareup.okhttp3", name = "okhttp-jvm", version.ref = "okhttp" }
+okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver3", version.ref = "okhttp" }
 
 gosimple-nbvcxz = { group = "me.gosimple", name = "nbvcxz", version.ref = "nbvcxz" }
 

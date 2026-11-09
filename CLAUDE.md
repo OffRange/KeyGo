@@ -47,6 +47,7 @@ Android password manager using Clean Architecture per module:
 | `:core:identity`         | Key wrapping, auth data, proto schemas (`core/identity/src/main/proto/`) |
 | `:core:item`             | Room database, login/item entities                                       |
 | `:core:ui`               | Shared composables and UI utilities                                      |
+| `:core:sync`             | OkHttp `HttpTransport` for the Rust `SyncClient`                         |
 | `:core:util`             | Shared utilities, `Result` type                                          |
 | `:feature:auth`          | Auth/session flow (login gate, biometric prompt routing)                 |
 | `:feature:autofill`      | Android autofill service (framework + Chrome/inline datasets)            |
