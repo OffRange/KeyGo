@@ -1,26 +1,17 @@
 use crate::api::dpop::SingleUseDpopProof;
-use crate::api::routes::auth::handshake::StartResponse;
-use crate::api::routes::auth::session::Session;
 use crate::api::{AppState, Json, ServerResult};
-use crate::domain::{DeviceClaim, KeyBundle, LoginId, UserId, Username};
+use crate::domain::Username;
 use crate::service::login::{self, FinishLogin, StartLogin};
 use axum::Router;
 use axum::extract::State;
 use axum::routing::post;
-use keygo_opaque::{CredentialFinalization, CredentialRequest, DpopBinding};
-use serde::{Deserialize, Serialize};
+use keygo_api::auth::handshake::StartResponse;
+use keygo_api::auth::login::{FinishRequest, FinishResponse, StartRequest};
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/start", post(start))
         .route("/finish", post(finish))
-}
-
-#[derive(Deserialize)]
-struct StartRequest {
-    /// Parsed in the handler so a bad name answers `invalid_username`, not `invalid_request`.
-    username: String,
-    credential_request: CredentialRequest,
 }
 
 async fn start(
@@ -35,22 +26,6 @@ async fn start(
     let started = login::start(&state.db, &state.login_states, &state.opaque_state, input).await?;
 
     Ok(Json(started.into()))
-}
-
-#[derive(Deserialize)]
-struct FinishRequest {
-    login_id: LoginId,
-    credential_finalization: CredentialFinalization,
-    device: DeviceClaim,
-    dpop_binding: DpopBinding,
-}
-
-#[derive(Serialize)]
-struct FinishResponse {
-    user_id: UserId,
-    username: Username,
-    key_bundle: KeyBundle,
-    session: Session,
 }
 
 async fn finish(
@@ -80,6 +55,7 @@ async fn finish(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::LoginId;
     use crate::testing::{
         PASSWORD, app_state, count, device_json, key_bundle_json, post_to, post_with_proof,
         proof_post, prover, register, replayable_post, send,

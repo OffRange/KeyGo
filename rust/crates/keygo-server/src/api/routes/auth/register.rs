@@ -1,35 +1,17 @@
 use crate::api::dpop::SingleUseDpopProof;
-use crate::api::routes::auth::session::Session;
 use crate::api::{AppState, ErrorCode, HttpError, Json, ServerResult};
-use crate::domain::{DeviceInfo, KeyBundle, RegistrationId, UserId, Username};
+use crate::domain::Username;
 use crate::service::registration::{self, FinishRegistration, StartRegistration};
 use axum::Router;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::routing::post;
-use keygo_opaque::{RegistrationRequest, RegistrationResponse, RegistrationUpload};
-use serde::{Deserialize, Serialize};
+use keygo_api::auth::register::{FinishRequest, FinishResponse, StartRequest, StartResponse};
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/start", post(start))
         .route("/finish", post(finish))
-}
-
-#[derive(Deserialize)]
-struct StartRequest {
-    /// Parsed in the handler so a bad name answers `invalid_username`, not `invalid_request`.
-    username: String,
-    user_id: UserId,
-    invite: Option<String>,
-    registration_request: RegistrationRequest,
-}
-
-#[derive(Serialize)]
-struct StartResponse {
-    registration_id: RegistrationId,
-    registration_response: RegistrationResponse,
-    expires_in: u64,
 }
 
 impl HttpError for registration::StartError {
@@ -65,20 +47,6 @@ async fn start(
         registration_response: started.registration_response,
         expires_in: started.expires_in.as_secs(),
     }))
-}
-
-#[derive(Deserialize)]
-struct FinishRequest {
-    registration_id: RegistrationId,
-    registration_upload: RegistrationUpload,
-    key_bundle: KeyBundle,
-    device: DeviceInfo,
-}
-
-#[derive(Serialize)]
-struct FinishResponse {
-    username: Username,
-    session: Session,
 }
 
 impl HttpError for registration::FinishError {
@@ -120,12 +88,14 @@ async fn finish(
 mod tests {
     use super::*;
     use crate::api::error::render;
+    use crate::domain::{RegistrationId, UserId};
     use crate::testing::{
         WRAPPED_ARK, app_state, count, create_invite, device_json, invite_only, key_bundle_json,
         post, post_to, post_with_proof, proof_post, prover, register, replayable_post, send,
     };
     use base64::Engine;
     use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+    use keygo_opaque::RegistrationResponse;
     use keygo_opaque::client::ClientRegistration;
     use keygo_opaque::server::ServerSetup;
     use serde_json::{Value, json};

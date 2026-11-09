@@ -1,18 +1,13 @@
 use crate::api::dpop::SingleUseDpopProof;
-use crate::api::routes::auth::session::Session;
 use crate::api::{AppState, ErrorCode, HttpError, Json, ServerResult};
-use crate::domain::{RefreshToken, RevokeReason};
+use crate::domain::RevokeReason;
 use crate::service::session;
 use crate::service::session::RefreshError;
 use axum::Router;
 use axum::extract::State;
 use axum::routing::post;
-use serde::Deserialize;
-
-#[derive(Deserialize)]
-pub struct TokenRequest {
-    refresh_token: RefreshToken,
-}
+use keygo_api::auth::Session;
+use keygo_api::auth::token::TokenRequest;
 
 impl HttpError for RefreshError {
     fn code(&self) -> ErrorCode {

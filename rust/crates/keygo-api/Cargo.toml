@@ -9,6 +9,7 @@ server = ["dep:getrandom", "dep:sha2"]
 
 [dependencies]
 keygo-core = { path = "../keygo-core" }
+keygo-opaque = { path = "../keygo-opaque" }
 
 serde = { workspace = true, features = ["derive"] }
 thiserror.workspace = true

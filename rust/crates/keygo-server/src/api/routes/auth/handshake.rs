@@ -1,8 +1,6 @@
 use crate::api::{ErrorCode, HttpError};
-use crate::domain::LoginId;
 use crate::service::handshake;
-use keygo_opaque::CredentialResponse;
-use serde::Serialize;
+use keygo_api::auth::handshake::StartResponse;
 
 // Sign-in and step-up run the same OPAQUE login, so they share its error codes and bodies.
 impl HttpError for handshake::Error {
@@ -13,13 +11,6 @@ impl HttpError for handshake::Error {
             Self::Db(_) => ErrorCode::Internal,
         }
     }
-}
-
-#[derive(Serialize)]
-pub struct StartResponse {
-    login_id: LoginId,
-    credential_response: CredentialResponse,
-    expires_in: u64,
 }
 
 impl From<handshake::Started> for StartResponse {
