@@ -1,8 +1,11 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-/// What the client remembers between calls. Later tasks add the nonce and the access token.
+/// What the client remembers between calls. Later tasks add the access token.
 #[derive(Default)]
-pub(super) struct AuthState {}
+pub(super) struct AuthState {
+    /// The last `DPoP-Nonce` the server sent.
+    pub(super) nonce: Option<String>,
+}
 
 pub trait Clock: Send + Sync {
     fn now_secs(&self) -> u64;

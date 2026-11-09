@@ -10,13 +10,15 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use url::Url;
 
-// The proof, token, clock and auth state are used by the authenticated paths added later.
-#[allow(dead_code)]
 pub struct SyncClient {
     pub(super) base_url: Url,
     pub(super) transport: Arc<dyn Transport>,
     pub(super) prover: DpopProver<ForeignSigner>,
+    // Used by the access token path (Task 9).
+    #[allow(dead_code)]
     pub(super) tokens: Arc<dyn TokenStore>,
+    // Used by the access token path (Task 9).
+    #[allow(dead_code)]
     pub(super) clock: Arc<dyn Clock>,
     pub(super) auth: Mutex<AuthState>,
 }
