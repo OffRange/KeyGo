@@ -182,8 +182,8 @@ impl SyncClient {
         self.tokens.clear().await
     }
 
-    /// Writes a rotated session the store refused. Another refusal is not the caller's failure:
-    /// the copy in `state` stays the live one, and the next call writes it again.
+    /// Writes the rotated session held in `state`, if any. A refusal is not the caller's failure:
+    /// `state` keeps the live copy and the next call writes it again.
     async fn flush_unsaved(&self, state: &mut AuthState) {
         let Some(unsaved) = &state.unsaved else {
             return;
@@ -375,12 +375,14 @@ mod tests {
     use super::super::client::SyncClient;
     use super::super::signer::{DpopKey, SignError};
     use super::super::testing::{FakeDpopKey, FakeTokenStore, FakeTransport, FixedClock};
+    use super::super::tokens::TokenStore;
     use base64::Engine;
     use base64::engine::general_purpose::URL_SAFE_NO_PAD;
     use keygo_api::domain::RevokeReason;
     use keygo_core::DeviceId;
     use serde_json::{Value, json};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
     use url::Url;
 
     const SESSION: &str = r#"{"device_id":"00000000-0000-0000-0000-000000000001","access_token":"a.b.c","access_expires_in":300,"refresh_token":"kgr___________________________________________8","refresh_expires_in":86400}"#;
@@ -554,17 +556,22 @@ mod tests {
 
     const OLD_REFRESH: &str = "kgr___________________________________________8";
     const ROTATED_REFRESH: &str = "kgr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    const NEXT_REFRESH: &str = "kgr_AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE";
     const DEVICES: &[u8] = br#"{"devices":[]}"#;
     /// Requests `fresh` has already spent.
     const FRESH: usize = 2;
 
     /// A `200` from `/auth/token`.
     fn session(access_token: &str) -> Vec<u8> {
+        session_with(access_token, ROTATED_REFRESH)
+    }
+
+    fn session_with(access_token: &str, refresh_token: &str) -> Vec<u8> {
         serde_json::to_vec(&json!({
             "device_id": "00000000-0000-0000-0000-000000000001",
             "access_token": access_token,
             "access_expires_in": 600,
-            "refresh_token": ROTATED_REFRESH,
+            "refresh_token": refresh_token,
             "refresh_expires_in": 86400,
         }))
         .unwrap()
@@ -601,6 +608,19 @@ mod tests {
 
         fn stored_refresh_token(&self) -> Option<String> {
             self.store.current_refresh_token()
+        }
+
+        /// Every refresh token sent so far, in order.
+        fn spent_tokens(&self) -> Vec<String> {
+            self.transport
+                .requests()
+                .iter()
+                .filter(|r| r.url.ends_with("/api/v1/auth/token"))
+                .map(|r| {
+                    let body: Value = serde_json::from_slice(&r.body).unwrap();
+                    body["refresh_token"].as_str().unwrap().to_owned()
+                })
+                .collect()
         }
 
         async fn assert_signed_out_locally(&self) {
@@ -652,6 +672,40 @@ mod tests {
         harness.transport.push(200, &[], DEVICES);
         harness.client.devices().await.unwrap();
         harness
+    }
+
+    /// Holds a rotated token the store refused, with saves still failing.
+    async fn refused() -> Harness {
+        let harness = seeded();
+        harness.store.fail_saves();
+        harness.transport.push(200, &[], &session("a.b.c"));
+        harness.transport.push(200, &[], DEVICES);
+        harness.client.devices().await.unwrap();
+        harness
+    }
+
+    /// Saves any session it is given, except that while `hang` is set `save` never returns.
+    struct HangingStore {
+        inner: FakeTokenStore,
+        hang: AtomicBool,
+    }
+
+    #[async_trait::async_trait]
+    impl TokenStore for HangingStore {
+        async fn load(&self) -> Result<Option<StoredSession>, TokenStoreError> {
+            self.inner.load().await
+        }
+
+        async fn save(&self, session: StoredSession) -> Result<(), TokenStoreError> {
+            if self.hang.load(Ordering::SeqCst) {
+                std::future::pending::<()>().await;
+            }
+            self.inner.save(session).await
+        }
+
+        async fn clear(&self) -> Result<(), TokenStoreError> {
+            self.inner.clear().await
+        }
     }
 
     #[tokio::test]
@@ -811,11 +865,7 @@ mod tests {
 
     #[tokio::test]
     async fn failed_save_is_retried_on_the_next_call() {
-        let h = seeded();
-        h.store.fail_saves();
-        h.transport.push(200, &[], &session("a.b.c"));
-        h.transport.push(200, &[], DEVICES);
-        h.client.devices().await.unwrap();
+        let h = refused().await;
 
         h.store.allow_saves();
         h.transport.push(200, &[], DEVICES);
@@ -826,22 +876,142 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn refresh_after_a_failed_save_spends_the_rotated_token() {
-        let h = seeded();
-        h.store.fail_saves();
-        h.transport.push(200, &[], &session("a.b.c"));
+    async fn the_store_is_trusted_again_after_a_retry_succeeds() {
+        let h = refused().await;
+        h.store.allow_saves();
         h.transport.push(200, &[], DEVICES);
         h.client.devices().await.unwrap();
+
+        // Only a client that went back to the store can see this entry.
+        h.store.seed(StoredSession {
+            device_id: DeviceId::random(),
+            refresh_token: NEXT_REFRESH.parse().unwrap(),
+            refresh_expires_at: 1_000_000,
+        });
+        h.clock.advance(601);
+        h.transport.push(200, &[], &session("d.e.f"));
+        h.transport.push(200, &[], DEVICES);
+        h.client.devices().await.unwrap();
+
+        assert_eq!(h.spent_tokens(), [OLD_REFRESH, NEXT_REFRESH]);
+    }
+
+    #[tokio::test]
+    async fn refresh_after_a_failed_save_spends_the_rotated_token() {
+        let h = refused().await;
 
         h.clock.advance(601);
         h.transport.push(200, &[], &session("d.e.f"));
         h.transport.push(200, &[], DEVICES);
         h.client.devices().await.unwrap();
 
+        assert_eq!(h.spent_tokens(), [OLD_REFRESH, ROTATED_REFRESH]);
         let requests = h.transport.requests();
-        let body: Value = serde_json::from_slice(&requests[2].body).unwrap();
-        assert_eq!(body, json!({"refresh_token": ROTATED_REFRESH}));
         assert_eq!(header(&requests[3], "authorization"), Some("DPoP d.e.f"));
+    }
+
+    #[tokio::test]
+    async fn a_failed_refresh_keeps_a_token_the_store_refused() {
+        let h = refused().await;
+
+        h.clock.advance(601);
+        h.transport.push_network_error("offline");
+        h.client.devices().await.unwrap_err();
+        h.transport.push(500, &[], &error_body("internal"));
+        h.client.devices().await.unwrap_err();
+        h.transport
+            .push(200, &[], &session_with("d.e.f", NEXT_REFRESH));
+        h.transport.push(200, &[], DEVICES);
+        h.client.devices().await.unwrap();
+
+        assert_eq!(
+            h.spent_tokens(),
+            [
+                OLD_REFRESH,
+                ROTATED_REFRESH,
+                ROTATED_REFRESH,
+                ROTATED_REFRESH,
+            ],
+        );
+    }
+
+    #[tokio::test]
+    async fn a_second_rotation_replaces_a_token_the_store_refused() {
+        let h = refused().await;
+
+        h.clock.advance(601);
+        h.transport
+            .push(200, &[], &session_with("d.e.f", NEXT_REFRESH));
+        h.transport.push(200, &[], DEVICES);
+        h.client.devices().await.unwrap();
+        h.clock.advance(601);
+        h.transport.push(200, &[], &session("g.h.i"));
+        h.transport.push(200, &[], DEVICES);
+        h.client.devices().await.unwrap();
+
+        assert_eq!(
+            h.spent_tokens(),
+            [OLD_REFRESH, ROTATED_REFRESH, NEXT_REFRESH],
+        );
+    }
+
+    #[tokio::test]
+    async fn invalid_token_after_a_failed_save_spends_the_rotated_token() {
+        let h = refused().await;
+
+        h.transport.push(401, &[], &error_body("invalid_token"));
+        h.transport
+            .push(200, &[], &session_with("d.e.f", NEXT_REFRESH));
+        h.transport.push(200, &[], DEVICES);
+        h.client.devices().await.unwrap();
+
+        assert_eq!(h.spent_tokens(), [OLD_REFRESH, ROTATED_REFRESH]);
+    }
+
+    #[tokio::test]
+    async fn a_caller_dropped_during_the_write_keeps_the_rotated_token() {
+        let store = Arc::new(HangingStore {
+            inner: FakeTokenStore::new(),
+            hang: AtomicBool::new(true),
+        });
+        store.inner.seed(StoredSession {
+            device_id: DeviceId::random(),
+            refresh_token: OLD_REFRESH.parse().unwrap(),
+            refresh_expires_at: 1_000_000,
+        });
+        let transport = FakeTransport::new();
+        let client = SyncClient::new(
+            Url::parse("https://kg.example").unwrap(),
+            transport.clone(),
+            Arc::new(FakeDpopKey::new()),
+            store.clone(),
+        )
+        .unwrap()
+        .with_clock(FixedClock::new(1_000));
+
+        transport.push(200, &[], &session("a.b.c"));
+        tokio::select! {
+            biased;
+            _ = client.devices() => panic!("the save should still be hanging"),
+            () = async {
+                for _ in 0..16 {
+                    tokio::task::yield_now().await;
+                }
+            } => {}
+        }
+        assert_eq!(transport.requests().len(), 1);
+
+        store.hang.store(false, Ordering::SeqCst);
+        transport.push(200, &[], &session_with("d.e.f", NEXT_REFRESH));
+        transport.push(200, &[], DEVICES);
+        client.devices().await.unwrap();
+
+        let body: Value = serde_json::from_slice(&transport.requests()[1].body).unwrap();
+        assert_eq!(body, json!({"refresh_token": ROTATED_REFRESH}));
+        assert_eq!(
+            store.inner.current_refresh_token().as_deref(),
+            Some(NEXT_REFRESH),
+        );
     }
 
     #[tokio::test]
@@ -860,16 +1030,48 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn signing_out_forgets_a_token_the_store_refused() {
-        let h = seeded();
-        h.store.fail_saves();
-        h.transport.push(200, &[], &session("a.b.c"));
-        h.transport.push(200, &[], DEVICES);
-        h.client.devices().await.unwrap();
+    async fn an_ordinary_call_signing_out_forgets_a_token_the_store_refused() {
+        let h = refused().await;
 
         h.transport.push(401, &[], &revoked_body("reuse_detected"));
         h.client.devices().await.unwrap_err();
 
+        h.store.allow_saves();
+        h.assert_signed_out_locally().await;
+    }
+
+    #[tokio::test]
+    async fn a_revoked_refresh_forgets_a_token_the_store_refused() {
+        let h = refused().await;
+
+        h.clock.advance(601);
+        h.transport.push(401, &[], &revoked_body("reuse_detected"));
+        h.client.devices().await.unwrap_err();
+
+        h.store.allow_saves();
+        h.assert_signed_out_locally().await;
+    }
+
+    #[tokio::test]
+    async fn an_expired_refresh_forgets_a_token_the_store_refused() {
+        let h = refused().await;
+
+        h.clock.advance(601);
+        h.transport.push(401, &[], &error_body("refresh_expired"));
+        h.client.devices().await.unwrap_err();
+
+        h.store.allow_saves();
+        h.assert_signed_out_locally().await;
+    }
+
+    #[tokio::test]
+    async fn logout_forgets_a_token_the_store_refused() {
+        let h = refused().await;
+
+        h.transport.push(204, &[], b"");
+        h.client.logout().await.unwrap();
+
+        h.store.allow_saves();
         h.assert_signed_out_locally().await;
     }
 

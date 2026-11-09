@@ -17,7 +17,7 @@ pub(super) struct AuthState {
     /// Changes whenever `access` does. A call remembers the value its token came with, so when
     /// that token is rejected it can tell whether someone has already replaced it.
     pub(super) generation: u64,
-    /// A rotated session the store has not accepted yet. While this is set the store still holds
+    /// A rotated session the store has not accepted yet. Until it does, the store may still hold
     /// the spent token, which the server would treat as reuse, so this copy wins over the store.
     pub(super) unsaved: Option<StoredSession>,
 }

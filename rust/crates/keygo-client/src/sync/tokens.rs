@@ -30,6 +30,10 @@ pub struct TokenStoreError {
 }
 
 /// Durable home of the refresh token. The host decides how it is protected.
+///
+/// `save` runs while the client holds its auth lock, so it must return in bounded time: one that
+/// never returns blocks every later call, including logout. A refused `save` is repeated on later
+/// calls.
 #[async_trait]
 pub trait TokenStore: Send + Sync {
     async fn load(&self) -> Result<Option<StoredSession>, TokenStoreError>;

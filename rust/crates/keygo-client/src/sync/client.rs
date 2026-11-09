@@ -130,7 +130,7 @@ impl SyncClient {
     /// Ends the session here even if the server cannot be told, and reports whether it was.
     ///
     /// When the server could not be told and the store could not be cleared either, a token the
-    /// server still accepts stays on disk, so the store failure is returned instead.
+    /// server may still accept stays on disk, so the store failure is returned instead.
     pub async fn logout(&self) -> SyncResult<()> {
         let sent = self.call(&Logout, &()).await;
         let mut state = self.auth.lock().await;
