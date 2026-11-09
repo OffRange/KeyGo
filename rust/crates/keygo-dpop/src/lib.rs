@@ -12,6 +12,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 pub use jwk::JwkError;
 pub use nonce::Nonce;
+pub use p256::ecdsa::{Signature, VerifyingKey};
 pub use proof::{DpopError, DpopProver, DpopSigner, ProofRequest};
 pub use verify::{Bound, Checked, DpopVerifier, Expected, InvalidProof, VerifyError};
 pub use wire::{DecodeError, Htm};

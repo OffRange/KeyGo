@@ -3,8 +3,15 @@ name = "keygo-client"
 version.workspace = true
 edition.workspace = true
 
+[features]
+# Exposes `sync::testing` (fake transport, token store, key and clock) to other crates' tests.
+test-support = ["keygo-dpop/test-support"]
+
 [dependencies]
 keygo-core = { path = "../keygo-core", features = ["crypto"] }
+keygo-api = { path = "../keygo-api" }
+keygo-opaque = { path = "../keygo-opaque" }
+keygo-dpop = { path = "../keygo-dpop" }
 
 thiserror.workspace = true
 uuid.workspace = true
@@ -26,6 +33,8 @@ email_address = "0.2.9"
 subtle = "2.6"
 totp-rs = { version = "6.0.0", features = ["otpauth", "zeroize"] }
 url = "2.5.8"
+tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]
+keygo-dpop = { path = "../keygo-dpop", features = ["test-support"] }
 tokio = { workspace = true, features = ["rt", "macros"] }

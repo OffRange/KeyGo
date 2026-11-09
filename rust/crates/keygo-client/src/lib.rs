@@ -6,5 +6,6 @@ pub mod backup;
 pub mod card;
 pub use keygo_core as crypto;
 pub mod passkey;
+pub mod sync;
 pub mod totp;
 mod url;

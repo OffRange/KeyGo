@@ -13,6 +13,21 @@ impl TestSigner {
     pub fn from_seed(seed: u8) -> Self {
         Self(SigningKey::from_slice(&[seed; 32]).unwrap())
     }
+
+    /// The 65-byte uncompressed SEC1 point, as a platform keystore exports it.
+    pub fn public_key_sec1(&self) -> Vec<u8> {
+        self.0
+            .verifying_key()
+            .to_sec1_point(false)
+            .as_bytes()
+            .to_vec()
+    }
+
+    /// An ASN.1 DER signature, as a platform keystore produces it.
+    pub fn sign_der(&self, msg: &[u8]) -> Vec<u8> {
+        let sig: Signature = self.0.sign(msg);
+        sig.to_der().as_bytes().to_vec()
+    }
 }
 
 impl Default for TestSigner {
