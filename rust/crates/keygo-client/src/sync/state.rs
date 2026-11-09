@@ -19,8 +19,6 @@ pub(super) struct AuthState {
 }
 
 impl AuthState {
-    /// Forgets the session. `generation` moves on rather than restarting, so a call still holding
-    /// a token from before cannot mistake a later one for its own.
     pub(super) fn access(&self) -> Option<&AccessState> {
         self.access.as_ref()
     }
@@ -31,6 +29,8 @@ impl AuthState {
         self.generation += 1;
     }
 
+    /// Forgets the session. `generation` moves on rather than restarting, so a call still holding
+    /// a token from before cannot mistake a later one for its own.
     pub(super) fn reset(&mut self) {
         self.access = None;
         self.nonce = None;
@@ -62,7 +62,7 @@ mod tests {
         let mut state = AuthState::default();
         let before = state.generation;
         state.replace_access(AccessState {
-            token: AccessToken::from_signed("a.b.c".into()),
+            token: serde_json::from_value(serde_json::json!("a.b.c")).unwrap(),
             expires_at: 1,
         });
         assert_eq!(state.generation, before + 1);

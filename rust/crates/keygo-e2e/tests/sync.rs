@@ -237,3 +237,21 @@ async fn empty_step_up_password_is_invalid_credentials(db: PgPool) {
         SyncError::InvalidCredentials,
     );
 }
+
+#[sqlx::test(migrations = "../keygo-server/migrations")]
+async fn client_logout_ends_the_session_on_the_server(db: PgPool) {
+    let h = harness(&db).await;
+
+    h.client.logout().await.unwrap();
+    assert_eq!(h.store.current_refresh_token(), None);
+
+    let (status, _) = testing::post_with_token(
+        &h.state,
+        &h.prover,
+        "/api/v1/auth/logout",
+        &h.access_token,
+        serde_json::Value::Null,
+    )
+    .await;
+    assert!(!status.is_success(), "{status}");
+}

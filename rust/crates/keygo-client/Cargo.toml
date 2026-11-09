@@ -5,7 +5,7 @@ edition.workspace = true
 
 [features]
 # Exposes `sync::testing` (fake transport, token store, key and clock) to other crates' tests.
-test-support = ["keygo-dpop/test-support"]
+test-support = ["keygo-dpop/test-support", "tokio/rt"]
 
 [dependencies]
 keygo-core = { path = "../keygo-core", features = ["crypto"] }
