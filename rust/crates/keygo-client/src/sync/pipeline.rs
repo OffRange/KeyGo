@@ -1,10 +1,16 @@
 use super::client::SyncClient;
 use super::error::{SyncError, SyncResult, from_response};
+use super::state::{AccessState, AuthState};
+use super::tokens::{StoredSession, TokenStoreError};
 use super::transport::{Header, HttpRequest, HttpResponse};
+use keygo_api::auth::Session;
+use keygo_api::auth::token::TokenRequest;
+use keygo_api::endpoints::Token;
 use keygo_api::{ApiError, Auth, Endpoint, ErrorCode, Method};
 use keygo_dpop::{Htm, ProofRequest};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use zeroize::Zeroizing;
 
 /// A serialized `null` (the `()` body) is sent as no body at all.
 fn encode_body<T: Serialize>(value: &T) -> SyncResult<Option<Vec<u8>>> {
@@ -50,6 +56,41 @@ fn header_value<'a>(response: &'a HttpResponse, name: &str) -> Option<&'a str> {
 fn is_nonce_challenge(response: &HttpResponse) -> bool {
     serde_json::from_slice::<ApiError>(&response.body)
         .is_ok_and(|error| error.code == ErrorCode::UseDpopNonce)
+}
+
+fn is_success(response: &HttpResponse) -> bool {
+    (200..300).contains(&response.status)
+}
+
+/// The error body of a failed response. A 2xx is never an error, whatever its body says.
+fn api_error(response: &HttpResponse) -> Option<ApiError> {
+    if is_success(response) {
+        return None;
+    }
+    serde_json::from_slice(&response.body).ok()
+}
+
+fn is_invalid_token(response: &HttpResponse) -> bool {
+    api_error(response).is_some_and(|error| error.code == ErrorCode::InvalidToken)
+}
+
+/// The `SignedOut` a response means, if the server says the session is over. A reason this build
+/// does not know is `None`, so a newer server still signs an older app out.
+fn sign_out_error(response: &HttpResponse) -> Option<SyncError> {
+    let error = api_error(response)?;
+    matches!(
+        error.code,
+        ErrorCode::SessionRevoked | ErrorCode::RefreshExpired
+    )
+    .then(|| SyncError::SignedOut {
+        reason: error.reason.and_then(|reason| reason.parse().ok()),
+    })
+}
+
+fn store_failure(error: TokenStoreError) -> SyncError {
+    SyncError::Client {
+        message: format!("token store failed: {error}"),
+    }
 }
 
 impl SyncClient {
@@ -130,6 +171,127 @@ impl SyncClient {
         }
     }
 
+    /// Forgets the session, in memory and in the store. The caller holds the `AuthState` lock, so
+    /// a refresh that is still running cannot save a token after this.
+    ///
+    /// A store that fails to clear changes nothing about what the caller is told; the stale entry
+    /// is cleared again the next time the server refuses it.
+    pub(super) async fn end_session(&self, state: &mut AuthState) {
+        state.reset();
+        let _ = self.tokens.clear().await;
+    }
+
+    /// Spends the stored refresh token on a new session and returns the new access token. `state`
+    /// is the locked `AuthState`, held for the whole refresh so concurrent callers share its
+    /// result. It goes straight to `exchange`, because `call` would take the lock again.
+    ///
+    /// The rotated token is saved before the access token is kept. Nothing is kept if that save
+    /// fails, or if the caller is dropped before it returns: `access` and `generation` change
+    /// only after the last `await`.
+    async fn refresh_locked(&self, state: &mut AuthState) -> SyncResult<Zeroizing<String>> {
+        let stored = self
+            .tokens
+            .load()
+            .await
+            .map_err(store_failure)?
+            .ok_or(SyncError::SignedOut { reason: None })?;
+
+        let request = TokenRequest {
+            refresh_token: stored.refresh_token,
+        };
+        // Not `encode_body`: this body is a secret and should not linger in a `Value`.
+        let body = Zeroizing::new(serde_json::to_vec(&request).map_err(|e| SyncError::Client {
+            message: format!("request does not serialize: {e}"),
+        })?);
+
+        // Read before sending, so a token never looks like it lives longer than it does.
+        let now = self.clock.now_secs();
+        let response = self
+            .exchange(
+                Token::METHOD,
+                &Token.path(),
+                None,
+                Some(body.as_slice()),
+                &mut state.nonce,
+            )
+            .await?;
+
+        if !is_success(&response) {
+            if let Some(signed_out) = sign_out_error(&response) {
+                self.end_session(state).await;
+                return Err(signed_out);
+            }
+            return Err(from_response(response.status, &response.body));
+        }
+
+        let body = Zeroizing::new(response.body);
+        let session: Session = decode_body(&body)?;
+
+        self.tokens
+            .save(StoredSession {
+                device_id: session.device_id,
+                refresh_token: session.refresh_token,
+                refresh_expires_at: now.saturating_add(session.refresh_expires_in),
+            })
+            .await
+            .map_err(store_failure)?;
+
+        let token = Zeroizing::new(session.access.access_token.expose().to_owned());
+        state.access = Some(AccessState {
+            token: session.access.access_token,
+            expires_at: now.saturating_add(session.access.access_expires_in),
+        });
+        state.generation += 1;
+        Ok(token)
+    }
+
+    /// A live access token, refreshed first if there is none, with the generation it belongs to
+    /// and the nonce to send. The lock is released on return: only a refresh holds it across the
+    /// network, never the request itself.
+    async fn access_token(&self) -> SyncResult<(Zeroizing<String>, u64, Option<String>)> {
+        let mut state = self.auth.lock().await;
+        let now = self.clock.now_secs();
+        let live = state
+            .access
+            .as_ref()
+            .filter(|access| now < access.expires_at);
+        let token = match live {
+            Some(access) => Zeroizing::new(access.token.expose().to_owned()),
+            None => self.refresh_locked(&mut state).await?,
+        };
+        Ok((token, state.generation, state.nonce.clone()))
+    }
+
+    /// Sends one request with the access token. An `invalid_token` earns one refresh and one
+    /// retry; the refresh is skipped when another caller has already replaced the rejected token.
+    async fn authenticated(
+        &self,
+        method: Method,
+        path: &str,
+        body: Option<&[u8]>,
+    ) -> SyncResult<HttpResponse> {
+        let mut retried = false;
+        loop {
+            let (token, generation, mut nonce) = self.access_token().await?;
+
+            let response = self
+                .exchange(method, path, Some(token.as_str()), body, &mut nonce)
+                .await;
+            self.auth.lock().await.nonce = nonce;
+            let response = response?;
+
+            if retried || !is_invalid_token(&response) {
+                return Ok(response);
+            }
+            retried = true;
+
+            let mut state = self.auth.lock().await;
+            if state.generation == generation {
+                self.refresh_locked(&mut state).await?;
+            }
+        }
+    }
+
     pub(super) async fn call<E: Endpoint>(
         &self,
         endpoint: &E,
@@ -163,19 +325,21 @@ impl SyncClient {
                 self.auth.lock().await.nonce = nonce;
                 response?
             }
-            // Replaced by the access token path in a later task; never send this bare.
             Auth::AccessToken => {
-                return Err(SyncError::Client {
-                    message: "authenticated calls are not supported yet".into(),
-                });
+                self.authenticated(E::METHOD, &path, body.as_deref())
+                    .await?
             }
         };
 
-        if (200..300).contains(&response.status) {
-            decode_body(&response.body)
-        } else {
-            Err(from_response(response.status, &response.body))
+        if is_success(&response) {
+            return decode_body(&response.body);
         }
+        if let Some(signed_out) = sign_out_error(&response) {
+            let mut state = self.auth.lock().await;
+            self.end_session(&mut state).await;
+            return Err(signed_out);
+        }
+        Err(from_response(response.status, &response.body))
     }
 }
 
@@ -199,11 +363,11 @@ mod tests {
 
     use super::super::client::SyncClient;
     use super::super::signer::{DpopKey, SignError};
-    use super::super::testing::{FakeDpopKey, FakeTokenStore, FakeTransport};
+    use super::super::testing::{FakeDpopKey, FakeTokenStore, FakeTransport, FixedClock};
     use base64::Engine;
     use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-    use keygo_api::auth::token::TokenRequest;
-    use keygo_api::endpoints::Token;
+    use keygo_api::domain::RevokeReason;
+    use keygo_core::DeviceId;
     use serde_json::{Value, json};
     use std::sync::Arc;
     use url::Url;
@@ -375,5 +539,450 @@ mod tests {
 
         assert!(matches!(error, SyncError::Client { .. }));
         assert!(transport.requests().is_empty());
+    }
+
+    const OLD_REFRESH: &str = "kgr___________________________________________8";
+    const ROTATED_REFRESH: &str = "kgr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    const DEVICES: &[u8] = br#"{"devices":[]}"#;
+    /// Requests `fresh` has already spent.
+    const FRESH: usize = 2;
+
+    /// A `200` from `/auth/token`.
+    fn session(access_token: &str) -> Vec<u8> {
+        serde_json::to_vec(&json!({
+            "device_id": "00000000-0000-0000-0000-000000000001",
+            "access_token": access_token,
+            "access_expires_in": 600,
+            "refresh_token": ROTATED_REFRESH,
+            "refresh_expires_in": 86400,
+        }))
+        .unwrap()
+    }
+
+    fn error_body(code: &str) -> Vec<u8> {
+        serde_json::to_vec(&json!({"code": code, "message": "m"})).unwrap()
+    }
+
+    fn revoked_body(reason: &str) -> Vec<u8> {
+        serde_json::to_vec(&json!({
+            "code": "session_revoked",
+            "message": "m",
+            "reason": reason,
+        }))
+        .unwrap()
+    }
+
+    struct Harness {
+        client: SyncClient,
+        transport: Arc<FakeTransport>,
+        store: Arc<FakeTokenStore>,
+        clock: Arc<FixedClock>,
+    }
+
+    impl Harness {
+        fn token_requests(&self) -> usize {
+            self.transport
+                .requests()
+                .iter()
+                .filter(|r| r.url.ends_with("/api/v1/auth/token"))
+                .count()
+        }
+
+        fn stored_refresh_token(&self) -> Option<String> {
+            self.store.current_refresh_token()
+        }
+
+        async fn assert_signed_out_locally(&self) {
+            let sent = self.transport.requests().len();
+
+            assert_eq!(
+                self.client.devices().await.unwrap_err(),
+                SyncError::SignedOut { reason: None },
+            );
+            assert_eq!(self.transport.requests().len(), sent);
+            assert_eq!(self.stored_refresh_token(), None);
+        }
+    }
+
+    fn unseeded() -> Harness {
+        let transport = FakeTransport::new();
+        let store = Arc::new(FakeTokenStore::new());
+        let clock = FixedClock::new(1_000);
+        let client = SyncClient::new(
+            Url::parse("https://kg.example").unwrap(),
+            transport.clone(),
+            Arc::new(FakeDpopKey::new()),
+            store.clone(),
+        )
+        .unwrap()
+        .with_clock(clock.clone());
+        Harness {
+            client,
+            transport,
+            store,
+            clock,
+        }
+    }
+
+    fn seeded() -> Harness {
+        let harness = unseeded();
+        harness.store.seed(StoredSession {
+            device_id: DeviceId::random(),
+            refresh_token: OLD_REFRESH.parse().unwrap(),
+            refresh_expires_at: 1_000_000,
+        });
+        harness
+    }
+
+    /// Holds a live access token: one refresh and one `devices()` have run.
+    async fn fresh() -> Harness {
+        let harness = seeded();
+        harness.transport.push(200, &[], &session("a.b.c"));
+        harness.transport.push(200, &[], DEVICES);
+        harness.client.devices().await.unwrap();
+        harness
+    }
+
+    #[tokio::test]
+    async fn no_stored_session_signs_out_without_sending() {
+        let h = unseeded();
+
+        assert_eq!(
+            h.client.devices().await.unwrap_err(),
+            SyncError::SignedOut { reason: None },
+        );
+        assert!(h.transport.requests().is_empty());
+    }
+
+    #[tokio::test]
+    async fn access_token_sends_token_and_bound_proof() {
+        let h = seeded();
+        h.transport.push(200, &[], &session("a.b.c"));
+        h.transport.push(200, &[], DEVICES);
+
+        h.client.devices().await.unwrap();
+
+        let request = &h.transport.requests()[1];
+        assert_eq!(header(request, "authorization"), Some("DPoP a.b.c"));
+        let claims = proof_claims(request);
+        assert_eq!(claims["htm"], "GET");
+        assert_eq!(claims["htu"], "https://kg.example/api/v1/devices");
+        assert!(claims["ath"].is_string());
+    }
+
+    #[tokio::test]
+    async fn refresh_carries_its_token_in_the_body_only() {
+        let h = fresh().await;
+
+        let request = &h.transport.requests()[0];
+        assert_eq!(request.url, "https://kg.example/api/v1/auth/token");
+        assert_eq!(header(request, "authorization"), None);
+        assert!(proof_claims(request).get("ath").is_none());
+        let body: Value = serde_json::from_slice(&request.body).unwrap();
+        assert_eq!(body, json!({"refresh_token": OLD_REFRESH}));
+    }
+
+    #[tokio::test]
+    async fn rotated_refresh_token_is_saved_and_spent_next() {
+        let h = fresh().await;
+        assert_eq!(h.stored_refresh_token().as_deref(), Some(ROTATED_REFRESH));
+
+        h.clock.advance(601);
+        h.transport.push(200, &[], &session("d.e.f"));
+        h.transport.push(200, &[], DEVICES);
+        h.client.devices().await.unwrap();
+
+        let requests = h.transport.requests();
+        let body: Value = serde_json::from_slice(&requests[FRESH].body).unwrap();
+        assert_eq!(body, json!({"refresh_token": ROTATED_REFRESH}));
+        assert_eq!(
+            header(&requests[FRESH + 1], "authorization"),
+            Some("DPoP d.e.f"),
+        );
+    }
+
+    #[tokio::test]
+    async fn fresh_token_is_reused() {
+        let h = seeded();
+        h.transport.push(200, &[], &session("a.b.c"));
+        h.transport.push(200, &[], DEVICES);
+        h.transport.push(200, &[], DEVICES);
+
+        h.client.devices().await.unwrap();
+        h.clock.advance(599);
+        h.client.devices().await.unwrap();
+
+        assert_eq!(h.transport.requests().len(), 3);
+        assert_eq!(h.token_requests(), 1);
+    }
+
+    #[tokio::test]
+    async fn expired_token_refreshes_before_sending() {
+        let h = seeded();
+        for _ in 0..2 {
+            h.transport.push(200, &[], &session("a.b.c"));
+            h.transport.push(200, &[], DEVICES);
+        }
+
+        h.client.devices().await.unwrap();
+        h.clock.advance(601);
+        h.client.devices().await.unwrap();
+
+        let urls: Vec<_> = h.transport.requests().into_iter().map(|r| r.url).collect();
+        assert_eq!(
+            urls,
+            [
+                "https://kg.example/api/v1/auth/token",
+                "https://kg.example/api/v1/devices",
+                "https://kg.example/api/v1/auth/token",
+                "https://kg.example/api/v1/devices",
+            ],
+        );
+    }
+
+    #[tokio::test]
+    async fn token_is_expired_at_its_expiry_second() {
+        let h = fresh().await;
+        h.clock.advance(600);
+        h.transport.push(200, &[], &session("d.e.f"));
+        h.transport.push(200, &[], DEVICES);
+
+        h.client.devices().await.unwrap();
+
+        assert_eq!(h.token_requests(), 2);
+    }
+
+    #[tokio::test]
+    async fn concurrent_callers_refresh_once() {
+        let h = seeded();
+        h.transport.push(200, &[], &session("a.b.c"));
+        h.transport.push(200, &[], DEVICES);
+        h.transport.push(200, &[], DEVICES);
+
+        let (first, second) = tokio::join!(h.client.devices(), h.client.devices());
+
+        first.unwrap();
+        second.unwrap();
+        assert_eq!(h.token_requests(), 1);
+    }
+
+    #[tokio::test]
+    async fn concurrent_rejected_callers_refresh_once() {
+        let h = fresh().await;
+        h.transport.push(401, &[], &error_body("invalid_token"));
+        h.transport.push(401, &[], &error_body("invalid_token"));
+        h.transport.push(200, &[], &session("d.e.f"));
+        h.transport.push(200, &[], DEVICES);
+        h.transport.push(200, &[], DEVICES);
+
+        let (first, second) = tokio::join!(h.client.devices(), h.client.devices());
+
+        first.unwrap();
+        second.unwrap();
+        // One from `fresh`, one here.
+        assert_eq!(h.token_requests(), 2);
+    }
+
+    #[tokio::test]
+    async fn failed_save_is_returned_and_the_token_is_not_used() {
+        let h = seeded();
+        h.store.fail_saves();
+        h.transport.push(200, &[], &session("a.b.c"));
+
+        let error = h.client.devices().await.unwrap_err();
+
+        assert!(matches!(error, SyncError::Client { .. }));
+        assert_eq!(h.transport.requests().len(), 1);
+
+        // The token was not kept for later either: the next call has to refresh again.
+        h.transport.push(200, &[], &session("a.b.c"));
+        let error = h.client.devices().await.unwrap_err();
+
+        assert!(matches!(error, SyncError::Client { .. }));
+        assert_eq!(h.token_requests(), 2);
+        assert_eq!(h.transport.requests().len(), 2);
+    }
+
+    #[tokio::test]
+    async fn invalid_token_refreshes_and_retries_once() {
+        let h = fresh().await;
+        h.transport.push(401, &[], &error_body("invalid_token"));
+        h.transport.push(200, &[], &session("d.e.f"));
+        h.transport.push(200, &[], DEVICES);
+
+        h.client.devices().await.unwrap();
+
+        let requests = h.transport.requests();
+        assert_eq!(requests.len() - FRESH, 3);
+        assert_eq!(
+            header(&requests[FRESH + 2], "authorization"),
+            Some("DPoP d.e.f"),
+        );
+    }
+
+    #[tokio::test]
+    async fn second_invalid_token_is_returned() {
+        let h = fresh().await;
+        h.transport.push(401, &[], &error_body("invalid_token"));
+        h.transport.push(200, &[], &session("d.e.f"));
+        h.transport.push(401, &[], &error_body("invalid_token"));
+
+        let error = h.client.devices().await.unwrap_err();
+
+        assert!(matches!(error, SyncError::Server { code, .. } if code == "invalid_token"));
+        assert_eq!(h.transport.requests().len() - FRESH, 3);
+    }
+
+    #[tokio::test]
+    async fn nonce_and_invalid_token_each_retry_once() {
+        let h = fresh().await;
+        h.transport.push(400, &[("DPoP-Nonce", "n1")], CHALLENGE);
+        h.transport.push(401, &[], &error_body("invalid_token"));
+        h.transport.push(200, &[], &session("d.e.f"));
+        h.transport.push(200, &[], DEVICES);
+
+        h.client.devices().await.unwrap();
+
+        assert_eq!(h.transport.requests().len() - FRESH, 4);
+    }
+
+    #[tokio::test]
+    async fn session_revoked_clears_store_and_keeps_reason() {
+        let h = seeded();
+        h.transport.push(401, &[], &revoked_body("reuse_detected"));
+
+        assert_eq!(
+            h.client.devices().await.unwrap_err(),
+            SyncError::SignedOut {
+                reason: Some(RevokeReason::ReuseDetected),
+            },
+        );
+        assert_eq!(h.stored_refresh_token(), None);
+    }
+
+    #[tokio::test]
+    async fn session_revoked_on_an_ordinary_call_ends_the_session() {
+        let h = fresh().await;
+        h.transport.push(401, &[], &revoked_body("logout"));
+
+        assert_eq!(
+            h.client.devices().await.unwrap_err(),
+            SyncError::SignedOut {
+                reason: Some(RevokeReason::Logout),
+            },
+        );
+        h.assert_signed_out_locally().await;
+    }
+
+    #[tokio::test]
+    async fn refresh_expired_clears_store() {
+        let h = seeded();
+        h.transport.push(401, &[], &error_body("refresh_expired"));
+
+        assert_eq!(
+            h.client.devices().await.unwrap_err(),
+            SyncError::SignedOut { reason: None },
+        );
+        assert_eq!(h.stored_refresh_token(), None);
+    }
+
+    #[tokio::test]
+    async fn unknown_revoke_reason_still_signs_out() {
+        let h = seeded();
+        h.transport.push(401, &[], &revoked_body("brand_new"));
+
+        assert_eq!(
+            h.client.devices().await.unwrap_err(),
+            SyncError::SignedOut { reason: None },
+        );
+        assert_eq!(h.stored_refresh_token(), None);
+    }
+
+    #[tokio::test]
+    async fn a_success_status_never_signs_out() {
+        let h = fresh().await;
+        h.transport.push(200, &[], &error_body("session_revoked"));
+
+        let error = h.client.devices().await.unwrap_err();
+
+        assert!(matches!(error, SyncError::Server { code, .. } if code == "invalid_response"));
+        assert_eq!(h.stored_refresh_token().as_deref(), Some(ROTATED_REFRESH));
+    }
+
+    #[tokio::test]
+    async fn network_failure_during_refresh_keeps_store() {
+        let h = seeded();
+        h.transport.push_network_error("offline");
+
+        let error = h.client.devices().await.unwrap_err();
+
+        assert!(matches!(error, SyncError::Network { .. }));
+        assert_eq!(h.stored_refresh_token().as_deref(), Some(OLD_REFRESH));
+    }
+
+    #[tokio::test]
+    async fn logout_ends_the_session() {
+        let h = fresh().await;
+        h.transport.push(204, &[], b"");
+
+        h.client.logout().await.unwrap();
+
+        let request = &h.transport.requests()[FRESH];
+        assert_eq!(request.url, "https://kg.example/api/v1/auth/logout");
+        assert_eq!(header(request, "authorization"), Some("DPoP a.b.c"));
+        h.assert_signed_out_locally().await;
+    }
+
+    #[tokio::test]
+    async fn logout_clears_local_state_when_offline() {
+        let h = fresh().await;
+        h.transport.push_network_error("offline");
+
+        let error = h.client.logout().await.unwrap_err();
+
+        assert!(matches!(error, SyncError::Network { .. }));
+        h.assert_signed_out_locally().await;
+    }
+
+    #[tokio::test]
+    async fn fresh_auth_required_is_not_retried() {
+        let h = fresh().await;
+        let id = DeviceId::random();
+        h.transport
+            .push(403, &[], &error_body("fresh_auth_required"));
+
+        assert_eq!(
+            h.client.delete_device(id).await.unwrap_err(),
+            SyncError::FreshAuthRequired,
+        );
+
+        let requests = h.transport.requests();
+        assert_eq!(requests.len() - FRESH, 1);
+        assert_eq!(requests[FRESH].method, Method::Delete);
+        assert_eq!(
+            requests[FRESH].url,
+            format!("https://kg.example/api/v1/devices/{}", id.as_uuid()),
+        );
+    }
+
+    #[tokio::test]
+    async fn a_refresh_dropped_midway_leaves_nothing_behind() {
+        let h = seeded();
+
+        // The fake transport yields once before it answers, so this drops the call while it holds
+        // the lock and is waiting on `/auth/token`.
+        tokio::select! {
+            biased;
+            _ = h.client.devices() => panic!("the call should still be waiting"),
+            () = std::future::ready(()) => {}
+        }
+        assert!(h.transport.requests().is_empty());
+        assert_eq!(h.stored_refresh_token().as_deref(), Some(OLD_REFRESH));
+
+        h.transport.push(200, &[], &session("a.b.c"));
+        h.transport.push(200, &[], DEVICES);
+        h.client.devices().await.unwrap();
+
+        assert_eq!(h.transport.requests().len(), 2);
     }
 }

@@ -3,8 +3,10 @@ use super::signer::{DpopKey, ForeignSigner};
 use super::state::{AuthState, Clock, SystemClock};
 use super::tokens::TokenStore;
 use super::transport::Transport;
-use keygo_api::endpoints::Meta;
+use keygo_api::domain::Device;
+use keygo_api::endpoints::{DeleteDevice, ListDevices, Logout, Meta};
 use keygo_api::meta::ServerInfo;
+use keygo_core::DeviceId;
 use keygo_dpop::DpopProver;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -14,11 +16,7 @@ pub struct SyncClient {
     pub(super) base_url: Url,
     pub(super) transport: Arc<dyn Transport>,
     pub(super) prover: DpopProver<ForeignSigner>,
-    // Used by the access token path (Task 9).
-    #[allow(dead_code)]
     pub(super) tokens: Arc<dyn TokenStore>,
-    // Used by the access token path (Task 9).
-    #[allow(dead_code)]
     pub(super) clock: Arc<dyn Clock>,
     pub(super) auth: Mutex<AuthState>,
 }
@@ -48,6 +46,22 @@ impl SyncClient {
 
     pub async fn meta(&self) -> SyncResult<ServerInfo> {
         self.call(&Meta, &()).await
+    }
+
+    pub async fn devices(&self) -> SyncResult<Vec<Device>> {
+        Ok(self.call(&ListDevices, &()).await?.devices)
+    }
+
+    pub async fn delete_device(&self, id: DeviceId) -> SyncResult<()> {
+        self.call(&DeleteDevice { id }, &()).await
+    }
+
+    /// Ends the session here even if the server cannot be told, and reports whether it was.
+    pub async fn logout(&self) -> SyncResult<()> {
+        let sent = self.call(&Logout, &()).await;
+        let mut state = self.auth.lock().await;
+        self.end_session(&mut state).await;
+        sent
     }
 }
 
