@@ -4,6 +4,9 @@ description = "KeyGo self-hostable sync server."
 version.workspace = true
 edition.workspace = true
 
+[features]
+test-support = ["dep:http-body-util", "dep:tower", "keygo-dpop/test-support"]
+
 [dependencies]
 keygo-core = { path = "../keygo-core" }
 keygo-opaque = { path = "../keygo-opaque" }
@@ -17,6 +20,8 @@ serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 hmac.workspace = true
 sha2 = { workspace = true, features = ["zeroize"] }
+http-body-util = { version = "0.1.5", optional = true }
+tower = { version = "0.5.3", features = ["util"], optional = true }
 
 anstream = "1.0.0"
 anstyle = "1.0.14"

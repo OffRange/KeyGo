@@ -151,10 +151,6 @@ impl Claims {
         self.session_id
     }
 
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "no route requires a fresh sign-in yet")
-    )]
     pub fn auth_time(&self) -> u64 {
         self.auth_time
     }
