@@ -1,17 +1,30 @@
+use super::error::SyncError;
 use super::error::SyncResult;
 use super::pipeline::store_failure;
 use super::signer::{DpopKey, ForeignSigner};
-use super::state::{AuthState, Clock, SystemClock};
+use super::state::{AccessState, AuthState, Clock, SystemClock};
 use super::tokens::TokenStore;
 use super::transport::Transport;
-use keygo_api::domain::Device;
-use keygo_api::endpoints::{DeleteDevice, ListDevices, Logout, Meta};
+use crate::ark_session::ArkSession;
+use keygo_api::auth::step_up::{FinishRequest, StartRequest};
+use keygo_api::domain::{Device, DeviceInfo, Username};
+use keygo_api::endpoints::{DeleteDevice, ListDevices, Logout, Meta, StepUpFinish, StepUpStart};
 use keygo_api::meta::ServerInfo;
-use keygo_core::DeviceId;
+use keygo_core::{DeviceId, UserId};
 use keygo_dpop::DpopProver;
+use keygo_opaque::OpaqueError;
+use keygo_opaque::client::ClientLogin;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use url::Url;
+
+/// Who signed in, and as which device.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Account {
+    pub user_id: UserId,
+    pub username: Username,
+    pub device_id: DeviceId,
+}
 
 pub struct SyncClient {
     pub(super) base_url: Url,
@@ -57,6 +70,63 @@ impl SyncClient {
         self.call(&DeleteDevice { id }, &()).await
     }
 
+    /// Proves the password again to the server, which then treats this session as freshly
+    /// authenticated. Only the access token changes: the refresh token and the store are untouched.
+    pub async fn step_up(&self, password: &str) -> SyncResult<()> {
+        let (login, credential_request) =
+            ClientLogin::start(password.as_bytes()).map_err(opaque_failure)?;
+        let started = self
+            .call(&StepUpStart, &StartRequest { credential_request })
+            .await?;
+        let finish = login
+            .finish(password.as_bytes(), started.credential_response)
+            .map_err(opaque_failure)?;
+        let dpop_binding = finish.session_key.dpop_binding(self.prover.jkt());
+
+        // Read before sending, so a token never looks like it lives longer than it does.
+        let now = self.clock.now_secs();
+        let response = self
+            .call(
+                &StepUpFinish,
+                &FinishRequest {
+                    login_id: started.login_id,
+                    credential_finalization: finish.finalization,
+                    dpop_binding,
+                },
+            )
+            .await?;
+
+        self.auth.lock().await.replace_access(AccessState {
+            token: response.access.access_token,
+            expires_at: now.saturating_add(response.access.access_expires_in),
+        });
+        Ok(())
+    }
+
+    /// Not implemented until the key bundle's wrapping is decided.
+    pub async fn register(
+        &self,
+        _ark: &ArkSession,
+        _user_id: UserId,
+        _username: &str,
+        _password: &str,
+        _invite: Option<&str>,
+        _device: DeviceInfo,
+    ) -> SyncResult<Account> {
+        Err(undecided())
+    }
+
+    /// Not implemented until the key bundle's wrapping is decided.
+    pub async fn login(
+        &self,
+        _ark: &ArkSession,
+        _username: &str,
+        _password: &str,
+        _device: DeviceInfo,
+    ) -> SyncResult<Account> {
+        Err(undecided())
+    }
+
     /// Ends the session here even if the server cannot be told, and reports whether it was.
     ///
     /// When the server could not be told and the store could not be cleared either, a token the
@@ -69,6 +139,21 @@ impl SyncClient {
             (Err(_), Err(error)) => Err(store_failure(error)),
             (sent, _) => sent,
         }
+    }
+}
+
+fn undecided() -> SyncError {
+    SyncError::Client {
+        message: "key bundle wrapping is not decided".into(),
+    }
+}
+
+fn opaque_failure(error: OpaqueError) -> SyncError {
+    match error {
+        OpaqueError::InvalidLogin | OpaqueError::EmptyPassword => SyncError::InvalidCredentials,
+        other => SyncError::Client {
+            message: other.to_string(),
+        },
     }
 }
 

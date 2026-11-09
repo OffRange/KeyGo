@@ -11,7 +11,7 @@ pub mod testing;
 mod tokens;
 mod transport;
 
-pub use client::SyncClient;
+pub use client::{Account, SyncClient};
 pub use error::{SyncError, SyncResult};
 pub use signer::{DpopKey, ForeignSigner, SignError};
 pub use state::{Clock, SystemClock};

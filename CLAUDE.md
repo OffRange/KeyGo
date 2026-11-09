@@ -70,6 +70,7 @@ Rust workspace (`rust/`, toolchain pinned in `rust-toolchain.toml`, edition 2024
 | `keygo-uniffi`  | UniFFI bindings exposing `keygo-client` to Kotlin (`libkeygo_bindings.so`)    |
 | `keygo-opaque`  | OPAQUE (opaque-ke, ristretto255 + Argon2) client/server wrapper, `forbid(unsafe_code)` |
 | `keygo-server`  | Self-hostable sync server (axum + sqlx/Postgres + clap CLI), see Sync Server  |
+| `keygo-e2e`     | Test-only: drives the real `SyncClient` against the real server router (in-process, real OPAQUE and DPoP) |
 | `tools/uniffi-bindgen` | Bindgen runner used by `make bindgen`                                  |
 
 ## Key Patterns

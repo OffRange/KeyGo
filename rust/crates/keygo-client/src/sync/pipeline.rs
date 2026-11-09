@@ -239,11 +239,10 @@ impl SyncClient {
             .map_err(store_failure)?;
 
         let token = Zeroizing::new(session.access.access_token.expose().to_owned());
-        state.access = Some(AccessState {
+        state.replace_access(AccessState {
             token: session.access.access_token,
             expires_at: now.saturating_add(session.access.access_expires_in),
         });
-        state.generation += 1;
         Ok(token)
     }
 
@@ -253,10 +252,7 @@ impl SyncClient {
     async fn access_token(&self) -> SyncResult<(Zeroizing<String>, u64, Option<String>)> {
         let mut state = self.auth.lock().await;
         let now = self.clock.now_secs();
-        let live = state
-            .access
-            .as_ref()
-            .filter(|access| now < access.expires_at);
+        let live = state.access().filter(|access| now < access.expires_at);
         let token = match live {
             Some(access) => Zeroizing::new(access.token.expose().to_owned()),
             None => self.refresh_locked(&mut state).await?,
@@ -956,7 +952,7 @@ mod tests {
         let error = h.client.logout().await.unwrap_err();
 
         assert!(matches!(error, SyncError::Client { .. }));
-        assert!(h.client.auth.lock().await.access.is_none());
+        assert!(h.client.auth.lock().await.access().is_none());
         // Why this cannot pass as an offline logout: the server still accepts this token.
         assert_eq!(h.stored_refresh_token().as_deref(), Some(ROTATED_REFRESH));
     }
@@ -969,7 +965,7 @@ mod tests {
 
         h.client.logout().await.unwrap();
 
-        assert!(h.client.auth.lock().await.access.is_none());
+        assert!(h.client.auth.lock().await.access().is_none());
     }
 
     #[tokio::test]

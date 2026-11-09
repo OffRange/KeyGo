@@ -1675,6 +1675,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "keygo-e2e"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "http-body-util",
+ "keygo-api",
+ "keygo-client",
+ "keygo-core",
+ "keygo-dpop",
+ "keygo-opaque",
+ "keygo-server",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tower",
+ "url",
+]
+
+[[package]]
 name = "keygo-opaque"
 version = "0.1.0"
 dependencies = [
