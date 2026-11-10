@@ -38,7 +38,7 @@ impl SyncError {
     }
 }
 
-/// Maps a non-2xx response. `session_revoked` and `refresh_expired` end the session before this.
+/// `session_revoked` and `refresh_expired` never reach this: they end the session first.
 pub(super) fn from_response(status: u16, body: &[u8]) -> SyncError {
     let Ok(error) = serde_json::from_slice::<ApiError>(body) else {
         return SyncError::Server {

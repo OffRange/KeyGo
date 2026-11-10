@@ -9,7 +9,7 @@ pub struct StoredSession {
 }
 
 impl StoredSession {
-    /// A second copy of the session. `RefreshToken` is not `Clone`, so it goes through its encoding.
+    /// `RefreshToken` is not `Clone`, so this copies through its encoding.
     pub(super) fn duplicate(&self) -> Self {
         Self {
             device_id: self.device_id,
@@ -29,11 +29,8 @@ pub struct TokenStoreError {
     pub message: String,
 }
 
-/// Durable home of the refresh token. The host decides how it is protected.
-///
-/// `save` runs while the client holds its auth lock, so it must return in bounded time: one that
-/// never returns blocks every later call, including logout. A refused `save` is repeated on later
-/// calls.
+/// `save` runs under the client's auth lock, so it must return in bounded time: a hung `save`
+/// blocks every later call, including logout. A refused `save` is retried on later calls.
 #[async_trait]
 pub trait TokenStore: Send + Sync {
     async fn load(&self) -> Result<Option<StoredSession>, TokenStoreError>;

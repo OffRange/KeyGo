@@ -5,7 +5,6 @@ use std::borrow::Cow;
 /// What a request must carry for the server to accept it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Auth {
-    /// Nothing.
     None,
     /// A DPoP proof, but no access token.
     Proof,
@@ -30,7 +29,6 @@ impl Method {
     }
 }
 
-/// One route of the sync API, with the types that cross the wire.
 pub trait Endpoint {
     /// `()` when the route takes no body.
     type Request: Serialize + DeserializeOwned;

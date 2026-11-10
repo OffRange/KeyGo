@@ -9,10 +9,6 @@ import de.davisalessandro.keygo.rust.SyncClientInterface
 import de.davisalessandro.keygo.rust.SyncDevice
 import de.davisalessandro.keygo.rust.UserId
 
-/**
- * Each method returns its result var, or throws it when it is a failure. Results without a useful
- * default stay null until a test sets them, and reading one then fails loudly.
- */
 class FakeSyncClient : SyncClientInterface {
 
     var deleteDeviceResult: Result<Unit> = Result.success(Unit)

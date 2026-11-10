@@ -53,10 +53,10 @@ macro_rules! random_id {
 }
 
 random_id! {
-    /// Handle for a pending registration, between `register/start` and `register/finish`.
+    /// Handle for one pending registration, from start to finish.
     RegistrationId as "registration_id";
 
-    /// Handle for a login handshake, between `login/start` and `login/finish`.
+    /// Handle for one OPAQUE login or step-up, from start to finish.
     LoginId as "login_id";
 }
 

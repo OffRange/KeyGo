@@ -1,9 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-/// Every `code` the API answers with; clients match on the serialized name.
-///
-/// A code this build does not know decodes as [`ErrorCode::Unknown`], so a
-/// newer server never breaks an older client.
+/// Clients match on the serialized name. A code this build does not know becomes
+/// `Unknown`, so a newer server cannot break an older client.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ErrorCode {
@@ -33,7 +31,6 @@ pub enum ErrorCode {
     Unknown,
 }
 
-/// The JSON body of every error response.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApiError {
     pub code: ErrorCode,
