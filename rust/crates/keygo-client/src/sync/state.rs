@@ -12,7 +12,6 @@ pub(super) struct AccessState {
 #[derive(Default)]
 pub(super) struct AuthState {
     access: Option<AccessState>,
-    pub(super) nonce: Option<String>,
     /// Moves whenever `access` changes. A call whose token was rejected uses it to tell whether
     /// someone has already replaced that token.
     pub(super) generation: u64,
@@ -41,7 +40,6 @@ impl AuthState {
     /// a new one for its own.
     pub(super) fn reset(&mut self) {
         self.access = None;
-        self.nonce = None;
         self.unsaved = None;
         self.generation += 1;
     }

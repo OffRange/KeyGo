@@ -10,6 +10,7 @@ use keygo_api::{ApiError, Auth, Endpoint, ErrorCode, Method};
 use keygo_dpop::{Htm, ProofRequest};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use std::sync::{MutexGuard, PoisonError};
 use zeroize::Zeroizing;
 
 fn to_json<T: Serialize>(value: &T) -> SyncResult<Vec<u8>> {
@@ -57,18 +58,8 @@ fn header_value<'a>(response: &'a HttpResponse, name: &str) -> Option<&'a str> {
         .map(|h| h.value.as_str())
 }
 
-/// Returns whether the response carried a nonce.
-fn remember_nonce(response: &HttpResponse, nonce: &mut Option<String>) -> bool {
-    let fresh = header_value(response, "dpop-nonce");
-    if let Some(fresh) = fresh {
-        *nonce = Some(fresh.to_owned());
-    }
-    fresh.is_some()
-}
-
 fn is_nonce_challenge(response: &HttpResponse) -> bool {
-    serde_json::from_slice::<ApiError>(&response.body)
-        .is_ok_and(|error| error.code == ErrorCode::UseDpopNonce)
+    api_error(response).is_some_and(|error| error.code == ErrorCode::UseDpopNonce)
 }
 
 fn is_success(response: &HttpResponse) -> bool {
@@ -110,6 +101,20 @@ impl SyncClient {
         Ok(self.base_url.join(path)?.to_string())
     }
 
+    /// Never hold the guard across an `await`.
+    fn nonce_slot(&self) -> MutexGuard<'_, Option<String>> {
+        self.nonce.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Returns whether the response carried a nonce.
+    fn remember_nonce(&self, response: &HttpResponse) -> bool {
+        let fresh = header_value(response, "dpop-nonce");
+        if let Some(fresh) = fresh {
+            *self.nonce_slot() = Some(fresh.to_owned());
+        }
+        fresh.is_some()
+    }
+
     async fn send(&self, request: HttpRequest) -> SyncResult<HttpResponse> {
         self.transport
             .send(request)
@@ -123,15 +128,15 @@ impl SyncClient {
         url: &str,
         access_token: Option<&str>,
         body: Option<&[u8]>,
-        nonce: Option<&str>,
     ) -> SyncResult<HttpResponse> {
+        let nonce = self.nonce_slot().clone();
         let proof = self
             .prover
             .proof(&ProofRequest {
                 htm: proof_method(method),
                 htu: url,
                 access_token,
-                nonce,
+                nonce: nonce.as_deref(),
             })
             .map_err(|e| SyncError::Client {
                 message: format!("could not sign the DPoP proof: {e}"),
@@ -162,45 +167,24 @@ impl SyncClient {
 
     /// Signs and sends one request, and re-signs once if the server answers with a nonce challenge
     /// that carries a nonce.
-    /// Every `DPoP-Nonce` header the server sends replaces `nonce`.
+    /// Every `DPoP-Nonce` header the server sends replaces the stored nonce.
     pub(super) async fn exchange(
         &self,
         method: Method,
         path: &str,
         access_token: Option<&str>,
         body: Option<&[u8]>,
-        nonce: &mut Option<String>,
     ) -> SyncResult<HttpResponse> {
         let url = self.url(path)?;
 
-        let response = self
-            .send_signed(method, &url, access_token, body, nonce.as_deref())
-            .await?;
-        if !remember_nonce(&response, nonce) || !is_nonce_challenge(&response) {
+        let response = self.send_signed(method, &url, access_token, body).await?;
+        if !self.remember_nonce(&response) || !is_nonce_challenge(&response) {
             return Ok(response);
         }
 
-        let response = self
-            .send_signed(method, &url, access_token, body, nonce.as_deref())
-            .await?;
-        remember_nonce(&response, nonce);
+        let response = self.send_signed(method, &url, access_token, body).await?;
+        self.remember_nonce(&response);
         Ok(response)
-    }
-
-    /// Works on a copy of the nonce, so the `AuthState` lock is not held across the network.
-    async fn exchange_unlocked(
-        &self,
-        method: Method,
-        path: &str,
-        access_token: Option<&str>,
-        body: Option<&[u8]>,
-        mut nonce: Option<String>,
-    ) -> SyncResult<HttpResponse> {
-        let response = self
-            .exchange(method, path, access_token, body, &mut nonce)
-            .await;
-        self.auth.lock().await.nonce = nonce;
-        response
     }
 
     /// The caller holds the `AuthState` lock, so a running refresh cannot save a token after this.
@@ -209,6 +193,7 @@ impl SyncClient {
     /// the server still accepts would bring the session back.
     pub(super) async fn end_session(&self, state: &mut AuthState) -> Result<(), TokenStoreError> {
         state.reset();
+        *self.nonce_slot() = None;
         self.tokens.clear().await
     }
 
@@ -250,13 +235,7 @@ impl SyncClient {
 
         let sent_at = self.clock.now_secs();
         let response = self
-            .exchange(
-                Token::METHOD,
-                &Token.path(),
-                None,
-                Some(body.as_slice()),
-                &mut state.nonce,
-            )
+            .exchange(Token::METHOD, &Token.path(), None, Some(body.as_slice()))
             .await?;
 
         if !is_success(&response) {
@@ -285,7 +264,7 @@ impl SyncClient {
     }
 
     /// Only a refresh holds the lock across the network. It is released before the request itself.
-    async fn access_token(&self) -> SyncResult<(Zeroizing<String>, u64, Option<String>)> {
+    async fn access_token(&self) -> SyncResult<(Zeroizing<String>, u64)> {
         let mut state = self.auth.lock().await;
         self.flush_unsaved(&mut state).await;
         let now = self.clock.now_secs();
@@ -294,7 +273,7 @@ impl SyncClient {
             Some(access) => Zeroizing::new(access.token.expose().to_owned()),
             None => self.refresh_locked(&mut state).await?,
         };
-        Ok((token, state.generation, state.nonce.clone()))
+        Ok((token, state.generation))
     }
 
     /// An `invalid_token` earns one retry. The refresh before it is skipped if another caller has
@@ -307,10 +286,10 @@ impl SyncClient {
     ) -> SyncResult<HttpResponse> {
         let mut retried = false;
         loop {
-            let (token, generation, nonce) = self.access_token().await?;
+            let (token, generation) = self.access_token().await?;
 
             let response = self
-                .exchange_unlocked(method, path, Some(token.as_str()), body, nonce)
+                .exchange(method, path, Some(token.as_str()), body)
                 .await?;
 
             if retried || !is_invalid_token(&response) {
@@ -344,8 +323,7 @@ impl SyncClient {
                 .await?
             }
             Auth::Proof => {
-                let nonce = self.auth.lock().await.nonce.clone();
-                self.exchange_unlocked(E::METHOD, &path, None, body.as_deref(), nonce)
+                self.exchange(E::METHOD, &path, None, body.as_deref())
                     .await?
             }
             Auth::AccessToken => {
@@ -495,6 +473,40 @@ mod tests {
         let requests = transport.requests();
         assert_eq!(requests.len(), 2);
         assert_eq!(proof_claims(&requests[1])["nonce"], "n1");
+    }
+
+    #[tokio::test]
+    async fn a_response_without_a_nonce_keeps_a_newer_one() {
+        let (client, transport) = fake_client();
+        transport.push(200, &[("DPoP-Nonce", "n1")], SESSION.as_bytes());
+        transport.push(200, &[], SESSION.as_bytes());
+        transport.push(200, &[], SESSION.as_bytes());
+
+        let request = token_request();
+        let (first, second) =
+            tokio::join!(client.call(&Token, &request), client.call(&Token, &request),);
+        first.ok().unwrap();
+        second.ok().unwrap();
+        client.call(&Token, &request).await.ok().unwrap();
+
+        assert_eq!(proof_claims(&transport.requests()[2])["nonce"], "n1");
+    }
+
+    #[tokio::test]
+    async fn ending_the_session_forgets_the_nonce() {
+        let h = fresh().await;
+        h.transport.push(204, &[("DPoP-Nonce", "n1")], b"");
+        h.client.logout().await.unwrap();
+
+        h.transport.push(200, &[], SESSION.as_bytes());
+        h.client.call(&Token, &token_request()).await.ok().unwrap();
+
+        let requests = h.transport.requests();
+        assert!(
+            proof_claims(requests.last().unwrap())
+                .get("nonce")
+                .is_none()
+        );
     }
 
     #[tokio::test]

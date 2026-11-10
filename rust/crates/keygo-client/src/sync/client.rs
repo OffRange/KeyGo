@@ -31,6 +31,8 @@ pub struct SyncClient {
     pub(super) tokens: Arc<dyn TokenStore>,
     pub(super) clock: Arc<dyn Clock>,
     pub(super) auth: Mutex<AuthState>,
+    /// Outside `auth` because a refresh holds that lock across the network, and it signs too.
+    pub(super) nonce: std::sync::Mutex<Option<String>>,
 }
 
 fn check_base_url(url: &Url) -> SyncResult<()> {
@@ -62,6 +64,7 @@ impl SyncClient {
             tokens,
             clock: Arc::new(SystemClock),
             auth: Mutex::new(AuthState::default()),
+            nonce: std::sync::Mutex::default(),
         })
     }
 
