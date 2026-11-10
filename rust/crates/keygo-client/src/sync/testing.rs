@@ -128,6 +128,20 @@ impl FakeTokenStore {
     }
 }
 
+impl StoredSession {
+    pub(super) fn duplicate(&self) -> Self {
+        Self {
+            device_id: self.device_id,
+            refresh_token: self
+                .refresh_token
+                .expose_encoded()
+                .parse()
+                .expect("a refresh token parses its own encoding"),
+            refresh_expires_at: self.refresh_expires_at,
+        }
+    }
+}
+
 #[async_trait]
 impl TokenStore for FakeTokenStore {
     async fn load(&self) -> Result<Option<StoredSession>, TokenStoreError> {

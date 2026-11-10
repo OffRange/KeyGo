@@ -5,7 +5,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 pub(super) struct AccessState {
     pub(super) token: AccessToken,
-    /// Unix seconds. The token is usable while the clock reads less than this.
     pub(super) expires_at: u64,
 }
 
@@ -25,9 +24,6 @@ impl AuthState {
         self.access.as_ref()
     }
 
-    /// The only way to set the access token, so `generation` cannot be left behind.
-    ///
-    /// `sent_at` is read before the request, so a token never looks like it lives longer than it does.
     pub(super) fn replace_access(&mut self, access: Access, sent_at: u64) {
         self.access = Some(AccessState {
             token: access.access_token,
@@ -36,11 +32,11 @@ impl AuthState {
         self.generation += 1;
     }
 
-    /// `generation` moves on rather than restarting, so a call holding an old token cannot mistake
-    /// a new one for its own.
     pub(super) fn reset(&mut self) {
         self.access = None;
         self.unsaved = None;
+
+        // Keep counting up, so a request started before the reset can tell its token is stale
         self.generation += 1;
     }
 }

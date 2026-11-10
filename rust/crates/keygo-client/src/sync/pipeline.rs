@@ -10,6 +10,7 @@ use keygo_api::{ApiError, Auth, Endpoint, ErrorCode, Method};
 use keygo_dpop::{Htm, ProofRequest};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use std::ops::DerefMut;
 use std::sync::{MutexGuard, PoisonError};
 use zeroize::Zeroizing;
 
@@ -50,44 +51,42 @@ fn proof_method(method: Method) -> Htm {
     }
 }
 
-fn header_value<'a>(response: &'a HttpResponse, name: &str) -> Option<&'a str> {
-    response
-        .headers
-        .iter()
-        .find(|h| h.name.eq_ignore_ascii_case(name))
-        .map(|h| h.value.as_str())
-}
-
-fn is_nonce_challenge(response: &HttpResponse) -> bool {
-    api_error(response).is_some_and(|error| error.code == ErrorCode::UseDpopNonce)
-}
-
-fn is_success(response: &HttpResponse) -> bool {
-    (200..300).contains(&response.status)
-}
-
-/// A 2xx is never an error, whatever its body says.
-fn api_error(response: &HttpResponse) -> Option<ApiError> {
-    if is_success(response) {
-        return None;
+impl HttpResponse {
+    fn header_value(&self, name: &str) -> Option<&str> {
+        self.headers
+            .iter()
+            .find(|h| h.name.eq_ignore_ascii_case(name))
+            .map(|h| h.value.as_str())
     }
-    serde_json::from_slice(&response.body).ok()
-}
 
-fn is_invalid_token(response: &HttpResponse) -> bool {
-    api_error(response).is_some_and(|error| error.code == ErrorCode::InvalidToken)
-}
+    fn is_success(&self) -> bool {
+        (200..300).contains(&self.status)
+    }
 
-/// An unknown revoke reason becomes `None`, so a newer server can still sign an older app out.
-fn sign_out_error(response: &HttpResponse) -> Option<SyncError> {
-    let error = api_error(response)?;
-    matches!(
-        error.code,
-        ErrorCode::SessionRevoked | ErrorCode::RefreshExpired
-    )
-    .then(|| SyncError::SignedOut {
-        reason: error.reason.and_then(|reason| reason.parse().ok()),
-    })
+    /// A 2xx is never an error, whatever its body says.
+    fn api_error(&self) -> Option<ApiError> {
+        if self.is_success() {
+            return None;
+        }
+        serde_json::from_slice(&self.body).ok()
+    }
+
+    fn is_invalid_token(&self) -> bool {
+        self.api_error()
+            .is_some_and(|error| error.code == ErrorCode::InvalidToken)
+    }
+
+    /// An unknown revoke reason becomes `None`, so a newer server can still sign an older app out.
+    fn sign_out_error(&self) -> Option<SyncError> {
+        let error = self.api_error()?;
+        matches!(
+            error.code,
+            ErrorCode::SessionRevoked | ErrorCode::RefreshExpired
+        )
+        .then(|| SyncError::SignedOut {
+            reason: error.reason.and_then(|reason| reason.parse().ok()),
+        })
+    }
 }
 
 pub(super) fn store_failure(error: TokenStoreError) -> SyncError {
@@ -101,18 +100,18 @@ impl SyncClient {
         Ok(self.base_url.join(path)?.to_string())
     }
 
-    /// Never hold the guard across an `await`.
     fn nonce_slot(&self) -> MutexGuard<'_, Option<String>> {
         self.nonce.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Returns whether the response carried a nonce.
-    fn remember_nonce(&self, response: &HttpResponse) -> bool {
-        let fresh = header_value(response, "dpop-nonce");
-        if let Some(fresh) = fresh {
-            *self.nonce_slot() = Some(fresh.to_owned());
-        }
-        fresh.is_some()
+    fn remember_nonce_and_check_challenge(&self, response: &HttpResponse) -> bool {
+        let Some(fresh) = response.header_value("dpop-nonce") else {
+            return false;
+        };
+        *self.nonce_slot() = Some(fresh.to_owned());
+        response
+            .api_error()
+            .is_some_and(|error| error.code == ErrorCode::UseDpopNonce)
     }
 
     async fn send(&self, request: HttpRequest) -> SyncResult<HttpResponse> {
@@ -178,28 +177,18 @@ impl SyncClient {
         let url = self.url(path)?;
 
         let response = self.send_signed(method, &url, access_token, body).await?;
-        if !self.remember_nonce(&response) || !is_nonce_challenge(&response) {
-            return Ok(response);
+        if self.remember_nonce_and_check_challenge(&response) {
+            let retried = self.send_signed(method, &url, access_token, body).await?;
+            self.remember_nonce_and_check_challenge(&retried);
+            return Ok(retried);
         }
-
-        let response = self.send_signed(method, &url, access_token, body).await?;
-        self.remember_nonce(&response);
         Ok(response)
     }
 
-    /// The caller holds the `AuthState` lock, so a running refresh cannot save a token after this.
-    ///
-    /// `AuthState` is reset even if the store fails. The caller judges that failure: a leftover token
-    /// the server still accepts would bring the session back.
     pub(super) async fn end_session(&self, state: &mut AuthState) -> Result<(), TokenStoreError> {
         state.reset();
         *self.nonce_slot() = None;
         self.tokens.clear().await
-    }
-
-    /// The server has killed this token, so a failed clear is harmless.
-    async fn forget_killed_session(&self, state: &mut AuthState) {
-        let _ = self.end_session(state).await;
     }
 
     /// If the store refuses, `state` keeps the live copy and the next call tries again.
@@ -212,16 +201,14 @@ impl SyncClient {
         }
     }
 
-    /// Holds the `AuthState` lock for the whole refresh, so concurrent callers share one result.
-    /// Uses `exchange` directly because `call` would take the lock again.
-    ///
-    /// The rotated session goes into `state` before the write, so a refused save or a dropped caller
-    /// cannot lose the only copy of the live token.
-    async fn refresh_locked(&self, state: &mut AuthState) -> SyncResult<Zeroizing<String>> {
+    async fn refresh(&self, state: &mut AuthState) -> SyncResult<Zeroizing<String>> {
+        // If the previous refresh could not successfully store the refresh token, it is
+        // kept in-memory, so we will use that one instead.
         let refresh_token = match &state.unsaved {
-            Some(unsaved) => unsaved.duplicate().refresh_token,
+            Some(unsaved) => &unsaved.refresh_token,
             None => {
-                self.tokens
+                &self
+                    .tokens
                     .load()
                     .await
                     .map_err(store_failure)?
@@ -230,22 +217,15 @@ impl SyncClient {
             }
         };
 
-        let request = TokenRequest { refresh_token };
-        let body = Zeroizing::new(to_json(&request)?);
+        let body = Zeroizing::new(to_json(&TokenRequest { refresh_token })?);
 
         let sent_at = self.clock.now_secs();
         let response = self
             .exchange(Token::METHOD, &Token.path(), None, Some(body.as_slice()))
             .await?;
 
-        if !is_success(&response) {
-            return Err(match sign_out_error(&response) {
-                Some(signed_out) => {
-                    self.forget_killed_session(state).await;
-                    signed_out
-                }
-                None => from_response(response.status, &response.body),
-            });
+        if !response.is_success() {
+            return Err(self.failure(state, &response).await);
         }
 
         let body = Zeroizing::new(response.body);
@@ -264,14 +244,18 @@ impl SyncClient {
     }
 
     /// Only a refresh holds the lock across the network. It is released before the request itself.
-    async fn access_token(&self) -> SyncResult<(Zeroizing<String>, u64)> {
+    async fn access_token(&self, rejected: Option<u64>) -> SyncResult<(Zeroizing<String>, u64)> {
         let mut state = self.auth.lock().await;
         self.flush_unsaved(&mut state).await;
+
         let now = self.clock.now_secs();
-        let live = state.access().filter(|access| now < access.expires_at);
+        let usable = Some(state.generation) != rejected;
+        let live = state
+            .access()
+            .filter(|access| usable && now < access.expires_at);
         let token = match live {
             Some(access) => Zeroizing::new(access.token.expose().to_owned()),
-            None => self.refresh_locked(&mut state).await?,
+            None => self.refresh(&mut state).await?,
         };
         Ok((token, state.generation))
     }
@@ -284,23 +268,18 @@ impl SyncClient {
         path: &str,
         body: Option<&[u8]>,
     ) -> SyncResult<HttpResponse> {
-        let mut retried = false;
+        let mut rejected = None;
         loop {
-            let (token, generation) = self.access_token().await?;
+            let (token, generation) = self.access_token(rejected).await?;
 
             let response = self
                 .exchange(method, path, Some(token.as_str()), body)
                 .await?;
 
-            if retried || !is_invalid_token(&response) {
+            if rejected.is_some() || !response.is_invalid_token() {
                 return Ok(response);
             }
-            retried = true;
-
-            let mut state = self.auth.lock().await;
-            if state.generation == generation {
-                self.refresh_locked(&mut state).await?;
-            }
+            rejected = Some(generation);
         }
     }
 
@@ -332,17 +311,21 @@ impl SyncClient {
             }
         };
 
-        if is_success(&response) {
+        if response.is_success() {
             return decode_body(&response.body);
         }
-        Err(match sign_out_error(&response) {
-            Some(signed_out) => {
-                self.forget_killed_session(&mut *self.auth.lock().await)
-                    .await;
-                signed_out
-            }
-            None => from_response(response.status, &response.body),
-        })
+        Err(self
+            .failure(self.auth.lock().await.deref_mut(), &response)
+            .await)
+    }
+
+    async fn failure(&self, state: &mut AuthState, response: &HttpResponse) -> SyncError {
+        let Some(signed_out) = response.sign_out_error() else {
+            return from_response(response.status, &response.body);
+        };
+        // The server has killed this token, so a failed clear is harmless.
+        let _ = self.end_session(state).await;
+        signed_out
     }
 }
 

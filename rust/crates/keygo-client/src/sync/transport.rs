@@ -65,8 +65,6 @@ pub struct TransportError {
     pub message: String,
 }
 
-/// The host owns TLS, timeouts and pooling.
-/// It must not retry, follow auth challenges or log bodies.
 #[async_trait]
 pub trait Transport: Send + Sync {
     async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError>;

@@ -224,8 +224,7 @@ impl From<CoreAccount> for Account {
     }
 }
 
-/// The host owns TLS, timeouts and pooling.
-/// It must not retry, follow auth challenges or log bodies.
+/// The host owns TLS, timeouts and pooling. It must not retry, follow auth challenges or log bodies.
 #[uniffi::export(with_foreign)]
 #[async_trait]
 pub trait HttpTransport: Send + Sync {
@@ -237,13 +236,11 @@ pub trait HttpTransport: Send + Sync {
 pub trait DpopKey: Send + Sync {
     /// The 65-byte uncompressed P-256 point.
     fn public_key(&self) -> Result<Vec<u8>, SignError>;
-    /// SHA256withECDSA over `message`, DER encoded.
-    /// Can be called from several threads at once.
+
+    /// SHA256withECDSA over `message`, DER encoded. Can be called from several threads at once.
     fn sign(&self, message: Vec<u8>) -> Result<Vec<u8>, SignError>;
 }
 
-/// `save` runs under the client's auth lock, so it must return in bounded time: a hung `save`
-/// blocks every later call, including logout. A refused `save` is retried on later calls.
 #[uniffi::export(with_foreign)]
 #[async_trait]
 pub trait TokenStore: Send + Sync {
@@ -323,29 +320,20 @@ impl CoreTokenStore for StoreAdapter {
     }
 }
 
-/// Every call runs as its own task: abandoning a refresh the server has committed would lose the
-/// new token, and the next refresh would revoke the session as `reuse_detected`.
 #[derive(uniffi::Object)]
 pub struct SyncClient {
     inner: Arc<CoreSyncClient>,
 }
 
-impl SyncClient {
-    /// Dropping the returned future only stops the waiting, and a panic in the task stops at the
-    /// `JoinError` instead of crossing the FFI.
-    async fn detached<T, F, C>(&self, call: F) -> Result<T, SyncError>
-    where
-        T: Send + 'static,
-        F: FnOnce(Arc<CoreSyncClient>) -> C + Send,
-        C: Future<Output = SyncResult<T>> + Send + 'static,
-    {
-        tokio::spawn(call(self.inner.clone()))
-            .await
-            .map_err(|_| SyncError::Client {
-                reason: "the sync task did not finish".into(),
-            })?
-            .map_err(Into::into)
-    }
+async fn detached<T: Send + 'static>(
+    call: impl Future<Output = SyncResult<T>> + Send + 'static,
+) -> Result<T, SyncError> {
+    tokio::spawn(call)
+        .await
+        .map_err(|_| SyncError::Client {
+            reason: "the sync task did not finish".into(),
+        })?
+        .map_err(Into::into)
 }
 
 #[uniffi::export(async_runtime = "tokio")]
@@ -371,13 +359,12 @@ impl SyncClient {
         }))
     }
 
-    pub async fn meta(&self) -> Result<ServerInfo, SyncError> {
-        self.detached(|client| async move { client.meta().await })
-            .await
+    pub async fn meta(self: Arc<Self>) -> Result<ServerInfo, SyncError> {
+        detached(async move { self.inner.meta().await }).await
     }
 
     pub async fn register(
-        &self,
+        self: Arc<Self>,
         ark: Arc<ArkSession>,
         user_id: UserId,
         username: String,
@@ -387,25 +374,24 @@ impl SyncClient {
     ) -> Result<Account, SyncError> {
         let password = Zeroizing::new(password);
         let device = device.into_core()?;
-        let account = self
-            .detached(|client| async move {
-                client
-                    .register(
-                        &ark.session,
-                        user_id,
-                        &username,
-                        &password,
-                        invite.as_deref(),
-                        device,
-                    )
-                    .await
-            })
-            .await?;
+        let account = detached(async move {
+            self.inner
+                .register(
+                    &ark.session,
+                    user_id,
+                    &username,
+                    &password,
+                    invite.as_deref(),
+                    device,
+                )
+                .await
+        })
+        .await?;
         Ok(account.into())
     }
 
     pub async fn login(
-        &self,
+        self: Arc<Self>,
         ark: Arc<ArkSession>,
         username: String,
         password: String,
@@ -413,37 +399,31 @@ impl SyncClient {
     ) -> Result<Account, SyncError> {
         let password = Zeroizing::new(password);
         let device = device.into_core()?;
-        let account = self
-            .detached(|client| async move {
-                client
-                    .login(&ark.session, &username, &password, device)
-                    .await
-            })
-            .await?;
+        let account = detached(async move {
+            self.inner
+                .login(&ark.session, &username, &password, device)
+                .await
+        })
+        .await?;
         Ok(account.into())
     }
 
-    pub async fn step_up(&self, password: String) -> Result<(), SyncError> {
+    pub async fn step_up(self: Arc<Self>, password: String) -> Result<(), SyncError> {
         let password = Zeroizing::new(password);
-        self.detached(|client| async move { client.step_up(&password).await })
-            .await
+        detached(async move { self.inner.step_up(&password).await }).await
     }
 
-    pub async fn devices(&self) -> Result<Vec<SyncDevice>, SyncError> {
-        let devices = self
-            .detached(|client| async move { client.devices().await })
-            .await?;
+    pub async fn devices(self: Arc<Self>) -> Result<Vec<SyncDevice>, SyncError> {
+        let devices = detached(async move { self.inner.devices().await }).await?;
         Ok(devices.into_iter().map(SyncDevice::from).collect())
     }
 
-    pub async fn delete_device(&self, id: DeviceId) -> Result<(), SyncError> {
-        self.detached(|client| async move { client.delete_device(id).await })
-            .await
+    pub async fn delete_device(self: Arc<Self>, id: DeviceId) -> Result<(), SyncError> {
+        detached(async move { self.inner.delete_device(id).await }).await
     }
 
-    pub async fn logout(&self) -> Result<(), SyncError> {
-        self.detached(|client| async move { client.logout().await })
-            .await
+    pub async fn logout(self: Arc<Self>) -> Result<(), SyncError> {
+        detached(async move { self.inner.logout().await }).await
     }
 }
 

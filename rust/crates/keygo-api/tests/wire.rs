@@ -8,6 +8,7 @@ use keygo_api::auth::step_up;
 use keygo_api::auth::token::TokenRequest;
 use keygo_api::auth::{Access, Session};
 use keygo_api::devices::Devices;
+use keygo_api::domain::RefreshToken;
 use keygo_api::meta::ServerInfo;
 use keygo_opaque::client::{ClientLogin, ClientRegistration};
 use keygo_opaque::server::{self, ServerLogin, ServerSetup};
@@ -315,7 +316,7 @@ fn step_up_finish_response() {
 fn token_request() {
     pin(
         &TokenRequest {
-            refresh_token: from(json!(REFRESH)),
+            refresh_token: from::<RefreshToken>(json!(REFRESH)),
         },
         json!({"refresh_token": REFRESH}),
     );
