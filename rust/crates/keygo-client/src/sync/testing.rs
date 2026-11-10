@@ -1,5 +1,4 @@
-//! Fakes for the three host traits and the clock.
-
+use super::client::SyncClient;
 use super::signer::{DpopKey, SignError};
 use super::state::Clock;
 use super::tokens::{StoredSession, TokenStore, TokenStoreError};
@@ -9,8 +8,36 @@ use keygo_dpop::testing::TestSigner;
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use url::Url;
 
-/// Answers from a script and records what it was sent.
+pub fn client_for(base: &str, key: Arc<dyn DpopKey>) -> (SyncClient, Arc<FakeTransport>) {
+    let transport = FakeTransport::new();
+    let client = SyncClient::new(
+        Url::parse(base).unwrap(),
+        transport.clone(),
+        key,
+        Arc::new(FakeTokenStore::new()),
+    )
+    .unwrap();
+    (client, transport)
+}
+
+pub fn fake_client() -> (SyncClient, Arc<FakeTransport>) {
+    client_for("https://kg.example", Arc::new(FakeDpopKey::new()))
+}
+
+pub fn header<'a>(request: &'a HttpRequest, name: &str) -> Option<&'a str> {
+    request
+        .headers
+        .iter()
+        .find(|h| h.name == name)
+        .map(|h| h.value.as_str())
+}
+
+pub fn error_body(code: &str) -> Vec<u8> {
+    serde_json::to_vec(&serde_json::json!({"code": code, "message": "m"})).unwrap()
+}
+
 pub struct FakeTransport {
     script: Mutex<VecDeque<Result<HttpResponse, TransportError>>>,
     requests: Mutex<Vec<HttpRequest>>,
@@ -63,29 +90,28 @@ impl Transport for FakeTransport {
     }
 }
 
-/// Keeps the session in memory. `RefreshToken` is not `Clone`, so it is stored encoded.
+#[derive(Default)]
 pub struct FakeTokenStore {
-    stored: Mutex<Option<(keygo_core::DeviceId, String, u64)>>,
+    stored: Mutex<Option<StoredSession>>,
     fail_saves: AtomicBool,
     fail_clears: AtomicBool,
 }
 
 impl FakeTokenStore {
     pub fn new() -> Self {
-        Self {
-            stored: Mutex::new(None),
-            fail_saves: AtomicBool::new(false),
-            fail_clears: AtomicBool::new(false),
-        }
+        Self::default()
     }
 
     pub fn seed(&self, session: StoredSession) {
-        *self.stored.lock().unwrap() = Some(encode(&session));
+        *self.stored.lock().unwrap() = Some(session);
     }
 
-    /// The stored refresh token in its encoded form.
     pub fn current_refresh_token(&self) -> Option<String> {
-        self.stored.lock().unwrap().as_ref().map(|s| s.1.clone())
+        self.stored
+            .lock()
+            .unwrap()
+            .as_ref()
+            .map(|s| s.refresh_token.expose_encoded().to_string())
     }
 
     pub fn fail_saves(&self) {
@@ -101,20 +127,6 @@ impl FakeTokenStore {
     }
 }
 
-impl Default for FakeTokenStore {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-fn encode(session: &StoredSession) -> (keygo_core::DeviceId, String, u64) {
-    (
-        session.device_id,
-        session.refresh_token.expose_encoded().to_string(),
-        session.refresh_expires_at,
-    )
-}
-
 #[async_trait]
 impl TokenStore for FakeTokenStore {
     async fn load(&self) -> Result<Option<StoredSession>, TokenStoreError> {
@@ -123,11 +135,7 @@ impl TokenStore for FakeTokenStore {
             .lock()
             .unwrap()
             .as_ref()
-            .map(|(id, token, exp)| StoredSession {
-                device_id: *id,
-                refresh_token: token.parse().expect("stored token is valid"),
-                refresh_expires_at: *exp,
-            }))
+            .map(StoredSession::duplicate))
     }
 
     async fn save(&self, session: &StoredSession) -> Result<(), TokenStoreError> {
@@ -136,7 +144,7 @@ impl TokenStore for FakeTokenStore {
                 message: "save failed".into(),
             });
         }
-        *self.stored.lock().unwrap() = Some(encode(session));
+        *self.stored.lock().unwrap() = Some(session.duplicate());
         Ok(())
     }
 

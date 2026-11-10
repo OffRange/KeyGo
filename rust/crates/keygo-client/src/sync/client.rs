@@ -1,8 +1,7 @@
-use super::error::SyncError;
-use super::error::SyncResult;
+use super::error::{SyncError, SyncResult};
 use super::pipeline::store_failure;
 use super::signer::{DpopKey, ForeignSigner};
-use super::state::{AccessState, AuthState, Clock, SystemClock};
+use super::state::{AuthState, Clock, SystemClock};
 use super::tokens::TokenStore;
 use super::transport::Transport;
 use crate::ark_session::ArkSession;
@@ -18,7 +17,6 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use url::Url;
 
-/// Who signed in, and as which device.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Account {
     pub user_id: UserId,
@@ -70,8 +68,7 @@ impl SyncClient {
         self.call(&DeleteDevice { id }, &()).await
     }
 
-    /// Proves the password again to the server, which then treats this session as freshly
-    /// authenticated. Only the access token changes: the refresh token and the store are untouched.
+    /// Proves the password again. Replaces only the access token: the refresh token stays as it is.
     pub async fn step_up(&self, password: &str) -> SyncResult<()> {
         let (login, credential_request) =
             ClientLogin::start(password.as_bytes()).map_err(opaque_failure)?;
@@ -83,8 +80,7 @@ impl SyncClient {
             .map_err(opaque_failure)?;
         let dpop_binding = finish.session_key.dpop_binding(self.prover.jkt());
 
-        // Read before sending, so a token never looks like it lives longer than it does.
-        let now = self.clock.now_secs();
+        let sent_at = self.clock.now_secs();
         let response = self
             .call(
                 &StepUpFinish,
@@ -96,10 +92,10 @@ impl SyncClient {
             )
             .await?;
 
-        self.auth.lock().await.replace_access(AccessState {
-            token: response.access.access_token,
-            expires_at: now.saturating_add(response.access.access_expires_in),
-        });
+        self.auth
+            .lock()
+            .await
+            .replace_access(response.access, sent_at);
         Ok(())
     }
 
@@ -127,10 +123,8 @@ impl SyncClient {
         Err(undecided())
     }
 
-    /// Ends the session here even if the server cannot be told, and reports whether it was.
-    ///
-    /// When the server could not be told and the store could not be cleared either, a token the
-    /// server may still accept stays on disk, so the store failure is returned instead.
+    /// Always ends the session locally. Returns the server's result, unless the server was not told
+    /// and the store could not be cleared: a token the server may still accept is then left on disk.
     pub async fn logout(&self) -> SyncResult<()> {
         let sent = self.call(&Logout, &()).await;
         let mut state = self.auth.lock().await;
@@ -161,34 +155,14 @@ fn opaque_failure(error: OpaqueError) -> SyncError {
 mod tests {
     use super::super::error::SyncError;
     use super::super::signer::SignError;
-    use super::super::testing::{FakeDpopKey, FakeTokenStore, FakeTransport};
+    use super::super::testing::{FakeTokenStore, FakeTransport, error_body, fake_client, header};
     use super::*;
 
     const INFO: &str = r#"{"version":"1","public_url":"https://kg.example","allow_signups":true}"#;
 
-    fn client() -> (SyncClient, Arc<FakeTransport>) {
-        let transport = FakeTransport::new();
-        let client = SyncClient::new(
-            Url::parse("https://kg.example").unwrap(),
-            transport.clone(),
-            Arc::new(FakeDpopKey::new()),
-            Arc::new(FakeTokenStore::new()),
-        )
-        .unwrap();
-        (client, transport)
-    }
-
-    fn header<'a>(request: &'a super::super::HttpRequest, name: &str) -> Option<&'a str> {
-        request
-            .headers
-            .iter()
-            .find(|h| h.name == name)
-            .map(|h| h.value.as_str())
-    }
-
     #[tokio::test]
     async fn none_auth_sends_no_proof_or_token() {
-        let (client, transport) = client();
+        let (client, transport) = fake_client();
         transport.push(200, &[], INFO.as_bytes());
 
         client.meta().await.unwrap();
@@ -203,7 +177,7 @@ mod tests {
 
     #[tokio::test]
     async fn unit_request_has_no_body_or_content_type() {
-        let (client, transport) = client();
+        let (client, transport) = fake_client();
         transport.push(200, &[], INFO.as_bytes());
 
         client.meta().await.unwrap();
@@ -224,9 +198,8 @@ mod tests {
             ("fresh_auth_required", SyncError::FreshAuthRequired),
             ("rate_limited", SyncError::RateLimited),
         ] {
-            let (client, transport) = client();
-            let body = format!(r#"{{"code":"{code}","message":"m"}}"#);
-            transport.push(400, &[], body.as_bytes());
+            let (client, transport) = fake_client();
+            transport.push(400, &[], &error_body(code));
 
             assert_eq!(client.meta().await.unwrap_err(), expected, "{code}");
         }
@@ -234,7 +207,7 @@ mod tests {
 
     #[tokio::test]
     async fn rate_limited_is_not_retried() {
-        let (client, transport) = client();
+        let (client, transport) = fake_client();
         transport.push(
             429,
             &[],
@@ -247,7 +220,7 @@ mod tests {
 
     #[tokio::test]
     async fn unknown_code_is_a_server_error() {
-        let (client, transport) = client();
+        let (client, transport) = fake_client();
         transport.push(400, &[], br#"{"code":"brand_new","message":"m"}"#);
 
         assert_eq!(
@@ -261,7 +234,7 @@ mod tests {
 
     #[tokio::test]
     async fn html_200_is_an_invalid_response() {
-        let (client, transport) = client();
+        let (client, transport) = fake_client();
         transport.push(200, &[], b"<html>");
 
         assert!(matches!(
@@ -272,7 +245,7 @@ mod tests {
 
     #[tokio::test]
     async fn html_502_is_a_server_error() {
-        let (client, transport) = client();
+        let (client, transport) = fake_client();
         transport.push(502, &[], b"<html>");
 
         assert!(matches!(
@@ -283,7 +256,7 @@ mod tests {
 
     #[tokio::test]
     async fn transport_failure_is_network() {
-        let (client, transport) = client();
+        let (client, transport) = fake_client();
         transport.push_network_error("offline");
 
         assert_eq!(

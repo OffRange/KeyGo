@@ -1,4 +1,5 @@
 use super::tokens::StoredSession;
+use keygo_api::auth::Access;
 use keygo_api::domain::AccessToken;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -8,14 +9,12 @@ pub(super) struct AccessState {
     pub(super) expires_at: u64,
 }
 
-/// What the client remembers between calls.
 #[derive(Default)]
 pub(super) struct AuthState {
     access: Option<AccessState>,
-    /// The last `DPoP-Nonce` the server sent.
     pub(super) nonce: Option<String>,
-    /// Changes whenever `access` does. A call remembers the value its token came with, so when
-    /// that token is rejected it can tell whether someone has already replaced it.
+    /// Moves whenever `access` changes. A call whose token was rejected uses it to tell whether
+    /// someone has already replaced that token.
     pub(super) generation: u64,
     /// A rotated session the store has not accepted yet. Until it does, the store may still hold
     /// the spent token, which the server would treat as reuse, so this copy wins over the store.
@@ -28,13 +27,18 @@ impl AuthState {
     }
 
     /// The only way to set the access token, so `generation` cannot be left behind.
-    pub(super) fn replace_access(&mut self, access: AccessState) {
-        self.access = Some(access);
+    ///
+    /// `sent_at` is read before the request, so a token never looks like it lives longer than it does.
+    pub(super) fn replace_access(&mut self, access: Access, sent_at: u64) {
+        self.access = Some(AccessState {
+            token: access.access_token,
+            expires_at: sent_at.saturating_add(access.access_expires_in),
+        });
         self.generation += 1;
     }
 
-    /// Forgets the session. `generation` moves on rather than restarting, so a call still holding
-    /// a token from before cannot mistake a later one for its own.
+    /// `generation` moves on rather than restarting, so a call holding an old token cannot mistake
+    /// a new one for its own.
     pub(super) fn reset(&mut self) {
         self.access = None;
         self.nonce = None;
@@ -66,10 +70,13 @@ mod tests {
     fn replacing_access_moves_the_generation() {
         let mut state = AuthState::default();
         let before = state.generation;
-        state.replace_access(AccessState {
-            token: serde_json::from_value(serde_json::json!("a.b.c")).unwrap(),
-            expires_at: 1,
-        });
+        state.replace_access(
+            Access {
+                access_token: serde_json::from_value(serde_json::json!("a.b.c")).unwrap(),
+                access_expires_in: 1,
+            },
+            0,
+        );
         assert_eq!(state.generation, before + 1);
         assert!(state.access().is_some());
     }

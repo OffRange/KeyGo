@@ -1,6 +1,6 @@
 use super::client::SyncClient;
 use super::error::{SyncError, SyncResult, from_response};
-use super::state::{AccessState, AuthState};
+use super::state::AuthState;
 use super::tokens::{StoredSession, TokenStoreError};
 use super::transport::{Header, HttpRequest, HttpResponse};
 use keygo_api::auth::Session;
@@ -12,19 +12,23 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use zeroize::Zeroizing;
 
+fn to_json<T: Serialize>(value: &T) -> SyncResult<Vec<u8>> {
+    serde_json::to_vec(value).map_err(|e| SyncError::Client {
+        message: format!("request does not serialize: {e}"),
+    })
+}
+
 /// A serialized `null` (the `()` body) is sent as no body at all.
 fn encode_body<T: Serialize>(value: &T) -> SyncResult<Option<Vec<u8>>> {
-    let json = serde_json::to_value(value).map_err(|e| SyncError::Client {
-        message: format!("request does not serialize: {e}"),
-    })?;
-    if json.is_null() {
-        return Ok(None);
+    let json = to_json(value)?;
+    Ok((json != b"null").then_some(json))
+}
+
+fn json_content_type() -> Header {
+    Header {
+        name: "content-type".into(),
+        value: "application/json".into(),
     }
-    serde_json::to_vec(&json)
-        .map(Some)
-        .map_err(|e| SyncError::Client {
-            message: format!("request does not serialize: {e}"),
-        })
 }
 
 /// An empty body decodes as `null`, so `()` accepts a 204.
@@ -53,6 +57,15 @@ fn header_value<'a>(response: &'a HttpResponse, name: &str) -> Option<&'a str> {
         .map(|h| h.value.as_str())
 }
 
+/// Returns whether the response carried a nonce.
+fn remember_nonce(response: &HttpResponse, nonce: &mut Option<String>) -> bool {
+    let fresh = header_value(response, "dpop-nonce");
+    if let Some(fresh) = fresh {
+        *nonce = Some(fresh.to_owned());
+    }
+    fresh.is_some()
+}
+
 fn is_nonce_challenge(response: &HttpResponse) -> bool {
     serde_json::from_slice::<ApiError>(&response.body)
         .is_ok_and(|error| error.code == ErrorCode::UseDpopNonce)
@@ -62,7 +75,7 @@ fn is_success(response: &HttpResponse) -> bool {
     (200..300).contains(&response.status)
 }
 
-/// The error body of a failed response. A 2xx is never an error, whatever its body says.
+/// A 2xx is never an error, whatever its body says.
 fn api_error(response: &HttpResponse) -> Option<ApiError> {
     if is_success(response) {
         return None;
@@ -74,8 +87,7 @@ fn is_invalid_token(response: &HttpResponse) -> bool {
     api_error(response).is_some_and(|error| error.code == ErrorCode::InvalidToken)
 }
 
-/// The `SignedOut` a response means, if the server says the session is over. A reason this build
-/// does not know is `None`, so a newer server still signs an older app out.
+/// An unknown revoke reason becomes `None`, so a newer server can still sign an older app out.
 fn sign_out_error(response: &HttpResponse) -> Option<SyncError> {
     let error = api_error(response)?;
     matches!(
@@ -105,9 +117,52 @@ impl SyncClient {
             .map_err(|e| SyncError::Network { message: e.message })
     }
 
-    /// Signs and sends one request. A `use_dpop_nonce` challenge that carries a nonce is answered
-    /// once with a re-signed request; a second challenge is returned as the response. Every
-    /// `DPoP-Nonce` header the server sends replaces `nonce`.
+    async fn send_signed(
+        &self,
+        method: Method,
+        url: &str,
+        access_token: Option<&str>,
+        body: Option<&[u8]>,
+        nonce: Option<&str>,
+    ) -> SyncResult<HttpResponse> {
+        let proof = self
+            .prover
+            .proof(&ProofRequest {
+                htm: proof_method(method),
+                htu: url,
+                access_token,
+                nonce,
+            })
+            .map_err(|e| SyncError::Client {
+                message: format!("could not sign the DPoP proof: {e}"),
+            })?;
+
+        let mut headers = vec![Header {
+            name: "dpop".into(),
+            value: proof,
+        }];
+        if let Some(token) = access_token {
+            headers.push(Header {
+                name: "authorization".into(),
+                value: format!("DPoP {token}"),
+            });
+        }
+        if body.is_some() {
+            headers.push(json_content_type());
+        }
+
+        self.send(HttpRequest {
+            method,
+            url: url.to_owned(),
+            headers,
+            body: body.map(<[u8]>::to_vec).unwrap_or_default(),
+        })
+        .await
+    }
+
+    /// Signs and sends one request, and re-signs once if the server answers with a nonce challenge
+    /// that carries a nonce.
+    /// Every `DPoP-Nonce` header the server sends replaces `nonce`.
     pub(super) async fn exchange(
         &self,
         method: Method,
@@ -118,72 +173,51 @@ impl SyncClient {
     ) -> SyncResult<HttpResponse> {
         let url = self.url(path);
 
-        let mut retried = false;
-        loop {
-            let proof = self
-                .prover
-                .proof(&ProofRequest {
-                    htm: proof_method(method),
-                    htu: &url,
-                    access_token,
-                    nonce: nonce.as_deref(),
-                })
-                .map_err(|e| SyncError::Client {
-                    message: format!("could not sign the DPoP proof: {e}"),
-                })?;
-
-            let mut headers = vec![Header {
-                name: "dpop".into(),
-                value: proof,
-            }];
-            if let Some(token) = access_token {
-                headers.push(Header {
-                    name: "authorization".into(),
-                    value: format!("DPoP {token}"),
-                });
-            }
-            if body.is_some() {
-                headers.push(Header {
-                    name: "content-type".into(),
-                    value: "application/json".into(),
-                });
-            }
-
-            let response = self
-                .send(HttpRequest {
-                    method,
-                    url: url.clone(),
-                    headers,
-                    body: body.map(<[u8]>::to_vec).unwrap_or_default(),
-                })
-                .await?;
-
-            let fresh = header_value(&response, "dpop-nonce").map(str::to_owned);
-            if let Some(fresh) = &fresh {
-                *nonce = Some(fresh.clone());
-            }
-
-            if !retried && fresh.is_some() && is_nonce_challenge(&response) {
-                retried = true;
-                continue;
-            }
+        let response = self
+            .send_signed(method, &url, access_token, body, nonce.as_deref())
+            .await?;
+        if !remember_nonce(&response, nonce) || !is_nonce_challenge(&response) {
             return Ok(response);
         }
+
+        let response = self
+            .send_signed(method, &url, access_token, body, nonce.as_deref())
+            .await?;
+        remember_nonce(&response, nonce);
+        Ok(response)
     }
 
-    /// Forgets the session, in memory and in the store. The caller holds the `AuthState` lock, so
-    /// a refresh that is still running cannot save a token after this.
+    /// Works on a copy of the nonce, so the `AuthState` lock is not held across the network.
+    async fn exchange_unlocked(
+        &self,
+        method: Method,
+        path: &str,
+        access_token: Option<&str>,
+        body: Option<&[u8]>,
+        mut nonce: Option<String>,
+    ) -> SyncResult<HttpResponse> {
+        let response = self
+            .exchange(method, path, access_token, body, &mut nonce)
+            .await;
+        self.auth.lock().await.nonce = nonce;
+        response
+    }
+
+    /// The caller holds the `AuthState` lock, so a running refresh cannot save a token after this.
     ///
-    /// `AuthState` is reset even when the store fails. What that failure means is the caller's to
-    /// decide: an entry the server has already killed is only refused and cleared again, but one
-    /// it still accepts would bring the session back on the next call.
+    /// `AuthState` is reset even if the store fails. The caller judges that failure: a leftover token
+    /// the server still accepts would bring the session back.
     pub(super) async fn end_session(&self, state: &mut AuthState) -> Result<(), TokenStoreError> {
         state.reset();
         self.tokens.clear().await
     }
 
-    /// Writes the rotated session held in `state`, if any. A refusal is not the caller's failure:
-    /// `state` keeps the live copy and the next call writes it again.
+    /// The server has killed this token, so a failed clear is harmless.
+    async fn forget_killed_session(&self, state: &mut AuthState) {
+        let _ = self.end_session(state).await;
+    }
+
+    /// If the store refuses, `state` keeps the live copy and the next call tries again.
     async fn flush_unsaved(&self, state: &mut AuthState) {
         let Some(unsaved) = &state.unsaved else {
             return;
@@ -193,12 +227,11 @@ impl SyncClient {
         }
     }
 
-    /// Spends the live refresh token on a new session and returns the new access token. `state`
-    /// is the locked `AuthState`, held for the whole refresh so concurrent callers share its
-    /// result. It goes straight to `exchange`, because `call` would take the lock again.
+    /// Holds the `AuthState` lock for the whole refresh, so concurrent callers share one result.
+    /// Uses `exchange` directly because `call` would take the lock again.
     ///
-    /// The rotated session goes into `state` before it is written, so neither a refused save nor
-    /// a caller dropped during the write can lose the only copy of the live token.
+    /// The rotated session goes into `state` before the write, so a refused save or a dropped caller
+    /// cannot lose the only copy of the live token.
     async fn refresh_locked(&self, state: &mut AuthState) -> SyncResult<Zeroizing<String>> {
         let refresh_token = match &state.unsaved {
             Some(unsaved) => unsaved.duplicate().refresh_token,
@@ -213,13 +246,9 @@ impl SyncClient {
         };
 
         let request = TokenRequest { refresh_token };
-        // Not `encode_body`: this body is a secret and should not linger in a `Value`.
-        let body = Zeroizing::new(serde_json::to_vec(&request).map_err(|e| SyncError::Client {
-            message: format!("request does not serialize: {e}"),
-        })?);
+        let body = Zeroizing::new(to_json(&request)?);
 
-        // Read before sending, so a token never looks like it lives longer than it does.
-        let now = self.clock.now_secs();
+        let sent_at = self.clock.now_secs();
         let response = self
             .exchange(
                 Token::METHOD,
@@ -231,12 +260,13 @@ impl SyncClient {
             .await?;
 
         if !is_success(&response) {
-            if let Some(signed_out) = sign_out_error(&response) {
-                // The server has killed this token, so an entry left behind is only refused again.
-                let _ = self.end_session(state).await;
-                return Err(signed_out);
-            }
-            return Err(from_response(response.status, &response.body));
+            return Err(match sign_out_error(&response) {
+                Some(signed_out) => {
+                    self.forget_killed_session(state).await;
+                    signed_out
+                }
+                None => from_response(response.status, &response.body),
+            });
         }
 
         let body = Zeroizing::new(response.body);
@@ -245,21 +275,16 @@ impl SyncClient {
         state.unsaved = Some(StoredSession {
             device_id: session.device_id,
             refresh_token: session.refresh_token,
-            refresh_expires_at: now.saturating_add(session.refresh_expires_in),
+            refresh_expires_at: sent_at.saturating_add(session.refresh_expires_in),
         });
         self.flush_unsaved(state).await;
 
         let token = Zeroizing::new(session.access.access_token.expose().to_owned());
-        state.replace_access(AccessState {
-            token: session.access.access_token,
-            expires_at: now.saturating_add(session.access.access_expires_in),
-        });
+        state.replace_access(session.access, sent_at);
         Ok(token)
     }
 
-    /// A live access token, refreshed first if there is none, with the generation it belongs to
-    /// and the nonce to send. The lock is released on return: only a refresh holds it across the
-    /// network, never the request itself.
+    /// Only a refresh holds the lock across the network. It is released before the request itself.
     async fn access_token(&self) -> SyncResult<(Zeroizing<String>, u64, Option<String>)> {
         let mut state = self.auth.lock().await;
         self.flush_unsaved(&mut state).await;
@@ -272,8 +297,8 @@ impl SyncClient {
         Ok((token, state.generation, state.nonce.clone()))
     }
 
-    /// Sends one request with the access token. An `invalid_token` earns one refresh and one
-    /// retry; the refresh is skipped when another caller has already replaced the rejected token.
+    /// An `invalid_token` earns one retry. The refresh before it is skipped if another caller has
+    /// already replaced the token.
     async fn authenticated(
         &self,
         method: Method,
@@ -282,13 +307,11 @@ impl SyncClient {
     ) -> SyncResult<HttpResponse> {
         let mut retried = false;
         loop {
-            let (token, generation, mut nonce) = self.access_token().await?;
+            let (token, generation, nonce) = self.access_token().await?;
 
             let response = self
-                .exchange(method, path, Some(token.as_str()), body, &mut nonce)
-                .await;
-            self.auth.lock().await.nonce = nonce;
-            let response = response?;
+                .exchange_unlocked(method, path, Some(token.as_str()), body, nonce)
+                .await?;
 
             if retried || !is_invalid_token(&response) {
                 return Ok(response);
@@ -312,28 +335,18 @@ impl SyncClient {
 
         let response = match E::AUTH {
             Auth::None => {
-                let mut headers = Vec::new();
-                if body.is_some() {
-                    headers.push(Header {
-                        name: "content-type".into(),
-                        value: "application/json".into(),
-                    });
-                }
                 self.send(HttpRequest {
                     method: E::METHOD,
                     url: self.url(&path),
-                    headers,
+                    headers: body.is_some().then(json_content_type).into_iter().collect(),
                     body: body.unwrap_or_default(),
                 })
                 .await?
             }
             Auth::Proof => {
-                let mut nonce = self.auth.lock().await.nonce.clone();
-                let response = self
-                    .exchange(E::METHOD, &path, None, body.as_deref(), &mut nonce)
-                    .await;
-                self.auth.lock().await.nonce = nonce;
-                response?
+                let nonce = self.auth.lock().await.nonce.clone();
+                self.exchange_unlocked(E::METHOD, &path, None, body.as_deref(), nonce)
+                    .await?
             }
             Auth::AccessToken => {
                 self.authenticated(E::METHOD, &path, body.as_deref())
@@ -344,20 +357,35 @@ impl SyncClient {
         if is_success(&response) {
             return decode_body(&response.body);
         }
-        if let Some(signed_out) = sign_out_error(&response) {
-            let mut state = self.auth.lock().await;
-            // The server has killed this token, so an entry left behind is only refused again.
-            let _ = self.end_session(&mut state).await;
-            return Err(signed_out);
-        }
-        Err(from_response(response.status, &response.body))
+        Err(match sign_out_error(&response) {
+            Some(signed_out) => {
+                self.forget_killed_session(&mut *self.auth.lock().await)
+                    .await;
+                signed_out
+            }
+            None => from_response(response.status, &response.body),
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::signer::{DpopKey, SignError};
+    use super::super::testing::{
+        FakeDpopKey, FakeTokenStore, FakeTransport, FixedClock, client_for, error_body,
+        fake_client, header,
+    };
+    use super::super::tokens::TokenStore;
     use super::*;
+    use base64::Engine;
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+    use keygo_api::domain::RevokeReason;
     use keygo_api::meta::ServerInfo;
+    use keygo_core::DeviceId;
+    use serde_json::{Value, json};
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use url::Url;
 
     #[test]
     fn empty_body_decodes_as_unit() {
@@ -372,43 +400,11 @@ mod tests {
         ));
     }
 
-    use super::super::client::SyncClient;
-    use super::super::signer::{DpopKey, SignError};
-    use super::super::testing::{FakeDpopKey, FakeTokenStore, FakeTransport, FixedClock};
-    use super::super::tokens::TokenStore;
-    use base64::Engine;
-    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-    use keygo_api::domain::RevokeReason;
-    use keygo_core::DeviceId;
-    use serde_json::{Value, json};
-    use std::sync::Arc;
-    use std::sync::atomic::{AtomicBool, Ordering};
-    use url::Url;
-
     const SESSION: &str = r#"{"device_id":"00000000-0000-0000-0000-000000000001","access_token":"a.b.c","access_expires_in":300,"refresh_token":"kgr___________________________________________8","refresh_expires_in":86400}"#;
     const CHALLENGE: &[u8] = br#"{"code":"use_dpop_nonce","message":"m"}"#;
 
-    fn client_for(base: &str, key: Arc<dyn DpopKey>) -> (SyncClient, Arc<FakeTransport>) {
-        let transport = FakeTransport::new();
-        let client = SyncClient::new(
-            Url::parse(base).unwrap(),
-            transport.clone(),
-            key,
-            Arc::new(FakeTokenStore::new()),
-        )
-        .unwrap();
-        (client, transport)
-    }
-
-    fn client() -> (SyncClient, Arc<FakeTransport>) {
-        client_for("https://kg.example", Arc::new(FakeDpopKey::new()))
-    }
-
     fn token_request() -> TokenRequest {
-        serde_json::from_value(json!({
-            "refresh_token": "kgr___________________________________________8",
-        }))
-        .unwrap()
+        serde_json::from_value(json!({"refresh_token": OLD_REFRESH})).unwrap()
     }
 
     fn proof_claims(request: &HttpRequest) -> Value {
@@ -417,17 +413,9 @@ mod tests {
         serde_json::from_slice(&URL_SAFE_NO_PAD.decode(claims).unwrap()).unwrap()
     }
 
-    fn header<'a>(request: &'a HttpRequest, name: &str) -> Option<&'a str> {
-        request
-            .headers
-            .iter()
-            .find(|h| h.name == name)
-            .map(|h| h.value.as_str())
-    }
-
     #[tokio::test]
     async fn proof_endpoint_signs_without_ath() {
-        let (client, transport) = client();
+        let (client, transport) = fake_client();
         transport.push(200, &[], SESSION.as_bytes());
 
         client.call(&Token, &token_request()).await.ok().unwrap();
@@ -442,7 +430,7 @@ mod tests {
 
     #[tokio::test]
     async fn nonce_challenge_retries_with_the_new_nonce() {
-        let (client, transport) = client();
+        let (client, transport) = fake_client();
         transport.push(400, &[("DPoP-Nonce", "n1")], CHALLENGE);
         transport.push(200, &[], SESSION.as_bytes());
 
@@ -458,7 +446,7 @@ mod tests {
 
     #[tokio::test]
     async fn second_nonce_challenge_is_returned() {
-        let (client, transport) = client();
+        let (client, transport) = fake_client();
         transport.push(400, &[("DPoP-Nonce", "n1")], CHALLENGE);
         transport.push(400, &[("DPoP-Nonce", "n2")], CHALLENGE);
 
@@ -470,7 +458,7 @@ mod tests {
 
     #[tokio::test]
     async fn challenge_without_header_is_returned() {
-        let (client, transport) = client();
+        let (client, transport) = fake_client();
         transport.push(400, &[], CHALLENGE);
 
         let error = client.call(&Token, &token_request()).await.err().unwrap();
@@ -481,7 +469,7 @@ mod tests {
 
     #[tokio::test]
     async fn last_nonce_is_reused() {
-        let (client, transport) = client();
+        let (client, transport) = fake_client();
         transport.push(400, &[("DPoP-Nonce", "n1")], CHALLENGE);
         transport.push(200, &[], SESSION.as_bytes());
         transport.push(200, &[], SESSION.as_bytes());
@@ -496,7 +484,7 @@ mod tests {
 
     #[tokio::test]
     async fn nonce_on_a_success_is_kept() {
-        let (client, transport) = client();
+        let (client, transport) = fake_client();
         transport.push(200, &[("DPoP-Nonce", "n1")], SESSION.as_bytes());
         transport.push(200, &[], SESSION.as_bytes());
 
@@ -510,7 +498,7 @@ mod tests {
 
     #[tokio::test]
     async fn trailing_slash_in_base_url_is_harmless() {
-        let (plain, plain_transport) = client();
+        let (plain, plain_transport) = fake_client();
         let (slashed, slashed_transport) =
             client_for("https://kg.example/", Arc::new(FakeDpopKey::new()));
         plain_transport.push(200, &[], SESSION.as_bytes());
@@ -561,7 +549,6 @@ mod tests {
     /// Requests `fresh` has already spent.
     const FRESH: usize = 2;
 
-    /// A `200` from `/auth/token`.
     fn session(access_token: &str) -> Vec<u8> {
         session_with(access_token, ROTATED_REFRESH)
     }
@@ -575,10 +562,6 @@ mod tests {
             "refresh_expires_in": 86400,
         }))
         .unwrap()
-    }
-
-    fn error_body(code: &str) -> Vec<u8> {
-        serde_json::to_vec(&json!({"code": code, "message": "m"})).unwrap()
     }
 
     fn revoked_body(reason: &str) -> Vec<u8> {
@@ -599,18 +582,9 @@ mod tests {
 
     impl Harness {
         fn token_requests(&self) -> usize {
-            self.transport
-                .requests()
-                .iter()
-                .filter(|r| r.url.ends_with("/api/v1/auth/token"))
-                .count()
+            self.spent_tokens().len()
         }
 
-        fn stored_refresh_token(&self) -> Option<String> {
-            self.store.current_refresh_token()
-        }
-
-        /// Every refresh token sent so far, in order.
         fn spent_tokens(&self) -> Vec<String> {
             self.transport
                 .requests()
@@ -631,7 +605,7 @@ mod tests {
                 SyncError::SignedOut { reason: None },
             );
             assert_eq!(self.transport.requests().len(), sent);
-            assert_eq!(self.stored_refresh_token(), None);
+            assert_eq!(self.store.current_refresh_token(), None);
         }
     }
 
@@ -665,26 +639,25 @@ mod tests {
         harness
     }
 
-    /// Holds a live access token: one refresh and one `devices()` have run.
-    async fn fresh() -> Harness {
-        let harness = seeded();
+    async fn after_first_call(harness: Harness) -> Harness {
         harness.transport.push(200, &[], &session("a.b.c"));
         harness.transport.push(200, &[], DEVICES);
         harness.client.devices().await.unwrap();
         harness
+    }
+
+    /// Holds a live access token: one refresh and one `devices()` have run.
+    async fn fresh() -> Harness {
+        after_first_call(seeded()).await
     }
 
     /// Holds a rotated token the store refused, with saves still failing.
     async fn refused() -> Harness {
         let harness = seeded();
         harness.store.fail_saves();
-        harness.transport.push(200, &[], &session("a.b.c"));
-        harness.transport.push(200, &[], DEVICES);
-        harness.client.devices().await.unwrap();
-        harness
+        after_first_call(harness).await
     }
 
-    /// Saves any session it is given, except that while `hang` is set `save` never returns.
     struct HangingStore {
         inner: FakeTokenStore,
         hang: AtomicBool,
@@ -750,7 +723,10 @@ mod tests {
     #[tokio::test]
     async fn rotated_refresh_token_is_saved_and_spent_next() {
         let h = fresh().await;
-        assert_eq!(h.stored_refresh_token().as_deref(), Some(ROTATED_REFRESH));
+        assert_eq!(
+            h.store.current_refresh_token().as_deref(),
+            Some(ROTATED_REFRESH)
+        );
 
         h.clock.advance(601);
         h.transport.push(200, &[], &session("d.e.f"));
@@ -860,7 +836,10 @@ mod tests {
         let requests = h.transport.requests();
         assert_eq!(requests.len(), 2);
         assert_eq!(header(&requests[1], "authorization"), Some("DPoP a.b.c"));
-        assert_eq!(h.stored_refresh_token().as_deref(), Some(OLD_REFRESH));
+        assert_eq!(
+            h.store.current_refresh_token().as_deref(),
+            Some(OLD_REFRESH)
+        );
     }
 
     #[tokio::test]
@@ -872,7 +851,10 @@ mod tests {
         h.client.devices().await.unwrap();
 
         assert_eq!(h.token_requests(), 1);
-        assert_eq!(h.stored_refresh_token().as_deref(), Some(ROTATED_REFRESH));
+        assert_eq!(
+            h.store.current_refresh_token().as_deref(),
+            Some(ROTATED_REFRESH)
+        );
     }
 
     #[tokio::test]
@@ -1129,7 +1111,7 @@ mod tests {
                 reason: Some(RevokeReason::ReuseDetected),
             },
         );
-        assert_eq!(h.stored_refresh_token(), None);
+        assert_eq!(h.store.current_refresh_token(), None);
     }
 
     #[tokio::test]
@@ -1155,7 +1137,7 @@ mod tests {
             h.client.devices().await.unwrap_err(),
             SyncError::SignedOut { reason: None },
         );
-        assert_eq!(h.stored_refresh_token(), None);
+        assert_eq!(h.store.current_refresh_token(), None);
     }
 
     #[tokio::test]
@@ -1167,7 +1149,7 @@ mod tests {
             h.client.devices().await.unwrap_err(),
             SyncError::SignedOut { reason: None },
         );
-        assert_eq!(h.stored_refresh_token(), None);
+        assert_eq!(h.store.current_refresh_token(), None);
     }
 
     #[tokio::test]
@@ -1178,7 +1160,10 @@ mod tests {
         let error = h.client.devices().await.unwrap_err();
 
         assert!(matches!(error, SyncError::Server { code, .. } if code == "invalid_response"));
-        assert_eq!(h.stored_refresh_token().as_deref(), Some(ROTATED_REFRESH));
+        assert_eq!(
+            h.store.current_refresh_token().as_deref(),
+            Some(ROTATED_REFRESH)
+        );
     }
 
     #[tokio::test]
@@ -1189,7 +1174,10 @@ mod tests {
         let error = h.client.devices().await.unwrap_err();
 
         assert!(matches!(error, SyncError::Network { .. }));
-        assert_eq!(h.stored_refresh_token().as_deref(), Some(OLD_REFRESH));
+        assert_eq!(
+            h.store.current_refresh_token().as_deref(),
+            Some(OLD_REFRESH)
+        );
     }
 
     #[tokio::test]
@@ -1226,8 +1214,11 @@ mod tests {
 
         assert!(matches!(error, SyncError::Client { .. }));
         assert!(h.client.auth.lock().await.access().is_none());
-        // Why this cannot pass as an offline logout: the server still accepts this token.
-        assert_eq!(h.stored_refresh_token().as_deref(), Some(ROTATED_REFRESH));
+        // The server still accepts this token, so this cannot pass as an offline logout.
+        assert_eq!(
+            h.store.current_refresh_token().as_deref(),
+            Some(ROTATED_REFRESH)
+        );
     }
 
     #[tokio::test]
@@ -1274,7 +1265,10 @@ mod tests {
             () = std::future::ready(()) => {}
         }
         assert!(h.transport.requests().is_empty());
-        assert_eq!(h.stored_refresh_token().as_deref(), Some(OLD_REFRESH));
+        assert_eq!(
+            h.store.current_refresh_token().as_deref(),
+            Some(OLD_REFRESH)
+        );
 
         h.transport.push(200, &[], &session("a.b.c"));
         h.transport.push(200, &[], DEVICES);

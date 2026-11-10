@@ -13,7 +13,7 @@ mod transport;
 
 pub use client::{Account, SyncClient};
 pub use error::{SyncError, SyncResult};
-pub use signer::{DpopKey, ForeignSigner, SignError};
+pub use signer::{DpopKey, SignError};
 pub use state::{Clock, SystemClock};
 pub use tokens::{StoredSession, TokenStore, TokenStoreError};
 pub use transport::{Header, HttpRequest, HttpResponse, Transport, TransportError};
