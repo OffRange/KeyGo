@@ -3,7 +3,7 @@ use axum::body::Body;
 use axum::http::{HeaderName, HeaderValue, Request};
 use http_body_util::BodyExt;
 use keygo_api::domain::{Device, RevokeReason};
-use keygo_client::sync::testing::{FakeDpopKey, FakeTokenStore, FixedClock};
+use keygo_client::sync::testing::{FakeSigner, FakeTokenStore, FixedClock};
 use keygo_client::sync::{
     Clock, Header, HttpRequest, HttpResponse, StoredSession, SyncClient, SyncError, SystemClock,
     Transport, TransportError,
@@ -91,7 +91,7 @@ async fn harness(db: &PgPool) -> Harness {
     let client = SyncClient::new(
         Url::parse(testing::ISS).unwrap(),
         Arc::new(TowerTransport(state.clone())),
-        Arc::new(FakeDpopKey::new()),
+        Arc::new(FakeSigner::new()),
         store.clone(),
     )
     .unwrap()

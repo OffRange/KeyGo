@@ -4,12 +4,13 @@ use keygo_api::domain::{AppVersion, Device, DeviceInfo, DeviceName, Platform};
 use keygo_api::meta::ServerInfo;
 use keygo_client::crypto::{DeviceId, UserId};
 use keygo_client::sync::{
-    Account as CoreAccount, DpopKey as CoreDpopKey, Header, HttpRequest as CoreHttpRequest,
-    HttpResponse, SignError as CoreSignError, StoredSession as CoreStoredSession,
-    SyncClient as CoreSyncClient, SyncError as CoreSyncError, SyncResult,
-    TokenStore as CoreTokenStore, TokenStoreError as CoreTokenStoreError,
-    Transport as CoreTransport, TransportError as CoreTransportError,
+    Account as CoreAccount, Header, HttpRequest as CoreHttpRequest, HttpResponse,
+    SignError as CoreSignError, StoredSession as CoreStoredSession, SyncClient as CoreSyncClient,
+    SyncError as CoreSyncError, SyncResult, TokenStore as CoreTokenStore,
+    TokenStoreError as CoreTokenStoreError, Transport as CoreTransport,
+    TransportError as CoreTransportError,
 };
+use keygo_dpop::{DpopSigner, Signature, VerifyingKey};
 use std::fmt::Display;
 use std::sync::Arc;
 use url::Url;
@@ -260,15 +261,36 @@ impl CoreTransport for TransportAdapter {
     }
 }
 
-struct KeyAdapter(Arc<dyn DpopKey>);
+struct ForeignSigner {
+    key: Arc<dyn DpopKey>,
+    verifying: VerifyingKey,
+}
 
-impl CoreDpopKey for KeyAdapter {
-    fn public_key(&self) -> Result<Vec<u8>, CoreSignError> {
-        Ok(self.0.public_key()?)
+impl ForeignSigner {
+    fn new(key: Arc<dyn DpopKey>) -> Result<Self, SyncError> {
+        let public_key = key.public_key().map_err(|e| SyncError::Client {
+            reason: format!("could not read the DPoP public key: {e}"),
+        })?;
+        let verifying =
+            VerifyingKey::from_sec1_bytes(&public_key).map_err(|_| SyncError::Client {
+                reason: "the DPoP public key is not a P-256 point".into(),
+            })?;
+        Ok(Self { key, verifying })
+    }
+}
+
+impl DpopSigner for ForeignSigner {
+    type Error = CoreSignError;
+
+    fn verifying_key(&self) -> &VerifyingKey {
+        &self.verifying
     }
 
-    fn sign(&self, message: Vec<u8>) -> Result<Vec<u8>, CoreSignError> {
-        Ok(self.0.sign(message)?)
+    fn sign(&self, msg: &[u8]) -> Result<Signature, CoreSignError> {
+        let der = self.key.sign(msg.to_vec())?;
+        Signature::from_der(&der).map_err(|_| CoreSignError {
+            message: "the DPoP signature is not DER".into(),
+        })
     }
 }
 
@@ -341,7 +363,7 @@ impl SyncClient {
         let inner = CoreSyncClient::new(
             base_url,
             Arc::new(TransportAdapter(transport)),
-            Arc::new(KeyAdapter(dpop_key)),
+            Arc::new(ForeignSigner::new(dpop_key)?),
             Arc::new(StoreAdapter(tokens)),
         )?;
         Ok(Arc::new(Self {
@@ -430,7 +452,7 @@ mod tests {
     use super::*;
     use keygo_api::Method;
     use keygo_api::domain::RevokeReason;
-    use keygo_client::sync::testing::FakeDpopKey;
+    use keygo_dpop::testing::TestSigner;
     use std::sync::Mutex;
     use std::time::Duration;
     use tokio::sync::Notify;
@@ -540,15 +562,27 @@ mod tests {
         }
     }
 
-    struct TestKey(FakeDpopKey);
+    struct TestKey(TestSigner);
 
     impl DpopKey for TestKey {
         fn public_key(&self) -> Result<Vec<u8>, SignError> {
-            CoreDpopKey::public_key(&self.0).map_err(|e| SignError::Failed { reason: e.message })
+            Ok(self.0.public_key_sec1())
         }
 
         fn sign(&self, message: Vec<u8>) -> Result<Vec<u8>, SignError> {
-            CoreDpopKey::sign(&self.0, message).map_err(|e| SignError::Failed { reason: e.message })
+            Ok(self.0.sign_der(&message))
+        }
+    }
+
+    struct ShortKey;
+
+    impl DpopKey for ShortKey {
+        fn public_key(&self) -> Result<Vec<u8>, SignError> {
+            Ok(vec![1, 2, 3])
+        }
+
+        fn sign(&self, _: Vec<u8>) -> Result<Vec<u8>, SignError> {
+            unreachable!()
         }
     }
 
@@ -570,7 +604,7 @@ mod tests {
         SyncClient::new(
             "https://kg.example".into(),
             transport,
-            Arc::new(TestKey(FakeDpopKey::new())),
+            Arc::new(TestKey(TestSigner::new())),
             tokens,
         )
         .unwrap()
@@ -687,5 +721,29 @@ mod tests {
         );
 
         assert!(matches!(result, Err(SyncError::Client { .. })));
+    }
+
+    #[test]
+    fn bad_public_key_is_rejected_at_construction() {
+        let result = SyncClient::new(
+            "https://kg.example".into(),
+            Arc::new(RecordingTransport::default()),
+            Arc::new(ShortKey),
+            Arc::new(MemoryStore::default()),
+        );
+
+        assert!(matches!(result, Err(SyncError::Client { .. })));
+    }
+
+    #[test]
+    fn foreign_signer_decodes_what_a_keystore_produces() {
+        let expected = TestSigner::new();
+        let signer = ForeignSigner::new(Arc::new(TestKey(TestSigner::new()))).unwrap();
+
+        assert_eq!(signer.verifying_key(), expected.verifying_key());
+        assert_eq!(
+            signer.sign(b"message").unwrap(),
+            expected.sign(b"message").unwrap(),
+        );
     }
 }

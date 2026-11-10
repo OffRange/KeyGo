@@ -1757,6 +1757,7 @@ dependencies = [
  "async-trait",
  "keygo-api",
  "keygo-client",
+ "keygo-dpop",
  "thiserror",
  "tokio",
  "uniffi",

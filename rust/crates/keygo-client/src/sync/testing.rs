@@ -1,21 +1,22 @@
 use super::client::SyncClient;
-use super::signer::{DpopKey, SignError};
+use super::signer::{SharedSigner, SignError};
 use super::state::Clock;
 use super::tokens::{StoredSession, TokenStore, TokenStoreError};
 use super::transport::{Header, HttpRequest, HttpResponse, Transport, TransportError};
 use async_trait::async_trait;
 use keygo_dpop::testing::TestSigner;
+use keygo_dpop::{DpopSigner, Signature, VerifyingKey};
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use url::Url;
 
-pub fn client_for(base: &str, key: Arc<dyn DpopKey>) -> (SyncClient, Arc<FakeTransport>) {
+pub fn client_for(base: &str, signer: SharedSigner) -> (SyncClient, Arc<FakeTransport>) {
     let transport = FakeTransport::new();
     let client = SyncClient::new(
         Url::parse(base).unwrap(),
         transport.clone(),
-        key,
+        signer,
         Arc::new(FakeTokenStore::new()),
     )
     .unwrap();
@@ -23,7 +24,7 @@ pub fn client_for(base: &str, key: Arc<dyn DpopKey>) -> (SyncClient, Arc<FakeTra
 }
 
 pub fn fake_client() -> (SyncClient, Arc<FakeTransport>) {
-    client_for("https://kg.example", Arc::new(FakeDpopKey::new()))
+    client_for("https://kg.example", Arc::new(FakeSigner::new()))
 }
 
 pub fn header<'a>(request: &'a HttpRequest, name: &str) -> Option<&'a str> {
@@ -160,27 +161,29 @@ impl TokenStore for FakeTokenStore {
 }
 
 /// The same key as [`TestSigner::new`].
-pub struct FakeDpopKey(TestSigner);
+pub struct FakeSigner(TestSigner);
 
-impl FakeDpopKey {
+impl FakeSigner {
     pub fn new() -> Self {
         Self(TestSigner::new())
     }
 }
 
-impl Default for FakeDpopKey {
+impl Default for FakeSigner {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl DpopKey for FakeDpopKey {
-    fn public_key(&self) -> Result<Vec<u8>, SignError> {
-        Ok(self.0.public_key_sec1())
+impl DpopSigner for FakeSigner {
+    type Error = SignError;
+
+    fn verifying_key(&self) -> &VerifyingKey {
+        self.0.verifying_key()
     }
 
-    fn sign(&self, message: Vec<u8>) -> Result<Vec<u8>, SignError> {
-        Ok(self.0.sign_der(&message))
+    fn sign(&self, msg: &[u8]) -> Result<Signature, SignError> {
+        self.0.sign(msg).map_err(|never| match never {})
     }
 }
 

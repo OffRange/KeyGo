@@ -1,5 +1,5 @@
-//! The sync client: the auth protocol over three host-supplied traits
-//! ([`Transport`], [`DpopKey`], [`TokenStore`]). No HTTP stack lives here.
+//! The sync client: the auth protocol over three host-supplied dependencies
+//! ([`Transport`], [`SharedSigner`], [`TokenStore`]). No HTTP stack lives here.
 
 mod client;
 mod error;
@@ -13,7 +13,7 @@ mod transport;
 
 pub use client::{Account, SyncClient};
 pub use error::{SyncError, SyncResult};
-pub use signer::{DpopKey, SignError};
+pub use signer::{SharedSigner, SignError};
 pub use state::{Clock, SystemClock};
 pub use tokens::{StoredSession, TokenStore, TokenStoreError};
 pub use transport::{Header, HttpRequest, HttpResponse, Transport, TransportError};

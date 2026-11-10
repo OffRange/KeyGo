@@ -4,6 +4,7 @@ use crate::{Htm, htu, unix_now};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use p256::ecdsa::{Signature, VerifyingKey};
+use std::sync::Arc;
 
 pub trait DpopSigner {
     type Error: std::error::Error;
@@ -12,6 +13,18 @@ pub trait DpopSigner {
     /// ES256 over `msg`. DER-producing backends (Android Keystore) convert with
     /// [`Signature::from_der`]; JWS needs the fixed-size `r || s` form.
     fn sign(&self, msg: &[u8]) -> Result<Signature, Self::Error>;
+}
+
+impl<S: DpopSigner + ?Sized> DpopSigner for Arc<S> {
+    type Error = S::Error;
+
+    fn verifying_key(&self) -> &VerifyingKey {
+        S::verifying_key(self)
+    }
+
+    fn sign(&self, msg: &[u8]) -> Result<Signature, Self::Error> {
+        S::sign(self, msg)
+    }
 }
 
 pub struct ProofRequest<'a> {
@@ -84,8 +97,8 @@ impl<S: DpopSigner> DpopProver<S> {
 
 #[derive(Debug, thiserror::Error)]
 pub enum DpopError<E: std::error::Error> {
-    #[error("signer failed")]
-    Signer(#[source] E),
+    #[error("signer failed: {0}")]
+    Signer(E),
     #[error("random number generator failed")]
     Rng(#[from] getrandom::Error),
     #[error("htu is not an absolute URI")]

@@ -370,10 +370,10 @@ impl SyncClient {
 
 #[cfg(test)]
 mod tests {
-    use super::super::signer::{DpopKey, SignError};
+    use super::super::signer::SignError;
     use super::super::testing::{
-        FakeDpopKey, FakeTokenStore, FakeTransport, FixedClock, client_for, error_body,
-        fake_client, header,
+        FakeSigner, FakeTokenStore, FakeTransport, FixedClock, client_for, error_body, fake_client,
+        header,
     };
     use super::super::tokens::TokenStore;
     use super::*;
@@ -382,6 +382,7 @@ mod tests {
     use keygo_api::domain::RevokeReason;
     use keygo_api::meta::ServerInfo;
     use keygo_core::DeviceId;
+    use keygo_dpop::{DpopSigner, Signature, VerifyingKey};
     use serde_json::{Value, json};
     use std::sync::Arc;
     use std::sync::atomic::{AtomicBool, Ordering};
@@ -500,7 +501,7 @@ mod tests {
     async fn trailing_slash_in_base_url_is_harmless() {
         let (plain, plain_transport) = fake_client();
         let (slashed, slashed_transport) =
-            client_for("https://kg.example/", Arc::new(FakeDpopKey::new()));
+            client_for("https://kg.example/", Arc::new(FakeSigner::new()));
         plain_transport.push(200, &[], SESSION.as_bytes());
         slashed_transport.push(200, &[], SESSION.as_bytes());
 
@@ -515,14 +516,16 @@ mod tests {
         assert_eq!(proof_claims(a)["htu"], proof_claims(b)["htu"]);
     }
 
-    struct FailingKey(FakeDpopKey);
+    struct FailingSigner(FakeSigner);
 
-    impl DpopKey for FailingKey {
-        fn public_key(&self) -> Result<Vec<u8>, SignError> {
-            self.0.public_key()
+    impl DpopSigner for FailingSigner {
+        type Error = SignError;
+
+        fn verifying_key(&self) -> &VerifyingKey {
+            self.0.verifying_key()
         }
 
-        fn sign(&self, _: Vec<u8>) -> Result<Vec<u8>, SignError> {
+        fn sign(&self, _: &[u8]) -> Result<Signature, SignError> {
             Err(SignError {
                 message: "keystore locked".into(),
             })
@@ -533,12 +536,15 @@ mod tests {
     async fn keystore_failure_is_a_client_error() {
         let (client, transport) = client_for(
             "https://kg.example",
-            Arc::new(FailingKey(FakeDpopKey::new())),
+            Arc::new(FailingSigner(FakeSigner::new())),
         );
 
         let error = client.call(&Token, &token_request()).await.err().unwrap();
 
-        assert!(matches!(error, SyncError::Client { .. }));
+        assert!(matches!(
+            error,
+            SyncError::Client { message } if message.contains("keystore locked"),
+        ));
         assert!(transport.requests().is_empty());
     }
 
@@ -616,7 +622,7 @@ mod tests {
         let client = SyncClient::new(
             Url::parse("https://kg.example").unwrap(),
             transport.clone(),
-            Arc::new(FakeDpopKey::new()),
+            Arc::new(FakeSigner::new()),
             store.clone(),
         )
         .unwrap()
@@ -965,7 +971,7 @@ mod tests {
         let client = SyncClient::new(
             Url::parse("https://kg.example").unwrap(),
             transport.clone(),
-            Arc::new(FakeDpopKey::new()),
+            Arc::new(FakeSigner::new()),
             store.clone(),
         )
         .unwrap()

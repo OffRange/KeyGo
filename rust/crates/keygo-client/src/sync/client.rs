@@ -1,6 +1,6 @@
 use super::error::{SyncError, SyncResult};
 use super::pipeline::store_failure;
-use super::signer::{DpopKey, ForeignSigner};
+use super::signer::SharedSigner;
 use super::state::{AuthState, Clock, SystemClock};
 use super::tokens::TokenStore;
 use super::transport::Transport;
@@ -27,7 +27,7 @@ pub struct Account {
 pub struct SyncClient {
     pub(super) base_url: Url,
     pub(super) transport: Arc<dyn Transport>,
-    pub(super) prover: DpopProver<ForeignSigner>,
+    pub(super) prover: DpopProver<SharedSigner>,
     pub(super) tokens: Arc<dyn TokenStore>,
     pub(super) clock: Arc<dyn Clock>,
     pub(super) auth: Mutex<AuthState>,
@@ -51,14 +51,14 @@ impl SyncClient {
     pub fn new(
         base_url: Url,
         transport: Arc<dyn Transport>,
-        key: Arc<dyn DpopKey>,
+        signer: SharedSigner,
         tokens: Arc<dyn TokenStore>,
     ) -> SyncResult<Self> {
         check_base_url(&base_url)?;
         Ok(Self {
             base_url,
             transport,
-            prover: DpopProver::new(ForeignSigner::new(key)?),
+            prover: DpopProver::new(signer),
             tokens,
             clock: Arc::new(SystemClock),
             auth: Mutex::new(AuthState::default()),
@@ -169,9 +169,7 @@ fn opaque_failure(error: OpaqueError) -> SyncError {
 #[cfg(test)]
 mod tests {
     use super::super::error::SyncError;
-    use super::super::signer::SignError;
-    use super::super::testing::{FakeTokenStore, FakeTransport, error_body, fake_client, header};
-    use super::*;
+    use super::super::testing::{error_body, fake_client, header};
 
     const INFO: &str = r#"{"version":"1","public_url":"https://kg.example","allow_signups":true}"#;
 
@@ -280,29 +278,5 @@ mod tests {
                 message: "offline".into(),
             },
         );
-    }
-
-    struct ShortKey;
-
-    impl DpopKey for ShortKey {
-        fn public_key(&self) -> Result<Vec<u8>, SignError> {
-            Ok(vec![1, 2, 3])
-        }
-
-        fn sign(&self, _: Vec<u8>) -> Result<Vec<u8>, SignError> {
-            unreachable!()
-        }
-    }
-
-    #[test]
-    fn bad_public_key_is_rejected_at_construction() {
-        let result = SyncClient::new(
-            Url::parse("https://kg.example").unwrap(),
-            FakeTransport::new(),
-            Arc::new(ShortKey),
-            Arc::new(FakeTokenStore::new()),
-        );
-
-        assert!(matches!(result, Err(SyncError::Client { .. })));
     }
 }
