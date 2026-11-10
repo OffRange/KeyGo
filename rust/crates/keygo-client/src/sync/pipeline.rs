@@ -121,7 +121,7 @@ impl SyncClient {
             .map_err(|e| SyncError::Network { message: e.message })
     }
 
-    async fn send_signed(
+    async fn send_signed_once(
         &self,
         method: Method,
         url: &str,
@@ -167,7 +167,7 @@ impl SyncClient {
     /// Signs and sends one request, and re-signs once if the server answers with a nonce challenge
     /// that carries a nonce.
     /// Every `DPoP-Nonce` header the server sends replaces the stored nonce.
-    pub(super) async fn exchange(
+    pub(super) async fn send_singed(
         &self,
         method: Method,
         path: &str,
@@ -176,9 +176,13 @@ impl SyncClient {
     ) -> SyncResult<HttpResponse> {
         let url = self.url(path)?;
 
-        let response = self.send_signed(method, &url, access_token, body).await?;
+        let response = self
+            .send_signed_once(method, &url, access_token, body)
+            .await?;
         if self.remember_nonce_and_check_challenge(&response) {
-            let retried = self.send_signed(method, &url, access_token, body).await?;
+            let retried = self
+                .send_signed_once(method, &url, access_token, body)
+                .await?;
             self.remember_nonce_and_check_challenge(&retried);
             return Ok(retried);
         }
@@ -221,7 +225,7 @@ impl SyncClient {
 
         let sent_at = self.clock.now_secs();
         let response = self
-            .exchange(Token::METHOD, &Token.path(), None, Some(body.as_slice()))
+            .send_singed(Token::METHOD, &Token.path(), None, Some(body.as_slice()))
             .await?;
 
         if !response.is_success() {
@@ -273,7 +277,7 @@ impl SyncClient {
             let (token, generation) = self.access_token(rejected).await?;
 
             let response = self
-                .exchange(method, path, Some(token.as_str()), body)
+                .send_singed(method, path, Some(token.as_str()), body)
                 .await?;
 
             if rejected.is_some() || !response.is_invalid_token() {
@@ -302,7 +306,7 @@ impl SyncClient {
                 .await?
             }
             Auth::Proof => {
-                self.exchange(E::METHOD, &path, None, body.as_deref())
+                self.send_singed(E::METHOD, &path, None, body.as_deref())
                     .await?
             }
             Auth::AccessToken => {
