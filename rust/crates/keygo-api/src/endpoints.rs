@@ -4,134 +4,46 @@ use keygo_core::DeviceId;
 use std::borrow::Cow;
 use uuid::Uuid;
 
-pub struct Meta;
+macro_rules! endpoints {
+    ($($name:ident: $method:ident $path:literal, $auth:ident, $request:ty => $response:ty;)+) => {
+        $(
+            pub struct $name;
 
-impl Endpoint for Meta {
-    type Request = ();
-    type Response = meta::ServerInfo;
-    const METHOD: Method = Method::Get;
-    const AUTH: Auth = Auth::None;
+            impl Endpoint for $name {
+                type Request = $request;
+                type Response = $response;
+                const METHOD: Method = Method::$method;
+                const AUTH: Auth = Auth::$auth;
 
-    fn path(&self) -> Cow<'static, str> {
-        Cow::Borrowed("/api/v1/meta")
-    }
+                fn path(&self) -> Cow<'static, str> {
+                    Cow::Borrowed($path)
+                }
+            }
+        )+
+
+        fn fixed_routes() -> Vec<Route> {
+            vec![$(route($name)),+]
+        }
+    };
 }
 
-pub struct RegisterStart;
-
-impl Endpoint for RegisterStart {
-    type Request = auth::register::StartRequest;
-    type Response = auth::register::StartResponse;
-    const METHOD: Method = Method::Post;
-    const AUTH: Auth = Auth::None;
-
-    fn path(&self) -> Cow<'static, str> {
-        Cow::Borrowed("/api/v1/auth/register/start")
-    }
-}
-
-pub struct RegisterFinish;
-
-impl Endpoint for RegisterFinish {
-    type Request = auth::register::FinishRequest;
-    type Response = auth::register::FinishResponse;
-    const METHOD: Method = Method::Post;
-    const AUTH: Auth = Auth::Proof;
-
-    fn path(&self) -> Cow<'static, str> {
-        Cow::Borrowed("/api/v1/auth/register/finish")
-    }
-}
-
-pub struct LoginStart;
-
-impl Endpoint for LoginStart {
-    type Request = auth::login::StartRequest;
-    type Response = auth::handshake::StartResponse;
-    const METHOD: Method = Method::Post;
-    const AUTH: Auth = Auth::None;
-
-    fn path(&self) -> Cow<'static, str> {
-        Cow::Borrowed("/api/v1/auth/login/start")
-    }
-}
-
-pub struct LoginFinish;
-
-impl Endpoint for LoginFinish {
-    type Request = auth::login::FinishRequest;
-    type Response = auth::login::FinishResponse;
-    const METHOD: Method = Method::Post;
-    const AUTH: Auth = Auth::Proof;
-
-    fn path(&self) -> Cow<'static, str> {
-        Cow::Borrowed("/api/v1/auth/login/finish")
-    }
-}
-
-pub struct StepUpStart;
-
-impl Endpoint for StepUpStart {
-    type Request = auth::step_up::StartRequest;
-    type Response = auth::handshake::StartResponse;
-    const METHOD: Method = Method::Post;
-    const AUTH: Auth = Auth::AccessToken;
-
-    fn path(&self) -> Cow<'static, str> {
-        Cow::Borrowed("/api/v1/auth/step-up/start")
-    }
-}
-
-pub struct StepUpFinish;
-
-impl Endpoint for StepUpFinish {
-    type Request = auth::step_up::FinishRequest;
-    type Response = auth::step_up::FinishResponse;
-    const METHOD: Method = Method::Post;
-    const AUTH: Auth = Auth::AccessToken;
-
-    fn path(&self) -> Cow<'static, str> {
-        Cow::Borrowed("/api/v1/auth/step-up/finish")
-    }
-}
-
-pub struct Token;
-
-impl Endpoint for Token {
-    type Request = auth::token::TokenRequest;
-    type Response = auth::Session;
-    const METHOD: Method = Method::Post;
-    const AUTH: Auth = Auth::Proof;
-
-    fn path(&self) -> Cow<'static, str> {
-        Cow::Borrowed("/api/v1/auth/token")
-    }
-}
-
-pub struct Logout;
-
-impl Endpoint for Logout {
-    type Request = ();
-    type Response = ();
-    const METHOD: Method = Method::Post;
-    const AUTH: Auth = Auth::AccessToken;
-
-    fn path(&self) -> Cow<'static, str> {
-        Cow::Borrowed("/api/v1/auth/logout")
-    }
-}
-
-pub struct ListDevices;
-
-impl Endpoint for ListDevices {
-    type Request = ();
-    type Response = devices::Devices;
-    const METHOD: Method = Method::Get;
-    const AUTH: Auth = Auth::AccessToken;
-
-    fn path(&self) -> Cow<'static, str> {
-        Cow::Borrowed("/api/v1/devices")
-    }
+endpoints! {
+    Meta: Get "/api/v1/meta", None, () => meta::ServerInfo;
+    RegisterStart: Post "/api/v1/auth/register/start", None,
+        auth::register::StartRequest => auth::register::StartResponse;
+    RegisterFinish: Post "/api/v1/auth/register/finish", Proof,
+        auth::register::FinishRequest => auth::register::FinishResponse;
+    LoginStart: Post "/api/v1/auth/login/start", None,
+        auth::login::StartRequest => auth::handshake::StartResponse;
+    LoginFinish: Post "/api/v1/auth/login/finish", Proof,
+        auth::login::FinishRequest => auth::login::FinishResponse;
+    StepUpStart: Post "/api/v1/auth/step-up/start", AccessToken,
+        auth::step_up::StartRequest => auth::handshake::StartResponse;
+    StepUpFinish: Post "/api/v1/auth/step-up/finish", AccessToken,
+        auth::step_up::FinishRequest => auth::step_up::FinishResponse;
+    Token: Post "/api/v1/auth/token", Proof, auth::token::TokenRequest => auth::Session;
+    Logout: Post "/api/v1/auth/logout", AccessToken, () => ();
+    ListDevices: Get "/api/v1/devices", AccessToken, () => devices::Devices;
 }
 
 pub struct DeleteDevice {
@@ -149,7 +61,6 @@ impl Endpoint for DeleteDevice {
     }
 }
 
-/// An endpoint reduced to what a router or a test needs to know about it.
 #[derive(Debug)]
 pub struct Route {
     pub method: Method,
@@ -166,19 +77,9 @@ fn route<E: Endpoint>(endpoint: E) -> Route {
 }
 
 pub fn all_routes() -> Vec<Route> {
-    vec![
-        route(Meta),
-        route(RegisterStart),
-        route(RegisterFinish),
-        route(LoginStart),
-        route(LoginFinish),
-        route(StepUpStart),
-        route(StepUpFinish),
-        route(Token),
-        route(Logout),
-        route(ListDevices),
-        route(DeleteDevice {
-            id: Uuid::nil().into(),
-        }),
-    ]
+    let mut routes = fixed_routes();
+    routes.push(route(DeleteDevice {
+        id: Uuid::nil().into(),
+    }));
+    routes
 }
