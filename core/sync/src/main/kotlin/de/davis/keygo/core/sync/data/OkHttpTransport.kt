@@ -12,19 +12,15 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
-import okhttp3.internal.http.HttpMethod
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-/**
- * Sends the requests the Rust sync client builds. Headers, auth included, pass through untouched.
- * Never log [HttpRequest] or [HttpResponse]: their `toString()` prints tokens.
- */
+/** Never log [HttpRequest] or [HttpResponse]: their `toString()` prints tokens. */
 class OkHttpTransport(client: OkHttpClient) : HttpTransport {
 
-    // A DPoP proof is bound to one URL, so a redirect could not succeed anyway.
+    // No redirects: a DPoP proof is bound to one URL.
     private val client = client.newBuilder()
         .retryOnConnectionFailure(false)
         .followRedirects(false)
@@ -48,13 +44,11 @@ class OkHttpTransport(client: OkHttpClient) : HttpTransport {
                 }
 
                 override fun onResponse(call: Call, response: Response) {
-                    val result = try {
-                        response.use { it.toRust() }
+                    try {
+                        continuation.resume(response.use { it.toRust() })
                     } catch (e: IOException) {
                         continuation.resumeWithException(e.toTransportException())
-                        return
                     }
-                    continuation.resume(result)
                 }
             })
         }
@@ -62,7 +56,7 @@ class OkHttpTransport(client: OkHttpClient) : HttpTransport {
 
     private fun HttpRequest.toOkHttp(): Request {
         val requestBody =
-            if (body.isEmpty() && !HttpMethod.requiresRequestBody(method)) null
+            if (body.isEmpty() && method != "POST") null
             else body.toRequestBody(null)
 
         return Request.Builder()
