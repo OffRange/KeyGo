@@ -5,9 +5,9 @@ use keygo_api::meta::ServerInfo;
 use keygo_client::crypto::{DeviceId, UserId};
 use keygo_client::sync::{
     Account as CoreAccount, DpopKey as CoreDpopKey, Header, HttpRequest as CoreHttpRequest,
-    HttpResponse as CoreHttpResponse, SignError as CoreSignError,
-    StoredSession as CoreStoredSession, SyncClient as CoreSyncClient, SyncError as CoreSyncError,
-    SyncResult, TokenStore as CoreTokenStore, TokenStoreError as CoreTokenStoreError,
+    HttpResponse, SignError as CoreSignError, StoredSession as CoreStoredSession,
+    SyncClient as CoreSyncClient, SyncError as CoreSyncError, SyncResult,
+    TokenStore as CoreTokenStore, TokenStoreError as CoreTokenStoreError,
     Transport as CoreTransport, TransportError as CoreTransportError,
 };
 use std::fmt::Display;
@@ -65,68 +65,36 @@ impl From<CoreSyncError> for SyncError {
     }
 }
 
-#[derive(Debug, thiserror::Error, uniffi::Error)]
-pub enum TransportError {
-    #[error("{reason}")]
-    Failed { reason: String },
-}
-
-impl From<uniffi::UnexpectedUniFFICallbackError> for TransportError {
-    fn from(error: uniffi::UnexpectedUniFFICallbackError) -> Self {
-        Self::Failed {
-            reason: error.reason,
+macro_rules! callback_error {
+    ($($name:ident => $core:ident),+ $(,)?) => {$(
+        #[derive(Debug, thiserror::Error, uniffi::Error)]
+        pub enum $name {
+            #[error("{reason}")]
+            Failed { reason: String },
         }
-    }
-}
 
-impl From<TransportError> for CoreTransportError {
-    fn from(error: TransportError) -> Self {
-        let TransportError::Failed { reason } = error;
-        Self { message: reason }
-    }
-}
-
-#[derive(Debug, thiserror::Error, uniffi::Error)]
-pub enum SignError {
-    #[error("{reason}")]
-    Failed { reason: String },
-}
-
-impl From<uniffi::UnexpectedUniFFICallbackError> for SignError {
-    fn from(error: uniffi::UnexpectedUniFFICallbackError) -> Self {
-        Self::Failed {
-            reason: error.reason,
+        impl From<uniffi::UnexpectedUniFFICallbackError> for $name {
+            fn from(error: uniffi::UnexpectedUniFFICallbackError) -> Self {
+                Self::Failed {
+                    reason: error.reason,
+                }
+            }
         }
-    }
-}
 
-impl From<SignError> for CoreSignError {
-    fn from(error: SignError) -> Self {
-        let SignError::Failed { reason } = error;
-        Self { message: reason }
-    }
-}
-
-#[derive(Debug, thiserror::Error, uniffi::Error)]
-pub enum TokenStoreError {
-    #[error("{reason}")]
-    Failed { reason: String },
-}
-
-impl From<uniffi::UnexpectedUniFFICallbackError> for TokenStoreError {
-    fn from(error: uniffi::UnexpectedUniFFICallbackError) -> Self {
-        Self::Failed {
-            reason: error.reason,
+        impl From<$name> for $core {
+            fn from(error: $name) -> Self {
+                let $name::Failed { reason } = error;
+                Self { message: reason }
+            }
         }
-    }
+    )+};
 }
 
-impl From<TokenStoreError> for CoreTokenStoreError {
-    fn from(error: TokenStoreError) -> Self {
-        let TokenStoreError::Failed { reason } = error;
-        Self { message: reason }
-    }
-}
+callback_error!(
+    TransportError => CoreTransportError,
+    SignError => CoreSignError,
+    TokenStoreError => CoreTokenStoreError,
+);
 
 #[uniffi::remote(Record)]
 pub struct Header {
@@ -153,21 +121,11 @@ impl From<CoreHttpRequest> for HttpRequest {
     }
 }
 
-#[derive(uniffi::Record)]
+#[uniffi::remote(Record)]
 pub struct HttpResponse {
     pub status: u16,
     pub headers: Vec<Header>,
     pub body: Vec<u8>,
-}
-
-impl From<HttpResponse> for CoreHttpResponse {
-    fn from(response: HttpResponse) -> Self {
-        Self {
-            status: response.status,
-            headers: response.headers,
-            body: response.body,
-        }
-    }
 }
 
 #[derive(uniffi::Record)]
@@ -260,8 +218,8 @@ impl From<CoreAccount> for Account {
     }
 }
 
-/// Sends one HTTP request. The host owns TLS, timeouts and connection pooling; it must not retry,
-/// follow auth challenges or log bodies.
+/// The host owns TLS, timeouts and pooling.
+/// It must not retry, follow auth challenges or log bodies.
 #[uniffi::export(with_foreign)]
 #[async_trait]
 pub trait HttpTransport: Send + Sync {
@@ -274,14 +232,12 @@ pub trait DpopKey: Send + Sync {
     /// The 65-byte uncompressed P-256 point.
     fn public_key(&self) -> Result<Vec<u8>, SignError>;
     /// SHA256withECDSA over `message`, DER encoded.
+    /// Can be called from several threads at once.
     fn sign(&self, message: Vec<u8>) -> Result<Vec<u8>, SignError>;
 }
 
-/// Durable home of the refresh token. The host decides how it is protected.
-///
-/// `save` runs while the client holds its auth lock, so it must return in bounded time: one that
-/// never returns blocks every later call, including logout. A refused `save` is repeated on later
-/// calls.
+/// `save` runs under the client's auth lock, so it must return in bounded time: a hung `save`
+/// blocks every later call, including logout. A refused `save` is retried on later calls.
 #[uniffi::export(with_foreign)]
 #[async_trait]
 pub trait TokenStore: Send + Sync {
@@ -294,8 +250,8 @@ struct TransportAdapter(Arc<dyn HttpTransport>);
 
 #[async_trait]
 impl CoreTransport for TransportAdapter {
-    async fn send(&self, request: CoreHttpRequest) -> Result<CoreHttpResponse, CoreTransportError> {
-        Ok(self.0.send(request.into()).await?.into())
+    async fn send(&self, request: CoreHttpRequest) -> Result<HttpResponse, CoreTransportError> {
+        Ok(self.0.send(request.into()).await?)
     }
 }
 
@@ -340,29 +296,29 @@ impl CoreTokenStore for StoreAdapter {
     }
 }
 
-/// Runs `call` as its own task and waits for it. Dropping the returned future only stops the
-/// waiting, and a panic in the task ends at the `JoinError` instead of crossing the FFI.
-async fn detached<T, C>(call: C) -> Result<T, SyncError>
-where
-    T: Send + 'static,
-    C: Future<Output = SyncResult<T>> + Send + 'static,
-{
-    tokio::spawn(call)
-        .await
-        .map_err(|_| SyncError::Client {
-            reason: "the sync task did not finish".into(),
-        })?
-        .map_err(Into::into)
-}
-
-/// The sync client, over the host's HTTP stack, DPoP key and token store.
-///
-/// Every call runs as its own task, so cancelling the coroutine waiting for one leaves it running.
-/// Refresh tokens rotate with no grace window: abandoning a refresh the server has committed would
-/// lose the new token, and the next refresh would revoke the session as `reuse_detected`.
+/// Every call runs as its own task: abandoning a refresh the server has committed would lose the
+/// new token, and the next refresh would revoke the session as `reuse_detected`.
 #[derive(uniffi::Object)]
 pub struct SyncClient {
     inner: Arc<CoreSyncClient>,
+}
+
+impl SyncClient {
+    /// Dropping the returned future only stops the waiting, and a panic in the task stops at the
+    /// `JoinError` instead of crossing the FFI.
+    async fn detached<T, F, C>(&self, call: F) -> Result<T, SyncError>
+    where
+        T: Send + 'static,
+        F: FnOnce(Arc<CoreSyncClient>) -> C + Send,
+        C: Future<Output = SyncResult<T>> + Send + 'static,
+    {
+        tokio::spawn(call(self.inner.clone()))
+            .await
+            .map_err(|_| SyncError::Client {
+                reason: "the sync task did not finish".into(),
+            })?
+            .map_err(Into::into)
+    }
 }
 
 #[uniffi::export(async_runtime = "tokio")]
@@ -389,8 +345,8 @@ impl SyncClient {
     }
 
     pub async fn meta(&self) -> Result<ServerInfo, SyncError> {
-        let client = self.inner.clone();
-        detached(async move { client.meta().await }).await
+        self.detached(|client| async move { client.meta().await })
+            .await
     }
 
     pub async fn register(
@@ -404,20 +360,20 @@ impl SyncClient {
     ) -> Result<Account, SyncError> {
         let password = Zeroizing::new(password);
         let device = device.into_core()?;
-        let client = self.inner.clone();
-        let account = detached(async move {
-            client
-                .register(
-                    &ark.session,
-                    user_id,
-                    &username,
-                    &password,
-                    invite.as_deref(),
-                    device,
-                )
-                .await
-        })
-        .await?;
+        let account = self
+            .detached(|client| async move {
+                client
+                    .register(
+                        &ark.session,
+                        user_id,
+                        &username,
+                        &password,
+                        invite.as_deref(),
+                        device,
+                    )
+                    .await
+            })
+            .await?;
         Ok(account.into())
     }
 
@@ -430,36 +386,37 @@ impl SyncClient {
     ) -> Result<Account, SyncError> {
         let password = Zeroizing::new(password);
         let device = device.into_core()?;
-        let client = self.inner.clone();
-        let account = detached(async move {
-            client
-                .login(&ark.session, &username, &password, device)
-                .await
-        })
-        .await?;
+        let account = self
+            .detached(|client| async move {
+                client
+                    .login(&ark.session, &username, &password, device)
+                    .await
+            })
+            .await?;
         Ok(account.into())
     }
 
     pub async fn step_up(&self, password: String) -> Result<(), SyncError> {
         let password = Zeroizing::new(password);
-        let client = self.inner.clone();
-        detached(async move { client.step_up(&password).await }).await
+        self.detached(|client| async move { client.step_up(&password).await })
+            .await
     }
 
     pub async fn devices(&self) -> Result<Vec<SyncDevice>, SyncError> {
-        let client = self.inner.clone();
-        let devices = detached(async move { client.devices().await }).await?;
+        let devices = self
+            .detached(|client| async move { client.devices().await })
+            .await?;
         Ok(devices.into_iter().map(SyncDevice::from).collect())
     }
 
     pub async fn delete_device(&self, id: DeviceId) -> Result<(), SyncError> {
-        let client = self.inner.clone();
-        detached(async move { client.delete_device(id).await }).await
+        self.detached(|client| async move { client.delete_device(id).await })
+            .await
     }
 
     pub async fn logout(&self) -> Result<(), SyncError> {
-        let client = self.inner.clone();
-        detached(async move { client.logout().await }).await
+        self.detached(|client| async move { client.logout().await })
+            .await
     }
 }
 
@@ -474,9 +431,7 @@ mod tests {
     use tokio::sync::Notify;
     use tokio::time::timeout;
 
-    /// Decodes to 32 bytes of `0xff`.
     const STORED_TOKEN: &str = "kgr___________________________________________8";
-    /// Decodes to 32 bytes of zero: what the server rotates [`STORED_TOKEN`] to.
     const ROTATED_TOKEN: &str = "kgr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
     const ROTATED_SESSION: &str = r#"{"device_id":"00000000-0000-0000-0000-000000000001","access_token":"a.b.c","access_expires_in":300,"refresh_token":"kgr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","refresh_expires_in":86400}"#;
 
@@ -561,7 +516,6 @@ mod tests {
         }
     }
 
-    /// Announces each request and holds it until released, then answers with a rotated session.
     #[derive(Default)]
     struct GatedTransport {
         reached: Notify,
@@ -684,8 +638,7 @@ mod tests {
         assert_eq!(*transport.methods.lock().unwrap(), ["DELETE"]);
     }
 
-    /// A Kotlin coroutine that is cancelled drops the future. The rotated refresh token must still
-    /// reach the store, because rotation has no grace window and losing it signs the user out.
+    /// A cancelled Kotlin coroutine drops the future, but the rotated token must still reach the store.
     #[tokio::test]
     async fn a_dropped_call_still_finishes() {
         let transport = Arc::new(GatedTransport::default());
