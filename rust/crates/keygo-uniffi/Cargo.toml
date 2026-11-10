@@ -14,6 +14,8 @@ thiserror.workspace = true
 uuid.workspace = true
 zeroize.workspace = true
 
+# Not used directly: gives uniffi's tokio runtime a worker pool, so a slow call cannot block the rest.
+async-compat = { version = "0.2.6", features = ["multi-thread"] }
 async-trait = "0.1.89"
 tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
 uniffi = { workspace = true, features = ["tokio"] }
