@@ -130,13 +130,13 @@ impl TokenStore for FakeTokenStore {
             }))
     }
 
-    async fn save(&self, session: StoredSession) -> Result<(), TokenStoreError> {
+    async fn save(&self, session: &StoredSession) -> Result<(), TokenStoreError> {
         if self.fail_saves.load(Ordering::SeqCst) {
             return Err(TokenStoreError {
                 message: "save failed".into(),
             });
         }
-        *self.stored.lock().unwrap() = Some(encode(&session));
+        *self.stored.lock().unwrap() = Some(encode(session));
         Ok(())
     }
 
@@ -167,8 +167,8 @@ impl Default for FakeDpopKey {
 }
 
 impl DpopKey for FakeDpopKey {
-    fn public_key(&self) -> Vec<u8> {
-        self.0.public_key_sec1()
+    fn public_key(&self) -> Result<Vec<u8>, SignError> {
+        Ok(self.0.public_key_sec1())
     }
 
     fn sign(&self, message: Vec<u8>) -> Result<Vec<u8>, SignError> {

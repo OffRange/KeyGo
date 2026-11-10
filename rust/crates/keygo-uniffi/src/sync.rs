@@ -177,8 +177,8 @@ pub struct StoredSession {
     pub refresh_expires_at: u64,
 }
 
-impl From<CoreStoredSession> for StoredSession {
-    fn from(session: CoreStoredSession) -> Self {
+impl From<&CoreStoredSession> for StoredSession {
+    fn from(session: &CoreStoredSession) -> Self {
         Self {
             device_id: session.device_id,
             refresh_token: session.refresh_token.expose_encoded().to_string(),
@@ -299,19 +299,15 @@ impl CoreTransport for TransportAdapter {
     }
 }
 
-/// Holds the public key `SyncClient::new` read, because the core trait's `public_key` cannot fail.
-struct KeyAdapter {
-    key: Arc<dyn DpopKey>,
-    public_key: Vec<u8>,
-}
+struct KeyAdapter(Arc<dyn DpopKey>);
 
 impl CoreDpopKey for KeyAdapter {
-    fn public_key(&self) -> Vec<u8> {
-        self.public_key.clone()
+    fn public_key(&self) -> Result<Vec<u8>, CoreSignError> {
+        Ok(self.0.public_key()?)
     }
 
     fn sign(&self, message: Vec<u8>) -> Result<Vec<u8>, CoreSignError> {
-        Ok(self.key.sign(message)?)
+        Ok(self.0.sign(message)?)
     }
 }
 
@@ -335,7 +331,7 @@ impl CoreTokenStore for StoreAdapter {
             }))
     }
 
-    async fn save(&self, session: CoreStoredSession) -> Result<(), CoreTokenStoreError> {
+    async fn save(&self, session: &CoreStoredSession) -> Result<(), CoreTokenStoreError> {
         Ok(self.0.save(session.into()).await?)
     }
 
@@ -381,16 +377,10 @@ impl SyncClient {
         let base_url = Url::parse(&base_url).map_err(|e| SyncError::Client {
             reason: format!("invalid server url: {e}"),
         })?;
-        let public_key = dpop_key.public_key().map_err(|e| SyncError::Client {
-            reason: format!("could not read the DPoP public key: {e}"),
-        })?;
         let inner = CoreSyncClient::new(
             base_url,
             Arc::new(TransportAdapter(transport)),
-            Arc::new(KeyAdapter {
-                key: dpop_key,
-                public_key,
-            }),
+            Arc::new(KeyAdapter(dpop_key)),
             Arc::new(StoreAdapter(tokens)),
         )?;
         Ok(Arc::new(Self {
@@ -595,7 +585,7 @@ mod tests {
 
     impl DpopKey for TestKey {
         fn public_key(&self) -> Result<Vec<u8>, SignError> {
-            Ok(CoreDpopKey::public_key(&self.0))
+            CoreDpopKey::public_key(&self.0).map_err(|e| SignError::Failed { reason: e.message })
         }
 
         fn sign(&self, message: Vec<u8>) -> Result<Vec<u8>, SignError> {
@@ -640,7 +630,7 @@ mod tests {
         let device_id = DeviceId::random();
 
         adapter
-            .save(CoreStoredSession {
+            .save(&CoreStoredSession {
                 device_id,
                 refresh_token: STORED_TOKEN.parse().unwrap(),
                 refresh_expires_at: 99,

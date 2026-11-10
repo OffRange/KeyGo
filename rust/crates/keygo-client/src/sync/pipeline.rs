@@ -188,7 +188,7 @@ impl SyncClient {
         let Some(unsaved) = &state.unsaved else {
             return;
         };
-        if self.tokens.save(unsaved.duplicate()).await.is_ok() {
+        if self.tokens.save(unsaved).await.is_ok() {
             state.unsaved = None;
         }
     }
@@ -530,7 +530,7 @@ mod tests {
     struct FailingKey(FakeDpopKey);
 
     impl DpopKey for FailingKey {
-        fn public_key(&self) -> Vec<u8> {
+        fn public_key(&self) -> Result<Vec<u8>, SignError> {
             self.0.public_key()
         }
 
@@ -696,7 +696,7 @@ mod tests {
             self.inner.load().await
         }
 
-        async fn save(&self, session: StoredSession) -> Result<(), TokenStoreError> {
+        async fn save(&self, session: &StoredSession) -> Result<(), TokenStoreError> {
             if self.hang.load(Ordering::SeqCst) {
                 std::future::pending::<()>().await;
             }

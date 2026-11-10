@@ -297,8 +297,8 @@ mod tests {
     struct ShortKey;
 
     impl DpopKey for ShortKey {
-        fn public_key(&self) -> Vec<u8> {
-            vec![1, 2, 3]
+        fn public_key(&self) -> Result<Vec<u8>, SignError> {
+            Ok(vec![1, 2, 3])
         }
 
         fn sign(&self, _: Vec<u8>) -> Result<Vec<u8>, SignError> {

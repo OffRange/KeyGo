@@ -11,8 +11,9 @@ pub struct SignError {
 /// A hardware-backed P-256 key held by the host.
 pub trait DpopKey: Send + Sync {
     /// The 65-byte uncompressed P-256 point.
-    fn public_key(&self) -> Vec<u8>;
+    fn public_key(&self) -> Result<Vec<u8>, SignError>;
     /// SHA256withECDSA over `message`, DER encoded.
+    /// Can be called from several threads at once.
     fn sign(&self, message: Vec<u8>) -> Result<Vec<u8>, SignError>;
 }
 
@@ -23,8 +24,11 @@ pub struct ForeignSigner {
 
 impl ForeignSigner {
     pub fn new(key: Arc<dyn DpopKey>) -> SyncResult<Self> {
+        let public_key = key.public_key().map_err(|e| SyncError::Client {
+            message: format!("could not read the DPoP public key: {e}"),
+        })?;
         let verifying =
-            VerifyingKey::from_sec1_bytes(&key.public_key()).map_err(|_| SyncError::Client {
+            VerifyingKey::from_sec1_bytes(&public_key).map_err(|_| SyncError::Client {
                 message: "the DPoP public key is not a P-256 point".into(),
             })?;
         Ok(Self { key, verifying })

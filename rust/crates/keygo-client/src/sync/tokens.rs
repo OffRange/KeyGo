@@ -37,6 +37,6 @@ pub struct TokenStoreError {
 #[async_trait]
 pub trait TokenStore: Send + Sync {
     async fn load(&self) -> Result<Option<StoredSession>, TokenStoreError>;
-    async fn save(&self, session: StoredSession) -> Result<(), TokenStoreError>;
+    async fn save(&self, session: &StoredSession) -> Result<(), TokenStoreError>;
     async fn clear(&self) -> Result<(), TokenStoreError>;
 }
