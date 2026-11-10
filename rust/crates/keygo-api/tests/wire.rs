@@ -41,12 +41,6 @@ fn device() -> Value {
     json!({"name": "Pixel 9", "platform": "android", "app_version": "2.3.0"})
 }
 
-fn device_with(extra: (&str, Value)) -> Value {
-    let mut value = device();
-    value[extra.0] = extra.1;
-    value
-}
-
 fn key_bundle() -> Value {
     json!({"wrapped_ark": wrapped_ark()})
 }
@@ -226,10 +220,8 @@ fn handshake_start_response() {
 
 fn login_finish(device_id: Option<&str>) -> (login::FinishRequest, Value) {
     let m = messages();
-    let claim = match device_id {
-        Some(id) => device_with(("device_id", json!(id))),
-        None => device_with(("device_id", Value::Null)),
-    };
+    let mut claim = device();
+    claim["device_id"] = json!(device_id);
     let request = login::FinishRequest {
         login_id: from(json!(HANDSHAKE_ID)),
         credential_finalization: m.credential_finalization.0,

@@ -2,23 +2,20 @@ use async_trait::async_trait;
 use axum::body::Body;
 use axum::http::{HeaderName, HeaderValue, Request};
 use http_body_util::BodyExt;
-use keygo_api::Method;
 use keygo_api::domain::{Device, RevokeReason};
 use keygo_client::sync::testing::{FakeDpopKey, FakeTokenStore, FixedClock};
 use keygo_client::sync::{
-    Header, HttpRequest, HttpResponse, StoredSession, SyncClient, SyncError, Transport,
-    TransportError,
+    Clock, Header, HttpRequest, HttpResponse, StoredSession, SyncClient, SyncError, SystemClock,
+    Transport, TransportError,
 };
 use keygo_dpop::testing::TestSigner;
 use keygo_server::api::{AppState, router};
 use keygo_server::testing;
 use sqlx::PgPool;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 use tower::ServiceExt;
 use url::Url;
 
-/// Hands requests to the router in-process, the way a real transport hands them to the network.
 struct TowerTransport(AppState);
 
 #[async_trait]
@@ -27,12 +24,9 @@ impl Transport for TowerTransport {
         let fail = |e: &dyn std::fmt::Display| TransportError {
             message: e.to_string(),
         };
-        let method = match request.method {
-            Method::Get => "GET",
-            Method::Post => "POST",
-            Method::Delete => "DELETE",
-        };
-        let mut built = Request::builder().method(method).uri(&request.url);
+        let mut built = Request::builder()
+            .method(request.method.as_str())
+            .uri(&request.url);
         for header in &request.headers {
             built = built.header(
                 HeaderName::try_from(header.name.as_str()).map_err(|e| fail(&e))?,
@@ -80,13 +74,6 @@ struct Harness {
     seed_token: String,
 }
 
-fn now() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs()
-}
-
 async fn harness(db: &PgPool) -> Harness {
     let prover = testing::prover();
     let (state, issued) = testing::signed_in(db, &prover).await;
@@ -98,9 +85,9 @@ async fn harness(db: &PgPool) -> Harness {
     store.seed(StoredSession {
         device_id,
         refresh_token: issued.refresh_token,
-        refresh_expires_at: now() + issued.refresh_expires_in.as_secs(),
+        refresh_expires_at: SystemClock.now_secs() + issued.refresh_expires_in.as_secs(),
     });
-    let clock = FixedClock::new(now());
+    let clock = FixedClock::new(SystemClock.now_secs());
     let client = SyncClient::new(
         Url::parse(testing::ISS).unwrap(),
         Arc::new(TowerTransport(state.clone())),
@@ -187,7 +174,7 @@ async fn revoked_session_signs_out(db: PgPool) {
 async fn fresh_auth_required_then_step_up_then_retry(db: PgPool) {
     let h = harness(&db).await;
     sqlx::query("update sessions set auth_time = to_timestamp($1) where device_id = $2")
-        .bind((now() - 301) as f64)
+        .bind((SystemClock.now_secs() - 301) as f64)
         .bind(h.device_id.as_uuid())
         .execute(&db)
         .await
