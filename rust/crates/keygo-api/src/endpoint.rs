@@ -1,5 +1,5 @@
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::borrow::Cow;
 
 /// What a request must carry for the server to accept it.

@@ -40,6 +40,8 @@ pub enum SyncError {
     Server { code: String, reason: String },
     #[error("client error: {reason}")]
     Client { reason: String },
+    #[error("{message}")]
+    InvalidUrl { message: String },
 }
 
 impl From<CoreSyncError> for SyncError {
@@ -61,6 +63,9 @@ impl From<CoreSyncError> for SyncError {
                 reason: message,
             },
             CoreSyncError::Client { message } => Self::Client { reason: message },
+            CoreSyncError::InvalidUrl(e) => Self::InvalidUrl {
+                message: e.to_string(),
+            },
         }
     }
 }

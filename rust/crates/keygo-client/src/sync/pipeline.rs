@@ -106,8 +106,8 @@ pub(super) fn store_failure(error: TokenStoreError) -> SyncError {
 }
 
 impl SyncClient {
-    fn url(&self, path: &str) -> String {
-        format!("{}{}", self.base_url.as_str().trim_end_matches('/'), path)
+    fn url(&self, path: &str) -> SyncResult<String> {
+        Ok(self.base_url.join(path)?.to_string())
     }
 
     async fn send(&self, request: HttpRequest) -> SyncResult<HttpResponse> {
@@ -171,7 +171,7 @@ impl SyncClient {
         body: Option<&[u8]>,
         nonce: &mut Option<String>,
     ) -> SyncResult<HttpResponse> {
-        let url = self.url(path);
+        let url = self.url(path)?;
 
         let response = self
             .send_signed(method, &url, access_token, body, nonce.as_deref())
@@ -337,7 +337,7 @@ impl SyncClient {
             Auth::None => {
                 self.send(HttpRequest {
                     method: E::METHOD,
-                    url: self.url(&path),
+                    url: self.url(&path)?,
                     headers: body.is_some().then(json_content_type).into_iter().collect(),
                     body: body.unwrap_or_default(),
                 })

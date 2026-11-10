@@ -27,6 +27,8 @@ pub enum SyncError {
     Server { code: String, message: String },
     #[error("client error: {message}")]
     Client { message: String },
+    #[error(transparent)]
+    InvalidUrl(#[from] url::ParseError),
 }
 
 impl SyncError {

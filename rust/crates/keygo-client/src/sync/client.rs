@@ -33,6 +33,20 @@ pub struct SyncClient {
     pub(super) auth: Mutex<AuthState>,
 }
 
+fn check_base_url(url: &Url) -> SyncResult<()> {
+    let is_origin = matches!(url.scheme(), "http" | "https")
+        && url.has_host()
+        && url.path() == "/"
+        && url.query().is_none()
+        && url.fragment().is_none();
+    if is_origin {
+        return Ok(());
+    }
+    Err(SyncError::Client {
+        message: "the server url must be a plain http(s) origin".into(),
+    })
+}
+
 impl SyncClient {
     pub fn new(
         base_url: Url,
@@ -40,6 +54,7 @@ impl SyncClient {
         key: Arc<dyn DpopKey>,
         tokens: Arc<dyn TokenStore>,
     ) -> SyncResult<Self> {
+        check_base_url(&base_url)?;
         Ok(Self {
             base_url,
             transport,
