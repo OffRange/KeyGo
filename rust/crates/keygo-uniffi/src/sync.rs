@@ -35,6 +35,8 @@ pub enum SyncError {
     SignedOut { reason: Option<String> },
     #[error("rate limited")]
     RateLimited,
+    #[error("vault locked")]
+    Locked,
     #[error("network error: {reason}")]
     Network { reason: String },
     #[error("server error {code}: {reason}")]
@@ -58,6 +60,7 @@ impl From<CoreSyncError> for SyncError {
                 reason: reason.map(|r| r.as_str().to_owned()),
             },
             CoreSyncError::RateLimited => Self::RateLimited,
+            CoreSyncError::VaultLocked => Self::Locked,
             CoreSyncError::Network { message } => Self::Network { reason: message },
             CoreSyncError::Server { code, message } => Self::Server {
                 code,
@@ -376,14 +379,7 @@ impl SyncClient {
         let device = device.into_core()?;
         let account = detached(async move {
             self.inner
-                .register(
-                    &ark.session,
-                    user_id,
-                    &username,
-                    &password,
-                    invite.as_deref(),
-                    device,
-                )
+                .register(&ark.session, user_id, username, &password, invite, device)
                 .await
         })
         .await?;

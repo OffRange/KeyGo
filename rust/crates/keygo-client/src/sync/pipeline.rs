@@ -235,16 +235,24 @@ impl SyncClient {
         let body = Zeroizing::new(response.body);
         let session: Session = decode_body(&body)?;
 
+        let token = Zeroizing::new(session.access.access_token.expose().to_owned());
+        self.adopt_session(state, session, sent_at).await;
+        Ok(token)
+    }
+
+    pub(super) async fn adopt_session(
+        &self,
+        state: &mut AuthState,
+        session: Session,
+        sent_at: u64,
+    ) {
         state.unsaved = Some(StoredSession {
             device_id: session.device_id,
             refresh_token: session.refresh_token,
             refresh_expires_at: sent_at.saturating_add(session.refresh_expires_in),
         });
         self.flush_unsaved(state).await;
-
-        let token = Zeroizing::new(session.access.access_token.expose().to_owned());
         state.replace_access(session.access, sent_at);
-        Ok(token)
     }
 
     /// Only a refresh holds the lock across the network. It is released before the request itself.

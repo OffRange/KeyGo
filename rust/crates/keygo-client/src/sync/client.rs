@@ -4,15 +4,18 @@ use super::signer::SharedSigner;
 use super::state::{AuthState, Clock, SystemClock};
 use super::tokens::TokenStore;
 use super::transport::Transport;
-use crate::ark_session::ArkSession;
-use keygo_api::auth::step_up::{FinishRequest, StartRequest};
-use keygo_api::domain::{Device, DeviceInfo, Username};
-use keygo_api::endpoints::{DeleteDevice, ListDevices, Logout, Meta, StepUpFinish, StepUpStart};
+use crate::ark_session::{ArkSession, ArkSessionError};
+use keygo_api::auth::{register, step_up};
+use keygo_api::domain::{Device, DeviceInfo, KeyBundle, Username};
+use keygo_api::endpoints::{
+    DeleteDevice, ListDevices, Logout, Meta, RegisterFinish, RegisterStart, StepUpFinish,
+    StepUpStart,
+};
 use keygo_api::meta::ServerInfo;
 use keygo_core::{DeviceId, UserId};
 use keygo_dpop::DpopProver;
 use keygo_opaque::OpaqueError;
-use keygo_opaque::client::ClientLogin;
+use keygo_opaque::client::{ClientLogin, ClientRegistration};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use url::Url;
@@ -91,7 +94,7 @@ impl SyncClient {
         let (login, credential_request) =
             ClientLogin::start(password.as_bytes()).map_err(opaque_failure)?;
         let started = self
-            .call(&StepUpStart, &StartRequest { credential_request })
+            .call(&StepUpStart, &step_up::StartRequest { credential_request })
             .await?;
         let finish = login
             .finish(password.as_bytes(), started.credential_response)
@@ -102,7 +105,7 @@ impl SyncClient {
         let response = self
             .call(
                 &StepUpFinish,
-                &FinishRequest {
+                &step_up::FinishRequest {
                     login_id: started.login_id,
                     credential_finalization: finish.finalization,
                     dpop_binding,
@@ -117,17 +120,73 @@ impl SyncClient {
         Ok(())
     }
 
-    /// Not implemented until the key bundle's wrapping is decided.
     pub async fn register(
         &self,
-        _ark: &ArkSession,
-        _user_id: UserId,
-        _username: &str,
-        _password: &str,
-        _invite: Option<&str>,
-        _device: DeviceInfo,
+        ark: &ArkSession,
+        user_id: UserId,
+        username: String,
+        password: &str,
+        invite: Option<String>,
+        device: DeviceInfo,
     ) -> SyncResult<Account> {
-        Err(undecided())
+        if !ark.is_active() {
+            return Err(SyncError::VaultLocked);
+        }
+        let (client, registration_request) =
+            ClientRegistration::start(password.as_bytes()).map_err(client_failure)?;
+
+        // A previous account's refresh token must not stay valid on the server.
+        match self.logout().await {
+            Ok(()) | Err(SyncError::SignedOut { .. }) => {}
+            Err(error) => return Err(error),
+        }
+
+        let started = self
+            .call(
+                &RegisterStart,
+                &register::StartRequest {
+                    username,
+                    user_id,
+                    invite,
+                    registration_request,
+                },
+            )
+            .await?;
+        let finish = client
+            .finish(password.as_bytes(), started.registration_response)
+            .map_err(|error| SyncError::invalid_response(error.to_string()))?;
+
+        let wrapped_ark = ark
+            .wrap_for_server(&finish.export_key, user_id)
+            .map_err(|error| match error {
+                ArkSessionError::Locked => SyncError::VaultLocked,
+                other => client_failure(other),
+            })?
+            .into();
+        let key_bundle = KeyBundle { wrapped_ark };
+
+        let sent_at = self.clock.now_secs();
+        let response = self
+            .call(
+                &RegisterFinish,
+                &register::FinishRequest {
+                    registration_id: started.registration_id,
+                    registration_upload: finish.upload,
+                    key_bundle,
+                    device,
+                },
+            )
+            .await?;
+
+        let account = Account {
+            user_id,
+            username: response.username,
+            device_id: response.session.device_id,
+        };
+        let mut state = self.auth.lock().await;
+        self.adopt_session(&mut state, response.session, sent_at)
+            .await;
+        Ok(account)
     }
 
     /// Not implemented until the key bundle's wrapping is decided.
@@ -160,12 +219,16 @@ fn undecided() -> SyncError {
     }
 }
 
+fn client_failure(error: impl std::fmt::Display) -> SyncError {
+    SyncError::Client {
+        message: error.to_string(),
+    }
+}
+
 fn opaque_failure(error: OpaqueError) -> SyncError {
     match error {
         OpaqueError::InvalidLogin | OpaqueError::EmptyPassword => SyncError::InvalidCredentials,
-        other => SyncError::Client {
-            message: other.to_string(),
-        },
+        other => client_failure(other),
     }
 }
 
@@ -268,6 +331,170 @@ mod tests {
             client.meta().await.unwrap_err(),
             SyncError::Server { code, .. } if code == "http_502",
         ));
+    }
+
+    mod register {
+        use super::super::super::testing::{FakeSigner, client_with_store, header};
+        use super::super::super::transport::HttpRequest;
+        use super::super::SyncError;
+        use crate::ark_session::ArkSession;
+        use base64::Engine;
+        use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+        use keygo_api::domain::DeviceInfo;
+        use keygo_core::UserId;
+        use keygo_opaque::server::{self, ServerSetup};
+        use keygo_opaque::{OpaqueError, RegistrationRequest};
+        use serde_json::{Value, json};
+        use std::sync::Arc;
+
+        const REGISTRATION_ID: &str = "BwcHBwcHBwcHBwcHBwcHBw";
+        const REFRESH: &str = "kgr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
+        fn unlocked() -> (ArkSession, UserId) {
+            let ark = ArkSession::new();
+            let user_id = ark.create_account("local password").unwrap().user_id;
+            (ark, user_id)
+        }
+
+        fn device() -> DeviceInfo {
+            serde_json::from_value(json!({
+                "name": "Pixel 9",
+                "platform": "android",
+                "app_version": "2.3.0",
+            }))
+            .unwrap()
+        }
+
+        fn body(request: &HttpRequest) -> Value {
+            serde_json::from_slice(&request.body).unwrap()
+        }
+
+        /// What a real server answers to `register/start`.
+        fn start_reply(request: &HttpRequest) -> Vec<u8> {
+            let registration_request: RegistrationRequest =
+                serde_json::from_value(body(request)["registration_request"].clone()).unwrap();
+            let response =
+                server::registration_start(&ServerSetup::generate(), registration_request, b"u")
+                    .unwrap();
+            serde_json::to_vec(&json!({
+                "registration_id": REGISTRATION_ID,
+                "registration_response": response,
+                "expires_in": 300,
+            }))
+            .unwrap()
+        }
+
+        fn finish_reply() -> Vec<u8> {
+            serde_json::to_vec(&json!({
+                "username": "ada",
+                "session": {
+                    "device_id": "00000000-0000-0000-0000-000000000001",
+                    "access_token": "a.b.c",
+                    "access_expires_in": 600,
+                    "refresh_token": REFRESH,
+                    "refresh_expires_in": 86400,
+                },
+            }))
+            .unwrap()
+        }
+
+        #[tokio::test]
+        async fn registers_and_keeps_the_session() {
+            let (client, transport, store) =
+                client_with_store("https://kg.example", Arc::new(FakeSigner::new()));
+            transport.push_with(200, start_reply);
+            transport.push(200, &[], &finish_reply());
+            let (ark, user_id) = unlocked();
+
+            let account = client
+                .register(&ark, user_id, "Ada".into(), "pw", None, device())
+                .await
+                .unwrap();
+
+            assert_eq!(account.user_id, user_id);
+            assert_eq!(account.username.as_str(), "ada");
+            assert_eq!(store.current_refresh_token().as_deref(), Some(REFRESH));
+
+            let requests = transport.requests();
+            assert_eq!(requests.len(), 2, "a signed-out client sends no logout");
+            assert_eq!(header(&requests[0], "dpop"), None);
+            assert!(header(&requests[1], "dpop").is_some());
+
+            let finish = body(&requests[1]);
+            assert_eq!(finish["registration_id"], REGISTRATION_ID);
+            let wrapped_ark = URL_SAFE_NO_PAD
+                .decode(finish["key_bundle"]["wrapped_ark"].as_str().unwrap())
+                .unwrap();
+            assert_eq!(wrapped_ark.len(), 60);
+        }
+
+        #[tokio::test]
+        async fn locked_vault_sends_nothing() {
+            let (client, transport, _) =
+                client_with_store("https://kg.example", Arc::new(FakeSigner::new()));
+
+            let error = client
+                .register(
+                    &ArkSession::new(),
+                    UserId::random(),
+                    "ada".into(),
+                    "pw",
+                    None,
+                    device(),
+                )
+                .await
+                .unwrap_err();
+
+            assert_eq!(error, SyncError::VaultLocked);
+            assert!(transport.requests().is_empty());
+        }
+
+        #[tokio::test]
+        async fn empty_password_sends_nothing() {
+            let (client, transport, _) =
+                client_with_store("https://kg.example", Arc::new(FakeSigner::new()));
+            let (ark, user_id) = unlocked();
+
+            let error = client
+                .register(&ark, user_id, "ada".into(), "", None, device())
+                .await
+                .unwrap_err();
+
+            assert!(matches!(error, SyncError::Client { .. }), "{error:?}");
+            assert!(transport.requests().is_empty());
+        }
+
+        /// A server that echoes the blinded element would learn the OPRF output; the client
+        /// refuses, and that is the server's fault, not a wrong password.
+        #[tokio::test]
+        async fn reflected_response_is_an_invalid_response() {
+            let (client, transport, _) =
+                client_with_store("https://kg.example", Arc::new(FakeSigner::new()));
+            transport.push_with(200, |request| {
+                let blinded = URL_SAFE_NO_PAD
+                    .decode(body(request)["registration_request"].as_str().unwrap())
+                    .unwrap();
+                let reflected = [blinded, ServerSetup::generate().public_key()].concat();
+                serde_json::to_vec(&json!({
+                    "registration_id": REGISTRATION_ID,
+                    "registration_response": URL_SAFE_NO_PAD.encode(reflected),
+                    "expires_in": 300,
+                }))
+                .unwrap()
+            });
+            let (ark, user_id) = unlocked();
+
+            let error = client
+                .register(&ark, user_id, "ada".into(), "pw", None, device())
+                .await
+                .unwrap_err();
+
+            assert_eq!(
+                error,
+                SyncError::invalid_response(OpaqueError::ReflectedValue.to_string()),
+            );
+            assert_eq!(transport.requests().len(), 1, "finish is never sent");
+        }
     }
 
     #[tokio::test]

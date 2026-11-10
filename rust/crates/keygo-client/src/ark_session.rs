@@ -1,8 +1,10 @@
 use crate::crypto::kdf::new_salt;
 use crate::crypto::{
     AccountRootKey, CryptoError, Encrypts, KeyMaterial, NamespaceDataAad, NamespaceId,
-    NamespaceKey, NamespaceKeyAad, RootKek, Sealed, SecretKind, UserId, VaultId, VaultKey, Wraps,
+    NamespaceKey, NamespaceKeyAad, RootKek, Sealed, SecretKind, ServerKek, UserId, VaultId,
+    VaultKey, Wraps,
 };
+use keygo_opaque::ExportKey;
 use std::sync::{Mutex, MutexGuard};
 use subtle::ConstantTimeEq;
 use zeroize::Zeroizing;
@@ -145,6 +147,16 @@ impl ArkSession {
         let kek = derive_kek(new_password, &salt)?;
         let wrapped = self.with_live_ark(|ark| Ok(kek.wrap_key(ark, &user_id)?))?;
         Ok(PasswordWrappedArk { salt, wrapped })
+    }
+
+    pub fn wrap_for_server(
+        &self,
+        export_key: &ExportKey,
+        user_id: UserId,
+    ) -> ArkSessionResult<Sealed<AccountRootKey>> {
+        let kek = ServerKek::from_export_key(export_key.as_bytes(), user_id)
+            .map_err(ArkSessionError::Derivation)?;
+        self.with_live_ark(|ark| Ok(kek.wrap_key(ark, &user_id)?))
     }
 
     pub fn wrap_vault_key(

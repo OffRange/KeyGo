@@ -14,6 +14,16 @@ pub struct Sealed<T: ?Sized> {
     pub(crate) content: PhantomData<fn() -> Box<T>>,
 }
 
+impl<T> From<Sealed<T>> for Sealed<[u8]> {
+    fn from(value: Sealed<T>) -> Self {
+        Self {
+            nonce: value.nonce,
+            ciphertext: value.ciphertext,
+            content: PhantomData,
+        }
+    }
+}
+
 impl<T: ?Sized> Sealed<T> {
     pub fn from_parts(nonce: &[u8], ciphertext: Vec<u8>) -> CryptoResult<Self> {
         let nonce = nonce

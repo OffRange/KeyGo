@@ -3,12 +3,15 @@ use axum::body::Body;
 use axum::http::{HeaderName, HeaderValue, Request};
 use http_body_util::BodyExt;
 use keygo_api::domain::{Device, RevokeReason};
+use keygo_client::ark_session::ArkSession;
 use keygo_client::sync::testing::{FakeSigner, FakeTokenStore, FixedClock};
 use keygo_client::sync::{
     Clock, Header, HttpRequest, HttpResponse, StoredSession, SyncClient, SyncError, SystemClock,
     Transport, TransportError,
 };
+use keygo_core::{AccountRootKey, KeyMaterial, Sealed, ServerKek, UserId, Wraps};
 use keygo_dpop::testing::TestSigner;
+use keygo_opaque::server::ServerSetup;
 use keygo_server::api::{AppState, router};
 use keygo_server::testing;
 use sqlx::PgPool;
@@ -107,6 +110,40 @@ async fn harness(db: &PgPool) -> Harness {
         access_token,
         seed_token,
     }
+}
+
+/// A client with nothing stored, against a server with no session for it.
+fn signed_out(db: &PgPool) -> (SyncClient, Arc<FakeTokenStore>, AppState) {
+    let state = testing::app_state(db, &ServerSetup::generate());
+    let store = Arc::new(FakeTokenStore::new());
+    let client = SyncClient::new(
+        Url::parse(testing::ISS).unwrap(),
+        Arc::new(TowerTransport(state.clone())),
+        Arc::new(FakeSigner::new()),
+        store.clone(),
+    )
+    .unwrap();
+    (client, store, state)
+}
+
+fn local_account() -> (ArkSession, UserId) {
+    let ark = ArkSession::new();
+    let user_id = ark.create_account(password()).unwrap().user_id;
+    (ark, user_id)
+}
+
+async fn register(client: &SyncClient, ark: &ArkSession, user_id: UserId, name: &str) {
+    client
+        .register(
+            ark,
+            user_id,
+            name.into(),
+            password(),
+            None,
+            testing::device_info(),
+        )
+        .await
+        .unwrap();
 }
 
 fn password() -> &'static str {
@@ -241,6 +278,80 @@ async fn client_logout_ends_the_session_on_the_server(db: PgPool) {
     )
     .await;
     assert!(!status.is_success(), "{status}");
+}
+
+#[sqlx::test(migrations = "../keygo-server/migrations")]
+async fn register_signs_the_device_in(db: PgPool) {
+    let (client, store, _) = signed_out(&db);
+    let (ark, user_id) = local_account();
+
+    let account = client
+        .register(
+            &ark,
+            user_id,
+            "Ada".into(),
+            password(),
+            None,
+            testing::device_info(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(account.user_id, user_id);
+    assert_eq!(account.username.as_str(), "ada");
+    assert!(store.current_refresh_token().is_some());
+    let devices = client.devices().await.unwrap();
+    assert_eq!(devices.len(), 1);
+    assert_eq!(devices[0].id, account.device_id);
+}
+
+#[sqlx::test(migrations = "../keygo-server/migrations")]
+async fn server_wrapped_ark_opens_after_sign_in(db: PgPool) {
+    let (client, _, state) = signed_out(&db);
+    let (ark, user_id) = local_account();
+    register(&client, &ark, user_id, "ada").await;
+
+    let (login, started) =
+        testing::start_login(&db, &state.login_states, &state.opaque_state, "ada").await;
+    let export_key = login
+        .finish(testing::PASSWORD, started.credential_response)
+        .unwrap()
+        .export_key;
+    let stored: Vec<u8> =
+        sqlx::query_scalar("select wrapped_ark from key_bundles where user_id = $1")
+            .bind(user_id.as_uuid())
+            .fetch_one(&db)
+            .await
+            .unwrap();
+
+    let opened = ServerKek::from_export_key(export_key.as_bytes(), user_id)
+        .unwrap()
+        .unwrap_key(
+            &Sealed::<AccountRootKey>::from_bytes(&stored).unwrap(),
+            &user_id,
+        )
+        .unwrap();
+
+    assert_eq!(opened.as_bytes(), ark.export_ark().unwrap().as_slice());
+}
+
+#[sqlx::test(migrations = "../keygo-server/migrations")]
+async fn registering_while_signed_in_ends_the_old_session(db: PgPool) {
+    let h = harness(&db).await;
+    let (ark, user_id) = local_account();
+
+    register(&h.client, &ark, user_id, "bob").await;
+
+    let (status, _) = testing::post_with_token(
+        &h.state,
+        &h.prover,
+        "/api/v1/auth/logout",
+        &h.access_token,
+        serde_json::Value::Null,
+    )
+    .await;
+    assert!(!status.is_success(), "{status}");
+    assert_ne!(h.store.current_refresh_token().unwrap(), h.seed_token);
 }
 
 #[sqlx::test(migrations = "../keygo-server/migrations")]

@@ -9,15 +9,22 @@
 use crate::crypto::aad::{Aad, aad};
 use crate::crypto::kdf::argon2::{Argon2Params, derive_argon2id};
 use crate::crypto::{CipherKey, Encrypts, KeyMaterial, Wraps};
+use crate::keys::ServerKek;
 use crate::{
     AccountRootKey, CryptoResult, ItemId, ItemKey, NamespaceId, NamespaceKey, RootKek, UserId,
     VaultId, VaultKey,
 };
 use aead::Generate;
+use hkdf::Hkdf;
 use serde::{Serialize, Serializer};
+use sha2::Sha256;
+use zeroize::Zeroizing;
 
 /// Part of every password KEK's salt; must never change.
 const PASSWORD_DOMAIN: &[u8] = b"v1:kek/pwd";
+
+/// The HKDF info of every server KEK; must never change.
+const OPAQUE_KEK_DOMAIN: &[u8] = b"v1:kek/opaque";
 
 /// Part of every namespace-key wrap AAD; must never change.
 const NAMESPACE_KEY_DOMAIN: &str = "v1:ns/key";
@@ -110,6 +117,7 @@ macro_rules! wraps {
 }
 
 wraps! {
+    ServerKek      -> AccountRootKey with UserId,
     RootKek        -> AccountRootKey with UserId, // TODO: bind the credential epoch
     AccountRootKey -> VaultKey       with VaultId, // TODO: bind vault_key_epoch
     AccountRootKey -> NamespaceKey   with NamespaceKeyAad,
@@ -127,6 +135,16 @@ impl Encrypts for NamespaceKey {
 impl RootKek {
     pub fn from_password(password: &[u8], salt: &[u8]) -> CryptoResult<Self> {
         let derived = derive_argon2id(password, salt, PASSWORD_DOMAIN, Argon2Params::default())?;
+        Self::from_bytes(derived.as_slice())
+    }
+}
+
+impl ServerKek {
+    pub fn from_export_key(key: &[u8], user_id: UserId) -> CryptoResult<Self> {
+        let mut derived = Zeroizing::new([0u8; 32]);
+        Hkdf::<Sha256>::new(Some(user_id.as_uuid().as_bytes()), key)
+            .expand(OPAQUE_KEK_DOMAIN, derived.as_mut())
+            .expect("32 bytes is a valid HKDF-SHA256 output length");
         Self::from_bytes(derived.as_slice())
     }
 }
@@ -178,6 +196,34 @@ mod tests {
                 146, 108, 157, 245, 225, 131, 93, 9, 236, 235, 207, 6, 219, 103,
             ][..]
         );
+    }
+
+    fn user(byte: u8) -> UserId {
+        UserId::from(uuid::Uuid::from_bytes([byte; 16]))
+    }
+
+    /// Pins `OPAQUE_KEK_DOMAIN` and the salt; drift makes every server-held ARK unopenable.
+    #[test]
+    fn opaque_kek_domain_is_pinned() {
+        assert_eq!(OPAQUE_KEK_DOMAIN, b"v1:kek/opaque");
+
+        let kek = ServerKek::from_export_key(&[9; 64], user(3)).unwrap();
+
+        // Cross-checked against RFC 5869 HKDF-SHA256 outside Rust.
+        assert_eq!(
+            kek.as_bytes(),
+            &[
+                27, 101, 7, 214, 170, 93, 0, 161, 91, 141, 171, 209, 225, 137, 214, 134, 221, 88,
+                108, 144, 212, 175, 208, 136, 181, 194, 182, 0, 55, 168, 52, 233,
+            ][..]
+        );
+    }
+
+    #[test]
+    fn server_kek_depends_on_the_user() {
+        let a = ServerKek::from_export_key(&[9; 64], user(3)).unwrap();
+        let b = ServerKek::from_export_key(&[9; 64], user(4)).unwrap();
+        assert_ne!(a.as_bytes(), b.as_bytes());
     }
 
     /// Pins every label; drift makes that field undecryptable everywhere.

@@ -21,6 +21,8 @@ pub enum SyncError {
     SignedOut { reason: Option<RevokeReason> },
     #[error("rate limited")]
     RateLimited,
+    #[error("vault locked")]
+    VaultLocked,
     #[error("network error: {message}")]
     Network { message: String },
     #[error("server error {code}: {message}")]

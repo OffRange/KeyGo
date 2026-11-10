@@ -12,15 +12,24 @@ use std::sync::{Arc, Mutex};
 use url::Url;
 
 pub fn client_for(base: &str, signer: SharedSigner) -> (SyncClient, Arc<FakeTransport>) {
+    let (client, transport, _) = client_with_store(base, signer);
+    (client, transport)
+}
+
+pub fn client_with_store(
+    base: &str,
+    signer: SharedSigner,
+) -> (SyncClient, Arc<FakeTransport>, Arc<FakeTokenStore>) {
     let transport = FakeTransport::new();
+    let store = Arc::new(FakeTokenStore::new());
     let client = SyncClient::new(
         Url::parse(base).unwrap(),
         transport.clone(),
         signer,
-        Arc::new(FakeTokenStore::new()),
+        store.clone(),
     )
     .unwrap();
-    (client, transport)
+    (client, transport, store)
 }
 
 pub fn fake_client() -> (SyncClient, Arc<FakeTransport>) {
@@ -39,8 +48,10 @@ pub fn error_body(code: &str) -> Vec<u8> {
     serde_json::to_vec(&serde_json::json!({"code": code, "message": "m"})).unwrap()
 }
 
+type Reply = Box<dyn FnOnce(&HttpRequest) -> Result<HttpResponse, TransportError> + Send>;
+
 pub struct FakeTransport {
-    script: Mutex<VecDeque<Result<HttpResponse, TransportError>>>,
+    script: Mutex<VecDeque<Reply>>,
     requests: Mutex<Vec<HttpRequest>>,
 }
 
@@ -53,7 +64,7 @@ impl FakeTransport {
     }
 
     pub fn push(&self, status: u16, headers: &[(&str, &str)], body: &[u8]) {
-        self.script.lock().unwrap().push_back(Ok(HttpResponse {
+        let response = HttpResponse {
             status,
             headers: headers
                 .iter()
@@ -63,13 +74,36 @@ impl FakeTransport {
                 })
                 .collect(),
             body: body.to_vec(),
-        }));
+        };
+        self.reply(move |_| Ok(response));
+    }
+
+    /// Answers with a body built from the request, for replies that depend on what the client
+    /// generated, such as an OPAQUE response.
+    pub fn push_with(
+        &self,
+        status: u16,
+        body: impl FnOnce(&HttpRequest) -> Vec<u8> + Send + 'static,
+    ) {
+        self.reply(move |request| {
+            Ok(HttpResponse {
+                status,
+                headers: Vec::new(),
+                body: body(request),
+            })
+        });
     }
 
     pub fn push_network_error(&self, message: &str) {
-        self.script.lock().unwrap().push_back(Err(TransportError {
-            message: message.into(),
-        }));
+        let message = message.to_owned();
+        self.reply(move |_| Err(TransportError { message }));
+    }
+
+    fn reply(
+        &self,
+        reply: impl FnOnce(&HttpRequest) -> Result<HttpResponse, TransportError> + Send + 'static,
+    ) {
+        self.script.lock().unwrap().push_back(Box::new(reply));
     }
 
     pub fn requests(&self) -> Vec<HttpRequest> {
@@ -82,12 +116,15 @@ impl Transport for FakeTransport {
     async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
         // Lets concurrent tests really interleave.
         tokio::task::yield_now().await;
-        self.requests.lock().unwrap().push(request);
-        self.script
+        let reply = self
+            .script
             .lock()
             .unwrap()
             .pop_front()
-            .expect("FakeTransport script is empty")
+            .expect("FakeTransport script is empty");
+        let response = reply(&request);
+        self.requests.lock().unwrap().push(request);
+        response
     }
 }
 
