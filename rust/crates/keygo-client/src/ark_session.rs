@@ -13,6 +13,8 @@ use zeroize::Zeroizing;
 pub enum ArkSessionError {
     #[error("No active session")]
     Locked,
+    #[error("Session holds a different account")]
+    AccountMismatch,
     #[error("Wrong password")]
     WrongPassword,
     #[error("Key derivation failed: {0}")]
@@ -92,6 +94,26 @@ impl ArkSession {
             vault_id,
             wrapped_vault_key,
         })
+    }
+
+    pub fn unlock_with_server(
+        &self,
+        export_key: &ExportKey,
+        wrapped: &Sealed<AccountRootKey>,
+        user_id: UserId,
+    ) -> ArkSessionResult<()> {
+        let ark = ServerKek::from_export_key(export_key.as_bytes(), user_id)
+            .map_err(ArkSessionError::Derivation)?
+            .unwrap_key(wrapped, &user_id)?;
+
+        let mut live = self.lock();
+        match live.as_ref() {
+            None => *live = Some(ark),
+            Some(current) if bool::from(current.as_bytes().ct_eq(ark.as_bytes())) => {}
+            Some(_) => return Err(ArkSessionError::AccountMismatch),
+        }
+
+        Ok(())
     }
 
     pub fn unlock_with_password(

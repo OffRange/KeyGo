@@ -397,7 +397,7 @@ impl SyncClient {
         let device = device.into_core()?;
         let account = detached(async move {
             self.inner
-                .login(&ark.session, &username, &password, device)
+                .login(&ark.session, username, &password, device)
                 .await
         })
         .await?;

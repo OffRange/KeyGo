@@ -5,17 +5,18 @@ use super::state::{AuthState, Clock, SystemClock};
 use super::tokens::TokenStore;
 use super::transport::Transport;
 use crate::ark_session::{ArkSession, ArkSessionError};
-use keygo_api::auth::{register, step_up};
-use keygo_api::domain::{Device, DeviceInfo, KeyBundle, Username};
+use keygo_api::auth::{login, register, step_up};
+use keygo_api::domain::{Device, DeviceClaim, DeviceInfo, KeyBundle, Username};
 use keygo_api::endpoints::{
-    DeleteDevice, ListDevices, Logout, Meta, RegisterFinish, RegisterStart, StepUpFinish,
-    StepUpStart,
+    DeleteDevice, ListDevices, LoginFinish, LoginStart, Logout, Meta, RegisterFinish,
+    RegisterStart, StepUpFinish, StepUpStart,
 };
 use keygo_api::meta::ServerInfo;
 use keygo_core::{DeviceId, UserId};
 use keygo_dpop::DpopProver;
 use keygo_opaque::OpaqueError;
 use keygo_opaque::client::{ClientLogin, ClientRegistration};
+use std::fmt::Debug;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use url::Url;
@@ -183,21 +184,70 @@ impl SyncClient {
             username: response.username,
             device_id: response.session.device_id,
         };
-        let mut state = self.auth.lock().await;
-        self.adopt_session(&mut state, response.session, sent_at)
-            .await;
+        self.adopt_session(response.session, sent_at).await;
         Ok(account)
     }
 
-    /// Not implemented until the key bundle's wrapping is decided.
     pub async fn login(
         &self,
-        _ark: &ArkSession,
-        _username: &str,
-        _password: &str,
-        _device: DeviceInfo,
+        ark: &ArkSession,
+        username: String,
+        password: &str,
+        device: DeviceInfo,
     ) -> SyncResult<Account> {
-        Err(undecided())
+        let (client, credential_request) =
+            ClientLogin::start(password.as_bytes()).map_err(opaque_failure)?;
+        let started = self
+            .call(
+                &LoginStart,
+                &login::StartRequest {
+                    username,
+                    credential_request,
+                },
+            )
+            .await?;
+        let finish = client
+            .finish(password.as_bytes(), started.credential_response)
+            .map_err(opaque_failure)?;
+        let dpop_binding = finish.session_key.dpop_binding(self.prover.jkt());
+
+        let sent_at = self.clock.now_secs();
+        let response = self
+            .call(
+                &LoginFinish,
+                &login::FinishRequest {
+                    login_id: started.login_id,
+                    credential_finalization: finish.finalization,
+                    device: DeviceClaim {
+                        id: None,
+                        info: device,
+                    },
+                    dpop_binding,
+                },
+            )
+            .await?;
+
+        let account = Account {
+            user_id: response.user_id,
+            username: response.username,
+            device_id: response.session.device_id,
+        };
+
+        // We dont catch the error early, because the server already created the session and the
+        // device. To revoke that session from the server, we adopt the session so logout is available.
+        let unlocked = ark.unlock_with_server(
+            &finish.export_key,
+            &response.key_bundle.wrapped_ark.into(),
+            response.user_id,
+        );
+        self.adopt_session(response.session, sent_at).await;
+
+        if let Err(error) = unlocked {
+            let _ = self.logout().await;
+            return Err(client_failure(error));
+        }
+
+        Ok(account)
     }
 
     /// Always ends the session locally. Returns the server's result, unless the server was not told
@@ -210,12 +260,6 @@ impl SyncClient {
             (Err(_), Err(error)) => Err(store_failure(error)),
             (sent, _) => sent,
         }
-    }
-}
-
-fn undecided() -> SyncError {
-    SyncError::Client {
-        message: "key bundle wrapping is not decided".into(),
     }
 }
 

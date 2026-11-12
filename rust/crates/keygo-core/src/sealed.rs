@@ -24,6 +24,16 @@ impl<T> From<Sealed<T>> for Sealed<[u8]> {
     }
 }
 
+impl<T> From<Sealed<[u8]>> for Sealed<T> {
+    fn from(value: Sealed<[u8]>) -> Self {
+        Self {
+            nonce: value.nonce,
+            ciphertext: value.ciphertext,
+            content: PhantomData,
+        }
+    }
+}
+
 impl<T: ?Sized> Sealed<T> {
     pub fn from_parts(nonce: &[u8], ciphertext: Vec<u8>) -> CryptoResult<Self> {
         let nonce = nonce

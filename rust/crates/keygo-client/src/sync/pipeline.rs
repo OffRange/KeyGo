@@ -236,11 +236,17 @@ impl SyncClient {
         let session: Session = decode_body(&body)?;
 
         let token = Zeroizing::new(session.access.access_token.expose().to_owned());
-        self.adopt_session(state, session, sent_at).await;
+        self.adopt_session_with_state(state, session, sent_at).await;
         Ok(token)
     }
 
-    pub(super) async fn adopt_session(
+    pub(super) async fn adopt_session(&self, session: Session, sent_at: u64) {
+        let mut state = self.auth.lock().await;
+        self.adopt_session_with_state(&mut state, session, sent_at)
+            .await;
+    }
+
+    async fn adopt_session_with_state(
         &self,
         state: &mut AuthState,
         session: Session,
