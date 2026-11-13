@@ -36,7 +36,7 @@ pub enum SyncError {
     #[error("rate limited")]
     RateLimited,
     #[error("vault locked")]
-    Locked,
+    VaultLocked,
     #[error("network error: {reason}")]
     Network { reason: String },
     #[error("server error {code}: {reason}")]
@@ -60,7 +60,7 @@ impl From<CoreSyncError> for SyncError {
                 reason: reason.map(|r| r.as_str().to_owned()),
             },
             CoreSyncError::RateLimited => Self::RateLimited,
-            CoreSyncError::VaultLocked => Self::Locked,
+            CoreSyncError::VaultLocked => Self::VaultLocked,
             CoreSyncError::Network { message } => Self::Network { reason: message },
             CoreSyncError::Server { code, message } => Self::Server {
                 code,
