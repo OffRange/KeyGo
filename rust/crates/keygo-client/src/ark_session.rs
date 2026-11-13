@@ -1,7 +1,7 @@
 use crate::crypto::kdf::new_salt;
 use crate::crypto::{
     AccountRootKey, CryptoError, Encrypts, KeyMaterial, NamespaceDataAad, NamespaceId,
-    NamespaceKey, NamespaceKeyAad, RootKek, Sealed, SecretKind, ServerKek, UserId, VaultId,
+    NamespaceKey, NamespaceKeyAad, OpaqueKek, RootKek, Sealed, SecretKind, UserId, VaultId,
     VaultKey, Wraps,
 };
 use keygo_opaque::ExportKey;
@@ -102,7 +102,7 @@ impl ArkSession {
         wrapped: &Sealed<AccountRootKey>,
         user_id: UserId,
     ) -> ArkSessionResult<()> {
-        let ark = ServerKek::from_export_key(export_key.as_bytes(), user_id)
+        let ark = OpaqueKek::from_export_key(export_key.as_bytes(), user_id)
             .map_err(ArkSessionError::Derivation)?
             .unwrap_key(wrapped, &user_id)?;
 
@@ -176,7 +176,7 @@ impl ArkSession {
         export_key: &ExportKey,
         user_id: UserId,
     ) -> ArkSessionResult<Sealed<AccountRootKey>> {
-        let kek = ServerKek::from_export_key(export_key.as_bytes(), user_id)
+        let kek = OpaqueKek::from_export_key(export_key.as_bytes(), user_id)
             .map_err(ArkSessionError::Derivation)?;
         self.with_live_ark(|ark| Ok(kek.wrap_key(ark, &user_id)?))
     }

@@ -42,7 +42,7 @@ macro_rules! symmetric_key {
 pub(crate) use symmetric_key;
 
 symmetric_key! {
-    pub struct ServerKek,
+    pub struct OpaqueKek,
     pub struct RootKek,
 
     pub struct AccountRootKey,

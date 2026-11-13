@@ -9,7 +9,7 @@ use keygo_client::sync::{
     Clock, Header, HttpRequest, HttpResponse, StoredSession, SyncClient, SyncError, SystemClock,
     Transport, TransportError,
 };
-use keygo_core::{AccountRootKey, KeyMaterial, Sealed, ServerKek, UserId, Wraps};
+use keygo_core::{AccountRootKey, KeyMaterial, OpaqueKek, Sealed, UserId, Wraps};
 use keygo_dpop::testing::TestSigner;
 use keygo_opaque::server::ServerSetup;
 use keygo_server::api::{AppState, router};
@@ -324,7 +324,7 @@ async fn server_wrapped_ark_opens_after_sign_in(db: PgPool) {
             .await
             .unwrap();
 
-    let opened = ServerKek::from_export_key(export_key.as_bytes(), user_id)
+    let opened = OpaqueKek::from_export_key(export_key.as_bytes(), user_id)
         .unwrap()
         .unwrap_key(
             &Sealed::<AccountRootKey>::from_bytes(&stored).unwrap(),

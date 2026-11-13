@@ -9,10 +9,9 @@
 use crate::crypto::aad::{Aad, aad};
 use crate::crypto::kdf::argon2::{Argon2Params, derive_argon2id};
 use crate::crypto::{CipherKey, Encrypts, KeyMaterial, Wraps};
-use crate::keys::ServerKek;
 use crate::{
-    AccountRootKey, CryptoResult, ItemId, ItemKey, NamespaceId, NamespaceKey, RootKek, UserId,
-    VaultId, VaultKey,
+    AccountRootKey, CryptoResult, ItemId, ItemKey, NamespaceId, NamespaceKey, OpaqueKek, RootKek,
+    UserId, VaultId, VaultKey,
 };
 use aead::Generate;
 use hkdf::Hkdf;
@@ -23,7 +22,7 @@ use zeroize::Zeroizing;
 /// Part of every password KEK's salt; must never change.
 const PASSWORD_DOMAIN: &[u8] = b"v1:kek/pwd";
 
-/// The HKDF info of every server KEK; must never change.
+/// The HKDF info of every OPAQUE KEK; must never change.
 const OPAQUE_KEK_DOMAIN: &[u8] = b"v1:kek/opaque";
 
 /// Part of every namespace-key wrap AAD; must never change.
@@ -117,7 +116,7 @@ macro_rules! wraps {
 }
 
 wraps! {
-    ServerKek      -> AccountRootKey with UserId,
+    OpaqueKek      -> AccountRootKey with UserId,
     RootKek        -> AccountRootKey with UserId, // TODO: bind the credential epoch
     AccountRootKey -> VaultKey       with VaultId, // TODO: bind vault_key_epoch
     AccountRootKey -> NamespaceKey   with NamespaceKeyAad,
@@ -139,7 +138,7 @@ impl RootKek {
     }
 }
 
-impl ServerKek {
+impl OpaqueKek {
     pub fn from_export_key(key: &[u8], user_id: UserId) -> CryptoResult<Self> {
         let mut derived = Zeroizing::new([0u8; 32]);
         Hkdf::<Sha256>::new(Some(user_id.as_uuid().as_bytes()), key)
@@ -207,7 +206,7 @@ mod tests {
     fn opaque_kek_domain_is_pinned() {
         assert_eq!(OPAQUE_KEK_DOMAIN, b"v1:kek/opaque");
 
-        let kek = ServerKek::from_export_key(&[9; 64], user(3)).unwrap();
+        let kek = OpaqueKek::from_export_key(&[9; 64], user(3)).unwrap();
 
         // Cross-checked against RFC 5869 HKDF-SHA256 outside Rust.
         assert_eq!(
@@ -221,8 +220,8 @@ mod tests {
 
     #[test]
     fn server_kek_depends_on_the_user() {
-        let a = ServerKek::from_export_key(&[9; 64], user(3)).unwrap();
-        let b = ServerKek::from_export_key(&[9; 64], user(4)).unwrap();
+        let a = OpaqueKek::from_export_key(&[9; 64], user(3)).unwrap();
+        let b = OpaqueKek::from_export_key(&[9; 64], user(4)).unwrap();
         assert_ne!(a.as_bytes(), b.as_bytes());
     }
 
