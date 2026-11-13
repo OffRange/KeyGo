@@ -370,6 +370,7 @@ impl SyncClient {
         detached(async move { self.inner.meta().await }).await
     }
 
+    /// `user_id` must be the local account's id; see the core `SyncClient::register`.
     pub async fn register(
         self: Arc<Self>,
         ark: Arc<ArkSession>,
@@ -390,6 +391,8 @@ impl SyncClient {
         Ok(account.into())
     }
 
+    /// Unlocks a locked `ark` with the server's copy of the ARK; an unlocked one must hold the
+    /// same ARK, or this fails with `AccountMismatch`. See the core `SyncClient::login`.
     pub async fn login(
         self: Arc<Self>,
         ark: Arc<ArkSession>,
