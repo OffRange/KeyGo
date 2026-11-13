@@ -12,7 +12,7 @@ use keygo_api::endpoints::{
     RegisterStart, StepUpFinish, StepUpStart,
 };
 use keygo_api::meta::ServerInfo;
-use keygo_core::{DeviceId, UserId};
+use keygo_core::{CryptoError, DeviceId, UserId};
 use keygo_dpop::DpopProver;
 use keygo_opaque::OpaqueError;
 use keygo_opaque::client::{ClientLogin, ClientRegistration};
@@ -244,7 +244,7 @@ impl SyncClient {
 
         if let Err(error) = unlocked {
             let _ = self.logout().await;
-            return Err(client_failure(error));
+            return Err(unlock_failure(error));
         }
 
         Ok(account)
@@ -266,6 +266,18 @@ impl SyncClient {
 fn client_failure(error: impl std::fmt::Display) -> SyncError {
     SyncError::Client {
         message: error.to_string(),
+    }
+}
+
+/// The server's copy of the ARK not opening is the server's fault: OPAQUE already proved the
+/// password, and the export key follows from it.
+fn unlock_failure(error: ArkSessionError) -> SyncError {
+    match error {
+        ArkSessionError::AccountMismatch => SyncError::AccountMismatch,
+        ArkSessionError::KeyWrap(
+            error @ (CryptoError::KeyUnwrapFailed | CryptoError::DecryptionFailed),
+        ) => SyncError::invalid_response(format!("the server's key bundle: {error}")),
+        other => client_failure(other),
     }
 }
 

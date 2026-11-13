@@ -37,6 +37,9 @@ pub enum SyncError {
     RateLimited,
     #[error("vault locked")]
     VaultLocked,
+    /// The account signed in to holds a different ARK than the unlocked local vault.
+    #[error("account mismatch")]
+    AccountMismatch,
     #[error("network error: {reason}")]
     Network { reason: String },
     #[error("server error {code}: {reason}")]
@@ -61,6 +64,7 @@ impl From<CoreSyncError> for SyncError {
             },
             CoreSyncError::RateLimited => Self::RateLimited,
             CoreSyncError::VaultLocked => Self::VaultLocked,
+            CoreSyncError::AccountMismatch => Self::AccountMismatch,
             CoreSyncError::Network { message } => Self::Network { reason: message },
             CoreSyncError::Server { code, message } => Self::Server {
                 code,

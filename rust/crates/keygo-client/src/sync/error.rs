@@ -23,6 +23,9 @@ pub enum SyncError {
     RateLimited,
     #[error("vault locked")]
     VaultLocked,
+    /// The account signed in to holds a different ARK than the unlocked local vault.
+    #[error("account mismatch")]
+    AccountMismatch,
     #[error("network error: {message}")]
     Network { message: String },
     #[error("server error {code}: {message}")]
