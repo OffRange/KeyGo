@@ -5,7 +5,7 @@ use super::state::{AuthState, Clock, SystemClock};
 use super::tokens::TokenStore;
 use super::transport::Transport;
 use crate::ark_session::{ArkSession, ArkSessionError};
-use keygo_api::auth::{login, register, step_up};
+use keygo_api::auth::{Session, login, register, step_up};
 use keygo_api::domain::{Device, DeviceClaim, DeviceInfo, KeyBundle, Username};
 use keygo_api::endpoints::{
     DeleteDevice, ListDevices, LoginFinish, LoginStart, Logout, Meta, RegisterFinish,
@@ -121,8 +121,15 @@ impl SyncClient {
         Ok(())
     }
 
+    /// Creates an account whose server copy of the ARK is the one `ark` holds, and signs in.
+    ///
+    /// `user_id` must be the local account's id: the server-wrapped ARK is bound to it, and the
+    /// server stores it as the account's id. `ark` cannot check this, since it holds no user id.
+    /// Any session this client held is logged out once the new one exists; a failed registration
+    /// leaves it as it was.
     pub async fn register(
         &self,
+
         ark: &ArkSession,
         user_id: UserId,
         username: String,
@@ -135,12 +142,6 @@ impl SyncClient {
         }
         let (client, registration_request) =
             ClientRegistration::start(password.as_bytes()).map_err(opaque_failure)?;
-
-        // A previous account's refresh token must not stay valid on the server.
-        match self.logout().await {
-            Ok(()) | Err(SyncError::SignedOut { .. }) => {}
-            Err(error) => return Err(error),
-        }
 
         let started = self
             .call(
@@ -184,7 +185,7 @@ impl SyncClient {
             username: response.username,
             device_id: response.session.device_id,
         };
-        self.adopt_session(response.session, sent_at).await;
+        self.replace_session(response.session, sent_at, None).await;
         Ok(account)
     }
 
@@ -250,6 +251,17 @@ impl SyncClient {
         Ok(account)
     }
 
+    /// Adopts `session` in place of the one this client held. If the server reattached `claimed`,
+    /// it already ended that device's old session. Otherwise the old one is logged out first, so
+    /// its refresh token does not stay valid. That logout is best effort: the new session is live
+    /// on the server either way, and dropping it would only leave a second token nobody holds.
+    async fn replace_session(&self, session: Session, sent_at: u64, claimed: Option<DeviceId>) {
+        if claimed != Some(session.device_id) {
+            let _ = self.logout().await;
+        }
+        self.adopt_session(session, sent_at).await;
+    }
+
     /// Always ends the session locally. Returns the server's result, unless the server was not told
     /// and the store could not be cleared: a token the server may still accept is then left on disk.
     pub async fn logout(&self) -> SyncResult<()> {
@@ -292,6 +304,9 @@ fn opaque_failure(error: OpaqueError) -> SyncError {
 mod tests {
     use super::super::error::SyncError;
     use super::super::testing::{error_body, fake_client, header};
+    use super::super::tokens::StoredSession;
+    use super::super::transport::HttpRequest;
+    use serde_json::json;
 
     const INFO: &str = r#"{"version":"1","public_url":"https://kg.example","allow_signups":true}"#;
 
@@ -390,9 +405,10 @@ mod tests {
     }
 
     mod register {
-        use super::super::super::testing::{FakeSigner, client_with_store, header};
+        use super::super::super::testing::{FakeSigner, client_with_store, error_body, header};
         use super::super::super::transport::HttpRequest;
         use super::super::SyncError;
+        use super::{OLD_REFRESH, old_session_reply, paths, previous_session};
         use crate::ark_session::ArkSession;
         use base64::Engine;
         use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -551,6 +567,84 @@ mod tests {
             );
             assert_eq!(transport.requests().len(), 1, "finish is never sent");
         }
+
+        #[tokio::test]
+        async fn failed_register_keeps_the_previous_session() {
+            let (client, transport, store) =
+                client_with_store("https://kg.example", Arc::new(FakeSigner::new()));
+            store.seed(previous_session());
+            transport.push(409, &[], &error_body("username_taken"));
+            let (ark, user_id) = unlocked();
+
+            let error = client
+                .register(&ark, user_id, "ada".into(), "pw", None, device())
+                .await
+                .unwrap_err();
+
+            assert_eq!(error, SyncError::UsernameTaken);
+            assert_eq!(store.current_refresh_token().as_deref(), Some(OLD_REFRESH));
+            assert_eq!(transport.requests().len(), 1, "no logout");
+        }
+
+        #[tokio::test]
+        async fn previous_session_is_logged_out_once_registered() {
+            let (client, transport, store) =
+                client_with_store("https://kg.example", Arc::new(FakeSigner::new()));
+            store.seed(previous_session());
+            transport.push_with(200, start_reply);
+            transport.push(200, &[], &finish_reply());
+            transport.push(200, &[], &old_session_reply());
+            transport.push(204, &[], b"");
+            let (ark, user_id) = unlocked();
+
+            client
+                .register(&ark, user_id, "ada".into(), "pw", None, device())
+                .await
+                .unwrap();
+
+            let paths = paths(&transport.requests());
+            assert_eq!(
+                paths,
+                [
+                    "/api/v1/auth/register/start",
+                    "/api/v1/auth/register/finish",
+                    "/api/v1/auth/token",
+                    "/api/v1/auth/logout",
+                ],
+            );
+            assert_eq!(store.current_refresh_token().as_deref(), Some(REFRESH));
+        }
+    }
+
+    pub(super) const OLD_REFRESH: &str = "kgr___________________________________________8";
+    const OLD_DEVICE: &str = "00000000-0000-0000-0000-00000000000d";
+
+    /// A session of whatever account this client was signed in to before.
+    pub(super) fn previous_session() -> StoredSession {
+        StoredSession {
+            device_id: serde_json::from_value(json!(OLD_DEVICE)).unwrap(),
+            refresh_token: OLD_REFRESH.parse().unwrap(),
+            refresh_expires_at: u64::MAX / 2,
+        }
+    }
+
+    /// What the token endpoint answers when the previous session refreshes to log out.
+    pub(super) fn old_session_reply() -> Vec<u8> {
+        serde_json::to_vec(&json!({
+            "device_id": OLD_DEVICE,
+            "access_token": "old.access.token",
+            "access_expires_in": 600,
+            "refresh_token": "kgr_AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+            "refresh_expires_in": 86400,
+        }))
+        .unwrap()
+    }
+
+    pub(super) fn paths(requests: &[HttpRequest]) -> Vec<String> {
+        requests
+            .iter()
+            .map(|r| r.url.trim_start_matches("https://kg.example").to_owned())
+            .collect()
     }
 
     #[tokio::test]
