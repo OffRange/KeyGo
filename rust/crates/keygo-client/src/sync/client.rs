@@ -5,6 +5,7 @@ use super::state::{AuthState, Clock, SystemClock};
 use super::tokens::TokenStore;
 use super::transport::Transport;
 use crate::ark_session::{ArkSession, ArkSessionError};
+use keygo_api::Endpoint;
 use keygo_api::auth::{Session, login, register, step_up};
 use keygo_api::domain::{Device, DeviceClaim, DeviceInfo, KeyBundle, Username};
 use keygo_api::endpoints::{
@@ -189,6 +190,12 @@ impl SyncClient {
         Ok(account)
     }
 
+    /// Signs in to an existing account.
+    ///
+    /// The server's copy of the ARK must open with the export key. If `ark` is locked, a successful
+    /// login unlocks it with that copy. If it is unlocked, it must already hold the same ARK;
+    /// otherwise the login fails with [`SyncError::AccountMismatch`] and the session the server
+    /// just issued is ended again. A failed login leaves any session this client held as it was.
     pub async fn login(
         &self,
         ark: &ArkSession,
@@ -228,26 +235,22 @@ impl SyncClient {
             )
             .await?;
 
-        let account = Account {
-            user_id: response.user_id,
-            username: response.username,
-            device_id: response.session.device_id,
-        };
-
-        // We dont catch the error early, because the server already created the session and the
-        // device. To revoke that session from the server, we adopt the session so logout is available.
         let unlocked = ark.unlock_with_server(
             &finish.export_key,
             &response.key_bundle.into_wrapped_ark(),
             response.user_id,
         );
-        self.adopt_session(response.session, sent_at).await;
-
         if let Err(error) = unlocked {
-            let _ = self.logout().await;
+            self.discard(&response.session, None).await;
             return Err(unlock_failure(error));
         }
 
+        let account = Account {
+            user_id: response.user_id,
+            username: response.username,
+            device_id: response.session.device_id,
+        };
+        self.adopt_session(response.session, sent_at).await;
         Ok(account)
     }
 
@@ -260,6 +263,24 @@ impl SyncClient {
             let _ = self.logout().await;
         }
         self.adopt_session(session, sent_at).await;
+    }
+
+    /// Ends a session the server issued but this client will not keep, with its own access token,
+    /// so the session this client holds is untouched. A device made for this login alone is
+    /// deleted, which ends its session too; a reattached one stays and is only logged out.
+    /// Best effort: if this fails, the session expires unused.
+    async fn discard(&self, session: &Session, claimed: Option<DeviceId>) {
+        let token = Some(session.access.access_token.expose());
+        let _ = if claimed == Some(session.device_id) {
+            self.send_singed(Logout::METHOD, &Logout.path(), token, None)
+                .await
+        } else {
+            let endpoint = DeleteDevice {
+                id: session.device_id,
+            };
+            self.send_singed(DeleteDevice::METHOD, &endpoint.path(), token, None)
+                .await
+        };
     }
 
     /// Always ends the session locally. Returns the server's result, unless the server was not told
