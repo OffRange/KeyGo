@@ -237,7 +237,7 @@ impl SyncClient {
         // device. To revoke that session from the server, we adopt the session so logout is available.
         let unlocked = ark.unlock_with_server(
             &finish.export_key,
-            &response.key_bundle.wrapped_ark.into(),
+            &response.key_bundle.into_wrapped_ark(),
             response.user_id,
         );
         self.adopt_session(response.session, sent_at).await;

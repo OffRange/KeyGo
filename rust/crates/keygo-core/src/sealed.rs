@@ -24,11 +24,14 @@ impl<T> From<Sealed<T>> for Sealed<[u8]> {
     }
 }
 
-impl<T> From<Sealed<[u8]>> for Sealed<T> {
-    fn from(value: Sealed<[u8]>) -> Self {
-        Self {
-            nonce: value.nonce,
-            ciphertext: value.ciphertext,
+impl Sealed<[u8]> {
+    /// Claims an untyped blob holds a `T`. Only for a wire field whose kind the protocol fixes:
+    /// nothing checks the claim before the unwrap, so it is not a `From`, which any blob could
+    /// reach by accident. The AAD still rejects a blob of another kind at unwrap time.
+    pub fn assume<T>(self) -> Sealed<T> {
+        Sealed {
+            nonce: self.nonce,
+            ciphertext: self.ciphertext,
             content: PhantomData,
         }
     }
