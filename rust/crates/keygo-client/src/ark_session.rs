@@ -258,6 +258,75 @@ mod tests {
         (session, new_account)
     }
 
+    fn export_key() -> ExportKey {
+        crate::sync::testing::FakeOpaqueAccount::register(PASSWORD).1
+    }
+
+    #[test]
+    fn server_wrapped_ark_unlocks_a_locked_session() {
+        let (session, account) = unlocked();
+        let key = export_key();
+        let wrapped = session.wrap_for_server(&key, account.user_id).unwrap();
+        let ark = session.export_ark().unwrap();
+        session.end();
+
+        session
+            .unlock_with_server(&key, &wrapped, account.user_id)
+            .unwrap();
+
+        assert_eq!(session.export_ark().unwrap(), ark);
+    }
+
+    #[test]
+    fn server_wrapped_ark_matching_the_live_one_is_accepted() {
+        let (session, account) = unlocked();
+        let key = export_key();
+        let wrapped = session.wrap_for_server(&key, account.user_id).unwrap();
+
+        session
+            .unlock_with_server(&key, &wrapped, account.user_id)
+            .unwrap();
+    }
+
+    #[test]
+    fn server_wrapped_ark_of_another_account_is_a_mismatch() {
+        let (session, account) = unlocked();
+        let ark = session.export_ark().unwrap();
+        let (other, _) = unlocked();
+        let key = export_key();
+        let wrapped = other.wrap_for_server(&key, account.user_id).unwrap();
+
+        let result = session.unlock_with_server(&key, &wrapped, account.user_id);
+
+        assert!(matches!(result, Err(ArkSessionError::AccountMismatch)));
+        assert_eq!(session.export_ark().unwrap(), ark, "the live ARK stays");
+    }
+
+    #[test]
+    fn server_wrapped_ark_is_bound_to_its_user() {
+        let (session, account) = unlocked();
+        let key = export_key();
+        let wrapped = session.wrap_for_server(&key, account.user_id).unwrap();
+        session.end();
+
+        let result = session.unlock_with_server(&key, &wrapped, UserId::random());
+
+        assert!(matches!(
+            result,
+            Err(ArkSessionError::KeyWrap(CryptoError::KeyUnwrapFailed)),
+        ));
+        assert!(!session.is_active());
+    }
+
+    #[test]
+    fn wrap_for_server_needs_a_live_ark() {
+        let session = ArkSession::new();
+
+        let result = session.wrap_for_server(&export_key(), UserId::random());
+
+        assert!(matches!(result, Err(ArkSessionError::Locked)));
+    }
+
     #[test]
     fn create_account_leaves_session_unlocked() {
         let (session, _) = unlocked();

@@ -6,6 +6,9 @@ use super::transport::{Header, HttpRequest, HttpResponse, Transport, TransportEr
 use async_trait::async_trait;
 use keygo_dpop::testing::TestSigner;
 use keygo_dpop::{DpopSigner, Signature, VerifyingKey};
+use keygo_opaque::client::ClientRegistration;
+use keygo_opaque::server::{self, ServerLogin, ServerSetup};
+use keygo_opaque::{CredentialRequest, CredentialResponse, ExportKey, PasswordFile};
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -255,3 +258,43 @@ impl Clock for FixedClock {
         self.0.load(Ordering::SeqCst)
     }
 }
+
+/// One account on a real OPAQUE server, so a test can answer `login/start` with a response the
+/// client really finishes.
+#[derive(Clone)]
+pub struct FakeOpaqueAccount {
+    setup: ServerSetup,
+    password_file: Arc<zeroize::Zeroizing<Vec<u8>>>,
+}
+
+impl FakeOpaqueAccount {
+    /// Registers `password` and returns the export key the client derives from it.
+    pub fn register(password: &str) -> (Self, ExportKey) {
+        let setup = ServerSetup::generate();
+        let (client, request) = ClientRegistration::start(password.as_bytes()).unwrap();
+        let response = server::registration_start(&setup, request, CREDENTIAL_ID).unwrap();
+        let finish = client.finish(password.as_bytes(), response).unwrap();
+        let password_file = server::registration_finish(finish.upload).to_bytes();
+        let account = Self {
+            setup,
+            password_file: Arc::new(password_file),
+        };
+        (account, finish.export_key)
+    }
+
+    pub fn credential_response(&self, request: CredentialRequest) -> CredentialResponse {
+        let file = PasswordFile::from_bytes(&self.password_file).unwrap();
+        ServerLogin::start(&self.setup, Some(file), request, CREDENTIAL_ID)
+            .unwrap()
+            .1
+    }
+
+    /// What the server answers for a username it does not know.
+    pub fn unknown_user_response(request: CredentialRequest) -> CredentialResponse {
+        ServerLogin::start(&ServerSetup::generate(), None, request, CREDENTIAL_ID)
+            .unwrap()
+            .1
+    }
+}
+
+const CREDENTIAL_ID: &[u8] = b"u";

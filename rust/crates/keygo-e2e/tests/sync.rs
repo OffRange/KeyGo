@@ -115,6 +115,12 @@ async fn harness(db: &PgPool) -> Harness {
 /// A client with nothing stored, against a server with no session for it.
 fn signed_out(db: &PgPool) -> (SyncClient, Arc<FakeTokenStore>, AppState) {
     let state = testing::app_state(db, &ServerSetup::generate());
+    let (client, store) = client_of(&state);
+    (client, store, state)
+}
+
+/// Another install with nothing stored, against the same server.
+fn client_of(state: &AppState) -> (SyncClient, Arc<FakeTokenStore>) {
     let store = Arc::new(FakeTokenStore::new());
     let client = SyncClient::new(
         Url::parse(testing::ISS).unwrap(),
@@ -123,7 +129,15 @@ fn signed_out(db: &PgPool) -> (SyncClient, Arc<FakeTokenStore>, AppState) {
         store.clone(),
     )
     .unwrap();
-    (client, store, state)
+    (client, store)
+}
+
+async fn device_count(db: &PgPool, user_id: UserId) -> i64 {
+    sqlx::query_scalar("select count(*) from devices where user_id = $1")
+        .bind(user_id.as_uuid())
+        .fetch_one(db)
+        .await
+        .unwrap()
 }
 
 fn local_account() -> (ArkSession, UserId) {
@@ -364,4 +378,101 @@ async fn refused_save_does_not_trip_reuse_detection(db: PgPool) {
     h.client.devices().await.unwrap();
 
     assert_eq!(h.store.current_refresh_token().unwrap(), h.seed_token);
+}
+
+#[sqlx::test(migrations = "../keygo-server/migrations")]
+async fn login_on_a_fresh_install_unlocks_the_vault(db: PgPool) {
+    let (client, _, state) = signed_out(&db);
+    let (ark, user_id) = local_account();
+    register(&client, &ark, user_id, "ada").await;
+
+    let (fresh, store) = client_of(&state);
+    let locked = ArkSession::new();
+    let account = fresh
+        .login(&locked, "ada".into(), password(), testing::device_info())
+        .await
+        .unwrap();
+
+    assert_eq!(account.user_id, user_id);
+    assert_eq!(locked.export_ark().unwrap(), ark.export_ark().unwrap());
+    assert!(store.current_refresh_token().is_some());
+    assert_eq!(fresh.devices().await.unwrap().len(), 2);
+}
+
+#[sqlx::test(migrations = "../keygo-server/migrations")]
+async fn logging_in_again_reuses_the_device(db: PgPool) {
+    let (client, _, _) = signed_out(&db);
+    let (ark, user_id) = local_account();
+    register(&client, &ark, user_id, "ada").await;
+    let registered = client.devices().await.unwrap()[0].id;
+
+    let account = client
+        .login(&ark, "ada".into(), password(), testing::device_info())
+        .await
+        .unwrap();
+
+    assert_eq!(account.device_id, registered);
+    assert_eq!(device_count(&db, user_id).await, 1);
+    client.devices().await.unwrap();
+}
+
+#[sqlx::test(migrations = "../keygo-server/migrations")]
+async fn login_into_another_vault_leaves_nothing_behind(db: PgPool) {
+    let (client, _, state) = signed_out(&db);
+    let (ark, user_id) = local_account();
+    register(&client, &ark, user_id, "ada").await;
+
+    let (other, store) = client_of(&state);
+    let (other_ark, _) = local_account();
+    let error = other
+        .login(&other_ark, "ada".into(), password(), testing::device_info())
+        .await
+        .unwrap_err();
+
+    assert_eq!(error, SyncError::AccountMismatch);
+    assert_eq!(store.current_refresh_token(), None);
+    assert_eq!(
+        device_count(&db, user_id).await,
+        1,
+        "the new device is deleted"
+    );
+}
+
+#[sqlx::test(migrations = "../keygo-server/migrations")]
+async fn failed_login_keeps_the_previous_session(db: PgPool) {
+    let h = harness(&db).await;
+    h.client.devices().await.unwrap();
+    let before = h.store.current_refresh_token().unwrap();
+
+    let error = h
+        .client
+        .login(
+            &ArkSession::new(),
+            "ada".into(),
+            "wrong",
+            testing::device_info(),
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(error, SyncError::InvalidCredentials);
+    assert_eq!(h.store.current_refresh_token().unwrap(), before);
+    h.client.devices().await.unwrap();
+}
+
+#[sqlx::test(migrations = "../keygo-server/migrations")]
+async fn unknown_username_is_invalid_credentials(db: PgPool) {
+    let (client, _, _) = signed_out(&db);
+
+    let error = client
+        .login(
+            &ArkSession::new(),
+            "nobody".into(),
+            password(),
+            testing::device_info(),
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(error, SyncError::InvalidCredentials);
 }

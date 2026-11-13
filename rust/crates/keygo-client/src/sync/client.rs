@@ -682,6 +682,354 @@ mod tests {
             .collect()
     }
 
+    mod login {
+        use super::super::super::testing::{
+            FakeOpaqueAccount, FakeSigner, FakeTokenStore, FakeTransport, client_with_store, header,
+        };
+        use super::super::super::transport::HttpRequest;
+        use super::super::{SyncClient, SyncError};
+        use super::{OLD_DEVICE, OLD_REFRESH, old_session_reply, paths, previous_session};
+        use crate::ark_session::ArkSession;
+        use keygo_api::Method;
+        use keygo_api::domain::DeviceInfo;
+        use keygo_core::UserId;
+        use keygo_opaque::{CredentialRequest, ExportKey};
+        use serde_json::{Value, json};
+        use std::sync::Arc;
+
+        const PASSWORD: &str = "pw";
+        const LOGIN_ID: &str = "CQkJCQkJCQkJCQkJCQkJCQ";
+        const REFRESH: &str = "kgr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+        const ACCESS: &str = "new.access.token";
+        const NEW_DEVICE: &str = "00000000-0000-0000-0000-00000000000e";
+
+        /// A server account whose key bundle wraps the ARK `ark` holds.
+        struct Server {
+            opaque: FakeOpaqueAccount,
+            user_id: UserId,
+            wrapped_ark: Value,
+        }
+
+        impl Server {
+            fn holding(ark: &ArkSession) -> Self {
+                let (opaque, export_key) = FakeOpaqueAccount::register(PASSWORD);
+                Self::with_key(opaque, &export_key, ark)
+            }
+
+            fn with_key(
+                opaque: FakeOpaqueAccount,
+                export_key: &ExportKey,
+                ark: &ArkSession,
+            ) -> Self {
+                let user_id = UserId::random();
+                let wrapped: keygo_api::domain::SealedBlob =
+                    ark.wrap_for_server(export_key, user_id).unwrap().into();
+                Self {
+                    opaque,
+                    user_id,
+                    wrapped_ark: serde_json::to_value(wrapped).unwrap(),
+                }
+            }
+
+            fn answer_start(&self, transport: &FakeTransport) {
+                let opaque = self.opaque.clone();
+                transport.push_with(200, move |request| {
+                    start_body(opaque.credential_response(credential_request(request)))
+                });
+            }
+
+            fn answer_finish(&self, transport: &FakeTransport, device_id: &str) {
+                let body = json!({
+                    "user_id": self.user_id,
+                    "username": "ada",
+                    "key_bundle": { "wrapped_ark": self.wrapped_ark },
+                    "session": {
+                        "device_id": device_id,
+                        "access_token": ACCESS,
+                        "access_expires_in": 600,
+                        "refresh_token": REFRESH,
+                        "refresh_expires_in": 86400,
+                    },
+                });
+                transport.push(200, &[], &serde_json::to_vec(&body).unwrap());
+            }
+        }
+
+        fn credential_request(request: &HttpRequest) -> CredentialRequest {
+            let body: Value = serde_json::from_slice(&request.body).unwrap();
+            serde_json::from_value(body["credential_request"].clone()).unwrap()
+        }
+
+        fn start_body(response: keygo_opaque::CredentialResponse) -> Vec<u8> {
+            serde_json::to_vec(&json!({
+                "login_id": LOGIN_ID,
+                "credential_response": response,
+                "expires_in": 60,
+            }))
+            .unwrap()
+        }
+
+        fn unlocked() -> ArkSession {
+            let ark = ArkSession::new();
+            ark.create_account("local password").unwrap();
+            ark
+        }
+
+        fn device() -> DeviceInfo {
+            serde_json::from_value(json!({
+                "name": "Pixel 9",
+                "platform": "android",
+                "app_version": "2.3.0",
+            }))
+            .unwrap()
+        }
+
+        fn client() -> (SyncClient, Arc<FakeTransport>, Arc<FakeTokenStore>) {
+            client_with_store("https://kg.example", Arc::new(FakeSigner::new()))
+        }
+
+        fn claimed_device(request: &HttpRequest) -> Value {
+            let body: Value = serde_json::from_slice(&request.body).unwrap();
+            body["device"]["device_id"].clone()
+        }
+
+        #[tokio::test]
+        async fn signs_in_and_keeps_the_session() {
+            let (client, transport, store) = client();
+            let ark = unlocked();
+            let server = Server::holding(&ark);
+            server.answer_start(&transport);
+            server.answer_finish(&transport, NEW_DEVICE);
+
+            let account = client
+                .login(&ark, "Ada".into(), PASSWORD, device())
+                .await
+                .unwrap();
+
+            assert_eq!(account.user_id, server.user_id);
+            assert_eq!(account.device_id.as_uuid().to_string(), NEW_DEVICE);
+            assert_eq!(store.current_refresh_token().as_deref(), Some(REFRESH));
+
+            let requests = transport.requests();
+            assert_eq!(requests.len(), 2, "a signed-out client sends no logout");
+            assert_eq!(header(&requests[0], "dpop"), None);
+            assert!(header(&requests[1], "dpop").is_some());
+            assert_eq!(claimed_device(&requests[1]), Value::Null);
+        }
+
+        #[tokio::test]
+        async fn unlocks_a_locked_session_with_the_server_copy() {
+            let (client, transport, _) = client();
+            let ark = unlocked();
+            let server = Server::holding(&ark);
+            let local = ark.export_ark().unwrap();
+            ark.end();
+            server.answer_start(&transport);
+            server.answer_finish(&transport, NEW_DEVICE);
+
+            client
+                .login(&ark, "ada".into(), PASSWORD, device())
+                .await
+                .unwrap();
+
+            assert_eq!(ark.export_ark().unwrap(), local);
+        }
+
+        #[tokio::test]
+        async fn wrong_password_sends_no_finish() {
+            let (client, transport, store) = client();
+            store.seed(previous_session());
+            let ark = unlocked();
+            Server::holding(&ark).answer_start(&transport);
+
+            let error = client
+                .login(&ark, "ada".into(), "wrong", device())
+                .await
+                .unwrap_err();
+
+            assert_eq!(error, SyncError::InvalidCredentials);
+            assert_eq!(transport.requests().len(), 1);
+            assert_eq!(store.current_refresh_token().as_deref(), Some(OLD_REFRESH));
+        }
+
+        #[tokio::test]
+        async fn unknown_username_fails_like_a_wrong_password() {
+            let (client, transport, _) = client();
+            transport.push_with(200, |request| {
+                start_body(FakeOpaqueAccount::unknown_user_response(
+                    credential_request(request),
+                ))
+            });
+
+            let error = client
+                .login(&unlocked(), "nobody".into(), PASSWORD, device())
+                .await
+                .unwrap_err();
+
+            assert_eq!(error, SyncError::InvalidCredentials);
+            assert_eq!(transport.requests().len(), 1);
+        }
+
+        #[tokio::test]
+        async fn empty_password_sends_nothing() {
+            let (client, transport, _) = client();
+
+            let error = client
+                .login(&unlocked(), "ada".into(), "", device())
+                .await
+                .unwrap_err();
+
+            assert_eq!(error, SyncError::InvalidCredentials);
+            assert!(transport.requests().is_empty());
+        }
+
+        /// The server reattached the device and ended its old session, so there is nothing to
+        /// log out.
+        #[tokio::test]
+        async fn reclaims_the_device_it_was_signed_in_as() {
+            let (client, transport, store) = client();
+            store.seed(previous_session());
+            let ark = unlocked();
+            let server = Server::holding(&ark);
+            server.answer_start(&transport);
+            server.answer_finish(&transport, OLD_DEVICE);
+
+            client
+                .login(&ark, "ada".into(), PASSWORD, device())
+                .await
+                .unwrap();
+
+            let requests = transport.requests();
+            assert_eq!(requests.len(), 2);
+            assert_eq!(claimed_device(&requests[1]), OLD_DEVICE);
+            assert_eq!(store.current_refresh_token().as_deref(), Some(REFRESH));
+        }
+
+        /// The claim went to another account's device, so the server made a new one and the old
+        /// session would otherwise stay valid.
+        #[tokio::test]
+        async fn logs_the_previous_session_out_on_a_new_device() {
+            let (client, transport, store) = client();
+            store.seed(previous_session());
+            let ark = unlocked();
+            let server = Server::holding(&ark);
+            server.answer_start(&transport);
+            server.answer_finish(&transport, NEW_DEVICE);
+            transport.push(200, &[], &old_session_reply());
+            transport.push(204, &[], b"");
+
+            client
+                .login(&ark, "ada".into(), PASSWORD, device())
+                .await
+                .unwrap();
+
+            let requests = transport.requests();
+            assert_eq!(
+                paths(&requests),
+                [
+                    "/api/v1/auth/login/start",
+                    "/api/v1/auth/login/finish",
+                    "/api/v1/auth/token",
+                    "/api/v1/auth/logout",
+                ],
+            );
+            assert_eq!(
+                header(&requests[3], "authorization"),
+                Some("DPoP old.access.token"),
+            );
+            assert_eq!(store.current_refresh_token().as_deref(), Some(REFRESH));
+        }
+
+        #[tokio::test]
+        async fn mismatch_keeps_the_previous_session_and_deletes_the_new_device() {
+            let (client, transport, store) = client();
+            store.seed(previous_session());
+            let ark = unlocked();
+            let local = ark.export_ark().unwrap();
+            let server = Server::holding(&unlocked());
+            server.answer_start(&transport);
+            server.answer_finish(&transport, NEW_DEVICE);
+            transport.push(204, &[], b"");
+
+            let error = client
+                .login(&ark, "ada".into(), PASSWORD, device())
+                .await
+                .unwrap_err();
+
+            assert_eq!(error, SyncError::AccountMismatch);
+            assert_eq!(store.current_refresh_token().as_deref(), Some(OLD_REFRESH));
+            assert_eq!(ark.export_ark().unwrap(), local);
+
+            let requests = transport.requests();
+            assert_eq!(requests.len(), 3);
+            assert_eq!(requests[2].method, Method::Delete);
+            assert_eq!(
+                requests[2].url,
+                format!("https://kg.example/api/v1/devices/{NEW_DEVICE}"),
+            );
+            assert_eq!(
+                header(&requests[2], "authorization"),
+                Some(format!("DPoP {ACCESS}").as_str()),
+            );
+        }
+
+        /// A reattached device was this client's before the login, so it stays; only the session
+        /// the login made is ended.
+        #[tokio::test]
+        async fn mismatch_on_a_reattached_device_only_logs_out() {
+            let (client, transport, _) = client();
+            client_seed(&client).await;
+            let server = Server::holding(&unlocked());
+            server.answer_start(&transport);
+            server.answer_finish(&transport, OLD_DEVICE);
+            transport.push(204, &[], b"");
+
+            let error = client
+                .login(&unlocked(), "ada".into(), PASSWORD, device())
+                .await
+                .unwrap_err();
+
+            assert_eq!(error, SyncError::AccountMismatch);
+            let requests = transport.requests();
+            assert_eq!(requests.len(), 3);
+            assert_eq!(requests[2].url, "https://kg.example/api/v1/auth/logout",);
+            assert_eq!(
+                header(&requests[2], "authorization"),
+                Some(format!("DPoP {ACCESS}").as_str()),
+            );
+        }
+
+        /// OPAQUE proved the password, so a bundle that does not open is the server's fault.
+        #[tokio::test]
+        async fn bundle_that_does_not_open_is_an_invalid_response() {
+            let (client, transport, _) = client();
+            let ark = unlocked();
+            let (opaque, _) = FakeOpaqueAccount::register(PASSWORD);
+            let (_, other_key) = FakeOpaqueAccount::register(PASSWORD);
+            let server = Server::with_key(opaque, &other_key, &ark);
+            ark.end();
+            server.answer_start(&transport);
+            server.answer_finish(&transport, NEW_DEVICE);
+            transport.push(204, &[], b"");
+
+            let error = client
+                .login(&ark, "ada".into(), PASSWORD, device())
+                .await
+                .unwrap_err();
+
+            assert!(
+                matches!(&error, SyncError::Server { code, .. } if code == "invalid_response"),
+                "{error:?}",
+            );
+            assert!(!ark.is_active());
+            assert_eq!(transport.requests().len(), 3, "the new device is deleted");
+        }
+
+        async fn client_seed(client: &SyncClient) {
+            client.tokens.save(&previous_session()).await.unwrap();
+        }
+    }
+
     #[tokio::test]
     async fn transport_failure_is_network() {
         let (client, transport) = fake_client();
