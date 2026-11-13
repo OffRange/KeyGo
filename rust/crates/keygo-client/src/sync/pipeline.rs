@@ -330,7 +330,9 @@ impl SyncClient {
         };
 
         if response.is_success() {
-            return decode_body(&response.body);
+            // Sign-in responses carry tokens.
+            let body = Zeroizing::new(response.body);
+            return decode_body(&body);
         }
         Err(self
             .failure(self.auth.lock().await.deref_mut(), &response)
