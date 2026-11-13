@@ -134,7 +134,7 @@ impl SyncClient {
             return Err(SyncError::VaultLocked);
         }
         let (client, registration_request) =
-            ClientRegistration::start(password.as_bytes()).map_err(client_failure)?;
+            ClientRegistration::start(password.as_bytes()).map_err(opaque_failure)?;
 
         // A previous account's refresh token must not stay valid on the server.
         match self.logout().await {
@@ -504,7 +504,7 @@ mod tests {
                 .await
                 .unwrap_err();
 
-            assert!(matches!(error, SyncError::Client { .. }), "{error:?}");
+            assert_eq!(error, SyncError::InvalidCredentials);
             assert!(transport.requests().is_empty());
         }
 
