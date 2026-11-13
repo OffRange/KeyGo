@@ -130,7 +130,6 @@ impl SyncClient {
     /// leaves it as it was.
     pub async fn register(
         &self,
-
         ark: &ArkSession,
         user_id: UserId,
         username: String,
@@ -196,6 +195,9 @@ impl SyncClient {
     /// login unlocks it with that copy. If it is unlocked, it must already hold the same ARK;
     /// otherwise the login fails with [`SyncError::AccountMismatch`] and the session the server
     /// just issued is ended again. A failed login leaves any session this client held as it was.
+    ///
+    /// The device this client was last signed in as is claimed again, so a re-login on the same
+    /// device replaces its session instead of adding a device.
     pub async fn login(
         &self,
         ark: &ArkSession,
@@ -205,6 +207,7 @@ impl SyncClient {
     ) -> SyncResult<Account> {
         let (client, credential_request) =
             ClientLogin::start(password.as_bytes()).map_err(opaque_failure)?;
+        let claimed = self.current_device().await;
         let started = self
             .call(
                 &LoginStart,
@@ -227,7 +230,7 @@ impl SyncClient {
                     login_id: started.login_id,
                     credential_finalization: finish.finalization,
                     device: DeviceClaim {
-                        id: None,
+                        id: claimed,
                         info: device,
                     },
                     dpop_binding,
@@ -241,7 +244,7 @@ impl SyncClient {
             response.user_id,
         );
         if let Err(error) = unlocked {
-            self.discard(&response.session, None).await;
+            self.discard(&response.session, claimed).await;
             return Err(unlock_failure(error));
         }
 
@@ -250,8 +253,19 @@ impl SyncClient {
             username: response.username,
             device_id: response.session.device_id,
         };
-        self.adopt_session(response.session, sent_at).await;
+        self.replace_session(response.session, sent_at, claimed)
+            .await;
         Ok(account)
+    }
+
+    /// The device of the session this client holds, if it can tell.
+    async fn current_device(&self) -> Option<DeviceId> {
+        let state = self.auth.lock().await;
+        if let Some(unsaved) = &state.unsaved {
+            return Some(unsaved.device_id);
+        }
+        // A store that cannot be read only costs the reattach: the server then makes a new device.
+        self.tokens.load().await.ok().flatten().map(|s| s.device_id)
     }
 
     /// Adopts `session` in place of the one this client held. If the server reattached `claimed`,
