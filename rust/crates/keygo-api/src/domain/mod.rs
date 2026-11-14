@@ -14,7 +14,7 @@ pub use device::{
 };
 pub use ids::{InvalidId, LoginId, RegistrationId};
 pub use key_bundle::KeyBundle;
-pub use sealed_blob::{InvalidBlob, SealedBlob, check_wrapped_ark};
+pub use sealed_blob::{InvalidBlob, check_wrapped_ark};
 pub use session::{ParseRefreshTokenError, RefreshToken, RevokeReason};
 pub use string_enum::UnknownVariant;
 pub use username::{Username, UsernameError};

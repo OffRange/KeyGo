@@ -15,7 +15,7 @@ pub use invite_hash::InviteHash;
 pub use invite_id::InviteId;
 pub use keygo_api::domain::{
     AccessToken, Device, DeviceClaim, DeviceInfo, InvalidBlob, KeyBundle, LoginId, RefreshToken,
-    RegistrationId, RevokeReason, SealedBlob, Username, UsernameError, check_wrapped_ark,
+    RegistrationId, RevokeReason, Username, UsernameError, check_wrapped_ark,
 };
 pub use keygo_core::{DeviceId, SessionId, UserId};
 pub use session::{REFRESH_TTL, SESSION_LIFETIME, SESSION_RETENTION};

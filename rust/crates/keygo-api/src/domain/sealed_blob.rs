@@ -1,7 +1,5 @@
-use keygo_core::{KEY_LEN, NONCE_LEN, Sealed, TAG_LEN};
+use keygo_core::{AccountRootKey, KEY_LEN, NONCE_LEN, Sealed, TAG_LEN};
 use thiserror::Error;
-
-pub type SealedBlob = Sealed<[u8]>;
 
 const WRAPPED_ARK_LEN: usize = NONCE_LEN + KEY_LEN + TAG_LEN;
 
@@ -9,11 +7,11 @@ const WRAPPED_ARK_LEN: usize = NONCE_LEN + KEY_LEN + TAG_LEN;
 #[error("wrapped key has the wrong length")]
 pub struct InvalidBlob;
 
-fn len(blob: &SealedBlob) -> usize {
+fn len<T>(blob: &Sealed<T>) -> usize {
     NONCE_LEN + blob.ciphertext().len()
 }
 
-pub fn check_wrapped_ark(blob: &SealedBlob) -> Result<(), InvalidBlob> {
+pub fn check_wrapped_ark(blob: &Sealed<AccountRootKey>) -> Result<(), InvalidBlob> {
     if len(blob) == WRAPPED_ARK_LEN {
         Ok(())
     } else {
@@ -25,8 +23,8 @@ pub fn check_wrapped_ark(blob: &SealedBlob) -> Result<(), InvalidBlob> {
 mod tests {
     use super::*;
 
-    fn blob(len: usize) -> SealedBlob {
-        SealedBlob::from_bytes(&vec![7; len]).unwrap()
+    fn blob<T>(len: usize) -> Sealed<T> {
+        Sealed::<T>::from_bytes(&vec![7; len]).unwrap()
     }
 
     /// Clients and stored rows depend on these sizes, so a change to the constants must fail here.

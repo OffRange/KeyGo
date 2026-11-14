@@ -3,7 +3,7 @@ use crate::cache::{LoginStates, StepUpStates};
 use crate::db::{devices, invites, sessions, users};
 use crate::domain::{
     AccessTokenKey, DeviceClaim, DeviceId, DeviceInfo, InviteHash, InvitePepper, KeyBundle,
-    SealedBlob, SessionId, TokenIssuer, UserId, Username,
+    SessionId, TokenIssuer, UserId, Username,
 };
 use crate::service::login::{self, FinishLogin, StartLogin};
 use crate::service::registration::{self, FinishRegistration, Signup, StartRegistration};
@@ -13,6 +13,7 @@ use axum::body::Body;
 use axum::http::header::AUTHORIZATION;
 use axum::http::{HeaderMap, Request, StatusCode};
 use http_body_util::BodyExt;
+use keygo_core::{AccountRootKey, Sealed};
 use keygo_dpop::DpopVerifier;
 use keygo_dpop::testing::TestSigner;
 use keygo_dpop::{DpopProver, Htm, ProofRequest};
@@ -51,7 +52,7 @@ pub fn device_claim(id: Option<DeviceId>) -> DeviceClaim {
 }
 
 pub fn key_bundle_json() -> Value {
-    json!({ "wrapped_ark": SealedBlob::from_bytes(&WRAPPED_ARK).unwrap() })
+    json!({ "wrapped_ark": Sealed::<AccountRootKey>::from_bytes(&WRAPPED_ARK).unwrap() })
 }
 pub fn key_bundle() -> KeyBundle {
     serde_json::from_value(key_bundle_json()).unwrap()

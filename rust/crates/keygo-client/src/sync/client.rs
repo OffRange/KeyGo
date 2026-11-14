@@ -163,8 +163,7 @@ impl SyncClient {
             .map_err(|error| match error {
                 ArkSessionError::Locked => SyncError::VaultLocked,
                 other => client_failure(other),
-            })?
-            .into();
+            })?;
         let key_bundle = KeyBundle { wrapped_ark };
 
         let sent_at = self.clock.now_secs();
@@ -240,7 +239,7 @@ impl SyncClient {
 
         let unlocked = ark.unlock_with_server(
             &finish.export_key,
-            &response.key_bundle.into_wrapped_ark(),
+            &response.key_bundle.wrapped_ark,
             response.user_id,
         );
         if let Err(error) = unlocked {
@@ -722,8 +721,7 @@ mod tests {
                 ark: &ArkSession,
             ) -> Self {
                 let user_id = UserId::random();
-                let wrapped: keygo_api::domain::SealedBlob =
-                    ark.wrap_for_server(export_key, user_id).unwrap().into();
+                let wrapped = ark.wrap_for_server(export_key, user_id).unwrap();
                 Self {
                     opaque,
                     user_id,
