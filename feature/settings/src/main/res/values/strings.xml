@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="settings_title">Settings</string>
+
     <string name="settings_security">Security</string>
     <string name="settings_use_biometrics">Use Biometrics</string>
     <string name="settings_use_biometrics_description">Unlock KeyGo with your fingerprint or face</string>
