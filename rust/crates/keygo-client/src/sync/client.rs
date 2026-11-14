@@ -285,13 +285,13 @@ impl SyncClient {
     async fn discard(&self, session: &Session, claimed: Option<DeviceId>) {
         let token = Some(session.access.access_token.expose());
         let _ = if claimed == Some(session.device_id) {
-            self.send_singed(Logout::METHOD, &Logout.path(), token, None)
+            self.send_signed(Logout::METHOD, &Logout.path(), token, None)
                 .await
         } else {
             let endpoint = DeleteDevice {
                 id: session.device_id,
             };
-            self.send_singed(DeleteDevice::METHOD, &endpoint.path(), token, None)
+            self.send_signed(DeleteDevice::METHOD, &endpoint.path(), token, None)
                 .await
         };
     }

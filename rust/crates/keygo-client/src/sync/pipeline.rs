@@ -167,7 +167,7 @@ impl SyncClient {
     /// Signs and sends one request, and re-signs once if the server answers with a nonce challenge
     /// that carries a nonce.
     /// Every `DPoP-Nonce` header the server sends replaces the stored nonce.
-    pub(super) async fn send_singed(
+    pub(super) async fn send_signed(
         &self,
         method: Method,
         path: &str,
@@ -225,7 +225,7 @@ impl SyncClient {
 
         let sent_at = self.clock.now_secs();
         let response = self
-            .send_singed(Token::METHOD, &Token.path(), None, Some(body.as_slice()))
+            .send_signed(Token::METHOD, &Token.path(), None, Some(body.as_slice()))
             .await?;
 
         if !response.is_success() {
@@ -291,7 +291,7 @@ impl SyncClient {
             let (token, generation) = self.access_token(rejected).await?;
 
             let response = self
-                .send_singed(method, path, Some(token.as_str()), body)
+                .send_signed(method, path, Some(token.as_str()), body)
                 .await?;
 
             if rejected.is_some() || !response.is_invalid_token() {
@@ -320,7 +320,7 @@ impl SyncClient {
                 .await?
             }
             Auth::Proof => {
-                self.send_singed(E::METHOD, &path, None, body.as_deref())
+                self.send_signed(E::METHOD, &path, None, body.as_deref())
                     .await?
             }
             Auth::AccessToken => {
