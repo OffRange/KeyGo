@@ -40,5 +40,9 @@
     <string name="password_changed">Passwort geändert</string>
     <string name="change_password_failed">Passwort konnte nicht geändert werden</string>
 
+    <string name="account">Account</string>
+    <string name="account_signed_in">Eingeloggt \u2022 %s</string>
+    <string name="account_local_only">Nur auf diesem Gerät</string>
+
     <string name="cancel">Abbrechen</string>
 </resources>

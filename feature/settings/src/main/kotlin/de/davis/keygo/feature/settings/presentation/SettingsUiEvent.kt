@@ -11,4 +11,5 @@ internal sealed interface SettingsUiEvent {
     data object OpenBackup : SettingsUiEvent
     data object ReportIssue : SettingsUiEvent
     data object LibrariesClicked : SettingsUiEvent
+    data object AccountClicked : SettingsUiEvent
 }

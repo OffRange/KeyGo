@@ -31,6 +31,7 @@ import de.davis.keygo.core.util.presentation.UIText
 import de.davis.keygo.core.util.presentation.UIText.Companion.PluralsString
 import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.feature.settings.R
+import de.davis.keygo.feature.settings.presentation.component.AccountCard
 import de.davis.keygo.feature.settings.presentation.component.SectionScope
 import de.davis.keygo.feature.settings.presentation.component.SettingsList
 
@@ -67,6 +68,14 @@ internal fun SettingsContent(
                 .padding(horizontal = 8.dp),
             contentPadding = innerPadding,
         ) {
+            custom(key = "account") {
+                AccountCard(
+                    state = state.accountState,
+                    onClick = { onEvent(SettingsUiEvent.AccountClicked) },
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            }
+
             section(title = R.string.settings_security) {
                 action(
                     title = R.string.settings_reset_password,

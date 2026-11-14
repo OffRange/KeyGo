@@ -39,5 +39,9 @@
     <string name="password_changed">Password changed</string>
     <string name="change_password_failed">Could not change password</string>
 
+    <string name="account">Account</string>
+    <string name="account_local_only">Locally on this device only</string>
+    <string name="account_signed_in">Signed in \u2022 %s</string>
+
     <string name="cancel">Cancel</string>
 </resources>
