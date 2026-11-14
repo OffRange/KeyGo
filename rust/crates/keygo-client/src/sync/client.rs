@@ -36,7 +36,7 @@ pub struct SyncClient {
     pub(super) tokens: Arc<dyn TokenStore>,
     pub(super) clock: Arc<dyn Clock>,
     pub(super) auth: Mutex<AuthState>,
-    /// Outside `auth` because a refresh holds that lock across the network, and it signs too.
+    /// Not inside `auth`: a refresh holds that lock across the network and signs with the nonce.
     pub(super) nonce: std::sync::Mutex<Option<String>>,
 }
 
@@ -91,7 +91,7 @@ impl SyncClient {
         self.call(&DeleteDevice { id }, &()).await
     }
 
-    /// Proves the password again. Replaces only the access token: the refresh token stays as it is.
+    /// Proves the password again for a fresh access token. The refresh token is kept.
     pub async fn step_up(&self, password: &str) -> SyncResult<()> {
         let (login, credential_request) =
             ClientLogin::start(password.as_bytes()).map_err(opaque_failure)?;
@@ -122,12 +122,10 @@ impl SyncClient {
         Ok(())
     }
 
-    /// Creates an account whose server copy of the ARK is the one `ark` holds, and signs in.
+    /// Creates an account holding a server-wrapped copy of `ark`'s ARK, and signs in.
     ///
-    /// `user_id` must be the local account's id: the server-wrapped ARK is bound to it, and the
-    /// server stores it as the account's id. `ark` cannot check this, since it holds no user id.
-    /// Any session this client held is logged out once the new one exists; a failed registration
-    /// leaves it as it was.
+    /// `user_id` must be the local account's id: the wrapped ARK is bound to it, and `ark` holds no
+    /// id to check it against. The previous session is logged out only once the new one exists.
     pub async fn register(
         &self,
         ark: &ArkSession,
@@ -188,15 +186,11 @@ impl SyncClient {
         Ok(account)
     }
 
-    /// Signs in to an existing account.
+    /// Signs in and unlocks `ark` with the server's copy of the ARK. An `ark` that is already
+    /// unlocked must hold that same ARK, or the login fails with [`SyncError::AccountMismatch`].
     ///
-    /// The server's copy of the ARK must open with the export key. If `ark` is locked, a successful
-    /// login unlocks it with that copy. If it is unlocked, it must already hold the same ARK;
-    /// otherwise the login fails with [`SyncError::AccountMismatch`] and the session the server
-    /// just issued is ended again. A failed login leaves any session this client held as it was.
-    ///
-    /// The device this client was last signed in as is claimed again, so a re-login on the same
-    /// device replaces its session instead of adding a device.
+    /// Claims the device this client last signed in as, so a re-login replaces its session instead
+    /// of adding a device.
     pub async fn login(
         &self,
         ark: &ArkSession,
@@ -257,37 +251,34 @@ impl SyncClient {
         Ok(account)
     }
 
-    /// The device of the session this client holds, if it can tell.
     async fn current_device(&self) -> Option<DeviceId> {
         let state = self.auth.lock().await;
         if let Some(unsaved) = &state.unsaved {
             return Some(unsaved.device_id);
         }
-        // A store that cannot be read only costs the reattach: the server then makes a new device.
+        // An unreadable store only costs the reattach: the server makes a new device instead.
         self.tokens.load().await.ok().flatten().map(|s| s.device_id)
     }
 
-    /// Adopts `session` in place of the one this client held. If the server reattached `claimed`,
-    /// it already ended that device's old session. Otherwise the old one is logged out first, so
-    /// its refresh token does not stay valid. That logout is best effort: the new session is live
-    /// on the server either way, and dropping it would only leave a second token nobody holds.
     async fn replace_session(&self, session: Session, sent_at: u64, claimed: Option<DeviceId>) {
-        if claimed != Some(session.device_id) {
+        // The server already revoked a reattached device's old session. The logout is best effort:
+        // the new session is live on the server either way.
+        if !is_reattached(&session, claimed) {
             let _ = self.logout().await;
         }
         self.adopt_session(session, sent_at).await;
     }
 
-    /// Ends a session the server issued but this client will not keep, with its own access token,
-    /// so the session this client holds is untouched. A device made for this login alone is
-    /// deleted, which ends its session too; a reattached one stays and is only logged out.
-    /// Best effort: if this fails, the session expires unused.
+    /// Ends a session this client will not keep, signing with that session's own token. Best
+    /// effort: one left behind expires unused.
     async fn discard(&self, session: &Session, claimed: Option<DeviceId>) {
         let token = Some(session.access.access_token.expose());
-        let _ = if claimed == Some(session.device_id) {
+        let _ = if is_reattached(session, claimed) {
+            // The device was this client's before the login, so it stays.
             self.send_signed(Logout::METHOD, &Logout.path(), token, None)
                 .await
         } else {
+            // The device exists only for this login. Deleting it ends its session too.
             let endpoint = DeleteDevice {
                 id: session.device_id,
             };
@@ -296,8 +287,8 @@ impl SyncClient {
         };
     }
 
-    /// Always ends the session locally. Returns the server's result, unless the server was not told
-    /// and the store could not be cleared: a token the server may still accept is then left on disk.
+    /// Always ends the session locally and returns the server's result. If the server was not told
+    /// and the token is still on disk, the store error is returned instead.
     pub async fn logout(&self) -> SyncResult<()> {
         let sent = self.call(&Logout, &()).await;
         let mut state = self.auth.lock().await;
@@ -309,14 +300,17 @@ impl SyncClient {
     }
 }
 
+fn is_reattached(session: &Session, claimed: Option<DeviceId>) -> bool {
+    claimed == Some(session.device_id)
+}
+
 fn client_failure(error: impl std::fmt::Display) -> SyncError {
     SyncError::Client {
         message: error.to_string(),
     }
 }
 
-/// The server's copy of the ARK not opening is the server's fault: OPAQUE already proved the
-/// password, and the export key follows from it.
+/// OPAQUE already proved the password, so a key bundle that does not open is the server's fault.
 fn unlock_failure(error: ArkSessionError) -> SyncError {
     match error {
         ArkSessionError::AccountMismatch => SyncError::AccountMismatch,
