@@ -46,7 +46,11 @@ internal class AccountRecordSealerImpl(
 private fun SessionError.toAccountRecordError(): AccountRecordError = when (this) {
     SessionError.Locked -> AccountRecordError.NoActiveSession
     SessionError.DecryptionFailed -> AccountRecordError.Corrupted
-    SessionError.WrongPassword, is SessionError.Derivation, is SessionError.KeyWrap ->
+    SessionError.AccountMismatch,
+    SessionError.WrongPassword,
+    is SessionError.Derivation,
+    is SessionError.KeyWrap,
+    ->
         AccountRecordError.KeyUnwrapFailed
 }
 

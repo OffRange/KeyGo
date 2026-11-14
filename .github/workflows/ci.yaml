@@ -72,6 +72,12 @@ jobs:
           grep -q 'keygo-core feature "crypto"' <<<"$client"
           server=$(cargo tree -p keygo-server -e features)
           if grep -E 'keygo-client|keygo-core feature "crypto"' <<<"$server"; then exit 1; fi
+      - name: keygo-client cannot mint server ids or tokens
+        run: |
+          server=$(cargo tree -p keygo-server -e features)
+          grep -q 'keygo-api feature "server"' <<<"$server"
+          client=$(cargo tree -p keygo-client -e features)
+          if grep 'keygo-api feature "server"' <<<"$client"; then exit 1; fi
 
   # Rust-native tests (no NDK). Runs in parallel with android-test once lint passes.
   rust-test:

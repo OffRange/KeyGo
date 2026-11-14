@@ -1,4 +1,4 @@
-use crate::domain::{SessionId, UserId, unix_now};
+use crate::domain::{AccessToken, SessionId, UserId, unix_now};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use ed25519_dalek::{Signature, Signer, SigningKey};
@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::time::Duration;
 use thiserror::Error;
-use zeroize::{Zeroize, ZeroizeOnDrop};
 
 pub const ACCESS_TOKEN_LIFETIME: Duration = Duration::from_mins(10);
 pub const FRESH_AUTH_WINDOW: Duration = Duration::from_mins(5);
@@ -101,9 +100,6 @@ struct Header {
     kid: String,
 }
 
-#[derive(Serialize, Zeroize, ZeroizeOnDrop)]
-pub struct AccessToken(String);
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
 pub enum TokenError {
     #[error("token is not a well-formed access token")]
@@ -151,10 +147,6 @@ impl Claims {
         self.session_id
     }
 
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "no route requires a fresh sign-in yet")
-    )]
     pub fn auth_time(&self) -> u64 {
         self.auth_time
     }
@@ -169,13 +161,6 @@ impl Claims {
 
     fn is_fresh_at(&self, now: u64) -> bool {
         now.saturating_sub(self.auth_time) <= FRESH_AUTH_WINDOW.as_secs()
-    }
-}
-
-impl AccessToken {
-    #[cfg(test)]
-    pub(crate) fn expose(&self) -> &str {
-        &self.0
     }
 }
 
@@ -198,7 +183,7 @@ impl AccessTokenKey {
         let input = format!("{}.{}", encode(&header), encode(claims));
         let signature = self.signing.sign(input.as_bytes());
 
-        AccessToken(format!(
+        AccessToken::from_signed(format!(
             "{input}.{}",
             URL_SAFE_NO_PAD.encode(signature.to_bytes())
         ))
@@ -374,7 +359,7 @@ mod tests {
         let claims = Claims::new_at(
             String::new(),
             UserId::from(uuid::Uuid::nil()),
-            SessionId::nil(),
+            SessionId::from(uuid::Uuid::nil()),
             0,
             &JKT,
             1_000,
@@ -390,7 +375,7 @@ mod tests {
             Claims::new_at(
                 String::new(),
                 UserId::from(uuid::Uuid::nil()),
-                SessionId::nil(),
+                SessionId::from(uuid::Uuid::nil()),
                 0,
                 &JKT,
                 0,
@@ -554,7 +539,7 @@ mod tests {
         let claims = Claims::new_at(
             String::new(),
             UserId::from(uuid::Uuid::nil()),
-            SessionId::nil(),
+            SessionId::from(uuid::Uuid::nil()),
             1_000,
             &JKT,
             1_000,
@@ -571,7 +556,7 @@ mod tests {
         let token = key.sign(&Claims::new_at(
             ISS.into(),
             UserId::from(uuid::Uuid::nil()),
-            SessionId::nil(),
+            SessionId::from(uuid::Uuid::nil()),
             unix_now(),
             &JKT,
             unix_now(),
@@ -602,7 +587,7 @@ mod tests {
         let key = || AccessTokenKey::new(&SEED);
         let token = TokenIssuer::new(key(), "https://other.example").issue(
             UserId::from(uuid::Uuid::nil()),
-            SessionId::nil(),
+            SessionId::from(uuid::Uuid::nil()),
             unix_now(),
             &JKT,
         );
@@ -620,7 +605,7 @@ mod tests {
 
         let token = issuer.issue(
             UserId::from(uuid::Uuid::nil()),
-            SessionId::nil(),
+            SessionId::from(uuid::Uuid::nil()),
             auth_time,
             &JKT,
         );

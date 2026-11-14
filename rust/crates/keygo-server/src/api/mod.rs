@@ -57,18 +57,23 @@ mod tests {
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use http_body_util::BodyExt;
+    use keygo_api::Auth;
+    use keygo_api::endpoints::Route;
     use keygo_dpop::DpopVerifier;
     use routes::auth::MAX_BODY_BYTES;
     use serde_json::{Value, json};
     use std::sync::Arc;
     use tower::ServiceExt;
 
-    async fn get(state: AppState, uri: &str) -> (StatusCode, Vec<u8>) {
-        let request = Request::get(uri).body(Body::empty()).unwrap();
+    async fn send(state: AppState, request: Request<Body>) -> (StatusCode, Vec<u8>) {
         let response = router(state).oneshot(request).await.unwrap();
         let status = response.status();
         let body = response.into_body().collect().await.unwrap().to_bytes();
         (status, body.to_vec())
+    }
+
+    async fn get(state: AppState, uri: &str) -> (StatusCode, Vec<u8>) {
+        send(state, Request::get(uri).body(Body::empty()).unwrap()).await
     }
 
     async fn post_json(state: AppState, uri: &str, body: Value) -> (StatusCode, Vec<u8>) {
@@ -76,10 +81,16 @@ mod tests {
             .header("content-type", "application/json")
             .body(Body::from(body.to_string()))
             .unwrap();
-        let response = router(state).oneshot(request).await.unwrap();
-        let status = response.status();
-        let body = response.into_body().collect().await.unwrap().to_bytes();
-        (status, body.to_vec())
+        send(state, request).await
+    }
+
+    async fn send_empty(route: &Route) -> (StatusCode, Vec<u8>) {
+        let request = Request::builder()
+            .method(route.method.as_str())
+            .uri(&route.path)
+            .body(Body::empty())
+            .unwrap();
+        send(state(), request).await
     }
 
     pub(super) fn state() -> AppState {
@@ -123,6 +134,24 @@ mod tests {
                 "public_url": "http://localhost/",
             }),
         );
+    }
+
+    #[tokio::test]
+    async fn every_endpoint_demands_its_declared_auth() {
+        for route in keygo_api::endpoints::all_routes() {
+            let (status, body) = send_empty(&route).await;
+            let code = serde_json::from_slice::<Value>(&body)
+                .ok()
+                .map(|body| body["code"].clone());
+            match route.auth {
+                Auth::AccessToken => assert_eq!(code, Some(json!("invalid_token")), "{route:?}"),
+                Auth::Proof => assert_eq!(code, Some(json!("invalid_dpop_proof")), "{route:?}"),
+                Auth::None => assert!(
+                    status == StatusCode::OK || status == StatusCode::UNSUPPORTED_MEDIA_TYPE,
+                    "{route:?}",
+                ),
+            }
+        }
     }
 
     #[tokio::test]

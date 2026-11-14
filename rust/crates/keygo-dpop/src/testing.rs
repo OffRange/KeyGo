@@ -13,6 +13,21 @@ impl TestSigner {
     pub fn from_seed(seed: u8) -> Self {
         Self(SigningKey::from_slice(&[seed; 32]).unwrap())
     }
+
+    /// Matches what a platform keystore exports.
+    pub fn public_key_sec1(&self) -> Vec<u8> {
+        self.0
+            .verifying_key()
+            .to_sec1_point(false)
+            .as_bytes()
+            .to_vec()
+    }
+
+    /// Matches what a platform keystore produces.
+    pub fn sign_der(&self, msg: &[u8]) -> Vec<u8> {
+        let sig: Signature = self.0.sign(msg);
+        sig.to_der().as_bytes().to_vec()
+    }
 }
 
 impl Default for TestSigner {

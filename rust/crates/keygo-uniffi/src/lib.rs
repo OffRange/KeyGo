@@ -4,6 +4,7 @@ mod card;
 mod item;
 mod key_wrap;
 mod passkey;
+mod sync;
 mod totp;
 mod types;
 mod vault;

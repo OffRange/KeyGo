@@ -1,5 +1,6 @@
 use super::corrupt;
-use crate::domain::{KeyBundle, SealedBlob, UserId, check_wrapped_ark};
+use crate::domain::{KeyBundle, UserId, check_wrapped_ark};
+use keygo_core::Sealed;
 use sqlx::PgConnection;
 
 pub async fn insert(
@@ -29,7 +30,7 @@ pub async fn find(conn: &mut PgConnection, user_id: UserId) -> sqlx::Result<Opti
     };
 
     // Registration admits only a well-sized wrap, so any other length is a corrupted row.
-    let wrapped_ark = SealedBlob::from_bytes(&stored).map_err(corrupt)?;
+    let wrapped_ark = Sealed::from_bytes(&stored).map_err(corrupt)?;
     check_wrapped_ark(&wrapped_ark).map_err(corrupt)?;
 
     Ok(Some(KeyBundle { wrapped_ark }))
@@ -40,6 +41,7 @@ mod tests {
     use super::*;
     use crate::db::users;
     use crate::testing::{WRAPPED_ARK, count, key_bundle, username};
+    use keygo_core::AccountRootKey;
     use sqlx::PgPool;
 
     async fn insert_user(db: &PgPool, name: &str) -> UserId {
@@ -77,7 +79,7 @@ mod tests {
             .await
             .unwrap();
 
-        let blob = SealedBlob::from_bytes(&stored).unwrap();
+        let blob = Sealed::<AccountRootKey>::from_bytes(&stored).unwrap();
         assert_eq!(blob.nonce(), &WRAPPED_ARK[..12]);
         assert_eq!(blob.ciphertext(), &WRAPPED_ARK[12..]);
     }

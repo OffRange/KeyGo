@@ -80,12 +80,13 @@ pub async fn finish(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::{SealedBlob, UserId};
+    use crate::domain::UserId;
     use crate::service::registration::{self, Signup, StartRegistration, Started};
     use crate::testing::{
         JKT, PASSWORD, WRAPPED_ARK, count, create_invite, device_info, expire, invite_only,
         key_bundle, token_issuer, username,
     };
+    use keygo_core::Sealed;
     use keygo_opaque::client::ClientRegistration;
     use keygo_opaque::server::ServerSetup;
     use uuid::Uuid;
@@ -190,7 +191,7 @@ mod tests {
         let input = started_with(&db, &invite_only(), Some(&code), UserId::random(), "ada").await;
         let input = FinishRegistration {
             key_bundle: KeyBundle {
-                wrapped_ark: SealedBlob::from_bytes(&[7; 59]).unwrap(),
+                wrapped_ark: Sealed::from_bytes(&[7; 59]).unwrap(),
             },
             ..input
         };

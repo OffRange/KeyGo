@@ -11,6 +11,8 @@ use std::sync::Arc;
 pub enum ArkSessionError {
     #[error("No active session")]
     Locked,
+    #[error("Session holds a different account")]
+    AccountMismatch,
     #[error("Wrong password")]
     WrongPassword,
     #[error("Key derivation failed: {0}")]
@@ -25,6 +27,7 @@ impl From<CoreArkSessionError> for ArkSessionError {
     fn from(value: CoreArkSessionError) -> Self {
         match value {
             CoreArkSessionError::Locked => Self::Locked,
+            CoreArkSessionError::AccountMismatch => Self::AccountMismatch,
             CoreArkSessionError::WrongPassword => Self::WrongPassword,
             CoreArkSessionError::Derivation(e) => Self::Derivation(e.to_string()),
             CoreArkSessionError::KeyWrap(CryptoError::DecryptionFailed) => Self::DecryptionFailed,

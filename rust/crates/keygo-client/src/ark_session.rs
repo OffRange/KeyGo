@@ -1,8 +1,10 @@
 use crate::crypto::kdf::new_salt;
 use crate::crypto::{
     AccountRootKey, CryptoError, Encrypts, KeyMaterial, NamespaceDataAad, NamespaceId,
-    NamespaceKey, NamespaceKeyAad, RootKek, Sealed, SecretKind, UserId, VaultId, VaultKey, Wraps,
+    NamespaceKey, NamespaceKeyAad, OpaqueKek, RootKek, Sealed, SecretKind, UserId, VaultId,
+    VaultKey, Wraps,
 };
+use keygo_opaque::ExportKey;
 use std::sync::{Mutex, MutexGuard};
 use subtle::ConstantTimeEq;
 use zeroize::Zeroizing;
@@ -11,6 +13,8 @@ use zeroize::Zeroizing;
 pub enum ArkSessionError {
     #[error("No active session")]
     Locked,
+    #[error("Session holds a different account")]
+    AccountMismatch,
     #[error("Wrong password")]
     WrongPassword,
     #[error("Key derivation failed: {0}")]
@@ -92,6 +96,26 @@ impl ArkSession {
         })
     }
 
+    pub fn unlock_with_server(
+        &self,
+        export_key: &ExportKey,
+        wrapped: &Sealed<AccountRootKey>,
+        user_id: UserId,
+    ) -> ArkSessionResult<()> {
+        let ark = OpaqueKek::from_export_key(export_key.as_bytes(), user_id)
+            .map_err(ArkSessionError::Derivation)?
+            .unwrap_key(wrapped, &user_id)?;
+
+        let mut live = self.lock();
+        match live.as_ref() {
+            None => *live = Some(ark),
+            Some(current) if bool::from(current.as_bytes().ct_eq(ark.as_bytes())) => {}
+            Some(_) => return Err(ArkSessionError::AccountMismatch),
+        }
+
+        Ok(())
+    }
+
     pub fn unlock_with_password(
         &self,
         password: &str,
@@ -145,6 +169,16 @@ impl ArkSession {
         let kek = derive_kek(new_password, &salt)?;
         let wrapped = self.with_live_ark(|ark| Ok(kek.wrap_key(ark, &user_id)?))?;
         Ok(PasswordWrappedArk { salt, wrapped })
+    }
+
+    pub fn wrap_for_server(
+        &self,
+        export_key: &ExportKey,
+        user_id: UserId,
+    ) -> ArkSessionResult<Sealed<AccountRootKey>> {
+        let kek = OpaqueKek::from_export_key(export_key.as_bytes(), user_id)
+            .map_err(ArkSessionError::Derivation)?;
+        self.with_live_ark(|ark| Ok(kek.wrap_key(ark, &user_id)?))
     }
 
     pub fn wrap_vault_key(
@@ -222,6 +256,75 @@ mod tests {
         let session = ArkSession::new();
         let new_account = session.create_account(PASSWORD).unwrap();
         (session, new_account)
+    }
+
+    fn export_key() -> ExportKey {
+        crate::sync::testing::FakeOpaqueAccount::register(PASSWORD).1
+    }
+
+    #[test]
+    fn server_wrapped_ark_unlocks_a_locked_session() {
+        let (session, account) = unlocked();
+        let key = export_key();
+        let wrapped = session.wrap_for_server(&key, account.user_id).unwrap();
+        let ark = session.export_ark().unwrap();
+        session.end();
+
+        session
+            .unlock_with_server(&key, &wrapped, account.user_id)
+            .unwrap();
+
+        assert_eq!(session.export_ark().unwrap(), ark);
+    }
+
+    #[test]
+    fn server_wrapped_ark_matching_the_live_one_is_accepted() {
+        let (session, account) = unlocked();
+        let key = export_key();
+        let wrapped = session.wrap_for_server(&key, account.user_id).unwrap();
+
+        session
+            .unlock_with_server(&key, &wrapped, account.user_id)
+            .unwrap();
+    }
+
+    #[test]
+    fn server_wrapped_ark_of_another_account_is_a_mismatch() {
+        let (session, account) = unlocked();
+        let ark = session.export_ark().unwrap();
+        let (other, _) = unlocked();
+        let key = export_key();
+        let wrapped = other.wrap_for_server(&key, account.user_id).unwrap();
+
+        let result = session.unlock_with_server(&key, &wrapped, account.user_id);
+
+        assert!(matches!(result, Err(ArkSessionError::AccountMismatch)));
+        assert_eq!(session.export_ark().unwrap(), ark, "the live ARK stays");
+    }
+
+    #[test]
+    fn server_wrapped_ark_is_bound_to_its_user() {
+        let (session, account) = unlocked();
+        let key = export_key();
+        let wrapped = session.wrap_for_server(&key, account.user_id).unwrap();
+        session.end();
+
+        let result = session.unlock_with_server(&key, &wrapped, UserId::random());
+
+        assert!(matches!(
+            result,
+            Err(ArkSessionError::KeyWrap(CryptoError::KeyUnwrapFailed)),
+        ));
+        assert!(!session.is_active());
+    }
+
+    #[test]
+    fn wrap_for_server_needs_a_live_ark() {
+        let session = ArkSession::new();
+
+        let result = session.wrap_for_server(&export_key(), UserId::random());
+
+        assert!(matches!(result, Err(ArkSessionError::Locked)));
     }
 
     #[test]

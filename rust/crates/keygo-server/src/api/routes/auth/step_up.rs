@@ -1,15 +1,13 @@
 use crate::api::authenticated::{AuthError, Authenticated};
-use crate::api::routes::auth::handshake::StartResponse;
-use crate::api::routes::auth::session::Access;
+use crate::api::routes::auth::session::access;
 use crate::api::{AppState, ErrorCode, HttpError, Json, ServerResult};
-use crate::domain::LoginId;
 use crate::service::step_up::{self, FinishError, FinishStepUp, StartStepUp};
 use axum::Router;
 use axum::extract::State;
 use axum::http::HeaderMap;
 use axum::routing::post;
-use keygo_opaque::{CredentialFinalization, CredentialRequest, DpopBinding};
-use serde::{Deserialize, Serialize};
+use keygo_api::auth::handshake::StartResponse;
+use keygo_api::auth::step_up::{FinishRequest, FinishResponse, StartRequest};
 
 impl HttpError for FinishError {
     fn code(&self) -> ErrorCode {
@@ -31,25 +29,6 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/start", post(start))
         .route("/finish", post(finish))
-}
-
-#[derive(Deserialize)]
-struct StartRequest {
-    credential_request: CredentialRequest,
-}
-
-#[derive(Deserialize)]
-struct FinishRequest {
-    login_id: LoginId,
-    credential_finalization: CredentialFinalization,
-    dpop_binding: DpopBinding,
-}
-
-#[derive(Serialize)]
-struct FinishResponse {
-    #[serde(flatten)]
-    access: Access,
-    auth_time: u64,
 }
 
 async fn start(
@@ -86,7 +65,7 @@ async fn finish(
         step_up::finish(&state.db, &state.step_up_states, &state.token_issuer, input).await?;
 
     Ok(Json(FinishResponse {
-        access: finished.access_token.into(),
+        access: access(finished.access_token),
         auth_time: finished.auth_time,
     }))
 }

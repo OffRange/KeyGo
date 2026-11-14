@@ -1,0 +1,23 @@
+[package]
+name = "keygo-e2e"
+description = "Drives the real sync client against the real server router."
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dev-dependencies]
+keygo-api = { path = "../keygo-api" }
+keygo-core = { path = "../keygo-core" }
+keygo-client = { path = "../keygo-client", features = ["test-support"] }
+keygo-dpop = { path = "../keygo-dpop", features = ["test-support"] }
+keygo-opaque = { path = "../keygo-opaque" }
+keygo-server = { path = "../keygo-server", features = ["test-support"] }
+
+async-trait = "0.1.89"
+axum = "0.8.9"
+http-body-util = "0.1.5"
+tower = { version = "0.5.3", features = ["util"] }
+sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "postgres", "migrate", "macros", "uuid", "time"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+serde_json.workspace = true
+url = "2.5.8"

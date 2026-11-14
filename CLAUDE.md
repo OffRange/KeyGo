@@ -47,6 +47,7 @@ Android password manager using Clean Architecture per module:
 | `:core:identity`         | Key wrapping, auth data, proto schemas (`core/identity/src/main/proto/`) |
 | `:core:item`             | Room database, login/item entities                                       |
 | `:core:ui`               | Shared composables and UI utilities                                      |
+| `:core:sync`             | OkHttp `HttpTransport` for the Rust `SyncClient`                         |
 | `:core:util`             | Shared utilities, `Result` type                                          |
 | `:feature:auth`          | Auth/session flow (login gate, biometric prompt routing)                 |
 | `:feature:autofill`      | Android autofill service (framework + Chrome/inline datasets)            |
@@ -65,10 +66,12 @@ Rust workspace (`rust/`, toolchain pinned in `rust-toolchain.toml`, edition 2024
 | Crate           | Purpose                                                                       |
 |-----------------|-------------------------------------------------------------------------------|
 | `keygo-core`    | Key hierarchy, ids, `Sealed<T>`, shared by client and server. Crypto sits behind the `crypto` feature; the server must leave it off, so it can store wrapped keys but never hold one |
+| `keygo-api`     | Sync API wire types (requests, responses, ids, tokens, `ErrorCode`) and the endpoint table, shared by server and client; no HTTP stack. JSON shapes are wire identity, pinned by `tests/wire.rs` |
 | `keygo-client`  | App-only: ARK session, passkeys, TOTP, backup format, card formatting. The server must not depend on it. `keygo_client::crypto` re-exports `keygo-core` |
 | `keygo-uniffi`  | UniFFI bindings exposing `keygo-client` to Kotlin (`libkeygo_bindings.so`)    |
 | `keygo-opaque`  | OPAQUE (opaque-ke, ristretto255 + Argon2) client/server wrapper, `forbid(unsafe_code)` |
 | `keygo-server`  | Self-hostable sync server (axum + sqlx/Postgres + clap CLI), see Sync Server  |
+| `keygo-e2e`     | Test-only: drives the real `SyncClient` against the real server router (in-process, real OPAQUE and DPoP) |
 | `tools/uniffi-bindgen` | Bindgen runner used by `make bindgen`                                  |
 
 ## Key Patterns
@@ -199,8 +202,9 @@ Caddy as TLS proxy; `.env.example` sets `DOMAIN` and signups).
   multiple statements.
 - **Trailing commas** on multi-line parameter lists and collection literals.
 - **Rust constructors** — ids are made with `random()`, secret material (keys, tokens, codes) with
-  `generate()`. Ids the client and server share live in `keygo-core`; server-only ids come from the
-  `random_id!`/`uuid_id!` macros in `domain/ids.rs`.
+  `generate()`. Ids the client and server share live in `keygo-core`; the wire handles `LoginId`
+  and `RegistrationId` come from `random_id!` in `keygo-api`, and their `random()` needs its
+  `server` feature. Server-only ids stay in `keygo-server`.
 
 ## Testing
 

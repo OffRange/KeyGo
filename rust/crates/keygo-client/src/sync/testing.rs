@@ -1,0 +1,300 @@
+use super::client::SyncClient;
+use super::signer::{SharedSigner, SignError};
+use super::state::Clock;
+use super::tokens::{StoredSession, TokenStore, TokenStoreError};
+use super::transport::{Header, HttpRequest, HttpResponse, Transport, TransportError};
+use async_trait::async_trait;
+use keygo_dpop::testing::TestSigner;
+use keygo_dpop::{DpopSigner, Signature, VerifyingKey};
+use keygo_opaque::client::ClientRegistration;
+use keygo_opaque::server::{self, ServerLogin, ServerSetup};
+use keygo_opaque::{CredentialRequest, CredentialResponse, ExportKey, PasswordFile};
+use std::collections::VecDeque;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
+use url::Url;
+
+pub fn client_for(base: &str, signer: SharedSigner) -> (SyncClient, Arc<FakeTransport>) {
+    let (client, transport, _) = client_with_store(base, signer);
+    (client, transport)
+}
+
+pub fn client_with_store(
+    base: &str,
+    signer: SharedSigner,
+) -> (SyncClient, Arc<FakeTransport>, Arc<FakeTokenStore>) {
+    let transport = FakeTransport::new();
+    let store = Arc::new(FakeTokenStore::new());
+    let client = SyncClient::new(
+        Url::parse(base).unwrap(),
+        transport.clone(),
+        signer,
+        store.clone(),
+    )
+    .unwrap();
+    (client, transport, store)
+}
+
+pub fn fake_client() -> (SyncClient, Arc<FakeTransport>) {
+    client_for("https://kg.example", Arc::new(FakeSigner::new()))
+}
+
+pub fn header<'a>(request: &'a HttpRequest, name: &str) -> Option<&'a str> {
+    request
+        .headers
+        .iter()
+        .find(|h| h.name == name)
+        .map(|h| h.value.as_str())
+}
+
+pub fn error_body(code: &str) -> Vec<u8> {
+    serde_json::to_vec(&serde_json::json!({"code": code, "message": "m"})).unwrap()
+}
+
+type Reply = Box<dyn FnOnce(&HttpRequest) -> Result<HttpResponse, TransportError> + Send>;
+
+pub struct FakeTransport {
+    script: Mutex<VecDeque<Reply>>,
+    requests: Mutex<Vec<HttpRequest>>,
+}
+
+impl FakeTransport {
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self {
+            script: Mutex::default(),
+            requests: Mutex::default(),
+        })
+    }
+
+    pub fn push(&self, status: u16, headers: &[(&str, &str)], body: &[u8]) {
+        let response = HttpResponse {
+            status,
+            headers: headers
+                .iter()
+                .map(|(name, value)| Header {
+                    name: (*name).into(),
+                    value: (*value).into(),
+                })
+                .collect(),
+            body: body.to_vec(),
+        };
+        self.reply(move |_| Ok(response));
+    }
+
+    /// Answers with a body built from the request, for replies that depend on what the client
+    /// generated, such as an OPAQUE response.
+    pub fn push_with(
+        &self,
+        status: u16,
+        body: impl FnOnce(&HttpRequest) -> Vec<u8> + Send + 'static,
+    ) {
+        self.reply(move |request| {
+            Ok(HttpResponse {
+                status,
+                headers: Vec::new(),
+                body: body(request),
+            })
+        });
+    }
+
+    pub fn push_network_error(&self, message: &str) {
+        let message = message.to_owned();
+        self.reply(move |_| Err(TransportError { message }));
+    }
+
+    fn reply(
+        &self,
+        reply: impl FnOnce(&HttpRequest) -> Result<HttpResponse, TransportError> + Send + 'static,
+    ) {
+        self.script.lock().unwrap().push_back(Box::new(reply));
+    }
+
+    pub fn requests(&self) -> Vec<HttpRequest> {
+        self.requests.lock().unwrap().clone()
+    }
+}
+
+#[async_trait]
+impl Transport for FakeTransport {
+    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
+        // Lets concurrent tests really interleave.
+        tokio::task::yield_now().await;
+        let reply = self
+            .script
+            .lock()
+            .unwrap()
+            .pop_front()
+            .expect("FakeTransport script is empty");
+        let response = reply(&request);
+        self.requests.lock().unwrap().push(request);
+        response
+    }
+}
+
+#[derive(Default)]
+pub struct FakeTokenStore {
+    stored: Mutex<Option<StoredSession>>,
+    fail_saves: AtomicBool,
+    fail_clears: AtomicBool,
+}
+
+impl FakeTokenStore {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn seed(&self, session: StoredSession) {
+        *self.stored.lock().unwrap() = Some(session);
+    }
+
+    pub fn current_refresh_token(&self) -> Option<String> {
+        self.stored
+            .lock()
+            .unwrap()
+            .as_ref()
+            .map(|s| s.refresh_token.expose_encoded().to_string())
+    }
+
+    pub fn fail_saves(&self) {
+        self.fail_saves.store(true, Ordering::SeqCst);
+    }
+
+    pub fn allow_saves(&self) {
+        self.fail_saves.store(false, Ordering::SeqCst);
+    }
+
+    pub fn fail_clears(&self) {
+        self.fail_clears.store(true, Ordering::SeqCst);
+    }
+}
+
+impl StoredSession {
+    pub(super) fn duplicate(&self) -> Self {
+        Self {
+            device_id: self.device_id,
+            refresh_token: self
+                .refresh_token
+                .expose_encoded()
+                .parse()
+                .expect("a refresh token parses its own encoding"),
+            refresh_expires_at: self.refresh_expires_at,
+        }
+    }
+}
+
+#[async_trait]
+impl TokenStore for FakeTokenStore {
+    async fn load(&self) -> Result<Option<StoredSession>, TokenStoreError> {
+        Ok(self
+            .stored
+            .lock()
+            .unwrap()
+            .as_ref()
+            .map(StoredSession::duplicate))
+    }
+
+    async fn save(&self, session: &StoredSession) -> Result<(), TokenStoreError> {
+        if self.fail_saves.load(Ordering::SeqCst) {
+            return Err(TokenStoreError {
+                message: "save failed".into(),
+            });
+        }
+        *self.stored.lock().unwrap() = Some(session.duplicate());
+        Ok(())
+    }
+
+    async fn clear(&self) -> Result<(), TokenStoreError> {
+        if self.fail_clears.load(Ordering::SeqCst) {
+            return Err(TokenStoreError {
+                message: "clear failed".into(),
+            });
+        }
+        *self.stored.lock().unwrap() = None;
+        Ok(())
+    }
+}
+
+/// The same key as [`TestSigner::new`].
+pub struct FakeSigner(TestSigner);
+
+impl FakeSigner {
+    pub fn new() -> Self {
+        Self(TestSigner::new())
+    }
+}
+
+impl Default for FakeSigner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl DpopSigner for FakeSigner {
+    type Error = SignError;
+
+    fn verifying_key(&self) -> &VerifyingKey {
+        self.0.verifying_key()
+    }
+
+    fn sign(&self, msg: &[u8]) -> Result<Signature, SignError> {
+        self.0.sign(msg).map_err(|never| match never {})
+    }
+}
+
+pub struct FixedClock(AtomicU64);
+
+impl FixedClock {
+    pub fn new(now_secs: u64) -> Arc<Self> {
+        Arc::new(Self(AtomicU64::new(now_secs)))
+    }
+
+    pub fn advance(&self, secs: u64) {
+        self.0.fetch_add(secs, Ordering::SeqCst);
+    }
+}
+
+impl Clock for FixedClock {
+    fn now_secs(&self) -> u64 {
+        self.0.load(Ordering::SeqCst)
+    }
+}
+
+/// One account on a real OPAQUE server, so a test can answer `login/start` with a response the
+/// client really finishes.
+#[derive(Clone)]
+pub struct FakeOpaqueAccount {
+    setup: ServerSetup,
+    password_file: Arc<zeroize::Zeroizing<Vec<u8>>>,
+}
+
+impl FakeOpaqueAccount {
+    /// Registers `password` and returns the export key the client derives from it.
+    pub fn register(password: &str) -> (Self, ExportKey) {
+        let setup = ServerSetup::generate();
+        let (client, request) = ClientRegistration::start(password.as_bytes()).unwrap();
+        let response = server::registration_start(&setup, request, CREDENTIAL_ID).unwrap();
+        let finish = client.finish(password.as_bytes(), response).unwrap();
+        let password_file = server::registration_finish(finish.upload).to_bytes();
+        let account = Self {
+            setup,
+            password_file: Arc::new(password_file),
+        };
+        (account, finish.export_key)
+    }
+
+    pub fn credential_response(&self, request: CredentialRequest) -> CredentialResponse {
+        let file = PasswordFile::from_bytes(&self.password_file).unwrap();
+        ServerLogin::start(&self.setup, Some(file), request, CREDENTIAL_ID)
+            .unwrap()
+            .1
+    }
+
+    /// What the server answers for a username it does not know.
+    pub fn unknown_user_response(request: CredentialRequest) -> CredentialResponse {
+        ServerLogin::start(&ServerSetup::generate(), None, request, CREDENTIAL_ID)
+            .unwrap()
+            .1
+    }
+}
+
+const CREDENTIAL_ID: &[u8] = b"u";

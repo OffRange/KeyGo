@@ -1,7 +1,7 @@
-use crate::domain::SealedBlob;
+use keygo_core::{AccountRootKey, Sealed};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct KeyBundle {
-    pub wrapped_ark: SealedBlob,
+    pub wrapped_ark: Sealed<AccountRootKey>,
 }

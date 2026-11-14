@@ -2,60 +2,31 @@ use crate::domain::{InvalidBlob, UsernameError};
 use axum::extract::rejection::JsonRejection;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
+use keygo_api::ApiError;
 use keygo_opaque::OpaqueError;
-use serde::Serialize;
-use serde_json::json;
 use thiserror::Error;
 
-/// Every `code` the API answers with; clients match on the serialized name.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ErrorCode {
-    // general
-    Internal,
-    InvalidRequest,
-    NotFound,
-    RateLimited,
-    // auth
-    InvalidUsername,
-    InvalidCredentials,
-    UsernameTaken,
-    UserIdTaken,
-    InviteRequired,
-    InviteInvalid,
-    RegistrationExpired,
-    LoginExpired,
-    // session
-    FreshAuthRequired,
-    InvalidToken,
-    RefreshExpired,
-    SessionRevoked,
-    // dpop
-    InvalidDpopProof,
-    UseDpopNonce,
-}
+pub use keygo_api::ErrorCode;
 
-impl ErrorCode {
-    pub fn status(self) -> StatusCode {
-        match self {
-            Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::InvalidRequest
-            | Self::InvalidUsername
-            | Self::RegistrationExpired
-            | Self::LoginExpired
-            | Self::InvalidDpopProof
-            | Self::UseDpopNonce => StatusCode::BAD_REQUEST,
-            Self::InvalidCredentials
-            | Self::InvalidToken
-            | Self::RefreshExpired
-            | Self::SessionRevoked => StatusCode::UNAUTHORIZED,
-            Self::InviteRequired | Self::InviteInvalid | Self::FreshAuthRequired => {
-                StatusCode::FORBIDDEN
-            }
-            Self::NotFound => StatusCode::NOT_FOUND,
-            Self::UsernameTaken | Self::UserIdTaken => StatusCode::CONFLICT,
-            Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
+fn status_of(code: ErrorCode) -> StatusCode {
+    match code {
+        ErrorCode::Internal | ErrorCode::Unknown => StatusCode::INTERNAL_SERVER_ERROR,
+        ErrorCode::InvalidRequest
+        | ErrorCode::InvalidUsername
+        | ErrorCode::RegistrationExpired
+        | ErrorCode::LoginExpired
+        | ErrorCode::InvalidDpopProof
+        | ErrorCode::UseDpopNonce => StatusCode::BAD_REQUEST,
+        ErrorCode::InvalidCredentials
+        | ErrorCode::InvalidToken
+        | ErrorCode::RefreshExpired
+        | ErrorCode::SessionRevoked => StatusCode::UNAUTHORIZED,
+        ErrorCode::InviteRequired | ErrorCode::InviteInvalid | ErrorCode::FreshAuthRequired => {
+            StatusCode::FORBIDDEN
         }
+        ErrorCode::NotFound => StatusCode::NOT_FOUND,
+        ErrorCode::UsernameTaken | ErrorCode::UserIdTaken => StatusCode::CONFLICT,
+        ErrorCode::RateLimited => StatusCode::TOO_MANY_REQUESTS,
     }
 }
 
@@ -63,7 +34,7 @@ pub trait HttpError: std::error::Error + Send + Sync + 'static {
     fn code(&self) -> ErrorCode;
 
     fn status(&self) -> StatusCode {
-        self.code().status()
+        status_of(self.code())
     }
 
     fn headers(&self) -> HeaderMap {
@@ -97,10 +68,11 @@ impl IntoResponse for ServerError {
             self.0.to_string()
         };
 
-        let mut body = json!({"code": code, "message": message});
-        if let Some(reason) = reason {
-            body["reason"] = reason.into();
-        }
+        let body = ApiError {
+            code,
+            message,
+            reason: reason.map(str::to_owned),
+        };
 
         (status, headers, axum::Json(body)).into_response()
     }

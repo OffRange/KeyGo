@@ -1594,6 +1594,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "keygo-api"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "getrandom 0.4.3",
+ "hex",
+ "keygo-core",
+ "keygo-opaque",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "thiserror",
+ "unicode-normalization",
+ "unicode-properties",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
 name = "keygo-client"
 version = "0.1.0"
 dependencies = [
@@ -1603,7 +1622,10 @@ dependencies = [
  "coset",
  "csv",
  "email_address",
+ "keygo-api",
  "keygo-core",
+ "keygo-dpop",
+ "keygo-opaque",
  "passkey",
  "passkey-authenticator",
  "passkey-types",
@@ -1653,6 +1675,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "keygo-e2e"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "http-body-util",
+ "keygo-api",
+ "keygo-client",
+ "keygo-core",
+ "keygo-dpop",
+ "keygo-opaque",
+ "keygo-server",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tower",
+ "url",
+]
+
+[[package]]
 name = "keygo-opaque"
 version = "0.1.0"
 dependencies = [
@@ -1684,6 +1726,7 @@ dependencies = [
  "hmac 0.13.0",
  "http-body-util",
  "humantime",
+ "keygo-api",
  "keygo-core",
  "keygo-dpop",
  "keygo-opaque",
@@ -1701,8 +1744,6 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
- "unicode-normalization",
- "unicode-properties",
  "url",
  "uuid",
  "zeroize",
@@ -1712,11 +1753,17 @@ dependencies = [
 name = "keygo-uniffi"
 version = "0.1.0"
 dependencies = [
+ "async-compat",
+ "async-trait",
+ "keygo-api",
  "keygo-client",
+ "keygo-dpop",
  "thiserror",
  "tokio",
  "uniffi",
+ "url",
  "uuid",
+ "zeroize",
 ]
 
 [[package]]

@@ -1,13 +1,13 @@
 use crate::api::authenticated::Authenticated;
 use crate::api::{AppState, ErrorCode, HttpError, Json, ServerResult};
-use crate::domain::{Device, DeviceId};
+use crate::domain::DeviceId;
 use crate::service::device;
 use crate::service::device::DeleteDeviceError;
 use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::{delete, get};
-use serde::Serialize;
+use keygo_api::devices::Devices;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -22,11 +22,6 @@ impl HttpError for DeleteDeviceError {
             Self::Db(_) => ErrorCode::Internal,
         }
     }
-}
-
-#[derive(Serialize)]
-struct Devices {
-    devices: Vec<Device>,
 }
 
 async fn devices(
