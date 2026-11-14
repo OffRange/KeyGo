@@ -5,6 +5,7 @@ import de.davisalessandro.keygo.rust.KeyWrapException
 sealed interface SessionError {
 
     data object Locked : SessionError
+    data object AccountMismatch : SessionError
     data object WrongPassword : SessionError
     data class Derivation(val message: String) : SessionError
     data object DecryptionFailed : SessionError

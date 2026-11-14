@@ -122,7 +122,11 @@ internal class CryptographicScopeProviderImpl(
 private fun SessionError.toCryptoScopeError(): CryptoScopeError = when (this) {
     SessionError.Locked -> CryptoScopeError.NoActiveSession
     is SessionError.KeyWrap -> CryptoScopeError.KeyWrapError(cause)
-    SessionError.WrongPassword, is SessionError.Derivation, SessionError.DecryptionFailed ->
+    SessionError.AccountMismatch,
+    SessionError.WrongPassword,
+    is SessionError.Derivation,
+    SessionError.DecryptionFailed,
+    ->
         CryptoScopeError.KeyWrapError(KeyWrapException.UnwrapFailed())
 }
 

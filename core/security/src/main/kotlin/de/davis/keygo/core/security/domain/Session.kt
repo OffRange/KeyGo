@@ -103,6 +103,7 @@ inline fun <T> Session.useArk(block: (ByteArray) -> T): Result<T, SessionError> 
 @PublishedApi
 internal fun ArkSessionException.toSessionError(): SessionError = when (this) {
     is ArkSessionException.Locked -> SessionError.Locked
+    is ArkSessionException.AccountMismatch -> SessionError.AccountMismatch
     is ArkSessionException.WrongPassword -> SessionError.WrongPassword
     is ArkSessionException.Derivation -> SessionError.Derivation(v1)
     is ArkSessionException.DecryptionFailed -> SessionError.DecryptionFailed
