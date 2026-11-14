@@ -373,7 +373,7 @@ impl SyncClient {
     /// `user_id` must be the local account's id; see the core `SyncClient::register`.
     pub async fn register(
         self: Arc<Self>,
-        ark: Arc<ArkSession>,
+        ark_session: Arc<ArkSession>,
         user_id: UserId,
         username: String,
         password: String,
@@ -384,18 +384,25 @@ impl SyncClient {
         let device = device.into_core()?;
         let account = detached(async move {
             self.inner
-                .register(&ark.session, user_id, username, &password, invite, device)
+                .register(
+                    &ark_session.session,
+                    user_id,
+                    username,
+                    &password,
+                    invite,
+                    device,
+                )
                 .await
         })
         .await?;
         Ok(account.into())
     }
 
-    /// Unlocks a locked `ark` with the server's copy of the ARK; an unlocked one must hold the
-    /// same ARK, or this fails with `AccountMismatch`. See the core `SyncClient::login`.
+    /// Unlocks a locked `ark_session` with the server's copy of the ARK; an unlocked one must hold
+    /// the same ARK, or this fails with `AccountMismatch`. See the core `SyncClient::login`.
     pub async fn login(
         self: Arc<Self>,
-        ark: Arc<ArkSession>,
+        ark_session: Arc<ArkSession>,
         username: String,
         password: String,
         device: DeviceDetails,
@@ -404,7 +411,7 @@ impl SyncClient {
         let device = device.into_core()?;
         let account = detached(async move {
             self.inner
-                .login(&ark.session, username, &password, device)
+                .login(&ark_session.session, username, &password, device)
                 .await
         })
         .await?;

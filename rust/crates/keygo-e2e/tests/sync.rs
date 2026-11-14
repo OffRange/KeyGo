@@ -141,15 +141,15 @@ async fn device_count(db: &PgPool, user_id: UserId) -> i64 {
 }
 
 fn local_account() -> (ArkSession, UserId) {
-    let ark = ArkSession::new();
-    let user_id = ark.create_account(password()).unwrap().user_id;
-    (ark, user_id)
+    let ark_session = ArkSession::new();
+    let user_id = ark_session.create_account(password()).unwrap().user_id;
+    (ark_session, user_id)
 }
 
-async fn register(client: &SyncClient, ark: &ArkSession, user_id: UserId, name: &str) {
+async fn register(client: &SyncClient, ark_session: &ArkSession, user_id: UserId, name: &str) {
     client
         .register(
-            ark,
+            ark_session,
             user_id,
             name.into(),
             password(),
@@ -297,11 +297,11 @@ async fn client_logout_ends_the_session_on_the_server(db: PgPool) {
 #[sqlx::test(migrations = "../keygo-server/migrations")]
 async fn register_signs_the_device_in(db: PgPool) {
     let (client, store, _) = signed_out(&db);
-    let (ark, user_id) = local_account();
+    let (ark_session, user_id) = local_account();
 
     let account = client
         .register(
-            &ark,
+            &ark_session,
             user_id,
             "Ada".into(),
             password(),
@@ -322,8 +322,8 @@ async fn register_signs_the_device_in(db: PgPool) {
 #[sqlx::test(migrations = "../keygo-server/migrations")]
 async fn server_wrapped_ark_opens_after_sign_in(db: PgPool) {
     let (client, _, state) = signed_out(&db);
-    let (ark, user_id) = local_account();
-    register(&client, &ark, user_id, "ada").await;
+    let (ark_session, user_id) = local_account();
+    register(&client, &ark_session, user_id, "ada").await;
 
     let (login, started) =
         testing::start_login(&db, &state.login_states, &state.opaque_state, "ada").await;
@@ -346,15 +346,18 @@ async fn server_wrapped_ark_opens_after_sign_in(db: PgPool) {
         )
         .unwrap();
 
-    assert_eq!(opened.as_bytes(), ark.export_ark().unwrap().as_slice());
+    assert_eq!(
+        opened.as_bytes(),
+        ark_session.export_ark().unwrap().as_slice()
+    );
 }
 
 #[sqlx::test(migrations = "../keygo-server/migrations")]
 async fn registering_while_signed_in_ends_the_old_session(db: PgPool) {
     let h = harness(&db).await;
-    let (ark, user_id) = local_account();
+    let (ark_session, user_id) = local_account();
 
-    register(&h.client, &ark, user_id, "bob").await;
+    register(&h.client, &ark_session, user_id, "bob").await;
 
     let (status, _) = testing::post_with_token(
         &h.state,
@@ -383,8 +386,8 @@ async fn refused_save_does_not_trip_reuse_detection(db: PgPool) {
 #[sqlx::test(migrations = "../keygo-server/migrations")]
 async fn login_on_a_fresh_install_unlocks_the_vault(db: PgPool) {
     let (client, _, state) = signed_out(&db);
-    let (ark, user_id) = local_account();
-    register(&client, &ark, user_id, "ada").await;
+    let (ark_session, user_id) = local_account();
+    register(&client, &ark_session, user_id, "ada").await;
 
     let (fresh, store) = client_of(&state);
     let locked = ArkSession::new();
@@ -394,7 +397,10 @@ async fn login_on_a_fresh_install_unlocks_the_vault(db: PgPool) {
         .unwrap();
 
     assert_eq!(account.user_id, user_id);
-    assert_eq!(locked.export_ark().unwrap(), ark.export_ark().unwrap());
+    assert_eq!(
+        locked.export_ark().unwrap(),
+        ark_session.export_ark().unwrap()
+    );
     assert!(store.current_refresh_token().is_some());
     assert_eq!(fresh.devices().await.unwrap().len(), 2);
 }
@@ -402,12 +408,17 @@ async fn login_on_a_fresh_install_unlocks_the_vault(db: PgPool) {
 #[sqlx::test(migrations = "../keygo-server/migrations")]
 async fn logging_in_again_reuses_the_device(db: PgPool) {
     let (client, _, _) = signed_out(&db);
-    let (ark, user_id) = local_account();
-    register(&client, &ark, user_id, "ada").await;
+    let (ark_session, user_id) = local_account();
+    register(&client, &ark_session, user_id, "ada").await;
     let registered = client.devices().await.unwrap()[0].id;
 
     let account = client
-        .login(&ark, "ada".into(), password(), testing::device_info())
+        .login(
+            &ark_session,
+            "ada".into(),
+            password(),
+            testing::device_info(),
+        )
         .await
         .unwrap();
 
@@ -419,8 +430,8 @@ async fn logging_in_again_reuses_the_device(db: PgPool) {
 #[sqlx::test(migrations = "../keygo-server/migrations")]
 async fn login_into_another_vault_leaves_nothing_behind(db: PgPool) {
     let (client, _, state) = signed_out(&db);
-    let (ark, user_id) = local_account();
-    register(&client, &ark, user_id, "ada").await;
+    let (ark_session, user_id) = local_account();
+    register(&client, &ark_session, user_id, "ada").await;
 
     let (other, store) = client_of(&state);
     let (other_ark, _) = local_account();

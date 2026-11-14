@@ -122,20 +122,21 @@ impl SyncClient {
         Ok(())
     }
 
-    /// Creates an account holding a server-wrapped copy of `ark`'s ARK, and signs in.
+    /// Creates an account holding a server-wrapped copy of `ark_session`'s ARK, and signs in.
     ///
-    /// `user_id` must be the local account's id: the wrapped ARK is bound to it, and `ark` holds no
-    /// id to check it against. The previous session is logged out only once the new one exists.
+    /// `user_id` must be the local account's id: the wrapped ARK is bound to it, and `ark_session`
+    /// holds no id to check it against. The previous session is logged out only once the new one
+    /// exists.
     pub async fn register(
         &self,
-        ark: &ArkSession,
+        ark_session: &ArkSession,
         user_id: UserId,
         username: String,
         password: &str,
         invite: Option<String>,
         device: DeviceInfo,
     ) -> SyncResult<Account> {
-        if !ark.is_active() {
+        if !ark_session.is_active() {
             return Err(SyncError::VaultLocked);
         }
         let (client, registration_request) =
@@ -156,7 +157,7 @@ impl SyncClient {
             .finish(password.as_bytes(), started.registration_response)
             .map_err(|error| SyncError::invalid_response(error.to_string()))?;
 
-        let wrapped_ark = ark
+        let wrapped_ark = ark_session
             .wrap_for_server(&finish.export_key, user_id)
             .map_err(|error| match error {
                 ArkSessionError::Locked => SyncError::VaultLocked,
@@ -186,14 +187,15 @@ impl SyncClient {
         Ok(account)
     }
 
-    /// Signs in and unlocks `ark` with the server's copy of the ARK. An `ark` that is already
-    /// unlocked must hold that same ARK, or the login fails with [`SyncError::AccountMismatch`].
+    /// Signs in and unlocks `ark_session` with the server's copy of the ARK. An `ark_session` that
+    /// is already unlocked must hold that same ARK, or the login fails with
+    /// [`SyncError::AccountMismatch`].
     ///
     /// Claims the device this client last signed in as, so a re-login replaces its session instead
     /// of adding a device.
     pub async fn login(
         &self,
-        ark: &ArkSession,
+        ark_session: &ArkSession,
         username: String,
         password: &str,
         device: DeviceInfo,
@@ -231,7 +233,7 @@ impl SyncClient {
             )
             .await?;
 
-        let unlocked = ark.unlock_with_server(
+        let unlocked = ark_session.unlock_with_server(
             &finish.export_key,
             &response.key_bundle.wrapped_ark,
             response.user_id,
@@ -451,9 +453,12 @@ mod tests {
         const REFRESH: &str = "kgr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
         fn unlocked() -> (ArkSession, UserId) {
-            let ark = ArkSession::new();
-            let user_id = ark.create_account("local password").unwrap().user_id;
-            (ark, user_id)
+            let ark_session = ArkSession::new();
+            let user_id = ark_session
+                .create_account("local password")
+                .unwrap()
+                .user_id;
+            (ark_session, user_id)
         }
 
         fn device() -> DeviceInfo {
@@ -504,10 +509,10 @@ mod tests {
                 client_with_store("https://kg.example", Arc::new(FakeSigner::new()));
             transport.push_with(200, start_reply);
             transport.push(200, &[], &finish_reply());
-            let (ark, user_id) = unlocked();
+            let (ark_session, user_id) = unlocked();
 
             let account = client
-                .register(&ark, user_id, "Ada".into(), "pw", None, device())
+                .register(&ark_session, user_id, "Ada".into(), "pw", None, device())
                 .await
                 .unwrap();
 
@@ -553,10 +558,10 @@ mod tests {
         async fn empty_password_sends_nothing() {
             let (client, transport, _) =
                 client_with_store("https://kg.example", Arc::new(FakeSigner::new()));
-            let (ark, user_id) = unlocked();
+            let (ark_session, user_id) = unlocked();
 
             let error = client
-                .register(&ark, user_id, "ada".into(), "", None, device())
+                .register(&ark_session, user_id, "ada".into(), "", None, device())
                 .await
                 .unwrap_err();
 
@@ -582,10 +587,10 @@ mod tests {
                 }))
                 .unwrap()
             });
-            let (ark, user_id) = unlocked();
+            let (ark_session, user_id) = unlocked();
 
             let error = client
-                .register(&ark, user_id, "ada".into(), "pw", None, device())
+                .register(&ark_session, user_id, "ada".into(), "pw", None, device())
                 .await
                 .unwrap_err();
 
@@ -602,10 +607,10 @@ mod tests {
                 client_with_store("https://kg.example", Arc::new(FakeSigner::new()));
             store.seed(previous_session());
             transport.push(409, &[], &error_body("username_taken"));
-            let (ark, user_id) = unlocked();
+            let (ark_session, user_id) = unlocked();
 
             let error = client
-                .register(&ark, user_id, "ada".into(), "pw", None, device())
+                .register(&ark_session, user_id, "ada".into(), "pw", None, device())
                 .await
                 .unwrap_err();
 
@@ -623,10 +628,10 @@ mod tests {
             transport.push(200, &[], &finish_reply());
             transport.push(200, &[], &old_session_reply());
             transport.push(204, &[], b"");
-            let (ark, user_id) = unlocked();
+            let (ark_session, user_id) = unlocked();
 
             client
-                .register(&ark, user_id, "ada".into(), "pw", None, device())
+                .register(&ark_session, user_id, "ada".into(), "pw", None, device())
                 .await
                 .unwrap();
 
@@ -696,7 +701,7 @@ mod tests {
         const ACCESS: &str = "new.access.token";
         const NEW_DEVICE: &str = "00000000-0000-0000-0000-00000000000e";
 
-        /// A server account whose key bundle wraps the ARK `ark` holds.
+        /// A server account whose key bundle wraps the ARK `ark_session` holds.
         struct Server {
             opaque: FakeOpaqueAccount,
             user_id: UserId,
@@ -704,18 +709,18 @@ mod tests {
         }
 
         impl Server {
-            fn holding(ark: &ArkSession) -> Self {
+            fn holding(ark_session: &ArkSession) -> Self {
                 let (opaque, export_key) = FakeOpaqueAccount::register(PASSWORD);
-                Self::with_key(opaque, &export_key, ark)
+                Self::with_key(opaque, &export_key, ark_session)
             }
 
             fn with_key(
                 opaque: FakeOpaqueAccount,
                 export_key: &ExportKey,
-                ark: &ArkSession,
+                ark_session: &ArkSession,
             ) -> Self {
                 let user_id = UserId::random();
-                let wrapped = ark.wrap_for_server(export_key, user_id).unwrap();
+                let wrapped = ark_session.wrap_for_server(export_key, user_id).unwrap();
                 Self {
                     opaque,
                     user_id,
@@ -762,9 +767,9 @@ mod tests {
         }
 
         fn unlocked() -> ArkSession {
-            let ark = ArkSession::new();
-            ark.create_account("local password").unwrap();
-            ark
+            let ark_session = ArkSession::new();
+            ark_session.create_account("local password").unwrap();
+            ark_session
         }
 
         fn device() -> DeviceInfo {
@@ -788,13 +793,13 @@ mod tests {
         #[tokio::test]
         async fn signs_in_and_keeps_the_session() {
             let (client, transport, store) = client();
-            let ark = unlocked();
-            let server = Server::holding(&ark);
+            let ark_session = unlocked();
+            let server = Server::holding(&ark_session);
             server.answer_start(&transport);
             server.answer_finish(&transport, NEW_DEVICE);
 
             let account = client
-                .login(&ark, "Ada".into(), PASSWORD, device())
+                .login(&ark_session, "Ada".into(), PASSWORD, device())
                 .await
                 .unwrap();
 
@@ -812,30 +817,30 @@ mod tests {
         #[tokio::test]
         async fn unlocks_a_locked_session_with_the_server_copy() {
             let (client, transport, _) = client();
-            let ark = unlocked();
-            let server = Server::holding(&ark);
-            let local = ark.export_ark().unwrap();
-            ark.end();
+            let ark_session = unlocked();
+            let server = Server::holding(&ark_session);
+            let local = ark_session.export_ark().unwrap();
+            ark_session.end();
             server.answer_start(&transport);
             server.answer_finish(&transport, NEW_DEVICE);
 
             client
-                .login(&ark, "ada".into(), PASSWORD, device())
+                .login(&ark_session, "ada".into(), PASSWORD, device())
                 .await
                 .unwrap();
 
-            assert_eq!(ark.export_ark().unwrap(), local);
+            assert_eq!(ark_session.export_ark().unwrap(), local);
         }
 
         #[tokio::test]
         async fn wrong_password_sends_no_finish() {
             let (client, transport, store) = client();
             store.seed(previous_session());
-            let ark = unlocked();
-            Server::holding(&ark).answer_start(&transport);
+            let ark_session = unlocked();
+            Server::holding(&ark_session).answer_start(&transport);
 
             let error = client
-                .login(&ark, "ada".into(), "wrong", device())
+                .login(&ark_session, "ada".into(), "wrong", device())
                 .await
                 .unwrap_err();
 
@@ -881,13 +886,13 @@ mod tests {
         async fn reclaims_the_device_it_was_signed_in_as() {
             let (client, transport, store) = client();
             store.seed(previous_session());
-            let ark = unlocked();
-            let server = Server::holding(&ark);
+            let ark_session = unlocked();
+            let server = Server::holding(&ark_session);
             server.answer_start(&transport);
             server.answer_finish(&transport, OLD_DEVICE);
 
             client
-                .login(&ark, "ada".into(), PASSWORD, device())
+                .login(&ark_session, "ada".into(), PASSWORD, device())
                 .await
                 .unwrap();
 
@@ -903,15 +908,15 @@ mod tests {
         async fn logs_the_previous_session_out_on_a_new_device() {
             let (client, transport, store) = client();
             store.seed(previous_session());
-            let ark = unlocked();
-            let server = Server::holding(&ark);
+            let ark_session = unlocked();
+            let server = Server::holding(&ark_session);
             server.answer_start(&transport);
             server.answer_finish(&transport, NEW_DEVICE);
             transport.push(200, &[], &old_session_reply());
             transport.push(204, &[], b"");
 
             client
-                .login(&ark, "ada".into(), PASSWORD, device())
+                .login(&ark_session, "ada".into(), PASSWORD, device())
                 .await
                 .unwrap();
 
@@ -936,21 +941,21 @@ mod tests {
         async fn mismatch_keeps_the_previous_session_and_deletes_the_new_device() {
             let (client, transport, store) = client();
             store.seed(previous_session());
-            let ark = unlocked();
-            let local = ark.export_ark().unwrap();
+            let ark_session = unlocked();
+            let local = ark_session.export_ark().unwrap();
             let server = Server::holding(&unlocked());
             server.answer_start(&transport);
             server.answer_finish(&transport, NEW_DEVICE);
             transport.push(204, &[], b"");
 
             let error = client
-                .login(&ark, "ada".into(), PASSWORD, device())
+                .login(&ark_session, "ada".into(), PASSWORD, device())
                 .await
                 .unwrap_err();
 
             assert_eq!(error, SyncError::AccountMismatch);
             assert_eq!(store.current_refresh_token().as_deref(), Some(OLD_REFRESH));
-            assert_eq!(ark.export_ark().unwrap(), local);
+            assert_eq!(ark_session.export_ark().unwrap(), local);
 
             let requests = transport.requests();
             assert_eq!(requests.len(), 3);
@@ -995,17 +1000,17 @@ mod tests {
         #[tokio::test]
         async fn bundle_that_does_not_open_is_an_invalid_response() {
             let (client, transport, _) = client();
-            let ark = unlocked();
+            let ark_session = unlocked();
             let (opaque, _) = FakeOpaqueAccount::register(PASSWORD);
             let (_, other_key) = FakeOpaqueAccount::register(PASSWORD);
-            let server = Server::with_key(opaque, &other_key, &ark);
-            ark.end();
+            let server = Server::with_key(opaque, &other_key, &ark_session);
+            ark_session.end();
             server.answer_start(&transport);
             server.answer_finish(&transport, NEW_DEVICE);
             transport.push(204, &[], b"");
 
             let error = client
-                .login(&ark, "ada".into(), PASSWORD, device())
+                .login(&ark_session, "ada".into(), PASSWORD, device())
                 .await
                 .unwrap_err();
 
@@ -1013,7 +1018,7 @@ mod tests {
                 matches!(&error, SyncError::Server { code, .. } if code == "invalid_response"),
                 "{error:?}",
             );
-            assert!(!ark.is_active());
+            assert!(!ark_session.is_active());
             assert_eq!(transport.requests().len(), 3, "the new device is deleted");
         }
 

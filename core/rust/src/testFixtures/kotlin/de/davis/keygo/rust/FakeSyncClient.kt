@@ -24,7 +24,7 @@ class FakeSyncClient : SyncClientInterface {
     override suspend fun devices(): List<SyncDevice> = devicesResult.getOrThrow()
 
     override suspend fun login(
-        ark: ArkSession,
+        arkSession: ArkSession,
         username: String,
         password: String,
         device: DeviceDetails,
@@ -36,7 +36,7 @@ class FakeSyncClient : SyncClientInterface {
         checkNotNull(metaResult) { "metaResult not set" }.getOrThrow()
 
     override suspend fun register(
-        ark: ArkSession,
+        arkSession: ArkSession,
         userId: UserId,
         username: String,
         password: String,
