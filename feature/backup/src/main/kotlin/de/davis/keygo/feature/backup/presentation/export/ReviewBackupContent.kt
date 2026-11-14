@@ -38,6 +38,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.item.presentation.StrengthIndicator
+import de.davis.keygo.core.ui.components.IconBadge
 import de.davis.keygo.feature.backup.R
 import de.davis.keygo.feature.backup.domain.model.BackupDestination
 import de.davis.keygo.feature.backup.domain.model.BackupInterval
@@ -46,7 +47,6 @@ import de.davis.keygo.feature.backup.domain.model.EncryptionMethod
 import de.davis.keygo.feature.backup.domain.model.FileFormat
 import de.davis.keygo.feature.backup.domain.model.IntervalUnit
 import de.davis.keygo.feature.backup.presentation.component.BackupWarningCard
-import de.davis.keygo.feature.backup.presentation.component.IconBadge
 import de.davis.keygo.feature.backup.presentation.component.segmentContainerColor
 import de.davis.keygo.feature.backup.presentation.displayName
 import de.davis.keygo.feature.backup.presentation.export.model.ProvidePassphraseState

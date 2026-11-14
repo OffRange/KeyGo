@@ -1,34 +1,34 @@
-package de.davis.keygo.feature.backup.presentation.component
+package de.davis.keygo.core.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 @Composable
-internal fun IconBadge(
+fun IconBadge(
     icon: ImageVector,
     containerColor: Color,
     contentColor: Color,
     modifier: Modifier = Modifier,
+    shape: Shape = CircleShape,
     size: Dp = 40.dp,
     iconSize: Dp = 20.dp,
 ) {
-    Box(
-        modifier = modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(containerColor),
-        contentAlignment = Alignment.Center,
+    IconBadge(
+        containerColor = containerColor,
+        modifier = modifier,
+        shape = shape,
+        size = size,
     ) {
         Icon(
             imageVector = icon,
@@ -36,5 +36,26 @@ internal fun IconBadge(
             tint = contentColor,
             modifier = Modifier.size(iconSize),
         )
+    }
+}
+
+@Composable
+fun IconBadge(
+    containerColor: Color,
+    modifier: Modifier = Modifier,
+    shape: Shape = CircleShape,
+    size: Dp = 40.dp,
+    content: @Composable () -> Unit,
+) {
+    Surface(
+        modifier = modifier.size(size),
+        shape = shape,
+        color = containerColor,
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+        ) {
+            content()
+        }
     }
 }
