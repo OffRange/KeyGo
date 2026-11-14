@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -18,7 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
@@ -46,49 +46,58 @@ import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.util.presentation.asString
 import de.davis.keygo.feature.settings.R
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun SettingsList(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
     content: SettingsScope.() -> Unit,
 ) {
-    val sections = SettingsScope().apply(content).build()
+    val blocks = SettingsScope().apply(content).build()
 
     LazyColumn(
         modifier = modifier,
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
     ) {
-        sections.forEach { section ->
-            stickyHeader(key = "header_${section.title}") {
-                SettingsSectionHeader(
-                    title = section.title,
-                    modifier = Modifier.animateItem()
+        blocks.forEach { block ->
+            when (block) {
+                is SettingsBlock.SettingsCustom -> item(
+                    key = "custom_${block.key}",
+                    content = block.content
                 )
-            }
 
-            itemsIndexed(
-                items = section.entries,
-                key = { _, entry -> "${section.title}_${entry.title}" },
-            ) { index, entry ->
-                SettingsEntryRow(
-                    entry = entry,
-                    shapes = if (section.entries.size == 1) ListItemDefaults.shapes(MaterialTheme.shapes.large)
-                    else ListItemDefaults.segmentedShapes(
-                        index,
-                        section.entries.size,
-                    ),
-                    colors = entry.colors,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.animateItem()
-                )
+                is SettingsBlock.SettingsSection -> settingsSection(block)
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun LazyListScope.settingsSection(section: SettingsBlock.SettingsSection) {
+    stickyHeader(key = "header_${section.title}") {
+        SettingsSectionHeader(
+            title = section.title,
+            modifier = Modifier.animateItem()
+        )
+    }
+
+    itemsIndexed(
+        items = section.entries,
+        key = { _, entry -> "${section.title}_${entry.title}" },
+    ) { index, entry ->
+        SettingsEntryRow(
+            entry = entry,
+            shapes = if (section.entries.size == 1) ListItemDefaults.shapes(MaterialTheme.shapes.large)
+            else ListItemDefaults.segmentedShapes(
+                index,
+                section.entries.size,
+            ),
+            colors = entry.colors,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.animateItem()
+        )
+    }
+}
+
 @Composable
 private fun SettingsEntryRow(
     entry: SettingsEntry,

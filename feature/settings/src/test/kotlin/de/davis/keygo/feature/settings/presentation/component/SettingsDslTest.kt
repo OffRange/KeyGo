@@ -23,13 +23,26 @@ class SettingsDslTest {
             section(title = 2) {
                 value(title = 20, value = "2.1", colors)
             }
-        }.build()
+        }.build().map { assertIs<SettingsSection>(it) }
 
         assertEquals(2, sections.size)
         assertEquals(1, sections[0].title)
         assertEquals(listOf(10, 11), sections[0].entries.map { it.title })
         assertEquals(2, sections[1].title)
         assertEquals(listOf(20), sections[1].entries.map { it.title })
+    }
+
+    @Test
+    fun `custom block keeps its place among sections`() {
+        val blocks = SettingsScope().apply {
+            custom(key = "account") {}
+            section(title = 1) {
+                action(title = 10, onClick = {}, colors)
+            }
+        }.build()
+
+        assertEquals("account", assertIs<SettingsCustom>(blocks[0]).key)
+        assertEquals(1, assertIs<SettingsSection>(blocks[1]).title)
     }
 
     @Test

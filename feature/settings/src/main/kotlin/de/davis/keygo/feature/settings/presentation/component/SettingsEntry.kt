@@ -1,7 +1,9 @@
 package de.davis.keygo.feature.settings.presentation.component
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.material3.ListItemColors
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 import de.davis.keygo.core.util.presentation.UIText
 
@@ -57,7 +59,14 @@ internal sealed interface SettingsEntry {
     }
 }
 
-internal data class SettingsSection(
-    @param:StringRes val title: Int,
-    val entries: List<SettingsEntry>,
-)
+internal sealed interface SettingsBlock {
+    data class SettingsSection(
+        @param:StringRes val title: Int,
+        val entries: List<SettingsEntry>,
+    ) : SettingsBlock
+
+    data class SettingsCustom(
+        val key: String,
+        val content: @Composable LazyItemScope.() -> Unit,
+    ) : SettingsBlock
+}

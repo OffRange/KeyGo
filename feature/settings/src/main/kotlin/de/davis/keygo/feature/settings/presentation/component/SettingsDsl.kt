@@ -1,7 +1,9 @@
 package de.davis.keygo.feature.settings.presentation.component
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.material3.ListItemColors
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 import de.davis.keygo.core.util.presentation.UIText
 
@@ -10,13 +12,17 @@ internal annotation class SettingsDsl
 
 @SettingsDsl
 internal class SettingsScope {
-    private val sections = mutableListOf<SettingsSection>()
+    private val blocks = mutableListOf<SettingsBlock>()
 
     fun section(@StringRes title: Int, block: SectionScope.() -> Unit) {
-        sections += SettingsSection(title, SectionScope().apply(block).build())
+        blocks += SettingsBlock.SettingsSection(title, SectionScope().apply(block).build())
     }
 
-    fun build(): List<SettingsSection> = sections.toList()
+    fun custom(key: String, content: @Composable LazyItemScope.() -> Unit) {
+        blocks += SettingsBlock.SettingsCustom(key, content)
+    }
+
+    fun build(): List<SettingsBlock> = blocks.toList()
 }
 
 @SettingsDsl
