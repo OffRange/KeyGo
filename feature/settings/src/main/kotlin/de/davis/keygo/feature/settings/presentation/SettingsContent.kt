@@ -10,7 +10,6 @@ import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockReset
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Update
@@ -35,15 +34,19 @@ import de.davis.keygo.feature.settings.presentation.component.AccountCard
 import de.davis.keygo.feature.settings.presentation.component.SectionScope
 import de.davis.keygo.feature.settings.presentation.component.SettingsList
 
+internal val defaultColors
+    @Composable
+    get() = ListItemDefaults.segmentedColors(
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        leadingContentColor = MaterialTheme.colorScheme.primaryContainer,
+    )
+
 @Composable
 internal fun SettingsContent(
     state: SettingsUiState,
     onEvent: (SettingsUiEvent) -> Unit,
 ) {
-    val defaultColors = ListItemDefaults.segmentedColors(
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        leadingContentColor = MaterialTheme.colorScheme.primaryContainer,
-    )
+    val defaultColors = defaultColors
     val warningColors = ListItemDefaults.segmentedColors(
         containerColor = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -77,14 +80,6 @@ internal fun SettingsContent(
             }
 
             section(title = R.string.settings_security) {
-                action(
-                    title = R.string.settings_reset_password,
-                    icon = Icons.Default.LockReset,
-                    supporting = ResourceString(R.string.settings_reset_password_description),
-                    colors = defaultColors,
-                    onClick = { onEvent(SettingsUiEvent.ResetPassword) },
-                )
-
                 if (state.biometricsAvailable) toggle(
                     title = R.string.settings_use_biometrics,
                     icon = Icons.Default.Fingerprint,

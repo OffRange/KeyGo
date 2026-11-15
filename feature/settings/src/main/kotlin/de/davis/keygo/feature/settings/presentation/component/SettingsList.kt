@@ -82,19 +82,28 @@ private fun LazyListScope.settingsSection(section: SettingsBlock.SettingsSection
 
     itemsIndexed(
         items = section.entries,
-        key = { _, entry -> "${section.title}_${entry.title}" },
-    ) { index, entry ->
-        SettingsEntryRow(
-            entry = entry,
-            shapes = if (section.entries.size == 1) ListItemDefaults.shapes(MaterialTheme.shapes.large)
-            else ListItemDefaults.segmentedShapes(
-                index,
-                section.entries.size,
-            ),
-            colors = entry.colors,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.animateItem()
-        )
+        key = { _, item ->
+            when (item) {
+                is SettingsEntry -> "${section.title}_${item.title}"
+                is SettingsBlock.SettingsCustom -> "${section.title}_custom_${item.key}"
+            }
+        },
+    ) { index, item ->
+        when (item) {
+            is SettingsEntry -> SettingsEntryRow(
+                entry = item,
+                shapes = if (section.entries.size == 1) ListItemDefaults.shapes(MaterialTheme.shapes.large)
+                else ListItemDefaults.segmentedShapes(
+                    index,
+                    section.entries.size,
+                ),
+                colors = item.colors,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.animateItem()
+            )
+
+            is SettingsBlock.SettingsCustom -> item.content(this)
+        }
     }
 }
 

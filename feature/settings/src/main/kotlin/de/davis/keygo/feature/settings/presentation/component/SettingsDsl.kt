@@ -27,7 +27,7 @@ internal class SettingsScope {
 
 @SettingsDsl
 internal class SectionScope {
-    private val entries = mutableListOf<SettingsEntry>()
+    private val entries = mutableListOf<SectionItem>()
 
     fun toggle(
         @StringRes title: Int,
@@ -105,5 +105,9 @@ internal class SectionScope {
         )
     }
 
-    fun build(): List<SettingsEntry> = entries.toList()
+    fun custom(key: String, content: @Composable LazyItemScope.() -> Unit) {
+        entries += SettingsBlock.SettingsCustom(key, content)
+    }
+
+    fun build(): List<SectionItem> = entries.toList()
 }

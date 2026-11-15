@@ -41,8 +41,20 @@
     <string name="change_password_failed">Passwort konnte nicht geändert werden</string>
 
     <string name="account">Account</string>
-    <string name="account_signed_in">Eingeloggt \u2022 %s</string>
     <string name="account_local_only">Nur auf diesem Gerät</string>
+    <string name="account_not_connected">Mit keinem Server verbunden</string>
+    <string name="account_connect_to_server">Mit einem Server verbinden</string>
+    <string name="account_connect_subtitle">Speichere eine verschlüsselte Kopie deiner Daten und nutze sie auf anderen Geräten.</string>
+    <string name="account_e2e">Ende-zu-Ende-verschlüsselt. Der Server sieht weder Daten noch Passwort.</string>
+    <string name="account_offline_first">Offline nutzbar. Entsperren klappt auch ohne Verbindung zum Server.</string>
+    <string name="account_self_hostable">Hoste deinen eigenen Server oder nutze einen von jemandem, dem du vertraust.</string>
+    <string name="account_scan_invite">Einladung scannen</string>
+    <string name="account_connect">Verbinden</string>
+
+    <string name="account_signed_in">Eingeloggt \u2022 %s</string>
+
+    <string name="server">Server</string>
 
     <string name="cancel">Abbrechen</string>
+    <string name="back">Zurück</string>
 </resources>

@@ -7,7 +7,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 import de.davis.keygo.core.util.presentation.UIText
 
-internal sealed interface SettingsEntry {
+internal sealed interface SectionItem
+
+internal sealed interface SettingsEntry : SectionItem {
     @get:StringRes
     val title: Int
     val icon: ImageVector?
@@ -62,11 +64,11 @@ internal sealed interface SettingsEntry {
 internal sealed interface SettingsBlock {
     data class SettingsSection(
         @param:StringRes val title: Int,
-        val entries: List<SettingsEntry>,
+        val entries: List<SectionItem>,
     ) : SettingsBlock
 
     data class SettingsCustom(
         val key: String,
         val content: @Composable LazyItemScope.() -> Unit,
-    ) : SettingsBlock
+    ) : SettingsBlock, SectionItem
 }

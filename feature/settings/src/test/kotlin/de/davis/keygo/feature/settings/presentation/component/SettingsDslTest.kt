@@ -23,13 +23,13 @@ class SettingsDslTest {
             section(title = 2) {
                 value(title = 20, value = "2.1", colors)
             }
-        }.build().map { assertIs<SettingsSection>(it) }
+        }.build().map { assertIs<SettingsBlock.SettingsSection>(it) }
 
         assertEquals(2, sections.size)
         assertEquals(1, sections[0].title)
-        assertEquals(listOf(10, 11), sections[0].entries.map { it.title })
+        assertEquals(listOf(10, 11), sections[0].entries.map { assertIs<SettingsEntry>(it).title })
         assertEquals(2, sections[1].title)
-        assertEquals(listOf(20), sections[1].entries.map { it.title })
+        assertEquals(listOf(20), sections[1].entries.map { assertIs<SettingsEntry>(it).title })
     }
 
     @Test
@@ -41,8 +41,21 @@ class SettingsDslTest {
             }
         }.build()
 
-        assertEquals("account", assertIs<SettingsCustom>(blocks[0]).key)
-        assertEquals(1, assertIs<SettingsSection>(blocks[1]).title)
+        assertEquals("account", assertIs<SettingsBlock.SettingsCustom>(blocks[0]).key)
+        assertEquals(1, assertIs<SettingsBlock.SettingsSection>(blocks[1]).title)
+    }
+
+    @Test
+    fun `custom item keeps its place among a section's entries`() {
+        val entries = SectionScope().apply {
+            action(title = 10, onClick = {}, colors)
+            custom(key = "card") {}
+            action(title = 11, onClick = {}, colors)
+        }.build()
+
+        assertEquals(10, assertIs<SettingsEntry>(entries[0]).title)
+        assertEquals("card", assertIs<SettingsBlock.SettingsCustom>(entries[1]).key)
+        assertEquals(11, assertIs<SettingsEntry>(entries[2]).title)
     }
 
     @Test
@@ -92,7 +105,7 @@ class SettingsDslTest {
             if (show) action(title = 12, onClick = {}, colors = colors)
         }.build()
 
-        assertEquals(listOf(11), entries.map { it.title })
+        assertEquals(listOf(11), entries.map { assertIs<SettingsEntry>(it).title })
     }
 
     @Test
