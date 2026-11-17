@@ -1,34 +1,14 @@
 package de.davis.keygo.feature.settings.presentation.account
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlexBox
-import androidx.compose.foundation.layout.FlexBoxConfig
-import androidx.compose.foundation.layout.FlexConfig
-import androidx.compose.foundation.layout.FlexWrap
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.LockReset
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.outlined.CloudOff
-import androidx.compose.material.icons.outlined.Dns
-import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -38,23 +18,22 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import de.davis.keygo.core.ui.components.IconBadge
 import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.feature.settings.R
 import de.davis.keygo.feature.settings.presentation.account.components.ConnectToServerCard
+import de.davis.keygo.feature.settings.presentation.account.models.AccountUiEvent
 import de.davis.keygo.feature.settings.presentation.component.AccountIconBadge
 import de.davis.keygo.feature.settings.presentation.component.SettingsList
 import de.davis.keygo.feature.settings.presentation.defaultColors
 import de.davis.keygo.feature.settings.presentation.models.AccountState
 
 @Composable
-internal fun AccountContent(state: AccountState, onEvent: () -> Unit) {
+internal fun AccountContent(state: AccountState, onEvent: (AccountUiEvent) -> Unit) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val defaultColors = defaultColors
 
@@ -69,7 +48,7 @@ internal fun AccountContent(state: AccountState, onEvent: () -> Unit) {
                 },
                 navigationIcon = {
                     IconButton(
-                        onClick = {},
+                        onClick = { onEvent(AccountUiEvent.OnBackClicked) },
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Default.ArrowBack,
@@ -122,13 +101,16 @@ internal fun AccountContent(state: AccountState, onEvent: () -> Unit) {
                     icon = Icons.Default.LockReset,
                     supporting = ResourceString(R.string.settings_reset_password_description),
                     colors = defaultColors,
-                    onClick = {},
+                    onClick = { onEvent(AccountUiEvent.ResetPassword) },
                 )
             }
 
             section(title = R.string.server) {
                 custom(key = "server") {
-                    ConnectToServerCard()
+                    ConnectToServerCard(
+                        onScanInviteClicked = { onEvent(AccountUiEvent.OnScanInviteClicked) },
+                        onConnectClicked = { onEvent(AccountUiEvent.OnConnectClicked) },
+                    )
                 }
             }
         }

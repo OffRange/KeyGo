@@ -38,7 +38,11 @@ import de.davis.keygo.core.ui.components.IconBadge
 import de.davis.keygo.feature.settings.R
 
 @Composable
-fun ConnectToServerCard(modifier: Modifier = Modifier) {
+fun ConnectToServerCard(
+    onScanInviteClicked: () -> Unit,
+    onConnectClicked: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -77,13 +81,18 @@ fun ConnectToServerCard(modifier: Modifier = Modifier) {
                 )
             }
 
-            Buttons()
+            Buttons(
+                onScanInviteClicked = onScanInviteClicked,
+                onConnectClicked = onConnectClicked,
+            )
         }
     }
 }
 
 @Composable
 private fun Buttons(
+    onScanInviteClicked: () -> Unit,
+    onConnectClicked: () -> Unit,
     modifier: Modifier = Modifier,
     buttonSize: Dp = ButtonDefaults.MediumContainerHeight
 ) {
@@ -96,7 +105,7 @@ private fun Buttons(
         config = ServerButtonsConfig,
     ) {
         FilledTonalButton(
-            onClick = {},
+            onClick = onScanInviteClicked,
             modifier = Modifier
                 .heightIn(min = buttonSize)
                 .flex(HalfWidthButton),
@@ -128,7 +137,7 @@ private fun Buttons(
         }
 
         Button(
-            onClick = {},
+            onClick = onConnectClicked,
             modifier = Modifier
                 .heightIn(min = buttonSize)
                 .flex(HalfWidthButton),
@@ -181,6 +190,9 @@ private val HalfWidthButton = FlexConfig {
 @Composable
 private fun ConnectToServerCardPreview() {
     MaterialTheme {
-        ConnectToServerCard()
+        ConnectToServerCard(
+            onScanInviteClicked = {},
+            onConnectClicked = {},
+        )
     }
 }
