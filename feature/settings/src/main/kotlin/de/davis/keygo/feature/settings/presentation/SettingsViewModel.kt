@@ -123,14 +123,12 @@ internal class SettingsViewModel(
 
             SettingsUiEvent.OpenChromeAutofillSettings -> chromeAutofillRepository.openChromeAutofillSettings()
 
-            SettingsUiEvent.ResetPassword -> _event.trySend(SettingsEvent.NavigateToChangePassword)
-
             SettingsUiEvent.OpenBackup -> _event.trySend(SettingsEvent.NavigateToBackup)
 
             SettingsUiEvent.LibrariesClicked -> _event.trySend(SettingsEvent.NavigateToLibraries)
             SettingsUiEvent.ReportIssue -> _event.trySend(SettingsEvent.ReportIssue)
 
-            SettingsUiEvent.AccountClicked -> {}
+            SettingsUiEvent.OpenAccount -> _event.trySend(SettingsEvent.NavigateToAccount)
         }
     }
 

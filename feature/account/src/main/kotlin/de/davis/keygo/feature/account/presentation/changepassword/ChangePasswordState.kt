@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.settings.presentation.changepassword
+package de.davis.keygo.feature.account.presentation.changepassword
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Stable

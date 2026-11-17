@@ -19,4 +19,14 @@
     <string name="server">Server</string>
 
     <string name="back">Back</string>
+
+    <string name="change_password_title">Change password</string>
+    <string name="current_password">Current password</string>
+    <string name="new_password">New password</string>
+    <string name="confirm_password">Confirm new password</string>
+    <string name="change_password_action">Change password</string>
+    <string name="biometric_confirm_helper">You\'ll confirm with your fingerprint</string>
+    <string name="reauth_dialog_title">Enter your current password</string>
+    <string name="password_changed">Password changed</string>
+    <string name="change_password_failed">Could not change password</string>
 </resources>

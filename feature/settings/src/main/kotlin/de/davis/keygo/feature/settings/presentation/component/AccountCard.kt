@@ -31,7 +31,7 @@ internal fun AccountCard(state: AccountState, onClick: () -> Unit, modifier: Mod
         onClick = onClick,
         modifier = modifier.heightIn(min = 84.dp),
         shapes = ListItemDefaults.shapes(shape = MaterialTheme.shapes.extraLarge),
-        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         verticalAlignment = Alignment.CenterVertically,
         leadingContent = {
             AccountIconBadge(

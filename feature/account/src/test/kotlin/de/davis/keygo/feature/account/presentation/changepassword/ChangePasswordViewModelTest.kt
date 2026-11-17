@@ -1,6 +1,6 @@
 @file:OptIn(ExportArk::class)
 
-package de.davis.keygo.feature.settings.presentation.changepassword
+package de.davis.keygo.feature.account.presentation.changepassword
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.runtime.snapshots.Snapshot

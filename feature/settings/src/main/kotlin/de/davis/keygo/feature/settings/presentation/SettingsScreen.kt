@@ -22,7 +22,7 @@ private const val TAG = "SettingsScreen"
 fun SettingsScreen(
     showLibraries: () -> Unit,
     onOpenBackup: () -> Unit,
-    onOpenChangePassword: () -> Unit,
+    onOpenAccount: () -> Unit,
 ) {
     val viewModel = koinViewModel<SettingsViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -43,8 +43,6 @@ fun SettingsScreen(
         when (it) {
             SettingsEvent.NavigateToLibraries -> showLibraries()
 
-            SettingsEvent.NavigateToChangePassword -> onOpenChangePassword()
-
             SettingsEvent.OpenAutofillSelection -> {
                 enableAutofillLauncher.launch(
                     Intent(Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE).apply {
@@ -58,6 +56,7 @@ fun SettingsScreen(
             SettingsEvent.ReportIssue -> urlHandler.openUri(ISSUES_URL)
 
             SettingsEvent.NavigateToBackup -> onOpenBackup()
+            SettingsEvent.NavigateToAccount -> onOpenAccount()
         }
     }
 

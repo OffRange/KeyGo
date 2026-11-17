@@ -6,10 +6,10 @@ import androidx.navigation3.runtime.NavKey
 import de.davis.keygo.core.item.domain.alias.newItemId
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.presentation.model.RouteDestination
+import de.davis.keygo.feature.account.presentation.ChangePasswordRoute
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
 import de.davis.keygo.feature.password_health.presentation.PasswordHealthRoute
-import de.davis.keygo.feature.settings.presentation.ChangePasswordRoute
 import de.davis.keygo.feature.settings.presentation.SettingsRoute
 import de.davis.keygo.feature.totp.presentation.SelectItemForTotpRoute
 import de.davis.keygo.feature.totp.presentation.TotpImportRedirect

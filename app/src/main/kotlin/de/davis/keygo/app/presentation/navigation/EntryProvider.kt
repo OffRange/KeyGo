@@ -23,6 +23,9 @@ import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
 import de.davis.keygo.R
 import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.dashboard.presentation.dashboardEntries
+import de.davis.keygo.feature.account.presentation.AccountRoute
+import de.davis.keygo.feature.account.presentation.ChangePasswordRoute
+import de.davis.keygo.feature.account.presentation.accountEntries
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.auth.presentation.authEntries
 import de.davis.keygo.feature.backup.presentation.BackupHubRoute
@@ -33,7 +36,6 @@ import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
 import de.davis.keygo.feature.onboarding.presentation.onboardingEntries
 import de.davis.keygo.feature.password_health.presentation.component.PasswordHealthDetailPlaceholder
 import de.davis.keygo.feature.password_health.presentation.passwordHealthEntries
-import de.davis.keygo.feature.settings.presentation.ChangePasswordRoute
 import de.davis.keygo.feature.settings.presentation.settingsEntries
 import de.davis.keygo.feature.totp.presentation.SelectItemForTotpRoute
 import de.davis.keygo.feature.totp.presentation.selectItemForTotpEntries
@@ -98,10 +100,15 @@ fun keyGoEntryProvider(navigator: AppNavigator, hasAccess: Boolean): (NavKey) ->
 
         settingsEntries(
             metadata = NavigationOnly,
-            onOpenChangePassword = { navigator.navigate(ChangePasswordRoute) },
             onShowLibraries = { navigator.navigate(RouteDestination.Libraries) },
             onOpenBackup = { navigator.navigate(BackupHubRoute) },
-            onUp = { navigator.goBack() },
+            onOpenAccount = { navigator.navigate(AccountRoute) },
+        )
+
+        accountEntries(
+            metadata = WindowOwning,
+            onOpenChangePassword = { navigator.navigate(ChangePasswordRoute) },
+            navigateUp = { navigator.goBack() },
         )
 
         backupEntries(

@@ -146,6 +146,7 @@ dependencies {
     implementation(projects.feature.backup)
     implementation(projects.feature.onboarding)
     implementation(projects.feature.passwordHealth)
+    implementation(projects.feature.account)
     implementation(projects.legacyMigration)
 
     implementation(libs.androidx.core.splashscreen)

@@ -28,15 +28,5 @@
     <string name="settings_3rd_party_licenses">Drittanbieter-Lizenzen</string>
     <string name="settings_version">Version</string>
 
-    <string name="change_password_title">Passwort ändern</string>
-    <string name="current_password">Aktuelles Passwort</string>
-    <string name="new_password">Neues Passwort</string>
-    <string name="confirm_password">Neues Passwort bestätigen</string>
-    <string name="change_password_action">Passwort ändern</string>
-    <string name="biometric_confirm_helper">Du bestätigst mit deinem Fingerabdruck</string>
-    <string name="reauth_dialog_title">Gib dein aktuelles Passwort ein</string>
-    <string name="password_changed">Passwort geändert</string>
-    <string name="change_password_failed">Passwort konnte nicht geändert werden</string>
-
     <string name="account_signed_in">Eingeloggt \u2022 %s</string>
 </resources>

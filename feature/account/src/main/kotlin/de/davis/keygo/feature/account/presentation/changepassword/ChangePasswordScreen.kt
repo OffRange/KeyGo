@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.settings.presentation.changepassword
+package de.davis.keygo.feature.account.presentation.changepassword
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
@@ -50,7 +50,7 @@ import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.core.util.presentation.snackbar.LocalSnackbarManager
-import de.davis.keygo.feature.settings.R
+import de.davis.keygo.feature.account.R
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
