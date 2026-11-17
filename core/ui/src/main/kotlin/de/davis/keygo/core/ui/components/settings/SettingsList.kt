@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.settings.presentation.component
+package de.davis.keygo.core.ui.components.settings
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
@@ -43,11 +43,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.ui.R
 import de.davis.keygo.core.util.presentation.asString
-import de.davis.keygo.feature.settings.R
+
+object SettingsListDefaults {
+    val colors: ListItemColors
+        @Composable
+        get() = ListItemDefaults.segmentedColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            leadingContentColor = MaterialTheme.colorScheme.primaryContainer,
+        )
+}
 
 @Composable
-internal fun SettingsList(
+fun SettingsList(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
     content: SettingsScope.() -> Unit,
@@ -97,7 +106,7 @@ private fun LazyListScope.settingsSection(section: SettingsBlock.SettingsSection
                     index,
                     section.entries.size,
                 ),
-                colors = item.colors,
+                colors = item.colors ?: SettingsListDefaults.colors,
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.animateItem()
             )

@@ -1,7 +1,7 @@
 package de.davis.keygo.feature.settings.presentation
 
 import de.davis.keygo.core.security.domain.model.LockInfo
-import de.davis.keygo.feature.settings.presentation.models.AccountState
+import de.davis.keygo.feature.account.presentation.models.AccountState
 
 internal data class SettingsUiState(
     val autofillEnabled: Boolean = false,

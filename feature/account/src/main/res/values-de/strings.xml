@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_security">Sicherheit</string>
+    <string name="settings_reset_password">Hauptpasswort ändern</string>
+    <string name="settings_reset_password_description">Wird zum Entsperren von KeyGo verwendet</string>
+    <string name="settings_reset_password_w_server_description">Wird zum Entsperren von KeyGo und zur Anmeldung am Server verwendet</string>
+
+    <string name="account">Account</string>
+    <string name="account_local_only">Nur auf diesem Gerät</string>
+    <string name="account_not_connected">Mit keinem Server verbunden</string>
+    <string name="account_connect_to_server">Mit einem Server verbinden</string>
+    <string name="account_connect_subtitle">Speichere eine verschlüsselte Kopie deiner Daten und nutze sie auf anderen Geräten.</string>
+    <string name="account_e2e">Ende-zu-Ende-verschlüsselt. Der Server sieht weder Daten noch Passwort.</string>
+    <string name="account_offline_first">Offline nutzbar. Entsperren klappt auch ohne Verbindung zum Server.</string>
+    <string name="account_self_hostable">Hoste deinen eigenen Server oder nutze einen von jemandem, dem du vertraust.</string>
+    <string name="account_scan_invite">Einladung scannen</string>
+    <string name="account_connect">Verbinden</string>
+
+    <string name="server">Server</string>
+
+    <string name="back">Zurück</string>
+</resources>

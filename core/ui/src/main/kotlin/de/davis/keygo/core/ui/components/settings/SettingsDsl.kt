@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.settings.presentation.component
+package de.davis.keygo.core.ui.components.settings
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.lazy.LazyItemScope
@@ -8,10 +8,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import de.davis.keygo.core.util.presentation.UIText
 
 @DslMarker
-internal annotation class SettingsDsl
+annotation class SettingsDsl
 
 @SettingsDsl
-internal class SettingsScope {
+class SettingsScope {
     private val blocks = mutableListOf<SettingsBlock>()
 
     fun section(@StringRes title: Int, block: SectionScope.() -> Unit) {
@@ -26,14 +26,14 @@ internal class SettingsScope {
 }
 
 @SettingsDsl
-internal class SectionScope {
+class SectionScope {
     private val entries = mutableListOf<SectionItem>()
 
     fun toggle(
         @StringRes title: Int,
         checked: Boolean,
         onCheckedChange: (Boolean) -> Unit,
-        colors: ListItemColors,
+        colors: ListItemColors? = null,
         icon: ImageVector? = null,
         supporting: UIText? = null,
         enabled: Boolean = true,
@@ -52,7 +52,7 @@ internal class SectionScope {
     fun action(
         @StringRes title: Int,
         onClick: () -> Unit,
-        colors: ListItemColors,
+        colors: ListItemColors? = null,
         icon: ImageVector? = null,
         navigationIcon: ImageVector? = null,
         supporting: UIText? = null,
@@ -70,7 +70,7 @@ internal class SectionScope {
     fun value(
         @StringRes title: Int,
         value: String,
-        colors: ListItemColors,
+        colors: ListItemColors? = null,
         icon: ImageVector? = null,
         supporting: UIText? = null,
         onClick: (() -> Unit)? = null,
@@ -91,7 +91,7 @@ internal class SectionScope {
         options: List<T>,
         label: (T) -> UIText,
         onSelect: (T) -> Unit,
-        colors: ListItemColors,
+        colors: ListItemColors? = null,
         icon: ImageVector? = null,
     ) {
         entries += SettingsEntry.Picker(

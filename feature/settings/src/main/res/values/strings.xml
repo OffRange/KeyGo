@@ -5,8 +5,6 @@
     <string name="settings_security">Security</string>
     <string name="settings_use_biometrics">Use Biometrics</string>
     <string name="settings_use_biometrics_description">Unlock KeyGo with your fingerprint or face</string>
-    <string name="settings_reset_password">Reset Password</string>
-    <string name="settings_reset_password_description">Change your main password that protects your data</string>
     <string name="settings_autofill">Autofill</string>
     <string name="settings_autofill_description">Fill in your logins in other apps and browsers</string>
     <string name="settings_autofill_finish_setup">Finish setting up autofill</string>
@@ -39,21 +37,5 @@
     <string name="password_changed">Password changed</string>
     <string name="change_password_failed">Could not change password</string>
 
-    <string name="account">Account</string>
-    <string name="account_local_only">Locally on this device only</string>
-    <string name="account_not_connected">Not connected to a server</string>
-    <string name="account_connect_to_server">Connect to a server</string>
-    <string name="account_connect_subtitle">Keep an encrypted copy of your account\'s data and use it on other devices.</string>
-    <string name="account_e2e">End-to-end encrypted. The server never sees your data or password.</string>
-    <string name="account_offline_first">Offline first. Unlock your data even when you can\'t reach the server.</string>
-    <string name="account_self_hostable">Run your own server, or use one run by someone you trust.</string>
-    <string name="account_scan_invite">Scan invite</string>
-    <string name="account_connect">Connect</string>
-
     <string name="account_signed_in">Signed in \u2022 %s</string>
-
-    <string name="server">Server</string>
-
-    <string name="cancel">Cancel</string>
-    <string name="back">Back</string>
 </resources>

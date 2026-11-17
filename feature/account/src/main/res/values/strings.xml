@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_security">Security</string>
+    <string name="settings_reset_password">Change Password</string>
+    <string name="settings_reset_password_description">Used to unlock KeyGo</string>
+    <string name="settings_reset_password_w_server_description">Used to unlock KeyGo and sign in</string>
+
+    <string name="account">Account</string>
+    <string name="account_local_only">Locally on this device only</string>
+    <string name="account_not_connected">Not connected to a server</string>
+    <string name="account_connect_to_server">Connect to a server</string>
+    <string name="account_connect_subtitle">Keep an encrypted copy of your account\'s data and use it on other devices.</string>
+    <string name="account_e2e">End-to-end encrypted. The server never sees your data or password.</string>
+    <string name="account_offline_first">Offline first. Unlock your data even when you can\'t reach the server.</string>
+    <string name="account_self_hostable">Run your own server, or use one run by someone you trust.</string>
+    <string name="account_scan_invite">Scan invite</string>
+    <string name="account_connect">Connect</string>
+
+    <string name="server">Server</string>
+
+    <string name="back">Back</string>
+</resources>

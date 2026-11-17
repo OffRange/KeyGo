@@ -19,6 +19,7 @@ dependencies {
     implementation(projects.core.ui)
     implementation(projects.core.identity)
     implementation(projects.core.item)
+    implementation(projects.feature.account)
     implementation(projects.feature.autofill)
     implementation(projects.feature.backup)
 

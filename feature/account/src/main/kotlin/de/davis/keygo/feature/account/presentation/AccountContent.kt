@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.settings.presentation.account
+package de.davis.keygo.feature.account.presentation
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,19 +23,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.ui.components.settings.SettingsList
 import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
-import de.davis.keygo.feature.settings.R
-import de.davis.keygo.feature.settings.presentation.account.components.ConnectToServerCard
-import de.davis.keygo.feature.settings.presentation.account.models.AccountUiEvent
-import de.davis.keygo.feature.settings.presentation.component.AccountIconBadge
-import de.davis.keygo.feature.settings.presentation.component.SettingsList
-import de.davis.keygo.feature.settings.presentation.defaultColors
-import de.davis.keygo.feature.settings.presentation.models.AccountState
+import de.davis.keygo.feature.account.R
+import de.davis.keygo.feature.account.presentation.components.AccountIconBadge
+import de.davis.keygo.feature.account.presentation.components.ConnectToServerCard
+import de.davis.keygo.feature.account.presentation.models.AccountState
+import de.davis.keygo.feature.account.presentation.models.AccountUiEvent
 
 @Composable
 internal fun AccountContent(state: AccountState, onEvent: (AccountUiEvent) -> Unit) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val defaultColors = defaultColors
 
     Scaffold(
         modifier = Modifier
@@ -99,8 +97,10 @@ internal fun AccountContent(state: AccountState, onEvent: (AccountUiEvent) -> Un
                 action(
                     title = R.string.settings_reset_password,
                     icon = Icons.Default.LockReset,
-                    supporting = ResourceString(R.string.settings_reset_password_description),
-                    colors = defaultColors,
+                    supporting = ResourceString(
+                        if (state is AccountState.Connected) R.string.settings_reset_password_w_server_description
+                        else R.string.settings_reset_password_description
+                    ),
                     onClick = { onEvent(AccountUiEvent.ResetPassword) },
                 )
             }

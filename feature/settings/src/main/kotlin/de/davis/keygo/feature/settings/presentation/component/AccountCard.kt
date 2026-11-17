@@ -20,8 +20,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.feature.account.presentation.components.AccountIconBadge
+import de.davis.keygo.feature.account.presentation.models.AccountState
 import de.davis.keygo.feature.settings.R
-import de.davis.keygo.feature.settings.presentation.models.AccountState
+import de.davis.keygo.feature.account.R as AccountR
 
 @Composable
 internal fun AccountCard(state: AccountState, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -44,7 +46,7 @@ internal fun AccountCard(state: AccountState, onClick: () -> Unit, modifier: Mod
                     R.string.account_signed_in,
                     state.server
                 )
-                else stringResource(R.string.account_local_only)
+                else stringResource(AccountR.string.account_local_only)
             )
         },
         trailingContent = {
@@ -55,7 +57,7 @@ internal fun AccountCard(state: AccountState, onClick: () -> Unit, modifier: Mod
         },
     ) {
         Text(
-            text = if (state is AccountState.Connected) state.username else stringResource(R.string.account),
+            text = if (state is AccountState.Connected) state.username else stringResource(AccountR.string.account),
             fontWeight = FontWeight.SemiBold
         )
     }

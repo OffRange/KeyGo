@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.settings.presentation.account.models
+package de.davis.keygo.feature.account.presentation.models
 
 internal sealed interface AccountUiEvent {
     data object OnBackClicked : AccountUiEvent

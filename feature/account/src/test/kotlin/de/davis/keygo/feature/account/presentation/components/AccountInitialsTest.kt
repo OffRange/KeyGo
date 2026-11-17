@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.settings.presentation.component
+package de.davis.keygo.feature.account.presentation.components
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.settings.presentation.component
+package de.davis.keygo.core.ui.components.settings
 
 import androidx.compose.material3.ListItemColors
 import androidx.compose.ui.graphics.Color
@@ -182,6 +182,18 @@ class SettingsDslTest {
         val picker = assertIs<SettingsEntry.Picker>(entry)
         assertEquals(-1, picker.selectedIndex)
         assertNull(picker.supporting)
+    }
+
+    @Test
+    fun `entries without colors leave them to the list default`() {
+        val entries = SectionScope().apply {
+            toggle(title = 10, checked = true, onCheckedChange = {})
+            action(title = 11, onClick = {})
+            value(title = 12, value = "v")
+            picker(title = 13, selected = "a", options = listOf("a"), label = { UIText.RawString(it) }, onSelect = {})
+        }.build()
+
+        assertTrue(entries.all { assertIs<SettingsEntry>(it).colors == null })
     }
 
     private fun testIcon(): ImageVector = ImageVector.Builder(

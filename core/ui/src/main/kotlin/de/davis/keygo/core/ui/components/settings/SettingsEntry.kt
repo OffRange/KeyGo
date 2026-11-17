@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.settings.presentation.component
+package de.davis.keygo.core.ui.components.settings
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.lazy.LazyItemScope
@@ -7,9 +7,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 import de.davis.keygo.core.util.presentation.UIText
 
-internal sealed interface SectionItem
+sealed interface SectionItem
 
-internal sealed interface SettingsEntry : SectionItem {
+sealed interface SettingsEntry : SectionItem {
     @get:StringRes
     val title: Int
     val icon: ImageVector?
@@ -17,13 +17,14 @@ internal sealed interface SettingsEntry : SectionItem {
     /** [UIText] rather than a string resource: some rows describe live state. */
     val supporting: UIText?
 
-    val colors: ListItemColors
+    /** Null falls back to [SettingsListDefaults.colors] when the row is drawn. */
+    val colors: ListItemColors?
 
     data class Toggle(
         @param:StringRes override val title: Int,
         override val icon: ImageVector? = null,
         override val supporting: UIText? = null,
-        override val colors: ListItemColors,
+        override val colors: ListItemColors? = null,
         val checked: Boolean,
         val enabled: Boolean = true,
         val onCheckedChange: (Boolean) -> Unit,
@@ -33,7 +34,7 @@ internal sealed interface SettingsEntry : SectionItem {
         @param:StringRes override val title: Int,
         override val icon: ImageVector? = null,
         override val supporting: UIText? = null,
-        override val colors: ListItemColors,
+        override val colors: ListItemColors? = null,
         val navigationIcon: ImageVector? = null,
         val onClick: () -> Unit,
     ) : SettingsEntry
@@ -42,7 +43,7 @@ internal sealed interface SettingsEntry : SectionItem {
         @param:StringRes override val title: Int,
         override val icon: ImageVector? = null,
         override val supporting: UIText? = null,
-        override val colors: ListItemColors,
+        override val colors: ListItemColors? = null,
         val value: String,
         val onClick: (() -> Unit)? = null,
     ) : SettingsEntry
@@ -50,7 +51,7 @@ internal sealed interface SettingsEntry : SectionItem {
     data class Picker(
         @param:StringRes override val title: Int,
         override val icon: ImageVector? = null,
-        override val colors: ListItemColors,
+        override val colors: ListItemColors? = null,
         val selectedIndex: Int,
         val options: List<Option>,
     ) : SettingsEntry {
@@ -61,7 +62,7 @@ internal sealed interface SettingsEntry : SectionItem {
     }
 }
 
-internal sealed interface SettingsBlock {
+sealed interface SettingsBlock {
     data class SettingsSection(
         @param:StringRes val title: Int,
         val entries: List<SectionItem>,

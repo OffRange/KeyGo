@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.settings.presentation.component
+package de.davis.keygo.feature.account.presentation.components
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -19,8 +19,8 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import de.davis.keygo.core.ui.components.IconBadge
-import de.davis.keygo.feature.settings.presentation.models.AccountState
-import de.davis.keygo.feature.settings.presentation.models.badgeColor
+import de.davis.keygo.feature.account.presentation.models.AccountState
+import de.davis.keygo.feature.account.presentation.models.badgeColor
 
 private val UsernameSeparators = charArrayOf('.', '-', '_')
 
@@ -35,7 +35,7 @@ internal fun accountInitials(username: String): String {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun AccountIconBadge(
+fun AccountIconBadge(
     state: AccountState,
     badgeSize: Dp,
     iconSize: Dp,
