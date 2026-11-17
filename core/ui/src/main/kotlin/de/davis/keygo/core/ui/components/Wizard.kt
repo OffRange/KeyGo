@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.backup.presentation.component
+package de.davis.keygo.core.ui.components
 
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
@@ -23,19 +23,22 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -46,28 +49,37 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
 
+private val WizardHorizontalPadding = 24.dp
+
 /**
- * Reusable, step-based wizard chrome shared by the export and import backup flows.
+ * Reusable, step-based wizard chrome shared by the backup and account flows.
  *
- * Owns the generic behaviour: an animated top progress indicator, a [TopAppBar] whose navigation
- * icon walks back through [steps] (or calls [navigateUp] on the first step), predictive-back that
- * seeks the step transition, and an optional bottom continue [Button]. Callers supply only the
- * per-step [title] and body [content] plus the label/icon rendered inside the continue button.
+ * Owns the generic behaviour: an animated step indicator, a [TopAppBar] whose navigation icon walks
+ * back through [steps] (or calls [navigateUp] on the first step), predictive-back that seeks the
+ * step transition, and a full-width bottom continue [Button]. Callers supply the body [content]
+ * plus the label/icon rendered inside the continue button.
+ *
+ * With a [title] the bar shows it and the step indicator sits below the bar; this suits steps
+ * whose body is a list with no heading of its own. Without one the indicator moves into the bar,
+ * the way onboarding does it, and the step's content carries its own headline.
+ *
+ * A step that offers a second, optional way forward (a "Scan invite") passes [secondaryAction]. It
+ * sits above the continue button, so the main action stays full width and closest to the thumb.
  *
  * @param currentStep must be an element of [steps].
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun <T> Wizard(
+fun <T> Wizard(
     steps: List<T>,
     currentStep: T,
-    title: String,
+    title: String?,
     onBack: () -> Unit,
     onContinue: () -> Unit,
     navigateUp: () -> Unit,
     modifier: Modifier = Modifier,
     showContinueButton: Boolean = true,
     canContinue: Boolean = true,
+    secondaryAction: (@Composable () -> Unit)? = null,
     continueButtonContent: @Composable RowScope.() -> Unit,
     content: @Composable (T) -> Unit,
 ) {
@@ -99,14 +111,19 @@ internal fun <T> Wizard(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(text = title)
+                    if (title != null) Text(text = title)
+                    else StepIndicator(
+                        stepCount = steps.size,
+                        currentIndex = currentIndex,
+                        modifier = Modifier.padding(end = WizardHorizontalPadding - 4.dp),
+                    )
                 },
                 navigationIcon = {
                     IconButton(
                         onClick = {
                             if (currentIndex == 0) navigateUp()
                             else onBack()
-                        }
+                        },
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Default.ArrowBack,
@@ -118,18 +135,31 @@ internal fun <T> Wizard(
         },
         bottomBar = {
             AnimatedVisibility(visible = showContinueButton) {
-                Box(
+                val buttonHeight = ButtonDefaults.MediumContainerHeight
+                Column(
                     modifier = Modifier
+                        .fillMaxWidth()
                         .navigationBarsPadding()
-                        .padding(vertical = 12.dp, horizontal = 4.dp)
-                        .imePadding(),
+                        .imePadding()
+                        .padding(horizontal = WizardHorizontalPadding, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    secondaryAction?.invoke()
                     Button(
                         onClick = onContinue,
                         enabled = canContinue,
-                        modifier = Modifier.fillMaxWidth(),
-                        content = continueButtonContent,
-                    )
+                        shapes = ButtonDefaults.shapesFor(buttonHeight),
+                        contentPadding = ButtonDefaults.contentPaddingFor(buttonHeight),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .sizeIn(minHeight = buttonHeight),
+                    ) {
+                        CompositionLocalProvider(
+                            LocalTextStyle provides ButtonDefaults.textStyleFor(buttonHeight),
+                        ) {
+                            continueButtonContent()
+                        }
+                    }
                 }
             }
         }
@@ -138,26 +168,15 @@ internal fun <T> Wizard(
             modifier = Modifier
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)
-                .padding(start = 4.dp, end = 4.dp)
+                .padding(horizontal = WizardHorizontalPadding)
                 .imePadding(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                repeat(steps.size) { page ->
-                    val color by animateColorAsState(
-                        targetValue = if (page <= currentIndex) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.primaryContainer,
-                        label = "indicator_page",
-                    )
-                    Box(
-                        modifier = Modifier
-                            .height(8.dp)
-                            .weight(1f)
-                            .clip(CircleShape)
-                            .background(color),
-                    )
-                }
-            }
+            if (title != null) StepIndicator(
+                stepCount = steps.size,
+                currentIndex = currentIndex,
+            )
+
             transition.AnimatedContent(
                 modifier = Modifier.weight(1f),
                 transitionSpec = {
@@ -171,6 +190,33 @@ internal fun <T> Wizard(
                     content(step)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun StepIndicator(
+    stepCount: Int,
+    currentIndex: Int,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        repeat(stepCount) { page ->
+            val color by animateColorAsState(
+                targetValue = if (page <= currentIndex) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.primaryContainer,
+                label = "indicator_page",
+            )
+            Box(
+                modifier = Modifier
+                    .height(8.dp)
+                    .weight(1f)
+                    .clip(CircleShape)
+                    .background(color),
+            )
         }
     }
 }
