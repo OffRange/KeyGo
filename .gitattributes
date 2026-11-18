@@ -1,0 +1,14 @@
+* text=auto eol=lf
+
+# Windows-only scripts need CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binaries
+*.jar  binary
+*.png  binary
+*.webp binary
+*.jpg  binary
+*.so   binary
+*.keystore binary
+*.jks  binary
