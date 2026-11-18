@@ -258,7 +258,6 @@ docs/superpowers/
 .worktrees/
 
 graphify-out/
-.gitattributes
 
 .docker/
 # Docker Compose
