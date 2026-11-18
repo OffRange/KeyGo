@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.keygo.android.library)
+    alias(libs.plugins.keygo.android.protobuf)
 }
 
 android {
@@ -12,6 +13,8 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.kotlinx.coroutines.core)
 
+    implementation(libs.androidx.datastore)
+    
     testImplementation(libs.okhttp.jvm)
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(testFixtures(projects.core.rust))
