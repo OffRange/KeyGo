@@ -29,4 +29,21 @@
     <string name="reauth_dialog_title">Gib dein aktuelles Passwort ein</string>
     <string name="password_changed">Passwort geändert</string>
     <string name="change_password_failed">Passwort konnte nicht geändert werden</string>
+
+    <string name="continue_step">Weiter</string>
+
+    <string name="server_address">Serveradresse</string>
+
+    <string name="connect_server_which_title">Welcher Server?</string>
+    <string name="connect_server_which_description">Gib die Adresse ein, die du von der Person bekommen hast, die den Server betreibt.</string>
+
+    <string name="connect_server_address_helper">KeyGo prüft den Server, bevor etwas gesendet wird.</string>
+    <string name="connect_server_found">KeyGo-Server gefunden</string>
+    <string name="connect_server_version">Version %1$s</string>
+    <string name="connect_server_invite_only">Nur mit Einladung</string>
+    <string name="connect_server_open_signups">Offene Registrierung</string>
+    <string name="connect_server_scan_invite">Hast du eine Einladung? Scannen</string>
+    <string name="connect_server_unreachable">Server nicht erreichbar. Prüfe die Adresse.</string>
+    <string name="connect_server_not_keygo">Das ist kein KeyGo-Server.</string>
+    <string name="connect_server_use_another">Anderen Server nutzen</string>
 </resources>

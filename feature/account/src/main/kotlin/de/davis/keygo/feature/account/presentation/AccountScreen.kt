@@ -10,6 +10,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 internal fun AccountScreen(
     onOpenChangePassword: () -> Unit,
+    onOpenConnectServer: () -> Unit,
     navigateUp: () -> Unit
 ) {
     val viewModel = koinViewModel<AccountViewModel>()
@@ -18,6 +19,7 @@ internal fun AccountScreen(
     ObserveAsEvents(flow = viewModel.event) {
         when (it) {
             AccountEvent.NavigateToChangePassword -> onOpenChangePassword()
+            AccountEvent.NavigateToConnectServer -> onOpenConnectServer()
             AccountEvent.NavigateBack -> navigateUp()
         }
     }

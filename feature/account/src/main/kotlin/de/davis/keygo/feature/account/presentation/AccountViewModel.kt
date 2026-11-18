@@ -22,9 +22,7 @@ internal class AccountViewModel : ViewModel() {
     fun onEvent(event: AccountUiEvent) {
         when (event) {
             AccountUiEvent.OnBackClicked -> _event.trySend(AccountEvent.NavigateBack)
-            AccountUiEvent.OnConnectClicked -> {
-                // TODO
-            }
+            AccountUiEvent.OnConnectClicked -> _event.trySend(AccountEvent.NavigateToConnectServer)
 
             AccountUiEvent.OnScanInviteClicked -> {
                 // TODO

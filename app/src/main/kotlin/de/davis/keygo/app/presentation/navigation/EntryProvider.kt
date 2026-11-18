@@ -25,6 +25,7 @@ import de.davis.keygo.core.presentation.model.RouteDestination
 import de.davis.keygo.dashboard.presentation.dashboardEntries
 import de.davis.keygo.feature.account.presentation.AccountRoute
 import de.davis.keygo.feature.account.presentation.ChangePasswordRoute
+import de.davis.keygo.feature.account.presentation.ConnectServerRoute
 import de.davis.keygo.feature.account.presentation.accountEntries
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.auth.presentation.authEntries
@@ -108,6 +109,7 @@ fun keyGoEntryProvider(navigator: AppNavigator, hasAccess: Boolean): (NavKey) ->
         accountEntries(
             metadata = WindowOwning,
             onOpenChangePassword = { navigator.navigate(ChangePasswordRoute) },
+            onOpenConnectServer = { navigator.navigate(ConnectServerRoute) },
             navigateUp = { navigator.goBack() },
         )
 

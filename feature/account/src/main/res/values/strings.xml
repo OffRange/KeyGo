@@ -29,4 +29,22 @@
     <string name="reauth_dialog_title">Enter your current password</string>
     <string name="password_changed">Password changed</string>
     <string name="change_password_failed">Could not change password</string>
+
+    <string name="continue_step">Continue</string>
+
+    <string name="server_address">Server address</string>
+    <string name="server_address_placeholder" translatable="false">vault.example.org</string>
+    <string name="server_address_prefix" translatable="false">https://</string>
+
+    <string name="connect_server_which_title">Which server?</string>
+    <string name="connect_server_which_description">Enter the address you got from whoever runs the server.</string>
+    <string name="connect_server_address_helper">KeyGo checks the server before it sends anything.</string>
+    <string name="connect_server_found">KeyGo server found</string>
+    <string name="connect_server_version">Version %1$s</string>
+    <string name="connect_server_invite_only">Invite only</string>
+    <string name="connect_server_open_signups">Open signups</string>
+    <string name="connect_server_scan_invite">Have an invite? Scan it</string>
+    <string name="connect_server_unreachable">Can\'t reach this server. Check the address.</string>
+    <string name="connect_server_not_keygo">This isn\'t a KeyGo server.</string>
+    <string name="connect_server_use_another">Use another server</string>
 </resources>
