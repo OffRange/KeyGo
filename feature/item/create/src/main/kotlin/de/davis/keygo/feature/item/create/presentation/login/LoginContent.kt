@@ -16,8 +16,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -27,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -44,6 +43,7 @@ import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.model.VaultMetadata
 import de.davis.keygo.core.item.generated.domain.model.VaultItemType
 import de.davis.keygo.core.item.presentation.StrengthIndicator
+import de.davis.keygo.core.ui.text.transformation.rememberSchemeStrippingTransformation
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.ui.theme.secretTextStyle
 import de.davis.keygo.feature.item.core.presentation.component.ChipFormGroup
@@ -51,7 +51,6 @@ import de.davis.keygo.feature.item.core.presentation.component.CreateOrModifyIte
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.component.MenuChip
 import de.davis.keygo.feature.item.core.presentation.component.gatherPendingItems
-import de.davis.keygo.core.ui.text.transformation.rememberSchemeStrippingTransformation
 import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.presentation.component.DeletePasskeyDialog
 import de.davis.keygo.feature.item.create.presentation.component.FormGroup
@@ -92,7 +91,6 @@ internal fun LoginContent(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun LoginReadyContent(
     state: LoginBaseState,
@@ -102,8 +100,8 @@ private fun LoginReadyContent(
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val domainTextFieldState = rememberTextFieldState()
     val tagsTextFieldState = rememberTextFieldState()
-    val schemeTransformation = rememberSchemeStrippingTransformation()
-    val detectedScheme by schemeTransformation.detectedScheme
+    var detectedScheme by remember { mutableStateOf<String?>(null) }
+    val schemeTransformation = rememberSchemeStrippingTransformation { detectedScheme = it }
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {

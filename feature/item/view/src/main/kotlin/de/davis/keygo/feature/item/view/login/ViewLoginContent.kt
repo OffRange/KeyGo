@@ -77,6 +77,7 @@ import de.davis.keygo.core.item.presentation.StrengthIndicator
 import de.davis.keygo.core.item.presentation.toImageVector
 import de.davis.keygo.core.ui.components.VisibilityButton
 import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
+import de.davis.keygo.core.ui.text.transformation.rememberSchemeStrippingTransformation
 import de.davis.keygo.core.ui.theme.secretTextStyle
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormSuggestionField
@@ -86,7 +87,6 @@ import de.davis.keygo.feature.item.core.presentation.login.colored
 import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.login.model.UiPassword.Companion.asUiPassword
 import de.davis.keygo.feature.item.core.presentation.transformation.TrimTransformation
-import de.davis.keygo.core.ui.text.transformation.rememberSchemeStrippingTransformation
 import de.davis.keygo.feature.item.view.R
 import de.davis.keygo.feature.item.view.login.model.ModificationDialog
 import de.davis.keygo.feature.item.view.login.model.ObfuscatedString
@@ -444,8 +444,10 @@ fun ViewLoginContent(state: ViewLoginState, onEvent: (ViewLoginUiEvent) -> Unit)
                         )
 
                         else -> {
-                            val schemeTransformation = rememberSchemeStrippingTransformation()
-                            val detectedScheme by schemeTransformation.detectedScheme
+                            var detectedScheme by remember { mutableStateOf<String?>(null) }
+                            val schemeTransformation = rememberSchemeStrippingTransformation {
+                                detectedScheme = it
+                            }
 
                             val transformation = when {
                                 dialog.fieldType == FieldType.Domain ->
