@@ -12,6 +12,7 @@ dependencies {
     implementation(projects.core.util)
     implementation(projects.core.identity)
     implementation(projects.core.item)
+    implementation(projects.core.sync)
 
     testImplementation(testFixtures(projects.core.biometrics))
     testImplementation(testFixtures(projects.core.identity))

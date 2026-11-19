@@ -14,20 +14,26 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldBuffer
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.then
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -39,6 +45,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.ui.components.IconBadge
+import de.davis.keygo.core.ui.text.transformation.rememberSchemeStrippingTransformation
 import de.davis.keygo.feature.account.R
 import de.davis.keygo.feature.account.presentation.setup.components.AccountSetupScaffold
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiEvent
@@ -51,7 +58,14 @@ internal fun EnterDomainContent(
     state: EnterDomainState,
     onEvent: (ConnectServerUiEvent) -> Unit,
 ) {
-    val failure = (state.check as? ServerCheck.Failed)?.reason
+    val failure = state.check as? ServerCheck.Failed
+    val schemeTransformation = rememberSchemeStrippingTransformation {
+        onEvent(ConnectServerUiEvent.SchemeChanged(it))
+    }
+    // Whitespace goes first so a pasted "  https://…" still has its scheme recognised.
+    val inputTransformation = remember(schemeTransformation) {
+        WhitespaceStrippingTransformation.then(schemeTransformation)
+    }
 
     AccountSetupScaffold(
         title = stringResource(R.string.connect_server_which_title),
@@ -67,9 +81,10 @@ internal fun EnterDomainContent(
             placeholder = {
                 Text(text = stringResource(R.string.server_address_placeholder))
             },
+            inputTransformation = inputTransformation,
             prefix = {
                 Text(
-                    text = stringResource(R.string.server_address_prefix),
+                    text = state.typedScheme ?: stringResource(R.string.server_address_prefix),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             },
@@ -82,12 +97,21 @@ internal fun EnterDomainContent(
                         tint = MaterialTheme.colorScheme.primary,
                     )
 
-                    else -> Unit
+                    is ServerCheck.Failed ->
+                        if (state.check.canRetry)
+                            IconButton(onClick = { onEvent(ConnectServerUiEvent.Retry) }) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = stringResource(R.string.connect_server_retry),
+                                )
+                            }
+
+                    ServerCheck.Idle -> Unit
                 }
             },
             supportingText = {
                 Text(
-                    text = failure?.message
+                    text = failure?.reason?.message
                         ?: stringResource(R.string.connect_server_address_helper),
                 )
             },
@@ -100,7 +124,10 @@ internal fun EnterDomainContent(
                 imeAction = ImeAction.Go,
             ),
             onKeyboardAction = {
-                if (state.check is ServerCheck.Found) onEvent(ConnectServerUiEvent.Continue)
+                when {
+                    state.check is ServerCheck.Found -> onEvent(ConnectServerUiEvent.Continue)
+                    failure?.canRetry == true -> onEvent(ConnectServerUiEvent.Retry)
+                }
             },
         )
 
@@ -175,12 +202,34 @@ private fun ServerFact(text: String) {
     }
 }
 
+/** Drops whitespace instead of rejecting the edit, so a pasted "vault.example.org\n" still lands. */
+private object WhitespaceStrippingTransformation : InputTransformation {
+    override fun TextFieldBuffer.transformInput() {
+        for (i in length - 1 downTo 0)
+            if (charAt(i).isWhitespace()) replace(i, i + 1, "")
+    }
+}
+
 private val ServerCheck.Failed.Reason.message: String
     @Composable
     get() = stringResource(
         when (this) {
+            ServerCheck.Failed.Reason.InvalidAddress -> R.string.connect_server_invalid_address
+            ServerCheck.Failed.Reason.UnknownHost -> R.string.connect_server_unknown_host
+            ServerCheck.Failed.Reason.Timeout -> R.string.connect_server_timeout
+            ServerCheck.Failed.Reason.Refused -> R.string.connect_server_refused
             ServerCheck.Failed.Reason.Unreachable -> R.string.connect_server_unreachable
+            ServerCheck.Failed.Reason.InsecureConnection -> R.string.connect_server_insecure
+            ServerCheck.Failed.Reason.UntrustedCertificate ->
+                R.string.connect_server_untrusted_certificate
+
+            ServerCheck.Failed.Reason.SecureConnectionFailed -> R.string.connect_server_tls_failed
+            ServerCheck.Failed.Reason.Redirected -> R.string.connect_server_redirected
             ServerCheck.Failed.Reason.NotKeyGo -> R.string.connect_server_not_keygo
+            ServerCheck.Failed.Reason.ServerUnavailable -> R.string.connect_server_unavailable
+            ServerCheck.Failed.Reason.ServerError -> R.string.connect_server_error
+            ServerCheck.Failed.Reason.RateLimited -> R.string.connect_server_rate_limited
+            ServerCheck.Failed.Reason.Unknown -> R.string.connect_server_unknown_error
         }
     )
 
@@ -190,11 +239,13 @@ private class ServerCheckProvider : PreviewParameterProvider<ServerCheck> {
         ServerCheck.Idle,
         ServerCheck.Checking,
         ServerCheck.Found(
+            serverUrl = "https://vault.example.org",
             version = "0.4.0",
             publicUrl = "https://vault.example.org",
             inviteOnly = true,
         ),
-        ServerCheck.Failed(ServerCheck.Failed.Reason.Unreachable),
+        ServerCheck.Failed(ServerCheck.Failed.Reason.Timeout),
+        ServerCheck.Failed(ServerCheck.Failed.Reason.InvalidAddress),
     )
 }
 

@@ -45,5 +45,19 @@
     <string name="connect_server_scan_invite">Hast du eine Einladung? Scannen</string>
     <string name="connect_server_unreachable">Server nicht erreichbar. Prüfe die Adresse.</string>
     <string name="connect_server_not_keygo">Das ist kein KeyGo-Server.</string>
+
+    <string name="connect_server_retry">Erneut versuchen</string>
+    <string name="connect_server_invalid_address">Das sieht nicht nach einer Serveradresse aus.</string>
+    <string name="connect_server_unknown_host">Server nicht gefunden. Prüfe die Adresse und deine Internetverbindung.</string>
+    <string name="connect_server_timeout">Der Server antwortet nicht. Läuft er und ist er aus diesem Netzwerk erreichbar?</string>
+    <string name="connect_server_refused">Der Server hat die Verbindung abgelehnt. Ist der Port richtig?</string>
+    <string name="connect_server_insecure">Dieser Server nutzt kein HTTPS. KeyGo verbindet sich nur über eine sichere Verbindung.</string>
+    <string name="connect_server_untrusted_certificate">Dem Zertifikat des Servers wird nicht vertraut. Prüfe die Adresse oder die HTTPS-Einrichtung des Servers.</string>
+    <string name="connect_server_tls_failed">Keine sichere Verbindung möglich. Unterstützt der Server HTTPS auf diesem Port?</string>
+    <string name="connect_server_redirected">Diese Adresse leitet weiter. Gib die endgültige Adresse des Servers ein.</string>
+    <string name="connect_server_unavailable">Der Server ist erreichbar, aber KeyGo antwortet nicht. Versuch es später erneut.</string>
+    <string name="connect_server_error">Auf dem Server ist ein Fehler aufgetreten. Versuch es später erneut.</string>
+    <string name="connect_server_rate_limited">Zu viele Versuche. Warte kurz und versuch es dann erneut.</string>
+    <string name="connect_server_unknown_error">Beim Prüfen des Servers ist etwas schiefgelaufen.</string>
     <string name="connect_server_use_another">Anderen Server nutzen</string>
 </resources>

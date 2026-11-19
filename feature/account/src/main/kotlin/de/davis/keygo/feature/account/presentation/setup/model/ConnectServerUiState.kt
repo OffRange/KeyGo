@@ -18,5 +18,6 @@ internal data class ConnectServerUiState(
 @Stable
 internal data class EnterDomainState(
     val addressTextFieldState: TextFieldState,
+    val typedScheme: String? = null,
     val check: ServerCheck = ServerCheck.Idle,
 )

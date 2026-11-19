@@ -34,18 +34,22 @@ class ServerCheckMapperTest {
     @Test
     fun server_responses_tell_a_foreign_server_from_a_broken_one() {
         val cases = mapOf(
-            "invalid_response" to Reason.NotKeyGo,
-            "http_404" to Reason.NotKeyGo,
-            "http_301" to Reason.Redirected,
-            "http_502" to Reason.ServerUnavailable,
-            "http_503" to Reason.ServerUnavailable,
-            "http_500" to Reason.ServerError,
-            "internal" to Reason.ServerError,
+            404 to Reason.NotKeyGo,
+            301 to Reason.Redirected,
+            502 to Reason.ServerUnavailable,
+            503 to Reason.ServerUnavailable,
+            500 to Reason.ServerError,
         )
 
-        cases.forEach { (code, expected) ->
-            assertEquals(expected, SyncError.Server(code, "detail").toFailureReason(), "for $code")
+        cases.forEach { (status, expected) ->
+            assertEquals(
+                expected,
+                SyncError.UnexpectedStatus(status, "<html>").toFailureReason(),
+                "for $status",
+            )
         }
+        assertEquals(Reason.NotKeyGo, SyncError.InvalidResponse("not json").toFailureReason())
+        assertEquals(Reason.ServerError, SyncError.Server("internal", "detail").toFailureReason())
     }
 
     @Test

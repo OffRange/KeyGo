@@ -108,6 +108,7 @@ private class ConnectServerUiStateProvider : PreviewParameterProvider<ConnectSer
             enterDomainState = EnterDomainState(
                 addressTextFieldState = TextFieldState("vault.example.org"),
                 check = ServerCheck.Found(
+                    serverUrl = "https://vault.example.org",
                     version = "0.4.0",
                     publicUrl = "https://vault.example.org",
                     inviteOnly = true,

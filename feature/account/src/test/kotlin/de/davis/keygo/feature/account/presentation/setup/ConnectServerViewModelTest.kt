@@ -6,7 +6,9 @@ import de.davis.keygo.core.sync.domain.model.NetworkFailure
 import de.davis.keygo.core.sync.domain.model.ServerInfo
 import de.davis.keygo.core.sync.domain.model.SyncError
 import de.davis.keygo.core.sync.domain.repository.SyncRepository
+import de.davis.keygo.core.ui.text.transformation.SchemeStrippingTransformation
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerStep
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiEvent
 import de.davis.keygo.feature.account.presentation.setup.model.ServerCheck
 import de.davis.keygo.feature.account.presentation.setup.model.ServerCheck.Failed.Reason
@@ -79,17 +81,98 @@ class ConnectServerViewModelTest {
     }
 
     @Test
-    fun editing_keeps_the_previous_result_until_typing_pauses() = runTest(dispatcher) {
+    fun editing_drops_the_previous_result_at_once() = runTest(dispatcher) {
         val vm = viewModel()
         type(vm, "vault.example.org")
         advanceUntilIdle()
 
         type(vm, "vault.example.com")
-        assertIs<ServerCheck.Found>(vm.check)
+        assertEquals(ServerCheck.Idle, vm.check)
+        assertEquals(false, vm.state.value.canContinue)
         assertEquals(listOf("https://vault.example.org"), repository.checked)
 
         advanceUntilIdle()
         assertEquals(listOf("https://vault.example.org", "https://vault.example.com"), repository.checked)
+    }
+
+    @Test
+    fun continue_is_ignored_while_the_new_address_waits() = runTest(dispatcher) {
+        val vm = viewModel()
+        type(vm, "vault.example.org")
+        advanceUntilIdle()
+
+        type(vm, "vault.example.com")
+        vm.onEvent(ConnectServerUiEvent.Continue)
+
+        assertEquals(ConnectServerStep.EnterDomain, vm.state.value.step)
+    }
+
+    @Test
+    fun an_edit_that_keeps_the_origin_keeps_the_result() = runTest(dispatcher) {
+        val vm = viewModel()
+        type(vm, "vault.example.org")
+        advanceUntilIdle()
+
+        type(vm, "vault.example.org/")
+        assertIs<ServerCheck.Found>(vm.check)
+        advanceUntilIdle()
+        assertEquals(listOf("https://vault.example.org"), repository.checked)
+    }
+
+    @Test
+    fun a_scheme_change_alone_checks_again() = runTest(dispatcher) {
+        val vm = viewModel()
+        type(vm, "localhost:8000")
+        advanceUntilIdle()
+
+        vm.onEvent(ConnectServerUiEvent.SchemeChanged("http://"))
+        runCurrent()
+        assertEquals(ServerCheck.Idle, vm.check)
+
+        advanceUntilIdle()
+        assertEquals(listOf("https://localhost:8000", "http://localhost:8000"), repository.checked)
+    }
+
+    /**
+     * Types like the field does: the edit runs through the same transformation EnterDomainContent
+     * remembers, which reports the stripped scheme back as [ConnectServerUiEvent.SchemeChanged].
+     */
+    private fun TestScope.typeInField(vm: ConnectServerViewModel, text: String) {
+        val transformation = SchemeStrippingTransformation {
+            vm.onEvent(ConnectServerUiEvent.SchemeChanged(it))
+        }
+        vm.state.value.enterDomainState.addressTextFieldState.edit {
+            replace(0, length, text)
+            with(transformation) { transformInput() }
+        }
+        Snapshot.sendApplyNotifications()
+        runCurrent()
+    }
+
+    @Test
+    fun a_scheme_typed_into_the_field_is_shown_and_checked() = runTest(dispatcher) {
+        val vm = viewModel()
+
+        typeInField(vm, "http://localhost:8000")
+        val enterDomain = vm.state.value.enterDomainState
+        assertEquals("localhost:8000", enterDomain.addressTextFieldState.text.toString())
+        assertEquals("http://", enterDomain.typedScheme)
+
+        advanceUntilIdle()
+        assertEquals(listOf("http://localhost:8000"), repository.checked)
+    }
+
+    @Test
+    fun clearing_the_field_forgets_the_typed_scheme() = runTest(dispatcher) {
+        val vm = viewModel()
+        typeInField(vm, "http://localhost:8000")
+
+        typeInField(vm, "")
+        assertEquals(null, vm.state.value.enterDomainState.typedScheme)
+
+        typeInField(vm, "vault.example.org")
+        advanceUntilIdle()
+        assertEquals(listOf("https://vault.example.org"), repository.checked)
     }
 
     @Test
