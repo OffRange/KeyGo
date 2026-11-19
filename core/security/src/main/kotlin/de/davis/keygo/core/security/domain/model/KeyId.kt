@@ -3,10 +3,13 @@ package de.davis.keygo.core.security.domain.model
 /**
  * Every Android Keystore alias this app owns.
  *
- * An enum rather than a constructible type: [id] and [needsAuthentication] are only meaningful as a
- * pair, and [needsAuthentication] is read once, at key creation. A caller free to name an existing
- * alias under a weaker policy could otherwise mint an auth-free key where an auth-bound one was
- * intended, so the set of aliases is closed here by construction.
+ * A sealed interface over enums rather than a constructible type: [id] and [needsAuthentication]
+ * are only meaningful as a pair, and [needsAuthentication] is read once, at key creation. A caller
+ * free to name an existing alias under a weaker policy could otherwise mint an auth-free key where
+ * an auth-bound one was intended, so the set of aliases is closed here by construction.
+ *
+ * Each subtype is one kind of key, so an operation only accepts the kind it can run on: a cipher is
+ * only ever made from a [CipherKeyId], a signature only from a [SigningKeyId].
  */
 sealed interface KeyId {
     val id: String
@@ -29,4 +32,13 @@ enum class CipherKeyId(
      * as [BackupPassphraseKey].
      */
     BackupArkKey("backup_ark_key", false),
+}
+
+/** P-256 key pairs that sign with SHA256withECDSA; the private half never leaves the Keystore. */
+enum class SigningKeyId(
+    override val id: String,
+    override val needsAuthentication: Boolean,
+) : KeyId {
+    /** Binds sync tokens to this device (DPoP); auth-free so sync can refresh without a prompt. */
+    DpopSigningKey("dpop_signing_key", false),
 }
