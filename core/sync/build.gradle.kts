@@ -10,12 +10,15 @@ android {
 dependencies {
     api(projects.core.rust)
 
+    implementation(projects.core.security)
+
     implementation(libs.okhttp)
     implementation(libs.kotlinx.coroutines.core)
 
     implementation(libs.androidx.datastore)
-    
+
     testImplementation(libs.okhttp.jvm)
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(testFixtures(projects.core.rust))
+    testImplementation(testFixtures(projects.core.security))
 }

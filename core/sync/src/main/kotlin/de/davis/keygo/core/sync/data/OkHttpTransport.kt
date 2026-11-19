@@ -18,7 +18,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /** Never log [HttpRequest] or [HttpResponse]: their `toString()` prints tokens. */
-class OkHttpTransport(client: OkHttpClient) : HttpTransport {
+internal class OkHttpTransport(client: OkHttpClient) : HttpTransport {
 
     // No redirects: a DPoP proof is bound to one URL.
     private val client = client.newBuilder()

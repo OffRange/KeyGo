@@ -132,6 +132,7 @@ dependencies {
     implementation(projects.core.item)
     implementation(projects.core.identity)
     implementation(projects.core.ui)
+    implementation(projects.core.sync)
     implementation(projects.feature.auth)
     implementation(projects.feature.listScreen)
     implementation(projects.feature.credentials)
