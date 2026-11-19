@@ -12,7 +12,7 @@ import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.SessionError
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.ResultBinding
 import de.davis.keygo.core.util.asResult
@@ -90,7 +90,7 @@ class ChangePasswordUseCase(
 
         try {
             unwrappedArk = biometricCrypto.requestUnwrap(
-                keyId = KeyId.BiometricVaultKek,
+                keyId = CipherKeyId.BiometricVaultKek,
                 cryptographicData = CryptographicData(
                     data = wrappedKey.key,
                     iv = wrappedKey.keyIV

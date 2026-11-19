@@ -14,7 +14,7 @@ import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.model.CryptographicMode
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
 import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.core.util.isFailure
@@ -132,7 +132,7 @@ class CreateAccessUseCaseTest {
 
         val bio = accountRepository.getOrNull()!!.biometricWrappedArk!!
         val recovered = biometricCrypto.requestUnwrap(
-            keyId = KeyId.BiometricVaultKek,
+            keyId = CipherKeyId.BiometricVaultKek,
             cryptographicData = CryptographicData(data = bio.key, iv = bio.keyIV),
         ).assertSuccess().encoded
 
@@ -146,7 +146,7 @@ class CreateAccessUseCaseTest {
         useCase("password", withBiometrics = true, policy = policy)
 
         val prompt = biometricCrypto.prompts.single()
-        assertEquals(KeyId.BiometricVaultKek, prompt.keyId)
+        assertEquals(CipherKeyId.BiometricVaultKek, prompt.keyId)
         assertEquals(CryptographicMode.Wrap, prompt.mode)
         assertEquals(policy, prompt.policy)
     }

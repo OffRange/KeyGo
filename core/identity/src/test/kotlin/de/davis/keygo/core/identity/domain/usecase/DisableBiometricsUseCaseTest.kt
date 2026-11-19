@@ -10,7 +10,7 @@ import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.model.CryptographicMode
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.util.assertFailure
 import de.davis.keygo.core.util.assertSuccess
 import kotlinx.coroutines.test.runTest
@@ -44,7 +44,7 @@ class DisableBiometricsUseCaseTest {
                     salt = ByteArray(16) { 3 },
                 ),
                 biometricWrappedArk = biometricCrypto
-                    .requestWrap(KeyId.BiometricVaultKek) { seal -> seal(ByteArray(32) { 4 }) }
+                    .requestWrap(CipherKeyId.BiometricVaultKek) { seal -> seal(ByteArray(32) { 4 }) }
                     .assertSuccess()
                     .toBiometricWrappedArk(),
             ),
@@ -59,7 +59,7 @@ class DisableBiometricsUseCaseTest {
         disableBiometrics().assertSuccess()
 
         assertNull(accountRepository.getOrNull()?.biometricWrappedArk)
-        assertFalse(KeyId.BiometricVaultKek in keyStoreManager.keys)
+        assertFalse(CipherKeyId.BiometricVaultKek in keyStoreManager.keys)
     }
 
     @Test
@@ -70,7 +70,7 @@ class DisableBiometricsUseCaseTest {
         disableBiometrics()
 
         val error = biometricCrypto.requestUnwrap(
-            keyId = KeyId.BiometricVaultKek,
+            keyId = CipherKeyId.BiometricVaultKek,
             cryptographicData = CryptographicData(data = captured.key, iv = captured.keyIV),
         ).assertFailure()
         assertEquals(BiometricAuthError.KeyInvalidated, error)
@@ -88,13 +88,13 @@ class DisableBiometricsUseCaseTest {
     @Test
     fun `disabling leaves the backup escrow aliases alone`() = runTest {
         seedEnrolledAccount()
-        keyStoreManager.getOrCreateCipherFor(KeyId.BackupArkKey, CryptographicMode.Encrypt)
-        keyStoreManager.getOrCreateCipherFor(KeyId.BackupPassphraseKey, CryptographicMode.Encrypt)
+        keyStoreManager.getOrCreateCipherFor(CipherKeyId.BackupArkKey, CryptographicMode.Encrypt)
+        keyStoreManager.getOrCreateCipherFor(CipherKeyId.BackupPassphraseKey, CryptographicMode.Encrypt)
 
         disableBiometrics()
 
-        assertTrue(KeyId.BackupArkKey in keyStoreManager.keys)
-        assertTrue(KeyId.BackupPassphraseKey in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupArkKey in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupPassphraseKey in keyStoreManager.keys)
     }
 
     @Test
@@ -106,16 +106,16 @@ class DisableBiometricsUseCaseTest {
 
         assertEquals(BiometricEnrollmentError.PersistenceFailed, error)
         assertNotNull(accountRepository.getOrNull()?.biometricWrappedArk)
-        assertTrue(KeyId.BiometricVaultKek in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BiometricVaultKek in keyStoreManager.keys)
     }
 
     @Test
     fun `disabling without an account touches nothing`() = runTest {
-        keyStoreManager.getOrCreateCipherFor(KeyId.BiometricVaultKek, CryptographicMode.Wrap)
+        keyStoreManager.getOrCreateCipherFor(CipherKeyId.BiometricVaultKek, CryptographicMode.Wrap)
 
         val error = disableBiometrics().assertFailure()
 
         assertEquals(BiometricEnrollmentError.NoActiveAccount, error)
-        assertTrue(KeyId.BiometricVaultKek in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BiometricVaultKek in keyStoreManager.keys)
     }
 }

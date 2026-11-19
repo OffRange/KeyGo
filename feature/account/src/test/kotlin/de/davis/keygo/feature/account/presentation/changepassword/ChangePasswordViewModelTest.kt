@@ -18,7 +18,7 @@ import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.domain.ExportArk
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.core.util.getOrNull
@@ -91,7 +91,7 @@ class ChangePasswordViewModelTest {
         accountRepository.seed(
             current.copy(
                 biometricWrappedArk = biometricCrypto
-                    .requestWrap(KeyId.BiometricVaultKek) { seal -> seal(ark) }
+                    .requestWrap(CipherKeyId.BiometricVaultKek) { seal -> seal(ark) }
                     .assertSuccess()
                     .toBiometricWrappedArk()
             )

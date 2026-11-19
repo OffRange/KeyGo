@@ -1,5 +1,6 @@
 package de.davis.keygo.core.security.domain
 
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
@@ -9,9 +10,9 @@ import javax.crypto.Cipher
 interface KeyStoreManager {
 
     fun getOrCreateCipherFor(
-        keyId: KeyId,
+        keyId: CipherKeyId,
         cryptographicMode: CryptographicMode,
-        iv: ByteArray? = null
+        iv: ByteArray? = null,
     ): Result<Cipher, KeyStoreManagerError>
 
     fun deleteKey(keyId: KeyId)

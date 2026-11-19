@@ -3,7 +3,7 @@ package de.davis.keygo.feature.backup.domain.usecase
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.model.CryptographicMode
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
 import de.davis.keygo.feature.backup.FakeBackupJobRepository
 import de.davis.keygo.feature.backup.FakeBackupScheduler
@@ -59,7 +59,7 @@ class CleanupBackupResourcesUseCaseTest {
 
     /** The fake only ever removes a key on [FakeKeyStoreManager.deleteKey]; it never creates one
      * implicitly, so a test asserting a key survives cleanup must seed it first. */
-    private fun seedKey(keyId: KeyId) {
+    private fun seedKey(keyId: CipherKeyId) {
         keyStoreManager.getOrCreateCipherFor(keyId, CryptographicMode.Encrypt)
     }
 
@@ -72,8 +72,8 @@ class CleanupBackupResourcesUseCaseTest {
         assertNull(jobRepository.jobs.getValue("w").wrappedPassphrase)
         assertEquals(listOf(folder), uriManager.released)
         assertNull(arkKeyStore.load())
-        assertTrue(KeyId.BackupArkKey !in keyStoreManager.keys)
-        assertTrue(KeyId.BackupPassphraseKey !in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupArkKey !in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupPassphraseKey !in keyStoreManager.keys)
     }
 
     @Test
@@ -82,17 +82,17 @@ class CleanupBackupResourcesUseCaseTest {
         // A recurring record is live even with finishedAt stamped: it is set after every run.
         jobRepository.jobs[BackupWorker.RECURRING_WORK_ID] =
             job(uri = BackupDestinationUri("content://other"), finishedAt = 5L)
-        seedKey(KeyId.BackupArkKey)
-        seedKey(KeyId.BackupPassphraseKey)
+        seedKey(CipherKeyId.BackupArkKey)
+        seedKey(CipherKeyId.BackupPassphraseKey)
 
         useCase("w")
 
         val escrow = arkKeyStore.load()
         assertContentEquals(byteArrayOf(1), escrow?.data)
         assertContentEquals(byteArrayOf(2), escrow?.iv)
-        assertTrue(KeyId.BackupArkKey in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupArkKey in keyStoreManager.keys)
         // The recurring job still holds a wrapped passphrase, so its key must survive too.
-        assertTrue(KeyId.BackupPassphraseKey in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupPassphraseKey in keyStoreManager.keys)
     }
 
     @Test
@@ -129,7 +129,7 @@ class CleanupBackupResourcesUseCaseTest {
         useCase("w")
 
         assertNull(arkKeyStore.load())
-        assertTrue(KeyId.BackupArkKey !in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupArkKey !in keyStoreManager.keys)
     }
 
     @Test
@@ -141,19 +141,19 @@ class CleanupBackupResourcesUseCaseTest {
         assertNull(jobRepository.jobs.getValue(BackupWorker.RECURRING_WORK_ID).wrappedPassphrase)
         assertEquals(listOf(folder), uriManager.released)
         assertNull(arkKeyStore.load())
-        assertTrue(KeyId.BackupArkKey !in keyStoreManager.keys)
-        assertTrue(KeyId.BackupPassphraseKey !in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupArkKey !in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupPassphraseKey !in keyStoreManager.keys)
     }
 
     @Test
     fun `the passphrase key survives while another record still holds one`() = runTest {
         jobRepository.jobs["w"] = job(finishedAt = 1L)
         jobRepository.jobs["pending"] = job(finishedAt = null)
-        seedKey(KeyId.BackupPassphraseKey)
+        seedKey(CipherKeyId.BackupPassphraseKey)
 
         useCase("w")
 
-        assertTrue(KeyId.BackupPassphraseKey in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupPassphraseKey in keyStoreManager.keys)
     }
 
     @Test
@@ -162,24 +162,24 @@ class CleanupBackupResourcesUseCaseTest {
         // so no run can come of it and its escrowed ARK must not outlive it.
         jobRepository.jobs["w"] = job(finishedAt = null)
         scheduler.abandon("w")
-        seedKey(KeyId.BackupArkKey)
+        seedKey(CipherKeyId.BackupArkKey)
 
         useCase.reconcile()
 
         assertNull(arkKeyStore.load())
-        assertTrue(KeyId.BackupArkKey !in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupArkKey !in keyStoreManager.keys)
     }
 
     @Test
     fun `reconcile keeps the escrow while the scheduler still has the work`() = runTest {
         jobRepository.jobs["w"] = job(finishedAt = null)
-        seedKey(KeyId.BackupArkKey)
+        seedKey(CipherKeyId.BackupArkKey)
 
         useCase.reconcile()
 
         val escrow = arkKeyStore.load()
         assertContentEquals(byteArrayOf(1), escrow?.data)
-        assertTrue(KeyId.BackupArkKey in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupArkKey in keyStoreManager.keys)
     }
 
     @Test
@@ -189,13 +189,13 @@ class CleanupBackupResourcesUseCaseTest {
         jobRepository.jobs["w"] = job(finishedAt = null)
         scheduler.abandon("w")
         scheduler.outstandingFailure = IOException("boom")
-        seedKey(KeyId.BackupArkKey)
+        seedKey(CipherKeyId.BackupArkKey)
 
         useCase.reconcile()
 
         val escrow = arkKeyStore.load()
         assertContentEquals(byteArrayOf(1), escrow?.data)
-        assertTrue(KeyId.BackupArkKey in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupArkKey in keyStoreManager.keys)
     }
 
     @Test
@@ -205,18 +205,18 @@ class CleanupBackupResourcesUseCaseTest {
         // alias that opens it.
         jobRepository.jobs["w"] = job(finishedAt = null)
         scheduler.abandon("w")
-        seedKey(KeyId.BackupPassphraseKey)
+        seedKey(CipherKeyId.BackupPassphraseKey)
 
         useCase.reconcile()
 
         assertNull(jobRepository.jobs.getValue("w").wrappedPassphrase)
-        assertTrue(KeyId.BackupPassphraseKey !in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupPassphraseKey !in keyStoreManager.keys)
     }
 
     @Test
     fun `reconcile leaves a live job's passphrase alone`() = runTest {
         jobRepository.jobs["w"] = job(finishedAt = null)
-        seedKey(KeyId.BackupPassphraseKey)
+        seedKey(CipherKeyId.BackupPassphraseKey)
 
         useCase.reconcile()
 
@@ -224,7 +224,7 @@ class CleanupBackupResourcesUseCaseTest {
             CryptographicData(byteArrayOf(9), byteArrayOf(8)),
             jobRepository.jobs.getValue("w").wrappedPassphrase,
         )
-        assertTrue(KeyId.BackupPassphraseKey in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupPassphraseKey in keyStoreManager.keys)
     }
 
     @Test
@@ -232,12 +232,12 @@ class CleanupBackupResourcesUseCaseTest {
         jobRepository.jobs["w"] = job(finishedAt = 1L)
         jobRepository.jobs["dropped"] = job(finishedAt = null)
         scheduler.abandon("dropped")
-        seedKey(KeyId.BackupPassphraseKey)
+        seedKey(CipherKeyId.BackupPassphraseKey)
 
         useCase("w")
 
         assertNull(jobRepository.jobs.getValue("dropped").wrappedPassphrase)
-        assertTrue(KeyId.BackupPassphraseKey !in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupPassphraseKey !in keyStoreManager.keys)
     }
 
     @Test
@@ -249,7 +249,7 @@ class CleanupBackupResourcesUseCaseTest {
         useCase("w")
 
         assertNull(arkKeyStore.load())
-        assertTrue(KeyId.BackupArkKey !in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupArkKey !in keyStoreManager.keys)
     }
 
     @Test
@@ -290,13 +290,13 @@ class CleanupBackupResourcesUseCaseTest {
             provisioningLock = BackupProvisioningLock(),
             scheduler = scheduler,
         )
-        seedKey(KeyId.BackupArkKey)
+        seedKey(CipherKeyId.BackupArkKey)
 
         useCase("w")
 
         // clear() failed, so the escrowed ciphertext is still on disk - the alias that opens it
         // must not be deleted underneath it.
-        assertTrue(KeyId.BackupArkKey in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupArkKey in keyStoreManager.keys)
         val escrow = arkKeyStore.load()
         assertContentEquals(byteArrayOf(1), escrow?.data)
         assertContentEquals(byteArrayOf(2), escrow?.iv)
@@ -316,12 +316,12 @@ class CleanupBackupResourcesUseCaseTest {
             provisioningLock = BackupProvisioningLock(),
             scheduler = scheduler,
         )
-        seedKey(KeyId.BackupPassphraseKey)
+        seedKey(CipherKeyId.BackupPassphraseKey)
 
         useCase("w")
 
         // clearPassphrase failed, so the record still holds a wrapped passphrase and getJobs
         // correctly reports it - the alias must not be deleted underneath it.
-        assertTrue(KeyId.BackupPassphraseKey in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupPassphraseKey in keyStoreManager.keys)
     }
 }

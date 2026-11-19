@@ -7,7 +7,7 @@ import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
 import de.davis.keygo.core.security.domain.KeyStoreManager
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.model.CryptographicMode
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
 import de.davis.keygo.core.util.Result
 import kotlinx.coroutines.CompletableDeferred
@@ -21,7 +21,7 @@ class FakeBiometricCrypto(
 ) : BiometricCrypto {
 
     data class Prompt(
-        val keyId: KeyId,
+        val keyId: CipherKeyId,
         val mode: CryptographicMode,
         val policy: BiometricPolicy,
     )
@@ -35,7 +35,7 @@ class FakeBiometricCrypto(
     val unwrapped: MutableList<ByteArray> = mutableListOf()
 
     override suspend fun <T> requestWrap(
-        keyId: KeyId,
+        keyId: CipherKeyId,
         policy: BiometricPolicy,
         wrap: (seal: (key: ByteArray) -> CryptographicData) -> T,
     ): Result<T, BiometricAuthError> =
@@ -44,7 +44,7 @@ class FakeBiometricCrypto(
         }
 
     override suspend fun requestUnwrap(
-        keyId: KeyId,
+        keyId: CipherKeyId,
         cryptographicData: CryptographicData,
         policy: BiometricPolicy,
     ): Result<Key, BiometricAuthError> =
@@ -55,7 +55,7 @@ class FakeBiometricCrypto(
         }
 
     private suspend fun <T> prompt(
-        keyId: KeyId,
+        keyId: CipherKeyId,
         mode: CryptographicMode,
         policy: BiometricPolicy,
         iv: ByteArray?,

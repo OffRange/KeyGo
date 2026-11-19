@@ -17,7 +17,7 @@ import de.davis.keygo.core.item.FakeVaultRepository
 import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
 import de.davis.keygo.core.security.domain.model.CryptographicMode
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.util.isSuccess
 import de.davis.keygo.feature.auth.presentation.model.AuthState
@@ -275,7 +275,7 @@ class AuthViewModelTest {
     @Test
     fun `a reset enrollment is announced rather than quietly disappearing`() = runTest(dispatcher) {
         seedEnrolledAccount()
-        keyStoreManager.deleteKey(KeyId.BiometricVaultKek)
+        keyStoreManager.deleteKey(CipherKeyId.BiometricVaultKek)
         val vm = loginViewModel()
         assertEquals(
             true,
@@ -294,7 +294,7 @@ class AuthViewModelTest {
     @Test
     fun `dismissing the notice leaves the enrollment gone`() = runTest(dispatcher) {
         seedEnrolledAccount()
-        keyStoreManager.deleteKey(KeyId.BiometricVaultKek)
+        keyStoreManager.deleteKey(CipherKeyId.BiometricVaultKek)
         val vm = loginViewModel()
         vm.onEvent(AuthUIEvent.RequestBiometricAuthentication)
         runCurrent()

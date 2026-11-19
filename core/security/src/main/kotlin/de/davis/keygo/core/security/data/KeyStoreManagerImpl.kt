@@ -8,6 +8,7 @@ import android.security.keystore.UserNotAuthenticatedException
 import android.util.Log
 import androidx.annotation.RequiresApi
 import de.davis.keygo.core.security.domain.KeyStoreManager
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
@@ -30,7 +31,7 @@ internal class KeyStoreManagerImpl : KeyStoreManager {
     }
 
     override fun getOrCreateCipherFor(
-        keyId: KeyId,
+        keyId: CipherKeyId,
         cryptographicMode: CryptographicMode,
         iv: ByteArray?,
     ): Result<Cipher, KeyStoreManagerError> = runCatching {
@@ -68,6 +69,7 @@ internal class KeyStoreManagerImpl : KeyStoreManager {
     }
 
     private fun createKeyFor(keyId: KeyId): SecretKey {
+    private fun createKeyFor(keyId: CipherKeyId): SecretKey {
         val spec = KeyGenParameterSpec.Builder(
             keyId.id,
             KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT

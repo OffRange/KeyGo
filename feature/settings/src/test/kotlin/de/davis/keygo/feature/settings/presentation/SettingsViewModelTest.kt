@@ -18,7 +18,7 @@ import de.davis.keygo.core.security.FakeLockInfoRepository
 import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
 import de.davis.keygo.core.security.domain.ExportArk
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.security.domain.model.LockInfo
 import de.davis.keygo.core.util.FakeSnackbarManager
 import de.davis.keygo.core.util.assertSuccess
@@ -114,7 +114,7 @@ class SettingsViewModelTest {
                     salt = ByteArray(16) { 3 },
                 ),
                 biometricWrappedArk = if (enrolled) {
-                    biometricCrypto.requestWrap(KeyId.BiometricVaultKek) { seal -> seal(ark) }
+                    biometricCrypto.requestWrap(CipherKeyId.BiometricVaultKek) { seal -> seal(ark) }
                         .assertSuccess()
                         .toBiometricWrappedArk()
                 } else null,
@@ -190,7 +190,7 @@ class SettingsViewModelTest {
 
         vm.state.first { !it.biometricsEnabled }
         assertNull(accountRepository.getOrNull()?.biometricWrappedArk)
-        assertFalse(KeyId.BiometricVaultKek in keyStoreManager.keys)
+        assertFalse(CipherKeyId.BiometricVaultKek in keyStoreManager.keys)
         assertTrue(biometricCrypto.prompts.isEmpty())
         assertTrue(snackbarManager.messages.isEmpty())
     }
@@ -265,7 +265,7 @@ class SettingsViewModelTest {
 
             assertEquals(listOf(biometricUpdateFailed), snackbarManager.messages)
             assertTrue(vm.state.value.biometricsEnabled)
-            assertTrue(KeyId.BiometricVaultKek in keyStoreManager.keys)
+            assertTrue(CipherKeyId.BiometricVaultKek in keyStoreManager.keys)
         }
 
     @Test

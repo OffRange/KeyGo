@@ -1,6 +1,7 @@
 package de.davis.keygo.core.security.crypto
 
 import de.davis.keygo.core.security.domain.KeyStoreManager
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
@@ -26,9 +27,10 @@ class FakeKeyStoreManager(
 ) : KeyStoreManager {
 
     val keys = mutableMapOf<KeyId, SecretKey>()
+    val keys = mutableMapOf<CipherKeyId, SecretKey>()
 
     override fun getOrCreateCipherFor(
-        keyId: KeyId,
+        keyId: CipherKeyId,
         cryptographicMode: CryptographicMode,
         iv: ByteArray?,
     ): Result<Cipher, KeyStoreManagerError> {
@@ -39,7 +41,7 @@ class FakeKeyStoreManager(
     }
 
     private fun createCipher(
-        keyId: KeyId,
+        keyId: CipherKeyId,
         cryptographicMode: CryptographicMode,
         iv: ByteArray?,
     ): Result<Cipher, KeyStoreManagerError> = runCatching {

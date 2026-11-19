@@ -1,7 +1,7 @@
 package de.davis.keygo.feature.backup.domain.usecase
 
 import de.davis.keygo.core.security.domain.KeyStoreManager
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.feature.backup.domain.BackupProvisioningLock
 import de.davis.keygo.feature.backup.domain.BackupScheduler
 import de.davis.keygo.feature.backup.domain.PersistableUriManager
@@ -90,12 +90,12 @@ internal class CleanupBackupResourcesUseCase(
         live: Map<WorkId, BackupJob>,
     ) {
         if (jobs.values.none { it.wrappedPassphrase != null })
-            runCatching { keyStoreManager.deleteKey(KeyId.BackupPassphraseKey) }
+            runCatching { keyStoreManager.deleteKey(CipherKeyId.BackupPassphraseKey) }
 
         // A failed clear must leave the alias in place - otherwise the escrowed ciphertext
         // outlives the only key that can open it.
         if (live.isEmpty() && runCatching { arkKeyStore.clear() }.isSuccess)
-            runCatching { keyStoreManager.deleteKey(KeyId.BackupArkKey) }
+            runCatching { keyStoreManager.deleteKey(CipherKeyId.BackupArkKey) }
     }
 
     /** Null when the scheduler cannot be read - never an empty set, which would read as "nothing

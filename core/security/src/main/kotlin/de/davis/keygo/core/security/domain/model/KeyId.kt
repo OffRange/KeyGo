@@ -8,7 +8,16 @@ package de.davis.keygo.core.security.domain.model
  * alias under a weaker policy could otherwise mint an auth-free key where an auth-bound one was
  * intended, so the set of aliases is closed here by construction.
  */
-enum class KeyId(val id: String, val needsAuthentication: Boolean) {
+sealed interface KeyId {
+    val id: String
+    val needsAuthentication: Boolean
+}
+
+/** AES-256-GCM secret keys that wrap or encrypt other key material. */
+enum class CipherKeyId(
+    override val id: String,
+    override val needsAuthentication: Boolean,
+) : KeyId {
     /** Wraps the account's ARK for biometric unlock; this key can only be used once unlocked via biometrics */
     BiometricVaultKek("biometric_vault_kek", true),
 

@@ -9,7 +9,7 @@ import de.davis.keygo.core.security.domain.ExportArk
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.model.CryptographicMode
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
 import de.davis.keygo.core.security.domain.useArk
 import de.davis.keygo.core.util.assertFailure
@@ -50,7 +50,7 @@ class BackupArkUnlockerTest {
     private suspend fun provision(ark: ByteArray = ByteArray(32) { (it + 1).toByte() }) {
         val cipher = assertNotNull(
             keyStore
-                .getOrCreateCipherFor(KeyId.BackupArkKey, CryptographicMode.Encrypt)
+                .getOrCreateCipherFor(CipherKeyId.BackupArkKey, CryptographicMode.Encrypt)
                 .getOrNull(),
         )
         arkStore.save(CryptographicData(cipher.doFinal(ark), cipher.iv))

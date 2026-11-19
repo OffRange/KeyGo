@@ -7,7 +7,7 @@ import de.davis.keygo.core.identity.domain.model.UnlockError
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.fold
@@ -34,7 +34,7 @@ class UnlockWithBiometricsUseCase(
             .bind()
 
         val key = biometricCrypto.requestUnwrap(
-            keyId = KeyId.BiometricVaultKek,
+            keyId = CipherKeyId.BiometricVaultKek,
             cryptographicData = CryptographicData(
                 data = wrappedKey.key,
                 iv = wrappedKey.keyIV

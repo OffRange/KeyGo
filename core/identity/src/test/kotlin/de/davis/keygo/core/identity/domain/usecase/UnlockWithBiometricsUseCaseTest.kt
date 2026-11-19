@@ -12,7 +12,7 @@ import de.davis.keygo.core.identity.domain.model.UnlockError
 import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
 import de.davis.keygo.core.security.domain.model.CryptographicMode
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.util.assertFailure
 import de.davis.keygo.core.util.assertSuccess
 import kotlinx.coroutines.test.runTest
@@ -61,7 +61,7 @@ class UnlockWithBiometricsUseCaseTest {
 
     private suspend fun seedEnrollment(wrappedKey: ByteArray) {
         val wrapped = biometricCrypto
-            .requestWrap(KeyId.BiometricVaultKek) { seal -> seal(wrappedKey) }
+            .requestWrap(CipherKeyId.BiometricVaultKek) { seal -> seal(wrappedKey) }
             .assertSuccess()
             .toBiometricWrappedArk()
         accountRepository.seed(accountRepository.getOrNull()!!.copy(biometricWrappedArk = wrapped))
@@ -108,7 +108,7 @@ class UnlockWithBiometricsUseCaseTest {
         unlockWithBiometrics(policy)
 
         val prompt = biometricCrypto.prompts.single()
-        assertEquals(KeyId.BiometricVaultKek, prompt.keyId)
+        assertEquals(CipherKeyId.BiometricVaultKek, prompt.keyId)
         assertEquals(CryptographicMode.Unwrap, prompt.mode)
         assertEquals(policy, prompt.policy)
     }
@@ -133,19 +133,19 @@ class UnlockWithBiometricsUseCaseTest {
 
         assertEquals(UnlockError.BiometricFailed(BiometricAuthError.CryptoFailed), error)
         assertNotNull(accountRepository.getOrNull()?.biometricWrappedArk)
-        assertTrue(KeyId.BiometricVaultKek in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BiometricVaultKek in keyStoreManager.keys)
     }
 
     @Test
     fun `an invalidated key drops the stored enrollment and reports it as reset`() = runTest {
         seedAccount(biometricWrappedArk = true)
-        keyStoreManager.deleteKey(KeyId.BiometricVaultKek)
+        keyStoreManager.deleteKey(CipherKeyId.BiometricVaultKek)
 
         val error = unlockWithBiometrics().assertFailure()
 
         assertEquals(UnlockError.BiometricEnrollmentReset, error)
         assertNull(accountRepository.getOrNull()?.biometricWrappedArk)
-        assertFalse(KeyId.BiometricVaultKek in keyStoreManager.keys)
+        assertFalse(CipherKeyId.BiometricVaultKek in keyStoreManager.keys)
         assertFalse(session.isActive.value)
     }
 
@@ -159,7 +159,7 @@ class UnlockWithBiometricsUseCaseTest {
 
         assertEquals(UnlockError.BiometricFailed(BiometricAuthError.KeyInvalidated), error)
         assertNotNull(accountRepository.getOrNull()?.biometricWrappedArk)
-        assertTrue(KeyId.BiometricVaultKek in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BiometricVaultKek in keyStoreManager.keys)
     }
 
     /**

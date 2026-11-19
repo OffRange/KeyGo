@@ -17,7 +17,7 @@ import de.davis.keygo.core.security.domain.ExportArk
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.model.CryptographicMode
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
@@ -95,7 +95,7 @@ class ExportBackupUseCaseTest {
     private suspend fun provision(session: Session) {
         val cipher = assertNotNull(
             keyStore
-                .getOrCreateCipherFor(KeyId.BackupArkKey, CryptographicMode.Encrypt)
+                .getOrCreateCipherFor(CipherKeyId.BackupArkKey, CryptographicMode.Encrypt)
                 .getOrNull(),
         )
         val ark = assertNotNull(session.exportArk().getOrNull())
@@ -190,7 +190,7 @@ class ExportBackupUseCaseTest {
         seedSingleLogin()
         val cipher = assertNotNull(
             keyStore
-                .getOrCreateCipherFor(KeyId.BackupPassphraseKey, CryptographicMode.Encrypt)
+                .getOrCreateCipherFor(CipherKeyId.BackupPassphraseKey, CryptographicMode.Encrypt)
                 .getOrNull(),
         )
         val wrappedPassphrase =
@@ -213,7 +213,7 @@ class ExportBackupUseCaseTest {
         seedSingleLogin()
         val cipher = assertNotNull(
             keyStore
-                .getOrCreateCipherFor(KeyId.BackupPassphraseKey, CryptographicMode.Encrypt)
+                .getOrCreateCipherFor(CipherKeyId.BackupPassphraseKey, CryptographicMode.Encrypt)
                 .getOrNull(),
         )
         val wrappedPassphrase =

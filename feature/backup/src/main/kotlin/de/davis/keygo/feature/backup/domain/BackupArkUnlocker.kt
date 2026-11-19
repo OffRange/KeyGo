@@ -5,7 +5,7 @@ import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.SessionFactory
 import de.davis.keygo.core.security.domain.crypto.suspendDoFinal
 import de.davis.keygo.core.security.domain.model.CryptographicMode
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.resultBinding
@@ -16,7 +16,7 @@ import org.koin.core.annotation.Single
 
 /**
  * Resolves the session a backup runs under. Prefers the live [Session]; when locked, silently
- * recovers the ARK copy via the non-auth [KeyId.BackupArkKey] and hands it to a throwaway session
+ * recovers the ARK copy via the non-auth [CipherKeyId.BackupArkKey] and hands it to a throwaway session
  * from [SessionFactory].
  *
  * The app-wide session is never touched. The escrowed ARK is readable with no user present, so
@@ -67,7 +67,7 @@ internal class BackupArkUnlocker(
             .asResult(ExportError.NotProvisioned).bind()
 
         val cipher = keyStoreManager.getOrCreateCipherFor(
-            keyId = KeyId.BackupArkKey,
+            keyId = CipherKeyId.BackupArkKey,
             cryptographicMode = CryptographicMode.Decrypt,
             iv = wrapped.iv,
         ).bind { it.exportError }

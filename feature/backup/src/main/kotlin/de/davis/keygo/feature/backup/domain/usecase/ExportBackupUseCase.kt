@@ -4,7 +4,7 @@ import de.davis.keygo.core.security.domain.KeyStoreManager
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.suspendDoFinal
 import de.davis.keygo.core.security.domain.model.CryptographicMode
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.ResultBinding
 import de.davis.keygo.core.util.getOrNull
@@ -140,7 +140,7 @@ internal class ExportBackupUseCase(
                 ?: return Result.Failure(ExportError.CryptoFailed)
 
             val cipher = keyStoreManager.getOrCreateCipherFor(
-                keyId = KeyId.BackupPassphraseKey,
+                keyId = CipherKeyId.BackupPassphraseKey,
                 cryptographicMode = CryptographicMode.Decrypt,
                 iv = wrapped.iv,
             ).bind { it.exportError }

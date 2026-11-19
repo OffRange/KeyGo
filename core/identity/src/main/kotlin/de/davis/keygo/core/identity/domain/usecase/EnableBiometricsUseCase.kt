@@ -7,7 +7,7 @@ import de.davis.keygo.core.identity.domain.model.BiometricEnrollmentError
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.KeyStoreManager
 import de.davis.keygo.core.security.domain.Session
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.security.domain.useArk
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.resultBinding
@@ -28,10 +28,10 @@ class EnableBiometricsUseCase(
 
         session.isActive.value.asResult(BiometricEnrollmentError.NoActiveSession).bind()
 
-        if (account.biometricWrappedArk == null) keyStoreManager.deleteKey(KeyId.BiometricVaultKek)
+        if (account.biometricWrappedArk == null) keyStoreManager.deleteKey(CipherKeyId.BiometricVaultKek)
 
         val wrapped = biometricCrypto.requestWrap(
-            keyId = KeyId.BiometricVaultKek,
+            keyId = CipherKeyId.BiometricVaultKek,
             policy = policy,
         ) { seal -> session.useArk(seal) }
             .bind { BiometricEnrollmentError.BiometricFailed(it) }
