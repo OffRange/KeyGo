@@ -86,7 +86,7 @@ import de.davis.keygo.feature.item.core.presentation.login.colored
 import de.davis.keygo.feature.item.core.presentation.login.model.FieldType
 import de.davis.keygo.feature.item.core.presentation.login.model.UiPassword.Companion.asUiPassword
 import de.davis.keygo.feature.item.core.presentation.transformation.TrimTransformation
-import de.davis.keygo.feature.item.core.presentation.transformation.rememberSchemeStrippingTransformation
+import de.davis.keygo.core.ui.text.transformation.rememberSchemeStrippingTransformation
 import de.davis.keygo.feature.item.view.R
 import de.davis.keygo.feature.item.view.login.model.ModificationDialog
 import de.davis.keygo.feature.item.view.login.model.ObfuscatedString

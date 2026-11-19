@@ -51,7 +51,7 @@ import de.davis.keygo.feature.item.core.presentation.component.CreateOrModifyIte
 import de.davis.keygo.feature.item.core.presentation.component.KeyGoFormField
 import de.davis.keygo.feature.item.core.presentation.component.MenuChip
 import de.davis.keygo.feature.item.core.presentation.component.gatherPendingItems
-import de.davis.keygo.feature.item.core.presentation.transformation.rememberSchemeStrippingTransformation
+import de.davis.keygo.core.ui.text.transformation.rememberSchemeStrippingTransformation
 import de.davis.keygo.feature.item.create.R
 import de.davis.keygo.feature.item.create.presentation.component.DeletePasskeyDialog
 import de.davis.keygo.feature.item.create.presentation.component.FormGroup
