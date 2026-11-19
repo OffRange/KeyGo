@@ -49,7 +49,7 @@ fn check_base_url(url: &Url) -> SyncResult<()> {
     if is_origin {
         return Ok(());
     }
-    Err(SyncError::Client {
+    Err(SyncError::InvalidUrl {
         message: "the server url must be a plain http(s) origin".into(),
     })
 }
@@ -161,7 +161,7 @@ impl SyncClient {
             .wrap_for_server(&finish.export_key, user_id)
             .map_err(|error| match error {
                 ArkSessionError::Locked => SyncError::VaultLocked,
-                other => client_failure(other),
+                other => internal_failure(other),
             })?;
         let key_bundle = KeyBundle { wrapped_ark };
 
@@ -306,8 +306,8 @@ fn is_reattached(session: &Session, claimed: Option<DeviceId>) -> bool {
     claimed == Some(session.device_id)
 }
 
-fn client_failure(error: impl std::fmt::Display) -> SyncError {
-    SyncError::Client {
+fn internal_failure(error: impl std::fmt::Display) -> SyncError {
+    SyncError::Internal {
         message: error.to_string(),
     }
 }
@@ -319,14 +319,14 @@ fn unlock_failure(error: ArkSessionError) -> SyncError {
         ArkSessionError::KeyWrap(
             error @ (CryptoError::KeyUnwrapFailed | CryptoError::DecryptionFailed),
         ) => SyncError::invalid_response(format!("the server's key bundle: {error}")),
-        other => client_failure(other),
+        other => internal_failure(other),
     }
 }
 
 fn opaque_failure(error: OpaqueError) -> SyncError {
     match error {
         OpaqueError::InvalidLogin | OpaqueError::EmptyPassword => SyncError::InvalidCredentials,
-        other => client_failure(other),
+        other => internal_failure(other),
     }
 }
 
@@ -335,7 +335,7 @@ mod tests {
     use super::super::error::SyncError;
     use super::super::testing::{error_body, fake_client, header};
     use super::super::tokens::StoredSession;
-    use super::super::transport::HttpRequest;
+    use super::super::transport::{HttpRequest, NetworkError};
     use serde_json::json;
 
     const INFO: &str = r#"{"version":"1","public_url":"https://kg.example","allow_signups":true}"#;
@@ -1030,13 +1030,11 @@ mod tests {
     #[tokio::test]
     async fn transport_failure_is_network() {
         let (client, transport) = fake_client();
-        transport.push_network_error("offline");
+        transport.push_network_failure(NetworkError::Timeout);
 
         assert_eq!(
             client.meta().await.unwrap_err(),
-            SyncError::Network {
-                message: "offline".into(),
-            },
+            SyncError::Network(NetworkError::Timeout),
         );
     }
 }

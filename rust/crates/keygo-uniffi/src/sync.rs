@@ -4,11 +4,10 @@ use keygo_api::domain::{AppVersion, Device, DeviceInfo, DeviceName, Platform};
 use keygo_api::meta::ServerInfo;
 use keygo_client::crypto::{DeviceId, UserId};
 use keygo_client::sync::{
-    Account as CoreAccount, Header, HttpRequest as CoreHttpRequest, HttpResponse,
+    Account as CoreAccount, Header, HttpRequest as CoreHttpRequest, HttpResponse, NetworkError,
     SignError as CoreSignError, StoredSession as CoreStoredSession, SyncClient as CoreSyncClient,
     SyncError as CoreSyncError, SyncResult, TokenStore as CoreTokenStore,
     TokenStoreError as CoreTokenStoreError, Transport as CoreTransport,
-    TransportError as CoreTransportError,
 };
 use keygo_dpop::{DpopSigner, Signature, VerifyingKey};
 use std::fmt::Display;
@@ -40,13 +39,15 @@ pub enum SyncError {
     /// The account signed in to holds a different ARK than the unlocked local vault.
     #[error("account mismatch")]
     AccountMismatch,
-    #[error("network error: {reason}")]
-    Network { reason: String },
+    #[error("network error: {kind:?}")]
+    Network { kind: NetworkError },
     #[error("server error {code}: {reason}")]
     Server { code: String, reason: String },
-    #[error("client error: {reason}")]
-    Client { reason: String },
-    #[error("{reason}")]
+    /// A bug or a broken host dependency, never the user's input. `reason` is for logs only.
+    #[error("internal error: {reason}")]
+    Internal { reason: String },
+    /// The server address is not a plain http(s) origin.
+    #[error("invalid server url: {reason}")]
     InvalidUrl { reason: String },
 }
 
@@ -65,15 +66,13 @@ impl From<CoreSyncError> for SyncError {
             CoreSyncError::RateLimited => Self::RateLimited,
             CoreSyncError::VaultLocked => Self::VaultLocked,
             CoreSyncError::AccountMismatch => Self::AccountMismatch,
-            CoreSyncError::Network { message } => Self::Network { reason: message },
+            CoreSyncError::Network(kind) => Self::Network { kind },
             CoreSyncError::Server { code, message } => Self::Server {
                 code,
                 reason: message,
             },
-            CoreSyncError::Client { message } => Self::Client { reason: message },
-            CoreSyncError::InvalidUrl(e) => Self::InvalidUrl {
-                reason: e.to_string(),
-            },
+            CoreSyncError::Internal { message } => Self::Internal { reason: message },
+            CoreSyncError::InvalidUrl { message } => Self::InvalidUrl { reason: message },
         }
     }
 }
@@ -104,10 +103,21 @@ macro_rules! callback_error {
 }
 
 callback_error!(
-    TransportError => CoreTransportError,
     SignError => CoreSignError,
     TokenStoreError => CoreTokenStoreError,
 );
+
+#[uniffi::remote(Error)]
+pub enum NetworkError {
+    UnknownHost,
+    Timeout,
+    Refused,
+    Unreachable,
+    CleartextBlocked,
+    UntrustedCertificate,
+    Tls,
+    Other,
+}
 
 #[uniffi::remote(Record)]
 pub struct Header {
@@ -175,7 +185,7 @@ impl DeviceDetails {
 }
 
 fn invalid_device(error: impl Display) -> SyncError {
-    SyncError::Client {
+    SyncError::Internal {
         reason: format!("invalid device details: {error}"),
     }
 }
@@ -235,7 +245,7 @@ impl From<CoreAccount> for Account {
 #[uniffi::export(with_foreign)]
 #[async_trait]
 pub trait HttpTransport: Send + Sync {
-    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError>;
+    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, NetworkError>;
 }
 
 /// A hardware-backed P-256 key held by the host.
@@ -260,8 +270,8 @@ struct TransportAdapter(Arc<dyn HttpTransport>);
 
 #[async_trait]
 impl CoreTransport for TransportAdapter {
-    async fn send(&self, request: CoreHttpRequest) -> Result<HttpResponse, CoreTransportError> {
-        Ok(self.0.send(request.into()).await?)
+    async fn send(&self, request: CoreHttpRequest) -> Result<HttpResponse, NetworkError> {
+        self.0.send(request.into()).await
     }
 }
 
@@ -272,11 +282,11 @@ struct ForeignSigner {
 
 impl ForeignSigner {
     fn new(key: Arc<dyn DpopKey>) -> Result<Self, SyncError> {
-        let public_key = key.public_key().map_err(|e| SyncError::Client {
+        let public_key = key.public_key().map_err(|e| SyncError::Internal {
             reason: format!("could not read the DPoP public key: {e}"),
         })?;
         let verifying =
-            VerifyingKey::from_sec1_bytes(&public_key).map_err(|_| SyncError::Client {
+            VerifyingKey::from_sec1_bytes(&public_key).map_err(|_| SyncError::Internal {
                 reason: "the DPoP public key is not a P-256 point".into(),
             })?;
         Ok(Self { key, verifying })
@@ -337,7 +347,7 @@ async fn detached<T: Send + 'static>(
 ) -> Result<T, SyncError> {
     tokio::spawn(call)
         .await
-        .map_err(|_| SyncError::Client {
+        .map_err(|_| SyncError::Internal {
             reason: "the sync task did not finish".into(),
         })?
         .map_err(Into::into)
@@ -352,8 +362,8 @@ impl SyncClient {
         dpop_key: Arc<dyn DpopKey>,
         tokens: Arc<dyn TokenStore>,
     ) -> Result<Arc<Self>, SyncError> {
-        let base_url = Url::parse(&base_url).map_err(|e| SyncError::Client {
-            reason: format!("invalid server url: {e}"),
+        let base_url = Url::parse(&base_url).map_err(|e| SyncError::InvalidUrl {
+            reason: e.to_string(),
         })?;
         let inner = CoreSyncClient::new(
             base_url,
@@ -523,13 +533,22 @@ mod tests {
 
     #[async_trait]
     impl HttpTransport for RecordingTransport {
-        async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
+        async fn send(&self, request: HttpRequest) -> Result<HttpResponse, NetworkError> {
             self.methods.lock().unwrap().push(request.method);
             Ok(HttpResponse {
                 status: 204,
                 headers: Vec::new(),
                 body: Vec::new(),
             })
+        }
+    }
+
+    struct FailingTransport(NetworkError);
+
+    #[async_trait]
+    impl HttpTransport for FailingTransport {
+        async fn send(&self, _: HttpRequest) -> Result<HttpResponse, NetworkError> {
+            Err(self.0)
         }
     }
 
@@ -541,7 +560,7 @@ mod tests {
 
     #[async_trait]
     impl HttpTransport for GatedTransport {
-        async fn send(&self, _: HttpRequest) -> Result<HttpResponse, TransportError> {
+        async fn send(&self, _: HttpRequest) -> Result<HttpResponse, NetworkError> {
             self.reached.notify_one();
             self.release.notified().await;
             Ok(HttpResponse {
@@ -646,7 +665,10 @@ mod tests {
             app_version: "2.3.0".into(),
         };
 
-        assert!(matches!(device.into_core(), Err(SyncError::Client { .. }),));
+        assert!(matches!(
+            device.into_core(),
+            Err(SyncError::Internal { .. }),
+        ));
     }
 
     #[tokio::test]
@@ -689,7 +711,22 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_panicking_call_is_a_client_error() {
+    async fn a_transport_failure_keeps_its_kind() {
+        let client = client(
+            Arc::new(FailingTransport(NetworkError::UntrustedCertificate)),
+            Arc::new(MemoryStore::default()),
+        );
+
+        assert!(matches!(
+            client.meta().await,
+            Err(SyncError::Network {
+                kind: NetworkError::UntrustedCertificate,
+            }),
+        ));
+    }
+
+    #[tokio::test]
+    async fn a_panicking_call_is_an_internal_error() {
         let client = client(
             Arc::new(RecordingTransport::default()),
             Arc::new(PanickingStore),
@@ -697,12 +734,12 @@ mod tests {
 
         assert!(matches!(
             client.devices().await,
-            Err(SyncError::Client { .. }),
+            Err(SyncError::Internal { .. }),
         ));
     }
 
     #[test]
-    fn a_throwing_public_key_is_a_client_error() {
+    fn a_throwing_public_key_is_an_internal_error() {
         let result = SyncClient::new(
             "https://kg.example".into(),
             Arc::new(RecordingTransport::default()),
@@ -710,7 +747,24 @@ mod tests {
             Arc::new(MemoryStore::default()),
         );
 
-        assert!(matches!(result, Err(SyncError::Client { .. })));
+        assert!(matches!(result, Err(SyncError::Internal { .. })));
+    }
+
+    #[test]
+    fn a_bad_server_address_is_an_invalid_url() {
+        for address in ["not a url", "https://kg.example/vault", "ftp://kg.example"] {
+            let result = SyncClient::new(
+                address.into(),
+                Arc::new(RecordingTransport::default()),
+                Arc::new(TestKey(TestSigner::new())),
+                Arc::new(MemoryStore::default()),
+            );
+
+            assert!(
+                matches!(result, Err(SyncError::InvalidUrl { .. })),
+                "for {address}",
+            );
+        }
     }
 
     #[test]
@@ -722,7 +776,7 @@ mod tests {
             Arc::new(MemoryStore::default()),
         );
 
-        assert!(matches!(result, Err(SyncError::Client { .. })));
+        assert!(matches!(result, Err(SyncError::Internal { .. })));
     }
 
     #[test]

@@ -15,7 +15,7 @@ use std::sync::{MutexGuard, PoisonError};
 use zeroize::Zeroizing;
 
 fn to_json<T: Serialize>(value: &T) -> SyncResult<Vec<u8>> {
-    serde_json::to_vec(value).map_err(|e| SyncError::Client {
+    serde_json::to_vec(value).map_err(|e| SyncError::Internal {
         message: format!("request does not serialize: {e}"),
     })
 }
@@ -90,14 +90,20 @@ impl HttpResponse {
 }
 
 pub(super) fn store_failure(error: TokenStoreError) -> SyncError {
-    SyncError::Client {
+    SyncError::Internal {
         message: format!("token store failed: {error}"),
     }
 }
 
 impl SyncClient {
     fn url(&self, path: &str) -> SyncResult<String> {
-        Ok(self.base_url.join(path)?.to_string())
+        // The base is a checked origin and every path is a constant, so a failure here is a bug.
+        self.base_url
+            .join(path)
+            .map(String::from)
+            .map_err(|e| SyncError::Internal {
+                message: format!("endpoint path does not join: {e}"),
+            })
     }
 
     fn nonce_slot(&self) -> MutexGuard<'_, Option<String>> {
@@ -115,10 +121,7 @@ impl SyncClient {
     }
 
     async fn send(&self, request: HttpRequest) -> SyncResult<HttpResponse> {
-        self.transport
-            .send(request)
-            .await
-            .map_err(|e| SyncError::Network { message: e.message })
+        Ok(self.transport.send(request).await?)
     }
 
     async fn send_signed_once(
@@ -137,7 +140,7 @@ impl SyncClient {
                 access_token,
                 nonce: nonce.as_deref(),
             })
-            .map_err(|e| SyncError::Client {
+            .map_err(|e| SyncError::Internal {
                 message: format!("could not sign the DPoP proof: {e}"),
             })?;
 
@@ -357,6 +360,7 @@ mod tests {
         header,
     };
     use super::super::tokens::TokenStore;
+    use super::super::transport::NetworkError;
     use super::*;
     use base64::Engine;
     use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -548,7 +552,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn keystore_failure_is_a_client_error() {
+    async fn keystore_failure_is_an_internal_error() {
         let (client, transport) = client_for(
             "https://kg.example",
             Arc::new(FailingSigner(FakeSigner::new())),
@@ -558,7 +562,7 @@ mod tests {
 
         assert!(matches!(
             error,
-            SyncError::Client { message } if message.contains("keystore locked"),
+            SyncError::Internal { message } if message.contains("keystore locked"),
         ));
         assert!(transport.requests().is_empty());
     }
@@ -918,7 +922,7 @@ mod tests {
         let h = refused().await;
 
         h.clock.advance(601);
-        h.transport.push_network_error("offline");
+        h.transport.push_network_failure(NetworkError::Other);
         h.client.devices().await.unwrap_err();
         h.transport.push(500, &[], &error_body("internal"));
         h.client.devices().await.unwrap_err();
@@ -1190,11 +1194,11 @@ mod tests {
     #[tokio::test]
     async fn network_failure_during_refresh_keeps_store() {
         let h = seeded();
-        h.transport.push_network_error("offline");
+        h.transport.push_network_failure(NetworkError::Other);
 
         let error = h.client.devices().await.unwrap_err();
 
-        assert!(matches!(error, SyncError::Network { .. }));
+        assert!(matches!(error, SyncError::Network(_)));
         assert_eq!(
             h.store.current_refresh_token().as_deref(),
             Some(OLD_REFRESH)
@@ -1217,11 +1221,11 @@ mod tests {
     #[tokio::test]
     async fn logout_clears_local_state_when_offline() {
         let h = fresh().await;
-        h.transport.push_network_error("offline");
+        h.transport.push_network_failure(NetworkError::Other);
 
         let error = h.client.logout().await.unwrap_err();
 
-        assert!(matches!(error, SyncError::Network { .. }));
+        assert!(matches!(error, SyncError::Network(_)));
         h.assert_signed_out_locally().await;
     }
 
@@ -1229,11 +1233,11 @@ mod tests {
     async fn offline_logout_reports_a_failed_clear() {
         let h = fresh().await;
         h.store.fail_clears();
-        h.transport.push_network_error("offline");
+        h.transport.push_network_failure(NetworkError::Other);
 
         let error = h.client.logout().await.unwrap_err();
 
-        assert!(matches!(error, SyncError::Client { .. }));
+        assert!(matches!(error, SyncError::Internal { .. }));
         assert!(h.client.auth.lock().await.access().is_none());
         // The server still accepts this token, so this cannot pass as an offline logout.
         assert_eq!(

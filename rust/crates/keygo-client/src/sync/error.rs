@@ -1,6 +1,8 @@
 use keygo_api::domain::RevokeReason;
 use keygo_api::{ApiError, ErrorCode};
 
+use super::transport::NetworkError;
+
 pub type SyncResult<T> = Result<T, SyncError>;
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -26,14 +28,16 @@ pub enum SyncError {
     /// The account signed in to holds a different ARK than the unlocked local vault.
     #[error("account mismatch")]
     AccountMismatch,
-    #[error("network error: {message}")]
-    Network { message: String },
+    #[error("network error: {0}")]
+    Network(#[from] NetworkError),
     #[error("server error {code}: {message}")]
     Server { code: String, message: String },
-    #[error("client error: {message}")]
-    Client { message: String },
-    #[error(transparent)]
-    InvalidUrl(#[from] url::ParseError),
+    /// A bug or a broken host dependency, never the user's input. `message` is for logs only.
+    #[error("internal error: {message}")]
+    Internal { message: String },
+    /// The server address the user entered is not a plain http(s) origin.
+    #[error("invalid server url: {message}")]
+    InvalidUrl { message: String },
 }
 
 impl SyncError {

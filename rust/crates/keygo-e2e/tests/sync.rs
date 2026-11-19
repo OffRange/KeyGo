@@ -6,8 +6,8 @@ use keygo_api::domain::{Device, RevokeReason};
 use keygo_client::ark_session::ArkSession;
 use keygo_client::sync::testing::{FakeSigner, FakeTokenStore, FixedClock};
 use keygo_client::sync::{
-    Clock, Header, HttpRequest, HttpResponse, StoredSession, SyncClient, SyncError, SystemClock,
-    Transport, TransportError,
+    Clock, Header, HttpRequest, HttpResponse, NetworkError, StoredSession, SyncClient, SyncError,
+    SystemClock, Transport,
 };
 use keygo_core::{AccountRootKey, KeyMaterial, OpaqueKek, Sealed, UserId, Wraps};
 use keygo_dpop::testing::TestSigner;
@@ -23,25 +23,24 @@ struct TowerTransport(AppState);
 
 #[async_trait]
 impl Transport for TowerTransport {
-    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
-        let fail = |e: &dyn std::fmt::Display| TransportError {
-            message: e.to_string(),
-        };
+    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, NetworkError> {
         let mut built = Request::builder()
             .method(request.method.as_str())
             .uri(&request.url);
         for header in &request.headers {
             built = built.header(
-                HeaderName::try_from(header.name.as_str()).map_err(|e| fail(&e))?,
-                HeaderValue::try_from(header.value.as_str()).map_err(|e| fail(&e))?,
+                HeaderName::try_from(header.name.as_str()).map_err(|_| NetworkError::Other)?,
+                HeaderValue::try_from(header.value.as_str()).map_err(|_| NetworkError::Other)?,
             );
         }
-        let built = built.body(Body::from(request.body)).map_err(|e| fail(&e))?;
+        let built = built
+            .body(Body::from(request.body))
+            .map_err(|_| NetworkError::Other)?;
 
         let response = router(self.0.clone())
             .oneshot(built)
             .await
-            .map_err(|e| fail(&e))?;
+            .map_err(|_| NetworkError::Other)?;
         let status = response.status().as_u16();
         let headers = response
             .headers()
@@ -55,7 +54,7 @@ impl Transport for TowerTransport {
             .into_body()
             .collect()
             .await
-            .map_err(|e| fail(&e))?
+            .map_err(|_| NetworkError::Other)?
             .to_bytes()
             .to_vec();
         Ok(HttpResponse {
