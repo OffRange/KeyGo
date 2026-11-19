@@ -41,8 +41,15 @@ pub enum SyncError {
     AccountMismatch,
     #[error("network error: {kind:?}")]
     Network { kind: NetworkError },
+    /// KeyGo answered with one of its own error codes; `code` is the wire name.
     #[error("server error {code}: {reason}")]
     Server { code: String, reason: String },
+    /// Something answered with a body this client cannot use, so likely not a KeyGo server.
+    #[error("invalid response: {reason}")]
+    InvalidResponse { reason: String },
+    /// A non-KeyGo error body with this status: a reverse proxy, a redirect, a foreign server.
+    #[error("unexpected status {status}: {reason}")]
+    UnexpectedStatus { status: u16, reason: String },
     /// A bug or a broken host dependency, never the user's input. `reason` is for logs only.
     #[error("internal error: {reason}")]
     Internal { reason: String },
@@ -69,6 +76,11 @@ impl From<CoreSyncError> for SyncError {
             CoreSyncError::Network(kind) => Self::Network { kind },
             CoreSyncError::Server { code, message } => Self::Server {
                 code,
+                reason: message,
+            },
+            CoreSyncError::InvalidResponse { message } => Self::InvalidResponse { reason: message },
+            CoreSyncError::UnexpectedStatus { status, message } => Self::UnexpectedStatus {
+                status,
                 reason: message,
             },
             CoreSyncError::Internal { message } => Self::Internal { reason: message },

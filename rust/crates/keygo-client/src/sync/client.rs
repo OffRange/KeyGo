@@ -419,18 +419,18 @@ mod tests {
 
         assert!(matches!(
             client.meta().await.unwrap_err(),
-            SyncError::Server { code, .. } if code == "invalid_response",
+            SyncError::InvalidResponse { .. },
         ));
     }
 
     #[tokio::test]
-    async fn html_502_is_a_server_error() {
+    async fn html_502_is_an_unexpected_status() {
         let (client, transport) = fake_client();
         transport.push(502, &[], b"<html>");
 
         assert!(matches!(
             client.meta().await.unwrap_err(),
-            SyncError::Server { code, .. } if code == "http_502",
+            SyncError::UnexpectedStatus { status: 502, .. },
         ));
     }
 
@@ -1015,7 +1015,7 @@ mod tests {
                 .unwrap_err();
 
             assert!(
-                matches!(&error, SyncError::Server { code, .. } if code == "invalid_response"),
+                matches!(&error, SyncError::InvalidResponse { .. }),
                 "{error:?}",
             );
             assert!(!ark_session.is_active());

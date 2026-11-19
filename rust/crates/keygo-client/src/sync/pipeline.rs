@@ -382,7 +382,7 @@ mod tests {
     fn empty_body_is_not_a_struct() {
         assert!(matches!(
             decode_body::<ServerInfo>(b""),
-            Err(SyncError::Server { code, .. }) if code == "invalid_response",
+            Err(SyncError::InvalidResponse { .. }),
         ));
     }
 
@@ -1184,7 +1184,7 @@ mod tests {
 
         let error = h.client.devices().await.unwrap_err();
 
-        assert!(matches!(error, SyncError::Server { code, .. } if code == "invalid_response"));
+        assert!(matches!(error, SyncError::InvalidResponse { .. }));
         assert_eq!(
             h.store.current_refresh_token().as_deref(),
             Some(ROTATED_REFRESH)
