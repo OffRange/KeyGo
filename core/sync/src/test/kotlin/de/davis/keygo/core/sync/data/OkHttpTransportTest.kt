@@ -2,7 +2,7 @@ package de.davis.keygo.core.sync.data
 
 import de.davisalessandro.keygo.rust.Header
 import de.davisalessandro.keygo.rust.HttpRequest
-import de.davisalessandro.keygo.rust.TransportException
+import de.davisalessandro.keygo.rust.NetworkException
 import kotlinx.coroutines.test.runTest
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -91,7 +91,7 @@ class OkHttpTransportTest {
                 .build(),
         )
 
-        assertFailsWith<TransportException.Failed> { transport.send(request("GET")) }
+        assertFailsWith<NetworkException> { transport.send(request("GET")) }
         assertEquals(1, server.requestCount)
     }
 
@@ -111,10 +111,10 @@ class OkHttpTransportTest {
     }
 
     @Test
-    fun io_failure_throws_transport_exception() = runTest {
+    fun refused_connection_is_reported_as_refused() = runTest {
         val unreachable = request("GET")
         server.close()
 
-        assertFailsWith<TransportException.Failed> { transport.send(unreachable) }
+        assertFailsWith<NetworkException.Refused> { transport.send(unreachable) }
     }
 }

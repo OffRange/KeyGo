@@ -1,10 +1,10 @@
 package de.davis.keygo.core.sync.data
 
+import de.davis.keygo.core.sync.data.mapper.asRustNetworkException
 import de.davisalessandro.keygo.rust.Header
 import de.davisalessandro.keygo.rust.HttpRequest
 import de.davisalessandro.keygo.rust.HttpResponse
 import de.davisalessandro.keygo.rust.HttpTransport
-import de.davisalessandro.keygo.rust.TransportException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
@@ -32,7 +32,7 @@ internal class OkHttpTransport(client: OkHttpClient) : HttpTransport {
         val okRequest = try {
             request.toOkHttp()
         } catch (e: IllegalArgumentException) {
-            throw e.toTransportException()
+            throw e.asRustNetworkException()
         }
 
         return suspendCancellableCoroutine { continuation ->
@@ -40,14 +40,14 @@ internal class OkHttpTransport(client: OkHttpClient) : HttpTransport {
             continuation.invokeOnCancellation { call.cancel() }
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    continuation.resumeWithException(e.toTransportException())
+                    continuation.resumeWithException(e.asRustNetworkException())
                 }
 
                 override fun onResponse(call: Call, response: Response) {
                     try {
                         continuation.resume(response.use { it.toRust() })
                     } catch (e: IOException) {
-                        continuation.resumeWithException(e.toTransportException())
+                        continuation.resumeWithException(e.asRustNetworkException())
                     }
                 }
             })
@@ -71,9 +71,6 @@ internal class OkHttpTransport(client: OkHttpClient) : HttpTransport {
         headers = headers.map { (name, value) -> Header(name = name, value = value) },
         body = body.bytes(),
     )
-
-    private fun Exception.toTransportException() =
-        TransportException.Failed(reason = message ?: this::class.java.simpleName)
 
     private companion object {
         const val CALL_TIMEOUT_SECONDS = 30L
