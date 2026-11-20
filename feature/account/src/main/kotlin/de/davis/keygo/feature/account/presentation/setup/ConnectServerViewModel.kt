@@ -13,6 +13,7 @@ import de.davis.keygo.feature.account.domain.model.ServerAddressError
 import de.davis.keygo.feature.account.presentation.setup.mapper.toFailureReason
 import de.davis.keygo.feature.account.presentation.setup.mapper.toFound
 import de.davis.keygo.feature.account.presentation.setup.mapper.toServerCheck
+import de.davis.keygo.feature.account.presentation.setup.model.ChooseUsernameState
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerEvent
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerStep
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiEvent
@@ -43,6 +44,8 @@ internal class ConnectServerViewModel(
 ) : ViewModel() {
 
     private val addressTextFieldState = TextFieldState()
+    private val usernameTextFieldState = TextFieldState()
+    private val inviteTextFieldState = TextFieldState()
 
     private val _detectedScheme = MutableStateFlow<String?>(null)
 
@@ -97,6 +100,13 @@ internal class ConnectServerViewModel(
             addressTextFieldState = addressTextFieldState,
             typedScheme = scheme,
             check = check,
+        ),
+        chooseUsernameState = ChooseUsernameState(
+            usernameTextFieldState = usernameTextFieldState,
+            inviteTextFieldState = inviteTextFieldState,
+            serverHost = addressTextFieldState.text.toString(),
+            serverInviteRequired = true,
+            inviteEditable = true,
         ),
         step = step,
     )

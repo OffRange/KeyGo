@@ -60,5 +60,15 @@
     <string name="connect_server_error">The server ran into a problem. Try again later.</string>
     <string name="connect_server_rate_limited">Too many attempts. Wait a moment, then try again.</string>
     <string name="connect_server_unknown_error">Something went wrong while checking this server.</string>
-    <string name="connect_server_use_another">Use another server</string>
+
+    <string name="confirm_server_use_another">Use another server</string>
+
+    <string name="username">Username</string>
+    <string name="invite_code">Invite code</string>
+    <string name="invite_code_placeholder" translatable="false">XXXX-XXXX-XXXX</string>
+    <string name="choose_username_title">Choose a username</string>
+    <string name="choose_username_description">No email needed. You\'ll sign in with this name on %1$s.</string>
+    <string name="choose_username_helper">Lowercase letters, digits, dots, dashes and underscores.</string>
+    <string name="invite_code_helper">Each code works once.</string>
+    <string name="invite_code_from_link_helper">Filled in from your invite link. Each code works once.</string>
 </resources>

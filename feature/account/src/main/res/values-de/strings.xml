@@ -59,5 +59,14 @@
     <string name="connect_server_error">Auf dem Server ist ein Fehler aufgetreten. Versuch es später erneut.</string>
     <string name="connect_server_rate_limited">Zu viele Versuche. Warte kurz und versuch es dann erneut.</string>
     <string name="connect_server_unknown_error">Beim Prüfen des Servers ist etwas schiefgelaufen.</string>
-    <string name="connect_server_use_another">Anderen Server nutzen</string>
+    
+    <string name="confirm_server_use_another">Anderen Server nutzen</string>
+
+    <string name="username">Benutzername</string>
+    <string name="invite_code">Einladungscode</string>
+    <string name="choose_username_title">Wähle einen Benutzernamen</string>
+    <string name="choose_username_description">Keine E-Mail nötig. Du meldest dich mit diesem Namen bei %1$s an.</string>
+    <string name="choose_username_helper">Kleinbuchstaben, Ziffern, Punkte, Binde- und Unterstriche.</string>
+    <string name="invite_code_helper">Jeder Code funktioniert nur einmal.</string>
+    <string name="invite_code_from_link_helper">Aus deinem Einladungslink übernommen. Jeder Code funktioniert nur einmal.</string>
 </resources>

@@ -6,12 +6,14 @@ import androidx.compose.runtime.Stable
 @Stable
 internal data class ConnectServerUiState(
     val enterDomainState: EnterDomainState,
+    val chooseUsernameState: ChooseUsernameState,
     val step: ConnectServerStep = ConnectServerStep.EnterDomain,
 ) {
     val steps: List<ConnectServerStep> = ConnectServerStep.entries
 
     val canContinue: Boolean = when (step) {
         ConnectServerStep.EnterDomain -> enterDomainState.check is ServerCheck.Found
+        ConnectServerStep.ChooseUsername -> chooseUsernameState.canContinue
     }
 }
 
@@ -21,3 +23,15 @@ internal data class EnterDomainState(
     val typedScheme: String? = null,
     val check: ServerCheck = ServerCheck.Idle,
 )
+
+@Stable
+internal data class ChooseUsernameState(
+    val usernameTextFieldState: TextFieldState,
+    val inviteTextFieldState: TextFieldState,
+    val serverHost: String,
+    val serverInviteRequired: Boolean,
+    val inviteEditable: Boolean,
+) {
+    val canContinue = usernameTextFieldState.text.isNotBlank() &&
+            (!serverInviteRequired || inviteTextFieldState.text.isNotBlank())
+}
