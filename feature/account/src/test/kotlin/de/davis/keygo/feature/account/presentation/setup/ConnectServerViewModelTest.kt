@@ -86,18 +86,42 @@ class ConnectServerViewModelTest {
     }
 
     @Test
-    fun editing_drops_the_previous_result_at_once() = runTest(dispatcher) {
+    fun editing_keeps_the_previous_result_until_typing_pauses() = runTest(dispatcher) {
         val vm = viewModel()
         type(vm, "vault.example.org")
         advanceUntilIdle()
 
         type(vm, "vault.example.com")
-        assertEquals(ServerCheck.Idle, vm.check)
+        assertEquals("https://vault.example.org", assertIs<ServerCheck.Found>(vm.check).serverUrl)
         assertEquals(false, vm.state.value.canContinue)
         assertEquals(listOf("https://vault.example.org"), repository.checked)
 
         advanceUntilIdle()
         assertEquals(listOf("https://vault.example.org", "https://vault.example.com"), repository.checked)
+    }
+
+    @Test
+    fun continue_moves_on_once_the_address_is_found() = runTest(dispatcher) {
+        val vm = viewModel()
+        type(vm, "vault.example.org")
+        advanceUntilIdle()
+
+        vm.onEvent(ConnectServerUiEvent.Continue)
+        runCurrent()
+
+        assertEquals(ConnectServerStep.ChooseUsername, vm.state.value.step)
+    }
+
+    @Test
+    fun continue_is_ignored_while_the_address_is_invalid() = runTest(dispatcher) {
+        val vm = viewModel()
+        type(vm, "ftp://vault.example.org")
+        advanceUntilIdle()
+
+        vm.onEvent(ConnectServerUiEvent.Continue)
+        runCurrent()
+
+        assertEquals(ConnectServerStep.EnterDomain, vm.state.value.step)
     }
 
     @Test
@@ -108,6 +132,7 @@ class ConnectServerViewModelTest {
 
         type(vm, "vault.example.com")
         vm.onEvent(ConnectServerUiEvent.Continue)
+        runCurrent()
 
         assertEquals(ConnectServerStep.EnterDomain, vm.state.value.step)
     }
@@ -132,7 +157,10 @@ class ConnectServerViewModelTest {
 
         vm.onEvent(ConnectServerUiEvent.SchemeChanged("http://"))
         runCurrent()
-        assertEquals(ServerCheck.Idle, vm.check)
+        // The https result is still shown, but it is not for this origin.
+        vm.onEvent(ConnectServerUiEvent.Continue)
+        runCurrent()
+        assertEquals(ConnectServerStep.EnterDomain, vm.state.value.step)
 
         advanceUntilIdle()
         assertEquals(listOf("https://localhost:8000", "http://localhost:8000"), repository.checked)
@@ -262,23 +290,42 @@ class ConnectServerViewModelTest {
         runCurrent()
     }
 
+    private fun TestScope.typeInvite(vm: ConnectServerViewModel, text: String) {
+        vm.state.value.chooseUsernameState.inviteTextFieldState.setTextAndPlaceCursorAtEnd(text)
+        Snapshot.sendApplyNotifications()
+        runCurrent()
+    }
+
+    private fun TestScope.chooseUsernameStep(): ConnectServerViewModel {
+        val vm = viewModel()
+        type(vm, "vault.example.org")
+        advanceUntilIdle()
+        vm.onEvent(ConnectServerUiEvent.Continue)
+        runCurrent()
+        assertEquals(ConnectServerStep.ChooseUsername, vm.state.value.step)
+        return vm
+    }
+
     @Test
-    fun a_valid_username_counts_at_once_in_its_normalized_form() = runTest(dispatcher) {
+    fun a_valid_username_counts_once_typing_pauses_in_its_normalized_form() = runTest(dispatcher) {
         val vm = viewModel()
 
         typeUsername(vm, "Ada")
+        assertEquals(UsernameCheck.Idle, vm.usernameCheck)
 
+        advanceUntilIdle()
         assertEquals(UsernameCheck.Valid("ada"), vm.usernameCheck)
     }
 
     @Test
     fun an_invalid_username_is_flagged_once_typing_pauses() = runTest(dispatcher) {
         usernameValidator.errors = mapOf("ad" to UsernameException.TooShort(3u))
-        val vm = viewModel()
+        val vm = chooseUsernameStep()
+        typeInvite(vm, "K7QM2XRA9F3T")
 
         typeUsername(vm, "ad")
         assertEquals(UsernameCheck.Idle, vm.usernameCheck)
-        assertEquals(false, vm.state.value.chooseUsernameState.canContinue)
+        assertEquals(false, vm.state.value.canContinue)
 
         advanceUntilIdle()
         assertEquals(
@@ -288,7 +335,7 @@ class ConnectServerViewModelTest {
     }
 
     @Test
-    fun fixing_the_username_drops_the_error_at_once() = runTest(dispatcher) {
+    fun fixing_the_username_drops_the_error_once_typing_pauses() = runTest(dispatcher) {
         usernameValidator.errors = mapOf("admin" to UsernameException.Reserved())
         val vm = viewModel()
         typeUsername(vm, "admin")
@@ -296,7 +343,9 @@ class ConnectServerViewModelTest {
         assertEquals(UsernameCheck.Invalid(UsernameError.Reserved), vm.usernameCheck)
 
         typeUsername(vm, "admin2")
+        assertEquals(UsernameCheck.Invalid(UsernameError.Reserved), vm.usernameCheck)
 
+        advanceUntilIdle()
         assertEquals(UsernameCheck.Valid("admin2"), vm.usernameCheck)
     }
 
@@ -322,16 +371,49 @@ class ConnectServerViewModelTest {
 
     @Test
     fun continue_needs_a_valid_username_and_an_invite() = runTest(dispatcher) {
-        val vm = viewModel()
+        val vm = chooseUsernameStep()
         typeUsername(vm, "ada")
-        assertEquals(false, vm.state.value.chooseUsernameState.canContinue)
+        assertEquals(false, vm.state.value.canContinue)
 
-        vm.state.value.chooseUsernameState.inviteTextFieldState
-            .setTextAndPlaceCursorAtEnd("K7QM2XRA9F3T")
-        Snapshot.sendApplyNotifications()
-        runCurrent()
+        typeInvite(vm, "K7QM2XRA9F3T")
 
-        assertEquals(true, vm.state.value.chooseUsernameState.canContinue)
+        assertEquals(true, vm.state.value.canContinue)
+    }
+
+    @Test
+    fun an_open_server_needs_no_invite() = runTest(dispatcher) {
+        repository.result = Result.Success(info.copy(allowSignups = true))
+        val vm = chooseUsernameStep()
+
+        typeUsername(vm, "ada")
+
+        assertEquals(false, vm.state.value.chooseUsernameState.serverInviteRequired)
+        assertEquals(true, vm.state.value.canContinue)
+    }
+
+    @Test
+    fun a_valid_username_enables_continue_before_typing_pauses() = runTest(dispatcher) {
+        val vm = chooseUsernameStep()
+        typeInvite(vm, "K7QM2XRA9F3T")
+
+        typeUsername(vm, "ada")
+
+        assertEquals(UsernameCheck.Idle, vm.usernameCheck)
+        assertEquals(true, vm.state.value.canContinue)
+    }
+
+    @Test
+    fun continue_follows_the_username_in_the_field_not_the_shown_check() = runTest(dispatcher) {
+        usernameValidator.errors = mapOf("ad" to UsernameException.TooShort(3u))
+        val vm = chooseUsernameStep()
+        typeInvite(vm, "K7QM2XRA9F3T")
+        typeUsername(vm, "ada")
+        advanceUntilIdle()
+
+        typeUsername(vm, "ad")
+
+        assertEquals(UsernameCheck.Valid("ada"), vm.usernameCheck)
+        assertEquals(false, vm.state.value.canContinue)
     }
 
     private companion object {

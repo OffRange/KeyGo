@@ -5,11 +5,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.sync.domain.repository.SyncRepository
-import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.fold
-import de.davis.keygo.core.util.onSuccess
+import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.feature.account.domain.model.ServerAddress
-import de.davis.keygo.feature.account.domain.model.ServerAddressError
 import de.davis.keygo.feature.account.presentation.setup.mapper.toFailureReason
 import de.davis.keygo.feature.account.presentation.setup.mapper.toFound
 import de.davis.keygo.feature.account.presentation.setup.mapper.toServerCheck
@@ -24,12 +22,13 @@ import de.davis.keygo.feature.account.presentation.setup.model.UsernameCheck
 import de.davis.keygo.rust.username.UsernameValidator
 import de.davis.keygo.rust.username.validateWithResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
@@ -53,66 +52,67 @@ internal class ConnectServerViewModel(
 
     private val _detectedScheme = MutableStateFlow<String?>(null)
 
+    private val retries = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
     private fun address(text: String, scheme: String?) =
         ServerAddress.parse(if (scheme == null || "://" in text) text else scheme + text)
 
-    private val retries = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private fun currentAddress() =
+        address(addressTextFieldState.text.toString(), _detectedScheme.value)
 
+    private val allowedUsernameChars = usernameValidator.allowedChars()
+
+    @OptIn(FlowPreview::class)
     private val typed = combine(
         snapshotFlow { addressTextFieldState.text.toString() },
         _detectedScheme,
         ::address,
-    ).distinctUntilChanged().map { CheckRequest(it, afterPause = true) }
-
-    private val retried = retries.map {
-        CheckRequest(
-            address = address(addressTextFieldState.text.toString(), _detectedScheme.value),
-            afterPause = false,
-        )
-    }
+    ).debounce(TYPING_PAUSE).distinctUntilChanged()
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val _check = merge(typed, retried).transformLatest { (parsed, afterPause) ->
-        if (afterPause) {
-            emit(ServerCheck.Idle)
-            delay(TYPING_PAUSE)
-        }
-        parsed.onSuccess { emit(ServerCheck.Checking) }
-        emit(parsed.fold(onSuccess = { check(it) }, onFailure = ServerAddressError::toServerCheck))
+    private val _check = merge(
+        typed,
+        retries.map { currentAddress() }, // A retry skips the pause.
+    ).transformLatest { parsed ->
+        parsed.fold(
+            onSuccess = { address ->
+                emit(ServerCheck.Checking)
+                emit(check(address))
+            },
+            onFailure = { emit(it.toServerCheck()) },
+        )
     }.onStart { emit(ServerCheck.Idle) }
 
-    private suspend fun check(address: ServerAddress): ServerCheck =
-        syncRepository.checkServer(address.origin).fold(
-            onSuccess = { it.toFound(address) },
-            onFailure = { ServerCheck.Failed(it.toFailureReason()) },
+    @OptIn(FlowPreview::class)
+    private val _usernameCheck = snapshotFlow { usernameTextFieldState.text.toString() }
+        .debounce(TYPING_PAUSE)
+        .map(::usernameCheck)
+        .onStart { emit(UsernameCheck.Idle) }
+
+    private fun usernameCheck(input: String): UsernameCheck =
+        if (input.isEmpty()) UsernameCheck.Idle
+        else usernameValidator.validateWithResult(input).fold(
+            onSuccess = UsernameCheck::Valid,
+            onFailure = UsernameCheck::Invalid,
         )
 
-    private val allowedUsernameChars = usernameValidator.allowedChars()
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val _usernameCheck = snapshotFlow { usernameTextFieldState.text.toString() }
-        .distinctUntilChanged()
-        .transformLatest { input ->
-            if (input.isEmpty()) return@transformLatest emit(UsernameCheck.Idle)
-
-            when (val result = usernameValidator.validateWithResult(input)) {
-                is Result.Success -> emit(UsernameCheck.Valid(result.success))
-                is Result.Failure -> {
-                    emit(UsernameCheck.Idle)
-                    delay(TYPING_PAUSE)
-                    emit(UsernameCheck.Invalid(result.error))
-                }
-            }
-        }.onStart { emit(UsernameCheck.Idle) }
-
     private val _step = MutableStateFlow(ConnectServerStep.EnterDomain)
+
+    private fun fields() = Fields(
+        address = addressTextFieldState.text.toString(),
+        username = usernameTextFieldState.text.toString(),
+        invite = inviteTextFieldState.text.toString(),
+    )
+
+    private val _fields = snapshotFlow(::fields)
 
     val state = combine(
         _check,
         _detectedScheme,
         _usernameCheck,
         _step,
-        ::uiState
+        _fields,
+        ::uiState,
     ).stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -121,6 +121,7 @@ internal class ConnectServerViewModel(
             scheme = null,
             usernameCheck = UsernameCheck.Idle,
             step = ConnectServerStep.EnterDomain,
+            fields = fields(),
         ),
     )
 
@@ -129,6 +130,7 @@ internal class ConnectServerViewModel(
         scheme: String?,
         usernameCheck: UsernameCheck,
         step: ConnectServerStep,
+        fields: Fields,
     ) = ConnectServerUiState(
         enterDomainState = EnterDomainState(
             addressTextFieldState = addressTextFieldState,
@@ -138,14 +140,33 @@ internal class ConnectServerViewModel(
         chooseUsernameState = ChooseUsernameState(
             usernameTextFieldState = usernameTextFieldState,
             inviteTextFieldState = inviteTextFieldState,
-            serverHost = addressTextFieldState.text.toString(),
-            serverInviteRequired = true,
+            serverHost = fields.address,
+            serverInviteRequired = check.inviteRequired,
             inviteEditable = true,
             allowedUsernameChars = allowedUsernameChars,
             usernameCheck = usernameCheck,
         ),
         step = step,
+        canContinue = canContinue(step, check, scheme, fields),
     )
+
+    private fun canContinue(
+        step: ConnectServerStep,
+        check: ServerCheck,
+        scheme: String?,
+        fields: Fields,
+    ): Boolean = when (step) {
+        ConnectServerStep.EnterDomain ->
+            check is ServerCheck.Found &&
+                    check.serverUrl == address(fields.address, scheme).getOrNull()?.origin
+
+        ConnectServerStep.ChooseUsername ->
+            usernameCheck(fields.username) is UsernameCheck.Valid &&
+                    (!check.inviteRequired || fields.invite.isNotBlank())
+    }
+
+    private val ServerCheck.inviteRequired: Boolean
+        get() = this is ServerCheck.Found && inviteOnly
 
     private val _event = Channel<ConnectServerEvent>(Channel.BUFFERED)
     val event = _event.receiveAsFlow()
@@ -155,8 +176,14 @@ internal class ConnectServerViewModel(
             ConnectServerUiEvent.Back,
             ConnectServerUiEvent.UseAnotherServer -> previousStep()
 
-            // The keyboard action bypasses the disabled button.
-            ConnectServerUiEvent.Continue -> if (state.value.canContinue) nextStep()
+            ConnectServerUiEvent.Continue -> if (
+                canContinue(
+                    step = _step.value,
+                    check = state.value.enterDomainState.check,
+                    scheme = _detectedScheme.value,
+                    fields = fields(),
+                )
+            ) nextStep()
 
             ConnectServerUiEvent.Retry -> retries.tryEmit(Unit)
 
@@ -174,9 +201,16 @@ internal class ConnectServerViewModel(
         ConnectServerStep.entries.getOrNull(step.ordinal - 1) ?: step
     }
 
-    private data class CheckRequest(
-        val address: Result<ServerAddress, ServerAddressError>,
-        val afterPause: Boolean,
+    private suspend fun check(address: ServerAddress): ServerCheck =
+        syncRepository.checkServer(address.origin).fold(
+            onSuccess = { it.toFound(address) },
+            onFailure = { ServerCheck.Failed(it.toFailureReason()) },
+        )
+
+    private data class Fields(
+        val address: String,
+        val username: String,
+        val invite: String,
     )
 
     private companion object {
