@@ -64,6 +64,13 @@ impl UsernameValidator {
         Ok(username.as_str().to_owned())
     }
 
+    pub fn sanitize(&self, input: String) -> String {
+        Username::normalize(input)
+            .chars()
+            .filter(|&c| Username::is_allowed_char(c))
+            .collect()
+    }
+
     pub fn min_len(&self) -> u32 {
         Username::MIN_LEN as u32
     }
@@ -111,6 +118,16 @@ mod tests {
             Err(UsernameError::ConsecutiveSeparators)
         );
         assert_eq!(validate("123"), Err(UsernameError::OnlyDigits));
+    }
+
+    #[test]
+    fn sanitize_folds_and_drops_disallowed_characters() {
+        let sanitize = |raw: &str| UsernameValidator.sanitize(raw.to_owned());
+        assert_eq!(sanitize("Ｊｏｈｎ.Doe"), "john.doe");
+        assert_eq!(sanitize("jöhn doe@x"), "jhndoex");
+        assert_eq!(sanitize("ﬁnn"), "finn");
+        // Validity is left to `validate`.
+        assert_eq!(sanitize(".a..b-"), ".a..b-");
     }
 
     #[test]
