@@ -66,7 +66,15 @@
     <string name="invite_code">Einladungscode</string>
     <string name="choose_username_title">Wähle einen Benutzernamen</string>
     <string name="choose_username_description">Keine E-Mail nötig. Du meldest dich mit diesem Namen bei %1$s an.</string>
-    <string name="choose_username_helper">Kleinbuchstaben, Ziffern, Punkte, Binde- und Unterstriche.</string>
+    <string name="choose_username_helper">Erlaubt: %1$s</string>
     <string name="invite_code_helper">Jeder Code funktioniert nur einmal.</string>
     <string name="invite_code_from_link_helper">Aus deinem Einladungslink übernommen. Jeder Code funktioniert nur einmal.</string>
+    <string name="username_too_short">Verwende mindestens %1$d Zeichen.</string>
+    <string name="username_too_long">Verwende höchstens %1$d Zeichen.</string>
+    <string name="username_invalid_character">„%1$s“ ist nicht erlaubt.</string>
+    <string name="username_invalid_start">Beginne mit einem Buchstaben oder einer Ziffer.</string>
+    <string name="username_invalid_end">Ende mit einem Buchstaben oder einer Ziffer.</string>
+    <string name="username_consecutive_separators">Punkte, Binde- und Unterstriche dürfen nicht aufeinanderfolgen.</string>
+    <string name="username_only_digits">Füge mindestens einen Buchstaben hinzu.</string>
+    <string name="username_reserved">Dieser Name ist reserviert. Wähle einen anderen.</string>
 </resources>

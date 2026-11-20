@@ -68,7 +68,15 @@
     <string name="invite_code_placeholder" translatable="false">XXXX-XXXX-XXXX</string>
     <string name="choose_username_title">Choose a username</string>
     <string name="choose_username_description">No email needed. You\'ll sign in with this name on %1$s.</string>
-    <string name="choose_username_helper">Lowercase letters, digits, dots, dashes and underscores.</string>
+    <string name="choose_username_helper">Allowed: %1$s</string>
     <string name="invite_code_helper">Each code works once.</string>
     <string name="invite_code_from_link_helper">Filled in from your invite link. Each code works once.</string>
+    <string name="username_too_short">Use at least %1$d characters.</string>
+    <string name="username_too_long">Use at most %1$d characters.</string>
+    <string name="username_invalid_character">\"%1$s\" isn\'t allowed.</string>
+    <string name="username_invalid_start">Start with a letter or digit.</string>
+    <string name="username_invalid_end">End with a letter or digit.</string>
+    <string name="username_consecutive_separators">Dots, dashes and underscores can\'t follow each other.</string>
+    <string name="username_only_digits">Add at least one letter.</string>
+    <string name="username_reserved">This name is reserved. Pick another one.</string>
 </resources>

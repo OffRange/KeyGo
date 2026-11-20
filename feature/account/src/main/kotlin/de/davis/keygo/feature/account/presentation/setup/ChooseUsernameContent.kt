@@ -14,9 +14,7 @@ import androidx.compose.foundation.text.input.insert
 import androidx.compose.foundation.text.input.maxLength
 import androidx.compose.foundation.text.input.then
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -45,11 +43,17 @@ import androidx.compose.ui.unit.sp
 import de.davis.keygo.feature.account.R
 import de.davis.keygo.feature.account.presentation.setup.components.AccountSetupScaffold
 import de.davis.keygo.feature.account.presentation.setup.model.ChooseUsernameState
+import de.davis.keygo.feature.account.presentation.setup.model.UsernameCheck
+import de.davis.keygo.feature.account.presentation.setup.transformation.UsernameInputTransformation
+import de.davis.keygo.rust.username.UsernameError
 
 @Composable
 internal fun ChooseUsernameContent(
     state: ChooseUsernameState,
+    usernameInputTransformation: InputTransformation,
 ) {
+    val usernameError = (state.usernameCheck as? UsernameCheck.Invalid)?.error
+
     AccountSetupScaffold(
         title = stringResource(R.string.choose_username_title),
         description = descriptionWithHost(host = state.serverHost),
@@ -64,10 +68,11 @@ internal fun ChooseUsernameContent(
                 Text(text = stringResource(R.string.username))
             },
             supportingText = {
-                Text(text = stringResource(R.string.choose_username_helper))
+                if (usernameError != null) Text(text = usernameError.message)
+                else Text(text = allowedCharsHint(chars = state.allowedUsernameChars))
             },
-            inputTransformation = UsernameTransformation
-                .then(InputTransformation.maxLength(USERNAME_MAX_LENGTH)),
+            isError = usernameError != null,
+            inputTransformation = usernameInputTransformation,
             lineLimits = TextFieldLineLimits.SingleLine,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,
@@ -118,48 +123,43 @@ internal fun ChooseUsernameContent(
 }
 
 @Composable
-private fun descriptionWithHost(host: String): AnnotatedString {
-    // Without arguments the resource keeps its `%1$s`, which marks where the host goes.
-    val template = stringResource(R.string.choose_username_description)
-    val color = MaterialTheme.colorScheme.primary
+private fun descriptionWithHost(host: String): AnnotatedString = templateWithStyledArgument(
+    // A word joiner between every character stops the line breaker from splitting the host at
+    // `-`, `.` or `:`; a host wider than the line still breaks as a last resort.
+    template = stringResource(R.string.choose_username_description),
+    argument = host.toList().joinToString(separator = WORD_JOINER),
+    style = SpanStyle(color = MaterialTheme.colorScheme.primary),
+)
 
-    return remember(template, host, color) {
-        buildAnnotatedString {
-            append(template.substringBefore(HOST_PLACEHOLDER))
-            withStyle(SpanStyle(color = color)) {
-                // A word joiner between every character stops the line breaker from splitting the
-                // host at `-`, `.` or `:`; a host wider than the line still breaks as a last resort.
-                append(host.toList().joinToString(separator = WORD_JOINER))
-            }
-            append(template.substringAfter(HOST_PLACEHOLDER, missingDelimiterValue = ""))
-        }
+@Composable
+private fun allowedCharsHint(chars: List<String>): AnnotatedString = templateWithStyledArgument(
+    template = stringResource(R.string.choose_username_helper),
+    argument = chars.joinToString(separator = ""),
+    style = SpanStyle(fontFamily = FontFamily.Monospace),
+)
+
+/**
+ * Fills the `%1$s` of [template] with [argument] in [style]. Expects the resource read without
+ * arguments, which keeps its placeholder in place.
+ */
+@Composable
+private fun templateWithStyledArgument(
+    template: String,
+    argument: String,
+    style: SpanStyle,
+): AnnotatedString = remember(template, argument, style) {
+    buildAnnotatedString {
+        append(template.substringBefore(PLACEHOLDER))
+        withStyle(style) { append(argument) }
+        append(template.substringAfter(PLACEHOLDER, missingDelimiterValue = ""))
     }
 }
 
-private const val HOST_PLACEHOLDER = $$"%1$s"
+private const val PLACEHOLDER = $$"%1$s"
 private const val WORD_JOINER = "\u2060"
 
-private const val USERNAME_MAX_LENGTH = 32
 private const val INVITE_CODE_LENGTH = 12
 private const val INVITE_CODE_GROUP = 4
-
-/*
- * TODO: Validate on-device with the shared `Username::parse` from `keygo-api`, exported over
- *  UniFFI, and show its errors inline (too short, bad start/end, consecutive separators, digits
- *  only). Then NFKC-fold here instead of dropping non-ASCII, so full-width input still lands.
- *  "Taken" stays a server answer from `register`.
- */
-private object UsernameTransformation : InputTransformation {
-    override fun TextFieldBuffer.transformInput() {
-        // Go backwards so deletes don't shift the positions still to come
-        for (i in length - 1 downTo 0)
-            when (val c = charAt(i)) {
-                in 'A'..'Z' -> replace(i, i + 1, c.lowercaseChar().toString())
-                in 'a'..'z', in '0'..'9', '.', '_', '-' -> Unit
-                else -> replace(i, i + 1, "")
-            }
-    }
-}
 
 /**
  * Crockford Base32 input: uppercases, maps the look-alikes `O→0` and `I`/`L→1` so a code read
@@ -188,6 +188,26 @@ private val InviteCodeGrouping = OutputTransformation {
         insert(index, "-")
 }
 
+private val UsernameError.message: String
+    @Composable
+    get() = when (this) {
+        is UsernameError.TooShort -> stringResource(R.string.username_too_short, minLength)
+
+        is UsernameError.TooLong -> stringResource(R.string.username_too_long, maxLength)
+
+        is UsernameError.InvalidCharacter -> stringResource(
+            R.string.username_invalid_character,
+            character
+        )
+
+        UsernameError.InvalidStart -> stringResource(R.string.username_invalid_start)
+        UsernameError.InvalidEnd -> stringResource(R.string.username_invalid_end)
+        UsernameError.ConsecutiveSeparators -> stringResource(R.string.username_consecutive_separators)
+
+        UsernameError.OnlyDigits -> stringResource(R.string.username_only_digits)
+        UsernameError.Reserved -> stringResource(R.string.username_reserved)
+    }
+
 private class ChooseUsernameStateProvider : PreviewParameterProvider<ChooseUsernameState> {
 
     override val values = sequenceOf(
@@ -197,6 +217,7 @@ private class ChooseUsernameStateProvider : PreviewParameterProvider<ChooseUsern
             serverHost = "vault.example.org",
             serverInviteRequired = true,
             inviteEditable = true,
+            allowedUsernameChars = PreviewAllowedChars,
         ),
         ChooseUsernameState(
             usernameTextFieldState = TextFieldState("ada"),
@@ -204,6 +225,7 @@ private class ChooseUsernameStateProvider : PreviewParameterProvider<ChooseUsern
             serverHost = "vault.example.org",
             serverInviteRequired = true,
             inviteEditable = false,
+            allowedUsernameChars = PreviewAllowedChars,
         ),
         ChooseUsernameState(
             usernameTextFieldState = TextFieldState(),
@@ -211,8 +233,22 @@ private class ChooseUsernameStateProvider : PreviewParameterProvider<ChooseUsern
             serverHost = "vault.example.org",
             serverInviteRequired = false,
             inviteEditable = true,
+            allowedUsernameChars = PreviewAllowedChars,
+        ),
+        ChooseUsernameState(
+            usernameTextFieldState = TextFieldState("ad"),
+            inviteTextFieldState = TextFieldState(),
+            serverHost = "vault.example.org",
+            serverInviteRequired = false,
+            inviteEditable = true,
+            allowedUsernameChars = PreviewAllowedChars,
+            usernameCheck = UsernameCheck.Invalid(UsernameError.TooShort(3)),
         ),
     )
+
+    companion object {
+        private val PreviewAllowedChars = listOf("a-z", "0-9", ".", "_", "-")
+    }
 }
 
 @Preview
@@ -222,7 +258,10 @@ private fun ChooseUsernameContentPreview(
 ) {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
-            ChooseUsernameContent(state = state)
+            ChooseUsernameContent(
+                state = state,
+                usernameInputTransformation = UsernameInputTransformation(String::lowercase),
+            )
         }
     }
 }

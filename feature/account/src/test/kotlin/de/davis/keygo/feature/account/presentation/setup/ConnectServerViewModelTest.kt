@@ -12,6 +12,10 @@ import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerStep
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiEvent
 import de.davis.keygo.feature.account.presentation.setup.model.ServerCheck
 import de.davis.keygo.feature.account.presentation.setup.model.ServerCheck.Failed.Reason
+import de.davis.keygo.feature.account.presentation.setup.model.UsernameCheck
+import de.davis.keygo.rust.FakeUsernameValidator
+import de.davis.keygo.rust.username.UsernameError
+import de.davisalessandro.keygo.rust.UsernameException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.launchIn
@@ -44,6 +48,7 @@ class ConnectServerViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
     private val repository = FakeSyncRepository()
+    private val usernameValidator = FakeUsernameValidator()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(dispatcher)
@@ -51,7 +56,7 @@ class ConnectServerViewModelTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun TestScope.viewModel() = ConnectServerViewModel(repository)
+    private fun TestScope.viewModel() = ConnectServerViewModel(repository, usernameValidator)
         .also { it.state.launchIn(backgroundScope) }
 
     private val ConnectServerViewModel.check
@@ -246,6 +251,87 @@ class ConnectServerViewModelTest {
 
         assertIs<ServerCheck.Found>(vm.check)
         assertEquals(2, repository.checked.size)
+    }
+
+    private val ConnectServerViewModel.usernameCheck
+        get() = state.value.chooseUsernameState.usernameCheck
+
+    private fun TestScope.typeUsername(vm: ConnectServerViewModel, text: String) {
+        vm.state.value.chooseUsernameState.usernameTextFieldState.setTextAndPlaceCursorAtEnd(text)
+        Snapshot.sendApplyNotifications()
+        runCurrent()
+    }
+
+    @Test
+    fun a_valid_username_counts_at_once_in_its_normalized_form() = runTest(dispatcher) {
+        val vm = viewModel()
+
+        typeUsername(vm, "Ada")
+
+        assertEquals(UsernameCheck.Valid("ada"), vm.usernameCheck)
+    }
+
+    @Test
+    fun an_invalid_username_is_flagged_once_typing_pauses() = runTest(dispatcher) {
+        usernameValidator.errors = mapOf("ad" to UsernameException.TooShort(3u))
+        val vm = viewModel()
+
+        typeUsername(vm, "ad")
+        assertEquals(UsernameCheck.Idle, vm.usernameCheck)
+        assertEquals(false, vm.state.value.chooseUsernameState.canContinue)
+
+        advanceUntilIdle()
+        assertEquals(
+            UsernameCheck.Invalid(UsernameError.TooShort(3)),
+            vm.usernameCheck,
+        )
+    }
+
+    @Test
+    fun fixing_the_username_drops_the_error_at_once() = runTest(dispatcher) {
+        usernameValidator.errors = mapOf("admin" to UsernameException.Reserved())
+        val vm = viewModel()
+        typeUsername(vm, "admin")
+        advanceUntilIdle()
+        assertEquals(UsernameCheck.Invalid(UsernameError.Reserved), vm.usernameCheck)
+
+        typeUsername(vm, "admin2")
+
+        assertEquals(UsernameCheck.Valid("admin2"), vm.usernameCheck)
+    }
+
+    @Test
+    fun an_empty_username_stays_idle() = runTest(dispatcher) {
+        usernameValidator.errors = mapOf("" to UsernameException.TooShort(3u))
+        val vm = viewModel()
+        typeUsername(vm, "ada")
+
+        typeUsername(vm, "")
+        advanceUntilIdle()
+
+        assertEquals(UsernameCheck.Idle, vm.usernameCheck)
+    }
+
+    @Test
+    fun the_allowed_characters_come_from_the_validator() = runTest(dispatcher) {
+        usernameValidator.allowedCharsResult = listOf("a-z", "_")
+        val vm = viewModel()
+
+        assertEquals(listOf("a-z", "_"), vm.state.value.chooseUsernameState.allowedUsernameChars)
+    }
+
+    @Test
+    fun continue_needs_a_valid_username_and_an_invite() = runTest(dispatcher) {
+        val vm = viewModel()
+        typeUsername(vm, "ada")
+        assertEquals(false, vm.state.value.chooseUsernameState.canContinue)
+
+        vm.state.value.chooseUsernameState.inviteTextFieldState
+            .setTextAndPlaceCursorAtEnd("K7QM2XRA9F3T")
+        Snapshot.sendApplyNotifications()
+        runCurrent()
+
+        assertEquals(true, vm.state.value.chooseUsernameState.canContinue)
     }
 
     private companion object {

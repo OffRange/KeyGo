@@ -11,10 +11,11 @@ internal data class ConnectServerUiState(
 ) {
     val steps: List<ConnectServerStep> = ConnectServerStep.entries
 
-    val canContinue: Boolean = when (step) {
-        ConnectServerStep.EnterDomain -> enterDomainState.check is ServerCheck.Found
-        ConnectServerStep.ChooseUsername -> chooseUsernameState.canContinue
-    }
+    val canContinue: Boolean
+        get() = when (step) {
+            ConnectServerStep.EnterDomain -> enterDomainState.check is ServerCheck.Found
+            ConnectServerStep.ChooseUsername -> chooseUsernameState.canContinue
+        }
 }
 
 @Stable
@@ -31,7 +32,10 @@ internal data class ChooseUsernameState(
     val serverHost: String,
     val serverInviteRequired: Boolean,
     val inviteEditable: Boolean,
+    val allowedUsernameChars: List<String>,
+    val usernameCheck: UsernameCheck = UsernameCheck.Idle,
 ) {
-    val canContinue = usernameTextFieldState.text.isNotBlank() &&
-            (!serverInviteRequired || inviteTextFieldState.text.isNotBlank())
+    val canContinue: Boolean
+        get() = usernameCheck is UsernameCheck.Valid &&
+                (!serverInviteRequired || inviteTextFieldState.text.isNotBlank())
 }

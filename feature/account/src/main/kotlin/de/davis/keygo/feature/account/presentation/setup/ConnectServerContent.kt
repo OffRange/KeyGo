@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -29,10 +30,12 @@ import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiEv
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiState
 import de.davis.keygo.feature.account.presentation.setup.model.EnterDomainState
 import de.davis.keygo.feature.account.presentation.setup.model.ServerCheck
+import de.davis.keygo.feature.account.presentation.setup.transformation.UsernameInputTransformation
 
 @Composable
 internal fun ConnectServerContent(
     state: ConnectServerUiState,
+    usernameInputTransformation: InputTransformation,
     onEvent: (ConnectServerUiEvent) -> Unit,
     navigateUp: () -> Unit,
 ) {
@@ -59,6 +62,7 @@ internal fun ConnectServerContent(
 
             ConnectServerStep.ChooseUsername -> ChooseUsernameContent(
                 state = state.chooseUsernameState,
+                usernameInputTransformation = usernameInputTransformation,
             )
         }
     }
@@ -127,6 +131,7 @@ private class ConnectServerUiStateProvider : PreviewParameterProvider<ConnectSer
                 serverHost = "vault.example.org",
                 serverInviteRequired = true,
                 inviteEditable = false,
+                allowedUsernameChars = listOf("a-z", "0-9", ".", "_", "-"),
             ),
             step = it,
         )
@@ -142,6 +147,7 @@ private fun ConnectServerContentPreview(
         Surface(modifier = Modifier.fillMaxSize()) {
             ConnectServerContent(
                 state = state,
+                usernameInputTransformation = UsernameInputTransformation(String::lowercase),
                 onEvent = {},
                 navigateUp = {},
             )

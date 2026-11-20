@@ -20,6 +20,9 @@ import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiEv
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiState
 import de.davis.keygo.feature.account.presentation.setup.model.EnterDomainState
 import de.davis.keygo.feature.account.presentation.setup.model.ServerCheck
+import de.davis.keygo.feature.account.presentation.setup.model.UsernameCheck
+import de.davis.keygo.rust.username.UsernameValidator
+import de.davis.keygo.rust.username.validateWithResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -41,6 +44,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @KoinViewModel
 internal class ConnectServerViewModel(
     private val syncRepository: SyncRepository,
+    private val usernameValidator: UsernameValidator,
 ) : ViewModel() {
 
     private val addressTextFieldState = TextFieldState()
@@ -83,17 +87,47 @@ internal class ConnectServerViewModel(
             onFailure = { ServerCheck.Failed(it.toFailureReason()) },
         )
 
+    private val allowedUsernameChars = usernameValidator.allowedChars()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val _usernameCheck = snapshotFlow { usernameTextFieldState.text.toString() }
+        .distinctUntilChanged()
+        .transformLatest { input ->
+            if (input.isEmpty()) return@transformLatest emit(UsernameCheck.Idle)
+
+            when (val result = usernameValidator.validateWithResult(input)) {
+                is Result.Success -> emit(UsernameCheck.Valid(result.success))
+                is Result.Failure -> {
+                    emit(UsernameCheck.Idle)
+                    delay(TYPING_PAUSE)
+                    emit(UsernameCheck.Invalid(result.error))
+                }
+            }
+        }.onStart { emit(UsernameCheck.Idle) }
+
     private val _step = MutableStateFlow(ConnectServerStep.EnterDomain)
 
-    val state = combine(_check, _detectedScheme, _step, ::uiState).stateIn(
+    val state = combine(
+        _check,
+        _detectedScheme,
+        _usernameCheck,
+        _step,
+        ::uiState
+    ).stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = uiState(ServerCheck.Idle, null, ConnectServerStep.EnterDomain),
+        initialValue = uiState(
+            check = ServerCheck.Idle,
+            scheme = null,
+            usernameCheck = UsernameCheck.Idle,
+            step = ConnectServerStep.EnterDomain,
+        ),
     )
 
     private fun uiState(
         check: ServerCheck,
         scheme: String?,
+        usernameCheck: UsernameCheck,
         step: ConnectServerStep,
     ) = ConnectServerUiState(
         enterDomainState = EnterDomainState(
@@ -107,6 +141,8 @@ internal class ConnectServerViewModel(
             serverHost = addressTextFieldState.text.toString(),
             serverInviteRequired = true,
             inviteEditable = true,
+            allowedUsernameChars = allowedUsernameChars,
+            usernameCheck = usernameCheck,
         ),
         step = step,
     )
