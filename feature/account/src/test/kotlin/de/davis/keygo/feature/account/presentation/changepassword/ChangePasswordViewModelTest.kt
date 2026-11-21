@@ -14,6 +14,7 @@ import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.usecase.ChangePasswordUseCase
 import de.davis.keygo.core.identity.domain.usecase.UnlockableByBiometricsUseCase
+import de.davis.keygo.core.identity.domain.usecase.VerifyPasswordUseCase
 import de.davis.keygo.core.item.domain.estimator.PasswordStrengthEstimator
 import de.davis.keygo.core.item.domain.model.PasswordScore
 import de.davis.keygo.core.security.FakeSession
@@ -59,7 +60,12 @@ class ChangePasswordViewModelTest {
     private val estimator = object : PasswordStrengthEstimator {
         override suspend fun estimate(password: String): PasswordScore = PasswordScore.None
     }
-    private val changePassword = ChangePasswordUseCase(biometricCrypto, accountRepository, session)
+    private val changePassword = ChangePasswordUseCase(
+        biometricCrypto = biometricCrypto,
+        accountRepository = accountRepository,
+        session = session,
+        verifyPassword = VerifyPasswordUseCase(session, accountRepository),
+    )
     private val unlockableByBiometrics =
         UnlockableByBiometricsUseCase(accountRepository, biometricAvailability)
 

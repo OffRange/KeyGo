@@ -1,12 +1,20 @@
 package de.davis.keygo.feature.account.presentation.setup
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.identity.domain.model.VerifyPasswordError
+import de.davis.keygo.core.identity.domain.usecase.VerifyPasswordUseCase
+import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.sync.domain.repository.SyncRepository
+import de.davis.keygo.core.util.combine
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
+import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.account.domain.model.ServerAddress
 import de.davis.keygo.feature.account.presentation.setup.mapper.toFailureReason
 import de.davis.keygo.feature.account.presentation.setup.mapper.toFound
@@ -18,6 +26,7 @@ import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerStep
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiEvent
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiState
 import de.davis.keygo.feature.account.presentation.setup.model.EnterDomainState
+import de.davis.keygo.feature.account.presentation.setup.model.PasswordCheck
 import de.davis.keygo.feature.account.presentation.setup.model.ServerCheck
 import de.davis.keygo.feature.account.presentation.setup.model.UsernameCheck
 import de.davis.keygo.rust.username.UsernameValidator
@@ -31,6 +40,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onStart
@@ -38,6 +48,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -45,6 +56,8 @@ import kotlin.time.Duration.Companion.milliseconds
 internal class ConnectServerViewModel(
     private val syncRepository: SyncRepository,
     private val usernameValidator: UsernameValidator,
+    private val verifyPassword: VerifyPasswordUseCase,
+    private val session: Session,
 ) : ViewModel() {
 
     private val addressTextFieldState = TextFieldState()
@@ -55,6 +68,7 @@ internal class ConnectServerViewModel(
     private val _detectedScheme = MutableStateFlow<String?>(null)
 
     private val retries = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private val _step = MutableStateFlow(ConnectServerStep.EnterDomain)
 
     private fun address(text: String, scheme: String?) =
         ServerAddress.parse(if (scheme == null || "://" in text) text else scheme + text)
@@ -71,6 +85,7 @@ internal class ConnectServerViewModel(
         ::address,
     ).debounce(TYPING_PAUSE).distinctUntilChanged()
 
+    // --- Server address ---
     @OptIn(ExperimentalCoroutinesApi::class)
     private val _check = merge(
         typed,
@@ -85,6 +100,7 @@ internal class ConnectServerViewModel(
         )
     }.onStart { emit(ServerCheck.Idle) }
 
+    // --- Username - Invite ---
     @OptIn(FlowPreview::class)
     private val _usernameCheck = snapshotFlow { usernameTextFieldState.text.toString() }
         .debounce(TYPING_PAUSE)
@@ -98,12 +114,14 @@ internal class ConnectServerViewModel(
             onFailure = UsernameCheck::Invalid,
         )
 
-    private val _step = MutableStateFlow(ConnectServerStep.EnterDomain)
+    // --- Password ---
+    private val _passwordCheck = MutableStateFlow<PasswordCheck>(PasswordCheck.Idle)
 
     private fun fields() = Fields(
         address = addressTextFieldState.text.toString(),
         username = usernameTextFieldState.text.toString(),
         invite = inviteTextFieldState.text.toString(),
+        passwordEntered = passwordTextFieldState.text.isNotEmpty(),
     )
 
     private val _fields = snapshotFlow(::fields)
@@ -112,6 +130,7 @@ internal class ConnectServerViewModel(
         _check,
         _detectedScheme,
         _usernameCheck,
+        _passwordCheck,
         _step,
         _fields,
         ::uiState,
@@ -122,6 +141,7 @@ internal class ConnectServerViewModel(
             check = ServerCheck.Idle,
             scheme = null,
             usernameCheck = UsernameCheck.Idle,
+            passwordCheck = PasswordCheck.Idle,
             step = ConnectServerStep.EnterDomain,
             fields = fields(),
         ),
@@ -131,6 +151,7 @@ internal class ConnectServerViewModel(
         check: ServerCheck,
         scheme: String?,
         usernameCheck: UsernameCheck,
+        passwordCheck: PasswordCheck,
         step: ConnectServerStep,
         fields: Fields,
     ) = ConnectServerUiState(
@@ -150,14 +171,16 @@ internal class ConnectServerViewModel(
         ),
         confirmPasswordState = ConfirmPasswordState(
             passwordTextFieldState = passwordTextFieldState,
+            check = passwordCheck,
         ),
         step = step,
-        canContinue = canContinue(step, check, scheme, fields),
+        canContinue = canContinue(step, check, passwordCheck, scheme, fields),
     )
 
     private fun canContinue(
         step: ConnectServerStep,
         check: ServerCheck,
+        passwordCheck: PasswordCheck,
         scheme: String?,
         fields: Fields,
     ): Boolean = when (step) {
@@ -169,7 +192,8 @@ internal class ConnectServerViewModel(
             usernameCheck(fields.username) is UsernameCheck.Valid &&
                     (!check.inviteRequired || fields.invite.isNotBlank())
 
-        ConnectServerStep.ConfirmPassword -> false
+        ConnectServerStep.ConfirmPassword ->
+            fields.passwordEntered && passwordCheck != PasswordCheck.Checking
     }
 
     private val ServerCheck.inviteRequired: Boolean
@@ -187,10 +211,11 @@ internal class ConnectServerViewModel(
                 canContinue(
                     step = _step.value,
                     check = state.value.enterDomainState.check,
+                    passwordCheck = _passwordCheck.value,
                     scheme = _detectedScheme.value,
                     fields = fields(),
                 )
-            ) nextStep()
+            ) continueStep()
 
             ConnectServerUiEvent.Retry -> retries.tryEmit(Unit)
 
@@ -198,6 +223,40 @@ internal class ConnectServerViewModel(
 
             ConnectServerUiEvent.ScanInvite -> _event.trySend(ConnectServerEvent.OpenInviteScanner)
         }
+    }
+
+    init {
+        viewModelScope.launch {
+            session.isActive.filter { !it }.collect { clearPassword() }
+        }
+    }
+
+    private fun continueStep() =
+        if (_step.value == ConnectServerStep.ConfirmPassword) confirmPassword()
+        else nextStep()
+
+    private fun confirmPassword() {
+        _passwordCheck.update { PasswordCheck.Checking }
+        viewModelScope.launch {
+            verifyPassword(passwordTextFieldState.text.toString())
+                .onSuccess {
+                    _passwordCheck.update { PasswordCheck.Idle }
+                    nextStep()
+                }
+                .onFailure {
+                    _passwordCheck.update { _ ->
+                        if (it == VerifyPasswordError.IncorrectPassword) PasswordCheck.Incorrect
+                        else PasswordCheck.Failed
+                    }
+                }
+        }
+    }
+
+    @OptIn(ExperimentalFoundationApi::class)
+    private fun clearPassword() {
+        passwordTextFieldState.clearText()
+        passwordTextFieldState.undoState.clearHistory()
+        _passwordCheck.update { PasswordCheck.Idle }
     }
 
     private fun nextStep() = _step.update { step ->
@@ -218,6 +277,7 @@ internal class ConnectServerViewModel(
         val address: String,
         val username: String,
         val invite: String,
+        val passwordEntered: Boolean,
     )
 
     private companion object {

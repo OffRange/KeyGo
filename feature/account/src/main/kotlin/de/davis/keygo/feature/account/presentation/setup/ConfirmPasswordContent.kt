@@ -18,10 +18,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import de.davis.keygo.core.ui.components.VisibilityButton
+import de.davis.keygo.core.ui.model.UiFieldError
+import de.davis.keygo.core.ui.model.error
 import de.davis.keygo.feature.account.R
 import de.davis.keygo.feature.account.presentation.setup.components.AccountSetupScaffold
 import de.davis.keygo.feature.account.presentation.setup.model.ConfirmPasswordState
+import de.davis.keygo.feature.account.presentation.setup.model.PasswordCheck
 
 @Composable
 internal fun ConfirmPasswordContent(
@@ -39,6 +44,21 @@ internal fun ConfirmPasswordContent(
             label = { Text(stringResource(R.string.confirm_account_password_label)) },
             textObfuscationMode = if (passwordHidden) TextObfuscationMode.RevealLastTyped
             else TextObfuscationMode.Visible,
+            enabled = state.check != PasswordCheck.Checking,
+            isError = state.check == PasswordCheck.Incorrect || state.check == PasswordCheck.Failed,
+            supportingText = when (state.check) {
+                PasswordCheck.Incorrect -> {
+                    { Text(text = UiFieldError.Incorrect.error) }
+                }
+
+                PasswordCheck.Failed -> {
+                    { Text(text = stringResource(R.string.confirm_account_password_failed)) }
+                }
+
+                PasswordCheck.Idle,
+                PasswordCheck.Checking,
+                    -> null
+            },
             trailingIcon = {
                 VisibilityButton(
                     isHidden = passwordHidden,
@@ -51,14 +71,27 @@ internal fun ConfirmPasswordContent(
 
 @Preview
 @Composable
-private fun ConfirmPasswordContentPreview() {
+private fun ConfirmPasswordContentPreview(
+    @PreviewParameter(PasswordCheckProvider::class) check: PasswordCheck,
+) {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             ConfirmPasswordContent(
                 state = ConfirmPasswordState(
-                    passwordTextFieldState = TextFieldState()
-                )
+                    passwordTextFieldState = TextFieldState("hunter2"),
+                    check = check,
+                ),
             )
         }
     }
+}
+
+private class PasswordCheckProvider : PreviewParameterProvider<PasswordCheck> {
+
+    override val values = sequenceOf(
+        PasswordCheck.Idle,
+        PasswordCheck.Checking,
+        PasswordCheck.Incorrect,
+        PasswordCheck.Failed,
+    )
 }

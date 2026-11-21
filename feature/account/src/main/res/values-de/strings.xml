@@ -81,4 +81,5 @@
     <string name="confirm_account_password_title">Bestätige dein Passwort</string>
     <string name="confirm_account_password_description">Dein Konto nutzt das Passwort, mit dem du KeyGo bereits entsperrst. Am Entsperren ändert sich nichts.</string>
     <string name="confirm_account_password_label">KeyGo-Passwort</string>
+    <string name="confirm_account_password_failed">Dein Passwort konnte nicht geprüft werden. Versuch es noch einmal.</string>
 </resources>

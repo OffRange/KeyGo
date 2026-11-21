@@ -2,14 +2,21 @@ package de.davis.keygo.feature.account.presentation.setup
 
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshots.Snapshot
+import de.davis.keygo.core.identity.FakeAccountRepository
+import de.davis.keygo.core.identity.domain.model.Account
+import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
+import de.davis.keygo.core.identity.domain.usecase.VerifyPasswordUseCase
+import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.sync.domain.model.NetworkFailure
 import de.davis.keygo.core.sync.domain.model.ServerInfo
 import de.davis.keygo.core.sync.domain.model.SyncError
 import de.davis.keygo.core.sync.domain.repository.SyncRepository
 import de.davis.keygo.core.ui.text.transformation.SchemeStrippingTransformation
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerStep
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiEvent
+import de.davis.keygo.feature.account.presentation.setup.model.PasswordCheck
 import de.davis.keygo.feature.account.presentation.setup.model.ServerCheck
 import de.davis.keygo.feature.account.presentation.setup.model.ServerCheck.Failed.Reason
 import de.davis.keygo.feature.account.presentation.setup.model.UsernameCheck
@@ -49,6 +56,8 @@ class ConnectServerViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val repository = FakeSyncRepository()
     private val usernameValidator = FakeUsernameValidator()
+    private val session = FakeSession()
+    private val accountRepository = FakeAccountRepository()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(dispatcher)
@@ -56,8 +65,12 @@ class ConnectServerViewModelTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun TestScope.viewModel() = ConnectServerViewModel(repository, usernameValidator)
-        .also { it.state.launchIn(backgroundScope) }
+    private fun TestScope.viewModel() = ConnectServerViewModel(
+        syncRepository = repository,
+        usernameValidator = usernameValidator,
+        verifyPassword = VerifyPasswordUseCase(session, accountRepository),
+        session = session,
+    ).also { it.state.launchIn(backgroundScope) }
 
     private val ConnectServerViewModel.check
         get() = state.value.enterDomainState.check
@@ -414,6 +427,97 @@ class ConnectServerViewModelTest {
 
         assertEquals(UsernameCheck.Valid("ada"), vm.usernameCheck)
         assertEquals(false, vm.state.value.canContinue)
+    }
+
+    private suspend fun seedAccount(password: String) {
+        val created = checkNotNull(session.createAccount(password).getOrNull())
+        accountRepository.seed(
+            Account(
+                id = created.userId,
+                displayName = "Test",
+                passwordWrappedArk = PasswordWrappedArk(
+                    key = created.passwordWrappedArk.ciphertext,
+                    keyIV = created.passwordWrappedArk.nonce,
+                    salt = created.salt,
+                ),
+                biometricWrappedArk = null,
+            ),
+        )
+    }
+
+    private val ConnectServerViewModel.passwordCheck
+        get() = state.value.confirmPasswordState.check
+
+    private fun TestScope.typePassword(vm: ConnectServerViewModel, text: String) {
+        vm.state.value.confirmPasswordState.passwordTextFieldState.setTextAndPlaceCursorAtEnd(text)
+        Snapshot.sendApplyNotifications()
+        runCurrent()
+    }
+
+    private suspend fun TestScope.confirmPasswordStep(): ConnectServerViewModel {
+        seedAccount("secret")
+        val vm = chooseUsernameStep()
+        typeInvite(vm, "K7QM2XRA9F3T")
+        typeUsername(vm, "ada")
+        vm.onEvent(ConnectServerUiEvent.Continue)
+        runCurrent()
+        assertEquals(ConnectServerStep.ConfirmPassword, vm.state.value.step)
+        return vm
+    }
+
+    @Test
+    fun continue_needs_a_password() = runTest(dispatcher) {
+        val vm = confirmPasswordStep()
+        assertEquals(false, vm.state.value.canContinue)
+
+        typePassword(vm, "secret")
+
+        assertEquals(true, vm.state.value.canContinue)
+    }
+
+    @Test
+    fun the_unlock_password_passes_the_check() = runTest(dispatcher) {
+        val vm = confirmPasswordStep()
+        typePassword(vm, "secret")
+
+        vm.onEvent(ConnectServerUiEvent.Continue)
+        advanceUntilIdle()
+
+        assertEquals(PasswordCheck.Idle, vm.passwordCheck)
+    }
+
+    @Test
+    fun a_wrong_password_is_flagged_as_incorrect() = runTest(dispatcher) {
+        val vm = confirmPasswordStep()
+        typePassword(vm, "wrong")
+
+        vm.onEvent(ConnectServerUiEvent.Continue)
+        advanceUntilIdle()
+
+        assertEquals(PasswordCheck.Incorrect, vm.passwordCheck)
+    }
+
+    @Test
+    fun a_failed_derivation_is_reported_apart_from_a_wrong_password() = runTest(dispatcher) {
+        val vm = confirmPasswordStep()
+        typePassword(vm, "secret")
+        session.failDerivation = true
+
+        vm.onEvent(ConnectServerUiEvent.Continue)
+        advanceUntilIdle()
+
+        assertEquals(PasswordCheck.Failed, vm.passwordCheck)
+    }
+
+    @Test
+    fun locking_the_session_clears_the_password() = runTest(dispatcher) {
+        val vm = confirmPasswordStep()
+        typePassword(vm, "secret")
+
+        session.endSession()
+        runCurrent()
+
+        assertEquals("", vm.state.value.confirmPasswordState.passwordTextFieldState.text.toString())
     }
 
     private companion object {

@@ -10,7 +10,10 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -30,9 +33,11 @@ import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerStep
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiEvent
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiState
 import de.davis.keygo.feature.account.presentation.setup.model.EnterDomainState
+import de.davis.keygo.feature.account.presentation.setup.model.PasswordCheck
 import de.davis.keygo.feature.account.presentation.setup.model.ServerCheck
 import de.davis.keygo.feature.account.presentation.setup.transformation.UsernameInputTransformation
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun ConnectServerContent(
     state: ConnectServerUiState,
@@ -52,7 +57,11 @@ internal fun ConnectServerContent(
             { SecondaryActionButton(action = action, onEvent = onEvent) }
         },
         continueButtonContent = {
-            Text(text = stringResource(state.step.continueLabel))
+            if (state.isChecking) LoadingIndicator(
+                modifier = Modifier.size(ButtonDefaults.IconSize),
+                color = LocalContentColor.current,
+            )
+            else Text(text = stringResource(state.step.continueLabel))
         },
     ) { step ->
         when (step) {
@@ -72,6 +81,10 @@ internal fun ConnectServerContent(
         }
     }
 }
+
+private val ConnectServerUiState.isChecking: Boolean
+    get() = step == ConnectServerStep.ConfirmPassword &&
+            confirmPasswordState.check == PasswordCheck.Checking
 
 private val ConnectServerStep.continueLabel: Int
     get() = when (this) {

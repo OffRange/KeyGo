@@ -35,4 +35,5 @@ internal data class ChooseUsernameState(
 @Stable
 internal data class ConfirmPasswordState(
     val passwordTextFieldState: TextFieldState,
+    val check: PasswordCheck = PasswordCheck.Idle,
 )
