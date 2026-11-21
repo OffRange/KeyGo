@@ -13,8 +13,8 @@ import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.model.Reauthentication
 import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.domain.ExportArk
-import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.CipherKeyId
+import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.isFailure
@@ -38,6 +38,7 @@ class ChangePasswordUseCaseTest {
         biometricCrypto = biometricCrypto,
         accountRepository = accountRepository,
         session = session,
+        verifyPassword = VerifyPasswordUseCase(session, accountRepository),
     )
 
     /** What the session minted for the seeded account, for round-trip assertions. */
