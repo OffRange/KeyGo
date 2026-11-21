@@ -1,5 +1,7 @@
 package de.davis.keygo.feature.account.presentation.setup.model
 
+import de.davis.keygo.core.sync.domain.model.SyncError
+
 internal sealed interface ServerCheck {
 
     data object Idle : ServerCheck
@@ -12,26 +14,6 @@ internal sealed interface ServerCheck {
         val inviteOnly: Boolean,
     ) : ServerCheck
 
-    data class Failed(val reason: Reason) : ServerCheck {
-
-        val canRetry: Boolean
-            get() = reason != Reason.InvalidAddress
-
-        enum class Reason {
-            InvalidAddress,
-            UnknownHost,
-            Timeout,
-            Refused,
-            Unreachable,
-            InsecureConnection,
-            UntrustedCertificate,
-            SecureConnectionFailed,
-            Redirected,
-            NotKeyGo,
-            ServerUnavailable,
-            ServerError,
-            RateLimited,
-            Unknown,
-        }
-    }
+    data object InvalidAddress : ServerCheck
+    data class Failed(val error: SyncError) : ServerCheck
 }

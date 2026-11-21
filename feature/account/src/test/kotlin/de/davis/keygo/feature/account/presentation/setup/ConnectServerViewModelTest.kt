@@ -21,7 +21,6 @@ import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerStep
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiEvent
 import de.davis.keygo.feature.account.presentation.setup.model.PasswordCheck
 import de.davis.keygo.feature.account.presentation.setup.model.ServerCheck
-import de.davis.keygo.feature.account.presentation.setup.model.ServerCheck.Failed.Reason
 import de.davis.keygo.feature.account.presentation.setup.model.UsernameCheck
 import de.davis.keygo.rust.FakeUsernameValidator
 import de.davis.keygo.rust.username.UsernameError
@@ -277,7 +276,7 @@ class ConnectServerViewModelTest {
         assertEquals(ServerCheck.Idle, vm.check)
         advanceUntilIdle()
 
-        assertEquals(ServerCheck.Failed(Reason.InvalidAddress), vm.check)
+        assertEquals(ServerCheck.InvalidAddress, vm.check)
         assertEquals(emptyList(), repository.checked)
     }
 
@@ -301,7 +300,7 @@ class ConnectServerViewModelTest {
         type(vm, "192.168.178.21:8000")
         advanceUntilIdle()
 
-        assertEquals(ServerCheck.Failed(Reason.Timeout), vm.check)
+        assertEquals(ServerCheck.Failed(SyncError.Network(NetworkFailure.Timeout)), vm.check)
     }
 
     @Test

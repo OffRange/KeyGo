@@ -44,6 +44,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.sync.domain.model.NetworkFailure
+import de.davis.keygo.core.sync.domain.model.SyncError
+import de.davis.keygo.core.sync.presentation.messageRes
 import de.davis.keygo.core.ui.components.IconBadge
 import de.davis.keygo.core.ui.text.transformation.rememberSchemeStrippingTransformation
 import de.davis.keygo.feature.account.R
@@ -51,6 +54,7 @@ import de.davis.keygo.feature.account.presentation.setup.components.AccountSetup
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiEvent
 import de.davis.keygo.feature.account.presentation.setup.model.EnterDomainState
 import de.davis.keygo.feature.account.presentation.setup.model.ServerCheck
+import de.davis.keygo.core.sync.R as SyncR
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -58,7 +62,7 @@ internal fun EnterDomainContent(
     state: EnterDomainState,
     onEvent: (ConnectServerUiEvent) -> Unit,
 ) {
-    val failure = state.check as? ServerCheck.Failed
+    val error = state.check.message
     val schemeTransformation = rememberSchemeStrippingTransformation {
         onEvent(ConnectServerUiEvent.SchemeChanged(it))
     }
@@ -97,25 +101,23 @@ internal fun EnterDomainContent(
                         tint = MaterialTheme.colorScheme.primary,
                     )
 
-                    is ServerCheck.Failed ->
-                        if (state.check.canRetry)
-                            IconButton(onClick = { onEvent(ConnectServerUiEvent.Retry) }) {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = stringResource(R.string.connect_server_retry),
-                                )
-                            }
+                    is ServerCheck.Failed -> IconButton(onClick = { onEvent(ConnectServerUiEvent.Retry) }) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = stringResource(R.string.connect_server_retry),
+                        )
+                    }
 
+                    ServerCheck.InvalidAddress,
                     ServerCheck.Idle -> Unit
                 }
             },
             supportingText = {
                 Text(
-                    text = failure?.reason?.message
-                        ?: stringResource(R.string.connect_server_address_helper),
+                    text = error ?: stringResource(R.string.connect_server_address_helper),
                 )
             },
-            isError = failure != null,
+            isError = error != null,
             lineLimits = TextFieldLineLimits.SingleLine,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,
@@ -126,7 +128,7 @@ internal fun EnterDomainContent(
             onKeyboardAction = {
                 when {
                     state.check is ServerCheck.Found -> onEvent(ConnectServerUiEvent.Continue)
-                    failure?.canRetry == true -> onEvent(ConnectServerUiEvent.Retry)
+                    state.check is ServerCheck.Failed -> onEvent(ConnectServerUiEvent.Retry)
                 }
             },
         )
@@ -210,28 +212,16 @@ private object WhitespaceStrippingTransformation : InputTransformation {
     }
 }
 
-private val ServerCheck.Failed.Reason.message: String
+private val ServerCheck.message: String?
     @Composable
-    get() = stringResource(
-        when (this) {
-            ServerCheck.Failed.Reason.InvalidAddress -> R.string.connect_server_invalid_address
-            ServerCheck.Failed.Reason.UnknownHost -> R.string.connect_server_unknown_host
-            ServerCheck.Failed.Reason.Timeout -> R.string.connect_server_timeout
-            ServerCheck.Failed.Reason.Refused -> R.string.connect_server_refused
-            ServerCheck.Failed.Reason.Unreachable -> R.string.connect_server_unreachable
-            ServerCheck.Failed.Reason.InsecureConnection -> R.string.connect_server_insecure
-            ServerCheck.Failed.Reason.UntrustedCertificate ->
-                R.string.connect_server_untrusted_certificate
-
-            ServerCheck.Failed.Reason.SecureConnectionFailed -> R.string.connect_server_tls_failed
-            ServerCheck.Failed.Reason.Redirected -> R.string.connect_server_redirected
-            ServerCheck.Failed.Reason.NotKeyGo -> R.string.connect_server_not_keygo
-            ServerCheck.Failed.Reason.ServerUnavailable -> R.string.connect_server_unavailable
-            ServerCheck.Failed.Reason.ServerError -> R.string.connect_server_error
-            ServerCheck.Failed.Reason.RateLimited -> R.string.connect_server_rate_limited
-            ServerCheck.Failed.Reason.Unknown -> R.string.connect_server_unknown_error
-        }
-    )
+    get() = when (this) {
+        is ServerCheck.Failed -> stringResource(error.messageRes)
+        ServerCheck.InvalidAddress -> stringResource(SyncR.string.sync_error_invalid_address)
+        ServerCheck.Idle,
+        ServerCheck.Checking,
+        is ServerCheck.Found,
+            -> null
+    }
 
 private class ServerCheckProvider : PreviewParameterProvider<ServerCheck> {
 
@@ -244,8 +234,8 @@ private class ServerCheckProvider : PreviewParameterProvider<ServerCheck> {
             publicUrl = "https://vault.example.org",
             inviteOnly = true,
         ),
-        ServerCheck.Failed(ServerCheck.Failed.Reason.Timeout),
-        ServerCheck.Failed(ServerCheck.Failed.Reason.InvalidAddress),
+        ServerCheck.Failed(SyncError.Network(NetworkFailure.Timeout)),
+        ServerCheck.InvalidAddress,
     )
 }
 

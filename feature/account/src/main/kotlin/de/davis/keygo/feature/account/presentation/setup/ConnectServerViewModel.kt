@@ -17,7 +17,6 @@ import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.account.domain.model.ServerAddress
-import de.davis.keygo.feature.account.presentation.setup.mapper.toFailureReason
 import de.davis.keygo.feature.account.presentation.setup.mapper.toFound
 import de.davis.keygo.feature.account.presentation.setup.mapper.toServerCheck
 import de.davis.keygo.feature.account.presentation.setup.model.ChooseUsernameState
@@ -279,7 +278,7 @@ internal class ConnectServerViewModel(
     private suspend fun check(address: ServerAddress): ServerCheck =
         syncRepository.checkServer(address.origin).fold(
             onSuccess = { it.toFound(address) },
-            onFailure = { ServerCheck.Failed(it.toFailureReason()) },
+            onFailure = { ServerCheck.Failed(it) },
         )
 
     private data class Fields(
