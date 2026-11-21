@@ -9,6 +9,7 @@ import de.davis.keygo.core.identity.domain.usecase.VerifyPasswordUseCase
 import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.sync.domain.model.NetworkFailure
 import de.davis.keygo.core.sync.domain.model.ServerInfo
+import de.davis.keygo.core.sync.domain.model.SyncAccount
 import de.davis.keygo.core.sync.domain.model.SyncError
 import de.davis.keygo.core.sync.domain.repository.SyncRepository
 import de.davis.keygo.core.ui.text.transformation.SchemeStrippingTransformation
@@ -34,6 +35,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import java.util.UUID
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -51,6 +53,15 @@ class ConnectServerViewModelTest {
             checked += serverUrl
             return result
         }
+
+        override suspend fun register(
+            serverUrl: String,
+            userId: UUID,
+            username: String,
+            password: String,
+            invite: String?,
+        ): Result<SyncAccount, SyncError> =
+            Result.Success(SyncAccount(userId, username, UUID.randomUUID()))
     }
 
     private val dispatcher = StandardTestDispatcher()
@@ -110,7 +121,10 @@ class ConnectServerViewModelTest {
         assertEquals(listOf("https://vault.example.org"), repository.checked)
 
         advanceUntilIdle()
-        assertEquals(listOf("https://vault.example.org", "https://vault.example.com"), repository.checked)
+        assertEquals(
+            listOf("https://vault.example.org", "https://vault.example.com"),
+            repository.checked
+        )
     }
 
     @Test

@@ -5,6 +5,7 @@ import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.resultBinding
 import de.davisalessandro.keygo.rust.AccountRecord
 import de.davisalessandro.keygo.rust.ArkCredential
+import de.davisalessandro.keygo.rust.ArkSession
 import de.davisalessandro.keygo.rust.ArkSessionException
 import de.davisalessandro.keygo.rust.NewAccount
 import de.davisalessandro.keygo.rust.PasswordWrapped
@@ -16,6 +17,10 @@ import java.util.UUID
 @RequiresOptIn("This API must be used with caution! Callers should wipe the returned ARK. Call `useArk` instead to ensure that the ARK is zeroed after use.")
 @Retention(AnnotationRetention.BINARY)
 annotation class ExportArk
+
+@RequiresOptIn("Hands out the Rust session itself. Only pass it to Rust calls that take an `ArkSession`; never keep or end it.")
+@Retention(AnnotationRetention.BINARY)
+annotation class RawArkSession
 
 interface Session {
 
@@ -36,6 +41,9 @@ interface Session {
     fun exportArk(): Result<ByteArray, SessionError>
 
     fun arkCredential(): ArkCredential
+
+    @RawArkSession
+    fun arkSession(): ArkSession
 
     suspend fun verifyPassword(
         password: String,
