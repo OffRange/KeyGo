@@ -40,6 +40,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.davis.keygo.core.sync.presentation.messageRes
 import de.davis.keygo.feature.account.R
 import de.davis.keygo.feature.account.presentation.setup.components.AccountSetupScaffold
 import de.davis.keygo.feature.account.presentation.setup.model.ChooseUsernameState
@@ -52,7 +53,7 @@ internal fun ChooseUsernameContent(
     state: ChooseUsernameState,
     usernameInputTransformation: InputTransformation,
 ) {
-    val usernameError = (state.usernameCheck as? UsernameCheck.Invalid)?.error
+    val usernameError = state.usernameCheck.message
 
     AccountSetupScaffold(
         title = stringResource(R.string.choose_username_title),
@@ -68,7 +69,7 @@ internal fun ChooseUsernameContent(
                 Text(text = stringResource(R.string.username))
             },
             supportingText = {
-                if (usernameError != null) Text(text = usernameError.message)
+                if (usernameError != null) Text(text = usernameError)
                 else Text(text = allowedCharsHint(chars = state.allowedUsernameChars))
             },
             isError = usernameError != null,
@@ -97,11 +98,13 @@ internal fun ChooseUsernameContent(
                 supportingText = {
                     Text(
                         text = stringResource(
-                            if (state.inviteEditable) R.string.invite_code_helper
-                            else R.string.invite_code_from_link_helper,
+                            state.inviteError?.messageRes
+                                ?: if (state.inviteEditable) R.string.invite_code_helper
+                                else R.string.invite_code_from_link_helper,
                         ),
                     )
                 },
+                isError = state.inviteError != null,
                 readOnly = !state.inviteEditable,
                 textStyle = LocalTextStyle.current.copy(
                     fontFamily = FontFamily.Monospace,
@@ -187,6 +190,15 @@ private val InviteCodeGrouping = OutputTransformation {
     for (index in (INVITE_CODE_GROUP until length step INVITE_CODE_GROUP).reversed())
         insert(index, "-")
 }
+
+private val UsernameCheck.message: String?
+    @Composable
+    get() = when (this) {
+        is UsernameCheck.Invalid -> error.message
+        is UsernameCheck.Rejected -> stringResource(error.messageRes)
+        UsernameCheck.Idle,
+        is UsernameCheck.Valid -> null
+    }
 
 private val UsernameError.message: String
     @Composable

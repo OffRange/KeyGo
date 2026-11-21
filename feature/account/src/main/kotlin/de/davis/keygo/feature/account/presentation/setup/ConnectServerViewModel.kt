@@ -6,9 +6,9 @@ import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import de.davis.keygo.core.identity.domain.model.VerifyPasswordError
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.sync.domain.model.RegisterError
+import de.davis.keygo.core.sync.domain.model.SyncError
 import de.davis.keygo.core.sync.domain.repository.SyncRepository
 import de.davis.keygo.core.sync.domain.usecase.RegisterUseCase
 import de.davis.keygo.core.util.combine
@@ -18,6 +18,7 @@ import de.davis.keygo.core.util.onFailure
 import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.account.domain.model.ServerAddress
 import de.davis.keygo.feature.account.presentation.setup.mapper.toFound
+import de.davis.keygo.feature.account.presentation.setup.mapper.toPasswordCheck
 import de.davis.keygo.feature.account.presentation.setup.mapper.toServerCheck
 import de.davis.keygo.feature.account.presentation.setup.model.ChooseUsernameState
 import de.davis.keygo.feature.account.presentation.setup.model.ConfirmPasswordState
@@ -117,6 +118,10 @@ internal class ConnectServerViewModel(
     // --- Password ---
     private val _passwordCheck = MutableStateFlow<PasswordCheck>(PasswordCheck.Idle)
 
+    // --- Rejected by the server on register ---
+    private val _rejection = MutableStateFlow<Rejection?>(null)
+    private val _inviteRequiredBy = MutableStateFlow<String?>(null)
+
     private fun fields() = Fields(
         address = addressTextFieldState.text.toString(),
         username = usernameTextFieldState.text.toString(),
@@ -133,6 +138,8 @@ internal class ConnectServerViewModel(
         _passwordCheck,
         _step,
         _fields,
+        _rejection,
+        _inviteRequiredBy,
         ::uiState,
     ).stateIn(
         scope = viewModelScope,
@@ -144,6 +151,8 @@ internal class ConnectServerViewModel(
             passwordCheck = PasswordCheck.Idle,
             step = ConnectServerStep.EnterDomain,
             fields = fields(),
+            rejection = null,
+            inviteRequiredBy = null,
         ),
     )
 
@@ -154,6 +163,8 @@ internal class ConnectServerViewModel(
         passwordCheck: PasswordCheck,
         step: ConnectServerStep,
         fields: Fields,
+        rejection: Rejection?,
+        inviteRequiredBy: String?,
     ) = ConnectServerUiState(
         enterDomainState = EnterDomainState(
             addressTextFieldState = addressTextFieldState,
@@ -164,17 +175,26 @@ internal class ConnectServerViewModel(
             usernameTextFieldState = usernameTextFieldState,
             inviteTextFieldState = inviteTextFieldState,
             serverHost = fields.address,
-            serverInviteRequired = check.inviteRequired,
+            serverInviteRequired = inviteRequired(check, inviteRequiredBy),
             inviteEditable = true,
             allowedUsernameChars = allowedUsernameChars,
-            usernameCheck = usernameCheck,
+            usernameCheck = rejection.usernameCheck(fields.username) ?: usernameCheck,
+            inviteError = inviteError(check, fields.invite, rejection, inviteRequiredBy),
         ),
         confirmPasswordState = ConfirmPasswordState(
             passwordTextFieldState = passwordTextFieldState,
             check = passwordCheck,
         ),
         step = step,
-        canContinue = canContinue(step, check, passwordCheck, scheme, fields),
+        canContinue = canContinue(
+            step,
+            check,
+            passwordCheck,
+            scheme,
+            fields,
+            rejection,
+            inviteRequiredBy,
+        ),
     )
 
     private fun canContinue(
@@ -183,14 +203,18 @@ internal class ConnectServerViewModel(
         passwordCheck: PasswordCheck,
         scheme: String?,
         fields: Fields,
+        rejection: Rejection?,
+        inviteRequiredBy: String?,
     ): Boolean = when (step) {
         ConnectServerStep.EnterDomain ->
             check is ServerCheck.Found &&
                     check.serverUrl == address(fields.address, scheme).getOrNull()?.origin
 
         ConnectServerStep.ChooseUsername ->
-            usernameCheck(fields.username) is UsernameCheck.Valid &&
-                    (!check.inviteRequired || fields.invite.isNotBlank())
+            (rejection.usernameCheck(fields.username) ?: usernameCheck(fields.username)) is
+                    UsernameCheck.Valid &&
+                    (!inviteRequired(check, inviteRequiredBy) || fields.invite.isNotBlank()) &&
+                    inviteError(check, fields.invite, rejection, inviteRequiredBy) == null
 
         ConnectServerStep.ConfirmPassword ->
             fields.passwordEntered && passwordCheck != PasswordCheck.Checking
@@ -198,6 +222,28 @@ internal class ConnectServerViewModel(
 
     private val ServerCheck.inviteRequired: Boolean
         get() = this is ServerCheck.Found && inviteOnly
+
+    private fun ServerCheck.isFoundFor(serverUrl: String?) =
+        this is ServerCheck.Found && this@isFoundFor.serverUrl == serverUrl
+
+    private fun inviteRequired(check: ServerCheck, inviteRequiredBy: String?) =
+        check.inviteRequired || check.isFoundFor(inviteRequiredBy)
+
+    private fun inviteError(
+        check: ServerCheck,
+        invite: String,
+        rejection: Rejection?,
+        inviteRequiredBy: String?,
+    ): SyncError? = when {
+        rejection is Rejection.Invite && rejection.invite == invite -> SyncError.InviteInvalid
+        invite.isBlank() && check.isFoundFor(inviteRequiredBy) -> SyncError.InviteRequired
+
+        else -> null
+    }
+
+    private fun Rejection?.usernameCheck(username: String): UsernameCheck? =
+        (this as? Rejection.Username)?.takeIf { it.username == username }
+            ?.let { UsernameCheck.Rejected(it.error) }
 
     private val _event = Channel<ConnectServerEvent>(Channel.BUFFERED)
     val event = _event.receiveAsFlow()
@@ -214,6 +260,8 @@ internal class ConnectServerViewModel(
                     passwordCheck = _passwordCheck.value,
                     scheme = _detectedScheme.value,
                     fields = fields(),
+                    rejection = _rejection.value,
+                    inviteRequiredBy = _inviteRequiredBy.value,
                 )
             ) continueStep()
 
@@ -237,27 +285,48 @@ internal class ConnectServerViewModel(
 
     private fun confirmPassword() {
         val server = state.value.enterDomainState.check as? ServerCheck.Found ?: return
+        val username = usernameTextFieldState.text.toString()
+        val invite = inviteTextFieldState.text.toString()
 
         _passwordCheck.update { PasswordCheck.Checking }
         viewModelScope.launch {
             register(
                 serverUrl = server.serverUrl,
-                username = usernameTextFieldState.text.toString(),
+                username = username,
                 password = passwordTextFieldState.text.toString(),
-                invite = inviteTextFieldState.text.toString().takeIf { it.isNotBlank() },
+                invite = invite.takeIf { it.isNotBlank() },
             )
                 .onSuccess {
                     clearPassword()
                     _event.send(ConnectServerEvent.AccountCreated)
                 }
-                .onFailure {
-                    _passwordCheck.update { _ ->
-                        if (it == RegisterError.Password(VerifyPasswordError.IncorrectPassword))
-                            PasswordCheck.Incorrect
-                        else PasswordCheck.Failed
-                    }
-                }
+                .onFailure { onRegisterFailed(it, server.serverUrl, username, invite) }
         }
+    }
+
+    private fun onRegisterFailed(
+        error: RegisterError,
+        serverUrl: String,
+        username: String,
+        invite: String,
+    ) = when (val syncError = (error as? RegisterError.Sync)?.error) {
+        SyncError.UsernameTaken,
+        SyncError.InvalidUsername -> backToUsername(Rejection.Username(username, syncError))
+
+        SyncError.InviteInvalid -> backToUsername(Rejection.Invite(invite))
+
+        SyncError.InviteRequired -> {
+            _inviteRequiredBy.update { serverUrl }
+            backToUsername(null)
+        }
+
+        else -> _passwordCheck.update { error.toPasswordCheck() }
+    }
+
+    private fun backToUsername(rejection: Rejection?) {
+        _rejection.update { rejection }
+        _passwordCheck.update { PasswordCheck.Idle }
+        _step.update { ConnectServerStep.ChooseUsername }
     }
 
     @OptIn(ExperimentalFoundationApi::class)
@@ -280,6 +349,11 @@ internal class ConnectServerViewModel(
             onSuccess = { it.toFound(address) },
             onFailure = { ServerCheck.Failed(it) },
         )
+
+    private sealed interface Rejection {
+        data class Username(val username: String, val error: SyncError) : Rejection
+        data class Invite(val invite: String) : Rejection
+    }
 
     private data class Fields(
         val address: String,

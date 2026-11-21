@@ -2,6 +2,7 @@ package de.davis.keygo.feature.account.presentation.setup.model
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Stable
+import de.davis.keygo.core.sync.domain.model.SyncError
 
 @Stable
 internal data class ConnectServerUiState(
@@ -30,6 +31,7 @@ internal data class ChooseUsernameState(
     val inviteEditable: Boolean,
     val allowedUsernameChars: List<String>,
     val usernameCheck: UsernameCheck = UsernameCheck.Idle,
+    val inviteError: SyncError? = null,
 )
 
 @Stable

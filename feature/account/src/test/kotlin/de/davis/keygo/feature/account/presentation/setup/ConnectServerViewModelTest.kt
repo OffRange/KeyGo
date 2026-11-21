@@ -64,9 +64,11 @@ class ConnectServerViewModelTest {
             invite: String?,
         ): Result<SyncAccount, SyncError> {
             registered += serverUrl
-            return Result.Success(SyncAccount(userId, username, UUID.randomUUID()))
+            return registerFailure?.let { Result.Failure(it) }
+                ?: Result.Success(SyncAccount(userId, username, UUID.randomUUID()))
         }
 
+        var registerFailure: SyncError? = null
         val registered = mutableListOf<String>()
     }
 
@@ -544,13 +546,17 @@ class ConnectServerViewModelTest {
         assertEquals("", vm.state.value.confirmPasswordState.passwordTextFieldState.text.toString())
     }
 
+    private suspend fun TestScope.submit(vm: ConnectServerViewModel) {
+        typePassword(vm, "secret")
+        vm.onEvent(ConnectServerUiEvent.Continue)
+        advanceUntilIdle()
+    }
+
     @Test
     fun a_confirmed_password_registers_on_the_checked_origin() = runTest(dispatcher) {
         val vm = confirmPasswordStep()
-        typePassword(vm, "secret")
 
-        vm.onEvent(ConnectServerUiEvent.Continue)
-        advanceUntilIdle()
+        submit(vm)
 
         assertEquals(listOf("https://vault.example.org"), repository.registered)
         assertEquals(ConnectServerEvent.AccountCreated, vm.event.first())
@@ -565,6 +571,47 @@ class ConnectServerViewModelTest {
         advanceUntilIdle()
 
         assertEquals(emptyList(), repository.registered)
+    }
+
+    @Test
+    fun a_taken_username_sends_the_user_back_to_pick_another() = runTest(dispatcher) {
+        val vm = confirmPasswordStep()
+        repository.registerFailure = SyncError.UsernameTaken
+
+        submit(vm)
+
+        assertEquals(ConnectServerStep.ChooseUsername, vm.state.value.step)
+        assertEquals(UsernameCheck.Rejected(SyncError.UsernameTaken), vm.usernameCheck)
+        assertEquals(false, vm.state.value.canContinue)
+
+        typeUsername(vm, "grace")
+        advanceUntilIdle()
+
+        assertEquals(UsernameCheck.Valid("grace"), vm.usernameCheck)
+        assertEquals(true, vm.state.value.canContinue)
+    }
+
+    @Test
+    fun a_spent_invite_is_flagged_on_the_invite_field() = runTest(dispatcher) {
+        val vm = confirmPasswordStep()
+        repository.registerFailure = SyncError.InviteInvalid
+
+        submit(vm)
+
+        assertEquals(ConnectServerStep.ChooseUsername, vm.state.value.step)
+        assertEquals(SyncError.InviteInvalid, vm.state.value.chooseUsernameState.inviteError)
+        assertEquals(false, vm.state.value.canContinue)
+    }
+
+    @Test
+    fun a_network_failure_on_register_stays_on_the_password_step() = runTest(dispatcher) {
+        val vm = confirmPasswordStep()
+        repository.registerFailure = SyncError.Network(NetworkFailure.Timeout)
+
+        submit(vm)
+
+        assertEquals(ConnectServerStep.ConfirmPassword, vm.state.value.step)
+        assertEquals(PasswordCheck.RegisterFailed(SyncError.Network(NetworkFailure.Timeout)), vm.passwordCheck)
     }
 
     private companion object {

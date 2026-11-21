@@ -20,6 +20,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import de.davis.keygo.core.sync.domain.model.NetworkFailure
+import de.davis.keygo.core.sync.domain.model.SyncError
+import de.davis.keygo.core.sync.presentation.messageRes
 import de.davis.keygo.core.ui.components.VisibilityButton
 import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.ui.model.error
@@ -45,14 +48,18 @@ internal fun ConfirmPasswordContent(
             textObfuscationMode = if (passwordHidden) TextObfuscationMode.RevealLastTyped
             else TextObfuscationMode.Visible,
             enabled = state.check != PasswordCheck.Checking,
-            isError = state.check == PasswordCheck.Incorrect || state.check == PasswordCheck.Failed,
-            supportingText = when (state.check) {
+            isError = state.check != PasswordCheck.Idle && state.check != PasswordCheck.Checking,
+            supportingText = when (val check = state.check) {
                 PasswordCheck.Incorrect -> {
                     { Text(text = UiFieldError.Incorrect.error) }
                 }
 
                 PasswordCheck.Failed -> {
                     { Text(text = stringResource(R.string.confirm_account_password_failed)) }
+                }
+
+                is PasswordCheck.RegisterFailed -> {
+                    { Text(text = stringResource(check.error.messageRes)) }
                 }
 
                 PasswordCheck.Idle,
@@ -93,5 +100,6 @@ private class PasswordCheckProvider : PreviewParameterProvider<PasswordCheck> {
         PasswordCheck.Checking,
         PasswordCheck.Incorrect,
         PasswordCheck.Failed,
+        PasswordCheck.RegisterFailed(SyncError.Network(NetworkFailure.Timeout)),
     )
 }
