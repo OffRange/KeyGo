@@ -12,9 +12,11 @@ import de.davis.keygo.core.sync.domain.model.ServerInfo
 import de.davis.keygo.core.sync.domain.model.SyncAccount
 import de.davis.keygo.core.sync.domain.model.SyncError
 import de.davis.keygo.core.sync.domain.repository.SyncRepository
+import de.davis.keygo.core.sync.domain.usecase.RegisterUseCase
 import de.davis.keygo.core.ui.text.transformation.SchemeStrippingTransformation
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.getOrNull
+import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerEvent
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerStep
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiEvent
 import de.davis.keygo.feature.account.presentation.setup.model.PasswordCheck
@@ -26,6 +28,7 @@ import de.davis.keygo.rust.username.UsernameError
 import de.davisalessandro.keygo.rust.UsernameException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -60,8 +63,12 @@ class ConnectServerViewModelTest {
             username: String,
             password: String,
             invite: String?,
-        ): Result<SyncAccount, SyncError> =
-            Result.Success(SyncAccount(userId, username, UUID.randomUUID()))
+        ): Result<SyncAccount, SyncError> {
+            registered += serverUrl
+            return Result.Success(SyncAccount(userId, username, UUID.randomUUID()))
+        }
+
+        val registered = mutableListOf<String>()
     }
 
     private val dispatcher = StandardTestDispatcher()
@@ -79,7 +86,11 @@ class ConnectServerViewModelTest {
     private fun TestScope.viewModel() = ConnectServerViewModel(
         syncRepository = repository,
         usernameValidator = usernameValidator,
-        verifyPassword = VerifyPasswordUseCase(session, accountRepository),
+        register = RegisterUseCase(
+            syncRepository = repository,
+            accountRepository = accountRepository,
+            verifyPassword = VerifyPasswordUseCase(session, accountRepository),
+        ),
         session = session,
     ).also { it.state.launchIn(backgroundScope) }
 
@@ -532,6 +543,29 @@ class ConnectServerViewModelTest {
         runCurrent()
 
         assertEquals("", vm.state.value.confirmPasswordState.passwordTextFieldState.text.toString())
+    }
+
+    @Test
+    fun a_confirmed_password_registers_on_the_checked_origin() = runTest(dispatcher) {
+        val vm = confirmPasswordStep()
+        typePassword(vm, "secret")
+
+        vm.onEvent(ConnectServerUiEvent.Continue)
+        advanceUntilIdle()
+
+        assertEquals(listOf("https://vault.example.org"), repository.registered)
+        assertEquals(ConnectServerEvent.AccountCreated, vm.event.first())
+    }
+
+    @Test
+    fun a_wrong_password_never_reaches_the_server() = runTest(dispatcher) {
+        val vm = confirmPasswordStep()
+        typePassword(vm, "wrong")
+
+        vm.onEvent(ConnectServerUiEvent.Continue)
+        advanceUntilIdle()
+
+        assertEquals(emptyList(), repository.registered)
     }
 
     private companion object {

@@ -7,9 +7,10 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.identity.domain.model.VerifyPasswordError
-import de.davis.keygo.core.identity.domain.usecase.VerifyPasswordUseCase
 import de.davis.keygo.core.security.domain.Session
+import de.davis.keygo.core.sync.domain.model.RegisterError
 import de.davis.keygo.core.sync.domain.repository.SyncRepository
+import de.davis.keygo.core.sync.domain.usecase.RegisterUseCase
 import de.davis.keygo.core.util.combine
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
@@ -56,7 +57,7 @@ import kotlin.time.Duration.Companion.milliseconds
 internal class ConnectServerViewModel(
     private val syncRepository: SyncRepository,
     private val usernameValidator: UsernameValidator,
-    private val verifyPassword: VerifyPasswordUseCase,
+    private val register: RegisterUseCase,
     private val session: Session,
 ) : ViewModel() {
 
@@ -236,16 +237,24 @@ internal class ConnectServerViewModel(
         else nextStep()
 
     private fun confirmPassword() {
+        val server = state.value.enterDomainState.check as? ServerCheck.Found ?: return
+
         _passwordCheck.update { PasswordCheck.Checking }
         viewModelScope.launch {
-            verifyPassword(passwordTextFieldState.text.toString())
+            register(
+                serverUrl = server.serverUrl,
+                username = usernameTextFieldState.text.toString(),
+                password = passwordTextFieldState.text.toString(),
+                invite = inviteTextFieldState.text.toString().takeIf { it.isNotBlank() },
+            )
                 .onSuccess {
-                    _passwordCheck.update { PasswordCheck.Idle }
-                    nextStep()
+                    clearPassword()
+                    _event.send(ConnectServerEvent.AccountCreated)
                 }
                 .onFailure {
                     _passwordCheck.update { _ ->
-                        if (it == VerifyPasswordError.IncorrectPassword) PasswordCheck.Incorrect
+                        if (it == RegisterError.Password(VerifyPasswordError.IncorrectPassword))
+                            PasswordCheck.Incorrect
                         else PasswordCheck.Failed
                     }
                 }
