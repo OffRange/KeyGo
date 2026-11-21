@@ -44,7 +44,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
@@ -99,14 +98,14 @@ internal class ConnectServerViewModel(
             },
             onFailure = { emit(it.toServerCheck()) },
         )
-    }.onStart { emit(ServerCheck.Idle) }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, ServerCheck.Idle)
 
     // --- Username - Invite ---
     @OptIn(FlowPreview::class)
     private val _usernameCheck = snapshotFlow { usernameTextFieldState.text.toString() }
         .debounce(TYPING_PAUSE)
         .map(::usernameCheck)
-        .onStart { emit(UsernameCheck.Idle) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, UsernameCheck.Idle)
 
     private fun usernameCheck(input: String): UsernameCheck =
         if (input.isEmpty()) UsernameCheck.Idle
@@ -256,7 +255,7 @@ internal class ConnectServerViewModel(
             ConnectServerUiEvent.Continue -> if (
                 canContinue(
                     step = _step.value,
-                    check = state.value.enterDomainState.check,
+                    check = _check.value,
                     passwordCheck = _passwordCheck.value,
                     scheme = _detectedScheme.value,
                     fields = fields(),
@@ -284,7 +283,7 @@ internal class ConnectServerViewModel(
         else nextStep()
 
     private fun confirmPassword() {
-        val server = state.value.enterDomainState.check as? ServerCheck.Found ?: return
+        val server = _check.value as? ServerCheck.Found ?: return
         val username = usernameTextFieldState.text.toString()
         val invite = inviteTextFieldState.text.toString()
 

@@ -84,7 +84,7 @@ class ConnectServerViewModelTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun TestScope.viewModel() = ConnectServerViewModel(
+    private fun unobservedViewModel() = ConnectServerViewModel(
         syncRepository = repository,
         usernameValidator = usernameValidator,
         register = RegisterUseCase(
@@ -93,7 +93,10 @@ class ConnectServerViewModelTest {
             verifyPassword = VerifyPasswordUseCase(session, accountRepository),
         ),
         session = session,
-    ).also { it.state.launchIn(backgroundScope) }
+    )
+
+    private fun TestScope.viewModel() =
+        unobservedViewModel().also { it.state.launchIn(backgroundScope) }
 
     private val ConnectServerViewModel.check
         get() = state.value.enterDomainState.check
@@ -406,6 +409,25 @@ class ConnectServerViewModelTest {
         val vm = viewModel()
 
         assertEquals(listOf("a-z", "_"), vm.state.value.chooseUsernameState.allowedUsernameChars)
+    }
+
+    @Test
+    fun returning_from_the_background_keeps_the_checks() = runTest(dispatcher) {
+        val vm = unobservedViewModel()
+        val screen = vm.state.launchIn(backgroundScope)
+        type(vm, "vault.example.org")
+        advanceUntilIdle()
+        typeUsername(vm, "ada")
+        advanceUntilIdle()
+
+        screen.cancel()
+        advanceTimeBy(10_000)
+        vm.state.launchIn(backgroundScope)
+        runCurrent()
+
+        assertEquals(true, vm.state.value.chooseUsernameState.serverInviteRequired)
+        assertIs<UsernameCheck.Valid>(vm.usernameCheck)
+        assertEquals(1, repository.checked.size)
     }
 
     @Test
