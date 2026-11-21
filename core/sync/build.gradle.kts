@@ -11,6 +11,7 @@ dependencies {
     api(projects.core.rust)
 
     implementation(projects.core.security)
+    implementation(projects.core.identity)
 
     implementation(libs.okhttp)
     implementation(libs.kotlinx.coroutines.core)
