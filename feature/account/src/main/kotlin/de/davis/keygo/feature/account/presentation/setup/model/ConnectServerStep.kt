@@ -5,5 +5,5 @@ internal enum class ConnectServerStep {
 
     //ConfirmServer,
     ChooseUsername,
-    //ConfirmPassword,
+    ConfirmPassword,
 }

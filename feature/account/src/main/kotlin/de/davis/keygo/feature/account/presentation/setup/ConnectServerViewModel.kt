@@ -12,6 +12,7 @@ import de.davis.keygo.feature.account.presentation.setup.mapper.toFailureReason
 import de.davis.keygo.feature.account.presentation.setup.mapper.toFound
 import de.davis.keygo.feature.account.presentation.setup.mapper.toServerCheck
 import de.davis.keygo.feature.account.presentation.setup.model.ChooseUsernameState
+import de.davis.keygo.feature.account.presentation.setup.model.ConfirmPasswordState
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerEvent
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerStep
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiEvent
@@ -49,6 +50,7 @@ internal class ConnectServerViewModel(
     private val addressTextFieldState = TextFieldState()
     private val usernameTextFieldState = TextFieldState()
     private val inviteTextFieldState = TextFieldState()
+    private val passwordTextFieldState = TextFieldState()
 
     private val _detectedScheme = MutableStateFlow<String?>(null)
 
@@ -146,6 +148,9 @@ internal class ConnectServerViewModel(
             allowedUsernameChars = allowedUsernameChars,
             usernameCheck = usernameCheck,
         ),
+        confirmPasswordState = ConfirmPasswordState(
+            passwordTextFieldState = passwordTextFieldState,
+        ),
         step = step,
         canContinue = canContinue(step, check, scheme, fields),
     )
@@ -163,6 +168,8 @@ internal class ConnectServerViewModel(
         ConnectServerStep.ChooseUsername ->
             usernameCheck(fields.username) is UsernameCheck.Valid &&
                     (!check.inviteRequired || fields.invite.isNotBlank())
+
+        ConnectServerStep.ConfirmPassword -> false
     }
 
     private val ServerCheck.inviteRequired: Boolean

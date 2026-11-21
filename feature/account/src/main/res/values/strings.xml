@@ -79,4 +79,8 @@
     <string name="username_consecutive_separators">Dots, dashes and underscores can\'t follow each other.</string>
     <string name="username_only_digits">Add at least one letter.</string>
     <string name="username_reserved">This name is reserved. Pick another one.</string>
+
+    <string name="confirm_account_password_title">Confirm your password</string>
+    <string name="confirm_account_password_description">Your account uses the password you already unlock KeyGo with. Unlocking stays the same.</string>
+    <string name="confirm_account_password_label">KeyGo password</string>
 </resources>

@@ -25,6 +25,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import de.davis.keygo.core.ui.components.Wizard
 import de.davis.keygo.feature.account.R
 import de.davis.keygo.feature.account.presentation.setup.model.ChooseUsernameState
+import de.davis.keygo.feature.account.presentation.setup.model.ConfirmPasswordState
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerStep
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiEvent
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiState
@@ -64,6 +65,10 @@ internal fun ConnectServerContent(
                 state = state.chooseUsernameState,
                 usernameInputTransformation = usernameInputTransformation,
             )
+
+            ConnectServerStep.ConfirmPassword -> ConfirmPasswordContent(
+                state = state.confirmPasswordState,
+            )
         }
     }
 }
@@ -87,7 +92,8 @@ private val ConnectServerStep.secondaryAction: SecondaryAction?
             icon = Icons.Default.QrCodeScanner,
         )
 
-        ConnectServerStep.ChooseUsername -> null
+        ConnectServerStep.ChooseUsername,
+        ConnectServerStep.ConfirmPassword -> null
     }
 
 @Composable
@@ -132,6 +138,9 @@ private class ConnectServerUiStateProvider : PreviewParameterProvider<ConnectSer
                 serverInviteRequired = true,
                 inviteEditable = false,
                 allowedUsernameChars = listOf("a-z", "0-9", ".", "_", "-"),
+            ),
+            confirmPasswordState = ConfirmPasswordState(
+                passwordTextFieldState = TextFieldState(),
             ),
             step = it,
         )

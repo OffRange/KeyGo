@@ -7,6 +7,7 @@ import androidx.compose.runtime.Stable
 internal data class ConnectServerUiState(
     val enterDomainState: EnterDomainState,
     val chooseUsernameState: ChooseUsernameState,
+    val confirmPasswordState: ConfirmPasswordState,
     val step: ConnectServerStep = ConnectServerStep.EnterDomain,
     val canContinue: Boolean = false,
 ) {
@@ -29,4 +30,9 @@ internal data class ChooseUsernameState(
     val inviteEditable: Boolean,
     val allowedUsernameChars: List<String>,
     val usernameCheck: UsernameCheck = UsernameCheck.Idle,
+)
+
+@Stable
+internal data class ConfirmPasswordState(
+    val passwordTextFieldState: TextFieldState,
 )

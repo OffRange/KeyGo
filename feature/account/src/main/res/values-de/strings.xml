@@ -59,7 +59,7 @@
     <string name="connect_server_error">Auf dem Server ist ein Fehler aufgetreten. Versuch es später erneut.</string>
     <string name="connect_server_rate_limited">Zu viele Versuche. Warte kurz und versuch es dann erneut.</string>
     <string name="connect_server_unknown_error">Beim Prüfen des Servers ist etwas schiefgelaufen.</string>
-    
+
     <string name="confirm_server_use_another">Anderen Server nutzen</string>
 
     <string name="username">Benutzername</string>
@@ -77,4 +77,8 @@
     <string name="username_consecutive_separators">Punkte, Binde- und Unterstriche dürfen nicht aufeinanderfolgen.</string>
     <string name="username_only_digits">Füge mindestens einen Buchstaben hinzu.</string>
     <string name="username_reserved">Dieser Name ist reserviert. Wähle einen anderen.</string>
+
+    <string name="confirm_account_password_title">Bestätige dein Passwort</string>
+    <string name="confirm_account_password_description">Dein Konto nutzt das Passwort, mit dem du KeyGo bereits entsperrst. Am Entsperren ändert sich nichts.</string>
+    <string name="confirm_account_password_label">KeyGo-Passwort</string>
 </resources>
