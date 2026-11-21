@@ -88,6 +88,7 @@ private val ConnectServerUiState.isChecking: Boolean
 
 private val ConnectServerStep.continueLabel: Int
     get() = when (this) {
+        ConnectServerStep.ConfirmPassword -> R.string.create_account
         else -> R.string.continue_step
     }
 

@@ -31,6 +31,7 @@
     <string name="change_password_failed">Could not change password</string>
 
     <string name="continue_step">Continue</string>
+    <string name="create_account">Create account</string>
 
     <string name="server_address">Server address</string>
     <string name="server_address_placeholder" translatable="false">vault.example.org</string>

@@ -31,6 +31,7 @@
     <string name="change_password_failed">Passwort konnte nicht geändert werden</string>
 
     <string name="continue_step">Weiter</string>
+    <string name="create_account">Account erstellen</string>
 
     <string name="server_address">Serveradresse</string>
 
