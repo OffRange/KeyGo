@@ -19,4 +19,5 @@ dependencies {
     testImplementation(testFixtures(projects.core.security))
     testImplementation(testFixtures(projects.core.util))
     testImplementation(testFixtures(projects.core.rust))
+    testImplementation(testFixtures(projects.core.sync))
 }

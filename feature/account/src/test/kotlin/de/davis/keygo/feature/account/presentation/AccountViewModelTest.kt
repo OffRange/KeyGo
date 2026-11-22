@@ -1,12 +1,9 @@
 package de.davis.keygo.feature.account.presentation
 
+import de.davis.keygo.core.sync.FakeServerLinkRepository
 import de.davis.keygo.core.sync.domain.model.ServerLink
-import de.davis.keygo.core.sync.domain.repository.ServerLinkRepository
-import de.davis.keygo.feature.account.presentation.models.AccountState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -22,12 +19,6 @@ import kotlin.test.assertIs
 @OptIn(ExperimentalCoroutinesApi::class)
 class AccountViewModelTest {
 
-    private class FakeServerLinkRepository : ServerLinkRepository {
-        val link = MutableStateFlow<ServerLink?>(null)
-
-        override fun observeLink(): Flow<ServerLink?> = link
-    }
-
     private val dispatcher = UnconfinedTestDispatcher()
     private val repository = FakeServerLinkRepository()
 
@@ -40,35 +31,34 @@ class AccountViewModelTest {
     private fun viewModel() = AccountViewModel(repository)
 
     @Test
-    fun `without a link the account is local`() = runTest(dispatcher) {
+    fun `without a link the state is none`() = runTest(dispatcher) {
         val vm = viewModel()
         vm.uiState.launchIn(backgroundScope)
 
-        assertEquals(AccountState.Local, vm.uiState.value)
+        assertEquals(ServerLink.None, vm.uiState.value)
     }
 
     @Test
-    fun `a new link switches the account to connected`() = runTest(dispatcher) {
+    fun `a new link is shown as connected`() = runTest(dispatcher) {
         val vm = viewModel()
         vm.uiState.launchIn(backgroundScope)
 
-        repository.link.value = ServerLink(UUID.randomUUID(), "https://vault.example.org/", "ada")
+        val link = ServerLink.Connected(UUID.randomUUID(), "https://vault.example.org/", "ada")
+        repository.link.value = link
 
-        assertEquals(
-            AccountState.Connected(username = "ada", server = "vault.example.org"),
-            vm.uiState.value,
-        )
+        assertEquals(link, vm.uiState.value)
     }
 
     @Test
-    fun `a removed link switches the account back to local`() = runTest(dispatcher) {
-        repository.link.value = ServerLink(UUID.randomUUID(), "https://vault.example.org/", "ada")
+    fun `a removed link switches back to none`() = runTest(dispatcher) {
+        repository.link.value =
+            ServerLink.Connected(UUID.randomUUID(), "https://vault.example.org/", "ada")
         val vm = viewModel()
         vm.uiState.launchIn(backgroundScope)
-        assertIs<AccountState.Connected>(vm.uiState.value)
+        assertIs<ServerLink.Connected>(vm.uiState.value)
 
-        repository.link.value = null
+        repository.link.value = ServerLink.None
 
-        assertEquals(AccountState.Local, vm.uiState.value)
+        assertEquals(ServerLink.None, vm.uiState.value)
     }
 }

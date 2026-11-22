@@ -13,14 +13,14 @@ import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
+import de.davis.keygo.core.sync.domain.model.ServerLink
 import de.davis.keygo.core.ui.components.IconBadge
-import de.davis.keygo.feature.account.presentation.models.AccountState
-import de.davis.keygo.feature.account.presentation.models.badgeColor
 
 private val UsernameSeparators = charArrayOf('.', '-', '_')
 
@@ -36,12 +36,12 @@ internal fun accountInitials(username: String): String {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AccountIconBadge(
-    state: AccountState,
+    state: ServerLink,
     badgeSize: Dp,
     iconSize: Dp,
     modifier: Modifier = Modifier,
 ) {
-    val initials = if (state is AccountState.Connected) remember(state.username) {
+    val initials = if (state is ServerLink.Connected) remember(state.username) {
         accountInitials(state.username)
     } else ""
 
@@ -55,12 +55,17 @@ fun AccountIconBadge(
             Initials(initials = initials, size = iconSize)
         else
             Icon(
-                imageVector = if (state is AccountState.Connected) Icons.Default.Person else Icons.Default.Smartphone,
+                imageVector = if (state is ServerLink.Connected) Icons.Default.Person else Icons.Default.Smartphone,
                 contentDescription = null,
                 modifier = Modifier.size(iconSize),
             )
     }
 }
+
+private val ServerLink.badgeColor: Color
+    @Composable
+    get() = if (this is ServerLink.Connected) MaterialTheme.colorScheme.primary
+    else MaterialTheme.colorScheme.primaryContainer
 
 @Composable
 private fun Initials(initials: String, size: Dp) {

@@ -26,7 +26,7 @@ internal class TokenStore(
     private val dataStore: DataStore<ProtoSessionStore>
 ) : RustTokenStore, ServerLinkRepository {
 
-    override fun observeLink(): Flow<ServerLink?> =
+    override fun observeLink(): Flow<ServerLink> =
         dataStore.data.map { it.toServerLink() }.distinctUntilChanged()
 
     override suspend fun load(): StoredSession? {

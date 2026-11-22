@@ -13,10 +13,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
-import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.sync.domain.model.ServerLink
 import de.davis.keygo.feature.account.R
-import de.davis.keygo.feature.account.presentation.models.AccountState
+import de.davis.keygo.feature.account.presentation.preview.ServerLinkProvider
 
 @Composable
 fun AccountBanner(state: AccountState, modifier: Modifier = Modifier) {
@@ -33,8 +33,8 @@ fun AccountBanner(state: AccountState, modifier: Modifier = Modifier) {
 
         Text(
             text = when (state) {
-                AccountState.Local -> stringResource(R.string.account_local_only)
-                is AccountState.Connected -> state.username
+                ServerLink.None -> stringResource(R.string.account_local_only)
+                is ServerLink.Connected -> state.username
             },
             style = MaterialTheme.typography.headlineSmall,
             textAlign = TextAlign.Center,
@@ -43,8 +43,8 @@ fun AccountBanner(state: AccountState, modifier: Modifier = Modifier) {
 
         Text(
             text = when (state) {
-                AccountState.Local -> stringResource(R.string.account_not_connected)
-                is AccountState.Connected -> state.server
+                ServerLink.None -> stringResource(R.string.account_not_connected)
+                is ServerLink.Connected -> state.authority
             },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -54,21 +54,10 @@ fun AccountBanner(state: AccountState, modifier: Modifier = Modifier) {
     }
 }
 
-private class AccountStateProvider : PreviewParameterProvider<AccountState> {
-
-    override val values = sequenceOf(
-        AccountState.Local,
-        AccountState.Connected(
-            username = "ada",
-            server = "vault.example.com",
-        )
-    )
-}
-
 @Preview
 @Composable
 private fun AccountBannerPreview(
-    @PreviewParameter(AccountStateProvider::class) state: AccountState,
+    @PreviewParameter(ServerLinkProvider::class) state: ServerLink,
 ) {
     MaterialTheme {
         Surface {

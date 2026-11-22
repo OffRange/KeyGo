@@ -20,13 +20,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.sync.domain.model.ServerLink
 import de.davis.keygo.feature.account.presentation.components.AccountIconBadge
-import de.davis.keygo.feature.account.presentation.models.AccountState
 import de.davis.keygo.feature.settings.R
+import java.util.UUID
 import de.davis.keygo.feature.account.R as AccountR
 
 @Composable
-internal fun AccountCard(state: AccountState, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun AccountCard(state: ServerLink, onClick: () -> Unit, modifier: Modifier = Modifier) {
     ListItem(
         onClick = onClick,
         modifier = modifier.heightIn(min = 84.dp),
@@ -42,9 +43,9 @@ internal fun AccountCard(state: AccountState, onClick: () -> Unit, modifier: Mod
         },
         supportingContent = {
             Text(
-                text = if (state is AccountState.Connected) stringResource(
+                text = if (state is ServerLink.Connected) stringResource(
                     R.string.account_signed_in,
-                    state.server
+                    state.authority
                 )
                 else stringResource(AccountR.string.account_local_only)
             )
@@ -57,7 +58,7 @@ internal fun AccountCard(state: AccountState, onClick: () -> Unit, modifier: Mod
         },
     ) {
         Text(
-            text = if (state is AccountState.Connected) state.username else stringResource(AccountR.string.account),
+            text = if (state is ServerLink.Connected) state.username else stringResource(AccountR.string.account),
             fontWeight = FontWeight.SemiBold
         )
     }
@@ -73,11 +74,12 @@ private fun AccountCardPreview() {
             modifier = Modifier.padding(innerPadding),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            AccountCard(state = AccountState.Local, onClick = {})
+            AccountCard(state = ServerLink.None, onClick = {})
             AccountCard(
-                state = AccountState.Connected(
+                state = ServerLink.Connected(
+                    userId = UUID.randomUUID(),
+                    serverUrl = "https://vault.example.com/",
                     username = "ada",
-                    server = "vault.example.com"
                 ),
                 onClick = {},
             )

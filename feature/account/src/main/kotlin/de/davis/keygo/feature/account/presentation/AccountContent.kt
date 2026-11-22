@@ -19,17 +19,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.sync.domain.model.ServerLink
 import de.davis.keygo.core.ui.components.settings.SettingsList
 import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.feature.account.R
 import de.davis.keygo.feature.account.presentation.components.AccountBanner
 import de.davis.keygo.feature.account.presentation.components.ConnectToServerCard
-import de.davis.keygo.feature.account.presentation.models.AccountState
 import de.davis.keygo.feature.account.presentation.models.AccountUiEvent
+import de.davis.keygo.feature.account.presentation.preview.ServerLinkProvider
 
 @Composable
-internal fun AccountContent(state: AccountState, onEvent: (AccountUiEvent) -> Unit) {
+internal fun AccountContent(state: ServerLink, onEvent: (AccountUiEvent) -> Unit) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
@@ -72,7 +74,7 @@ internal fun AccountContent(state: AccountState, onEvent: (AccountUiEvent) -> Un
                     title = R.string.settings_reset_password,
                     icon = Icons.Default.LockReset,
                     supporting = ResourceString(
-                        if (state is AccountState.Connected) R.string.settings_reset_password_w_server_description
+                        if (state is ServerLink.Connected) R.string.settings_reset_password_w_server_description
                         else R.string.settings_reset_password_description
                     ),
                     onClick = { onEvent(AccountUiEvent.ResetPassword) },
@@ -93,12 +95,14 @@ internal fun AccountContent(state: AccountState, onEvent: (AccountUiEvent) -> Un
 
 @Preview
 @Composable
-private fun AccountContentPreview() {
+private fun AccountContentPreview(
+    @PreviewParameter(ServerLinkProvider::class) state: ServerLink,
+) {
     MaterialTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
         ) {
-            AccountContent(state = AccountState.Local, onEvent = {})
+            AccountContent(state = state, onEvent = {})
         }
     }
 }

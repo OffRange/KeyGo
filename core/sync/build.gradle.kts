@@ -5,6 +5,10 @@ plugins {
 
 android {
     namespace = "de.davis.keygo.core.sync"
+
+    testFixtures {
+        enable = true
+    }
 }
 
 dependencies {
@@ -22,4 +26,6 @@ dependencies {
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(testFixtures(projects.core.rust))
     testImplementation(testFixtures(projects.core.security))
+
+    testFixturesImplementation(libs.kotlinx.coroutines.core)
 }

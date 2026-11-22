@@ -1,7 +1,7 @@
 package de.davis.keygo.feature.settings.presentation
 
 import de.davis.keygo.core.security.domain.model.LockInfo
-import de.davis.keygo.feature.account.presentation.models.AccountState
+import de.davis.keygo.core.sync.domain.model.ServerLink
 
 internal data class SettingsUiState(
     val autofillEnabled: Boolean = false,
@@ -14,5 +14,5 @@ internal data class SettingsUiState(
     /** When the newest successful backup finished, or `null` while none has. */
     val lastBackupAt: Long? = null,
     val lockTimeout: LockInfo.Timeout = LockInfo.Timeout.IMMEDIATELY,
-    val accountState: AccountState = AccountState.Local,
+    val serverLink: ServerLink = ServerLink.None,
 )

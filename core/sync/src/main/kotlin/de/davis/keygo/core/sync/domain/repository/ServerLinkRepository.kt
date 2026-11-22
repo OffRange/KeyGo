@@ -5,5 +5,5 @@ import kotlinx.coroutines.flow.Flow
 
 interface ServerLinkRepository {
 
-    fun observeLink(): Flow<ServerLink?>
+    fun observeLink(): Flow<ServerLink>
 }

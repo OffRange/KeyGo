@@ -36,7 +36,7 @@ class TokenStoreTest {
         store.save(session)
 
         assertEquals(
-            ServerLink(
+            ServerLink.Connected(
                 userId = session.userId,
                 serverUrl = "https://vault.example.org/",
                 username = "ada",
@@ -52,6 +52,6 @@ class TokenStoreTest {
         store.clear()
 
         assertNull(store.load())
-        assertNull(store.observeLink().first())
+        assertEquals(ServerLink.None, store.observeLink().first())
     }
 }

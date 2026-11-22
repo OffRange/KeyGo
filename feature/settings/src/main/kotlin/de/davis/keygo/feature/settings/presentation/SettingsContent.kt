@@ -65,7 +65,7 @@ internal fun SettingsContent(
         ) {
             custom(key = "account") {
                 AccountCard(
-                    state = state.accountState,
+                    state = state.serverLink,
                     onClick = { onEvent(SettingsUiEvent.OpenAccount) },
                     modifier = Modifier.padding(vertical = 16.dp)
                 )
