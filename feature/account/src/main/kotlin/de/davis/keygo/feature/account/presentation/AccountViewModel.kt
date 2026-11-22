@@ -1,20 +1,29 @@
 package de.davis.keygo.feature.account.presentation
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.sync.domain.repository.ServerLinkRepository
+import de.davis.keygo.feature.account.presentation.mapper.toAccountState
 import de.davis.keygo.feature.account.presentation.models.AccountEvent
 import de.davis.keygo.feature.account.presentation.models.AccountState
 import de.davis.keygo.feature.account.presentation.models.AccountUiEvent
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import org.koin.core.annotation.KoinViewModel
 
 @KoinViewModel
-internal class AccountViewModel : ViewModel() {
+internal class AccountViewModel(serverLinkRepository: ServerLinkRepository) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(AccountState.Local)
-    val uiState = _uiState.asStateFlow()
+    val uiState = serverLinkRepository.observeLink()
+        .map { it.toAccountState() }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = AccountState.Local
+        )
 
     private val _event = Channel<AccountEvent>(Channel.BUFFERED)
     val event = _event.receiveAsFlow()
