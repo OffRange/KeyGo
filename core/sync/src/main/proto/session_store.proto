@@ -9,6 +9,9 @@ message ProtoSessionStore {
 
 message ProtoStoredSession {
   bytes device_id = 1;
-  string refresh_token = 2;
-  int64 refresh_token_expires_at = 3;
+  bytes user_id = 2;
+  string refresh_token = 3;
+  int64 refresh_token_expires_at = 4;
+  string server_url = 5;
+  string username = 6;
 }

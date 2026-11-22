@@ -2,7 +2,7 @@ use super::error::{SyncError, SyncResult};
 use super::pipeline::store_failure;
 use super::signer::SharedSigner;
 use super::state::{AuthState, Clock, SystemClock};
-use super::tokens::TokenStore;
+use super::tokens::{SessionOwner, TokenStore};
 use super::transport::Transport;
 use crate::ark_session::{ArkSession, ArkSessionError};
 use keygo_api::Endpoint;
@@ -183,7 +183,8 @@ impl SyncClient {
             username: response.username,
             device_id: response.session.device_id,
         };
-        self.replace_session(response.session, sent_at, None).await;
+        self.replace_session(response.session, &account, sent_at, None)
+            .await;
         Ok(account)
     }
 
@@ -248,7 +249,7 @@ impl SyncClient {
             username: response.username,
             device_id: response.session.device_id,
         };
-        self.replace_session(response.session, sent_at, claimed)
+        self.replace_session(response.session, &account, sent_at, claimed)
             .await;
         Ok(account)
     }
@@ -259,16 +260,27 @@ impl SyncClient {
             return Some(unsaved.device_id);
         }
         // An unreadable store only costs the reattach: the server makes a new device instead.
-        self.tokens.load().await.ok().flatten().map(|s| s.device_id)
+        self.load_session()
+            .await
+            .ok()
+            .flatten()
+            .map(|s| s.device_id)
     }
 
-    async fn replace_session(&self, session: Session, sent_at: u64, claimed: Option<DeviceId>) {
+    async fn replace_session(
+        &self,
+        session: Session,
+        account: &Account,
+        sent_at: u64,
+        claimed: Option<DeviceId>,
+    ) {
         // The server already revoked a reattached device's old session. The logout is best effort:
         // the new session is live on the server either way.
         if !is_reattached(&session, claimed) {
             let _ = self.logout().await;
         }
-        self.adopt_session(session, sent_at).await;
+        self.adopt_session(session, SessionOwner::from(account), sent_at)
+            .await;
     }
 
     /// Ends a session this client will not keep, signing with that session's own token. Best
@@ -436,6 +448,7 @@ mod tests {
 
     mod register {
         use super::super::super::testing::{FakeSigner, client_with_store, error_body, header};
+        use super::super::super::tokens::StoredSession;
         use super::super::super::transport::HttpRequest;
         use super::super::SyncError;
         use super::{OLD_REFRESH, old_session_reply, paths, previous_session};
@@ -443,7 +456,7 @@ mod tests {
         use base64::Engine;
         use base64::engine::general_purpose::URL_SAFE_NO_PAD;
         use keygo_api::domain::DeviceInfo;
-        use keygo_core::UserId;
+        use keygo_core::{DeviceId, UserId};
         use keygo_opaque::server::{self, ServerSetup};
         use keygo_opaque::{OpaqueError, RegistrationRequest};
         use serde_json::{Value, json};
@@ -519,6 +532,11 @@ mod tests {
             assert_eq!(account.user_id, user_id);
             assert_eq!(account.username.as_str(), "ada");
             assert_eq!(store.current_refresh_token().as_deref(), Some(REFRESH));
+
+            let stored = store.current().unwrap();
+            assert_eq!(stored.server.as_str(), "https://kg.example/");
+            assert_eq!(stored.user_id, user_id);
+            assert_eq!(stored.username.as_str(), "ada");
 
             let requests = transport.requests();
             assert_eq!(requests.len(), 2, "a signed-out client sends no logout");
@@ -620,6 +638,38 @@ mod tests {
         }
 
         #[tokio::test]
+        async fn never_sends_another_server_its_refresh_token() {
+            let (client, transport, store) =
+                client_with_store("https://kg.example", Arc::new(FakeSigner::new()));
+            store.seed(StoredSession::signed_in_to(
+                "https://other.example",
+                DeviceId::random(),
+                OLD_REFRESH.parse().unwrap(),
+                u64::MAX / 2,
+            ));
+            transport.push_with(200, start_reply);
+            transport.push(200, &[], &finish_reply());
+            let (ark_session, user_id) = unlocked();
+
+            client
+                .register(&ark_session, user_id, "ada".into(), "pw", None, device())
+                .await
+                .unwrap();
+
+            assert_eq!(
+                paths(&transport.requests()),
+                [
+                    "/api/v1/auth/register/start",
+                    "/api/v1/auth/register/finish"
+                ],
+            );
+            assert_eq!(
+                store.current().unwrap().server.as_str(),
+                "https://kg.example/"
+            );
+        }
+
+        #[tokio::test]
         async fn previous_session_is_logged_out_once_registered() {
             let (client, transport, store) =
                 client_with_store("https://kg.example", Arc::new(FakeSigner::new()));
@@ -654,11 +704,12 @@ mod tests {
 
     /// A session of whatever account this client was signed in to before.
     pub(super) fn previous_session() -> StoredSession {
-        StoredSession {
-            device_id: serde_json::from_value(json!(OLD_DEVICE)).unwrap(),
-            refresh_token: OLD_REFRESH.parse().unwrap(),
-            refresh_expires_at: u64::MAX / 2,
-        }
+        StoredSession::signed_in_to(
+            "https://kg.example",
+            serde_json::from_value(json!(OLD_DEVICE)).unwrap(),
+            OLD_REFRESH.parse().unwrap(),
+            u64::MAX / 2,
+        )
     }
 
     /// What the token endpoint answers when the previous session refreshes to log out.
@@ -684,6 +735,7 @@ mod tests {
         use super::super::super::testing::{
             FakeOpaqueAccount, FakeSigner, FakeTokenStore, FakeTransport, client_with_store, header,
         };
+        use super::super::super::tokens::StoredSession;
         use super::super::super::transport::HttpRequest;
         use super::super::{SyncClient, SyncError};
         use super::{OLD_DEVICE, OLD_REFRESH, old_session_reply, paths, previous_session};
@@ -806,6 +858,10 @@ mod tests {
             assert_eq!(account.user_id, server.user_id);
             assert_eq!(account.device_id.as_uuid().to_string(), NEW_DEVICE);
             assert_eq!(store.current_refresh_token().as_deref(), Some(REFRESH));
+            let stored = store.current().unwrap();
+            assert_eq!(stored.server.as_str(), "https://kg.example/");
+            assert_eq!(stored.user_id, server.user_id);
+            assert_eq!(stored.username.as_str(), "ada");
 
             let requests = transport.requests();
             assert_eq!(requests.len(), 2, "a signed-out client sends no logout");
@@ -900,6 +956,38 @@ mod tests {
             assert_eq!(requests.len(), 2);
             assert_eq!(claimed_device(&requests[1]), OLD_DEVICE);
             assert_eq!(store.current_refresh_token().as_deref(), Some(REFRESH));
+        }
+
+        #[tokio::test]
+        async fn never_claims_a_device_of_another_server() {
+            let (client, transport, store) = client();
+            store.seed(StoredSession::signed_in_to(
+                "https://other.example",
+                serde_json::from_value(json!(OLD_DEVICE)).unwrap(),
+                OLD_REFRESH.parse().unwrap(),
+                u64::MAX / 2,
+            ));
+            let ark_session = unlocked();
+            let server = Server::holding(&ark_session);
+            server.answer_start(&transport);
+            server.answer_finish(&transport, NEW_DEVICE);
+
+            client
+                .login(&ark_session, "ada".into(), PASSWORD, device())
+                .await
+                .unwrap();
+
+            let requests = transport.requests();
+            assert_eq!(
+                requests.len(),
+                2,
+                "nothing is sent for the other server's session"
+            );
+            assert_eq!(claimed_device(&requests[1]), Value::Null);
+            assert_eq!(
+                store.current().unwrap().server.as_str(),
+                "https://kg.example/"
+            );
         }
 
         /// The claim went to another account's device, so the server made a new one and the old

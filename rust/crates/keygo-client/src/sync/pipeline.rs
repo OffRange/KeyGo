@@ -1,7 +1,7 @@
 use super::client::SyncClient;
 use super::error::{SyncError, SyncResult, from_response};
 use super::state::AuthState;
-use super::tokens::{StoredSession, TokenStoreError};
+use super::tokens::{SessionOwner, StoredSession, TokenStoreError};
 use super::transport::{Header, HttpRequest, HttpResponse};
 use keygo_api::auth::Session;
 use keygo_api::auth::token::TokenRequest;
@@ -18,6 +18,13 @@ fn to_json<T: Serialize>(value: &T) -> SyncResult<Vec<u8>> {
     serde_json::to_vec(value).map_err(|e| SyncError::Internal {
         message: format!("request does not serialize: {e}"),
     })
+}
+
+fn refresh_request(session: &StoredSession) -> SyncResult<(Zeroizing<Vec<u8>>, SessionOwner)> {
+    let body = to_json(&TokenRequest {
+        refresh_token: &session.refresh_token,
+    })?;
+    Ok((Zeroizing::new(body), SessionOwner::from(session)))
 }
 
 /// A serialized `null` (the `()` body) is sent as no body at all.
@@ -208,23 +215,29 @@ impl SyncClient {
         }
     }
 
+    /// A session another server issued is never sent here, so it loads as signed out.
+    pub(super) async fn load_session(&self) -> Result<Option<StoredSession>, TokenStoreError> {
+        Ok(self
+            .tokens
+            .load()
+            .await?
+            .filter(|session| session.server == self.base_url))
+    }
+
+    async fn stored_session(&self) -> SyncResult<StoredSession> {
+        self.load_session()
+            .await
+            .map_err(store_failure)?
+            .ok_or(SyncError::SignedOut { reason: None })
+    }
+
     async fn refresh(&self, state: &mut AuthState) -> SyncResult<Zeroizing<String>> {
         // If the previous refresh could not successfully store the refresh token, it is
         // kept in-memory, so we will use that one instead.
-        let refresh_token = match &state.unsaved {
-            Some(unsaved) => &unsaved.refresh_token,
-            None => {
-                &self
-                    .tokens
-                    .load()
-                    .await
-                    .map_err(store_failure)?
-                    .ok_or(SyncError::SignedOut { reason: None })?
-                    .refresh_token
-            }
+        let (body, owner) = match &state.unsaved {
+            Some(unsaved) => refresh_request(unsaved)?,
+            None => refresh_request(&self.stored_session().await?)?,
         };
-
-        let body = Zeroizing::new(to_json(&TokenRequest { refresh_token })?);
 
         let sent_at = self.clock.now_secs();
         let response = self
@@ -239,13 +252,14 @@ impl SyncClient {
         let session: Session = decode_body(&body)?;
 
         let token = Zeroizing::new(session.access.access_token.expose().to_owned());
-        self.adopt_session_with_state(state, session, sent_at).await;
+        self.adopt_session_with_state(state, session, owner, sent_at)
+            .await;
         Ok(token)
     }
 
-    pub(super) async fn adopt_session(&self, session: Session, sent_at: u64) {
+    pub(super) async fn adopt_session(&self, session: Session, owner: SessionOwner, sent_at: u64) {
         let mut state = self.auth.lock().await;
-        self.adopt_session_with_state(&mut state, session, sent_at)
+        self.adopt_session_with_state(&mut state, session, owner, sent_at)
             .await;
     }
 
@@ -253,9 +267,13 @@ impl SyncClient {
         &self,
         state: &mut AuthState,
         session: Session,
+        owner: SessionOwner,
         sent_at: u64,
     ) {
         state.unsaved = Some(StoredSession {
+            server: self.base_url.clone(),
+            user_id: owner.user_id,
+            username: owner.username,
             device_id: session.device_id,
             refresh_token: session.refresh_token,
             refresh_expires_at: sent_at.saturating_add(session.refresh_expires_in),
@@ -656,11 +674,12 @@ mod tests {
 
     fn seeded() -> Harness {
         let harness = unseeded();
-        harness.store.seed(StoredSession {
-            device_id: DeviceId::random(),
-            refresh_token: OLD_REFRESH.parse().unwrap(),
-            refresh_expires_at: 1_000_000,
-        });
+        harness.store.seed(StoredSession::signed_in_to(
+            "https://kg.example",
+            DeviceId::random(),
+            OLD_REFRESH.parse().unwrap(),
+            1_000_000,
+        ));
         harness
     }
 
@@ -764,6 +783,44 @@ mod tests {
         assert_eq!(
             header(&requests[FRESH + 1], "authorization"),
             Some("DPoP d.e.f"),
+        );
+    }
+
+    #[tokio::test]
+    async fn a_rotated_session_keeps_its_server_and_owner() {
+        let h = seeded();
+        let before = h.store.current().unwrap();
+
+        let h = after_first_call(h).await;
+
+        let after = h.store.current().unwrap();
+        assert_eq!(after.server, before.server);
+        assert_eq!(after.user_id, before.user_id);
+        assert_eq!(after.username, before.username);
+        assert_eq!(
+            after.refresh_token.expose_encoded().as_str(),
+            ROTATED_REFRESH
+        );
+    }
+
+    #[tokio::test]
+    async fn a_session_from_another_server_signs_out_without_sending() {
+        let h = unseeded();
+        h.store.seed(StoredSession::signed_in_to(
+            "https://other.example",
+            DeviceId::random(),
+            OLD_REFRESH.parse().unwrap(),
+            1_000_000,
+        ));
+
+        assert_eq!(
+            h.client.devices().await.unwrap_err(),
+            SyncError::SignedOut { reason: None },
+        );
+        assert!(h.transport.requests().is_empty());
+        assert_eq!(
+            h.store.current_refresh_token().as_deref(),
+            Some(OLD_REFRESH)
         );
     }
 
@@ -890,11 +947,12 @@ mod tests {
         h.client.devices().await.unwrap();
 
         // Only a client that went back to the store can see this entry.
-        h.store.seed(StoredSession {
-            device_id: DeviceId::random(),
-            refresh_token: NEXT_REFRESH.parse().unwrap(),
-            refresh_expires_at: 1_000_000,
-        });
+        h.store.seed(StoredSession::signed_in_to(
+            "https://kg.example",
+            DeviceId::random(),
+            NEXT_REFRESH.parse().unwrap(),
+            1_000_000,
+        ));
         h.clock.advance(601);
         h.transport.push(200, &[], &session("d.e.f"));
         h.transport.push(200, &[], DEVICES);
@@ -981,11 +1039,12 @@ mod tests {
             inner: FakeTokenStore::new(),
             hang: AtomicBool::new(true),
         });
-        store.inner.seed(StoredSession {
-            device_id: DeviceId::random(),
-            refresh_token: OLD_REFRESH.parse().unwrap(),
-            refresh_expires_at: 1_000_000,
-        });
+        store.inner.seed(StoredSession::signed_in_to(
+            "https://kg.example",
+            DeviceId::random(),
+            OLD_REFRESH.parse().unwrap(),
+            1_000_000,
+        ));
         let transport = FakeTransport::new();
         let client = SyncClient::new(
             Url::parse("https://kg.example").unwrap(),

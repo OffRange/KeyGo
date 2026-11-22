@@ -1,6 +1,6 @@
 use crate::ark_session::ArkSession;
 use async_trait::async_trait;
-use keygo_api::domain::{AppVersion, Device, DeviceInfo, DeviceName, Platform};
+use keygo_api::domain::{AppVersion, Device, DeviceInfo, DeviceName, Platform, Username};
 use keygo_api::meta::ServerInfo;
 use keygo_client::crypto::{DeviceId, UserId};
 use keygo_client::sync::{
@@ -165,6 +165,9 @@ pub struct HttpResponse {
 
 #[derive(uniffi::Record)]
 pub struct StoredSession {
+    pub server_url: String,
+    pub user_id: UserId,
+    pub username: String,
     pub device_id: DeviceId,
     pub refresh_token: String,
     pub refresh_expires_at: u64,
@@ -173,6 +176,9 @@ pub struct StoredSession {
 impl From<&CoreStoredSession> for StoredSession {
     fn from(session: &CoreStoredSession) -> Self {
         Self {
+            server_url: session.server.to_string(),
+            user_id: session.user_id,
+            username: session.username.as_str().to_owned(),
             device_id: session.device_id,
             refresh_token: session.refresh_token.expose_encoded().to_string(),
             refresh_expires_at: session.refresh_expires_at,
@@ -324,20 +330,28 @@ struct StoreAdapter(Arc<dyn TokenStore>);
 
 #[async_trait]
 impl CoreTokenStore for StoreAdapter {
-    /// A token that no longer parses counts as no session, so the user just signs in again.
+    /// A session that no longer parses counts as no session, so the user just signs in again.
     async fn load(&self) -> Result<Option<CoreStoredSession>, CoreTokenStoreError> {
         let Some(stored) = self.0.load().await? else {
             return Ok(None);
         };
         let refresh_token = Zeroizing::new(stored.refresh_token);
-        Ok(refresh_token
-            .parse()
-            .ok()
-            .map(|refresh_token| CoreStoredSession {
-                device_id: stored.device_id,
-                refresh_token,
-                refresh_expires_at: stored.refresh_expires_at,
-            }))
+        let parsed = (
+            Url::parse(&stored.server_url),
+            Username::parse(&stored.username),
+            refresh_token.parse(),
+        );
+        let (Ok(server), Ok(username), Ok(refresh_token)) = parsed else {
+            return Ok(None);
+        };
+        Ok(Some(CoreStoredSession {
+            server,
+            user_id: stored.user_id,
+            username,
+            device_id: stored.device_id,
+            refresh_token,
+            refresh_expires_at: stored.refresh_expires_at,
+        }))
     }
 
     async fn save(&self, session: &CoreStoredSession) -> Result<(), CoreTokenStoreError> {
@@ -484,6 +498,9 @@ mod tests {
         fn holding(refresh_token: &str) -> Arc<Self> {
             Arc::new(Self {
                 session: Mutex::new(Some(StoredSession {
+                    server_url: "https://kg.example/".into(),
+                    user_id: UserId::random(),
+                    username: "ada".into(),
                     device_id: DeviceId::random(),
                     refresh_token: refresh_token.into(),
                     refresh_expires_at: u64::MAX,
@@ -503,6 +520,9 @@ mod tests {
         async fn load(&self) -> Result<Option<StoredSession>, TokenStoreError> {
             let session = self.session.lock().unwrap();
             Ok(session.as_ref().map(|s| StoredSession {
+                server_url: s.server_url.clone(),
+                user_id: s.user_id,
+                username: s.username.clone(),
                 device_id: s.device_id,
                 refresh_token: s.refresh_token.clone(),
                 refresh_expires_at: s.refresh_expires_at,
@@ -641,10 +661,14 @@ mod tests {
     #[tokio::test]
     async fn stored_session_round_trips_through_the_adapter() {
         let adapter = StoreAdapter(Arc::new(MemoryStore::default()));
+        let user_id = UserId::random();
         let device_id = DeviceId::random();
 
         adapter
             .save(&CoreStoredSession {
+                server: Url::parse("https://kg.example").unwrap(),
+                user_id,
+                username: Username::parse("ada").unwrap(),
                 device_id,
                 refresh_token: STORED_TOKEN.parse().unwrap(),
                 refresh_expires_at: 99,
@@ -653,6 +677,9 @@ mod tests {
             .unwrap();
         let loaded = adapter.load().await.unwrap().unwrap();
 
+        assert_eq!(loaded.server.as_str(), "https://kg.example/");
+        assert_eq!(loaded.user_id, user_id);
+        assert_eq!(loaded.username.as_str(), "ada");
         assert_eq!(loaded.refresh_token.expose_encoded().as_str(), STORED_TOKEN);
         assert_eq!(loaded.device_id, device_id);
         assert_eq!(loaded.refresh_expires_at, 99);

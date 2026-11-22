@@ -84,11 +84,12 @@ async fn harness(db: &PgPool) -> Harness {
     let device_id = issued.device_id;
 
     let store = Arc::new(FakeTokenStore::new());
-    store.seed(StoredSession {
+    store.seed(StoredSession::signed_in_to(
+        testing::ISS,
         device_id,
-        refresh_token: issued.refresh_token,
-        refresh_expires_at: SystemClock.now_secs() + issued.refresh_expires_in.as_secs(),
-    });
+        issued.refresh_token,
+        SystemClock.now_secs() + issued.refresh_expires_in.as_secs(),
+    ));
     let clock = FixedClock::new(SystemClock.now_secs());
     let client = SyncClient::new(
         Url::parse(testing::ISS).unwrap(),

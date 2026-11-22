@@ -4,6 +4,8 @@ use super::state::Clock;
 use super::tokens::{StoredSession, TokenStore, TokenStoreError};
 use super::transport::{Header, HttpRequest, HttpResponse, NetworkError, Transport};
 use async_trait::async_trait;
+use keygo_api::domain::{RefreshToken, Username};
+use keygo_core::{DeviceId, UserId};
 use keygo_dpop::testing::TestSigner;
 use keygo_dpop::{DpopSigner, Signature, VerifyingKey};
 use keygo_opaque::client::ClientRegistration;
@@ -146,6 +148,14 @@ impl FakeTokenStore {
         *self.stored.lock().unwrap() = Some(session);
     }
 
+    pub fn current(&self) -> Option<StoredSession> {
+        self.stored
+            .lock()
+            .unwrap()
+            .as_ref()
+            .map(StoredSession::duplicate)
+    }
+
     pub fn current_refresh_token(&self) -> Option<String> {
         self.stored
             .lock()
@@ -168,8 +178,27 @@ impl FakeTokenStore {
 }
 
 impl StoredSession {
+    pub fn signed_in_to(
+        server: &str,
+        device_id: DeviceId,
+        refresh_token: RefreshToken,
+        refresh_expires_at: u64,
+    ) -> Self {
+        Self {
+            server: Url::parse(server).unwrap(),
+            user_id: UserId::random(),
+            username: Username::parse("ada").unwrap(),
+            device_id,
+            refresh_token,
+            refresh_expires_at,
+        }
+    }
+
     pub(super) fn duplicate(&self) -> Self {
         Self {
+            server: self.server.clone(),
+            user_id: self.user_id,
+            username: self.username.clone(),
             device_id: self.device_id,
             refresh_token: self
                 .refresh_token
