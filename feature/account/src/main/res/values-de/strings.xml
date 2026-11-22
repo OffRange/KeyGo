@@ -32,6 +32,10 @@
 
     <string name="recovery_key">Recovery Key</string>
     <string name="sign_out">Abmelden</string>
+    <string name="logout_title">Abmelden?</string>
+    <string name="logout_message">Deine Einträge bleiben auf diesem Gerät und funktionieren weiter offline. Änderungen werden erst wieder synchronisiert, wenn du dich anmeldest.</string>
+    <string name="logout_failed">Abmelden hat nicht geklappt. Du bist auf diesem Gerät noch angemeldet.</string>
+    <string name="logout_retry">Erneut versuchen</string>
     <string name="delete_account">Account löschen</string>
 
     <string name="continue_step">Weiter</string>

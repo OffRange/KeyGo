@@ -34,17 +34,31 @@ import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.feature.account.R
 import de.davis.keygo.feature.account.presentation.components.AccountBanner
 import de.davis.keygo.feature.account.presentation.components.ConnectToServerCard
+import de.davis.keygo.feature.account.presentation.components.LogoutDialog
 import de.davis.keygo.feature.account.presentation.models.AccountUiEvent
+import de.davis.keygo.feature.account.presentation.models.AccountUiState
+import de.davis.keygo.feature.account.presentation.models.LogoutDialogState
 import de.davis.keygo.feature.account.presentation.preview.ServerLinkProvider
 
 @Composable
-internal fun AccountContent(state: ServerLink, onEvent: (AccountUiEvent) -> Unit) {
+internal fun AccountContent(
+    state: AccountUiState,
+    onEvent: (AccountUiEvent) -> Unit,
+) {
+    val link = state.link
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val deleteAccountColors = ListItemDefaults.segmentedColors(
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         contentColor = MaterialTheme.colorScheme.error,
         leadingContentColor = MaterialTheme.colorScheme.errorContainer,
     )
+
+    if (link is ServerLink.Connected && state.logoutDialog != LogoutDialogState.Hidden)
+        LogoutDialog(
+            state = state.logoutDialog,
+            onConfirm = { onEvent(AccountUiEvent.OnLogoutConfirmed) },
+            onDismiss = { onEvent(AccountUiEvent.OnLogoutDismissed) },
+        )
 
     Scaffold(
         modifier = Modifier
@@ -76,7 +90,7 @@ internal fun AccountContent(state: ServerLink, onEvent: (AccountUiEvent) -> Unit
         ) {
             custom(key = "banner") {
                 AccountBanner(
-                    state = state,
+                    state = link,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -86,13 +100,13 @@ internal fun AccountContent(state: ServerLink, onEvent: (AccountUiEvent) -> Unit
                     title = R.string.settings_reset_password,
                     icon = Icons.Default.LockReset,
                     supporting = ResourceString(
-                        if (state is ServerLink.Connected) R.string.settings_reset_password_w_server_description
+                        if (link is ServerLink.Connected) R.string.settings_reset_password_w_server_description
                         else R.string.settings_reset_password_description
                     ),
                     onClick = { onEvent(AccountUiEvent.ResetPassword) },
                 )
 
-                if (state is ServerLink.Connected)
+                if (link is ServerLink.Connected)
                     action(
                         title = R.string.recovery_key,
                         icon = Icons.Default.VpnKey,
@@ -101,7 +115,7 @@ internal fun AccountContent(state: ServerLink, onEvent: (AccountUiEvent) -> Unit
                     )
             }
 
-            when (state) {
+            when (link) {
                 ServerLink.None -> serverSection(onEvent = onEvent)
                 is ServerLink.Connected -> connectedSection(
                     deleteAccountColors = deleteAccountColors,
@@ -131,7 +145,7 @@ private fun SettingsScope.connectedSection(
         action(
             title = R.string.sign_out,
             icon = Icons.AutoMirrored.Default.Logout,
-            onClick = {},
+            onClick = { onEvent(AccountUiEvent.OnLogoutClicked) },
         )
 
         action(
@@ -146,13 +160,16 @@ private fun SettingsScope.connectedSection(
 @Preview
 @Composable
 private fun AccountContentPreview(
-    @PreviewParameter(ServerLinkProvider::class) state: ServerLink,
+    @PreviewParameter(ServerLinkProvider::class) link: ServerLink,
 ) {
     MaterialTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
         ) {
-            AccountContent(state = state, onEvent = {})
+            AccountContent(
+                state = AccountUiState(link = link),
+                onEvent = {},
+            )
         }
     }
 }

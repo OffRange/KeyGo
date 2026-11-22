@@ -70,6 +70,8 @@ class ConnectServerViewModelTest {
 
         var registerFailure: SyncError? = null
         val registered = mutableListOf<String>()
+
+        override suspend fun logout(): Result<Unit, SyncError> = Result.Success(Unit)
     }
 
     private val dispatcher = StandardTestDispatcher()

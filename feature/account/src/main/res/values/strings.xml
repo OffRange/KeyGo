@@ -32,6 +32,10 @@
 
     <string name="recovery_key">Recovery Key</string>
     <string name="sign_out">Sign out</string>
+    <string name="logout_title">Sign out?</string>
+    <string name="logout_message">Your items stay on this device and keep working offline. Changes won\'t sync until you sign in again.</string>
+    <string name="logout_failed">Couldn\'t sign out. You\'re still signed in on this device.</string>
+    <string name="logout_retry">Try again</string>
     <string name="delete_account">Delete account</string>
 
     <string name="continue_step">Continue</string>

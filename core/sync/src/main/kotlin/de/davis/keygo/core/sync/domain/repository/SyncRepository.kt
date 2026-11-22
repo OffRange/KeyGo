@@ -17,4 +17,6 @@ interface SyncRepository {
         password: String,
         invite: String?,
     ): Result<SyncAccount, SyncError>
+
+    suspend fun logout(): Result<Unit, SyncError>
 }

@@ -12,6 +12,7 @@ import de.davis.keygo.core.sync.domain.model.SyncAccount
 import de.davis.keygo.core.sync.domain.model.SyncError
 import de.davis.keygo.core.sync.domain.repository.SyncRepository
 import de.davis.keygo.core.util.Result
+import de.davis.keygo.core.util.asUnitResult
 import de.davis.keygo.core.util.mapSuccess
 import de.davisalessandro.keygo.rust.DeviceDetails
 import de.davisalessandro.keygo.rust.DpopKey
@@ -57,6 +58,9 @@ internal class SyncRepositoryImpl(
         )
     }.mapSuccess { it.toDomain() }
 
+    override suspend fun logout(): Result<Unit, SyncError> =
+        catching { sessionClient()?.logout() }.asUnitResult()
+
     private suspend fun clientFor(serverUrl: String): SyncClient = clientLock.withLock {
         cached?.takeIf { it.serverUrl == serverUrl }?.client
             ?: newClient(serverUrl).also { client ->
@@ -64,6 +68,9 @@ internal class SyncRepositoryImpl(
                 cached = CachedClient(serverUrl, client)
             }
     }
+
+    private suspend fun sessionClient(): SyncClient? =
+        tokens.load()?.serverUrl?.let { clientFor(it) }
 
     private fun newClient(serverUrl: String) = SyncClient(
         baseUrl = serverUrl,

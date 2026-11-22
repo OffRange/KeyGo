@@ -4,6 +4,9 @@ internal sealed interface AccountUiEvent {
     data object OnBackClicked : AccountUiEvent
     data object OnScanInviteClicked : AccountUiEvent
     data object OnConnectClicked : AccountUiEvent
+    data object OnLogoutClicked : AccountUiEvent
+    data object OnLogoutConfirmed : AccountUiEvent
+    data object OnLogoutDismissed : AccountUiEvent
 
     data object ResetPassword : AccountUiEvent
 }
