@@ -20,6 +20,7 @@ import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
 import de.davis.keygo.core.security.domain.ExportArk
 import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.security.domain.model.LockInfo
+import de.davis.keygo.core.sync.FakeServerLinkRepository
 import de.davis.keygo.core.util.FakeSnackbarManager
 import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
@@ -69,6 +70,7 @@ class SettingsViewModelTest {
     private val keyStoreManager = FakeKeyStoreManager()
     private val biometricCrypto = FakeBiometricCrypto(keyStoreManager)
     private val snackbarManager = FakeSnackbarManager()
+    private val serverLinkRepository = FakeServerLinkRepository()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(dispatcher)
@@ -96,6 +98,7 @@ class SettingsViewModelTest {
         accountRepository = accountRepository,
         appVersionRepository = appVersionRepository,
         observeLastBackup = ObserveLastBackupUseCase(backupJobRepository),
+        serverLinkRepository = serverLinkRepository,
     )
 
     private val biometricUpdateFailed =

@@ -19,7 +19,7 @@ import de.davis.keygo.feature.account.R
 import de.davis.keygo.feature.account.presentation.preview.ServerLinkProvider
 
 @Composable
-fun AccountBanner(state: AccountState, modifier: Modifier = Modifier) {
+fun AccountBanner(state: ServerLink, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 24.dp),

@@ -46,6 +46,30 @@ class SettingsDslTest {
     }
 
     @Test
+    fun `section without a title keeps its entries`() {
+        val section = SettingsScope().apply {
+            section {
+                action(title = 10, onClick = {}, colors)
+            }
+        }.build().map { assertIs<SettingsBlock.SettingsSection>(it) }.single()
+
+        assertNull(section.title)
+        assertEquals(listOf(10), section.entries.map { assertIs<SettingsEntry>(it).title })
+    }
+
+    @Test
+    fun `section key defaults to its title, else its position`() {
+        val sections = SettingsScope().apply {
+            custom(key = "banner") {}
+            section(title = 1) {}
+            section {}
+            section(key = "danger") {}
+        }.build().filterIsInstance<SettingsBlock.SettingsSection>()
+
+        assertEquals(listOf("1", "section_2", "danger"), sections.map { it.key })
+    }
+
+    @Test
     fun `custom item keeps its place among a section's entries`() {
         val entries = SectionScope().apply {
             action(title = 10, onClick = {}, colors)

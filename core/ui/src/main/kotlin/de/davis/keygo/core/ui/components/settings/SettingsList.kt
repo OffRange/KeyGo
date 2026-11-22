@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -82,10 +84,17 @@ fun SettingsList(
 }
 
 private fun LazyListScope.settingsSection(section: SettingsBlock.SettingsSection) {
-    stickyHeader(key = "header_${section.title}") {
+    if (section.title != null) stickyHeader(key = "header_${section.key}") {
         SettingsSectionHeader(
             title = section.title,
             modifier = Modifier.animateItem()
+        )
+    }
+    else item(key = "header_${section.key}") {
+        Spacer(
+            modifier = Modifier
+                .height(24.dp)
+                .animateItem()
         )
     }
 
@@ -93,8 +102,8 @@ private fun LazyListScope.settingsSection(section: SettingsBlock.SettingsSection
         items = section.entries,
         key = { _, item ->
             when (item) {
-                is SettingsEntry -> "${section.title}_${item.title}"
-                is SettingsBlock.SettingsCustom -> "${section.title}_custom_${item.key}"
+                is SettingsEntry -> "${section.key}_${item.title}"
+                is SettingsBlock.SettingsCustom -> "${section.key}_custom_${item.key}"
             }
         },
     ) { index, item ->

@@ -14,8 +14,12 @@ annotation class SettingsDsl
 class SettingsScope {
     private val blocks = mutableListOf<SettingsBlock>()
 
-    fun section(@StringRes title: Int, block: SectionScope.() -> Unit) {
-        blocks += SettingsBlock.SettingsSection(title, SectionScope().apply(block).build())
+    fun section(
+        @StringRes title: Int? = null,
+        key: String = title?.toString() ?: "section_${blocks.size}",
+        block: SectionScope.() -> Unit,
+    ) {
+        blocks += SettingsBlock.SettingsSection(key, title, SectionScope().apply(block).build())
     }
 
     fun custom(key: String, content: @Composable LazyItemScope.() -> Unit) {

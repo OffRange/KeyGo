@@ -64,7 +64,8 @@ sealed interface SettingsEntry : SectionItem {
 
 sealed interface SettingsBlock {
     data class SettingsSection(
-        @param:StringRes val title: Int,
+        val key: String,
+        @param:StringRes val title: Int?,
         val entries: List<SectionItem>,
     ) : SettingsBlock
 

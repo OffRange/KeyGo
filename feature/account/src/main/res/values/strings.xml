@@ -30,6 +30,10 @@
     <string name="password_changed">Password changed</string>
     <string name="change_password_failed">Could not change password</string>
 
+    <string name="recovery_key">Recovery Key</string>
+    <string name="sign_out">Sign out</string>
+    <string name="delete_account">Delete account</string>
+
     <string name="continue_step">Continue</string>
     <string name="create_account">Create account</string>
 

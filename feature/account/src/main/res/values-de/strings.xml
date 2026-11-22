@@ -30,6 +30,10 @@
     <string name="password_changed">Passwort geändert</string>
     <string name="change_password_failed">Passwort konnte nicht geändert werden</string>
 
+    <string name="recovery_key">Recovery Key</string>
+    <string name="sign_out">Abmelden</string>
+    <string name="delete_account">Account löschen</string>
+
     <string name="continue_step">Weiter</string>
     <string name="create_account">Account erstellen</string>
 
