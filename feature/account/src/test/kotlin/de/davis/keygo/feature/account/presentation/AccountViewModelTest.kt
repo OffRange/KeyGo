@@ -10,8 +10,7 @@ import de.davis.keygo.core.sync.domain.model.SyncError
 import de.davis.keygo.core.sync.domain.repository.SyncRepository
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.feature.account.presentation.models.AccountUiEvent
-import de.davis.keygo.feature.account.presentation.models.DeviceSummary
-import de.davis.keygo.feature.account.presentation.models.DevicesState
+import de.davis.keygo.feature.account.presentation.models.DevicesSummary
 import de.davis.keygo.feature.account.presentation.models.LogoutDialogState
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -170,7 +169,7 @@ class AccountViewModelTest {
         vm.uiState.launchIn(backgroundScope)
 
         assertEquals(
-            DevicesState.Loaded(DeviceSummary(total = 3, signedIn = 2)),
+            DevicesSummary.Loaded(total = 3, signedIn = 2),
             vm.uiState.value.devices,
         )
     }
@@ -182,7 +181,7 @@ class AccountViewModelTest {
         val vm = viewModel()
         vm.uiState.launchIn(backgroundScope)
 
-        assertEquals(DevicesState.Failed, vm.uiState.value.devices)
+        assertEquals(DevicesSummary.Failed, vm.uiState.value.devices)
     }
 
     @Test
@@ -195,11 +194,11 @@ class AccountViewModelTest {
         vm.uiState.launchIn(backgroundScope)
 
         assertEquals(connected, vm.uiState.value.link)
-        assertEquals(DevicesState.Loading, vm.uiState.value.devices)
+        assertEquals(DevicesSummary.Loading, vm.uiState.value.devices)
 
         gate.complete(Unit)
         assertEquals(
-            DevicesState.Loaded(DeviceSummary(total = 2, signedIn = 2)),
+            DevicesSummary.Loaded(total = 2, signedIn = 2),
             vm.uiState.value.devices,
         )
     }

@@ -39,8 +39,7 @@ import de.davis.keygo.feature.account.presentation.components.ConnectToServerCar
 import de.davis.keygo.feature.account.presentation.components.LogoutDialog
 import de.davis.keygo.feature.account.presentation.models.AccountUiEvent
 import de.davis.keygo.feature.account.presentation.models.AccountUiState
-import de.davis.keygo.feature.account.presentation.models.DeviceSummary
-import de.davis.keygo.feature.account.presentation.models.DevicesState
+import de.davis.keygo.feature.account.presentation.models.DevicesSummary
 import de.davis.keygo.feature.account.presentation.models.LogoutDialogState
 import de.davis.keygo.feature.account.presentation.preview.ServerLinkProvider
 
@@ -121,12 +120,15 @@ internal fun AccountContent(
                         title = R.string.your_devices,
                         icon = Icons.Default.Devices,
                         supporting = when (val devices = state.devices) {
-                            DevicesState.Loading -> null
-                            is DevicesState.Loaded -> with(devices.summary) {
-                                PluralsString(R.plurals.device_count, total, total, signedIn)
-                            }
+                            DevicesSummary.Loading -> null
+                            is DevicesSummary.Loaded -> PluralsString(
+                                R.plurals.device_count,
+                                devices.total,
+                                devices.total,
+                                devices.signedIn
+                            )
 
-                            DevicesState.Failed -> ResourceString(R.string.devices_load_failed)
+                            DevicesSummary.Failed -> ResourceString(R.string.devices_load_failed)
                         },
                         onClick = { onEvent(AccountUiEvent.OnDevicesClicked) },
                     )
@@ -187,7 +189,7 @@ private fun AccountContentPreview(
             AccountContent(
                 state = AccountUiState(
                     link = link,
-                    devices = DevicesState.Loaded(DeviceSummary(total = 3, signedIn = 2)),
+                    devices = DevicesSummary.Loaded(total = 3, signedIn = 2),
                 ),
                 onEvent = {},
             )

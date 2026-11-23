@@ -2,6 +2,7 @@ package de.davis.keygo.feature.account.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.sync.domain.model.Device
 import de.davis.keygo.core.sync.domain.model.ServerLink
 import de.davis.keygo.core.sync.domain.repository.ServerLinkRepository
 import de.davis.keygo.core.sync.domain.repository.SyncRepository
@@ -9,9 +10,8 @@ import de.davis.keygo.core.util.fold
 import de.davis.keygo.feature.account.presentation.models.AccountEvent
 import de.davis.keygo.feature.account.presentation.models.AccountUiEvent
 import de.davis.keygo.feature.account.presentation.models.AccountUiState
-import de.davis.keygo.feature.account.presentation.models.DevicesState
+import de.davis.keygo.feature.account.presentation.models.DevicesSummary
 import de.davis.keygo.feature.account.presentation.models.LogoutDialogState
-import de.davis.keygo.feature.account.presentation.models.toSummary
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,13 +36,18 @@ internal class AccountViewModel(
     @OptIn(ExperimentalCoroutinesApi::class)
     private val devices = serverLinkRepository.observeLink()
         .transformLatest { link ->
-            emit(DevicesState.Loading)
+            emit(DevicesSummary.Loading)
             if (link !is ServerLink.Connected) return@transformLatest
 
             emit(
                 syncRepository.devices().fold(
-                    onSuccess = { DevicesState.Loaded(it.toSummary()) },
-                    onFailure = { DevicesState.Failed },
+                    onSuccess = {
+                        DevicesSummary.Loaded(
+                            total = it.size,
+                            signedIn = it.count(Device::loggedIn),
+                        )
+                    },
+                    onFailure = { DevicesSummary.Failed },
                 ),
             )
         }
