@@ -1,5 +1,6 @@
 package de.davis.keygo.core.sync.domain.repository
 
+import de.davis.keygo.core.sync.domain.model.Device
 import de.davis.keygo.core.sync.domain.model.ServerInfo
 import de.davis.keygo.core.sync.domain.model.SyncAccount
 import de.davis.keygo.core.sync.domain.model.SyncError
@@ -19,4 +20,6 @@ interface SyncRepository {
     ): Result<SyncAccount, SyncError>
 
     suspend fun logout(): Result<Unit, SyncError>
+
+    suspend fun devices(): Result<List<Device>, SyncError>
 }

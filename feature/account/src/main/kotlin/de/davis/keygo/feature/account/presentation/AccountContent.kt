@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.LockReset
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Icon
@@ -30,6 +31,7 @@ import de.davis.keygo.core.sync.domain.model.ServerLink
 import de.davis.keygo.core.ui.components.settings.SettingsList
 import de.davis.keygo.core.ui.components.settings.SettingsScope
 import de.davis.keygo.core.util.presentation.UIText
+import de.davis.keygo.core.util.presentation.UIText.Companion.PluralsString
 import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.feature.account.R
 import de.davis.keygo.feature.account.presentation.components.AccountBanner
@@ -37,6 +39,8 @@ import de.davis.keygo.feature.account.presentation.components.ConnectToServerCar
 import de.davis.keygo.feature.account.presentation.components.LogoutDialog
 import de.davis.keygo.feature.account.presentation.models.AccountUiEvent
 import de.davis.keygo.feature.account.presentation.models.AccountUiState
+import de.davis.keygo.feature.account.presentation.models.DeviceSummary
+import de.davis.keygo.feature.account.presentation.models.DevicesState
 import de.davis.keygo.feature.account.presentation.models.LogoutDialogState
 import de.davis.keygo.feature.account.presentation.preview.ServerLinkProvider
 
@@ -106,13 +110,27 @@ internal fun AccountContent(
                     onClick = { onEvent(AccountUiEvent.ResetPassword) },
                 )
 
-                if (link is ServerLink.Connected)
+                if (link is ServerLink.Connected) {
                     action(
                         title = R.string.recovery_key,
                         icon = Icons.Default.VpnKey,
                         supporting = UIText.RawString("Coming soon"),
                         onClick = {},
                     )
+                    action(
+                        title = R.string.your_devices,
+                        icon = Icons.Default.Devices,
+                        supporting = when (val devices = state.devices) {
+                            DevicesState.Loading -> null
+                            is DevicesState.Loaded -> with(devices.summary) {
+                                PluralsString(R.plurals.device_count, total, total, signedIn)
+                            }
+
+                            DevicesState.Failed -> ResourceString(R.string.devices_load_failed)
+                        },
+                        onClick = { onEvent(AccountUiEvent.OnDevicesClicked) },
+                    )
+                }
             }
 
             when (link) {
@@ -167,7 +185,10 @@ private fun AccountContentPreview(
             modifier = Modifier.fillMaxSize(),
         ) {
             AccountContent(
-                state = AccountUiState(link = link),
+                state = AccountUiState(
+                    link = link,
+                    devices = DevicesState.Loaded(DeviceSummary(total = 3, signedIn = 2)),
+                ),
                 onEvent = {},
             )
         }

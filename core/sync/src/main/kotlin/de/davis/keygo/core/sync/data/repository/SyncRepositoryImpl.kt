@@ -7,6 +7,7 @@ import de.davis.keygo.core.security.domain.RawArkSession
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.sync.data.mapper.toDomain
 import de.davis.keygo.core.sync.data.mapper.toSyncError
+import de.davis.keygo.core.sync.domain.model.Device
 import de.davis.keygo.core.sync.domain.model.ServerInfo
 import de.davis.keygo.core.sync.domain.model.SyncAccount
 import de.davis.keygo.core.sync.domain.model.SyncError
@@ -60,6 +61,10 @@ internal class SyncRepositoryImpl(
 
     override suspend fun logout(): Result<Unit, SyncError> =
         catching { sessionClient()?.logout() }.asUnitResult()
+
+    override suspend fun devices(): Result<List<Device>, SyncError> =
+        catching { sessionClient()?.devices() }
+            .mapSuccess { list -> list?.map { it.toDomain() }.orEmpty() }
 
     private suspend fun clientFor(serverUrl: String): SyncClient = clientLock.withLock {
         cached?.takeIf { it.serverUrl == serverUrl }?.client

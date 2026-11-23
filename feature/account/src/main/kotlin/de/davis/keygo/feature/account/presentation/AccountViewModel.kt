@@ -5,10 +5,14 @@ import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.sync.domain.model.ServerLink
 import de.davis.keygo.core.sync.domain.repository.ServerLinkRepository
 import de.davis.keygo.core.sync.domain.repository.SyncRepository
+import de.davis.keygo.core.util.fold
 import de.davis.keygo.feature.account.presentation.models.AccountEvent
 import de.davis.keygo.feature.account.presentation.models.AccountUiEvent
 import de.davis.keygo.feature.account.presentation.models.AccountUiState
+import de.davis.keygo.feature.account.presentation.models.DevicesState
 import de.davis.keygo.feature.account.presentation.models.LogoutDialogState
+import de.davis.keygo.feature.account.presentation.models.toSummary
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,6 +20,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
@@ -28,9 +33,24 @@ internal class AccountViewModel(
 
     private val _logoutDialog = MutableStateFlow(LogoutDialogState.Hidden)
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val devices = serverLinkRepository.observeLink()
+        .transformLatest { link ->
+            emit(DevicesState.Loading)
+            if (link !is ServerLink.Connected) return@transformLatest
+
+            emit(
+                syncRepository.devices().fold(
+                    onSuccess = { DevicesState.Loaded(it.toSummary()) },
+                    onFailure = { DevicesState.Failed },
+                ),
+            )
+        }
+
     val uiState = combine(
         serverLinkRepository.observeLink(),
         _logoutDialog,
+        devices,
         ::AccountUiState,
     ).stateIn(
         scope = viewModelScope,
@@ -49,6 +69,8 @@ internal class AccountViewModel(
             AccountUiEvent.OnScanInviteClicked -> {
                 // TODO
             }
+
+            AccountUiEvent.OnDevicesClicked -> _event.trySend(AccountEvent.NavigateToDevices)
 
             AccountUiEvent.OnLogoutClicked -> _logoutDialog.update { LogoutDialogState.Confirming }
             AccountUiEvent.OnLogoutConfirmed -> logout()

@@ -7,6 +7,7 @@ import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.usecase.VerifyPasswordUseCase
 import de.davis.keygo.core.security.FakeSession
+import de.davis.keygo.core.sync.domain.model.Device
 import de.davis.keygo.core.sync.domain.model.NetworkFailure
 import de.davis.keygo.core.sync.domain.model.ServerInfo
 import de.davis.keygo.core.sync.domain.model.SyncAccount
@@ -72,6 +73,8 @@ class ConnectServerViewModelTest {
         val registered = mutableListOf<String>()
 
         override suspend fun logout(): Result<Unit, SyncError> = Result.Success(Unit)
+
+        override suspend fun devices(): Result<List<Device>, SyncError> = error("not used")
     }
 
     private val dispatcher = StandardTestDispatcher()

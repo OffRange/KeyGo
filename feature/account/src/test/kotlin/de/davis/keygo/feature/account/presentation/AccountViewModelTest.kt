@@ -1,6 +1,7 @@
 package de.davis.keygo.feature.account.presentation
 
 import de.davis.keygo.core.sync.FakeServerLinkRepository
+import de.davis.keygo.core.sync.domain.model.Device
 import de.davis.keygo.core.sync.domain.model.NetworkFailure
 import de.davis.keygo.core.sync.domain.model.ServerInfo
 import de.davis.keygo.core.sync.domain.model.ServerLink
@@ -9,6 +10,8 @@ import de.davis.keygo.core.sync.domain.model.SyncError
 import de.davis.keygo.core.sync.domain.repository.SyncRepository
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.feature.account.presentation.models.AccountUiEvent
+import de.davis.keygo.feature.account.presentation.models.DeviceSummary
+import de.davis.keygo.feature.account.presentation.models.DevicesState
 import de.davis.keygo.feature.account.presentation.models.LogoutDialogState
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +27,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AccountViewModelTest {
@@ -156,6 +160,50 @@ class AccountViewModelTest {
         assertEquals(LogoutDialogState.Hidden, vm.uiState.value.logoutDialog)
     }
 
+    @Test
+    fun `a connected account shows its device and sign-in count`() = runTest(dispatcher) {
+        repository.link.value = connected
+        syncRepository.devices = Result.Success(
+            listOf(device(), device(), device(loggedIn = false)),
+        )
+        val vm = viewModel()
+        vm.uiState.launchIn(backgroundScope)
+
+        assertEquals(
+            DevicesState.Loaded(DeviceSummary(total = 3, signedIn = 2)),
+            vm.uiState.value.devices,
+        )
+    }
+
+    @Test
+    fun `a failed device fetch is reported as failed`() = runTest(dispatcher) {
+        repository.link.value = connected
+        syncRepository.devices = Result.Failure(SyncError.Network(NetworkFailure.Timeout))
+        val vm = viewModel()
+        vm.uiState.launchIn(backgroundScope)
+
+        assertEquals(DevicesState.Failed, vm.uiState.value.devices)
+    }
+
+    @Test
+    fun `the link shows before the device count arrives`() = runTest(dispatcher) {
+        repository.link.value = connected
+        syncRepository.devices = Result.Success(listOf(device(), device()))
+        val gate = CompletableDeferred<Unit>()
+        syncRepository.devicesGate = gate
+        val vm = viewModel()
+        vm.uiState.launchIn(backgroundScope)
+
+        assertEquals(connected, vm.uiState.value.link)
+        assertEquals(DevicesState.Loading, vm.uiState.value.devices)
+
+        gate.complete(Unit)
+        assertEquals(
+            DevicesState.Loaded(DeviceSummary(total = 2, signedIn = 2)),
+            vm.uiState.value.devices,
+        )
+    }
+
     private class FakeSyncRepository(private val links: FakeServerLinkRepository) : SyncRepository {
         var result: Result<Unit, SyncError> = Result.Success(Unit)
         var clearsLink = true
@@ -173,6 +221,14 @@ class AccountViewModelTest {
             invite: String?,
         ): Result<SyncAccount, SyncError> = error("not used")
 
+        var devices: Result<List<Device>, SyncError> = Result.Success(emptyList())
+        var devicesGate: CompletableDeferred<Unit>? = null
+
+        override suspend fun devices(): Result<List<Device>, SyncError> {
+            devicesGate?.await()
+            return devices
+        }
+
         override suspend fun logout(): Result<Unit, SyncError> {
             logouts++
             gate?.await()
@@ -184,5 +240,16 @@ class AccountViewModelTest {
     private companion object {
         val connected =
             ServerLink.Connected(UUID.randomUUID(), "https://vault.example.org/", "ada")
+
+        fun device(loggedIn: Boolean = true) = Device(
+            id = UUID.randomUUID(),
+            name = "Pixel",
+            platform = "android",
+            appVersion = "2.2.0",
+            createdAt = Instant.fromEpochSeconds(1_700_000_000),
+            lastSeenAt = Instant.fromEpochSeconds(1_800_000_000),
+            authTime = null,
+            loggedIn = loggedIn,
+        )
     }
 }

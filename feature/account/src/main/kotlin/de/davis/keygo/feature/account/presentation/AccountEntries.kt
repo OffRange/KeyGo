@@ -15,10 +15,14 @@ object ChangePasswordRoute : NavKey
 @Serializable
 object ConnectServerRoute : NavKey
 
+@Serializable
+object DevicesRoute : NavKey
+
 fun EntryProviderScope<NavKey>.accountEntries(
     metadata: Map<String, Any> = emptyMap(),
     onOpenChangePassword: () -> Unit,
     onOpenConnectServer: () -> Unit,
+    onOpenDevices: () -> Unit,
     navigateUp: () -> Unit
 ) {
     entry<AccountRoute>(metadata = metadata) {
@@ -26,6 +30,7 @@ fun EntryProviderScope<NavKey>.accountEntries(
             navigateUp = navigateUp,
             onOpenChangePassword = onOpenChangePassword,
             onOpenConnectServer = onOpenConnectServer,
+            onOpenDevices = onOpenDevices,
         )
     }
 
@@ -35,5 +40,9 @@ fun EntryProviderScope<NavKey>.accountEntries(
 
     entry<ConnectServerRoute>(metadata = metadata) {
         ConnectServerScreen(navigateUp = navigateUp)
+    }
+
+    entry<DevicesRoute>(metadata = metadata) {
+
     }
 }
