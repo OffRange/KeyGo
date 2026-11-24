@@ -234,6 +234,11 @@ class AccountViewModelTest {
             if (clearsLink) links.link.value = ServerLink.None
             return result
         }
+
+        override suspend fun deleteDevice(deviceId: UUID): Result<Unit, SyncError> =
+            error("not used")
+
+        override suspend fun stepUp(password: String): Result<Unit, SyncError> = error("not used")
     }
 
     private companion object {

@@ -18,7 +18,9 @@ val SyncError.messageRes: Int
         SyncError.InviteRequired -> R.string.sync_error_invite_required
         SyncError.InvalidCredentials -> R.string.sync_error_invalid_credentials
         is SyncError.SignedOut -> R.string.sync_error_signed_out
-        SyncError.FreshAuthRequired -> R.string.sync_error_fresh_auth_required
+        SyncError.FreshAuthRequired,
+        SyncError.StepUpCancelled,
+            -> R.string.sync_error_fresh_auth_required
         SyncError.AccountMismatch -> R.string.sync_error_account_mismatch
         SyncError.VaultLocked -> R.string.sync_error_vault_locked
         // A broken keystore must not read as a typo in the address.

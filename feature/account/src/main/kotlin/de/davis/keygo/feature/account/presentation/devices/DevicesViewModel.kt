@@ -2,9 +2,13 @@ package de.davis.keygo.feature.account.presentation.devices
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.davis.keygo.core.sync.domain.model.SyncError
 import de.davis.keygo.core.sync.domain.repository.SyncRepository
+import de.davis.keygo.core.sync.domain.usecase.DeleteDeviceUseCase
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.fold
+import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.account.presentation.devices.mapper.toDevicesState
 import de.davis.keygo.feature.account.presentation.devices.model.DevicesEvent
 import de.davis.keygo.feature.account.presentation.devices.model.DevicesState
@@ -18,11 +22,13 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
+import java.util.UUID
 import kotlin.time.Clock
 
 @KoinViewModel
 internal class DevicesViewModel(
     private val syncRepository: SyncRepository,
+    private val deleteDevice: DeleteDeviceUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DevicesUiState())
@@ -40,8 +46,34 @@ internal class DevicesViewModel(
             // Also the first load: the screen's first resume finds nothing loaded yet.
             // A list already on screen is re-read silently; anything else starts over.
             DevicesUiEvent.OnResumed -> load(reset = _uiState.value.devices !is DevicesState.Loaded)
+
+            is DevicesUiEvent.OnSignOutRequest -> remove(event.deviceId)
         }
     }
+
+    private fun remove(deviceId: UUID) {
+        if (deviceId in _uiState.value.removing) return
+        _uiState.update { it.copy(removing = it.removing + deviceId) }
+
+        viewModelScope.launch {
+            deleteDevice(deviceId).onSuccess {
+                _uiState.update { it.copy(devices = it.devices.without(deviceId)) }
+                loadJob?.cancel()
+                load()
+            }.onFailure {
+                if (it != SyncError.StepUpCancelled)
+                    _event.send(DevicesEvent.RemoveFailed(it))
+            }
+            _uiState.update { it.copy(removing = it.removing - deviceId) }
+        }
+    }
+
+    private fun DevicesState.without(deviceId: UUID): DevicesState =
+        if (this is DevicesState.Loaded) copy(
+            current = current?.takeIf { it.device.id != deviceId },
+            others = others.filterNot { it.device.id == deviceId },
+        )
+        else this
 
     private fun load(reset: Boolean = false, pulled: Boolean = false) {
         if (pulled) _uiState.update {

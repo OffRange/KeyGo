@@ -27,5 +27,6 @@ dependencies {
     testImplementation(testFixtures(projects.core.rust))
     testImplementation(testFixtures(projects.core.security))
 
+    testFixturesApi(projects.core.util)
     testFixturesImplementation(libs.kotlinx.coroutines.core)
 }

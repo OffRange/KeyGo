@@ -26,6 +26,8 @@ sealed interface SyncError {
     /** A non-KeyGo error body with this HTTP [status]: a reverse proxy, a redirect, a foreign server. */
     data class UnexpectedStatus(val status: Int, val reason: String) : SyncError
     data class SignedOut(val reason: String?) : SyncError
+    /** The user dismissed the step-up prompt; callers show nothing. */
+    data object StepUpCancelled : SyncError
     data object UsernameTaken : SyncError
     data object VaultLocked : SyncError
 }

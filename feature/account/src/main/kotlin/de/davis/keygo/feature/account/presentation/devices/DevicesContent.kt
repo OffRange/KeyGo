@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MobileOff
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -47,6 +48,7 @@ import de.davis.keygo.feature.account.presentation.devices.model.DevicesState
 import de.davis.keygo.feature.account.presentation.devices.model.DevicesUiEvent
 import de.davis.keygo.feature.account.presentation.devices.model.DevicesUiState
 import de.davis.keygo.feature.account.presentation.preview.DevicesUiStateProvider
+import java.util.UUID
 
 @Composable
 internal fun DevicesContent(
@@ -90,6 +92,8 @@ internal fun DevicesContent(
 
                 is DevicesState.Loaded -> DeviceList(
                     state = devices,
+                    removing = state.removing,
+                    onSignOutRequest = { onEvent(DevicesUiEvent.OnSignOutRequest(it)) },
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -100,6 +104,8 @@ internal fun DevicesContent(
 @Composable
 private fun DeviceList(
     state: DevicesState.Loaded,
+    removing: Set<UUID>,
+    onSignOutRequest: (UUID) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -110,11 +116,15 @@ private fun DeviceList(
             key = "current",
             title = R.string.devices_this_device,
             items = listOfNotNull(state.current),
+            removing = removing,
+            onSignOutRequest = onSignOutRequest,
         )
         deviceSection(
             key = "others",
             title = R.string.devices_other_devices,
             items = state.others,
+            removing = removing,
+            onSignOutRequest = onSignOutRequest,
         )
     }
 }
@@ -123,6 +133,8 @@ private fun LazyListScope.deviceSection(
     key: String,
     @StringRes title: Int,
     items: List<DeviceItem>,
+    removing: Set<UUID>,
+    onSignOutRequest: (UUID) -> Unit,
 ) {
     if (items.isEmpty()) return
 
@@ -142,6 +154,8 @@ private fun LazyListScope.deviceSection(
         DeviceRow(
             item = item,
             shapes = SettingsListDefaults.shapes(index, items.size),
+            isRemoving = item.device.id in removing,
+            onSignOutRequest = { onSignOutRequest(item.device.id) },
             modifier = Modifier.animateItem(),
         )
     }
@@ -151,6 +165,8 @@ private fun LazyListScope.deviceSection(
 private fun DeviceRow(
     item: DeviceItem,
     shapes: ListItemShapes,
+    isRemoving: Boolean,
+    onSignOutRequest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -172,6 +188,14 @@ private fun DeviceRow(
         },
         leadingContent = {
             DeviceBadge(activity = activity)
+        },
+        trailingContent = if (device.current) null
+        else {
+            {
+                IconButton(onClick = onSignOutRequest, enabled = !isRemoving) {
+                    Icon(imageVector = Icons.Default.Delete, contentDescription = null)
+                }
+            }
         },
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier,

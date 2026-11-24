@@ -13,11 +13,11 @@ import de.davis.keygo.core.sync.domain.model.SyncAccount
 import de.davis.keygo.core.sync.domain.model.SyncError
 import de.davis.keygo.core.sync.domain.repository.SyncRepository
 import de.davis.keygo.core.util.Result
-import de.davis.keygo.core.util.asUnitResult
 import de.davis.keygo.core.util.mapSuccess
 import de.davisalessandro.keygo.rust.DeviceDetails
 import de.davisalessandro.keygo.rust.DpopKey
 import de.davisalessandro.keygo.rust.HttpTransport
+import de.davisalessandro.keygo.rust.StoredSession
 import de.davisalessandro.keygo.rust.SyncClient
 import de.davisalessandro.keygo.rust.SyncException
 import de.davisalessandro.keygo.rust.TokenStore
@@ -60,13 +60,23 @@ internal class SyncRepositoryImpl(
     }.mapSuccess { it.toDomain() }
 
     override suspend fun logout(): Result<Unit, SyncError> =
-        catching { sessionClient()?.logout() }.asUnitResult()
+        when (val result = withSessionClient { client, _ -> client.logout() }) {
+            is Result.Failure if result.error == SyncError.SignedOut(reason = null) ->
+                Result.Success(Unit)
 
-    override suspend fun devices(): Result<List<Device>, SyncError> {
-        val stored = tokens.load() ?: return Result.Failure(SyncError.SignedOut(reason = null))
-        return catching { clientFor(stored.serverUrl).devices() }
-            .mapSuccess { list -> list.map { it.toDomain(currentDeviceId = stored.deviceId) } }
-    }
+            else -> result
+        }
+
+    override suspend fun devices(): Result<List<Device>, SyncError> =
+        withSessionClient { client, stored ->
+            client.devices().map { it.toDomain(currentDeviceId = stored.deviceId) }
+        }
+
+    override suspend fun deleteDevice(deviceId: UUID): Result<Unit, SyncError> =
+        withSessionClient { client, _ -> client.deleteDevice(deviceId) }
+
+    override suspend fun stepUp(password: String): Result<Unit, SyncError> =
+        withSessionClient { client, _ -> client.stepUp(password) }
 
     private suspend fun clientFor(serverUrl: String): SyncClient = clientLock.withLock {
         cached?.takeIf { it.serverUrl == serverUrl }?.client
@@ -76,8 +86,12 @@ internal class SyncRepositoryImpl(
             }
     }
 
-    private suspend fun sessionClient(): SyncClient? =
-        tokens.load()?.serverUrl?.let { clientFor(it) }
+    private suspend fun <R> withSessionClient(
+        call: suspend (SyncClient, StoredSession) -> R,
+    ): Result<R, SyncError> {
+        val stored = tokens.load() ?: return Result.Failure(SyncError.SignedOut(reason = null))
+        return catching { call(clientFor(stored.serverUrl), stored) }
+    }
 
     private fun newClient(serverUrl: String) = SyncClient(
         baseUrl = serverUrl,

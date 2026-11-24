@@ -93,4 +93,9 @@
     <string name="confirm_account_password_description">Your account uses the password you already unlock KeyGo with. Unlocking stays the same.</string>
     <string name="confirm_account_password_label">KeyGo password</string>
     <string name="confirm_account_password_failed">Couldn\'t check your password. Try again.</string>
+
+    <string name="step_up_title">Confirm it\'s you</string>
+    <string name="step_up_message">This action needs your account password. Enter it to continue.</string>
+    <string name="step_up_password">Account password</string>
+    <string name="step_up_confirm">Confirm</string>
 </resources>

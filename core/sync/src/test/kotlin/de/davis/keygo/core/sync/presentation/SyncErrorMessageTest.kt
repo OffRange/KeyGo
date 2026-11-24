@@ -51,4 +51,9 @@ class SyncErrorMessageTest {
     fun a_broken_keystore_does_not_read_as_a_bad_address() {
         assertEquals(R.string.sync_error_unknown, SyncError.Internal("keystore locked").messageRes)
     }
+
+    @Test
+    fun a_dismissed_step_up_reads_like_the_step_up_it_skipped() {
+        assertEquals(R.string.sync_error_fresh_auth_required, SyncError.StepUpCancelled.messageRes)
+    }
 }

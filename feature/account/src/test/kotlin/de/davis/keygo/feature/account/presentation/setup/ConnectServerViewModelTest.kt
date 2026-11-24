@@ -75,6 +75,11 @@ class ConnectServerViewModelTest {
         override suspend fun logout(): Result<Unit, SyncError> = Result.Success(Unit)
 
         override suspend fun devices(): Result<List<Device>, SyncError> = error("not used")
+
+        override suspend fun deleteDevice(deviceId: UUID): Result<Unit, SyncError> =
+            error("not used")
+
+        override suspend fun stepUp(password: String): Result<Unit, SyncError> = error("not used")
     }
 
     private val dispatcher = StandardTestDispatcher()

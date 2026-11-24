@@ -1,11 +1,11 @@
 package de.davis.keygo.feature.account.presentation.devices
 
+import de.davis.keygo.core.sync.FakeStepUpGate
+import de.davis.keygo.core.sync.FakeSyncRepository
 import de.davis.keygo.core.sync.domain.model.Device
 import de.davis.keygo.core.sync.domain.model.NetworkFailure
-import de.davis.keygo.core.sync.domain.model.ServerInfo
-import de.davis.keygo.core.sync.domain.model.SyncAccount
 import de.davis.keygo.core.sync.domain.model.SyncError
-import de.davis.keygo.core.sync.domain.repository.SyncRepository
+import de.davis.keygo.core.sync.domain.usecase.DeleteDeviceUseCase
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.feature.account.presentation.devices.model.DeviceActivity
 import de.davis.keygo.feature.account.presentation.devices.model.DeviceItem
@@ -35,6 +35,8 @@ class DevicesViewModelTest {
 
     private val dispatcher = UnconfinedTestDispatcher()
     private val syncRepository = FakeSyncRepository()
+    private val stepUpGate = FakeStepUpGate()
+    private val deleteDevice = DeleteDeviceUseCase(syncRepository, stepUpGate)
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(dispatcher)
@@ -43,13 +45,13 @@ class DevicesViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     // Mirrors DevicesScreen, whose first resume starts the first load.
-    private fun viewModel() = DevicesViewModel(syncRepository).also {
+    private fun viewModel() = DevicesViewModel(syncRepository, deleteDevice).also {
         it.onEvent(DevicesUiEvent.OnResumed)
     }
 
     @Test
     fun `nothing is loaded before the screen resumes`() = runTest(dispatcher) {
-        val vm = DevicesViewModel(syncRepository)
+        val vm = DevicesViewModel(syncRepository, deleteDevice)
 
         assertEquals(DevicesState.Loading, vm.uiState.value.devices)
         assertEquals(0, syncRepository.loads)
@@ -269,30 +271,107 @@ class DevicesViewModelTest {
         assertEquals(1, syncRepository.loads)
     }
 
-    private class FakeSyncRepository : SyncRepository {
-        var devices: Result<List<Device>, SyncError> = Result.Success(emptyList())
-        var gate: CompletableDeferred<Unit>? = null
-        var loads = 0
+    @Test
+    fun `removing a device deletes it and reloads the list`() = runTest(dispatcher) {
+        val other = device()
+        syncRepository.devices = Result.Success(listOf(device(current = true), other))
+        val vm = viewModel()
 
-        override suspend fun devices(): Result<List<Device>, SyncError> {
-            loads++
-            gate?.await()
-            return devices
+        vm.onEvent(DevicesUiEvent.OnSignOutRequest(other.id))
+
+        assertEquals(listOf(other.id), syncRepository.deletedDevices)
+        assertEquals(2, syncRepository.loads)
+    }
+
+    @Test
+    fun `a failed removal reports the error`() = runTest(dispatcher) {
+        val other = device()
+        syncRepository.devices = Result.Success(listOf(device(current = true), other))
+        val error = SyncError.Network(NetworkFailure.Timeout)
+        syncRepository.deleteDeviceResults = listOf(Result.Failure(error))
+        val vm = viewModel()
+
+        vm.onEvent(DevicesUiEvent.OnSignOutRequest(other.id))
+
+        assertEquals(DevicesEvent.RemoveFailed(error), vm.event.first())
+        assertEquals(1, syncRepository.loads)
+    }
+
+    @Test
+    fun `a cancelled step-up removes nothing and stays silent`() = runTest(dispatcher) {
+        val other = device()
+        syncRepository.devices = Result.Success(listOf(device(current = true), other))
+        stepUpGate.cancels = true
+        val vm = viewModel()
+        val events = mutableListOf<DevicesEvent>()
+        val collector = launch { vm.event.toList(events) }
+
+        vm.onEvent(DevicesUiEvent.OnSignOutRequest(other.id))
+
+        assertEquals(emptyList(), syncRepository.deleteDeviceCalls)
+        assertEquals(emptyList(), events)
+        assertEquals(1, syncRepository.loads)
+        collector.cancel()
+    }
+
+    @Test
+    fun `asking to remove a device twice while the first removal runs removes it once`() =
+        runTest(dispatcher) {
+            val other = device()
+            syncRepository.devices = Result.Success(listOf(device(current = true), other))
+            syncRepository.deleteDeviceGate = CompletableDeferred()
+            val vm = viewModel()
+
+            vm.onEvent(DevicesUiEvent.OnSignOutRequest(other.id))
+            vm.onEvent(DevicesUiEvent.OnSignOutRequest(other.id))
+
+            assertEquals(setOf(other.id), vm.uiState.value.removing)
+
+            syncRepository.deleteDeviceGate?.complete(Unit)
+
+            assertEquals(listOf(other.id), syncRepository.deleteDeviceCalls)
+            assertEquals(emptySet(), vm.uiState.value.removing)
         }
 
-        override suspend fun checkServer(serverUrl: String): Result<ServerInfo, SyncError> =
-            error("not used")
+    @Test
+    fun `a failed removal can be tried again`() = runTest(dispatcher) {
+        val other = device()
+        syncRepository.devices = Result.Success(listOf(device(current = true), other))
+        syncRepository.deleteDeviceResults = listOf(
+            Result.Failure(SyncError.Network(NetworkFailure.Timeout)),
+            Result.Success(Unit),
+        )
+        val vm = viewModel()
 
-        override suspend fun register(
-            serverUrl: String,
-            userId: UUID,
-            username: String,
-            password: String,
-            invite: String?,
-        ): Result<SyncAccount, SyncError> = error("not used")
+        vm.onEvent(DevicesUiEvent.OnSignOutRequest(other.id))
+        assertEquals(emptySet(), vm.uiState.value.removing)
+        vm.onEvent(DevicesUiEvent.OnSignOutRequest(other.id))
 
-        override suspend fun logout(): Result<Unit, SyncError> = error("not used")
+        assertEquals(listOf(other.id, other.id), syncRepository.deleteDeviceCalls)
+        assertEquals(listOf(other.id), syncRepository.deletedDevices)
     }
+
+    @Test
+    fun `a removed device stays off the list while an older load is in flight`() =
+        runTest(dispatcher) {
+            val current = device(current = true)
+            val other = device()
+            syncRepository.devices = Result.Success(listOf(current, other))
+            val vm = viewModel()
+
+            // A re-read that answered before the removal: it still lists the device.
+            syncRepository.gate = CompletableDeferred()
+            vm.onEvent(DevicesUiEvent.OnResumed)
+
+            syncRepository.devices = Result.Success(listOf(current))
+            vm.onEvent(DevicesUiEvent.OnSignOutRequest(other.id))
+
+            assertEquals(onlyThisDevice(current), vm.uiState.value.devices)
+
+            syncRepository.gate?.complete(Unit)
+
+            assertEquals(onlyThisDevice(current), vm.uiState.value.devices)
+        }
 
     private companion object {
         fun onlyThisDevice(device: Device) = DevicesState.Loaded(

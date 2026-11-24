@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import de.davis.keygo.core.sync.presentation.messageRes
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.presentation.ObserveAsEvents
 import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
@@ -23,6 +24,10 @@ internal fun DevicesScreen(navigateUp: () -> Unit) {
         when (event) {
             DevicesEvent.RefreshFailed -> snackbarManager.sendMessage(
                 SnackbarMessage(message = ResourceString(R.string.devices_refresh_failed)),
+            )
+
+            is DevicesEvent.RemoveFailed -> snackbarManager.sendMessage(
+                SnackbarMessage(message = ResourceString(event.error.messageRes)),
             )
         }
     }

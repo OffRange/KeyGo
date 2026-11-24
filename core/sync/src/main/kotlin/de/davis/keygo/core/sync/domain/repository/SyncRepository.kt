@@ -19,7 +19,12 @@ interface SyncRepository {
         invite: String?,
     ): Result<SyncAccount, SyncError>
 
+    /** Ends the session, also locally if the server is unreachable. Already signed out is a success. */
     suspend fun logout(): Result<Unit, SyncError>
 
     suspend fun devices(): Result<List<Device>, SyncError>
+
+    suspend fun deleteDevice(deviceId: UUID): Result<Unit, SyncError>
+
+    suspend fun stepUp(password: String): Result<Unit, SyncError>
 }
