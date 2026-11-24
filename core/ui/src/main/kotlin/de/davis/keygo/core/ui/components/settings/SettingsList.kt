@@ -55,6 +55,11 @@ object SettingsListDefaults {
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             leadingContentColor = MaterialTheme.colorScheme.primaryContainer,
         )
+
+    @Composable
+    fun shapes(index: Int, count: Int): ListItemShapes =
+        if (count == 1) ListItemDefaults.shapes(MaterialTheme.shapes.large)
+        else ListItemDefaults.segmentedShapes(index, count)
 }
 
 @Composable
@@ -110,11 +115,7 @@ private fun LazyListScope.settingsSection(section: SettingsBlock.SettingsSection
         when (item) {
             is SettingsEntry -> SettingsEntryRow(
                 entry = item,
-                shapes = if (section.entries.size == 1) ListItemDefaults.shapes(MaterialTheme.shapes.large)
-                else ListItemDefaults.segmentedShapes(
-                    index,
-                    section.entries.size,
-                ),
+                shapes = SettingsListDefaults.shapes(index, section.entries.size),
                 colors = item.colors ?: SettingsListDefaults.colors,
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.animateItem()
@@ -294,7 +295,7 @@ private fun PickerDialog(
 }
 
 @Composable
-private fun SettingsSectionHeader(
+fun SettingsSectionHeader(
     @StringRes title: Int,
     modifier: Modifier = Modifier,
 ) {

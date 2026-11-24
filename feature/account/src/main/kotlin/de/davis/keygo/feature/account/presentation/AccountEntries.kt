@@ -3,6 +3,7 @@ package de.davis.keygo.feature.account.presentation
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import de.davis.keygo.feature.account.presentation.changepassword.ChangePasswordScreen
+import de.davis.keygo.feature.account.presentation.devices.DevicesScreen
 import de.davis.keygo.feature.account.presentation.setup.ConnectServerScreen
 import kotlinx.serialization.Serializable
 
@@ -43,6 +44,6 @@ fun EntryProviderScope<NavKey>.accountEntries(
     }
 
     entry<DevicesRoute>(metadata = metadata) {
-
+        DevicesScreen(navigateUp = navigateUp)
     }
 }

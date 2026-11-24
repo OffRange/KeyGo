@@ -39,12 +39,17 @@
         <item quantity="other">%1$d devices \u2022 %2$d signed in</item>
     </plurals>
     <string name="devices_load_failed">Couldn\'t load devices</string>
+    <string name="devices_this_device">This device</string>
+    <string name="devices_other_devices">Other devices</string>
+    <string name="device_active_now">Active now</string>
+    <string name="device_active_ago">Active %1$s</string>
+    <string name="device_signed_out">Signed out</string>
 
     <string name="sign_out">Sign out</string>
     <string name="logout_title">Sign out?</string>
     <string name="logout_message">Your items stay on this device and keep working offline. Changes won\'t sync until you sign in again.</string>
     <string name="logout_failed">Couldn\'t sign out. You\'re still signed in on this device.</string>
-    <string name="logout_retry">Try again</string>
+    <string name="retry">Try again</string>
 
     <string name="continue_step">Continue</string>
     <string name="create_account">Create account</string>

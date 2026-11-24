@@ -41,7 +41,7 @@ internal fun LogoutDialog(
         ),
         confirmButton = {
             TextButton(onClick = onConfirm, enabled = !loggingOut) {
-                Text(text = stringResource(if (failed) R.string.logout_retry else R.string.sign_out))
+                Text(text = stringResource(if (failed) R.string.retry else R.string.sign_out))
             }
         },
         dismissButton = {

@@ -12,4 +12,5 @@ data class Device(
     val lastSeenAt: Instant,
     val authTime: Instant?,
     val loggedIn: Boolean,
+    val current: Boolean,
 )

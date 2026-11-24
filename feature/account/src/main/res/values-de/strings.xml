@@ -39,12 +39,17 @@
         <item quantity="other">%1$d Geräte \u2022 %2$d angemeldet</item>
     </plurals>
     <string name="devices_load_failed">Geräte konnten nicht geladen werden</string>
+    <string name="devices_this_device">Dieses Gerät</string>
+    <string name="devices_other_devices">Andere Geräte</string>
+    <string name="device_active_now">Gerade aktiv</string>
+    <string name="device_active_ago">Aktiv %1$s</string>
+    <string name="device_signed_out">Abgemeldet</string>
 
     <string name="sign_out">Abmelden</string>
     <string name="logout_title">Abmelden?</string>
     <string name="logout_message">Deine Einträge bleiben auf diesem Gerät und funktionieren weiter offline. Änderungen werden erst wieder synchronisiert, wenn du dich anmeldest.</string>
     <string name="logout_failed">Abmelden hat nicht geklappt. Du bist auf diesem Gerät noch angemeldet.</string>
-    <string name="logout_retry">Erneut versuchen</string>
+    <string name="retry">Erneut versuchen</string>
 
     <string name="continue_step">Weiter</string>
     <string name="create_account">Account erstellen</string>

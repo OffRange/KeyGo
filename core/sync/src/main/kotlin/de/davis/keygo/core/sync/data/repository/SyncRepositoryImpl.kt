@@ -62,9 +62,11 @@ internal class SyncRepositoryImpl(
     override suspend fun logout(): Result<Unit, SyncError> =
         catching { sessionClient()?.logout() }.asUnitResult()
 
-    override suspend fun devices(): Result<List<Device>, SyncError> =
-        catching { sessionClient()?.devices() }
-            .mapSuccess { list -> list?.map { it.toDomain() }.orEmpty() }
+    override suspend fun devices(): Result<List<Device>, SyncError> {
+        val stored = tokens.load() ?: return Result.Failure(SyncError.SignedOut(reason = null))
+        return catching { clientFor(stored.serverUrl).devices() }
+            .mapSuccess { list -> list.map { it.toDomain(currentDeviceId = stored.deviceId) } }
+    }
 
     private suspend fun clientFor(serverUrl: String): SyncClient = clientLock.withLock {
         cached?.takeIf { it.serverUrl == serverUrl }?.client

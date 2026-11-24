@@ -249,6 +249,7 @@ class AccountViewModelTest {
             lastSeenAt = Instant.fromEpochSeconds(1_800_000_000),
             authTime = null,
             loggedIn = loggedIn,
+            current = false,
         )
     }
 }
