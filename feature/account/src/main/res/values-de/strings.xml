@@ -39,6 +39,7 @@
         <item quantity="other">%1$d Geräte \u2022 %2$d angemeldet</item>
     </plurals>
     <string name="devices_load_failed">Geräte konnten nicht geladen werden</string>
+    <string name="devices_refresh_failed">Geräte konnten nicht aktualisiert werden</string>
     <string name="devices_this_device">Dieses Gerät</string>
     <string name="devices_other_devices">Andere Geräte</string>
     <string name="device_active_now">Gerade aktiv</string>

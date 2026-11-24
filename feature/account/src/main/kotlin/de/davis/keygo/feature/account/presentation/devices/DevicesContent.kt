@@ -5,7 +5,7 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,6 +29,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.contentColorFor
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,11 +45,12 @@ import de.davis.keygo.feature.account.presentation.devices.model.DeviceActivity
 import de.davis.keygo.feature.account.presentation.devices.model.DeviceItem
 import de.davis.keygo.feature.account.presentation.devices.model.DevicesState
 import de.davis.keygo.feature.account.presentation.devices.model.DevicesUiEvent
-import de.davis.keygo.feature.account.presentation.preview.DevicesStateProvider
+import de.davis.keygo.feature.account.presentation.devices.model.DevicesUiState
+import de.davis.keygo.feature.account.presentation.preview.DevicesUiStateProvider
 
 @Composable
 internal fun DevicesContent(
-    state: DevicesState,
+    state: DevicesUiState,
     onEvent: (DevicesUiEvent) -> Unit,
     navigateUp: () -> Unit,
 ) {
@@ -71,23 +73,26 @@ internal fun DevicesContent(
             )
         },
     ) { innerPadding ->
-        // Loading and Failed don't scroll, so they sit inside the bars; the list scrolls under them.
-        val modifier = Modifier
-            .fillMaxSize()
-            .padding(innerPadding)
+        PullToRefreshBox(
+            isRefreshing = state.isRefreshing,
+            onRefresh = { onEvent(DevicesUiEvent.OnRefresh) },
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding),
+        ) {
+            when (val devices = state.devices) {
+                DevicesState.Loading -> Loading(modifier = Modifier.fillMaxSize())
+                DevicesState.Failed -> LoadFailed(
+                    onRetry = { onEvent(DevicesUiEvent.OnRetryClicked) },
+                    modifier = Modifier.fillMaxSize(),
+                )
 
-        when (state) {
-            DevicesState.Loading -> Loading(modifier = modifier)
-            DevicesState.Failed -> LoadFailed(
-                onRetry = { onEvent(DevicesUiEvent.OnRetryClicked) },
-                modifier = modifier,
-            )
-
-            is DevicesState.Loaded -> DeviceList(
-                state = state,
-                contentPadding = innerPadding,
-                modifier = Modifier.fillMaxSize(),
-            )
+                is DevicesState.Loaded -> DeviceList(
+                    state = devices,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         }
     }
 }
@@ -95,12 +100,10 @@ internal fun DevicesContent(
 @Composable
 private fun DeviceList(
     state: DevicesState.Loaded,
-    contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
         modifier = modifier.padding(horizontal = 8.dp),
-        contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
     ) {
         deviceSection(
@@ -248,7 +251,7 @@ private fun LoadFailed(
 @Preview
 @Composable
 private fun DevicesContentPreview(
-    @PreviewParameter(DevicesStateProvider::class) state: DevicesState,
+    @PreviewParameter(DevicesUiStateProvider::class) state: DevicesUiState,
 ) {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {

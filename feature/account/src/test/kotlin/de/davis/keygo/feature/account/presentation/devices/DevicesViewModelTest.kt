@@ -9,11 +9,15 @@ import de.davis.keygo.core.sync.domain.repository.SyncRepository
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.feature.account.presentation.devices.model.DeviceActivity
 import de.davis.keygo.feature.account.presentation.devices.model.DeviceItem
+import de.davis.keygo.feature.account.presentation.devices.model.DevicesEvent
 import de.davis.keygo.feature.account.presentation.devices.model.DevicesState
 import de.davis.keygo.feature.account.presentation.devices.model.DevicesUiEvent
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -38,7 +42,18 @@ class DevicesViewModelTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun viewModel() = DevicesViewModel(syncRepository)
+    // Mirrors DevicesScreen, whose first resume starts the first load.
+    private fun viewModel() = DevicesViewModel(syncRepository).also {
+        it.onEvent(DevicesUiEvent.OnResumed)
+    }
+
+    @Test
+    fun `nothing is loaded before the screen resumes`() = runTest(dispatcher) {
+        val vm = DevicesViewModel(syncRepository)
+
+        assertEquals(DevicesState.Loading, vm.uiState.value.devices)
+        assertEquals(0, syncRepository.loads)
+    }
 
     @Test
     fun `devices are loading until the server answers`() = runTest(dispatcher) {
@@ -46,8 +61,112 @@ class DevicesViewModelTest {
 
         val vm = viewModel()
 
-        assertEquals(DevicesState.Loading, vm.uiState.value)
+        assertEquals(DevicesState.Loading, vm.uiState.value.devices)
+        assertEquals(false, vm.uiState.value.isRefreshing)
     }
+
+    @Test
+    fun `pulling to refresh keeps the list and shows the refresh until the server answers`() =
+        runTest(dispatcher) {
+            val first = device(current = true)
+            syncRepository.devices = Result.Success(listOf(first))
+            val vm = viewModel()
+
+            val second = device(current = true)
+            syncRepository.devices = Result.Success(listOf(second))
+            syncRepository.gate = CompletableDeferred()
+            vm.onEvent(DevicesUiEvent.OnRefresh)
+
+            assertEquals(true, vm.uiState.value.isRefreshing)
+            assertEquals(onlyThisDevice(first), vm.uiState.value.devices)
+
+            syncRepository.gate?.complete(Unit)
+
+            assertEquals(false, vm.uiState.value.isRefreshing)
+            assertEquals(onlyThisDevice(second), vm.uiState.value.devices)
+        }
+
+    @Test
+    fun `a failed pull keeps the list on screen`() = runTest(dispatcher) {
+        val current = device(current = true)
+        syncRepository.devices = Result.Success(listOf(current))
+        val vm = viewModel()
+
+        syncRepository.devices = Result.Failure(SyncError.Network(NetworkFailure.Timeout))
+        vm.onEvent(DevicesUiEvent.OnRefresh)
+
+        assertEquals(false, vm.uiState.value.isRefreshing)
+        assertEquals(onlyThisDevice(current), vm.uiState.value.devices)
+        assertEquals(DevicesEvent.RefreshFailed, vm.event.first())
+    }
+
+    @Test
+    fun `a failed re-read on resume stays silent`() = runTest(dispatcher) {
+        syncRepository.devices = Result.Success(listOf(device(current = true)))
+        val vm = viewModel()
+        val events = mutableListOf<DevicesEvent>()
+        val collector = launch { vm.event.toList(events) }
+
+        syncRepository.devices = Result.Failure(SyncError.Network(NetworkFailure.Timeout))
+        vm.onEvent(DevicesUiEvent.OnResumed)
+
+        assertEquals(emptyList(), events)
+        collector.cancel()
+    }
+
+    @Test
+    fun `resuming during a silent re-read does not show the refresh indicator`() =
+        runTest(dispatcher) {
+            syncRepository.devices = Result.Success(listOf(device(current = true)))
+            val vm = viewModel()
+
+            syncRepository.gate = CompletableDeferred()
+            vm.onEvent(DevicesUiEvent.OnResumed)
+            vm.onEvent(DevicesUiEvent.OnResumed)
+
+            assertEquals(false, vm.uiState.value.isRefreshing)
+            assertEquals(2, syncRepository.loads)
+        }
+
+    @Test
+    fun `resuming does not show the refresh indicator`() = runTest(dispatcher) {
+        syncRepository.devices = Result.Success(listOf(device(current = true)))
+        val vm = viewModel()
+
+        syncRepository.gate = CompletableDeferred()
+        vm.onEvent(DevicesUiEvent.OnResumed)
+
+        assertEquals(false, vm.uiState.value.isRefreshing)
+    }
+
+    @Test
+    fun `pulling during a silent re-read joins it`() = runTest(dispatcher) {
+        syncRepository.devices = Result.Success(listOf(device(current = true)))
+        val vm = viewModel()
+
+        syncRepository.gate = CompletableDeferred()
+        vm.onEvent(DevicesUiEvent.OnResumed)
+        vm.onEvent(DevicesUiEvent.OnRefresh)
+
+        assertEquals(true, vm.uiState.value.isRefreshing)
+        assertEquals(2, syncRepository.loads)
+
+        syncRepository.gate?.complete(Unit)
+
+        assertEquals(false, vm.uiState.value.isRefreshing)
+    }
+
+    @Test
+    fun `pulling during the first load does not show the refresh indicator`() =
+        runTest(dispatcher) {
+            syncRepository.gate = CompletableDeferred()
+            val vm = viewModel()
+
+            vm.onEvent(DevicesUiEvent.OnRefresh)
+
+            assertEquals(false, vm.uiState.value.isRefreshing)
+            assertEquals(1, syncRepository.loads)
+        }
 
     @Test
     fun `this device is split off from the others`() = runTest(dispatcher) {
@@ -57,7 +176,7 @@ class DevicesViewModelTest {
 
         val vm = viewModel()
 
-        val state = assertIs<DevicesState.Loaded>(vm.uiState.value)
+        val state = assertIs<DevicesState.Loaded>(vm.uiState.value.devices)
         assertEquals(current, state.current?.device)
         assertEquals(listOf(other), state.others.map { it.device })
     }
@@ -70,7 +189,7 @@ class DevicesViewModelTest {
 
         val vm = viewModel()
 
-        val state = assertIs<DevicesState.Loaded>(vm.uiState.value)
+        val state = assertIs<DevicesState.Loaded>(vm.uiState.value.devices)
         assertEquals(null, state.current)
         assertEquals(listOf(newer, older), state.others.map { it.device })
     }
@@ -81,7 +200,7 @@ class DevicesViewModelTest {
 
         val vm = viewModel()
 
-        assertEquals(DevicesState.Failed, vm.uiState.value)
+        assertEquals(DevicesState.Failed, vm.uiState.value.devices)
     }
 
     @Test
@@ -93,7 +212,7 @@ class DevicesViewModelTest {
         syncRepository.devices = Result.Success(listOf(current))
         vm.onEvent(DevicesUiEvent.OnRetryClicked)
 
-        assertEquals(onlyThisDevice(current), vm.uiState.value)
+        assertEquals(onlyThisDevice(current), vm.uiState.value.devices)
         assertEquals(2, syncRepository.loads)
     }
 
@@ -108,11 +227,11 @@ class DevicesViewModelTest {
         syncRepository.gate = CompletableDeferred()
         vm.onEvent(DevicesUiEvent.OnResumed)
 
-        assertEquals(onlyThisDevice(first), vm.uiState.value)
+        assertEquals(onlyThisDevice(first), vm.uiState.value.devices)
 
         syncRepository.gate?.complete(Unit)
 
-        assertEquals(onlyThisDevice(second), vm.uiState.value)
+        assertEquals(onlyThisDevice(second), vm.uiState.value.devices)
     }
 
     @Test
@@ -124,7 +243,7 @@ class DevicesViewModelTest {
         syncRepository.devices = Result.Failure(SyncError.Network(NetworkFailure.Timeout))
         vm.onEvent(DevicesUiEvent.OnResumed)
 
-        assertEquals(onlyThisDevice(current), vm.uiState.value)
+        assertEquals(onlyThisDevice(current), vm.uiState.value.devices)
         assertEquals(2, syncRepository.loads)
     }
 
@@ -137,7 +256,7 @@ class DevicesViewModelTest {
         syncRepository.devices = Result.Success(listOf(current))
         vm.onEvent(DevicesUiEvent.OnResumed)
 
-        assertEquals(onlyThisDevice(current), vm.uiState.value)
+        assertEquals(onlyThisDevice(current), vm.uiState.value.devices)
     }
 
     @Test

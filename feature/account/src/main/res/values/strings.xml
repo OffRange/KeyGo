@@ -39,6 +39,7 @@
         <item quantity="other">%1$d devices \u2022 %2$d signed in</item>
     </plurals>
     <string name="devices_load_failed">Couldn\'t load devices</string>
+    <string name="devices_refresh_failed">Couldn\'t refresh devices</string>
     <string name="devices_this_device">This device</string>
     <string name="devices_other_devices">Other devices</string>
     <string name="device_active_now">Active now</string>
