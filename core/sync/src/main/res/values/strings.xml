@@ -23,4 +23,9 @@
     <string name="sync_error_account_mismatch">This account belongs to a different vault.</string>
     <string name="sync_error_vault_locked">Unlock KeyGo, then try again.</string>
     <string name="sync_error_unknown">Something went wrong. Try again.</string>
+
+    <string name="step_up_title">Confirm it\'s you</string>
+    <string name="step_up_message">This action needs your account password. Enter it to continue.</string>
+    <string name="step_up_password">Account password</string>
+    <string name="step_up_confirm">Confirm</string>
 </resources>

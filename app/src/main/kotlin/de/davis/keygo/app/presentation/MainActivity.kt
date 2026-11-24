@@ -37,7 +37,7 @@ import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.util.presentation.snackbar.LocalSnackbarManager
 import de.davis.keygo.core.util.presentation.snackbar.SnackbarHandler
-import de.davis.keygo.feature.account.presentation.stepup.StepUpDialogHost
+import de.davis.keygo.core.sync.presentation.stepup.StepUpDialogHost
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
 import de.davis.keygo.feature.totp.presentation.TotpImportDeepLinkMatcher

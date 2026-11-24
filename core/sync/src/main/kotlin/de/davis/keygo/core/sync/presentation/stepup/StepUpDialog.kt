@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.account.presentation.stepup
+package de.davis.keygo.core.sync.presentation.stepup
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -38,7 +38,7 @@ import de.davis.keygo.core.sync.domain.model.SyncError
 import de.davis.keygo.core.sync.domain.stepup.StepUpPrompt
 import de.davis.keygo.core.sync.presentation.messageRes
 import de.davis.keygo.core.ui.components.VisibilityButton
-import de.davis.keygo.feature.account.R
+import de.davis.keygo.core.sync.R
 import org.koin.androidx.compose.koinViewModel
 
 @Composable

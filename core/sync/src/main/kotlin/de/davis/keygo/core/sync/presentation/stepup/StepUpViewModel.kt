@@ -1,4 +1,4 @@
-package de.davis.keygo.feature.account.presentation.stepup
+package de.davis.keygo.core.sync.presentation.stepup
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText

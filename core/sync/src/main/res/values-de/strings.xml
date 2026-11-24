@@ -23,4 +23,9 @@
     <string name="sync_error_account_mismatch">Dieses Konto gehört zu einem anderen Tresor.</string>
     <string name="sync_error_vault_locked">Entsperre KeyGo und versuch es noch einmal.</string>
     <string name="sync_error_unknown">Etwas ist schiefgelaufen. Versuch es noch einmal.</string>
+
+    <string name="step_up_title">Bestätige deine Identität</string>
+    <string name="step_up_message">Für diese Aktion brauchst du dein Kontopasswort. Gib es ein, um fortzufahren.</string>
+    <string name="step_up_password">Kontopasswort</string>
+    <string name="step_up_confirm">Bestätigen</string>
 </resources>
