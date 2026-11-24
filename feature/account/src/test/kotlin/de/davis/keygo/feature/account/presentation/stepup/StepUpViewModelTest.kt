@@ -4,7 +4,14 @@ import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import de.davis.keygo.core.sync.domain.model.SyncError
 import de.davis.keygo.core.sync.domain.stepup.StepUpPrompt
 import de.davis.keygo.core.sync.domain.stepup.StepUpPrompter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -12,7 +19,18 @@ import kotlin.test.assertNull
 class StepUpViewModelTest {
 
     private val prompter = RecordingPrompter()
-    private val viewModel = StepUpViewModel(prompter)
+    private lateinit var viewModel: StepUpViewModel
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @BeforeTest
+    fun setUp() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        viewModel = StepUpViewModel(prompter)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @AfterTest
+    fun tearDown() = Dispatchers.resetMain()
 
     @Test
     fun `the prompt mirrors the prompter`() {
@@ -59,6 +77,26 @@ class StepUpViewModelTest {
         assertEquals(1, prompter.cancels)
         assertEquals(emptyList(), prompter.submitted)
         assertEquals("", viewModel.password.text.toString())
+    }
+
+    @Test
+    fun `an abandoned prompt clears what was typed`() {
+        prompter.prompt.value = StepUpPrompt()
+        viewModel.password.setTextAndPlaceCursorAtEnd("hunter2")
+
+        prompter.prompt.value = null
+
+        assertEquals("", viewModel.password.text.toString())
+    }
+
+    @Test
+    fun `a prompt changing state keeps what was typed`() {
+        prompter.prompt.value = StepUpPrompt()
+        viewModel.password.setTextAndPlaceCursorAtEnd("hunter2")
+
+        prompter.prompt.value = StepUpPrompt(error = SyncError.RateLimited)
+
+        assertEquals("hunter2", viewModel.password.text.toString())
     }
 
     private class RecordingPrompter : StepUpPrompter {
