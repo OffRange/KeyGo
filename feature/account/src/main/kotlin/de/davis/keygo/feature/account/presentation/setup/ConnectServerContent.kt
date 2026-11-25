@@ -35,6 +35,7 @@ import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiSt
 import de.davis.keygo.feature.account.presentation.setup.model.EnterDomainState
 import de.davis.keygo.feature.account.presentation.setup.model.PasswordCheck
 import de.davis.keygo.feature.account.presentation.setup.model.ServerCheck
+import de.davis.keygo.feature.account.presentation.setup.model.SignInOrOutState
 import de.davis.keygo.feature.account.presentation.setup.transformation.UsernameInputTransformation
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -52,6 +53,7 @@ internal fun ConnectServerContent(
         onBack = { onEvent(ConnectServerUiEvent.Back) },
         onContinue = { onEvent(ConnectServerUiEvent.Continue) },
         navigateUp = navigateUp,
+        showContinueButton = state.step != ConnectServerStep.SignInOrOut,
         canContinue = state.canContinue,
         secondaryAction = state.step.secondaryAction?.let { action ->
             { SecondaryActionButton(action = action, onEvent = onEvent) }
@@ -67,6 +69,11 @@ internal fun ConnectServerContent(
         when (step) {
             ConnectServerStep.EnterDomain -> EnterDomainContent(
                 state = state.enterDomainState,
+                onEvent = onEvent,
+            )
+
+            ConnectServerStep.SignInOrOut -> SignInOrOutContent(
+                state = state.signInOrOutState,
                 onEvent = onEvent,
             )
 
@@ -106,6 +113,7 @@ private val ConnectServerStep.secondaryAction: SecondaryAction?
             icon = Icons.Default.QrCodeScanner,
         )
 
+        ConnectServerStep.SignInOrOut,
         ConnectServerStep.ChooseUsername,
         ConnectServerStep.ConfirmPassword -> null
     }
@@ -144,6 +152,11 @@ private class ConnectServerUiStateProvider : PreviewParameterProvider<ConnectSer
                     publicUrl = "https://vault.example.org",
                     inviteOnly = true,
                 ),
+            ),
+            signInOrOutState = SignInOrOutState(
+                serverHost = "vault.example.org",
+                serverVersion = "0.4.0",
+                signupsOpen = false,
             ),
             chooseUsernameState = ChooseUsernameState(
                 usernameTextFieldState = TextFieldState("ada"),

@@ -18,6 +18,7 @@ import de.davis.keygo.core.ui.text.transformation.SchemeStrippingTransformation
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerEvent
+import de.davis.keygo.feature.account.presentation.setup.model.AccountChoice
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerStep
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiEvent
 import de.davis.keygo.feature.account.presentation.setup.model.PasswordCheck
@@ -161,7 +162,7 @@ class ConnectServerViewModelTest {
         vm.onEvent(ConnectServerUiEvent.Continue)
         runCurrent()
 
-        assertEquals(ConnectServerStep.ChooseUsername, vm.state.value.step)
+        assertEquals(ConnectServerStep.SignInOrOut, vm.state.value.step)
     }
 
     @Test
@@ -354,8 +355,58 @@ class ConnectServerViewModelTest {
         advanceUntilIdle()
         vm.onEvent(ConnectServerUiEvent.Continue)
         runCurrent()
+        assertEquals(ConnectServerStep.SignInOrOut, vm.state.value.step)
+        vm.onEvent(ConnectServerUiEvent.ChooseAccount(AccountChoice.CreateAccount))
+        runCurrent()
         assertEquals(ConnectServerStep.ChooseUsername, vm.state.value.step)
         return vm
+    }
+
+    private fun TestScope.signInOrOutStep(): ConnectServerViewModel {
+        val vm = viewModel()
+        type(vm, "vault.example.org")
+        advanceUntilIdle()
+        vm.onEvent(ConnectServerUiEvent.Continue)
+        runCurrent()
+        assertEquals(ConnectServerStep.SignInOrOut, vm.state.value.step)
+        return vm
+    }
+
+    @Test
+    fun the_account_step_cannot_be_skipped_with_continue() = runTest(dispatcher) {
+        val vm = signInOrOutStep()
+        assertEquals(false, vm.state.value.canContinue)
+
+        vm.onEvent(ConnectServerUiEvent.Continue)
+        runCurrent()
+        assertEquals(ConnectServerStep.SignInOrOut, vm.state.value.step)
+    }
+
+    @Test
+    fun choosing_to_create_an_account_moves_on_to_the_username() = runTest(dispatcher) {
+        val vm = signInOrOutStep()
+
+        vm.onEvent(ConnectServerUiEvent.ChooseAccount(AccountChoice.CreateAccount))
+        runCurrent()
+        assertEquals(ConnectServerStep.ChooseUsername, vm.state.value.step)
+    }
+
+    @Test
+    fun choosing_to_sign_in_does_not_start_registration() = runTest(dispatcher) {
+        val vm = signInOrOutStep()
+
+        vm.onEvent(ConnectServerUiEvent.ChooseAccount(AccountChoice.SignIn))
+        runCurrent()
+        assertEquals(ConnectServerStep.SignInOrOut, vm.state.value.step)
+    }
+
+    @Test
+    fun an_account_choice_off_its_step_is_ignored() = runTest(dispatcher) {
+        val vm = chooseUsernameStep()
+
+        vm.onEvent(ConnectServerUiEvent.ChooseAccount(AccountChoice.CreateAccount))
+        runCurrent()
+        assertEquals(ConnectServerStep.ChooseUsername, vm.state.value.step)
     }
 
     @Test

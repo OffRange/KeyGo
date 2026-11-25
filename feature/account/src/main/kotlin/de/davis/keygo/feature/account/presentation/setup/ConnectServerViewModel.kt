@@ -20,6 +20,7 @@ import de.davis.keygo.feature.account.domain.model.ServerAddress
 import de.davis.keygo.feature.account.presentation.setup.mapper.toFound
 import de.davis.keygo.feature.account.presentation.setup.mapper.toPasswordCheck
 import de.davis.keygo.feature.account.presentation.setup.mapper.toServerCheck
+import de.davis.keygo.feature.account.presentation.setup.model.AccountChoice
 import de.davis.keygo.feature.account.presentation.setup.model.ChooseUsernameState
 import de.davis.keygo.feature.account.presentation.setup.model.ConfirmPasswordState
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerEvent
@@ -29,6 +30,7 @@ import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiSt
 import de.davis.keygo.feature.account.presentation.setup.model.EnterDomainState
 import de.davis.keygo.feature.account.presentation.setup.model.PasswordCheck
 import de.davis.keygo.feature.account.presentation.setup.model.ServerCheck
+import de.davis.keygo.feature.account.presentation.setup.model.SignInOrOutState
 import de.davis.keygo.feature.account.presentation.setup.model.UsernameCheck
 import de.davis.keygo.rust.username.UsernameValidator
 import de.davis.keygo.rust.username.validateWithResult
@@ -170,6 +172,11 @@ internal class ConnectServerViewModel(
             typedScheme = scheme,
             check = check,
         ),
+        signInOrOutState = SignInOrOutState(
+            serverHost = fields.address,
+            serverVersion = (check as? ServerCheck.Found)?.version,
+            signupsOpen = !inviteRequired(check, inviteRequiredBy),
+        ),
         chooseUsernameState = ChooseUsernameState(
             usernameTextFieldState = usernameTextFieldState,
             inviteTextFieldState = inviteTextFieldState,
@@ -208,6 +215,9 @@ internal class ConnectServerViewModel(
         ConnectServerStep.EnterDomain ->
             check is ServerCheck.Found &&
                     check.serverUrl == address(fields.address, scheme).getOrNull()?.origin
+
+        // The step has no continue button: picking an option moves on.
+        ConnectServerStep.SignInOrOut -> false
 
         ConnectServerStep.ChooseUsername ->
             (rejection.usernameCheck(fields.username) ?: usernameCheck(fields.username)) is
@@ -265,6 +275,8 @@ internal class ConnectServerViewModel(
             ) continueStep()
 
             ConnectServerUiEvent.Retry -> retries.tryEmit(Unit)
+
+            is ConnectServerUiEvent.ChooseAccount -> chooseAccount(event.choice)
 
             is ConnectServerUiEvent.SchemeChanged -> _detectedScheme.update { event.scheme }
 
@@ -333,6 +345,15 @@ internal class ConnectServerViewModel(
         passwordTextFieldState.clearText()
         passwordTextFieldState.undoState.clearHistory()
         _passwordCheck.update { PasswordCheck.Idle }
+    }
+
+    private fun chooseAccount(choice: AccountChoice) {
+        if (_step.value != ConnectServerStep.SignInOrOut) return
+
+        when (choice) {
+            AccountChoice.CreateAccount -> nextStep()
+            AccountChoice.SignIn -> Unit
+        }
     }
 
     private fun nextStep() = _step.update { step ->

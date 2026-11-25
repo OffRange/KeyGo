@@ -67,6 +67,14 @@
     <string name="connect_server_open_signups">Offene Registrierung</string>
     <string name="connect_server_scan_invite">Hast du eine Einladung? Scannen</string>
 
+    <string name="sign_in_or_out_title">Hast du einen Account auf diesem Server?</string>
+    <string name="sign_in_or_out_keygo_server">KeyGo-Server</string>
+    <string name="sign_in">Anmelden</string>
+    <string name="sign_in_description">Ich nutze KeyGo mit diesem Server schon auf einem anderen Gerät.</string>
+    <string name="sign_in_coming_soon">Bald verfügbar</string>
+    <string name="create_account_description">Ich bin zum ersten Mal auf diesem Server.</string>
+    <string name="create_account_invite_description">Ich bin zum ersten Mal hier und habe eine Einladung von der Person, die den Server betreibt.</string>
+
     <string name="connect_server_retry">Erneut versuchen</string>
 
     <string name="confirm_server_use_another">Anderen Server nutzen</string>

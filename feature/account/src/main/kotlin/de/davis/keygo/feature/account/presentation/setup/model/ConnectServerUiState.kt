@@ -7,6 +7,7 @@ import de.davis.keygo.core.sync.domain.model.SyncError
 @Stable
 internal data class ConnectServerUiState(
     val enterDomainState: EnterDomainState,
+    val signInOrOutState: SignInOrOutState,
     val chooseUsernameState: ChooseUsernameState,
     val confirmPasswordState: ConfirmPasswordState,
     val step: ConnectServerStep = ConnectServerStep.EnterDomain,
@@ -20,6 +21,13 @@ internal data class EnterDomainState(
     val addressTextFieldState: TextFieldState,
     val typedScheme: String? = null,
     val check: ServerCheck = ServerCheck.Idle,
+)
+
+@Stable
+internal data class SignInOrOutState(
+    val serverHost: String,
+    val serverVersion: String?,
+    val signupsOpen: Boolean,
 )
 
 @Stable

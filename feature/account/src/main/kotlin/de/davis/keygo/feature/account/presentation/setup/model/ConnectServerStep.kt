@@ -4,6 +4,7 @@ internal enum class ConnectServerStep {
     EnterDomain,
 
     //ConfirmServer,
+    SignInOrOut,
     ChooseUsername,
     ConfirmPassword,
 }

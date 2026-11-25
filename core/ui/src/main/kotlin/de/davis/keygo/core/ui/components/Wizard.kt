@@ -7,8 +7,10 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.SeekableTransitionState
 import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -43,8 +45,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
@@ -134,7 +138,20 @@ fun <T> Wizard(
             )
         },
         bottomBar = {
-            AnimatedVisibility(visible = showContinueButton) {
+            // Outside a Row/Column the defaults are expandIn/shrinkOut, which grow from a corner.
+            val effectsSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
+            val spatialSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntSize>()
+            AnimatedVisibility(
+                visible = showContinueButton,
+                enter = fadeIn(effectsSpec) + expandVertically(
+                    animationSpec = spatialSpec,
+                    expandFrom = Alignment.Top,
+                ),
+                exit = fadeOut(effectsSpec) + shrinkVertically(
+                    animationSpec = spatialSpec,
+                    shrinkTowards = Alignment.Top,
+                ),
+            ) {
                 val buttonHeight = ButtonDefaults.MediumContainerHeight
                 Column(
                     modifier = Modifier
@@ -179,9 +196,12 @@ fun <T> Wizard(
 
             transition.AnimatedContent(
                 modifier = Modifier.weight(1f),
+                // No SizeTransform: the slot's height is fixed by weight(1f), but it changes while
+                // the bottom bar or IME animates. An animated size lags behind it, and Compose
+                // centres the undersized content in the slot, so the step visibly jumps.
                 transitionSpec = {
-                    fadeIn(animationSpec = tween(700)) togetherWith
-                            fadeOut(animationSpec = tween(700))
+                    (fadeIn(animationSpec = tween(700)) togetherWith
+                            fadeOut(animationSpec = tween(700))).using(null)
                 },
             ) { step ->
                 Surface(

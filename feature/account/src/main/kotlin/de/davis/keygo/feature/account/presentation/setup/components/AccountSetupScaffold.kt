@@ -23,7 +23,7 @@ import de.davis.keygo.core.ui.components.IconBadge
 @Composable
 internal fun AccountSetupScaffold(
     title: String,
-    description: String?,
+    description: String? = null,
     icon: ImageVector,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,

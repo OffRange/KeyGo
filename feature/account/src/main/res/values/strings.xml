@@ -68,6 +68,14 @@
     <string name="connect_server_open_signups">Open signups</string>
     <string name="connect_server_scan_invite">Have an invite? Scan it</string>
 
+    <string name="sign_in_or_out_title">Do you have an account on this server?</string>
+    <string name="sign_in_or_out_keygo_server">KeyGo server</string>
+    <string name="sign_in">Sign in</string>
+    <string name="sign_in_description">I already use KeyGo with this server on another device.</string>
+    <string name="sign_in_coming_soon">Coming soon</string>
+    <string name="create_account_description">This is my first time on this server.</string>
+    <string name="create_account_invite_description">This is my first time here. I have an invite from whoever runs the server.</string>
+
     <string name="connect_server_retry">Retry</string>
 
     <string name="confirm_server_use_another">Use another server</string>
