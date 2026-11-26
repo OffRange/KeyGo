@@ -50,7 +50,7 @@ internal fun SignInOrOutContent(
             index = 0,
             icon = Icons.AutoMirrored.Default.Login,
             title = stringResource(R.string.sign_in),
-            description = stringResource(R.string.sign_in_coming_soon),
+            description = stringResource(R.string.sign_in_description),
             onClick = { onEvent(ConnectServerUiEvent.ChooseAccount(AccountChoice.SignIn)) },
         )
 

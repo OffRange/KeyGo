@@ -40,6 +40,12 @@ class FakeSyncRepository : SyncRepository {
         invite: String?,
     ): Result<SyncAccount, SyncError> = error("register is not faked")
 
+    override suspend fun login(
+        serverUrl: String,
+        username: String,
+        password: String,
+    ): Result<SyncAccount, SyncError> = error("login is not faked")
+
     override suspend fun logout(): Result<Unit, SyncError> = Result.Success(Unit)
 
     override suspend fun devices(): Result<List<Device>, SyncError> {

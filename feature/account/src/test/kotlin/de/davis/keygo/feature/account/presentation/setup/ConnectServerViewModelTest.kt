@@ -23,10 +23,12 @@ import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerStep
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiEvent
 import de.davis.keygo.feature.account.presentation.setup.model.PasswordCheck
 import de.davis.keygo.feature.account.presentation.setup.model.ServerCheck
+import de.davis.keygo.feature.account.presentation.setup.model.SignInCheck
 import de.davis.keygo.feature.account.presentation.setup.model.UsernameCheck
 import de.davis.keygo.rust.FakeUsernameValidator
 import de.davis.keygo.rust.username.UsernameError
 import de.davisalessandro.keygo.rust.UsernameException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -45,12 +47,18 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ConnectServerViewModelTest {
 
     private class FakeSyncRepository : SyncRepository {
+        data class Login(val serverUrl: String, val username: String, val password: String)
+
         var result: Result<ServerInfo, SyncError> = Result.Success(info)
+
+        /** When set, register and login suspend until it completes. */
+        var gate: CompletableDeferred<Unit>? = null
         val checked = mutableListOf<String>()
 
         override suspend fun checkServer(serverUrl: String): Result<ServerInfo, SyncError> {
@@ -66,12 +74,27 @@ class ConnectServerViewModelTest {
             invite: String?,
         ): Result<SyncAccount, SyncError> {
             registered += serverUrl
+            gate?.await()
             return registerFailure?.let { Result.Failure(it) }
                 ?: Result.Success(SyncAccount(userId, username, UUID.randomUUID()))
         }
 
         var registerFailure: SyncError? = null
         val registered = mutableListOf<String>()
+
+        override suspend fun login(
+            serverUrl: String,
+            username: String,
+            password: String,
+        ): Result<SyncAccount, SyncError> {
+            loggedIn += Login(serverUrl, username, password)
+            gate?.await()
+            return loginFailure?.let { Result.Failure(it) }
+                ?: Result.Success(SyncAccount(UUID.randomUUID(), username, UUID.randomUUID()))
+        }
+
+        var loginFailure: SyncError? = null
+        val loggedIn = mutableListOf<Login>()
 
         override suspend fun logout(): Result<Unit, SyncError> = Result.Success(Unit)
 
@@ -392,12 +415,125 @@ class ConnectServerViewModelTest {
     }
 
     @Test
-    fun choosing_to_sign_in_does_not_start_registration() = runTest(dispatcher) {
+    fun choosing_to_sign_in_moves_on_to_the_sign_in_step() = runTest(dispatcher) {
         val vm = signInOrOutStep()
 
         vm.onEvent(ConnectServerUiEvent.ChooseAccount(AccountChoice.SignIn))
         runCurrent()
+
+        assertEquals(ConnectServerStep.SignIn, vm.state.value.step)
+        assertEquals(
+            listOf(
+                ConnectServerStep.EnterDomain,
+                ConnectServerStep.SignInOrOut,
+                ConnectServerStep.SignIn,
+            ),
+            vm.state.value.steps,
+        )
+    }
+
+    @Test
+    fun back_from_sign_in_returns_to_the_choice_and_keeps_its_path() = runTest(dispatcher) {
+        val vm = signInStep()
+
+        vm.onEvent(ConnectServerUiEvent.Back)
+        runCurrent()
+
         assertEquals(ConnectServerStep.SignInOrOut, vm.state.value.step)
+        assertEquals(3, vm.state.value.steps.size)
+    }
+
+    @Test
+    fun switching_to_create_account_after_sign_in_takes_the_longer_path() = runTest(dispatcher) {
+        val vm = signInStep()
+        vm.onEvent(ConnectServerUiEvent.Back)
+        runCurrent()
+
+        vm.onEvent(ConnectServerUiEvent.ChooseAccount(AccountChoice.CreateAccount))
+        runCurrent()
+
+        assertEquals(ConnectServerStep.ChooseUsername, vm.state.value.step)
+        assertEquals(4, vm.state.value.steps.size)
+    }
+
+    @Test
+    fun sign_in_continue_needs_a_username_and_a_password() = runTest(dispatcher) {
+        val vm = signInStep()
+        assertEquals(false, vm.state.value.canContinue)
+
+        typeSignInUsername(vm, "ada")
+        assertEquals(false, vm.state.value.canContinue)
+
+        typeSignInPassword(vm, "secret")
+        assertEquals(true, vm.state.value.canContinue)
+    }
+
+    @Test
+    fun signing_in_logs_in_on_the_checked_origin() = runTest(dispatcher) {
+        val vm = signInStep()
+        typeSignInUsername(vm, "ada")
+        typeSignInPassword(vm, "secret")
+
+        vm.onEvent(ConnectServerUiEvent.Continue)
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(FakeSyncRepository.Login("https://vault.example.org", "ada", "secret")),
+            repository.loggedIn,
+        )
+        assertEquals(emptyList(), repository.registered)
+        assertEquals(ConnectServerEvent.SignedIn, vm.event.first())
+        assertEquals("", vm.state.value.signInState.passwordTextFieldState.text.toString())
+    }
+
+    @Test
+    fun a_rejected_sign_in_stays_on_its_step_with_the_error() = runTest(dispatcher) {
+        repository.loginFailure = SyncError.InvalidCredentials
+        val vm = signInStep()
+        typeSignInUsername(vm, "ada")
+        typeSignInPassword(vm, "wrong")
+
+        vm.onEvent(ConnectServerUiEvent.Continue)
+        advanceUntilIdle()
+
+        assertEquals(ConnectServerStep.SignIn, vm.state.value.step)
+        assertEquals(
+            SignInCheck.Failed(SyncError.InvalidCredentials),
+            vm.state.value.signInState.check,
+        )
+        assertEquals(true, vm.state.value.canContinue)
+    }
+
+    @Test
+    fun locking_the_session_clears_the_sign_in_password() = runTest(dispatcher) {
+        seedAccount("secret")
+        val vm = signInStep()
+        typeSignInPassword(vm, "secret")
+
+        session.endSession()
+        runCurrent()
+
+        assertEquals("", vm.state.value.signInState.passwordTextFieldState.text.toString())
+    }
+
+    private fun TestScope.signInStep(): ConnectServerViewModel {
+        val vm = signInOrOutStep()
+        vm.onEvent(ConnectServerUiEvent.ChooseAccount(AccountChoice.SignIn))
+        runCurrent()
+        assertEquals(ConnectServerStep.SignIn, vm.state.value.step)
+        return vm
+    }
+
+    private fun TestScope.typeSignInUsername(vm: ConnectServerViewModel, text: String) {
+        vm.state.value.signInState.usernameTextFieldState.setTextAndPlaceCursorAtEnd(text)
+        Snapshot.sendApplyNotifications()
+        runCurrent()
+    }
+
+    private fun TestScope.typeSignInPassword(vm: ConnectServerViewModel, text: String) {
+        vm.state.value.signInState.passwordTextFieldState.setTextAndPlaceCursorAtEnd(text)
+        Snapshot.sendApplyNotifications()
+        runCurrent()
     }
 
     @Test
@@ -704,4 +840,50 @@ class ConnectServerViewModelTest {
             allowSignups = false,
         )
     }
+
+    @Test
+    fun back_is_ignored_while_signing_in() = runTest(dispatcher) {
+        repository.gate = CompletableDeferred()
+        val vm = signInStep()
+        typeSignInUsername(vm, "ada")
+        typeSignInPassword(vm, "secret")
+        vm.onEvent(ConnectServerUiEvent.Continue)
+        runCurrent()
+        assertEquals(SignInCheck.Checking, vm.state.value.signInState.check)
+
+        vm.onEvent(ConnectServerUiEvent.Back)
+        runCurrent()
+        assertEquals(ConnectServerStep.SignIn, vm.state.value.step)
+
+        repository.gate?.complete(Unit)
+        runCurrent()
+        vm.onEvent(ConnectServerUiEvent.Back)
+        runCurrent()
+        assertEquals(ConnectServerStep.SignInOrOut, vm.state.value.step)
+    }
+
+    @Test
+    fun a_late_register_rejection_cannot_strand_the_wizard_on_the_sign_in_path() =
+        runTest(dispatcher) {
+            repository.gate = CompletableDeferred()
+            repository.registerFailure = SyncError.UsernameTaken
+            val vm = confirmPasswordStep()
+            typePassword(vm, "secret")
+            vm.onEvent(ConnectServerUiEvent.Continue)
+            advanceUntilIdle()
+            assertEquals(listOf("https://vault.example.org"), repository.registered)
+
+            // Back to the choice and over to sign in, while the register still runs.
+            vm.onEvent(ConnectServerUiEvent.Back)
+            vm.onEvent(ConnectServerUiEvent.Back)
+            vm.onEvent(ConnectServerUiEvent.ChooseAccount(AccountChoice.SignIn))
+            runCurrent()
+            assertEquals(ConnectServerStep.ConfirmPassword, vm.state.value.step)
+
+            repository.gate?.complete(Unit)
+            runCurrent()
+
+            assertEquals(ConnectServerStep.ChooseUsername, vm.state.value.step)
+            assertTrue(vm.state.value.step in vm.state.value.steps)
+        }
 }

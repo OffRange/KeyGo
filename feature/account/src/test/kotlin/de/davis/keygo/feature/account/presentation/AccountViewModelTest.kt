@@ -220,6 +220,12 @@ class AccountViewModelTest {
             invite: String?,
         ): Result<SyncAccount, SyncError> = error("not used")
 
+        override suspend fun login(
+            serverUrl: String,
+            username: String,
+            password: String,
+        ): Result<SyncAccount, SyncError> = error("not used")
+
         var devices: Result<List<Device>, SyncError> = Result.Success(emptyList())
         var devicesGate: CompletableDeferred<Unit>? = null
 

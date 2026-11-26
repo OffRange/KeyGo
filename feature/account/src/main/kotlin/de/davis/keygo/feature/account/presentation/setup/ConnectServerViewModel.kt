@@ -30,8 +30,11 @@ import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiSt
 import de.davis.keygo.feature.account.presentation.setup.model.EnterDomainState
 import de.davis.keygo.feature.account.presentation.setup.model.PasswordCheck
 import de.davis.keygo.feature.account.presentation.setup.model.ServerCheck
+import de.davis.keygo.feature.account.presentation.setup.model.SignInCheck
 import de.davis.keygo.feature.account.presentation.setup.model.SignInOrOutState
+import de.davis.keygo.feature.account.presentation.setup.model.SignInState
 import de.davis.keygo.feature.account.presentation.setup.model.UsernameCheck
+import de.davis.keygo.feature.account.presentation.setup.model.stepsFor
 import de.davis.keygo.rust.username.UsernameValidator
 import de.davis.keygo.rust.username.validateWithResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -66,11 +69,13 @@ internal class ConnectServerViewModel(
     private val usernameTextFieldState = TextFieldState()
     private val inviteTextFieldState = TextFieldState()
     private val passwordTextFieldState = TextFieldState()
+    private val signInUsernameTextFieldState = TextFieldState()
+    private val signInPasswordTextFieldState = TextFieldState()
 
     private val _detectedScheme = MutableStateFlow<String?>(null)
 
     private val retries = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    private val _step = MutableStateFlow(ConnectServerStep.EnterDomain)
+    private val _route = MutableStateFlow(Route())
 
     private fun address(text: String, scheme: String?) =
         ServerAddress.parse(if (scheme == null || "://" in text) text else scheme + text)
@@ -119,6 +124,9 @@ internal class ConnectServerViewModel(
     // --- Password ---
     private val _passwordCheck = MutableStateFlow<PasswordCheck>(PasswordCheck.Idle)
 
+    // --- Sign in ---
+    private val _signInCheck = MutableStateFlow<SignInCheck>(SignInCheck.Idle)
+
     // --- Rejected by the server on register ---
     private val _rejection = MutableStateFlow<Rejection?>(null)
     private val _inviteRequiredBy = MutableStateFlow<String?>(null)
@@ -128,6 +136,8 @@ internal class ConnectServerViewModel(
         username = usernameTextFieldState.text.toString(),
         invite = inviteTextFieldState.text.toString(),
         passwordEntered = passwordTextFieldState.text.isNotEmpty(),
+        signInUsernameEntered = signInUsernameTextFieldState.text.isNotBlank(),
+        signInPasswordEntered = signInPasswordTextFieldState.text.isNotEmpty(),
     )
 
     private val _fields = snapshotFlow(::fields)
@@ -137,7 +147,8 @@ internal class ConnectServerViewModel(
         _detectedScheme,
         _usernameCheck,
         _passwordCheck,
-        _step,
+        _signInCheck,
+        _route,
         _fields,
         _rejection,
         _inviteRequiredBy,
@@ -150,7 +161,8 @@ internal class ConnectServerViewModel(
             scheme = null,
             usernameCheck = UsernameCheck.Idle,
             passwordCheck = PasswordCheck.Idle,
-            step = ConnectServerStep.EnterDomain,
+            signInCheck = SignInCheck.Idle,
+            route = Route(),
             fields = fields(),
             rejection = null,
             inviteRequiredBy = null,
@@ -162,7 +174,8 @@ internal class ConnectServerViewModel(
         scheme: String?,
         usernameCheck: UsernameCheck,
         passwordCheck: PasswordCheck,
-        step: ConnectServerStep,
+        signInCheck: SignInCheck,
+        route: Route,
         fields: Fields,
         rejection: Rejection?,
         inviteRequiredBy: String?,
@@ -191,11 +204,19 @@ internal class ConnectServerViewModel(
             passwordTextFieldState = passwordTextFieldState,
             check = passwordCheck,
         ),
-        step = step,
+        signInState = SignInState(
+            usernameTextFieldState = signInUsernameTextFieldState,
+            passwordTextFieldState = signInPasswordTextFieldState,
+            serverHost = fields.address,
+            check = signInCheck,
+        ),
+        step = route.step,
+        steps = route.steps,
         canContinue = canContinue(
-            step,
+            route.step,
             check,
             passwordCheck,
+            signInCheck,
             scheme,
             fields,
             rejection,
@@ -207,26 +228,28 @@ internal class ConnectServerViewModel(
         step: ConnectServerStep,
         check: ServerCheck,
         passwordCheck: PasswordCheck,
+        signInCheck: SignInCheck,
         scheme: String?,
         fields: Fields,
         rejection: Rejection?,
         inviteRequiredBy: String?,
     ): Boolean = when (step) {
-        ConnectServerStep.EnterDomain ->
-            check is ServerCheck.Found &&
-                    check.serverUrl == address(fields.address, scheme).getOrNull()?.origin
+        ConnectServerStep.EnterDomain -> check is ServerCheck.Found &&
+                check.serverUrl == address(fields.address, scheme).getOrNull()?.origin
 
         // The step has no continue button: picking an option moves on.
         ConnectServerStep.SignInOrOut -> false
 
         ConnectServerStep.ChooseUsername ->
-            (rejection.usernameCheck(fields.username) ?: usernameCheck(fields.username)) is
-                    UsernameCheck.Valid &&
+            (rejection.usernameCheck(fields.username)
+                ?: usernameCheck(fields.username)) is UsernameCheck.Valid &&
                     (!inviteRequired(check, inviteRequiredBy) || fields.invite.isNotBlank()) &&
                     inviteError(check, fields.invite, rejection, inviteRequiredBy) == null
 
-        ConnectServerStep.ConfirmPassword ->
-            fields.passwordEntered && passwordCheck != PasswordCheck.Checking
+        ConnectServerStep.ConfirmPassword -> fields.passwordEntered && passwordCheck != PasswordCheck.Checking
+
+        ConnectServerStep.SignIn -> fields.signInUsernameEntered && fields.signInPasswordEntered &&
+                signInCheck != SignInCheck.Checking
     }
 
     private val ServerCheck.inviteRequired: Boolean
@@ -260,13 +283,14 @@ internal class ConnectServerViewModel(
     fun onEvent(event: ConnectServerUiEvent) {
         when (event) {
             ConnectServerUiEvent.Back,
-            ConnectServerUiEvent.UseAnotherServer -> previousStep()
+            ConnectServerUiEvent.UseAnotherServer -> if (!requestInFlight()) previousStep()
 
             ConnectServerUiEvent.Continue -> if (
                 canContinue(
-                    step = _step.value,
+                    step = _route.value.step,
                     check = _check.value,
                     passwordCheck = _passwordCheck.value,
+                    signInCheck = _signInCheck.value,
                     scheme = _detectedScheme.value,
                     fields = fields(),
                     rejection = _rejection.value,
@@ -290,9 +314,11 @@ internal class ConnectServerViewModel(
         }
     }
 
-    private fun continueStep() =
-        if (_step.value == ConnectServerStep.ConfirmPassword) confirmPassword()
-        else nextStep()
+    private fun continueStep() = when (_route.value.step) {
+        ConnectServerStep.ConfirmPassword -> confirmPassword()
+        ConnectServerStep.SignIn -> signIn()
+        else -> nextStep()
+    }
 
     private fun confirmPassword() {
         val server = _check.value as? ServerCheck.Found ?: return
@@ -312,6 +338,22 @@ internal class ConnectServerViewModel(
                     _event.send(ConnectServerEvent.AccountCreated)
                 }
                 .onFailure { onRegisterFailed(it, server.serverUrl, username, invite) }
+        }
+    }
+
+    private fun signIn() {
+        val server = _check.value as? ServerCheck.Found ?: return
+
+        _signInCheck.update { SignInCheck.Checking }
+        viewModelScope.launch {
+            syncRepository.login(
+                serverUrl = server.serverUrl,
+                username = signInUsernameTextFieldState.text.toString(),
+                password = signInPasswordTextFieldState.text.toString(),
+            ).onSuccess {
+                clearPassword()
+                _event.send(ConnectServerEvent.SignedIn)
+            }.onFailure { error -> _signInCheck.update { SignInCheck.Failed(error) } }
         }
     }
 
@@ -337,32 +379,39 @@ internal class ConnectServerViewModel(
     private fun backToUsername(rejection: Rejection?) {
         _rejection.update { rejection }
         _passwordCheck.update { PasswordCheck.Idle }
-        _step.update { ConnectServerStep.ChooseUsername }
+        _route.update { it.copy(step = ConnectServerStep.ChooseUsername) }
+    }
+
+    private fun clearPassword() {
+        passwordTextFieldState.clearSecret()
+        signInPasswordTextFieldState.clearSecret()
+        _passwordCheck.update { PasswordCheck.Idle }
+        _signInCheck.update { SignInCheck.Idle }
     }
 
     @OptIn(ExperimentalFoundationApi::class)
-    private fun clearPassword() {
-        passwordTextFieldState.clearText()
-        passwordTextFieldState.undoState.clearHistory()
-        _passwordCheck.update { PasswordCheck.Idle }
+    private fun TextFieldState.clearSecret() {
+        clearText()
+        undoState.clearHistory()
     }
 
     private fun chooseAccount(choice: AccountChoice) {
-        if (_step.value != ConnectServerStep.SignInOrOut) return
+        if (_route.value.step != ConnectServerStep.SignInOrOut) return
 
-        when (choice) {
-            AccountChoice.CreateAccount -> nextStep()
-            AccountChoice.SignIn -> Unit
-        }
+        _route.update { it.copy(choice = choice) }
+        nextStep()
     }
 
-    private fun nextStep() = _step.update { step ->
-        ConnectServerStep.entries.getOrNull(step.ordinal + 1) ?: step
-    }
+    /**
+     * A register or login is running. Its result moves the wizard (back to the username, or off
+     * the screen), so the user must not leave the step, or switch paths, until it lands.
+     */
+    private fun requestInFlight() =
+        _passwordCheck.value == PasswordCheck.Checking || _signInCheck.value == SignInCheck.Checking
 
-    private fun previousStep() = _step.update { step ->
-        ConnectServerStep.entries.getOrNull(step.ordinal - 1) ?: step
-    }
+    private fun nextStep() = _route.update { it.moveBy(1) }
+
+    private fun previousStep() = _route.update { it.moveBy(-1) }
 
     private suspend fun check(address: ServerAddress): ServerCheck =
         syncRepository.checkServer(address.origin).fold(
@@ -375,11 +424,27 @@ internal class ConnectServerViewModel(
         data class Invite(val invite: String) : Rejection
     }
 
+    /**
+     * Where the wizard stands. The [choice] made on [ConnectServerStep.SignInOrOut] picks the path;
+     * it is kept when the user steps back, so the step indicator does not jump while they do.
+     */
+    private data class Route(
+        val step: ConnectServerStep = ConnectServerStep.EnterDomain,
+        val choice: AccountChoice? = null,
+    ) {
+        val steps: List<ConnectServerStep> = stepsFor(choice)
+
+        fun moveBy(offset: Int): Route =
+            copy(step = steps.getOrNull(steps.indexOf(step) + offset) ?: step)
+    }
+
     private data class Fields(
         val address: String,
         val username: String,
         val invite: String,
         val passwordEntered: Boolean,
+        val signInUsernameEntered: Boolean,
+        val signInPasswordEntered: Boolean,
     )
 
     private companion object {

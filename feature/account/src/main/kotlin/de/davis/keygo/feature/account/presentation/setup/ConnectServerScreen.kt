@@ -15,7 +15,9 @@ internal fun ConnectServerScreen(navigateUp: () -> Unit) {
 
     ObserveAsEvents(flow = viewModel.event) {
         when (it) {
-            ConnectServerEvent.AccountCreated -> navigateUp()
+            ConnectServerEvent.AccountCreated,
+            ConnectServerEvent.SignedIn -> navigateUp()
+
             ConnectServerEvent.OpenInviteScanner -> Unit // TODO
         }
     }

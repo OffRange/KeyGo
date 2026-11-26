@@ -1,20 +1,13 @@
 package de.davis.keygo.feature.account.presentation.setup
 
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.input.TextObfuscationMode
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -23,11 +16,11 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import de.davis.keygo.core.sync.domain.model.NetworkFailure
 import de.davis.keygo.core.sync.domain.model.SyncError
 import de.davis.keygo.core.sync.presentation.messageRes
-import de.davis.keygo.core.ui.components.VisibilityButton
 import de.davis.keygo.core.ui.model.UiFieldError
 import de.davis.keygo.core.ui.model.error
 import de.davis.keygo.feature.account.R
 import de.davis.keygo.feature.account.presentation.setup.components.AccountSetupScaffold
+import de.davis.keygo.feature.account.presentation.setup.components.SetupPasswordField
 import de.davis.keygo.feature.account.presentation.setup.model.ConfirmPasswordState
 import de.davis.keygo.feature.account.presentation.setup.model.PasswordCheck
 
@@ -40,13 +33,9 @@ internal fun ConfirmPasswordContent(
         description = stringResource(R.string.confirm_account_password_description),
         icon = Icons.Default.Password,
     ) {
-        var passwordHidden by rememberSaveable { mutableStateOf(true) }
-        OutlinedSecureTextField(
+        SetupPasswordField(
             state = state.passwordTextFieldState,
-            modifier = Modifier.fillMaxWidth(),
             label = { Text(stringResource(R.string.confirm_account_password_label)) },
-            textObfuscationMode = if (passwordHidden) TextObfuscationMode.RevealLastTyped
-            else TextObfuscationMode.Visible,
             enabled = state.check != PasswordCheck.Checking,
             isError = state.check != PasswordCheck.Idle && state.check != PasswordCheck.Checking,
             supportingText = when (val check = state.check) {
@@ -65,12 +54,6 @@ internal fun ConfirmPasswordContent(
                 PasswordCheck.Idle,
                 PasswordCheck.Checking,
                     -> null
-            },
-            trailingIcon = {
-                VisibilityButton(
-                    isHidden = passwordHidden,
-                    onClick = { passwordHidden = !passwordHidden },
-                )
             },
         )
     }

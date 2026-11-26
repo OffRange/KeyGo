@@ -72,7 +72,6 @@
     <string name="sign_in_or_out_keygo_server">KeyGo server</string>
     <string name="sign_in">Sign in</string>
     <string name="sign_in_description">I already use KeyGo with this server on another device.</string>
-    <string name="sign_in_coming_soon">Coming soon</string>
     <string name="create_account_description">This is my first time on this server.</string>
     <string name="create_account_invite_description">This is my first time here. I have an invite from whoever runs the server.</string>
 
@@ -100,5 +99,8 @@
     <string name="confirm_account_password_title">Confirm your password</string>
     <string name="confirm_account_password_description">Your account uses the password you already unlock KeyGo with. Unlocking stays the same.</string>
     <string name="confirm_account_password_label">KeyGo password</string>
+    <string name="sign_in_screen_description">Use the username and password of your account on %1$s.</string>
+    <string name="sign_in_password_label">Password</string>
+
     <string name="confirm_account_password_failed">Couldn\'t check your password. Try again.</string>
 </resources>

@@ -19,6 +19,12 @@ interface SyncRepository {
         invite: String?,
     ): Result<SyncAccount, SyncError>
 
+    suspend fun login(
+        serverUrl: String,
+        username: String,
+        password: String,
+    ): Result<SyncAccount, SyncError>
+
     /** Ends the session, also locally if the server is unreachable. Already signed out is a success. */
     suspend fun logout(): Result<Unit, SyncError>
 

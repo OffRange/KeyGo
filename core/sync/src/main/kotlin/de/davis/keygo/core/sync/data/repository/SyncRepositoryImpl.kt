@@ -59,6 +59,20 @@ internal class SyncRepositoryImpl(
         )
     }.mapSuccess { it.toDomain() }
 
+    @OptIn(RawArkSession::class)
+    override suspend fun login(
+        serverUrl: String,
+        username: String,
+        password: String,
+    ): Result<SyncAccount, SyncError> = catching {
+        clientFor(serverUrl).login(
+            arkSession = session.arkSession(),
+            username = username,
+            password = password,
+            device = deviceDetails(),
+        )
+    }.mapSuccess { it.toDomain() }
+
     override suspend fun logout(): Result<Unit, SyncError> =
         when (val result = withSessionClient { client, _ -> client.logout() }) {
             is Result.Failure if result.error == SyncError.SignedOut(reason = null) ->

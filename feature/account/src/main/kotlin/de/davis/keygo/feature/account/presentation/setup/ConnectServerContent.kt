@@ -27,6 +27,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import de.davis.keygo.core.ui.components.Wizard
 import de.davis.keygo.feature.account.R
+import de.davis.keygo.feature.account.presentation.setup.model.AccountChoice
 import de.davis.keygo.feature.account.presentation.setup.model.ChooseUsernameState
 import de.davis.keygo.feature.account.presentation.setup.model.ConfirmPasswordState
 import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerStep
@@ -35,7 +36,10 @@ import de.davis.keygo.feature.account.presentation.setup.model.ConnectServerUiSt
 import de.davis.keygo.feature.account.presentation.setup.model.EnterDomainState
 import de.davis.keygo.feature.account.presentation.setup.model.PasswordCheck
 import de.davis.keygo.feature.account.presentation.setup.model.ServerCheck
+import de.davis.keygo.feature.account.presentation.setup.model.SignInCheck
 import de.davis.keygo.feature.account.presentation.setup.model.SignInOrOutState
+import de.davis.keygo.feature.account.presentation.setup.model.SignInState
+import de.davis.keygo.feature.account.presentation.setup.model.stepsFor
 import de.davis.keygo.feature.account.presentation.setup.transformation.UsernameInputTransformation
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -85,17 +89,26 @@ internal fun ConnectServerContent(
             ConnectServerStep.ConfirmPassword -> ConfirmPasswordContent(
                 state = state.confirmPasswordState,
             )
+
+            ConnectServerStep.SignIn -> SignInContent(
+                state = state.signInState,
+                usernameInputTransformation = usernameInputTransformation,
+            )
         }
     }
 }
 
 private val ConnectServerUiState.isChecking: Boolean
-    get() = step == ConnectServerStep.ConfirmPassword &&
-            confirmPasswordState.check == PasswordCheck.Checking
+    get() = when (step) {
+        ConnectServerStep.ConfirmPassword -> confirmPasswordState.check == PasswordCheck.Checking
+        ConnectServerStep.SignIn -> signInState.check == SignInCheck.Checking
+        else -> false
+    }
 
 private val ConnectServerStep.continueLabel: Int
     get() = when (this) {
         ConnectServerStep.ConfirmPassword -> R.string.create_account
+        ConnectServerStep.SignIn -> R.string.sign_in
         else -> R.string.continue_step
     }
 
@@ -115,7 +128,8 @@ private val ConnectServerStep.secondaryAction: SecondaryAction?
 
         ConnectServerStep.SignInOrOut,
         ConnectServerStep.ChooseUsername,
-        ConnectServerStep.ConfirmPassword -> null
+        ConnectServerStep.ConfirmPassword,
+        ConnectServerStep.SignIn -> null
     }
 
 @Composable
@@ -169,7 +183,15 @@ private class ConnectServerUiStateProvider : PreviewParameterProvider<ConnectSer
             confirmPasswordState = ConfirmPasswordState(
                 passwordTextFieldState = TextFieldState(),
             ),
+            signInState = SignInState(
+                usernameTextFieldState = TextFieldState("ada"),
+                passwordTextFieldState = TextFieldState(),
+                serverHost = "vault.example.org",
+            ),
             step = it,
+            steps = stepsFor(
+                choice = if (it == ConnectServerStep.SignIn) AccountChoice.SignIn else null,
+            ),
         )
     }
 }

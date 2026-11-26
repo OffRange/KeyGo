@@ -71,7 +71,6 @@
     <string name="sign_in_or_out_keygo_server">KeyGo-Server</string>
     <string name="sign_in">Anmelden</string>
     <string name="sign_in_description">Ich nutze KeyGo mit diesem Server schon auf einem anderen Gerät.</string>
-    <string name="sign_in_coming_soon">Bald verfügbar</string>
     <string name="create_account_description">Ich bin zum ersten Mal auf diesem Server.</string>
     <string name="create_account_invite_description">Ich bin zum ersten Mal hier und habe eine Einladung von der Person, die den Server betreibt.</string>
 
@@ -98,5 +97,8 @@
     <string name="confirm_account_password_title">Bestätige dein Passwort</string>
     <string name="confirm_account_password_description">Dein Konto nutzt das Passwort, mit dem du KeyGo bereits entsperrst. Am Entsperren ändert sich nichts.</string>
     <string name="confirm_account_password_label">KeyGo-Passwort</string>
+    <string name="sign_in_screen_description">Nutze den Benutzernamen und das Passwort deines Accounts auf %1$s.</string>
+    <string name="sign_in_password_label">Passwort</string>
+
     <string name="confirm_account_password_failed">Dein Passwort konnte nicht geprüft werden. Versuch es noch einmal.</string>
 </resources>

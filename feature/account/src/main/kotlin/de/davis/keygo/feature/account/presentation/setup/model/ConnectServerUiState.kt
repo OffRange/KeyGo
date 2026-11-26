@@ -10,11 +10,11 @@ internal data class ConnectServerUiState(
     val signInOrOutState: SignInOrOutState,
     val chooseUsernameState: ChooseUsernameState,
     val confirmPasswordState: ConfirmPasswordState,
+    val signInState: SignInState,
     val step: ConnectServerStep = ConnectServerStep.EnterDomain,
+    val steps: List<ConnectServerStep> = stepsFor(choice = null),
     val canContinue: Boolean = false,
-) {
-    val steps: List<ConnectServerStep> = ConnectServerStep.entries
-}
+)
 
 @Stable
 internal data class EnterDomainState(
@@ -46,4 +46,12 @@ internal data class ChooseUsernameState(
 internal data class ConfirmPasswordState(
     val passwordTextFieldState: TextFieldState,
     val check: PasswordCheck = PasswordCheck.Idle,
+)
+
+@Stable
+internal data class SignInState(
+    val usernameTextFieldState: TextFieldState,
+    val passwordTextFieldState: TextFieldState,
+    val serverHost: String,
+    val check: SignInCheck = SignInCheck.Idle,
 )
