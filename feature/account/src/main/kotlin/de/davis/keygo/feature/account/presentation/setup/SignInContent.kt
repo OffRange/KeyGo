@@ -80,7 +80,7 @@ internal fun SignInContent(
             supportingText = error?.let {
                 { Text(text = stringResource(it.messageRes)) }
             },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            imeAction = ImeAction.Done,
         )
     }
 }

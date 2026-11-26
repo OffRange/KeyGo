@@ -12,6 +12,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import de.davis.keygo.core.ui.components.VisibilityButton
 
 @Composable
@@ -22,7 +24,7 @@ internal fun SetupPasswordField(
     isError: Boolean,
     supportingText: (@Composable () -> Unit)?,
     modifier: Modifier = Modifier,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    imeAction: ImeAction = ImeAction.Unspecified,
 ) {
     var passwordHidden by rememberSaveable { mutableStateOf(true) }
     OutlinedSecureTextField(
@@ -40,6 +42,12 @@ internal fun SetupPasswordField(
                 onClick = { passwordHidden = !passwordHidden },
             )
         },
-        keyboardOptions = keyboardOptions,
+        // Built here rather than taken from callers: an explicit KeyboardOptions replaces
+        // Material's secure defaults, which would let the keyboard learn the password.
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Password,
+            autoCorrectEnabled = false,
+            imeAction = imeAction,
+        ),
     )
 }
