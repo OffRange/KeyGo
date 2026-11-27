@@ -9,8 +9,8 @@ use keygo_api::Endpoint;
 use keygo_api::auth::{Session, login, register, step_up};
 use keygo_api::domain::{Device, DeviceClaim, DeviceInfo, KeyBundle, Username};
 use keygo_api::endpoints::{
-    DeleteDevice, ListDevices, LoginFinish, LoginStart, Logout, Meta, RegisterFinish,
-    RegisterStart, StepUpFinish, StepUpStart,
+    DeleteAccount, DeleteDevice, ListDevices, LoginFinish, LoginStart, Logout, Meta,
+    RegisterFinish, RegisterStart, StepUpFinish, StepUpStart,
 };
 use keygo_api::meta::ServerInfo;
 use keygo_core::{CryptoError, DeviceId, UserId};
@@ -339,6 +339,14 @@ impl SyncClient {
             (Err(_), Err(error)) => Err(store_failure(error)),
             (sent, _) => sent,
         }
+    }
+
+    /// Deletes the account. The client must have a fresh session in order to delete the account.
+    /// This will delete all account related data, such as vaults, keys, sessions, devices, etc.
+    /// **A user will _not_ be able to sign in again with this account. All data are lost
+    /// permanently and can _not_ be retrieved.**
+    pub async fn delete_account(&self) -> SyncResult<()> {
+        self.call(&DeleteAccount, &()).await
     }
 }
 

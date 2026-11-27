@@ -44,6 +44,7 @@ endpoints! {
     Token: Post "/api/v1/auth/token", Proof, auth::token::TokenRequest => auth::Session;
     Logout: Post "/api/v1/auth/logout", AccessToken, () => ();
     ListDevices: Get "/api/v1/devices", AccessToken, () => devices::Devices;
+    DeleteAccount: Delete "/api/v1/account", AccessToken, () => ();
 }
 
 pub struct DeleteDevice {
