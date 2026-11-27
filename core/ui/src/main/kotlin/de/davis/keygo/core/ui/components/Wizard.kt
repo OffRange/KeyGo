@@ -71,6 +71,8 @@ private val WizardHorizontalPadding = 24.dp
  * sits above the continue button, so the main action stays full width and closest to the thumb.
  *
  * @param currentStep must be an element of [steps].
+ * @param backEnabled false while the step is busy: a back gesture is then taken without moving, so
+ * the previous step is never previewed while [onBack] would be refused.
  */
 @Composable
 fun <T> Wizard(
@@ -83,6 +85,7 @@ fun <T> Wizard(
     modifier: Modifier = Modifier,
     showContinueButton: Boolean = true,
     canContinue: Boolean = true,
+    backEnabled: Boolean = true,
     secondaryAction: (@Composable () -> Unit)? = null,
     continueButtonContent: @Composable RowScope.() -> Unit,
     content: @Composable (T) -> Unit,
@@ -99,6 +102,12 @@ fun <T> Wizard(
     }
 
     PredictiveBackHandler(enabled = currentIndex > 0) { progress ->
+        // A busy step takes the gesture without moving: turning the handler off would hand back
+        // to the nav host and close the whole wizard instead.
+        if (!backEnabled) {
+            progress.collect {}
+            return@PredictiveBackHandler
+        }
         val previousStep = steps[currentIndex - 1]
         try {
             progress.collect { backEvent ->

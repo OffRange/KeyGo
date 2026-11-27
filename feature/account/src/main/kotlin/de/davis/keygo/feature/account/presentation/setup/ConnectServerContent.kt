@@ -59,6 +59,7 @@ internal fun ConnectServerContent(
         navigateUp = navigateUp,
         showContinueButton = state.step != ConnectServerStep.SignInOrOut,
         canContinue = state.canContinue,
+        backEnabled = !state.isChecking,
         secondaryAction = state.step.secondaryAction?.let { action ->
             { SecondaryActionButton(action = action, onEvent = onEvent) }
         },
