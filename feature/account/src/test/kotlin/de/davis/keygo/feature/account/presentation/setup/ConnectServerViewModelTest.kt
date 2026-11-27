@@ -1,5 +1,6 @@
 package de.davis.keygo.feature.account.presentation.setup
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshots.Snapshot
 import de.davis.keygo.core.identity.FakeAccountRepository
@@ -808,6 +809,91 @@ class ConnectServerViewModelTest {
 
         assertEquals(UsernameCheck.Valid("grace"), vm.usernameCheck)
         assertEquals(true, vm.state.value.canContinue)
+    }
+
+    private fun TestScope.back(vm: ConnectServerViewModel, times: Int = 1) {
+        repeat(times) { vm.onEvent(ConnectServerUiEvent.Back) }
+        runCurrent()
+    }
+
+    @Test
+    fun a_rejection_is_dropped_once_back_on_the_address_step() = runTest(dispatcher) {
+        val vm = confirmPasswordStep()
+        repository.registerFailure = SyncError.UsernameTaken
+        submit(vm)
+        assertEquals(UsernameCheck.Rejected(SyncError.UsernameTaken), vm.usernameCheck)
+
+        back(vm, times = 2)
+        assertEquals(ConnectServerStep.EnterDomain, vm.state.value.step)
+
+        val username = vm.state.value.chooseUsernameState.usernameTextFieldState.text.toString()
+        assertEquals("ada", username)
+        assertEquals(UsernameCheck.Valid("ada"), vm.usernameCheck)
+    }
+
+    @Test
+    fun a_rejected_invite_is_dropped_once_back_on_the_address_step() = runTest(dispatcher) {
+        val vm = confirmPasswordStep()
+        repository.registerFailure = SyncError.InviteInvalid
+        submit(vm)
+        assertEquals(SyncError.InviteInvalid, vm.state.value.chooseUsernameState.inviteError)
+
+        back(vm, times = 2)
+
+        assertEquals(null, vm.state.value.chooseUsernameState.inviteError)
+    }
+
+    @Test
+    fun a_rejection_survives_going_back_to_the_account_choice() = runTest(dispatcher) {
+        val vm = confirmPasswordStep()
+        repository.registerFailure = SyncError.UsernameTaken
+        submit(vm)
+
+        back(vm)
+        assertEquals(ConnectServerStep.SignInOrOut, vm.state.value.step)
+
+        assertEquals(UsernameCheck.Rejected(SyncError.UsernameTaken), vm.usernameCheck)
+    }
+
+    @OptIn(ExperimentalFoundationApi::class)
+    @Test
+    fun back_from_the_password_step_clears_the_password() = runTest(dispatcher) {
+        val vm = confirmPasswordStep()
+        typePassword(vm, "secret")
+
+        back(vm)
+
+        assertEquals(ConnectServerStep.ChooseUsername, vm.state.value.step)
+        val password = vm.state.value.confirmPasswordState.passwordTextFieldState
+        assertEquals("", password.text.toString())
+        assertEquals(false, password.undoState.canUndo)
+    }
+
+    @OptIn(ExperimentalFoundationApi::class)
+    @Test
+    fun back_from_sign_in_clears_the_password() = runTest(dispatcher) {
+        val vm = signInStep()
+        typeSignInUsername(vm, "ada")
+        typeSignInPassword(vm, "secret")
+
+        back(vm)
+
+        val signIn = vm.state.value.signInState
+        assertEquals("ada", signIn.usernameTextFieldState.text.toString())
+        assertEquals("", signIn.passwordTextFieldState.text.toString())
+        assertEquals(false, signIn.passwordTextFieldState.undoState.canUndo)
+    }
+
+    @Test
+    fun a_rejection_bounce_keeps_the_password() = runTest(dispatcher) {
+        val vm = confirmPasswordStep()
+        repository.registerFailure = SyncError.UsernameTaken
+
+        submit(vm)
+
+        assertEquals(ConnectServerStep.ChooseUsername, vm.state.value.step)
+        val password = vm.state.value.confirmPasswordState.passwordTextFieldState
+        assertEquals("secret", password.text.toString())
     }
 
     @Test

@@ -411,7 +411,20 @@ internal class ConnectServerViewModel(
 
     private fun nextStep() = _route.update { it.moveBy(1) }
 
-    private fun previousStep() = _route.update { it.moveBy(-1) }
+    /**
+     * Going back keeps what the user typed, except a password: nothing before its step reads it.
+     * Back on the address step the server may change, so what the last server said about the
+     * username or invite no longer applies.
+     *
+     * Back is blocked while a request runs, so resetting the password checks never hides one.
+     */
+    private fun previousStep() {
+        val leaving = _route.value.step
+        _route.update { it.moveBy(-1) }
+        if (leaving == ConnectServerStep.ConfirmPassword || leaving == ConnectServerStep.SignIn)
+            clearPassword()
+        if (_route.value.step == ConnectServerStep.EnterDomain) _rejection.update { null }
+    }
 
     private suspend fun check(address: ServerAddress): ServerCheck =
         syncRepository.checkServer(address.origin).fold(
