@@ -1,7 +1,7 @@
 package de.davis.keygo.rust.backup
 
 import de.davis.keygo.core.util.Result
-import de. davisalessandro.keygo.rust.BackupException
+import de.davisalessandro.keygo.rust.BackupException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
