@@ -1,5 +1,6 @@
 package de.davis.keygo.core.sync.presentation.stepup
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import de.davis.keygo.core.sync.domain.model.SyncError
 import de.davis.keygo.core.sync.domain.stepup.StepUpPrompt
@@ -14,6 +15,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
 class StepUpViewModelTest {
@@ -87,6 +89,25 @@ class StepUpViewModelTest {
         prompter.prompt.value = null
 
         assertEquals("", viewModel.password.text.toString())
+    }
+
+    @OptIn(ExperimentalFoundationApi::class)
+    @Test
+    fun `a closed prompt leaves nothing to undo`() {
+        prompter.prompt.value = StepUpPrompt()
+        viewModel.password.setTextAndPlaceCursorAtEnd("hunter2")
+        viewModel.onSubmit()
+        assertFalse(viewModel.password.undoState.canUndo)
+
+        prompter.prompt.value = StepUpPrompt()
+        viewModel.password.setTextAndPlaceCursorAtEnd("hunter3")
+        viewModel.onCancel()
+        assertFalse(viewModel.password.undoState.canUndo)
+
+        prompter.prompt.value = StepUpPrompt()
+        viewModel.password.setTextAndPlaceCursorAtEnd("hunter4")
+        prompter.prompt.value = null
+        assertFalse(viewModel.password.undoState.canUndo)
     }
 
     @Test

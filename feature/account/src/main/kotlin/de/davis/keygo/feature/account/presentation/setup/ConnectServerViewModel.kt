@@ -1,8 +1,6 @@
 package de.davis.keygo.feature.account.presentation.setup
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,6 +9,7 @@ import de.davis.keygo.core.sync.domain.model.RegisterError
 import de.davis.keygo.core.sync.domain.model.SyncError
 import de.davis.keygo.core.sync.domain.repository.SyncRepository
 import de.davis.keygo.core.sync.domain.usecase.RegisterUseCase
+import de.davis.keygo.core.ui.text.clearSecret
 import de.davis.keygo.core.util.combine
 import de.davis.keygo.core.util.fold
 import de.davis.keygo.core.util.getOrNull
@@ -387,12 +386,6 @@ internal class ConnectServerViewModel(
         signInPasswordTextFieldState.clearSecret()
         _passwordCheck.update { PasswordCheck.Idle }
         _signInCheck.update { SignInCheck.Idle }
-    }
-
-    @OptIn(ExperimentalFoundationApi::class)
-    private fun TextFieldState.clearSecret() {
-        clearText()
-        undoState.clearHistory()
     }
 
     private fun chooseAccount(choice: AccountChoice) {
