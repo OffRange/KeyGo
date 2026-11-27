@@ -309,7 +309,7 @@ internal class ConnectServerViewModel(
 
     init {
         viewModelScope.launch {
-            session.isActive.filter { !it }.collect { clearPassword() }
+            session.isActive.filter { !it }.collect { clearSecrets() }
         }
     }
 
@@ -382,10 +382,14 @@ internal class ConnectServerViewModel(
     }
 
     private fun clearPassword() {
-        passwordTextFieldState.clearSecret()
-        signInPasswordTextFieldState.clearSecret()
+        clearSecrets()
         _passwordCheck.update { PasswordCheck.Idle }
         _signInCheck.update { SignInCheck.Idle }
+    }
+
+    private fun clearSecrets() {
+        passwordTextFieldState.clearSecret()
+        signInPasswordTextFieldState.clearSecret()
     }
 
     private fun chooseAccount(choice: AccountChoice) {

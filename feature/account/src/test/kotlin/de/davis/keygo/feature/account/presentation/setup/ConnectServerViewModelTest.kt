@@ -529,6 +529,30 @@ class ConnectServerViewModelTest {
         assertEquals("", vm.state.value.signInState.passwordTextFieldState.text.toString())
     }
 
+    @Test
+    fun locking_the_session_mid_sign_in_keeps_the_request_guard() = runTest(dispatcher) {
+        seedAccount("secret")
+        repository.gate = CompletableDeferred()
+        val vm = signInStep()
+        typeSignInUsername(vm, "ada")
+        typeSignInPassword(vm, "secret")
+        vm.onEvent(ConnectServerUiEvent.Continue)
+        runCurrent()
+
+        session.endSession()
+        runCurrent()
+
+        assertEquals("", vm.state.value.signInState.passwordTextFieldState.text.toString())
+        assertEquals(SignInCheck.Checking, vm.state.value.signInState.check)
+        vm.onEvent(ConnectServerUiEvent.Back)
+        runCurrent()
+        assertEquals(ConnectServerStep.SignIn, vm.state.value.step)
+
+        repository.gate?.complete(Unit)
+        runCurrent()
+        assertEquals(1, repository.loggedIn.size)
+    }
+
     private fun TestScope.signInStep(): ConnectServerViewModel {
         val vm = signInOrOutStep()
         vm.onEvent(ConnectServerUiEvent.ChooseAccount(AccountChoice.SignIn))
