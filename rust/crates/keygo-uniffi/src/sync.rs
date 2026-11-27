@@ -471,6 +471,10 @@ impl SyncClient {
     pub async fn logout(self: Arc<Self>) -> Result<(), SyncError> {
         detached(async move { self.inner.logout().await }).await
     }
+
+    pub async fn delete_account(self: Arc<Self>) -> Result<(), SyncError> {
+        detached(async move { self.inner.delete_account().await }).await
+    }
 }
 
 #[cfg(test)]
