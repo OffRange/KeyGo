@@ -61,6 +61,7 @@
     <string name="connect_server_which_description">Gib die Adresse ein, die du von der Person bekommen hast, die den Server betreibt.</string>
 
     <string name="connect_server_address_helper">KeyGo prüft den Server, bevor etwas gesendet wird.</string>
+    <string name="connect_server_address_not_an_origin">Gib die Adresse des Servers ohne Pfad ein, etwa vault.example.org.</string>
     <string name="connect_server_found">KeyGo-Server gefunden</string>
     <string name="connect_server_version">Version %1$s</string>
     <string name="connect_server_invite_only">Nur mit Einladung</string>

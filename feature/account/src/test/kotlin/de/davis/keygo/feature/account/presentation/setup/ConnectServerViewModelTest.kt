@@ -321,6 +321,18 @@ class ConnectServerViewModelTest {
     }
 
     @Test
+    fun an_address_with_a_path_is_flagged_without_asking_the_server() = runTest(dispatcher) {
+        val vm = viewModel()
+
+        type(vm, "vault.example.org/keygo")
+        advanceUntilIdle()
+
+        assertEquals(ServerCheck.NotAnOrigin, vm.check)
+        assertEquals(emptyList(), repository.checked)
+        assertEquals(false, vm.state.value.canContinue)
+    }
+
+    @Test
     fun clearing_the_field_returns_to_idle() = runTest(dispatcher) {
         val vm = viewModel()
         type(vm, "vault.example.org")

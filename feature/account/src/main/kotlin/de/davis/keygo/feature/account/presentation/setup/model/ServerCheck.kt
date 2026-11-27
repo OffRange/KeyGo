@@ -15,5 +15,7 @@ internal sealed interface ServerCheck {
     ) : ServerCheck
 
     data object InvalidAddress : ServerCheck
+
+    data object NotAnOrigin : ServerCheck
     data class Failed(val error: SyncError) : ServerCheck
 }

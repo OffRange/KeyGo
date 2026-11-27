@@ -109,6 +109,7 @@ internal fun EnterDomainContent(
                     }
 
                     ServerCheck.InvalidAddress,
+                    ServerCheck.NotAnOrigin,
                     ServerCheck.Idle -> Unit
                 }
             },
@@ -217,6 +218,7 @@ private val ServerCheck.message: String?
     get() = when (this) {
         is ServerCheck.Failed -> stringResource(error.messageRes)
         ServerCheck.InvalidAddress -> stringResource(SyncR.string.sync_error_invalid_address)
+        ServerCheck.NotAnOrigin -> stringResource(R.string.connect_server_address_not_an_origin)
         ServerCheck.Idle,
         ServerCheck.Checking,
         is ServerCheck.Found,
@@ -236,6 +238,7 @@ private class ServerCheckProvider : PreviewParameterProvider<ServerCheck> {
         ),
         ServerCheck.Failed(SyncError.Network(NetworkFailure.Timeout)),
         ServerCheck.InvalidAddress,
+        ServerCheck.NotAnOrigin,
     )
 }
 

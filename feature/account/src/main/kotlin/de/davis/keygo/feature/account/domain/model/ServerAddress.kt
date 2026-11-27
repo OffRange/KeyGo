@@ -7,6 +7,8 @@ import java.net.URISyntaxException
 internal enum class ServerAddressError {
     Empty,
     Invalid,
+
+    NotAnOrigin, // TODO: allow a server address with a path e.g. example.com/vault
 }
 
 @JvmInline
@@ -32,6 +34,11 @@ internal value class ServerAddress private constructor(val origin: String) {
                     uri.rawUserInfo == null &&
                     (uri.port == -1 || uri.port in 1..65_535)
             if (!isValid) return Result.Failure(ServerAddressError.Invalid)
+
+            // Same rule as Rust's check_base_url: an origin, nothing after it.
+            val isOrigin = (uri.rawPath.isNullOrEmpty() || uri.rawPath == "/") &&
+                    uri.rawQuery == null && uri.rawFragment == null
+            if (!isOrigin) return Result.Failure(ServerAddressError.NotAnOrigin)
 
             // A default port is dropped, the way Rust's `Url` prints the origin it stores.
             val port = if (uri.port == -1 || uri.port == defaultPort(scheme)) "" else ":${uri.port}"

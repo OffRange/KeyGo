@@ -62,6 +62,7 @@
     <string name="connect_server_which_title">Which server?</string>
     <string name="connect_server_which_description">Enter the address you got from whoever runs the server.</string>
     <string name="connect_server_address_helper">KeyGo checks the server before it sends anything.</string>
+    <string name="connect_server_address_not_an_origin">Enter the server\'s address without a path, like vault.example.org.</string>
     <string name="connect_server_found">KeyGo server found</string>
     <string name="connect_server_version">Version %1$s</string>
     <string name="connect_server_invite_only">Invite only</string>

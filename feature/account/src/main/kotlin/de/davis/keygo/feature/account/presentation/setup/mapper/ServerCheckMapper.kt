@@ -15,4 +15,5 @@ internal fun ServerInfo.toFound(address: ServerAddress) = ServerCheck.Found(
 internal fun ServerAddressError.toServerCheck(): ServerCheck = when (this) {
     ServerAddressError.Empty -> ServerCheck.Idle
     ServerAddressError.Invalid -> ServerCheck.InvalidAddress
+    ServerAddressError.NotAnOrigin -> ServerCheck.NotAnOrigin
 }

@@ -31,9 +31,23 @@ class ServerAddressTest {
     }
 
     @Test
-    fun reduces_a_pasted_url_to_its_origin() {
-        assertEquals("https://vault.example.org", origin("  HTTPS://Vault.Example.org/login?x=1#top "))
+    fun normalises_an_origin() {
+        assertEquals("https://vault.example.org", origin("  HTTPS://Vault.Example.org "))
         assertEquals("https://vault.example.org", origin("vault.example.org/"))
+    }
+
+    /** Dropping it would connect to the domain's root, not the server the user meant. */
+    @Test
+    fun rejects_anything_after_the_origin() {
+        listOf(
+            "vault.example.org/keygo",
+            "https://vault.example.org/keygo/",
+            "vault.example.org?x=1",
+            "vault.example.org/?x=1",
+            "vault.example.org#top",
+            "vault.example.org#",
+            "  HTTPS://Vault.Example.org/login?x=1#top ",
+        ).forEach { assertEquals(ServerAddressError.NotAnOrigin, error(it), "for $it") }
     }
 
     @Test
