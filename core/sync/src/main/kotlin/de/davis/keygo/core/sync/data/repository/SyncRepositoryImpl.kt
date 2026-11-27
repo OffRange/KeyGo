@@ -92,6 +92,11 @@ internal class SyncRepositoryImpl(
     override suspend fun stepUp(password: String): Result<Unit, SyncError> =
         withSessionClient { client, _ -> client.stepUp(password) }
 
+    override suspend fun deleteAccount(password: String): Result<Unit, SyncError> =
+        withSessionClient { client, _ ->
+            client.deleteAccount(password)
+        }
+
     private suspend fun clientFor(serverUrl: String): SyncClient = clientLock.withLock {
         // Rust stores the origin as `Url` prints it, with a trailing slash; ServerAddress has none.
         val origin = serverUrl.trimEnd('/')

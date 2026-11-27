@@ -33,4 +33,6 @@ interface SyncRepository {
     suspend fun deleteDevice(deviceId: UUID): Result<Unit, SyncError>
 
     suspend fun stepUp(password: String): Result<Unit, SyncError>
+
+    suspend fun deleteAccount(password: String): Result<Unit, SyncError>
 }
