@@ -3,6 +3,7 @@ use crate::api::{AppState, ServerResult};
 use crate::service::account;
 use axum::Router;
 use axum::extract::State;
+use axum::http::StatusCode;
 use axum::routing::delete;
 
 pub fn router() -> Router<AppState> {
@@ -12,7 +13,7 @@ pub fn router() -> Router<AppState> {
 async fn delete_account(
     State(state): State<AppState>,
     authenticated: FreshAuthenticated,
-) -> ServerResult<()> {
+) -> ServerResult<StatusCode> {
     account::delete(&state.db, authenticated.claims().user_id()).await?;
-    Ok(())
+    Ok(StatusCode::NO_CONTENT)
 }
