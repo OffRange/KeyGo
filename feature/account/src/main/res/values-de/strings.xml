@@ -32,6 +32,9 @@
 
     <string name="recovery_key">Recovery Key</string>
     <string name="delete_account">Account löschen</string>
+    <string name="delete_account_title">Account löschen?</string>
+    <string name="delete_account_message">Dein Account und alles, was auf dem Server synchronisiert ist, werden endgültig gelöscht und alle deine Geräte abgemeldet. Das lässt sich nicht rückgängig machen. Deine Einträge bleiben auf diesem Gerät und funktionieren weiter offline. Gib zur Bestätigung dein Kontopasswort ein.</string>
+    <string name="delete_account_confirm">Account löschen</string>
 
     <string name="your_devices">Deine Geräte</string>
     <plurals name="device_count">

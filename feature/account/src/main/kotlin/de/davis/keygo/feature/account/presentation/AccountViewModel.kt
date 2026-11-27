@@ -1,15 +1,20 @@
 package de.davis.keygo.feature.account.presentation
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.davis.keygo.core.sync.domain.model.Device
 import de.davis.keygo.core.sync.domain.model.ServerLink
 import de.davis.keygo.core.sync.domain.repository.ServerLinkRepository
 import de.davis.keygo.core.sync.domain.repository.SyncRepository
+import de.davis.keygo.core.ui.text.clearSecret
 import de.davis.keygo.core.util.fold
+import de.davis.keygo.core.util.onFailure
+import de.davis.keygo.core.util.onSuccess
 import de.davis.keygo.feature.account.presentation.models.AccountEvent
 import de.davis.keygo.feature.account.presentation.models.AccountUiEvent
 import de.davis.keygo.feature.account.presentation.models.AccountUiState
+import de.davis.keygo.feature.account.presentation.models.DeleteAccountDialogState
 import de.davis.keygo.feature.account.presentation.models.DevicesSummary
 import de.davis.keygo.feature.account.presentation.models.LogoutDialogState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -32,6 +37,10 @@ internal class AccountViewModel(
 ) : ViewModel() {
 
     private val _logoutDialog = MutableStateFlow(LogoutDialogState.Hidden)
+    private val _deleteAccountDialog =
+        MutableStateFlow<DeleteAccountDialogState>(DeleteAccountDialogState.Hidden)
+
+    val deleteAccountPassword = TextFieldState()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val devices = serverLinkRepository.observeLink()
@@ -56,6 +65,7 @@ internal class AccountViewModel(
         serverLinkRepository.observeLink(),
         _logoutDialog,
         devices,
+        _deleteAccountDialog,
         ::AccountUiState,
     ).stateIn(
         scope = viewModelScope,
@@ -83,10 +93,41 @@ internal class AccountViewModel(
                 if (_logoutDialog.value != LogoutDialogState.LoggingOut)
                     _logoutDialog.update { LogoutDialogState.Hidden }
 
-            AccountUiEvent.OnDeleteAccountClicked -> {}
+            AccountUiEvent.OnDeleteAccountClicked ->
+                _deleteAccountDialog.update { DeleteAccountDialogState.Confirming() }
+
+            AccountUiEvent.OnDeleteAccountConfirmed -> deleteAccount()
+            AccountUiEvent.OnDeleteAccountDismissed -> dismissDeleteAccount()
 
             AccountUiEvent.ResetPassword -> _event.trySend(AccountEvent.NavigateToChangePassword)
         }
+    }
+
+    private fun deleteAccount() {
+        if (_deleteAccountDialog.value !is DeleteAccountDialogState.Confirming) return
+        val password = deleteAccountPassword.text.toString()
+        if (password.isEmpty()) return
+        deleteAccountPassword.clearSecret()
+
+        _deleteAccountDialog.update { DeleteAccountDialogState.Deleting }
+        viewModelScope.launch {
+            syncRepository.deleteAccount(password)
+                .onSuccess { _deleteAccountDialog.update { DeleteAccountDialogState.Hidden } }
+                .onFailure { error ->
+                    _deleteAccountDialog.update { DeleteAccountDialogState.Confirming(error) }
+                }
+        }
+    }
+
+    private fun dismissDeleteAccount() {
+        if (_deleteAccountDialog.value == DeleteAccountDialogState.Deleting) return
+
+        deleteAccountPassword.clearSecret()
+        _deleteAccountDialog.update { DeleteAccountDialogState.Hidden }
+    }
+
+    override fun onCleared() {
+        deleteAccountPassword.clearSecret()
     }
 
     private fun logout() {

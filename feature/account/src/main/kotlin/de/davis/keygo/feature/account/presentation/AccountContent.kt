@@ -3,6 +3,7 @@ package de.davis.keygo.feature.account.presentation
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -36,9 +37,11 @@ import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.feature.account.R
 import de.davis.keygo.feature.account.presentation.components.AccountBanner
 import de.davis.keygo.feature.account.presentation.components.ConnectToServerCard
+import de.davis.keygo.feature.account.presentation.components.DeleteAccountDialog
 import de.davis.keygo.feature.account.presentation.components.LogoutDialog
 import de.davis.keygo.feature.account.presentation.models.AccountUiEvent
 import de.davis.keygo.feature.account.presentation.models.AccountUiState
+import de.davis.keygo.feature.account.presentation.models.DeleteAccountDialogState
 import de.davis.keygo.feature.account.presentation.models.DevicesSummary
 import de.davis.keygo.feature.account.presentation.models.LogoutDialogState
 import de.davis.keygo.feature.account.presentation.preview.ServerLinkProvider
@@ -46,6 +49,7 @@ import de.davis.keygo.feature.account.presentation.preview.ServerLinkProvider
 @Composable
 internal fun AccountContent(
     state: AccountUiState,
+    deleteAccountPassword: TextFieldState,
     onEvent: (AccountUiEvent) -> Unit,
 ) {
     val link = state.link
@@ -61,6 +65,14 @@ internal fun AccountContent(
             state = state.logoutDialog,
             onConfirm = { onEvent(AccountUiEvent.OnLogoutConfirmed) },
             onDismiss = { onEvent(AccountUiEvent.OnLogoutDismissed) },
+        )
+
+    if (link is ServerLink.Connected && state.deleteAccountDialog != DeleteAccountDialogState.Hidden)
+        DeleteAccountDialog(
+            state = state.deleteAccountDialog,
+            password = deleteAccountPassword,
+            onConfirm = { onEvent(AccountUiEvent.OnDeleteAccountConfirmed) },
+            onDismiss = { onEvent(AccountUiEvent.OnDeleteAccountDismissed) },
         )
 
     Scaffold(
@@ -191,6 +203,7 @@ private fun AccountContentPreview(
                     link = link,
                     devices = DevicesSummary.Loaded(total = 3, signedIn = 2),
                 ),
+                deleteAccountPassword = TextFieldState(),
                 onEvent = {},
             )
         }

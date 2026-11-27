@@ -9,7 +9,9 @@ import de.davis.keygo.core.sync.domain.model.SyncAccount
 import de.davis.keygo.core.sync.domain.model.SyncError
 import de.davis.keygo.core.sync.domain.repository.SyncRepository
 import de.davis.keygo.core.util.Result
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import de.davis.keygo.feature.account.presentation.models.AccountUiEvent
+import de.davis.keygo.feature.account.presentation.models.DeleteAccountDialogState
 import de.davis.keygo.feature.account.presentation.models.DevicesSummary
 import de.davis.keygo.feature.account.presentation.models.LogoutDialogState
 import kotlinx.coroutines.CompletableDeferred
@@ -203,6 +205,103 @@ class AccountViewModelTest {
         )
     }
 
+    @Test
+    fun `delete account asks for the password first`() = runTest(dispatcher) {
+        repository.link.value = connected
+        val vm = viewModel()
+        vm.uiState.launchIn(backgroundScope)
+
+        vm.onEvent(AccountUiEvent.OnDeleteAccountClicked)
+
+        assertEquals(DeleteAccountDialogState.Confirming(), vm.uiState.value.deleteAccountDialog)
+        assertEquals(emptyList(), syncRepository.deleteAccountPasswords)
+    }
+
+    @Test
+    fun `confirming deletes with the typed password and clears the field`() =
+        runTest(dispatcher) {
+            repository.link.value = connected
+            val vm = viewModel()
+            vm.uiState.launchIn(backgroundScope)
+
+            vm.onEvent(AccountUiEvent.OnDeleteAccountClicked)
+            vm.deleteAccountPassword.setTextAndPlaceCursorAtEnd("hunter2")
+            vm.onEvent(AccountUiEvent.OnDeleteAccountConfirmed)
+
+            assertEquals(listOf("hunter2"), syncRepository.deleteAccountPasswords)
+            assertEquals("", vm.deleteAccountPassword.text.toString())
+            assertEquals(DeleteAccountDialogState.Hidden, vm.uiState.value.deleteAccountDialog)
+            assertEquals(ServerLink.None, vm.uiState.value.link)
+        }
+
+    @Test
+    fun `confirming without a password does nothing`() = runTest(dispatcher) {
+        repository.link.value = connected
+        val vm = viewModel()
+        vm.uiState.launchIn(backgroundScope)
+
+        vm.onEvent(AccountUiEvent.OnDeleteAccountClicked)
+        vm.onEvent(AccountUiEvent.OnDeleteAccountConfirmed)
+
+        assertEquals(emptyList(), syncRepository.deleteAccountPasswords)
+        assertEquals(DeleteAccountDialogState.Confirming(), vm.uiState.value.deleteAccountDialog)
+    }
+
+    @Test
+    fun `a wrong password keeps the dialog open with the error`() = runTest(dispatcher) {
+        repository.link.value = connected
+        syncRepository.deleteAccountResult = Result.Failure(SyncError.InvalidCredentials)
+        val vm = viewModel()
+        vm.uiState.launchIn(backgroundScope)
+
+        vm.onEvent(AccountUiEvent.OnDeleteAccountClicked)
+        vm.deleteAccountPassword.setTextAndPlaceCursorAtEnd("wrong")
+        vm.onEvent(AccountUiEvent.OnDeleteAccountConfirmed)
+
+        assertEquals(
+            DeleteAccountDialogState.Confirming(SyncError.InvalidCredentials),
+            vm.uiState.value.deleteAccountDialog,
+        )
+        assertEquals("", vm.deleteAccountPassword.text.toString())
+        assertEquals(connected, vm.uiState.value.link)
+    }
+
+    @Test
+    fun `dismissing the delete dialog clears the password`() = runTest(dispatcher) {
+        repository.link.value = connected
+        val vm = viewModel()
+        vm.uiState.launchIn(backgroundScope)
+
+        vm.onEvent(AccountUiEvent.OnDeleteAccountClicked)
+        vm.deleteAccountPassword.setTextAndPlaceCursorAtEnd("hunter2")
+        vm.onEvent(AccountUiEvent.OnDeleteAccountDismissed)
+
+        assertEquals(DeleteAccountDialogState.Hidden, vm.uiState.value.deleteAccountDialog)
+        assertEquals("", vm.deleteAccountPassword.text.toString())
+        assertEquals(emptyList(), syncRepository.deleteAccountPasswords)
+    }
+
+    @Test
+    fun `deleting cannot be dismissed or started twice`() = runTest(dispatcher) {
+        repository.link.value = connected
+        val gate = CompletableDeferred<Unit>()
+        syncRepository.deleteAccountGate = gate
+        val vm = viewModel()
+        vm.uiState.launchIn(backgroundScope)
+
+        vm.onEvent(AccountUiEvent.OnDeleteAccountClicked)
+        vm.deleteAccountPassword.setTextAndPlaceCursorAtEnd("hunter2")
+        vm.onEvent(AccountUiEvent.OnDeleteAccountConfirmed)
+        vm.deleteAccountPassword.setTextAndPlaceCursorAtEnd("hunter2")
+        vm.onEvent(AccountUiEvent.OnDeleteAccountConfirmed)
+        vm.onEvent(AccountUiEvent.OnDeleteAccountDismissed)
+
+        assertEquals(DeleteAccountDialogState.Deleting, vm.uiState.value.deleteAccountDialog)
+        gate.complete(Unit)
+        assertEquals(listOf("hunter2"), syncRepository.deleteAccountPasswords)
+        assertEquals(DeleteAccountDialogState.Hidden, vm.uiState.value.deleteAccountDialog)
+    }
+
     private class FakeSyncRepository(private val links: FakeServerLinkRepository) : SyncRepository {
         var result: Result<Unit, SyncError> = Result.Success(Unit)
         var clearsLink = true
@@ -245,6 +344,17 @@ class AccountViewModelTest {
             error("not used")
 
         override suspend fun stepUp(password: String): Result<Unit, SyncError> = error("not used")
+
+        var deleteAccountResult: Result<Unit, SyncError> = Result.Success(Unit)
+        var deleteAccountGate: CompletableDeferred<Unit>? = null
+        val deleteAccountPasswords = mutableListOf<String>()
+
+        override suspend fun deleteAccount(password: String): Result<Unit, SyncError> {
+            deleteAccountPasswords += password
+            deleteAccountGate?.await()
+            if (deleteAccountResult is Result.Success) links.link.value = ServerLink.None
+            return deleteAccountResult
+        }
     }
 
     private companion object {

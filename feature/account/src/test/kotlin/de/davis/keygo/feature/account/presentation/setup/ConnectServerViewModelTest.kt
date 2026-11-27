@@ -105,6 +105,9 @@ class ConnectServerViewModelTest {
             error("not used")
 
         override suspend fun stepUp(password: String): Result<Unit, SyncError> = error("not used")
+
+        override suspend fun deleteAccount(password: String): Result<Unit, SyncError> =
+            error("not used")
     }
 
     private val dispatcher = StandardTestDispatcher()

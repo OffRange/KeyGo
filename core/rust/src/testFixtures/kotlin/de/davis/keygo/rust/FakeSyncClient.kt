@@ -11,6 +11,7 @@ import de.davisalessandro.keygo.rust.UserId
 
 class FakeSyncClient : SyncClientInterface {
 
+    var deleteAccountResult: Result<Unit> = Result.success(Unit)
     var deleteDeviceResult: Result<Unit> = Result.success(Unit)
     var devicesResult: Result<List<SyncDevice>> = Result.success(emptyList())
     var loginResult: Result<Account>? = null
@@ -18,6 +19,8 @@ class FakeSyncClient : SyncClientInterface {
     var metaResult: Result<ServerInfo>? = null
     var registerResult: Result<Account>? = null
     var stepUpResult: Result<Unit> = Result.success(Unit)
+
+    override suspend fun deleteAccount(password: String) = deleteAccountResult.getOrThrow()
 
     override suspend fun deleteDevice(id: DeviceId) = deleteDeviceResult.getOrThrow()
 

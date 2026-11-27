@@ -10,6 +10,8 @@ internal sealed interface AccountUiEvent {
     data object OnLogoutDismissed : AccountUiEvent
 
     data object OnDeleteAccountClicked : AccountUiEvent
+    data object OnDeleteAccountConfirmed : AccountUiEvent
+    data object OnDeleteAccountDismissed : AccountUiEvent
 
     data object ResetPassword : AccountUiEvent
 }

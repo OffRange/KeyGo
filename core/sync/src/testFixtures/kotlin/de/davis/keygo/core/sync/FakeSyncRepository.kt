@@ -29,6 +29,9 @@ class FakeSyncRepository : SyncRepository {
 
     var stepUpGate: CompletableDeferred<Unit>? = null
 
+    var deleteAccountResults: List<Result<Unit, SyncError>> = listOf(Result.Success(Unit))
+    val deleteAccountPasswords = mutableListOf<String>()
+
     override suspend fun checkServer(serverUrl: String): Result<ServerInfo, SyncError> =
         error("checkServer is not faked")
 
@@ -67,6 +70,12 @@ class FakeSyncRepository : SyncRepository {
         val result = stepUpResults.answerFor(stepUpPasswords.size)
         stepUpPasswords += password
         stepUpGate?.await()
+        return result
+    }
+
+    override suspend fun deleteAccount(password: String): Result<Unit, SyncError> {
+        val result = deleteAccountResults.answerFor(deleteAccountPasswords.size)
+        deleteAccountPasswords += password
         return result
     }
 

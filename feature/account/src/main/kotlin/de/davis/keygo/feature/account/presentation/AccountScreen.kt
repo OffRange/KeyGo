@@ -28,6 +28,7 @@ internal fun AccountScreen(
 
     AccountContent(
         state = state,
-        onEvent = viewModel::onEvent
+        deleteAccountPassword = viewModel.deleteAccountPassword,
+        onEvent = viewModel::onEvent,
     )
 }
