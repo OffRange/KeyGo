@@ -53,6 +53,14 @@ pub async fn find_username(
     Username::parse(&username).map(Some).map_err(corrupt)
 }
 
+pub async fn delete(conn: &mut PgConnection, user_id: UserId) -> sqlx::Result<()> {
+    sqlx::query!("delete from users where id = $1", user_id.as_uuid())
+        .execute(conn)
+        .await?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

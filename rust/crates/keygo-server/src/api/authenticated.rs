@@ -113,10 +113,6 @@ impl FromRequestParts<AppState> for Authenticated {
     }
 }
 
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "no route requires a fresh sign-in yet")
-)]
 #[derive(Debug, Error)]
 #[error("recent sign-in required")]
 pub struct FreshAuthRequired;
@@ -127,10 +123,8 @@ impl HttpError for FreshAuthRequired {
     }
 }
 
-#[expect(dead_code, reason = "no route requires a fresh sign-in yet")]
 pub struct FreshAuthenticated(Authenticated);
 
-#[expect(dead_code, reason = "no route requires a fresh sign-in yet")]
 impl FreshAuthenticated {
     pub fn claims(&self) -> &Claims {
         self.0.claims()
