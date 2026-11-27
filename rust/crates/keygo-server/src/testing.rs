@@ -11,7 +11,7 @@ use crate::service::session::{self, Issued};
 use crate::service::{handshake, invite};
 use axum::body::Body;
 use axum::http::header::AUTHORIZATION;
-use axum::http::{HeaderMap, Request, StatusCode};
+use axum::http::{HeaderMap, Method, Request, StatusCode};
 use http_body_util::BodyExt;
 use keygo_core::{AccountRootKey, Sealed};
 use keygo_dpop::DpopVerifier;
@@ -303,7 +303,20 @@ pub fn proof_post(
 ) -> Request<Body> {
     with_proof(state, prover, json_post(uri, body), None, nonce)
 }
-/// Signs a proof for the POST `request` makes and attaches it, with the access token it is bound
+/// Deletes as the session behind `access_token`.
+pub async fn delete_with_token(
+    state: &AppState,
+    prover: &DpopProver<TestSigner>,
+    uri: &str,
+    access_token: &str,
+) -> (StatusCode, Value) {
+    send_with_nonce(state, |nonce| {
+        let request = Request::delete(uri).body(Body::empty()).unwrap();
+        with_proof(state, prover, request, Some(access_token), nonce)
+    })
+    .await
+}
+/// Signs a proof for the `request` it is given and attaches it, with the access token it is bound
 /// to when one is given.
 pub fn with_proof(
     state: &AppState,
@@ -315,7 +328,7 @@ pub fn with_proof(
     let htu = state.public_url.join(request.uri().path()).unwrap();
     let proof = prover
         .proof(&ProofRequest {
-            htm: Htm::Post,
+            htm: htm(request.method()),
             htu: htu.as_str(),
             access_token,
             nonce,
@@ -330,6 +343,15 @@ pub fn with_proof(
         );
     }
     request
+}
+
+fn htm(method: &Method) -> Htm {
+    match *method {
+        Method::GET => Htm::Get,
+        Method::POST => Htm::Post,
+        Method::DELETE => Htm::Delete,
+        ref other => panic!("no DPoP htm for {other}"),
+    }
 }
 
 /// Signs one proof carrying the verifier's nonce and builds identical requests around it, the way
