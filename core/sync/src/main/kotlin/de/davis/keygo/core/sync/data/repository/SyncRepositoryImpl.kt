@@ -93,10 +93,12 @@ internal class SyncRepositoryImpl(
         withSessionClient { client, _ -> client.stepUp(password) }
 
     private suspend fun clientFor(serverUrl: String): SyncClient = clientLock.withLock {
-        cached?.takeIf { it.serverUrl == serverUrl }?.client
+        // Rust stores the origin as `Url` prints it, with a trailing slash; ServerAddress has none.
+        val origin = serverUrl.trimEnd('/')
+        cached?.takeIf { it.serverUrl == origin }?.client
             ?: newClient(serverUrl).also { client ->
                 cached?.client?.close()
-                cached = CachedClient(serverUrl, client)
+                cached = CachedClient(origin, client)
             }
     }
 

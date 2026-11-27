@@ -23,6 +23,14 @@ class ServerAddressTest {
     }
 
     @Test
+    fun drops_the_default_port_of_its_scheme() {
+        assertEquals("https://vault.example.org", origin("vault.example.org:443"))
+        assertEquals("http://localhost", origin("http://localhost:80"))
+        assertEquals("https://vault.example.org:80", origin("vault.example.org:80"))
+        assertEquals("http://localhost:443", origin("http://localhost:443"))
+    }
+
+    @Test
     fun reduces_a_pasted_url_to_its_origin() {
         assertEquals("https://vault.example.org", origin("  HTTPS://Vault.Example.org/login?x=1#top "))
         assertEquals("https://vault.example.org", origin("vault.example.org/"))

@@ -33,8 +33,11 @@ internal value class ServerAddress private constructor(val origin: String) {
                     (uri.port == -1 || uri.port in 1..65_535)
             if (!isValid) return Result.Failure(ServerAddressError.Invalid)
 
-            val port = if (uri.port == -1) "" else ":${uri.port}"
+            // A default port is dropped, the way Rust's `Url` prints the origin it stores.
+            val port = if (uri.port == -1 || uri.port == defaultPort(scheme)) "" else ":${uri.port}"
             return Result.Success(ServerAddress("$scheme://$host$port"))
         }
+
+        private fun defaultPort(scheme: String) = if (scheme == "https") 443 else 80
     }
 }
